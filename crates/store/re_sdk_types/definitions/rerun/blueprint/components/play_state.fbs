@@ -1,0 +1,23 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// The current play state.
+enum PlayState: ubyte (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// Invalid value. Won't show up in generated types.
+  Invalid = 0,
+
+  /// Time doesn't move.
+  Paused,
+
+  /// Time move steadily.
+  Playing (default),
+
+  /// Follow the latest available data.
+  Following,
+}

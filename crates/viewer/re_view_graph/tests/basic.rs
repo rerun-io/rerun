@@ -1,12 +1,11 @@
 //! Basic tests for the graph view, mostly focused on edge cases (pun intended).
 
 use egui::Vec2;
-
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_sdk_types::archetypes;
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes;
 use re_view_graph::GraphView;
 use re_viewer_context::ViewClass as _;
 use re_viewport_blueprint::ViewBlueprint;
@@ -21,7 +20,12 @@ pub fn coincident_nodes() {
     // and thus will not find anything applicable to the visualizer.
     test_context.register_view_class::<re_view_graph::GraphView>();
 
-    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    let timepoint = TimePoint::from([(
+        test_context
+            .active_timeline()
+            .expect("should have an active timeline"),
+        1,
+    )]);
     test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
@@ -48,12 +52,14 @@ pub fn self_and_multi_edges() {
     // It's important to first register the view class before adding any entities,
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
     // and thus will not find anything applicable to the visualizer.
-    test_context
-        .view_class_registry
-        .add_class::<GraphView>()
-        .unwrap();
+    test_context.register_view_class::<GraphView>();
 
-    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    let timepoint = TimePoint::from([(
+        test_context
+            .active_timeline()
+            .expect("should have an active timeline"),
+        1,
+    )]);
     test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
@@ -96,12 +102,14 @@ pub fn multi_graphs() {
     // It's important to first register the view class before adding any entities,
     // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
     // and thus will not find anything applicable to the visualizer.
-    test_context
-        .view_class_registry
-        .add_class::<GraphView>()
-        .unwrap();
+    test_context.register_view_class::<GraphView>();
 
-    let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
+    let timepoint = TimePoint::from([(
+        test_context
+            .active_timeline()
+            .expect("Should have an active timeline"),
+        1,
+    )]);
     test_context.log_entity("graph1", |builder| {
         builder
             .with_archetype(
@@ -141,16 +149,13 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
     });
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        // Don't use `setup_kittest_for_rendering_ui` since those graph lines cause a lot of renderer discrepancies, similar to 3D rendering.
+        .setup_kittest_for_rendering_3d(size)
         .with_max_steps(256) // Give it some time to settle the graph.
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(4),
-    );
+    harness.snapshot(name);
 }

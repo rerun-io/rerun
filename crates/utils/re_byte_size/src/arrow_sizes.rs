@@ -1,50 +1,44 @@
-use arrow::{
-    array::{Array, ArrayRef, ListArray, RecordBatch},
-    buffer::{Buffer, ScalarBuffer},
-    datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields},
-};
+use arrow::array::{Array, ArrayRef, ListArray, RecordBatch};
+use arrow::buffer::ScalarBuffer;
+use arrow::datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields};
+
+#[expect(unused_imports)] // for docs
+use arrow::array::ArrayData;
 
 use super::SizeBytes;
-
-impl SizeBytes for Buffer {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.capacity() as u64
-    }
-}
 
 impl SizeBytes for dyn Array {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.get_buffer_memory_size() as u64
+        array_slice_memory_size(self)
     }
 }
 
 impl<T: Array> SizeBytes for &T {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.get_buffer_memory_size() as u64
+        array_slice_memory_size(self)
     }
 }
 
 impl SizeBytes for ArrayRef {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.get_buffer_memory_size() as u64
+        array_slice_memory_size(self)
     }
 }
 
 impl<T: ArrowNativeType> SizeBytes for ScalarBuffer<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.inner().capacity() as _
+        self.inner().len() as u64
     }
 }
 
 impl SizeBytes for ListArray {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.get_buffer_memory_size() as u64
+        array_slice_memory_size(self)
     }
 }
 
@@ -106,6 +100,8 @@ impl SizeBytes for DataType {
             | Self::Utf8
             | Self::LargeUtf8
             | Self::BinaryView
+            | Self::Decimal32(_, _)
+            | Self::Decimal64(_, _)
             | Self::Decimal128(_, _)
             | Self::Decimal256(_, _)
             | Self::FixedSizeBinary(_)
@@ -139,4 +135,29 @@ impl SizeBytes for UnionFields {
     fn heap_size_bytes(&self) -> u64 {
         self.iter().map(|(_, field)| field.heap_size_bytes()).sum()
     }
+}
+
+// ---
+
+/// Returns the total number of the bytes of memory occupied by the buffers by this slice of
+/// [`ArrayData`] (See also diagram on [`ArrayData`]).
+///
+/// This is approximately the number of bytes if a new [`ArrayData`] was formed by creating new
+/// `Buffer`s with exactly the data needed.
+///
+/// For example, a [`DataType::Int64`] with `100` elements, [`ArrayData::get_slice_memory_size`] would
+/// return `100 * 8 = 800`. If the [`ArrayData`] was then [`Array::slice`]ed to refer to its first
+/// `20` elements, then [`ArrayData::get_slice_memory_size`] on the sliced [`ArrayData`] would return
+/// `20 * 8 = 160`.
+///
+/// ## Important notes regarding deep vs. shallow slicing
+///
+/// Deeply nested data that was shallow-sliced (i.e. using [`Array::slice]` instead of the deep-slicing
+/// helpers from `re_arrow_util`) might report sizes that do not make any intuitive sense.
+/// Always prefer deep-slicing when you need to reliably measure the physical size of the sliced data.
+fn array_slice_memory_size(array: &dyn Array) -> u64 {
+    array
+        .to_data()
+        .get_slice_memory_size()
+        .unwrap_or_else(|_| array.get_buffer_memory_size()) as u64
 }

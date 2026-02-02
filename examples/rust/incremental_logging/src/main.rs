@@ -6,7 +6,8 @@
 //! cargo run -p incremental -- --help
 //! ```
 
-use rand::{Rng as _, distributions::Uniform};
+use rand::Rng as _;
+use rand::distr::Uniform;
 use rerun::external::re_log;
 
 #[derive(Debug, clap::Parser)]
@@ -43,8 +44,8 @@ rec.log(
         .with_radii([0.1]),
 )?;
 
-let mut rng = rand::thread_rng();
-let dist = Uniform::new(-5., 5.);
+let mut rng = rand::rng();
+let dist = Uniform::new(-5., 5.)?;
 
 // Then log only the points themselves each frame.
 //
@@ -77,8 +78,8 @@ fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
             .with_radii([0.1]),
     )?;
 
-    let mut rng = rand::thread_rng();
-    let dist = Uniform::new(-5., 5.);
+    let mut rng = rand::rng();
+    let dist = Uniform::new(-5., 5.)?;
 
     // Then log only the points themselves each frame.
     //

@@ -24,8 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
-    // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let (rx, _) = re_grpc_server::spawn_with_recv(
+    // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
+    let rx = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         Default::default(),
         re_grpc_server::shutdown::never(),
@@ -60,11 +60,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.add_log_receiver(rx);
 
             // Register the custom view
-            app.view_class_registry()
-                .add_class::<points3d_color_view::ColorCoordinatesView>()
+            app.add_view_class::<points3d_color_view::ColorCoordinatesView>()
                 .unwrap();
 
-            Box::new(app)
+            Ok(Box::new(app))
         }),
         None,
     )?;

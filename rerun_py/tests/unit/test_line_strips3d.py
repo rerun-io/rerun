@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pytest
@@ -44,12 +44,12 @@ strips_arrays: list[LineStrip3DArrayLike] = [
     [
         np.array([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=np.float32),
         np.array([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
-                 dtype=np.float32),  # noqa
+                 dtype=np.float32),
     ],
     [
         torch.tensor([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=torch.float32),
         torch.tensor([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)],
-                     dtype=torch.float32),  # noqa
+                     dtype=torch.float32),
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([
@@ -87,10 +87,10 @@ def test_line_strips3d() -> None:
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         strips = cast("LineStrip3DArrayLike", strips)
-        radii = cast("Optional[Float32ArrayLike]", radii)
-        colors = cast("Optional[Rgba32ArrayLike]", colors)
-        labels = cast("Optional[Utf8ArrayLike]", labels)
-        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
 
         print(
             f"rr.LineStrips3D(\n"

@@ -31,6 +31,9 @@ In rare cases we will do patch releases, e.g. `0.3.1`, when there is a critical 
 
 We sometimes do pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
 
+The version on our `main` branch is always an `-alpha.N+dev` version. We build artifacts from `main` every day, though these are not published on package registries.
+You can find the latest development version in our [GitHub releases](https://github.com/rerun-io/rerun/releases/tag/prerelease).
+
 ## Rust version policy
 
 Our Minimum Supported Rust Version (MSRV) is always _at least_ one minor release behind the latest Rust version, and ideally two releases.
@@ -43,56 +46,45 @@ Our Minimum Supported Rust Version (MSRV) is always _at least_ one minor release
 We have not yet committed to any backwards or forwards compatibility.
 
 We tag all data files (`.rrd` files) and communication protocols with the Rerun version number. If there is a version mismatch, a warning is logged, but an attempt is still made to load the older or newer data.
-
-## Releases
-
-Release builds of the Python Wheels are triggered by pushing a release tag to GitHub in the form `0.2.0`.
-If we are doing a patch release, we do a branch off of the latest release tag (e.g. `0.3.0`) and cherry-pick any fixes we want into that branch.
-
-## Alpha vs final releases
-
-The overall process slightly differs between alphas and final releases.
-
-For alpha releases, the process is essentially fully-automated and throw-away. Specifically:
-
--   We do not update `CHANGELOG.md` (though we may have a raw changelog in the GH release)
--   When failing, it's fine to just start over with a new alpha.
--   The release branch typically has no content other than the automatically generated version bump.
--   The release branch doesn't need to be merged to `main` (and shouldn't, unless the workflow fully succeeds).
-
-For final releases with a minor or minor version bump, the process is typically more involved:
-
--   At least `CHANGELOG.md` must be updated on the branch.
--   Typically more commits are pushed or cherry-picked for last-minute fixes.
--   One or more RCs are triggered before the final release.
--   The release branch _must_ be merged to `main`.
-
-The same applies for final releases with a patch version bump, except the branch starts from the previous major/minor release instead of `main`. Also, special care is required with `docs-latest` (see below).
+As of 0.23, we automatically migrate data from older versions, with an N-1 compatibility policy. That means `0.24` supports migrating `0.23` data, `0.25` supports migrating `0.24` data, etc.
 
 # Release process
 
-### 1. Check the root [`Cargo.toml`](./Cargo.toml) to see what version we are currently on.
+Before doing anything, read all the steps in full!
 
-### 2. Create a release branch.
+### 1. Determine what the next version should be
 
-The name should be:
+There usually isn't any ambiguity, as releases are planned ahead of time.
 
--   `release-0.x.y` for final releases and their release candidates.
--   `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
-    or defaulted to `1` if no previous alpha exists.
-    **IMPORTANT**: because alpha releases branches are not always merged, the version on `main` (e.g. in `Cargo.toml`, etc.) may not match the last alpha release. So always double-check the actual version of the last alpha release by visiting our [PiPy](https://pypi.org/project/rerun-sdk/#history) page.
+You can always find the latest release on our [GitHub releases](https://github.com/rerun-io/rerun/releases/tag/prerelease) page.
 
-Note that `release-0.x` is _invalid_. Always specify the `y`, even if it is `0`,
-e.g. `release-0.15.0` instead of `release-0.15`.
+### 2. Create a release branch
 
-For minor release, the branch is typically created from `main`. For patch release, the branch is typically created
-from the previous release's tag.
+The branch name is the single source of truth for the _release version_. Our release workflow automatically updates all versions
+in the repository to what is specified in the branch name, so the format is important:
+
+- `prepare-release-0.x.y` for minor and patch releases.
+- `prepare-release-0.x.y-alpha.N` for alpha releases.
+
+Note that `prepare-release-0.x` is _invalid_. Always specify the `y`, even if it is `0`, e.g. `prepare-release-0.15.0` instead of `prepare-release-0.15`.
+
+The _base_ of the branch should depends on what kind of release it is:
+
+- For a _minor_ release, the branch is created from `main`.
+- For a _patch_ release, the branch is created from the previous release tag.
+- For an _alpha_ release, the branch is created from `main`.
+
+You can do this either using `git` on your command line, or through the UI:
 
 ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
 
-Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
+Once the branch has been created, push it to the remote repository.
 
-### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
+**NOTE (for patch releases)**: upon creation of the branch, the version is set to the final version of the previous release. This can create issues when testing the patch release, since it has a non-"+dev" version identical to/conflicting with an existing release. Because of that, an RC should preferably be created before testing.
+
+### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
+
+In GitHub we have a `consider-patch` label that we put on PRs that we might want to include in the release.
 
 When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
 
@@ -100,17 +92,18 @@ When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semve
 otherwise these changes will be lost when `docs-latest` is updated.
 
 ```
-# On branch `release-0.x.y`
+# On branch `prepare-release-0.x.y`
 git fetch origin docs-latest:docs-latest
 git cherry-pick 0.x.z..docs-latest
 ```
 
 Where `z` is the previous patch number.
 
-Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include,
-which is fine.
+Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include, which is fine.
 
-### 4. Update [`CHANGELOG.md`](./CHANGELOG.md).
+After cherry-picking a commit into the patch, please make sure to remove the `consider-patch` label.
+
+### 4. Update [`CHANGELOG.md`](./CHANGELOG.md)
 
 Update the change log. It should include:
 
@@ -118,53 +111,71 @@ Update the change log. It should include:
 -   A multi-line summary of the release
     - You may ask feature leads to write a summary for each highlighted item
 -   A gif or screenshot showing one or more major new features
-    - Try to avoid `mp4`s, gifs have a better experience on Github
-    - You can upload images to a PR, use the link it generates to use Github as an image hosting service.
--   Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
+    - Try to avoid `mp4`s, gifs have a better experience on GitHub
+    - You can upload images to a PR, use the link it generates to use GitHub as an image hosting service.
+-   Run `pixi run uvpy scripts/generate_changelog.py > new_changelog.md`
 -   Edit PR descriptions/labels to improve the generated changelog
 -   Copy-paste the results into `CHANGELOG.md`.
 -   Editorialize the changelog if necessary
 -   Make sure the changelog includes instructions for handling any breaking changes
 
-### 5. Clean up documentation links.
+### 5. Clean up documentation links
 
 Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
 
 Remove the speculative link markers (`?speculative-link`).
 
+Update the [python support table](./rerun_py/docs/gen_common_index.py) for the major release.
+
 Once you're done, commit and push onto the release branch.
 
-### 6. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
+### 6. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml)
 
 In the UI:
 
 -   Set `Use workflow from` to the release branch you created in step (2).
 -   Then choose one of the following values in the dropdown:
-
-    -   `alpha` if the branch name is `release-x.y.z-alpha.N`.
+    - `alpha` if the branch name is `prepare-release-x.y.z-alpha.N`.
         This will create a one-off alpha release.
 
-    -   `rc` if the branch name is `release-x.y.z`.
-        This will create a pull request for the release, and publish a release candidate.
+    - `rc` if the branch name is `prepare-release-x.y.z`.
+      This will create a pull request for the release, and publish a release candidate.
 
-    -   `final` for the final public release
+    - `final` for the final public release
 
 ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
-### 7. Wait for the workflow to finish
+### 7. Wait for both workflows to finish
 
-The PR description will contain next steps.
+Once the release workflow is started, it will create a pull request for the release.
+The pull request description will tell you what to do next.
 
-Note: there are two separate workflows running -- the one building the release artifacts, and the one running the PR checks.
-You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml) in order to get a link to the artifacts.
+[The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts and run PR checks.
+Additionally, if the release type is set to `final` or `rc`, it will spawn a second workflow (when the release artifacts have been published to PyPI, crates.io etc.) called [`GitHub Release`](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml).
+This workflow is responsible for creating [the GitHub release draft](https://github.com/rerun-io/rerun/releases) and to publish the artifacts to it.
+**Make sure this workflow also finishes!**.
+Only after it finishes successfully should you un-draft [the GitHub release](https://github.com/rerun-io/rerun/releases).
 
 ### 8. Merge changes to `main`
 
-For minor release, merge the release branch to `main`.
+The release branch will contain a post-release version bump commit made by the release bot.
+For example, `prepare-release-0.25.0` will be bumped to `0.26.0-alpha.1+dev` once everything has been released.
+Additionally, it's common for us to push small changes and bug fixes directly to the release branch.
 
-For patch release, manually create a new PR from `main` and cherry-pick the required commits. This includes at least
-the `CHANLGE.log` update, plus any other changes made on the release branch that hasn't been cherry-picked in the
+We want all of this to land back on `main`, so:
+
+- For a minor release, merge the release branch to `main`.
+- For a patch release, manually create a new PR from `main` and cherry-pick the commits. This includes at least
+the `CHANGELOG.md` update, plus any other changes made on the release branch that haven't been cherry-picked in the
 first place.
+- For an alpha release, it's should be merged _if and only if_ the release job was successful.
+  Otherwise, do not merge, as this could introduce breakage across the repository, such as in documentation links.
+  If needed, cherry-pick any additional commits made back to `main`.
 
-For alpha release, it's fine to merge **iff** the release job was successful. Otherwise, do not merge, as this would
-introduce broken links in the docs. If needed, cherry-pick any commit back to `main`.
+Make sure the `consider-patch` label on GitHub is up-to-date. For a full release, this usually means removing it from all PRs.
+
+### 9. Optional: write a post mortem about the release
+
+Summarize your experience with the release process to our [Release Postmortems](https://www.notion.so/rerunio/Release-Postmortems-271b24554b1980589770df810d2e4ed5) Notion page.
+
+Create tickets if you think we can improve the process, put them into the `Actionable items` section.

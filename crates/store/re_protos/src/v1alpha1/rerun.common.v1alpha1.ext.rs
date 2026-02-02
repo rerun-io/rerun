@@ -1,11 +1,41 @@
-use std::hash::Hasher;
+use std::hash::Hasher as _;
 
-use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+use arrow::datatypes::Schema as ArrowSchema;
+use arrow::error::ArrowError;
 
-use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
+use re_log_types::external::re_types_core::ComponentDescriptor;
+use re_log_types::{RecordingId, StoreKind, TableId};
 
-use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
+
+/// Compression format used.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Compression {
+    Off = 0,
+
+    /// Very fast compression and decompression, but not very good compression ratio.
+    LZ4 = 1,
+}
+
+impl From<crate::common::v1alpha1::Compression> for Compression {
+    fn from(value: crate::common::v1alpha1::Compression) -> Self {
+        match value {
+            crate::common::v1alpha1::Compression::Unspecified
+            | crate::common::v1alpha1::Compression::None => Self::Off,
+            crate::common::v1alpha1::Compression::Lz4 => Self::LZ4,
+        }
+    }
+}
+
+impl From<Compression> for crate::common::v1alpha1::Compression {
+    fn from(value: Compression) -> Self {
+        match value {
+            Compression::Off => Self::None,
+            Compression::LZ4 => Self::Lz4,
+        }
+    }
+}
 
 // --- Arrow ---
 
@@ -87,59 +117,59 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
     }
 }
 
-// --- PartitionId ---
+// --- SegmentId ---
 
 #[derive(
     Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
-pub struct PartitionId {
+pub struct SegmentId {
     pub id: String,
 }
 
-impl PartitionId {
+impl SegmentId {
     #[inline]
     pub fn new(id: String) -> Self {
         Self { id }
     }
 }
 
-impl From<String> for PartitionId {
+impl From<String> for SegmentId {
     fn from(id: String) -> Self {
         Self { id }
     }
 }
 
-impl From<&str> for PartitionId {
+impl From<&str> for SegmentId {
     fn from(id: &str) -> Self {
         Self { id: id.to_owned() }
     }
 }
 
-impl std::fmt::Display for PartitionId {
+impl std::fmt::Display for SegmentId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.id.fmt(f)
     }
 }
 
-impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
+impl TryFrom<crate::common::v1alpha1::SegmentId> for SegmentId {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::common::v1alpha1::PartitionId) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::common::v1alpha1::SegmentId) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value
                 .id
-                .ok_or(missing_field!(crate::common::v1alpha1::PartitionId, "id"))?,
+                .ok_or(missing_field!(crate::common::v1alpha1::SegmentId, "id"))?,
         })
     }
 }
 
-impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
-    fn from(value: PartitionId) -> Self {
+impl From<SegmentId> for crate::common::v1alpha1::SegmentId {
+    fn from(value: SegmentId) -> Self {
         Self { id: Some(value.id) }
     }
 }
 
-impl AsRef<str> for PartitionId {
+impl AsRef<str> for SegmentId {
     fn as_ref(&self) -> &str {
         self.id.as_str()
     }
@@ -147,13 +177,13 @@ impl AsRef<str> for PartitionId {
 
 // shortcuts
 
-impl From<String> for crate::common::v1alpha1::PartitionId {
+impl From<String> for crate::common::v1alpha1::SegmentId {
     fn from(id: String) -> Self {
         Self { id: Some(id) }
     }
 }
 
-impl From<&str> for crate::common::v1alpha1::PartitionId {
+impl From<&str> for crate::common::v1alpha1::SegmentId {
     fn from(id: &str) -> Self {
         Self {
             id: Some(id.to_owned()),
@@ -208,6 +238,25 @@ impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
             entry_id: value.id.map(Into::into),
             store_kind: crate::common::v1alpha1::StoreKind::from(value.store_kind) as i32,
             dataset_url: Some(value.url.to_string()),
+        }
+    }
+}
+
+// --- TaskId ---
+
+//TODO(ab): we should migrate the full `TaskId` wrapper from `redap_tasks`
+impl crate::common::v1alpha1::TaskId {
+    pub fn new() -> Self {
+        Self::from_hashable(re_tuid::Tuid::new())
+    }
+
+    pub fn from_hashable<H: std::hash::Hash>(hashable: H) -> Self {
+        let mut hasher = std::hash::DefaultHasher::new();
+        hashable.hash(&mut hasher);
+        let id = hasher.finish();
+
+        Self {
+            id: format!("task_{id:016x}"),
         }
     }
 }
@@ -656,16 +705,6 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
 
 // ---
 
-impl Eq for TaskId {}
-
-impl std::hash::Hash for TaskId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.as_str().hash(state)
-    }
-}
-
-// ---
-
 impl From<re_build_info::BuildInfo> for crate::common::v1alpha1::BuildInfo {
     fn from(build_info: re_build_info::BuildInfo) -> Self {
         Self {
@@ -678,6 +717,7 @@ impl From<re_build_info::BuildInfo> for crate::common::v1alpha1::BuildInfo {
             git_branch: Some(build_info.git_branch.to_string()),
             target_triple: Some(build_info.target_triple.to_string()),
             build_time: Some(build_info.datetime.to_string()),
+            is_debug_build: Some(build_info.is_debug_build),
         }
     }
 }
@@ -695,6 +735,7 @@ impl From<crate::common::v1alpha1::BuildInfo> for re_build_info::BuildInfo {
             is_in_rerun_workspace: false,
             target_triple: build_info.target_triple().to_owned().into(),
             datetime: build_info.build_time().to_owned().into(),
+            is_debug_build: build_info.is_debug_build(),
         }
     }
 }
@@ -756,6 +797,204 @@ impl From<crate::common::v1alpha1::semantic_version::Meta> for re_build_info::Me
             }
         }
     }
+}
+
+// --- DataframePart / RerunChunk <-> RecordBatch ---
+
+impl TryFrom<crate::common::v1alpha1::RerunChunk> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::RerunChunk) -> Result<Self, Self::Error> {
+        Self::try_from(&value)
+    }
+}
+
+impl TryFrom<&crate::common::v1alpha1::RerunChunk> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: &crate::common::v1alpha1::RerunChunk) -> Result<Self, Self::Error> {
+        match value.encoder_version() {
+            crate::common::v1alpha1::EncoderVersion::Unspecified => {
+                return Err(missing_field!(
+                    crate::common::v1alpha1::RerunChunk,
+                    "encoder_version"
+                ));
+            }
+
+            crate::common::v1alpha1::EncoderVersion::V0 => {
+                let Some(bytes) = value.payload.as_ref() else {
+                    return Err(missing_field!(
+                        crate::common::v1alpha1::DataframePart,
+                        "payload"
+                    ));
+                };
+                let Some(batch) =
+                    record_batch_from_ipc_bytes(bytes, Compression::Off, bytes.len() as u64)?
+                else {
+                    return Err(invalid_field!(
+                        crate::common::v1alpha1::RerunChunk,
+                        "payload",
+                        "empty"
+                    ));
+                };
+                Ok(batch)
+            }
+        }
+    }
+}
+
+impl From<arrow::array::RecordBatch> for crate::common::v1alpha1::RerunChunk {
+    fn from(value: arrow::array::RecordBatch) -> Self {
+        Self::from(&value)
+    }
+}
+
+impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::RerunChunk {
+    fn from(value: &arrow::array::RecordBatch) -> Self {
+        let version = crate::common::v1alpha1::EncoderVersion::V0;
+        Self {
+            encoder_version: version as i32,
+            payload: Some(record_batch_to_ipc_bytes(value, Compression::Off).0.into()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::DataframePart> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::DataframePart) -> Result<Self, Self::Error> {
+        Self::try_from(&value)
+    }
+}
+
+impl TryFrom<&crate::common::v1alpha1::DataframePart> for arrow::array::RecordBatch {
+    type Error = TypeConversionError;
+
+    fn try_from(value: &crate::common::v1alpha1::DataframePart) -> Result<Self, Self::Error> {
+        match value.encoder_version() {
+            crate::common::v1alpha1::EncoderVersion::Unspecified => {
+                return Err(missing_field!(
+                    crate::common::v1alpha1::RerunChunk,
+                    "encoder_version"
+                ));
+            }
+
+            crate::common::v1alpha1::EncoderVersion::V0 => {
+                let Some(bytes) = value.payload.as_ref() else {
+                    return Err(missing_field!(
+                        crate::common::v1alpha1::DataframePart,
+                        "payload"
+                    ));
+                };
+
+                let compression =
+                    crate::common::v1alpha1::Compression::try_from(value.compression)?;
+                let compression = Compression::from(compression);
+
+                let Some(batch) =
+                    record_batch_from_ipc_bytes(bytes, compression, value.uncompressed_size)?
+                else {
+                    return Err(invalid_field!(
+                        crate::common::v1alpha1::RerunChunk,
+                        "payload",
+                        "empty"
+                    ));
+                };
+                Ok(batch)
+            }
+        }
+    }
+}
+
+impl From<arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart {
+    fn from(value: arrow::array::RecordBatch) -> Self {
+        Self::from(&value)
+    }
+}
+
+impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart {
+    fn from(value: &arrow::array::RecordBatch) -> Self {
+        let version = crate::common::v1alpha1::EncoderVersion::V0;
+        let compression = crate::common::v1alpha1::Compression::Lz4;
+        let (payload, uncompressed_size) = record_batch_to_ipc_bytes(value, compression.into());
+        Self {
+            encoder_version: version as i32, // make sure `version` is using the transport type!!
+            payload: Some(payload.into()),
+            compression: compression as i32, // make sure `compression` is using the transport type!!
+            uncompressed_size,
+        }
+    }
+}
+
+/// `RecordBatch` to IPC bytes. No I/O, no failures.
+#[tracing::instrument(level = "debug", skip_all)]
+fn record_batch_to_ipc_bytes(
+    batch: &arrow::array::RecordBatch,
+    compression: Compression,
+) -> (Vec<u8>, u64) {
+    let schema = batch.schema_ref().as_ref();
+
+    let mut uncompressed = Vec::new();
+
+    {
+        let mut sw = {
+            let _span = tracing::trace_span!("schema").entered();
+            arrow::ipc::writer::StreamWriter::try_new(&mut uncompressed, schema)
+                .expect("encoding the schema of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail")
+        };
+
+        {
+            let _span = tracing::trace_span!("data").entered();
+            sw.write(batch)
+                .expect("encoding the data of a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
+        }
+
+        sw.finish()
+            .expect("encoding a valid RecordBatch as IPC bytes into a growable in-memory buffer cannot possibly fail");
+    }
+
+    let uncompressed_size = uncompressed.len() as u64;
+
+    let data = match compression {
+        Compression::Off => uncompressed,
+        Compression::LZ4 => {
+            re_tracing::profile_scope!("lz4::compress");
+            let _span = tracing::trace_span!("lz4::compress").entered();
+            lz4_flex::block::compress(&uncompressed)
+        }
+    };
+
+    (data, uncompressed_size)
+}
+
+/// IPC bytes to `RecordBatch`. `Ok(None)` if there's no data.
+#[tracing::instrument(level = "debug", skip_all)]
+fn record_batch_from_ipc_bytes(
+    bytes: &[u8],
+    compression: Compression,
+    uncompressed_size: u64,
+) -> Result<Option<arrow::array::RecordBatch>, ArrowError> {
+    let mut uncompressed = Vec::new();
+    let bytes = match compression {
+        Compression::Off => bytes,
+        Compression::LZ4 => {
+            re_tracing::profile_scope!("LZ4-decompress");
+            let _span = tracing::trace_span!("lz4::decompress").entered();
+            uncompressed.resize(uncompressed_size as usize, 0);
+            lz4_flex::block::decompress_into(bytes, &mut uncompressed).map_err(|err| {
+                ArrowError::ParseError(format!("LZ4 decompression failure: {err:#}"))
+            })?;
+            uncompressed.as_slice()
+        }
+    };
+
+    let mut stream = {
+        let _span = tracing::trace_span!("schema").entered();
+        arrow::ipc::reader::StreamReader::try_new(bytes, None)?
+    };
+
+    let _span = tracing::trace_span!("data").entered();
+    stream.next().transpose()
 }
 
 // ---

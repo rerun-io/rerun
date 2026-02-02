@@ -29,17 +29,17 @@ impl Backtrace {
 
 fn trim_backtrace(mut stack: &str) -> String {
     let start_pattern = "__rust_alloc_zeroed";
-    if let Some(start_offset) = stack.find(start_pattern) {
-        if let Some(next_newline) = stack[start_offset..].find('\n') {
-            stack = &stack[start_offset + next_newline + 1..];
-        }
+    if let Some(start_offset) = stack.find(start_pattern)
+        && let Some(next_newline) = stack[start_offset..].find('\n')
+    {
+        stack = &stack[start_offset + next_newline + 1..];
     }
 
     let end_pattern = "paint_and_schedule"; // normal eframe entry-point
-    if let Some(end_offset) = stack.find(end_pattern) {
-        if let Some(next_newline) = stack[end_offset..].find('\n') {
-            stack = &stack[..end_offset + next_newline];
-        }
+    if let Some(end_offset) = stack.find(end_pattern)
+        && let Some(next_newline) = stack[end_offset..].find('\n')
+    {
+        stack = &stack[..end_offset + next_newline];
     }
 
     stack.split('\n').map(trim_line).collect::<String>()

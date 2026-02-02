@@ -8,7 +8,7 @@ There are many different ways of sending data to the Rerun Viewer depending on w
 In the [official examples](/examples), these different modes of operation are exposed via a standardized set of flags that we'll cover below.
 We will also demonstrate how you can achieve the same behavior in your own code.
 
-Before reading this document, you might want to familiarize yourself with the [Rerun application model](../../concepts/app-model.md).
+Before reading this document, you might want to familiarize yourself with the [Rerun application model](../../concepts/how-does-rerun-work.md).
 
 ## Operating modes
 
@@ -58,7 +58,7 @@ snippet: howto/serve_web_viewer
 
 #### C++
 * [`RecordingStream::serve_grpc`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
-* TODO(#7913): `serve_web_viewer` is not available.
+* TODO(#4638): `serve_web_viewer` is not available.
 
 #### Python
 * [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc)

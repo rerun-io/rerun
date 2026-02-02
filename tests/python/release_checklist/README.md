@@ -3,9 +3,9 @@
 # Interactive release checklist
 Welcome to the release checklist.
 
-Run the testlist with:
+Run the checklist with:
 ```
-pixi run -e examples python tests/python/release_checklist/main.py
+pixi run py-build && pixi run uv run tests/python/release_checklist/main.py
 ```
 
 ### When releasing

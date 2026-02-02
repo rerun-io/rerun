@@ -1,7 +1,9 @@
-use std::{collections::HashMap, path::PathBuf, task::Poll};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::task::Poll;
 
-use parking_lot::Mutex;
 use poll_promise::Promise;
+use re_mutex::Mutex;
 
 // FFmpeg 5.1 "Riemann" is from 2022-07-22.
 // It's simply the oldest I tested manually as of writing. We might be able to go lower.
@@ -157,7 +159,9 @@ impl VersionCache {
     ) -> &Promise<FfmpegVersionResult> {
         let Self(cache) = self;
 
-        let cache_key = path.unwrap_or(std::path::Path::new("ffmpeg")).to_path_buf();
+        let cache_key = path
+            .unwrap_or_else(|| std::path::Path::new("ffmpeg"))
+            .to_path_buf();
 
         match cache.entry(cache_key) {
             std::collections::hash_map::Entry::Occupied(entry) => &entry.into_mut().1,
@@ -214,7 +218,7 @@ fn ffmpeg_version(
     }
     cmd.wait().ok(); // Don't care if it fails here.
 
-    let raw_version = raw_version.ok_or(FFmpegVersionParseError::ParseVersion {
+    let raw_version = raw_version.ok_or_else(|| FFmpegVersionParseError::ParseVersion {
         raw_version: "No version found".to_owned(),
     })?;
 

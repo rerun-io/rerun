@@ -1,4 +1,4 @@
-use re_types::datatypes::Rgba32;
+use re_sdk_types::datatypes::Rgba32;
 use re_viewer_context::MaybeMutRef;
 
 pub fn edit_rgba32(

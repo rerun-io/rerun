@@ -1,6 +1,6 @@
 use egui::NumExt as _;
-
-use re_types::{blueprint::components::VisualBounds2D, datatypes::Range2D};
+use re_sdk_types::blueprint::components::VisualBounds2D;
+use re_sdk_types::datatypes::Range2D;
 use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 

@@ -1,12 +1,11 @@
 use clap::{Parser, Subcommand};
-use re_viewer::AsyncRuntimeHandle;
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum AuthCommands {
     /// Log into Rerun.
     ///
     /// This command opens a page in your default browser, allowing you
-    /// to log in to the Rerun data platform.
+    /// to log in to the Rerun Data Platform.
     ///
     /// Once you've logged in, your credentials are stored on your machine.
     ///
@@ -16,15 +15,20 @@ pub enum AuthCommands {
     /// Retrieve the stored access token.
     ///
     /// The access token is part of the credentials produced by `rerun auth login`,
-    /// and is used to authorize requests to the Rerun data platform.
+    /// and is used to authorize requests to the Rerun Data Platform.
     Token(TokenCommand),
+
+    /// Generate a fresh access token.
+    ///
+    /// You can use this token to authorize requests to the Rerun Data Platform.
+    ///
+    /// It's closer to an API key than an access token, as it can be revoked before
+    /// it expires.
+    GenerateToken(GenerateTokenCommand),
 }
 
 #[derive(Debug, Clone, Parser)]
 pub struct LoginCommand {
-    #[clap(long, default_value = "https://rerun.io/login")]
-    login_url: String,
-
     // Double-negative because it's an opt-out flag.
     /// Post a link instead of directly opening in the browser.
     #[clap(long, default_value = "false")]
@@ -38,25 +42,43 @@ pub struct LoginCommand {
 #[derive(Debug, Clone, Parser)]
 pub struct TokenCommand {}
 
-impl AuthCommands {
-    pub fn run(&self, runtime: &AsyncRuntimeHandle) -> Result<(), re_auth::cli::Error> {
-        let context = runtime
-            .inner()
-            .block_on(re_auth::workos::AuthContext::load())?;
+#[derive(Debug, Clone, Parser)]
+pub struct GenerateTokenCommand {
+    /// Origin of the server to request the token from.
+    #[clap(long)]
+    server: String,
 
+    /// Duration of the token, either in:
+    /// - "human time", e.g. `1 day`, or
+    /// - ISO 8601 duration format, e.g. `P1D`.
+    #[clap(long)]
+    expiration: String,
+}
+
+impl AuthCommands {
+    pub fn run(self, runtime: &tokio::runtime::Handle) -> Result<(), re_auth::cli::Error> {
         match self {
             Self::Login(args) => {
                 let options = re_auth::cli::LoginOptions {
-                    login_page_url: &args.login_url,
                     open_browser: !args.no_open_browser,
                     force_login: args.force,
                 };
-                runtime
-                    .inner()
-                    .block_on(re_auth::cli::login(&context, options))
+                runtime.block_on(re_auth::cli::login(options))
             }
 
-            Self::Token(_) => runtime.inner().block_on(re_auth::cli::token(&context)),
+            Self::Token(_) => runtime.block_on(re_auth::cli::token()),
+
+            Self::GenerateToken(args) => {
+                let server = url::Url::parse(&args.server)
+                    .map_err(|err| re_auth::cli::Error::Generic(err.into()))?
+                    .origin();
+                let expiration = args
+                    .expiration
+                    .parse::<jiff::Span>()
+                    .map_err(|err| re_auth::cli::Error::Generic(err.into()))?;
+                let options = re_auth::cli::GenerateTokenOptions { server, expiration };
+                runtime.block_on(re_auth::cli::generate_token(options))
+            }
         }
     }
 }

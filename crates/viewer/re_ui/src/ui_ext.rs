@@ -1,16 +1,15 @@
 use std::hash::Hash;
 
+use egui::emath::{GuiRounding as _, Rot2};
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetText,
-    emath::{GuiRounding as _, Rot2},
-    pos2,
+    CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
+    WidgetInfo, WidgetText, pos2,
 };
 
 use crate::alert::Alert;
-use crate::{
-    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
-    list_item::{self, LabelContent},
-};
+use crate::button::ReButton;
+use crate::list_item::{self, LabelContent};
+use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -24,11 +23,20 @@ pub trait UiExt {
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
     fn theme(&self) -> egui::Theme {
-        self.ui().ctx().theme()
+        if self.ui().visuals().dark_mode {
+            egui::Theme::Dark
+        } else {
+            egui::Theme::Light
+        }
     }
 
     fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.theme())
+    }
+
+    /// Current time in seconds
+    fn time(&self) -> f64 {
+        self.ui().input(|i| i.time)
     }
 
     #[inline]
@@ -115,14 +123,15 @@ pub trait UiExt {
 
     /// Adds a non-interactive, optionally tinted small icon.
     ///
-    /// Uses [`tokens.small_icon_size`]. Returns the rect where the icon was painted.
+    /// Uses [`DesignTokens::small_icon_size`]. Returns the rect where the icon was painted.
+    ///
+    /// If `tint` is `None`, the icon will be tinted with the current text color to ensure
+    /// it's visible in both light and dark themes.
     fn small_icon(&mut self, icon: &Icon, tint: Option<egui::Color32>) -> egui::Rect {
         let ui = self.ui_mut();
         let (_, rect) = ui.allocate_space(ui.tokens().small_icon_size);
-        let mut image = icon.as_image();
-        if let Some(tint) = tint {
-            image = image.tint(tint);
-        }
+        let tint = tint.unwrap_or_else(|| ui.visuals().text_color());
+        let image = icon.as_image().tint(tint);
         image.paint_at(ui, rect);
 
         rect
@@ -141,16 +150,20 @@ pub trait UiExt {
         } else {
             self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
+        let alt_text = alt_text.into();
         let mut response = self.ui_mut().add(egui::Button::new(
             icon.as_image()
                 .fit_to_exact_size(size_points)
-                .alt_text(alt_text.into())
+                .alt_text(alt_text.clone())
                 .tint(tint),
         ));
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
         }
+        response.widget_info(|| {
+            WidgetInfo::selected(egui::WidgetType::Button, true, *selected, alt_text.clone())
+        });
         response
     }
 
@@ -180,7 +193,7 @@ pub trait UiExt {
         }
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
-        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
+        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::Button));
 
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact(&response);
@@ -201,19 +214,27 @@ pub trait UiExt {
         response
     }
 
-    fn re_checkbox(
-        &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
-    ) -> egui::Response {
-        self.checkbox_indeterminate(checked, text, false)
+    fn primary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
+        self.ui_mut().add(ReButton::new(atoms).primary())
     }
 
-    #[allow(clippy::disallowed_types)]
-    fn checkbox_indeterminate(
+    fn secondary_button<'a>(&mut self, atoms: impl IntoAtoms<'a>) -> egui::Response {
+        self.ui_mut().add(ReButton::new(atoms).secondary())
+    }
+
+    fn re_checkbox<'a>(
         &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
+    ) -> egui::Response {
+        self.checkbox_indeterminate(checked, text.into_atoms(), false)
+    }
+
+    #[expect(clippy::disallowed_types)]
+    fn checkbox_indeterminate<'a>(
+        &mut self,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
         indeterminate: bool,
     ) -> egui::Response {
         self.ui_mut()
@@ -500,6 +521,7 @@ pub trait UiExt {
     /// Display content under a header that is conditionally collapsible. If `collapsing` is `true`,
     /// this is equivalent to [`Self::collapsing_header`]. If `collapsing` is `false`, the content
     /// is displayed under a static, non-collapsible header.
+    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn maybe_collapsing_header<R>(
         &mut self,
 
@@ -567,7 +589,6 @@ pub trait UiExt {
     /// Two-column grid to be used in selection view.
     ///
     /// Use this when you expect the right column to have multi-line entries.
-    #[allow(clippy::unused_self)]
     fn selection_grid(&self, id: &str) -> egui::Grid {
         // Spread rows a bit to make it easier to see the groupings
         let spacing = egui::vec2(8.0, 16.0);
@@ -616,18 +637,32 @@ pub trait UiExt {
         self.ui().painter().add(shadow);
     }
 
+    fn draw_focus_outline(&self, rect: Rect) {
+        self.ui().painter().rect_stroke(
+            rect,
+            4,
+            self.tokens().focus_outline_stroke,
+            StrokeKind::Inside,
+        );
+        self.ui().painter().rect_stroke(
+            rect,
+            4,
+            self.tokens().focus_halo_stroke,
+            StrokeKind::Outside,
+        );
+    }
+
     /// Convenience function to create a [`list_item::list_item_scope`].
     #[inline]
     fn list_item_scope<R>(
         &mut self,
         id_salt: impl std::hash::Hash,
         content: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> R {
+    ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
     }
 
     /// Convenience function to create a [`list_item::ListItem`].
-    #[allow(clippy::unused_self)]
     fn list_item(&self) -> list_item::ListItem {
         list_item::ListItem::new()
     }
@@ -665,14 +700,13 @@ pub trait UiExt {
                 id,
                 default_open,
                 list_item::LabelContent::new(label),
-                |ui| list_item::list_item_scope(ui, id, children_ui),
+                |ui| list_item::list_item_scope(ui, id, children_ui).inner,
             )
             .body_response
             .map(|r| r.inner)
     }
 
     /// Convenience function to create a [`crate::SectionCollapsingHeader`].
-    #[allow(clippy::unused_self)]
     fn section_collapsing_header<'a>(
         &self,
         label: impl Into<egui::WidgetText>,
@@ -692,9 +726,26 @@ pub trait UiExt {
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
-        let wrap_width = ui.available_width() - total_extra.x;
+        let available_rect = ui.available_rect_before_wrap();
+
+        let view_rect = egui::Rect::from_min_max(
+            available_rect.min,
+            egui::pos2(
+                available_rect
+                    .max
+                    .x
+                    .min(ui.clip_rect().max.x - ui.spacing().window_margin.rightf()),
+                available_rect.max.y,
+            ),
+        )
+        .round_to_pixels(ui.pixels_per_point());
+
+        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
+
+        let wrap_width = view_rect.width() - icon_width_plus_padding - total_extra.x;
 
         let mut text: egui::WidgetText = text.into();
+        let raw_text = text.text().to_owned();
         match style {
             LabelStyle::Normal => {}
             LabelStyle::Unnamed => {
@@ -703,16 +754,46 @@ pub trait UiExt {
             }
         }
 
-        let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
+        let galley = text.into_galley(
+            ui,
+            Some(egui::TextWrapMode::Truncate),
+            wrap_width,
+            egui::TextStyle::Button,
+        );
 
-        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
-
+        // 1 icons + padding.
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
+
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
             .at_least(tokens.small_icon_size.y);
+
+        let show_copy_button = {
+            /// The text character length at which the copy button will
+            /// always be there. (unless the ui is disabled)
+            const MIN_COPY_LEN: usize = 5;
+            let enough_space = view_rect.width() > desired_size.x + icon_width_plus_padding;
+
+            let long_enough_text = raw_text.chars().count() >= MIN_COPY_LEN;
+
+            let id = ui.next_auto_id();
+            let contains_pointer = ui.ctx().read_response(id).is_some_and(|last_response| {
+                ui.rect_contains_pointer(
+                    last_response
+                        .interact_rect
+                        .expand2(ui.spacing().item_spacing),
+                )
+            });
+
+            ui.is_enabled() && (enough_space || long_enough_text) && contains_pointer
+        };
+
+        if show_copy_button {
+            desired_size.x = (desired_size.x + icon_width_plus_padding).at_most(view_rect.width());
+        }
+
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
             egui::WidgetInfo::selected(
@@ -727,7 +808,7 @@ pub trait UiExt {
             let visuals = ui.style().interact_selectable(&response, selected);
 
             // Draw background on interaction.
-            if selected || response.hovered() || response.highlighted() || response.has_focus() {
+            if selected || (response.hovered() || response.highlighted() || response.has_focus()) {
                 let rect = rect.expand(visuals.expansion);
 
                 ui.painter().rect(
@@ -765,8 +846,7 @@ pub trait UiExt {
             // Draw text next to the icon.
             let mut text_rect = rect;
             text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
-            let text_pos = ui
-                .layout()
+            let text_pos = egui::Align2([egui::Align::Min, ui.layout().vertical_align()])
                 .align_size_within_rect(galley.size(), text_rect)
                 .min;
 
@@ -778,26 +858,90 @@ pub trait UiExt {
                     text_color = text_color.gamma_multiply(0.5);
                 }
             }
+
             ui.painter()
                 .galley_with_override_text_color(text_pos, galley, text_color);
+
+            if show_copy_button {
+                let copy_rect = egui::Rect::from_min_size(
+                    egui::pos2(rect.max.x - tokens.small_icon_size.x, image_rect.min.y)
+                        .round_to_pixels(ui.pixels_per_point()),
+                    tokens.small_icon_size,
+                );
+
+                let shape_idx = ui.painter().add(egui::Shape::Noop);
+                let copy_response = ui.place(
+                    copy_rect,
+                    ui.small_icon_button_widget(&icons::COPY, "Copy")
+                        .frame(false),
+                );
+
+                let copy_visuals = ui.style().interact(&copy_response);
+
+                let color = if !copy_response.contains_pointer() {
+                    visuals.weak_bg_fill
+                } else {
+                    copy_visuals.weak_bg_fill
+                };
+
+                ui.painter().set(
+                    shape_idx,
+                    egui::Shape::rect_filled(
+                        copy_response.rect.expand(copy_visuals.expansion),
+                        visuals.corner_radius,
+                        color,
+                    ),
+                );
+
+                if copy_response.clicked() {
+                    re_log::info!("Copied {raw_text:?}");
+                    ui.ctx().copy_text(raw_text);
+                }
+            }
         }
 
         response
+    }
+
+    fn loading_screen_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        let ui = self.ui_mut();
+        ui.set_min_height(ui.available_height());
+        ui.center("loading spinner", |ui| {
+            ui.vertical_centered(|ui| {
+                ui.spinner();
+                add_contents(ui)
+            })
+            .inner
+        })
+    }
+
+    fn loading_screen(
+        &mut self,
+        header: impl Into<egui::RichText>,
+        source: impl Into<egui::RichText>,
+    ) {
+        self.loading_screen_ui(|ui| {
+            ui.label(
+                header
+                    .into()
+                    .heading()
+                    .color(ui.style().visuals.weak_text_color()),
+            );
+            ui.strong(source);
+        });
     }
 
     /// Paints a time cursor for indicating the time on a time axis along x.
     fn paint_time_cursor(
         &self,
         painter: &egui::Painter,
-        response: &egui::Response,
+        response: Option<&egui::Response>,
         x: f32,
         y: Rangef,
     ) {
         let ui = self.ui();
-        let stroke = if response.dragged() {
-            ui.style().visuals.widgets.active.fg_stroke
-        } else if response.hovered() {
-            ui.style().visuals.widgets.hovered.fg_stroke
+        let stroke = if let Some(response) = response {
+            ui.visuals().widgets.style(response).fg_stroke
         } else {
             ui.visuals().widgets.inactive.fg_stroke
         };
@@ -953,7 +1097,7 @@ pub trait UiExt {
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,
-        url: impl ToString,
+        url: impl Into<String>,
         always_new_tab: bool,
     ) -> egui::Response {
         let ui = self.ui_mut();
@@ -968,17 +1112,17 @@ pub trait UiExt {
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url.to_string()));
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url.into()));
             } else if response.clicked() {
                 ui.ctx().open_url(egui::OpenUrl {
-                    url: url.to_string(),
+                    url: url.into(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
             }
 
             response
         })
-        .response
+        .inner
     }
 
     /// Show some close/maximize/minimize buttons for the native window.
@@ -1070,9 +1214,7 @@ pub trait UiExt {
                             });
 
                             #[cfg(feature = "analytics")]
-                            if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                                analytics.record(re_analytics::event::HelpButtonFirstClicked {});
-                            }
+                            re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
                         }
                     }
                 })
@@ -1106,8 +1248,9 @@ pub trait UiExt {
 
     /// Show some markdown
     fn markdown_ui(&mut self, markdown: &str) {
-        use parking_lot::Mutex;
         use std::sync::Arc;
+
+        use re_mutex::Mutex;
 
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {
@@ -1130,15 +1273,16 @@ pub trait UiExt {
         id_salt: impl std::hash::Hash,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
-    ) {
+    ) -> egui::Response {
         // TODO(emilk): make the button itself a `ListItem2`
-        egui::ComboBox::from_id_salt(id_salt)
-            .selected_text(selected_text)
+        let response = egui::ComboBox::from_id_salt(id_salt)
+            .selected_text(selected_text.clone())
             .show_ui(self.ui_mut(), |ui| {
                 list_item::list_item_scope(ui, "inner_scope", |ui| {
                     content(ui);
                 });
             });
+        response.response
     }
 
     /// Use the provided range as full span for the nested content.
@@ -1290,6 +1434,18 @@ pub trait UiExt {
                 .fit_to_exact_size(tokens.small_icon_size),
             text,
         ))
+    }
+
+    /// Set the current style for a text field that has invalid content.
+    fn style_invalid_field(&mut self) {
+        let ui = self.ui_mut();
+        ui.visuals_mut().selection.stroke.color = ui.visuals().error_fg_color;
+        ui.visuals_mut().widgets.active.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+        ui.visuals_mut().widgets.hovered.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+        ui.visuals_mut().widgets.inactive.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
     }
 }
 

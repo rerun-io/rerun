@@ -1,20 +1,19 @@
-use parking_lot::RwLock;
 use std::sync::Arc;
 
-use crate::{
-    DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba,
-    allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer},
-    context::RenderContext,
-    draw_phases::{
-        DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
-        ScreenshotProcessor,
-    },
-    global_bindings::FrameUniformBuffer,
-    queueable_draw_data::QueueableDrawData,
-    renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo},
-    transform::RectTransform,
-    wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
+use re_mutex::RwLock;
+
+use crate::allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer};
+use crate::context::RenderContext;
+use crate::draw_phases::{
+    DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
+    ScreenshotProcessor,
 };
+use crate::global_bindings::FrameUniformBuffer;
+use crate::queueable_draw_data::QueueableDrawData;
+use crate::renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo};
+use crate::transform::RectTransform;
+use crate::wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc};
+use crate::{DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
@@ -183,10 +182,26 @@ impl Projection {
     }
 }
 
+/// Aim for beauty or determinism?
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RenderMode {
+    /// Default render mode
+    #[default]
+    Beautiful,
+
+    /// Try to produce consistent results across different GPUs and drivers.
+    ///
+    /// Used for more consistent snapshot tests.
+    Deterministic,
+}
+
 /// Basic configuration for a target view.
 #[derive(Debug)]
 pub struct TargetConfiguration {
     pub name: DebugLabel,
+
+    /// Aim for beauty or determinism?
+    pub render_mode: RenderMode,
 
     /// The viewport resolution in physical pixels.
     pub resolution_in_pixel: [u32; 2],
@@ -232,6 +247,7 @@ impl Default for TargetConfiguration {
     fn default() -> Self {
         Self {
             name: "default view".into(),
+            render_mode: RenderMode::Beautiful,
             resolution_in_pixel: [100, 100],
             view_from_world: Default::default(),
             projection_from_view: Projection::Perspective {
@@ -527,11 +543,19 @@ impl ViewBuilder {
             projection_from_world: projection_from_world.into(),
             camera_position,
             camera_forward,
-            tan_half_fov: tan_half_fov.into(),
             pixel_world_size_from_camera_distance,
             pixels_per_point: config.pixels_per_point,
-
-            device_tier: (ctx.device_caps().tier as u32).into(),
+            tan_half_fov,
+            device_tier: ctx.device_caps().tier as u32,
+            deterministic_rendering: match config.render_mode {
+                RenderMode::Beautiful => 0,
+                RenderMode::Deterministic => 1,
+            },
+            framebuffer_resolution: glam::vec2(
+                config.resolution_in_pixel[0] as _,
+                config.resolution_in_pixel[1] as _,
+            )
+            .into(),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
@@ -676,24 +700,16 @@ impl ViewBuilder {
 
         // Renderers and render pipelines are locked for the entirety of this method:
         // This means it's *not* possible to add renderers or pipelines while drawing is in progress!
-        //
-        // This is primarily due to the lifetime association render passes have all passed in resources:
-        // For dynamic resources like bind groups/textures/buffers we use handles that *store* an arc
-        // to the wgpu resources to solve this ownership problem.
-        // But for render pipelines, which we want to be able the resource under a handle via reload,
-        // so we always have to do some kind of lookup prior to or during rendering.
-        // Therefore, we just lock the pool for the entirety of the draw which ensures
-        // that the lock outlives the pass.
-        //
         // Renderers can't be added anyways at this point (RendererData add their Renderer on creation),
         // so no point in taking the lock repeatedly.
         //
-        // TODO(gfx-rs/wgpu#1453): Note that this is a limitation that will be lifted in future versions of wgpu.
+        // This used to be due to the lifetime association render passes had all passed in resources,
+        // this restriction has been lifted by now in wgpu.
         // However, having our locking concentrated for the duration of a view draw
         // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
         // locking and unlocking.
         //
-        // TODO(andreas): Above limitation has been lifted by now. We can lift some of the restrictions now!
+        // TODO(andreas): No longer having those lifetime issues with wgpu may still save us some locking though?
 
         let renderers = ctx.read_lock_renderers();
         let pipelines = ctx.gpu_resources.render_pipelines.resources();
@@ -718,6 +734,7 @@ impl ViewBuilder {
                 label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
+                    depth_slice: None,
                     resolve_target: needs_msaa_resolve
                         .then_some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {

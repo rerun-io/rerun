@@ -19,7 +19,7 @@ rr.set_time("tick", sequence=0)
 rr.log(
     "box",
     rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-    rr.Transform3D(clear=False, axis_length=10),
+    rr.TransformAxes3D(10.0),
 )
 
 rr.send_columns(

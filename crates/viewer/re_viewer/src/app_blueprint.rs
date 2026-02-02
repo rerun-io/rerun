@@ -1,18 +1,20 @@
 use std::sync::Arc;
 
-use re_chunk::{Chunk, RowId};
+use re_chunk::{Chunk, RowId, TimePoint};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::blueprint::{archetypes::PanelBlueprint, components::PanelState};
+use re_sdk_types::AsComponents;
+use re_sdk_types::blueprint::archetypes::{PanelBlueprint, TimePanelBlueprint};
+use re_sdk_types::blueprint::components::PanelState;
 use re_viewer_context::{
-    CommandSender, SystemCommand, SystemCommandSender as _, blueprint_timepoint_for_writes,
+    CommandSender, SystemCommand, SystemCommandSender as _, TIME_PANEL_PATH,
+    blueprint_timepoint_for_writes,
 };
 
 const TOP_PANEL_PATH: &str = "top_panel";
 const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
 const SELECTION_PANEL_PATH: &str = "selection_panel";
-const TIME_PANEL_PATH: &str = "time_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
@@ -22,7 +24,7 @@ pub struct AppBlueprint<'a> {
     overrides: Option<PanelStateOverrides>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PanelStates {
     pub top: PanelState,
     pub blueprint: PanelState,
@@ -37,7 +39,7 @@ impl<'a> AppBlueprint<'a> {
         egui_ctx: &egui::Context,
         overrides: Option<PanelStateOverrides>,
     ) -> Self {
-        let screen_size = egui_ctx.screen_rect().size();
+        let screen_size = egui_ctx.content_rect().size();
         let mut ret = Self {
             blueprint_db,
             is_narrow_screen: screen_size.x < 600.0,
@@ -147,6 +149,7 @@ impl<'a> AppBlueprint<'a> {
         }
 
         let new_state = self.panel_states.selection.toggle();
+
         self.send_panel_state(SELECTION_PANEL_PATH, new_state, command_sender);
 
         // Toggle the opposite side if this panel is visible to save on screen real estate
@@ -193,23 +196,13 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     // Most things are hidden in the welcome screen:
     for (panel_name, value) in [
         (TOP_PANEL_PATH, PanelState::Expanded),
-        (BLUEPRINT_PANEL_PATH, PanelState::Hidden),
-        (SELECTION_PANEL_PATH, PanelState::Hidden),
-        (TIME_PANEL_PATH, PanelState::Hidden),
+        (BLUEPRINT_PANEL_PATH, PanelState::Expanded), // We always want to show this to orient the user
+        (SELECTION_PANEL_PATH, PanelState::Hidden),   // There is nothing in here in welcome screen
+        (TIME_PANEL_PATH, PanelState::Hidden),        // There is nothing in here in welcome screen
     ] {
-        let entity_path = EntityPath::from(panel_name);
-
         let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
-        let chunk = Chunk::builder(entity_path)
-            .with_archetype(
-                RowId::new(),
-                timepoint,
-                &PanelBlueprint::update_fields().with_state(value),
-            )
-            .build()
-            // All builtin types, no reason for this to ever fail.
-            .expect("Failed to build chunk.");
+        let chunk = get_panel_state_chunk(panel_name, timepoint, value);
 
         welcome_screen_blueprint
             .add_chunk(&Arc::new(chunk))
@@ -227,19 +220,9 @@ impl AppBlueprint<'_> {
         command_sender: &CommandSender,
     ) {
         if let Some(blueprint_db) = self.blueprint_db {
-            let entity_path = EntityPath::from(panel_name);
-
             let timepoint = blueprint_timepoint_for_writes(blueprint_db);
 
-            let chunk = Chunk::builder(entity_path)
-                .with_archetype(
-                    RowId::new(),
-                    timepoint,
-                    &PanelBlueprint::update_fields().with_state(value),
-                )
-                .build()
-                // All builtin types, no reason for this to ever fail.
-                .expect("Failed to build chunk.");
+            let chunk = get_panel_state_chunk(panel_name, timepoint, value);
 
             command_sender.send_system(SystemCommand::AppendToStore(
                 blueprint_db.store_id().clone(),
@@ -249,13 +232,35 @@ impl AppBlueprint<'_> {
     }
 }
 
+fn get_panel_state_chunk(panel_name: &str, timepoint: TimePoint, value: PanelState) -> Chunk {
+    let entity_path = EntityPath::from(panel_name);
+
+    let component_update: &dyn AsComponents = if panel_name == TIME_PANEL_PATH {
+        &TimePanelBlueprint::update_fields().with_state(value)
+    } else {
+        &PanelBlueprint::update_fields().with_state(value)
+    };
+
+    Chunk::builder(entity_path)
+        .with_archetype(RowId::new(), timepoint, component_update)
+        .build()
+        // All builtin types, no reason for this to ever fail.
+        .expect("Failed to build chunk.")
+}
+
 fn load_panel_state(
     path: &EntityPath,
     blueprint_db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
 ) -> Option<PanelState> {
     re_tracing::profile_function!();
+    let component = if path == &TIME_PANEL_PATH.into() {
+        TimePanelBlueprint::descriptor_state().component
+    } else {
+        PanelBlueprint::descriptor_state().component
+    };
+
     blueprint_db
-        .latest_at_component_quiet::<PanelState>(path, query, &PanelBlueprint::descriptor_state())
+        .latest_at_component_quiet::<PanelState>(path, query, component)
         .map(|(_index, p)| p)
 }

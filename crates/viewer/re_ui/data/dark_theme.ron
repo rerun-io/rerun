@@ -6,6 +6,9 @@
   "modal_button_width": 50,
   "default_modal_width": 400,
 
+  "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
+  "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill
+
   "Alias": {
     "native_frame_stroke": {
       "color": "{Gray.250}",
@@ -48,6 +51,10 @@
       "color": "{Blue.700}"
     },
 
+    "viewport_background": {
+      "color": "{Gray.0}"
+    },
+
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.500}",
@@ -60,9 +67,7 @@
     "section_header_color": {
       "color": "{Gray.200}"
     },
-    "loop_selection_color": {
-      "color": "#012569B2"
-    },
+
     "loop_everything_color": {
       "color": "#02502D"
     },
@@ -92,6 +97,15 @@
     },
     "selection_stroke_color": {
       "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
+    },
+    "focus_outline_stroke": {
+      "color": "{Blue.400}",
+      "width": 1
+    },
+    "focus_halo_stroke": {
+      "color": "{Blue.350}",
+      "alpha": 75,
+      "width": 2
     },
 
     "panel_bg_color": {
@@ -127,6 +141,10 @@
     "table_interaction_noninteractive_bg_stroke": {
       "color": "{Gray.200}"
     },
+    "table_interaction_row_selection_fill": {
+      "color": "{Blue.750}",
+      "alpha": 25
+    },
     "table_sort_icon_color": {
       "color": "{Blue.450}"
     },
@@ -158,7 +176,7 @@
     },
 
     "floating_color": {
-      "color": "{Gray.250}"
+      "color": "{Gray.200}"
     },
     "faint_bg_color": {
       "color": "{Gray.150}"
@@ -224,6 +242,9 @@
     "density_graph_unselected": {
       "color": "{Gray.700}"
     },
+    "density_graph_outside_valid_ranges": {
+      "color": "{Gray.300}"
+    },
 
     "axis_color_x": {
       "color": "{Red.600}"
@@ -272,20 +293,29 @@
       "color": "{Gray.700}"
     },
 
+    //array indices
     "code_index_color": {
-      "color": "#D176BF"
+      "color": "#CC9CC6"
     },
+
+    // null
+    "code_null_color": {
+      "color": "#C8A973"
+    },
+    // numbers, bool
     "code_primitive_color": {
-      "color": "#4ACB94"
+      "color": "#84BE99"
     },
+
     "code_string_color": {
-      "color": "#818EF8"
+      "color": "#A1AAE1"
     },
 
     // TODO(ab, katya): review these
     "code_keyword_color": {
-      "color": "#D176BF",
+      "color": "#C8A973",
     },
+
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",
       "width": 1

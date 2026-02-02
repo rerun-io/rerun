@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes;
 use re_string_interner::InternedString;
 
-use crate::{EntityPathPart, hash::Hash64};
+use crate::EntityPathPart;
+use crate::hash::Hash64;
 
 // ----------------------------------------------------------------------------
 
@@ -193,6 +193,12 @@ impl EntityPath {
         self.parts.is_empty()
     }
 
+    #[inline]
+    pub fn is_property(&self) -> bool {
+        // `RecordingInfo` is logged directly under `__properties`, so this cannot be `is_descendant_of`
+        self.starts_with(&Self::properties())
+    }
+
     /// Is this equals to, or a descendant of, the given path.
     #[inline]
     pub fn starts_with(&self, prefix: &Self) -> bool {
@@ -229,7 +235,7 @@ impl EntityPath {
 
     /// Number of parts
     #[inline]
-    #[allow(clippy::len_without_is_empty)]
+    #[expect(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.parts.len()
     }
@@ -292,7 +298,7 @@ impl EntityPath {
 
     /// Returns the first common ancestor of a list of entity paths.
     pub fn common_ancestor_of<'a>(mut entities: impl Iterator<Item = &'a Self>) -> Self {
-        let first = entities.next().cloned().unwrap_or(Self::root());
+        let first = entities.next().cloned().unwrap_or_else(Self::root);
         entities.fold(first, |acc, e| acc.common_ancestor(e))
     }
 

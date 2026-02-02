@@ -21,7 +21,7 @@ impl ContextMenuAction for CloneViewAction {
         {
             ctx.viewer_context
                 .command_sender()
-                .send_system(SystemCommand::SetSelection(Item::View(new_view_id).into()));
+                .send_system(SystemCommand::set_selection(Item::View(new_view_id)));
             ctx.viewport_blueprint
                 .mark_user_interaction(ctx.viewer_context);
         }

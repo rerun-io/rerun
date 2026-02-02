@@ -18,26 +18,13 @@ mod dataframe;
 mod drop_time_range;
 mod events;
 mod gc;
+mod lineage;
+mod properties;
 mod query;
 mod stats;
 mod store;
 mod subscribers;
 mod writes;
-
-pub use self::{
-    dataframe::{
-        Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
-        ViewContentsSelector,
-    },
-    events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
-    gc::{GarbageCollectionOptions, GarbageCollectionTarget},
-    stats::{ChunkStoreChunkStats, ChunkStoreStats},
-    store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
-    subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
-};
-pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
-
-pub(crate) use self::store::ColumnMetadataState;
 
 // Re-exports
 #[doc(no_inline)]
@@ -47,12 +34,33 @@ pub use {
         UnitChunkShared,
     },
     re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
+    re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor},
 };
 
-pub mod external {
-    pub use arrow;
+pub use self::dataframe::{
+    Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
+    ViewContentsSelector,
+};
+pub use self::events::{
+    ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion, ChunkStoreDiffVirtualAddition,
+    ChunkStoreEvent,
+};
+pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
+pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
+pub use self::properties::ExtractPropertiesError;
+pub use self::query::QueryResults;
+pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
+pub use self::store::{
+    ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
+};
+pub use self::subscribers::{
+    ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
+};
 
-    pub use re_chunk;
+pub(crate) use self::store::ColumnMetadataState;
+
+pub mod external {
+    pub use {arrow, re_chunk};
 }
 
 // ---
@@ -65,6 +73,12 @@ pub enum ChunkStoreError {
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
 
+    #[error("Failed to load data, parsing error: {0:#}")]
+    Codec(#[from] re_log_encoding::CodecError),
+
+    #[error("Failed to load data, semantic error: {0:#}")]
+    Sorbet(#[from] re_sorbet::SorbetError),
+
     /// Error when parsing configuration from environment.
     #[error("Failed to parse config: '{name}={value}': {err}")]
     ParseConfig {
@@ -75,3 +89,19 @@ pub enum ChunkStoreError {
 }
 
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;
+
+/// What to do when a virtual chunk is missing from the store.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OnMissingChunk {
+    /// Ignore the missing chunk, and return partial results.
+    Ignore,
+
+    /// Remember the missing chunk ID in [`ChunkStore::take_tracked_chunk_ids`]
+    /// and report it back in [`QueryResults::missing`].
+    Report,
+
+    /// Panic when a chunk is missing.
+    ///
+    /// Only use this in tests!
+    Panic,
+}

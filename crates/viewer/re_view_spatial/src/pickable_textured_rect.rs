@@ -1,6 +1,7 @@
 use re_log_types::EntityPath;
-use re_renderer::{QueueableDrawData, renderer::TexturedRect};
-use re_types::components::DepthMeter;
+use re_renderer::QueueableDrawData;
+use re_renderer::renderer::TexturedRect;
+use re_sdk_types::components::DepthMeter;
 use re_viewer_context::{ImageInfo, ViewSystemExecutionError};
 
 #[derive(Clone)]

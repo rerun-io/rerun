@@ -1,22 +1,19 @@
-use crate::{
-    DrawableCollector, OutlineConfig, Rgba,
-    allocator::create_and_fill_uniform_buffer,
-    include_shader_module,
-    renderer::{
-        DrawData, DrawDataDrawable, DrawError, DrawInstruction, DrawableCollectionViewInfo,
-        Renderer, screen_triangle_vertex_shader,
-    },
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
-
-use crate::{DrawPhase, RenderContext};
-
 use smallvec::smallvec;
+
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::renderer::{
+    DrawData, DrawDataDrawable, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer,
+    screen_triangle_vertex_shader,
+};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+    RenderPipelineDesc,
+};
+use crate::{
+    DrawPhase, DrawableCollector, OutlineConfig, RenderContext, Rgba, include_shader_module,
+};
 
 mod gpu_data {
     use crate::wgpu_buffer_types;

@@ -18,7 +18,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -27,15 +27,16 @@ permissions:
 jobs:
   pb-check:
     name: "Protobuf Checks: lints, BW compatibility, formatting, etc"
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Fetch latest main (so we can grab the current schema snapshot)
         run: time git fetch origin main # yes, we need full --depth for `buf` to work

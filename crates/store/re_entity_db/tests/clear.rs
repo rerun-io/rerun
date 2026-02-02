@@ -3,16 +3,14 @@
 
 use std::sync::Arc;
 
-use re_chunk::{Chunk, RowId};
+use re_chunk::{Chunk, ComponentIdentifier, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{
-    EntityPath, StoreId, TimeInt, TimePoint, Timeline,
-    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-};
-use re_types_core::{
-    ComponentBatch as _, ComponentDescriptor, archetypes::Clear, components::ClearIsRecursive,
-};
+use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
+use re_types_core::ComponentBatch as _;
+use re_types_core::archetypes::Clear;
+use re_types_core::components::ClearIsRecursive;
 
 // ---
 
@@ -20,17 +18,17 @@ fn query_latest_component<C: re_types_core::Component>(
     db: &EntityDb,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
-    component_descr: &ComponentDescriptor,
+    component: ComponentIdentifier,
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
     let results = db
         .storage_engine()
         .cache()
-        .latest_at(query, entity_path, [component_descr]);
+        .latest_at(query, entity_path, [component]);
 
     let (data_time, row_id) = results.index();
-    let data = results.component_mono::<C>(component_descr)?;
+    let data = results.component_mono::<C>(component)?;
 
     Some((data_time, row_id, data))
 }
@@ -45,11 +43,12 @@ fn query_latest_component_clear(
     let results = db.storage_engine().cache().latest_at(
         query,
         entity_path,
-        [&Clear::descriptor_is_recursive()],
+        [Clear::descriptor_is_recursive().component],
     );
 
     let (data_time, row_id) = results.index();
-    let data = results.component_mono::<ClearIsRecursive>(&Clear::descriptor_is_recursive())?;
+    let data =
+        results.component_mono::<ClearIsRecursive>(Clear::descriptor_is_recursive().component)?;
 
     Some((data_time, row_id, data))
 }
@@ -94,14 +93,14 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_parent,
                 &query,
-                &MyPoints::descriptor_points(),
+                MyPoints::descriptor_points().component,
             )
             .unwrap();
             let (_, _, got_color) = query_latest_component::<MyColor>(
                 &db,
                 &entity_path_parent,
                 &query,
-                &MyPoints::descriptor_colors(),
+                MyPoints::descriptor_colors().component,
             )
             .unwrap();
 
@@ -128,7 +127,7 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_child1,
                 &query,
-                &MyPoints::descriptor_points(),
+                MyPoints::descriptor_points().component,
             )
             .unwrap();
 
@@ -158,7 +157,7 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_child2,
                 &query,
-                &MyPoints::descriptor_colors(),
+                MyPoints::descriptor_colors().component,
             )
             .unwrap();
 
@@ -189,7 +188,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_parent,
                     &query,
-                    &MyPoints::descriptor_points()
+                    MyPoints::descriptor_points().component
                 )
                 .is_none()
             );
@@ -198,7 +197,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_parent,
                     &query,
-                    &MyPoints::descriptor_colors()
+                    MyPoints::descriptor_colors().component
                 )
                 .is_none()
             );
@@ -218,7 +217,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child1,
                     &query,
-                    &MyPoints::descriptor_points()
+                    MyPoints::descriptor_points().component
                 )
                 .is_some()
             );
@@ -229,7 +228,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child2,
                     &query,
-                    &MyPoints::descriptor_colors()
+                    MyPoints::descriptor_colors().component
                 )
                 .is_some()
             );
@@ -259,7 +258,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_parent,
                     &query,
-                    &MyPoints::descriptor_points()
+                    MyPoints::descriptor_points().component
                 )
                 .is_none()
             );
@@ -268,7 +267,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_parent,
                     &query,
-                    &MyPoints::descriptor_colors()
+                    MyPoints::descriptor_colors().component
                 )
                 .is_none()
             );
@@ -288,7 +287,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child1,
                     &query,
-                    &MyPoints::descriptor_points()
+                    MyPoints::descriptor_points().component
                 )
                 .is_none()
             );
@@ -299,7 +298,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child2,
                     &query,
-                    &MyPoints::descriptor_colors()
+                    MyPoints::descriptor_colors().component
                 )
                 .is_none()
             );
@@ -332,7 +331,7 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_parent,
                 &query,
-                &MyIndex::partial_descriptor(),
+                MyIndex::partial_descriptor().component,
             )
             .unwrap();
             similar_asserts::assert_eq!(instance, got_instance);
@@ -345,7 +344,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_parent,
                     &query,
-                    &MyIndex::partial_descriptor(),
+                    MyIndex::partial_descriptor().component,
                 )
                 .is_none()
             );
@@ -377,14 +376,14 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_child1,
                 &query,
-                &MyPoints::descriptor_points(),
+                MyPoints::descriptor_points().component,
             )
             .unwrap();
             let (_, _, got_color) = query_latest_component::<MyColor>(
                 &db,
                 &entity_path_child1,
                 &query,
-                &MyPoints::descriptor_colors(),
+                MyPoints::descriptor_colors().component,
             )
             .unwrap();
 
@@ -399,7 +398,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child1,
                     &query,
-                    &MyPoints::descriptor_points()
+                    MyPoints::descriptor_points().component
                 )
                 .is_none()
             );
@@ -408,7 +407,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child1,
                     &query,
-                    &MyPoints::descriptor_colors()
+                    MyPoints::descriptor_colors().component
                 )
                 .is_none()
             );
@@ -440,14 +439,14 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_child2,
                 &query,
-                &MyPoints::descriptor_points(),
+                MyPoints::descriptor_points().component,
             )
             .unwrap();
             let (_, _, got_color) = query_latest_component::<MyColor>(
                 &db,
                 &entity_path_child2,
                 &query,
-                &MyPoints::descriptor_colors(),
+                MyPoints::descriptor_colors().component,
             )
             .unwrap();
 
@@ -462,7 +461,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child2,
                     &query,
-                    &MyPoints::descriptor_points()
+                    MyPoints::descriptor_points().component
                 )
                 .is_none()
             );
@@ -471,7 +470,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_child2,
                     &query,
-                    &MyPoints::descriptor_colors()
+                    MyPoints::descriptor_colors().component
                 )
                 .is_none()
             );
@@ -501,7 +500,7 @@ fn clears() -> anyhow::Result<()> {
                 &db,
                 &entity_path_grandchild,
                 &query,
-                &MyPoints::descriptor_colors(),
+                MyPoints::descriptor_colors().component,
             )
             .unwrap();
 
@@ -515,7 +514,7 @@ fn clears() -> anyhow::Result<()> {
                     &db,
                     &entity_path_grandchild,
                     &query,
-                    &MyPoints::descriptor_colors()
+                    MyPoints::descriptor_colors().component
                 )
                 .is_none()
             );
@@ -557,7 +556,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
             &db,
             &entity_path,
             &query,
-            &MyPoints::descriptor_points(),
+            MyPoints::descriptor_points().component,
         )
         .unwrap();
         similar_asserts::assert_eq!(point, got_point);
@@ -581,7 +580,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
             &db,
             &entity_path,
             &query,
-            &MyPoints::descriptor_points(),
+            MyPoints::descriptor_points().component,
         )
         .unwrap();
         similar_asserts::assert_eq!(point, got_point);
@@ -615,7 +614,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
                 &db,
                 &entity_path,
                 &query,
-                &MyPoints::descriptor_points()
+                MyPoints::descriptor_points().component
             )
             .is_none()
         );

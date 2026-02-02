@@ -1,0 +1,20 @@
+
+namespace rerun.components;
+
+// ---
+
+/// Whether the entity's [components.Text] label is shown.
+///
+/// The main purpose of this component existing separately from the labels themselves
+/// is to be overridden when desired, to allow hiding and showing from the viewer and
+/// blueprints.
+struct ShowLabels (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "bool",
+  "attr.python.array_aliases": "bool | npt.NDArray[np.bool_]",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.tuple_struct"
+) {
+  /// Whether the entity's [components.Text] label is shown.
+  show_labels: rerun.datatypes.Bool (order: 100);
+}

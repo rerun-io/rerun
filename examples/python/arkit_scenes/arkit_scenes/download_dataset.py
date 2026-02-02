@@ -113,8 +113,9 @@ def download_file(url: str, file_name: str, dst: Path) -> bool:
         try:
             subprocess.check_call(command, shell=True, cwd=dst)
         except Exception as error:
-            print(f"Error downloading {url}, error: {error}")
-            return False
+            error_msg = f"Error downloading {url}, error: {error}"
+            print(error_msg)
+            raise RuntimeError(error_msg) from error
         os.rename(filepath + ".tmp", filepath)
     else:
         pass  # skipping download of existing file
@@ -128,8 +129,9 @@ def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
         with zipfile.ZipFile(filepath, "r") as zip_ref:
             zip_ref.extractall(dst)
     except Exception as error:
-        print(f"Error unzipping {filepath}, error: {error}")
-        return False
+        error_msg = f"Error unzipping {filepath}, error: {error}"
+        print(error_msg)
+        raise RuntimeError(error_msg) from error
     if not keep_zip:
         os.remove(filepath)
     return True
@@ -137,7 +139,7 @@ def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
 
 def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.DataFrame, download_dir: Path) -> None:
     video_metadata = metadata.loc[metadata["video_id"] == float(video_id)]
-    visit_id = video_metadata["visit_id"].iat[0]
+    visit_id: float = video_metadata["visit_id"].iat[0]  # type: ignore[assignment]
     has_laser_scanner_point_clouds = video_metadata["has_laser_scanner_point_clouds"].iat[0]
 
     if not has_laser_scanner_point_clouds:
@@ -148,7 +150,7 @@ def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.Da
         print(f"Warning: Downloading laser scanner point clouds for video {video_id} failed - Bad visit id {visit_id}")
         return
 
-    visit_id = int(visit_id)  # Expecting an 8 digit integer
+    visit_id = int(visit_id)
     laser_scanner_point_clouds_ids = laser_scanner_point_clouds_for_visit_id(visit_id, download_dir)
 
     for point_cloud_id in laser_scanner_point_clouds_ids:
@@ -161,16 +163,11 @@ def laser_scanner_point_clouds_for_visit_id(visit_id: int, download_dir: Path) -
         point_cloud_to_visit_id_mapping_url = (
             f"{ARkitscense_url}/raw/laser_scanner_point_clouds/{point_cloud_to_visit_id_mapping_filename}"
         )
-        if not download_file(
+        download_file(
             point_cloud_to_visit_id_mapping_url,
             point_cloud_to_visit_id_mapping_filename,
             download_dir,
-        ):
-            print(
-                f"Error downloading point cloud for visit_id {visit_id} at location "
-                f"{point_cloud_to_visit_id_mapping_url}",
-            )
-            return []
+        )
 
     point_cloud_to_visit_id_mapping_filepath = os.path.join(download_dir, point_cloud_to_visit_id_mapping_filename)
     point_cloud_to_visit_id_mapping = pd.read_csv(point_cloud_to_visit_id_mapping_filepath)
@@ -196,14 +193,13 @@ def download_laser_scanner_point_clouds(laser_scanner_point_cloud_id: str, visit
         download_file(file_url, filename, laser_scanner_point_clouds_folder_path)
 
 
-def get_metadata(dataset: str, download_dir: Path) -> pd.DataFrame | None:
+def get_metadata(dataset: str, download_dir: Path) -> pd.DataFrame:
     filename = "metadata.csv"
     url = f"{ARkitscense_url}/threedod/{filename}" if "3dod" == dataset else f"{ARkitscense_url}/{dataset}/{filename}"
     dst_folder = download_dir / dataset
     dst_file = dst_folder / filename
 
-    if not download_file(url, filename, dst_folder):
-        return None
+    download_file(url, filename, dst_folder)
 
     metadata = pd.read_csv(dst_file)
     return metadata
@@ -235,9 +231,6 @@ def download_data(
 
     """
     metadata = get_metadata(dataset, download_dir)
-    if metadata is None:
-        print(f"Error retrieving metadata for dataset {dataset}")
-        return
 
     for video_id in sorted(set(video_ids)):
         split = dataset_splits[video_ids.index(video_id)]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
 
@@ -10,14 +10,33 @@ from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentB
 from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..recording_stream import RecordingStream
-from .archetypes import ContainerBlueprint, PanelBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint
+from .archetypes import (
+    ActiveVisualizers,
+    ContainerBlueprint,
+    EntityBehavior,
+    PanelBlueprint,
+    TimePanelBlueprint,
+    ViewBlueprint,
+    ViewContents,
+    ViewportBlueprint,
+    VisibleTimeRanges,
+    VisualizerInstruction,
+)
 from .components import PanelState, PanelStateLike
+from .visualizers import VisualizableArchetype, Visualizer
 
 if TYPE_CHECKING:
-    from ..memory import MemoryRecording
-    from .components.container_kind import ContainerKindLike
+    from pathlib import Path
 
-ViewContentsLike = Union[Utf8ArrayLike, ViewContents]
+    from .._memory import MemoryRecording
+    from .components.absolute_time_range import AbsoluteTimeRange
+    from .components.container_kind import ContainerKindLike
+    from .components.loop_mode import LoopModeLike
+    from .components.play_state import PlayStateLike
+
+ViewContentsLike = Utf8ArrayLike | ViewContents
+
+VisualizerLike = EntityBehavior | VisibleTimeRanges | Visualizer | VisualizableArchetype
 
 
 class View:
@@ -47,11 +66,7 @@ class View:
         visible: BoolLike | None = None,
         properties: dict[str, AsComponents] | None = None,
         defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-        overrides: Mapping[
-            EntityPathLike,
-            AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
-        ]
-        | None = None,
+        overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
     ) -> None:
         """
         Construct a blueprint for a new view.
@@ -83,10 +98,12 @@ class View:
             Note that an archetype's required components typically don't have any effect.
             It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
         overrides:
-            Dictionary of overrides to apply to the view. The key is the path to the entity where the override
-            should be applied. The value is a list of archetypes or (described) component batches to apply to the entity.
+            Dictionary of visualizer overrides to apply to the view. The key is the path to the entity where the override
+            should be applied. The value is a list of visualizers (or visualizable archetypes) which should be enabled for that entity, or a single visualizer.
 
-            It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
+            Each visualizer can be configured with arbitrary overrides and mappings.
+
+            For any entity mentioned in this map, visualizers are no longer added automatically based on the entity's components.
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
@@ -101,7 +118,7 @@ class View:
         self.visible = visible
         self.properties = properties if properties is not None else {}
         self.defaults = list(defaults) if defaults is not None else []
-        self.overrides = dict(overrides.items()) if overrides is not None else {}
+        self.visualizer_overrides = dict(overrides.items()) if overrides is not None else {}
 
     def blueprint_path(self) -> str:
         """
@@ -111,6 +128,16 @@ class View:
         not a part of the regular data hierarchy.
         """
         return f"view/{self.id}"
+
+    def _blueprint_base_visualizer_path_for_entity(self, entity_path: EntityPathLike) -> str:
+        """
+        Construct the base path for visualizer overrides for a given entity in a view.
+
+        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
+        not a part of the regular data hierarchy.
+        """
+        entity_path_str = str(entity_path).removeprefix("/")
+        return f"{self.blueprint_path()}/ViewContents/overrides/{entity_path_str}/visualizers"
 
     def to_container(self) -> Container:
         """Convert this view to a container."""
@@ -153,18 +180,46 @@ class View:
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
-        for path, components in self.overrides.items():
-            log_path = f"{self.blueprint_path()}/ViewContents/overrides/{path}"
-            if isinstance(components, Iterable):
-                components_list = list(components)
+        for path, visualizer in self.visualizer_overrides.items():
+            base_visualizer_path = self._blueprint_base_visualizer_path_for_entity(path)
 
-                for component in components_list:
-                    if isinstance(component, DescribedComponentBatch):
-                        stream.log(log_path, [component])
-                    else:
-                        stream.log(log_path, component)
-            else:  # has to be AsComponents
-                stream.log(log_path, components)
+            if isinstance(visualizer, Iterable):
+                visualizer_list = visualizer
+            else:
+                visualizer_list = [visualizer]
+
+            visualizer_ids: list[uuid.UUID] = []
+            for visualizer in visualizer_list:
+                visualizer_id = self._log_visualizer_like(stream, base_visualizer_path, visualizer)
+                if visualizer_id is not None:
+                    visualizer_ids.append(visualizer_id)
+
+            if len(visualizer_ids) > 0:
+                stream.log(base_visualizer_path, ActiveVisualizers([id.bytes for id in visualizer_ids]))
+
+    def _log_visualizer_like(
+        self,
+        stream: RecordingStream,
+        base_visualizer_path: str,
+        visualizer: VisualizerLike,
+    ) -> uuid.UUID | None:
+        if isinstance(visualizer, VisualizableArchetype):
+            visualizer = visualizer.visualizer()
+
+        if isinstance(visualizer, Visualizer):
+            visualizer_path = f"{base_visualizer_path}/{visualizer.id}"
+
+            stream.log(
+                visualizer_path, VisualizerInstruction(visualizer.visualizer_type, component_map=visualizer.mappings)
+            )
+            if visualizer.overrides is not None and len(visualizer.overrides) > 0:
+                stream.log(visualizer_path, visualizer.overrides)
+
+            return visualizer.id
+        else:  # has to be AsComponents (EntityBehavior, VisibleTimeRanges, etc.)
+            # These are logged at the base path without a UUID
+            stream.log(base_visualizer_path, visualizer)
+            return None
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer
@@ -196,6 +251,7 @@ class Container:
         grid_columns: int | None = None,
         active_tab: int | str | None = None,
         name: Utf8Like | None,
+        visible: BoolLike | None = None,
     ) -> None:
         """
         Construct a new container.
@@ -224,6 +280,10 @@ class Container:
             The active tab in the container. This is only applicable to `Tabs` containers.
         name
             The name of the container
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
 
         """
 
@@ -242,6 +302,7 @@ class Container:
         self.grid_columns = grid_columns
         self.active_tab = active_tab
         self.name = name
+        self.visible = visible
 
     def blueprint_path(self) -> str:
         """
@@ -277,7 +338,7 @@ class Container:
             contents=[sub.blueprint_path() for sub in self.contents],
             col_shares=self.column_shares,
             row_shares=self.row_shares,
-            visible=True,
+            visible=self.visible,
             grid_columns=self.grid_columns,
             active_tab=active_tab_path,
             display_name=self.name,
@@ -421,7 +482,18 @@ class SelectionPanel(Panel):
 class TimePanel(Panel):
     """The state of the time panel."""
 
-    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        expanded: bool | None = None,
+        state: PanelStateLike | None = None,
+        timeline: Utf8Like | None = None,
+        playback_speed: float | None = None,
+        fps: float | None = None,
+        play_state: PlayStateLike | None = None,
+        loop_mode: LoopModeLike | None = None,
+        time_selection: AbsoluteTimeRange | None = None,
+    ) -> None:
         """
         Construct a new time panel.
 
@@ -434,12 +506,59 @@ class TimePanel(Panel):
 
             Expanded fully shows the panel, collapsed shows a simplified panel,
             hidden fully hides the panel.
+        timeline:
+            What timeline the timepanel should display.
+
+        playback_speed:
+            A time playback speed multiplier.
+
+        fps:
+            Frames per second. Only applicable for sequence timelines.
+
+        play_state:
+            If the time is currently paused, playing, or following.
+
+        loop_mode:
+            How the time should loop.
+
+            A loop selection only works if there's also a `time_selection`
+            passed.
+
+        time_selection:
+            Selects a range of time on the time panel.
 
         """
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
 
+        self.timeline = timeline
+        self.playback_speed = playback_speed
+        self.fps = fps
+        self.play_state = play_state
+        self.loop_mode = loop_mode
+        self.time_selection = time_selection
 
-ContainerLike = Union[Container, View]
+    def _log_to_stream(self, stream: RecordingStream) -> None:
+        """Internal method to convert to an archetype and log to the stream."""
+        arch = TimePanelBlueprint(
+            state=self.state,
+            timeline=self.timeline,
+            playback_speed=self.playback_speed,
+            fps=self.fps,
+            loop_mode=self.loop_mode,
+            time_selection=self.time_selection,
+        )
+
+        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
+
+        if self.play_state is not None:
+            static_arch = TimePanelBlueprint(
+                play_state=self.play_state,
+            )
+
+            stream.log(self.blueprint_path(), static_arch, static=True)
+
+
+ContainerLike = Container | View
 """
 A type that can be converted to a container.
 
@@ -447,7 +566,7 @@ These types all implement a `to_container()` method that wraps them in the neces
 helper classes.
 """
 
-BlueprintPart = Union[ContainerLike, TopPanel, BlueprintPanel, SelectionPanel, TimePanel]
+BlueprintPart = ContainerLike | TopPanel | BlueprintPanel | SelectionPanel | TimePanel
 """
 The types that make up a blueprint.
 """
@@ -633,7 +752,7 @@ class Blueprint:
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
 
-    def save(self, application_id: str, path: str | None = None) -> None:
+    def save(self, application_id: str, path: str | Path | None = None) -> None:
         """
         Save this blueprint to a file. Rerun recommends the `.rbl` suffix.
 
@@ -649,6 +768,8 @@ class Blueprint:
 
         if path is None:
             path = f"{application_id}.rbl"
+        else:
+            path = str(path)
 
         blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(
@@ -666,6 +787,7 @@ class Blueprint:
     def spawn(
         self,
         application_id: str,
+        *,
         port: int = 9876,
         memory_limit: str = "75%",
         hide_welcome_screen: bool = False,
@@ -697,7 +819,7 @@ class Blueprint:
         self.connect_grpc(application_id=application_id, url=f"rerun+http://127.0.0.1:{port}/proxy")
 
 
-BlueprintLike = Union[Blueprint, View, Container]
+BlueprintLike = Blueprint | View | Container
 """
 A type that can be converted to a blueprint.
 

@@ -9,27 +9,34 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 mod error;
+
 #[cfg(not(target_arch = "wasm32"))]
 mod provider;
 
 mod service;
 mod token;
 
-#[cfg(feature = "cli")]
+pub mod credentials;
+
+#[cfg(all(feature = "cli", feature = "oauth", not(target_arch = "wasm32")))]
 pub mod cli;
 
-#[cfg(feature = "workos")]
-pub mod workos;
+#[cfg(feature = "oauth")]
+pub mod oauth;
 
-pub use service::client;
-pub use token::{Jwt, TokenError};
+#[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
+pub mod callback_server;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use error::Error;
+#[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
+pub use oauth::login_flow::{DeviceCodeFlow, OauthLoginFlow};
 #[cfg(not(target_arch = "wasm32"))]
 pub use provider::{Claims, RedapProvider, SecretKey, VerificationOptions};
+pub use service::client;
 #[cfg(not(target_arch = "wasm32"))]
 pub use service::server;
+pub use token::{Jwt, TokenError};
 
 /// The error message in Tonic's gRPC status when the token is malformed or invalid in some way.
 ///
@@ -45,3 +52,5 @@ pub const ERROR_MESSAGE_MISSING_CREDENTIALS: &str = "missing credentials";
 ///
 /// The associated status code will always be `Unauthenticated`.
 pub const ERROR_MESSAGE_INVALID_CREDENTIALS: &str = "invalid credentials";
+
+mod wasm_compat;

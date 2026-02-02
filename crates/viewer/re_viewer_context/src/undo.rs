@@ -40,6 +40,16 @@ pub struct BlueprintUndoState {
     inflection_points: BTreeMap<TimeInt, u64>,
 }
 
+impl re_byte_size::SizeBytes for BlueprintUndoState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            current_time: _,
+            inflection_points,
+        } = self;
+        inflection_points.heap_size_bytes()
+    }
+}
+
 // We don't restore undo-state when closing the viewer.
 // If you want to support this, make sure you replace the call to `cumulative_frame_nr` with something else,
 // (because that resets to zero on restart) and also make sure you test it properly!
@@ -202,14 +212,16 @@ impl BlueprintUndoState {
 
 fn max_blueprint_time(blueprint_db: &EntityDb) -> TimeInt {
     blueprint_db
-        .time_histogram(&blueprint_timeline())
-        .and_then(|times| times.max_key())
+        .time_range_for(&blueprint_timeline())
+        .map(|range| range.max.as_i64())
         .map_or(TimeInt::ZERO, TimeInt::new_temporal)
 }
 
 fn is_interacting(egui_ctx: &egui::Context) -> bool {
     egui_ctx.input(|i| {
-        let is_scrolling = i.smooth_scroll_delta != egui::Vec2::ZERO;
+        let is_scrolling = i.smooth_scroll_delta != egui::Vec2::ZERO
+                // TODO(RR-2730): If egui properly tracked when we're scrolling we wouldn't have to do this time check.
+                || i.time_since_last_scroll() < 0.1;
         let is_zooming = i.zoom_delta_2d() != egui::Vec2::splat(1.0);
         i.pointer.any_down()
             || i.any_touches()

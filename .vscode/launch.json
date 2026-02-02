@@ -93,7 +93,7 @@
             }
         },
         {
-            "name": "Debug 'rerun' colmap.rrd from url",
+            "name": "Debug 'rerun' bar_chart.rrd from url",
             "type": "lldb",
             "request": "launch",
             "cargo": {
@@ -110,9 +110,12 @@
                 }
             },
             "args": [
-                "https://demo.rerun.io/commit/0f89b62/examples/colmap/data.rrd"
+                "https://app.rerun.io/version/0.25.0/examples/snippets/bar_chart.rrd"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "trace"
+            }
         },
         {
             "name": "Debug 'minimal' example",

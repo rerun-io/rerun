@@ -2,10 +2,9 @@
 
 pub mod sigint;
 
-use re_build_info::BuildInfo;
-
 #[cfg(not(target_os = "windows"))]
 use parking_lot::Mutex;
+use re_build_info::BuildInfo;
 
 // The easiest way to pass this to our signal handler.
 #[cfg(not(target_os = "windows"))]
@@ -17,7 +16,7 @@ static BUILD_INFO: Mutex<Option<BuildInfo>> = Mutex::new(None);
 /// NOTE: only install these in binaries!
 /// * First of all, we don't want to compete with other panic/signal handlers.
 /// * Second of all, we don't ever want to include user callstacks in our analytics.
-#[allow(clippy::needless_pass_by_value)]
+#[allow(clippy::allow_attributes, clippy::needless_pass_by_value)]
 pub fn install_crash_handlers(build_info: BuildInfo) {
     install_panic_hook(build_info.clone());
 
@@ -70,27 +69,15 @@ fn install_panic_hook(_build_info: BuildInfo) {
             );
 
             #[cfg(feature = "analytics")]
-            {
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::CrashPanic {
-                        build_info: _build_info.clone(),
-                        callstack,
-                        // Don't include panic message, because it can contain sensitive information,
-                        // e.g. `panic!("Couldn't read {sensitive_file_path}")`.
-                        message: None,
-                        file_line,
-                    });
-
-                    if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
-                        && cfg!(debug_assertions)
-                    {
-                        eprintln!("Failed to flush analytics: {err}");
-                    }
-                }
-            }
+            re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashPanic {
+                build_info: _build_info.clone(),
+                callstack,
+                message: None,
+                file_line,
+            });
 
             // We compile with `panic = "abort"`, but we don't want to report the same problem twice, so just exit:
-            #[allow(clippy::exit)]
+            #[expect(clippy::exit)]
             std::process::exit(102);
         },
     ));
@@ -100,7 +87,7 @@ fn panic_info_message(panic_info: &std::panic::PanicHookInfo<'_>) -> Option<Stri
     // `panic_info.message` is unstable, so this is the recommended way of getting
     // the panic message out. We need both the `&str` and `String` variants.
 
-    #[allow(clippy::manual_map)]
+    #[expect(clippy::manual_map)]
     if let Some(msg) = panic_info.payload().downcast_ref::<&str>() {
         Some((*msg).to_owned())
     } else if let Some(msg) = panic_info.payload().downcast_ref::<String>() {
@@ -112,8 +99,8 @@ fn panic_info_message(panic_info: &std::panic::PanicHookInfo<'_>) -> Option<Stri
 
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(target_os = "windows"))]
-#[allow(unsafe_code)]
-#[allow(clippy::fn_to_numeric_cast_any)]
+#[expect(unsafe_code)]
+#[expect(clippy::fn_to_numeric_cast_any)]
 fn install_signal_handler(build_info: BuildInfo) {
     *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
 
@@ -183,7 +170,11 @@ fn install_signal_handler(build_info: BuildInfo) {
         // Send analytics - this also sleeps a while to give the analytics time to send the event.
         #[cfg(feature = "analytics")]
         if let Some(build_info) = BUILD_INFO.lock().clone() {
-            send_signal_analytics(build_info, signal_name, callstack);
+            re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashSignal {
+                build_info,
+                signal: signal_name.to_owned(),
+                callstack,
+            });
         }
 
         // We are done!
@@ -199,23 +190,6 @@ fn install_signal_handler(build_info: BuildInfo) {
         // SAFETY: writing to stderr is fine, even in a signal handler.
         unsafe {
             libc::write(libc::STDERR_FILENO, text.as_ptr().cast(), text.len());
-        }
-    }
-
-    #[cfg(feature = "analytics")]
-    fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
-        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-            analytics.record(re_analytics::event::CrashSignal {
-                build_info,
-                signal: signal_name.to_owned(),
-                callstack,
-            });
-
-            if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
-                && cfg!(debug_assertions)
-            {
-                eprintln!("Failed to flush analytics: {err}");
-            }
         }
     }
 

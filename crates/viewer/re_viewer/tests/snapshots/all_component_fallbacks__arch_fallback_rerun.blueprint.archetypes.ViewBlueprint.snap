@@ -1,0 +1,8 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+class_identifier: [Dataframe]
+display_name: [<name>]
+space_origin: [/*]
+visible: [true]

@@ -82,6 +82,8 @@ jobs:
               - pixi.toml # maybe our build commands have changed
               - "**/*.rs"
               - "**/*.toml"
+              - "crates/**/*.png"
+              - "tests/rust/**/*.png"
 
             protobuf_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
@@ -227,4 +229,13 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
+
+  check-doc-redirects:
+    name: "Check Doc Redirects"
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.docs_changes == 'true'
+    uses: ./.github/workflows/reusable_checks_doc_redirects.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit

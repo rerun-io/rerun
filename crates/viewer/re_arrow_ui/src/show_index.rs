@@ -13,14 +13,18 @@ use arrow::array::types::{
 use arrow::array::{
     Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
     GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
-    StructArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
+    StructArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+    TimestampSecondArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
     downcast_integer_array, downcast_run_array,
 };
-use arrow::datatypes::{ArrowNativeType as _, DataType, Field, UnionMode};
+use arrow::datatypes::{
+    ArrowNativeType as _, DataType, Field, TimeUnit, TimestampMicrosecondType,
+    TimestampMillisecondType, TimestampNanosecondType, TimestampSecondType, UnionMode,
+};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
-
+use re_log_types::TimestampFormat;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{UiExt as _, UiLayout};
@@ -34,6 +38,9 @@ use crate::list_item_ranges::list_item_ranges;
 pub struct DisplayOptions<'a> {
     /// Format options for items formatted with arrows built-in formatter.
     pub format_options: FormatOptions<'a>,
+
+    /// Format for timestamp values.
+    pub timestamp_format: TimestampFormat,
 
     /// How many items should be shown for arrays that have nested items?
     pub max_nested_array_items: usize,
@@ -57,6 +64,7 @@ impl Default for DisplayOptions<'_> {
             format_options: FormatOptions::default()
                 .with_null("null")
                 .with_display_error(true),
+            timestamp_format: Default::default(),
             max_nested_array_items: 3,
             max_array_items: 6,
             max_map_items: 3,
@@ -70,6 +78,7 @@ impl DisplayOptions<'_> {
     fn nested(&self) -> Self {
         Self {
             format_options: self.format_options.clone(),
+            timestamp_format: self.timestamp_format,
             max_nested_array_items: self
                 .max_nested_array_items
                 .saturating_sub(self.decrease_nested_items_per_nested_level),
@@ -159,13 +168,28 @@ fn make_ui<'a>(
         DataType::Null | DataType::Boolean | DataType::Utf8 | DataType::LargeUtf8
         | DataType::Utf8View | DataType::BinaryView
         | DataType::Date32 | DataType::Date64 | DataType::Time32(_) | DataType::Time64(_)
-        | DataType::Timestamp(_, _) | DataType::Duration(_) | DataType::Interval(_)
-        | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
+        | DataType::Duration(_) | DataType::Interval(_)
+        | DataType::Decimal32(_, _) | DataType::Decimal64(_, _) | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
         => {
             show_arrow_builtin(array, options)
         }
+        DataType::Timestamp(TimeUnit::Second, _) => {
+            show_custom(array.as_primitive::<TimestampSecondType>(), options)
+        }
+        DataType::Timestamp(TimeUnit::Millisecond, _) => {
+            show_custom(array.as_primitive::<TimestampMillisecondType>(), options)
+        }
+        DataType::Timestamp(TimeUnit::Microsecond, _) => {
+           show_custom(array.as_primitive::<TimestampMicrosecondType>(), options)
+        }
+        DataType::Timestamp(TimeUnit::Nanosecond, _) => {
+            show_custom(array.as_primitive::<TimestampNanosecondType>(), options)
+        }
         DataType::FixedSizeBinary(_) => {
-            let a = array.as_any().downcast_ref::<FixedSizeBinaryArray>().expect("FixedSizeBinaryArray downcast failed");
+            let a = array
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .expect("FixedSizeBinaryArray downcast failed");
             show_arrow_builtin(a, options)
         }
         DataType::Binary => {
@@ -181,7 +205,10 @@ fn make_ui<'a>(
         DataType::List(_) => show_custom(as_generic_list_array::<i32>(array), options),
         DataType::LargeList(_) => show_custom(as_generic_list_array::<i64>(array), options),
         DataType::FixedSizeList(_, _) => {
-            let a = array.as_any().downcast_ref::<FixedSizeListArray>().expect("FixedSizeListArray downcast failed");
+            let a = array
+                .as_any()
+                .downcast_ref::<FixedSizeListArray>()
+                .expect("FixedSizeListArray downcast failed");
             show_custom(a, options)
         }
         DataType::Struct(_) => show_custom(as_struct_array(array), options),
@@ -212,7 +239,7 @@ impl ShowIndex for ShowBuiltIn<'_> {
         let dt = self.array.data_type();
 
         if self.array.is_null(idx) {
-            f.append_primitive("null");
+            f.append_null("null");
         } else if matches!(
             dt,
             DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
@@ -370,7 +397,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
         if self.array.is_null(idx) {
             if !self.null.is_empty() {
-                f.append_primitive(self.null);
+                f.append_null(self.null);
             }
             return Ok(());
         }
@@ -390,7 +417,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     }
 }
 
-macro_rules! primitive_display {
+macro_rules! numeric_primitive_display {
     ($fmt:path: $($t:ty),+) => {
         $(impl<'a> ShowIndex for &'a PrimitiveArray<$t>
         {
@@ -408,11 +435,46 @@ macro_rules! primitive_display {
     };
 }
 
-primitive_display!(re_format::format_int: Int8Type, Int16Type, Int32Type, Int64Type);
-primitive_display!(re_format::format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
-primitive_display!(re_format::format_f32: Float32Type);
-primitive_display!(re_format::format_f64: Float64Type);
-primitive_display!(re_format::format_f16: Float16Type);
+numeric_primitive_display!(re_format::format_int: Int8Type, Int16Type, Int32Type, Int64Type);
+numeric_primitive_display!(re_format::format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
+numeric_primitive_display!(re_format::format_f32: Float32Type);
+numeric_primitive_display!(re_format::format_f64: Float64Type);
+numeric_primitive_display!(re_format::format_f16: Float16Type);
+
+macro_rules! timestamp_primitive_display {
+    ($t:ty, $conv_fn:ident ) => {
+        impl<'a> ShowIndexState<'a> for &'a $t {
+            type State = TimestampFormat;
+
+            fn prepare(&self, options: &DisplayOptions<'a>) -> Result<Self::State, ArrowError> {
+                Ok(options.timestamp_format)
+            }
+
+            fn write(
+                &self,
+                state: &Self::State,
+                idx: usize,
+                f: &mut SyntaxHighlightedBuilder,
+            ) -> EmptyArrowResult {
+                if self.is_null(idx) {
+                    f.append_primitive("null");
+                } else {
+                    #[allow(clippy::allow_attributes, trivial_numeric_casts)]
+                    let timestamp = jiff::Timestamp::$conv_fn(self.value(idx) as _)
+                        .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
+                    f.append_primitive(&re_log_types::Timestamp::from(timestamp).format(*state));
+                }
+
+                Ok(())
+            }
+        }
+    };
+}
+
+timestamp_primitive_display!(TimestampSecondArray, from_second);
+timestamp_primitive_display!(TimestampMillisecondArray, from_millisecond);
+timestamp_primitive_display!(TimestampMicrosecondArray, from_microsecond);
+timestamp_primitive_display!(TimestampNanosecondArray, from_nanosecond);
 
 impl<OffsetSize: OffsetSizeTrait> ShowIndex for &GenericBinaryArray<OffsetSize> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {

@@ -38,7 +38,7 @@ TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference
 
 snippet: archetypes/video_auto_frames
 
-<picture data-inline-viewer="snippets/video_auto_frames">
+<picture data-inline-viewer="snippets/archetypes/video_auto_frames">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
@@ -50,7 +50,7 @@ snippet: archetypes/video_auto_frames
 
 snippet: archetypes/video_manual_frames
 
-<picture data-inline-viewer="snippets/video_manual_frames">
+<picture data-inline-viewer="snippets/archetypes/video_manual_frames">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1024w.png">

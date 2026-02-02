@@ -50,35 +50,34 @@ class GeoLineStringExt:
         elif isinstance(data, Sequence):
             if len(data) == 0:
                 inners = []
-            else:
-                # Is it a single strip or several?
-                # It could be a sequence of the style `[[0, 0], [1, 1]]` which is a single strip.
-                if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
-                    if len(data[0]) == 2:
-                        # If any of the following elements are not sequence of length 2, DVec2DBatch should raise an error.
-                        inners = [DVec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
-                    else:
-                        raise ValueError(
-                            "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2.",
-                        )
-                # It could be a sequence of the style `[np.array([0, 0]), np.array([1, 1])]` which is a single strip.
-                elif isinstance(data[0], np.ndarray) and data[0].shape == (2,):
-                    # If any of the following elements are not np arrays of shape 2, DVec2DBatch should raise an error.
+            # Is it a single strip or several?
+            # It could be a sequence of the style `[[0, 0], [1, 1]]` which is a single strip.
+            elif isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
+                if len(data[0]) == 2:
+                    # If any of the following elements are not sequence of length 2, DVec2DBatch should raise an error.
                     inners = [DVec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
-                # .. otherwise assume that it's several strips.
                 else:
+                    raise ValueError(
+                        "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2.",
+                    )
+            # It could be a sequence of the style `[np.array([0, 0]), np.array([1, 1])]` which is a single strip.
+            elif isinstance(data[0], np.ndarray) and data[0].shape == (2,):
+                # If any of the following elements are not np arrays of shape 2, DVec2DBatch should raise an error.
+                inners = [DVec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
+            # .. otherwise assume that it's several strips.
+            else:
 
-                    def to_dvec2D_batch(strip: Any) -> DVec2DBatch:
-                        if isinstance(strip, GeoLineString):
-                            return DVec2DBatch(strip.lat_lon)
-                        else:
-                            if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 2):
-                                raise ValueError(
-                                    f"Expected a sequence of 2D vectors, instead got array with shape {strip.shape}.",
-                                )
-                            return DVec2DBatch(strip)
+                def to_dvec2D_batch(strip: Any) -> DVec2DBatch:
+                    if isinstance(strip, GeoLineString):
+                        return DVec2DBatch(strip.lat_lon)
+                    else:
+                        if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 2):
+                            raise ValueError(
+                                f"Expected a sequence of 2D vectors, instead got array with shape {strip.shape}.",
+                            )
+                        return DVec2DBatch(strip)
 
-                    inners = [to_dvec2D_batch(strip).as_arrow_array() for strip in data]
+                inners = [to_dvec2D_batch(strip).as_arrow_array() for strip in data]
         else:
             inners = [DVec2DBatch(data)]
 

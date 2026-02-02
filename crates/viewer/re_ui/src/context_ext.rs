@@ -1,4 +1,5 @@
-use egui::{Align2, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
+use egui::emath::Float as _;
+use egui::{Align2, Mesh, Rect, Shape, Vec2, pos2};
 
 use crate::{DesignTokens, TopBarStyle};
 
@@ -11,6 +12,11 @@ pub trait ContextExt {
 
     fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ctx().theme())
+    }
+
+    /// Current time in seconds
+    fn time(&self) -> f64 {
+        self.ctx().input(|i| i.time)
     }
 
     // -----------------------------------------------------
@@ -106,9 +112,10 @@ pub trait ContextExt {
         let traffic_button_sizes_fallback = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
         #[cfg(target_os = "macos")]
-        let native_buttons_size_in_native_scale = {
-            use crate::egui_ext::WindowChromeMetrics;
+        let native_buttons_size_in_native_scale = if make_room_for_window_buttons {
             use raw_window_handle::HasWindowHandle as _;
+
+            use crate::egui_ext::WindowChromeMetrics;
 
             let metrics = _frame
                 .window_handle()
@@ -125,6 +132,8 @@ pub trait ContextExt {
                 }
                 traffic_button_sizes_fallback
             }
+        } else {
+            egui::Vec2::ZERO
         };
         #[cfg(not(target_os = "macos"))]
         let native_buttons_size_in_native_scale = traffic_button_sizes_fallback;
@@ -160,7 +169,7 @@ pub trait ContextExt {
             egui::SizeHint::Scale(1.0.ord()),
         ) {
             let rect = Align2::RIGHT_BOTTOM
-                .align_size_within_rect(texture.size, self.ctx().screen_rect())
+                .align_size_within_rect(texture.size, self.ctx().content_rect())
                 .translate(-Vec2::splat(16.0));
             let mut mesh = Mesh::with_texture(texture.id);
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));

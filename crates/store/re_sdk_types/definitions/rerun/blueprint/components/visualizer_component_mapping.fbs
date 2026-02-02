@@ -1,0 +1,10 @@
+namespace rerun.blueprint.components;
+
+/// Associates components of an entity to components of a visualizer.
+table VisualizerComponentMapping (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq"
+) {
+  /// The component mapping pairs.
+  mapping: rerun.blueprint.datatypes.VisualizerComponentMapping (order: 100);
+}

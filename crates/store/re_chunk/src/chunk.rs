@@ -2,23 +2,20 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
 use anyhow::Context as _;
-use arrow::{
-    array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
-        ListArray as ArrowListArray,
-    },
-    buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
+    ListArray as ArrowListArray,
 };
+use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ArchetypeName, ComponentDescriptor, ComponentType, DeserializationError, Loggable as _,
+    ComponentDescriptor, ComponentIdentifier, ComponentType, DeserializationError, Loggable as _,
     SerializationError, SerializedComponentColumn,
 };
 
@@ -53,7 +50,7 @@ pub enum ChunkError {
     UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
 
     #[error(transparent)]
-    WrongDatatypeError(#[from] re_sorbet::WrongDatatypeError),
+    WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),
 
     #[error(transparent)]
     MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),
@@ -72,7 +69,7 @@ pub type ChunkResult<T> = Result<T, ChunkError>;
 // ---
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ChunkComponents(pub IntMap<ComponentDescriptor, ArrowListArray>);
+pub struct ChunkComponents(pub IntMap<ComponentIdentifier, SerializedComponentColumn>);
 
 impl ChunkComponents {
     /// Returns all list arrays for the given component type.
@@ -83,8 +80,8 @@ impl ChunkComponents {
         &self,
         component_type: ComponentType,
     ) -> impl Iterator<Item = &ArrowListArray> {
-        self.0.iter().filter_map(move |(desc, array)| {
-            (desc.component_type == Some(component_type)).then_some(array)
+        self.0.values().filter_map(move |column| {
+            (column.descriptor.component_type == Some(component_type)).then_some(&column.list_array)
         })
     }
 
@@ -97,33 +94,76 @@ impl ChunkComponents {
     /// Useful for tests.
     pub fn ensure_similar(left: &Self, right: &Self) -> anyhow::Result<()> {
         anyhow::ensure!(left.len() == right.len());
-        for (descr, left_array) in left.iter() {
-            let Some(right_array) = right.get(descr) else {
-                anyhow::bail!("rhs is missing {descr:?}");
+        for (component, left_column) in left.iter() {
+            let Some(right_column) = right.get(*component) else {
+                anyhow::bail!("rhs is missing {component:?}");
             };
-            let left_array = widen_binary_arrays(left_array);
-            let right_array = widen_binary_arrays(right_array);
+            anyhow::ensure!(left_column.descriptor == right_column.descriptor);
+
+            let left_array = widen_binary_arrays(&left_column.list_array);
+            let right_array = widen_binary_arrays(&right_column.list_array);
             re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
-                .with_context(|| format!("Component {descr:?}"))?;
+                .with_context(|| format!("Component {component:?}"))?;
         }
         Ok(())
     }
 
     /// Whether any of the components in this chunk has the given name.
-    pub fn contains_component(&self, component_descr: &ComponentDescriptor) -> bool {
-        self.0.contains_key(component_descr)
+    #[inline]
+    pub fn contains_component(&self, component: ComponentIdentifier) -> bool {
+        self.0.contains_key(&component)
     }
 
-    /// Whether any of the components in this chunk is tagged with the given archetype name.
-    pub fn has_component_with_archetype(&self, archetype_name: ArchetypeName) -> bool {
-        self.0
-            .keys()
-            .any(|desc| desc.archetype == Some(archetype_name))
+    /// Lists all the component descriptors in this chunk.
+    #[inline]
+    pub fn component_descriptors(&self) -> impl Iterator<Item = &ComponentDescriptor> + '_ {
+        self.0.values().map(|column| &column.descriptor)
+    }
+
+    /// Lists all the component list arrays in this chunk.
+    #[inline]
+    pub fn list_arrays(&self) -> impl Iterator<Item = &ArrowListArray> + '_ {
+        self.0.values().map(|column| &column.list_array)
+    }
+
+    /// Lists all the component list arrays in this chunk.
+    #[inline]
+    pub fn list_arrays_mut(&mut self) -> impl Iterator<Item = &mut ArrowListArray> + '_ {
+        self.0.values_mut().map(|column| &mut column.list_array)
+    }
+
+    /// Returns the array for a given component if any.
+    #[inline]
+    pub fn get_array(&self, component: ComponentIdentifier) -> Option<&ArrowListArray> {
+        self.0.get(&component).map(|column| &column.list_array)
+    }
+
+    /// Returns the descriptor for a given component if any.
+    #[inline]
+    pub fn get_descriptor(&self, component: ComponentIdentifier) -> Option<&ComponentDescriptor> {
+        self.0.get(&component).map(|column| &column.descriptor)
+    }
+
+    /// Returns the descriptor and array for a given component if any.
+    #[inline]
+    pub fn get(&self, component: ComponentIdentifier) -> Option<&SerializedComponentColumn> {
+        self.0.get(&component)
+    }
+
+    /// Unconditionally inserts a [`SerializedComponentColumn`].
+    ///
+    /// Removes and replaces the column if it already exists.
+    #[inline]
+    pub fn insert(
+        &mut self,
+        column: SerializedComponentColumn,
+    ) -> Option<SerializedComponentColumn> {
+        self.0.insert(column.descriptor.component, column)
     }
 }
 
 impl std::ops::Deref for ChunkComponents {
-    type Target = IntMap<ComponentDescriptor, ArrowListArray>;
+    type Target = IntMap<ComponentIdentifier, SerializedComponentColumn>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -138,13 +178,14 @@ impl std::ops::DerefMut for ChunkComponents {
     }
 }
 
+// TODO(andreas): Remove this variant, we should let users construct `SerializedComponentColumn` directly to sharpen semantics.
 impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
     #[inline]
     fn from_iter<T: IntoIterator<Item = (ComponentDescriptor, ArrowListArray)>>(iter: T) -> Self {
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert(component_desc, list_array);
+                this.insert(SerializedComponentColumn::new(list_array, component_desc));
             }
         }
         this
@@ -157,7 +198,7 @@ impl FromIterator<SerializedComponentColumn> for ChunkComponents {
         let mut this = Self::default();
         {
             for serialized in iter {
-                this.insert(serialized.descriptor, serialized.list_array);
+                this.insert(serialized);
             }
         }
         this
@@ -198,7 +239,7 @@ pub struct Chunk {
     /// Empty if this is a static chunk.
     pub(crate) timelines: IntMap<TimelineName, TimeColumn>,
 
-    /// A sparse `ListArray` for each component.
+    /// A sparse `ListArray` & a [`ComponentDescriptor`] for each component.
     ///
     /// Each `ListArray` must be the same length as `row_ids`.
     ///
@@ -251,6 +292,9 @@ impl Chunk {
     ///
     /// Useful for tests.
     pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
+        anyhow::ensure!(lhs.num_rows() == rhs.num_rows());
+        anyhow::ensure!(lhs.num_columns() == rhs.num_columns());
+
         let Self {
             id: _,
             entity_path,
@@ -282,30 +326,26 @@ impl Chunk {
             );
         }
 
-        // Handle edge case: recording time on partition properties should ignore start time.
+        // Handle edge case: recording time on segment properties should ignore start time.
         if entity_path == &EntityPath::properties() {
             // We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.
             anyhow::ensure!(components.len() == rhs.components.len());
 
             // Copied from `rerun.archetypes.RecordingInfo`.
-            let recording_time_descriptor = ComponentDescriptor {
-                archetype: Some("rerun.archetypes.RecordingInfo".into()),
-                component: "RecordingInfo:start_time".into(),
-                component_type: Some("rerun.components.Timestamp".into()),
-            };
+            let recording_time_component: ComponentIdentifier = "RecordingInfo:start_time".into();
 
             // Filter out the recording time component from both lhs and rhs.
             let lhs_components = components
                 .iter()
-                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
-                .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
+                .filter(|&(component, _list_array)| component != &recording_time_component)
+                .map(|(component, list_array)| (*component, list_array.clone()))
                 .collect::<IntMap<_, _>>();
             let rhs_components = rhs
                 .components
                 .iter()
-                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
-                .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
+                .filter(|&(component, _list_array)| component != &recording_time_component)
+                .map(|(component, list_array)| (*component, list_array.clone()))
                 .collect::<IntMap<_, _>>();
 
             anyhow::ensure!(lhs_components == rhs_components);
@@ -327,23 +367,36 @@ impl Chunk {
             components,
         } = self;
 
-        let my_components: IntMap<_, _> = components
-            .iter()
-            .map(|(descr, list_array)| (descr.clone(), list_array))
-            .collect();
-
-        let other_components: IntMap<_, _> = other
-            .components
-            .iter()
-            .map(|(descr, list_array)| (descr.clone(), list_array))
-            .collect();
-
         *id == other.id
             && *entity_path == other.entity_path
             && *is_sorted == other.is_sorted
             && row_ids == &other.row_ids
             && *timelines == other.timelines
-            && my_components == other_components
+            && components.0 == other.components.0
+    }
+
+    /// Clones the chunk and renames a component.
+    ///
+    /// Note: archetype information and component type information is lost.
+    pub fn with_mapped_component<E>(
+        &self,
+        source: ComponentIdentifier,
+        target: ComponentIdentifier,
+        f: impl FnOnce(ArrowListArray) -> Result<ArrowListArray, E>,
+    ) -> Result<Self, E> {
+        let mut new_chunk = self.clone();
+        if let Some(old_entry) = new_chunk.components.remove(&source) {
+            new_chunk.components.insert(SerializedComponentColumn {
+                descriptor: ComponentDescriptor {
+                    component: target,
+                    archetype: None,
+                    component_type: None,
+                },
+                list_array: f(old_entry.list_array)?,
+            });
+        }
+
+        Ok(new_chunk)
     }
 }
 
@@ -414,7 +467,7 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<TimelineName, IntMap<ComponentDescriptor, AbsoluteTimeRange>> {
+    ) -> IntMap<TimelineName, IntMap<ComponentIdentifier, AbsoluteTimeRange>> {
         re_tracing::profile_function!();
 
         self.timelines
@@ -428,6 +481,11 @@ impl Chunk {
             .collect()
     }
 
+    #[inline]
+    pub fn component_descriptors(&self) -> impl Iterator<Item = &ComponentDescriptor> + '_ {
+        self.components.component_descriptors()
+    }
+
     /// The cumulative number of events in this chunk.
     ///
     /// I.e. how many _component batches_ ("cells") were logged in total?
@@ -437,7 +495,7 @@ impl Chunk {
     pub fn num_events_cumulative(&self) -> u64 {
         // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
         self.components
-            .values()
+            .list_arrays()
             .map(|list_array| {
                 list_array.nulls().map_or_else(
                     || list_array.len() as u64,
@@ -458,8 +516,6 @@ impl Chunk {
         &self,
         timeline: &TimelineName,
     ) -> Vec<(TimeInt, u64)> {
-        re_tracing::profile_function!();
-
         if self.is_static() {
             return vec![(TimeInt::STATIC, self.num_events_cumulative())];
         }
@@ -493,8 +549,6 @@ impl Chunk {
         &self,
         time_column: &TimeColumn,
     ) -> Vec<(TimeInt, u64)> {
-        re_tracing::profile_function!();
-
         debug_assert!(time_column.is_sorted());
 
         // NOTE: This is used on some very hot paths (time panel rendering).
@@ -503,7 +557,7 @@ impl Chunk {
         // Raw, potentially duplicated counts (because timestamps aren't necessarily unique).
         let mut counts_raw = vec![0u64; self.num_rows()];
         {
-            self.components.values().for_each(|list_array| {
+            self.components.list_arrays().for_each(|list_array| {
                 if let Some(validity) = list_array.nulls() {
                     validity
                         .iter()
@@ -544,15 +598,13 @@ impl Chunk {
         &self,
         time_column: &TimeColumn,
     ) -> Vec<(TimeInt, u64)> {
-        re_tracing::profile_function!();
-
         debug_assert!(!time_column.is_sorted());
 
         // NOTE: This is used on some very hot paths (time panel rendering).
 
         let result_unordered =
             self.components
-                .values()
+                .list_arrays()
                 .fold(HashMap::default(), |acc, list_array| {
                     if let Some(validity) = list_array.nulls() {
                         time_column.times().zip(validity.iter()).fold(
@@ -581,12 +633,9 @@ impl Chunk {
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     #[inline]
-    pub fn num_events_for_component(
-        &self,
-        component_descriptor: &ComponentDescriptor,
-    ) -> Option<u64> {
+    pub fn num_events_for_component(&self, component: ComponentIdentifier) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
-        self.components.get(component_descriptor).map(|list_array| {
+        self.components.get_array(component).map(|list_array| {
             list_array.nulls().map_or_else(
                 || list_array.len() as u64,
                 |validity| validity.len() as u64 - validity.null_count() as u64,
@@ -602,7 +651,7 @@ impl Chunk {
     /// This is crucial for indexing and queries to work properly.
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
-    pub fn row_id_range_per_component(&self) -> IntMap<ComponentDescriptor, (RowId, RowId)> {
+    pub fn row_id_range_per_component(&self) -> IntMap<ComponentIdentifier, (RowId, RowId)> {
         re_tracing::profile_function!();
 
         let row_ids = self.row_ids().collect_vec();
@@ -610,43 +659,43 @@ impl Chunk {
         if self.is_sorted() {
             self.components
                 .iter()
-                .filter_map(|(component_desc, list_array)| {
+                .filter_map(|(component, column)| {
                     let mut row_id_min = None;
                     let mut row_id_max = None;
 
                     for (i, &row_id) in row_ids.iter().enumerate() {
-                        if list_array.is_valid(i) {
+                        if column.list_array.is_valid(i) {
                             row_id_min = Some(row_id);
                         }
                     }
                     for (i, &row_id) in row_ids.iter().enumerate().rev() {
-                        if list_array.is_valid(i) {
+                        if column.list_array.is_valid(i) {
                             row_id_max = Some(row_id);
                         }
                     }
 
-                    Some((component_desc.clone(), (row_id_min?, row_id_max?)))
+                    Some((*component, (row_id_min?, row_id_max?)))
                 })
                 .collect()
         } else {
             self.components
                 .iter()
-                .filter_map(|(component_desc, list_array)| {
+                .filter_map(|(component, column)| {
                     let mut row_id_min = Some(RowId::MAX);
                     let mut row_id_max = Some(RowId::ZERO);
 
                     for (i, &row_id) in row_ids.iter().enumerate() {
-                        if list_array.is_valid(i) && Some(row_id) > row_id_min {
+                        if column.list_array.is_valid(i) && Some(row_id) > row_id_min {
                             row_id_min = Some(row_id);
                         }
                     }
                     for (i, &row_id) in row_ids.iter().enumerate().rev() {
-                        if list_array.is_valid(i) && Some(row_id) < row_id_max {
+                        if column.list_array.is_valid(i) && Some(row_id) < row_id_max {
                             row_id_max = Some(row_id);
                         }
                     }
 
-                    Some((component_desc.clone(), (row_id_min?, row_id_max?)))
+                    Some((*component, (row_id_min?, row_id_max?)))
                 })
                 .collect()
         }
@@ -764,9 +813,9 @@ impl Chunk {
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         let count = components
-            .iter()
+            .list_arrays()
             .next()
-            .map_or(0, |(_, list_array)| list_array.len());
+            .map_or(0, |list_array| list_array.len());
 
         let row_ids = std::iter::from_fn({
             let tuid: re_tuid::Tuid = *id;
@@ -817,7 +866,7 @@ impl Chunk {
         }
     }
 
-    /// Unconditionally inserts an [`ArrowListArray`] as a component column.
+    /// Unconditionally inserts a [`SerializedComponentColumn`].
     ///
     /// Removes and replaces the column if it already exists.
     ///
@@ -825,10 +874,9 @@ impl Chunk {
     #[inline]
     pub fn add_component(
         &mut self,
-        component_desc: ComponentDescriptor,
-        list_array: ArrowListArray,
+        component_column: SerializedComponentColumn,
     ) -> ChunkResult<()> {
-        self.components.insert(component_desc, list_array);
+        self.components.insert(component_column);
         self.sanity_check()
     }
 
@@ -973,15 +1021,6 @@ impl TimeColumn {
         )
     }
 
-    /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    #[deprecated = "Use `TimeColumn::new_duration_secs` or `new_timestamp_secs_since_epoch` instead"]
-    pub fn new_seconds(
-        name: impl Into<re_log_types::TimelineName>,
-        seconds: impl IntoIterator<Item = impl Into<f64>>,
-    ) -> Self {
-        Self::new_duration_secs(name, seconds)
-    }
-
     /// Creates a new [`TimeColumn`] measuring duration in nanoseconds.
     pub fn new_duration_nanos(
         name: impl Into<re_log_types::TimelineName>,
@@ -1040,21 +1079,10 @@ impl TimeColumn {
         )
     }
 
-    /// Creates a new [`TimeColumn`] of nanoseconds type.
-    #[deprecated = "Use `TimeColumn::new_duration_nanos` or `new_timestamp_nanos_since_epoch` instead"]
-    pub fn new_nanos(
-        name: impl Into<re_log_types::TimelineName>,
-        nanos: impl IntoIterator<Item = impl Into<i64>>,
-    ) -> Self {
-        Self::new_duration_nanos(name, nanos)
-    }
-
     /// Parse the given [`ArrowArray`] as a time column.
     ///
     /// Results in an error if the array is of the wrong datatype, or if it contains nulls.
     pub fn read_array(array: &dyn ArrowArray) -> Result<ArrowScalarBuffer<i64>, TimeColumnError> {
-        #![allow(clippy::manual_map)]
-
         if array.null_count() > 0 {
             Err(TimeColumnError::ContainsNulls)
         } else {
@@ -1068,8 +1096,6 @@ impl TimeColumn {
     pub fn read_nullable_array(
         array: &dyn ArrowArray,
     ) -> Result<(ArrowScalarBuffer<i64>, Option<ArrowNullBuffer>), TimeColumnError> {
-        #![allow(clippy::manual_map)]
-
         // Sequence timelines are i64, but time columns are nanoseconds (also as i64).
         if let Some(times) = array.downcast_array_ref::<arrow::array::Int64Array>() {
             Ok((times.values().clone(), times.nulls().cloned()))
@@ -1169,13 +1195,13 @@ impl Chunk {
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::row_ids`]: it will only yield `RowId`s for rows at which
-    /// there is data for the specified `component_descriptor`.
+    /// there is data for the specified `component`.
     #[inline]
     pub fn component_row_ids(
         &self,
-        component_descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> impl Iterator<Item = RowId> + '_ + use<'_> {
-        let Some(list_array) = self.components.get(component_descriptor) else {
+        let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -1205,7 +1231,7 @@ impl Chunk {
 
         let row_ids = self.row_ids_slice();
 
-        #[allow(clippy::unwrap_used)] // checked above
+        #[expect(clippy::unwrap_used)] // checked above
         Some(if self.is_sorted() {
             (
                 row_ids.first().copied().unwrap(),
@@ -1230,8 +1256,8 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn component_descriptors(&self) -> impl Iterator<Item = ComponentDescriptor> + '_ {
-        self.components.keys().cloned()
+    pub fn components_identifiers(&self) -> impl Iterator<Item = ComponentIdentifier> + '_ {
+        self.components.keys().copied()
     }
 
     #[inline]
@@ -1247,7 +1273,7 @@ impl std::fmt::Display for Chunk {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        re_format_arrow::format_record_batch_with_width(&batch, f.width()).fmt(f)
+        re_arrow_util::format_record_batch_with_width(&batch, f.width(), f.sign_minus()).fmt(f)
     }
 }
 
@@ -1321,12 +1347,12 @@ impl TimeColumn {
     pub fn time_range_per_component(
         &self,
         components: &ChunkComponents,
-    ) -> IntMap<ComponentDescriptor, AbsoluteTimeRange> {
+    ) -> IntMap<ComponentIdentifier, AbsoluteTimeRange> {
         let times = self.times_raw();
         components
             .iter()
-            .filter_map(|(component_desc, list_array)| {
-                if let Some(validity) = list_array.nulls() {
+            .filter_map(|(component, column)| {
+                if let Some(validity) = column.list_array.nulls() {
                     // Potentially sparse
 
                     if validity.is_empty() {
@@ -1335,33 +1361,41 @@ impl TimeColumn {
 
                     let is_dense = validity.null_count() == 0;
                     if is_dense {
-                        return Some((component_desc.clone(), self.time_range));
+                        return Some((*component, self.time_range));
                     }
 
-                    let mut time_min = TimeInt::MAX;
-                    for (i, time) in times.iter().copied().enumerate() {
-                        if validity.is_valid(i) {
-                            time_min = TimeInt::new_temporal(time);
-                            break;
+                    let time_min = {
+                        let mut valid_times = times
+                            .iter()
+                            .enumerate()
+                            .filter(|(i, _time)| validity.is_valid(*i));
+                        if times.is_sorted() {
+                            valid_times.next()
+                        } else {
+                            valid_times.min_by_key(|(_i, time)| *time)
                         }
-                    }
+                        .map_or(TimeInt::MAX, |(_i, time)| TimeInt::new_temporal(*time))
+                    };
 
-                    let mut time_max = TimeInt::MIN;
-                    for (i, time) in times.iter().copied().enumerate().rev() {
-                        if validity.is_valid(i) {
-                            time_max = TimeInt::new_temporal(time);
-                            break;
+                    let time_max = {
+                        let mut valid_times_inv = times
+                            .iter()
+                            .enumerate()
+                            .rev()
+                            .filter(|(i, _time)| validity.is_valid(*i));
+                        if times.is_sorted() {
+                            valid_times_inv.next()
+                        } else {
+                            valid_times_inv.max_by_key(|(_i, time)| *time)
                         }
-                    }
+                        .map_or(TimeInt::MIN, |(_i, time)| TimeInt::new_temporal(*time))
+                    };
 
-                    Some((
-                        component_desc.clone(),
-                        AbsoluteTimeRange::new(time_min, time_max),
-                    ))
+                    Some((*component, AbsoluteTimeRange::new(time_min, time_max)))
                 } else {
                     // Dense
 
-                    Some((component_desc.clone(), self.time_range))
+                    Some((*component, self.time_range))
                 }
             })
             .collect()
@@ -1408,7 +1442,7 @@ impl re_byte_size::SizeBytes for TimeColumn {
         } = self;
 
         timeline.heap_size_bytes()
-            + times.heap_size_bytes() // cheap
+            + times.heap_size_bytes()
             + is_sorted.heap_size_bytes()
             + time_range.heap_size_bytes()
     }
@@ -1434,7 +1468,6 @@ impl Chunk {
             components,
         } = self;
 
-        #[allow(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {
             let measured = self.heap_size_bytes();
             let advertised = heap_size_bytes.load(Ordering::Relaxed);
@@ -1454,14 +1487,14 @@ impl Chunk {
             if *row_ids.data_type() != RowId::arrow_datatype() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
-                        "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
+                        "RowId data has the wrong datatype: expected {} but got {} instead",
                         RowId::arrow_datatype(),
-                        *row_ids.data_type(),
+                        row_ids.data_type(),
                     ),
                 });
             }
 
-            #[allow(clippy::collapsible_if)] // readability
+            #[expect(clippy::collapsible_if)] // readability
             if cfg!(debug_assertions) {
                 if *is_sorted != self.is_sorted_uncached() {
                     return Err(ChunkError::Malformed {
@@ -1492,10 +1525,20 @@ impl Chunk {
 
         // Components
 
-        for (component_desc, list_array) in components.iter() {
-            if let Some(c) = component_desc.component_type {
-                c.sanity_check();
+        for (component, column) in components.iter() {
+            let SerializedComponentColumn {
+                list_array,
+                descriptor,
+            } = column;
+
+            if descriptor.component != *component {
+                return Err(ChunkError::Malformed {
+                    reason: format!(
+                        "Component key & descriptor mismatch. Descriptor: {descriptor:?}. Key: {component:?}",
+                    ),
+                });
             }
+
             // Ensure that each cell is a list (we don't support mono-components yet).
             if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
                 // We don't check `field.is_nullable()` here because we support both.
@@ -1513,7 +1556,7 @@ impl Chunk {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
-                             Found {} row IDs but {} rows for component batch {component_desc}",
+                             Found {} row IDs but {} rows for component batch {component}",
                         row_ids.len(),
                         list_array.len(),
                     ),
@@ -1527,7 +1570,7 @@ impl Chunk {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "All component batches in a chunk must contain at least one non-null entry.\
-                             Found a completely empty column for {component_desc}",
+                             Found a completely empty column for {component}",
                     ),
                 });
             }
@@ -1552,19 +1595,17 @@ impl TimeColumn {
 
         let times = times.as_ref();
 
-        #[allow(clippy::collapsible_if)] // readability
-        if cfg!(debug_assertions) {
-            if *is_sorted != times.windows(2).all(|times| times[0] <= times[1]) {
-                return Err(ChunkError::Malformed {
-                    reason: format!(
-                        "Time column is marked as {}sorted but isn't: {times:?}",
-                        if *is_sorted { "" } else { "un" },
-                    ),
-                });
-            }
+        if cfg!(debug_assertions)
+            && *is_sorted != times.windows(2).all(|times| times[0] <= times[1])
+        {
+            return Err(ChunkError::Malformed {
+                reason: format!(
+                    "Time column is marked as {}sorted but isn't: {times:?}",
+                    if *is_sorted { "" } else { "un" },
+                ),
+            });
         }
 
-        #[allow(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {
             let is_tight_lower_bound = times.iter().any(|&time| time == time_range.min().as_i64());
             let is_tight_upper_bound = times.iter().any(|&time| time == time_range.max().as_i64());

@@ -3,29 +3,24 @@
 use std::borrow::Cow;
 
 use anyhow::Context as _;
-use egui::{Rangef, util::hash};
+use egui::Rangef;
+use egui::util::hash;
 use half::f16;
+use re_renderer::device_caps::DeviceCaps;
+use re_renderer::renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha};
+use re_renderer::resource_managers::{
+    ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+};
+use re_renderer::{RenderContext, pad_rgb_to_rgba};
+use re_sdk_types::components::ClassId;
+use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
+use re_sdk_types::image::ImageKind;
 use wgpu::TextureFormat;
 
-use re_renderer::{
-    RenderContext,
-    device_caps::DeviceCaps,
-    pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha},
-    resource_managers::{
-        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
-    },
-};
-use re_types::components::ClassId;
-use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
-use re_types::image::ImageKind;
-
-use crate::{
-    Annotations, ImageInfo, ImageStats, gpu_bridge::colormap::colormap_to_re_renderer,
-    image_info::ColormapWithRange,
-};
-
 use super::get_or_create_texture;
+use crate::gpu_bridge::colormap::colormap_to_re_renderer;
+use crate::image_info::ColormapWithRange;
+use crate::{Annotations, ImageInfo, ImageStats};
 
 // ----------------------------------------------------------------------------
 
@@ -170,27 +165,9 @@ fn color_image_to_gpu(
 /// Get a valid, finite range for the gpu to use.
 // TODO(#4624): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
 pub fn image_data_range_heuristic(image_stats: &ImageStats, image_format: &ImageFormat) -> Rangef {
-    let (min, max) = image_stats.finite_range;
+    let (min, max) = super::data_range_heuristic(image_stats.finite_range, image_format.is_float());
 
-    let min = min as f32;
-    let max = max as f32;
-
-    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
-    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    if image_format.is_float() && 0.0 <= min && max <= 1.0 {
-        // Float values that are all between 0 and 1, assume that this is the range.
-        Rangef::new(0.0, 1.0)
-    } else if 0.0 <= min && max <= 255.0 {
-        // If all values are between 0 and 255, assume this is the range.
-        // (This is very common, independent of the data type)
-        Rangef::new(0.0, 255.0)
-    } else if min == max {
-        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        Rangef::new(min - 1.0, max + 1.0)
-    } else {
-        // Use range as is if nothing matches.
-        Rangef::new(min, max)
-    }
+    Rangef::new(min as f32, max as f32)
 }
 
 /// Return whether an image should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
@@ -201,7 +178,6 @@ fn image_decode_srgb_gamma_heuristic(image_stats: &ImageStats, image_format: Ima
     } else {
         let (min, max) = image_stats.finite_range;
 
-        #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
             true
@@ -256,8 +232,8 @@ pub fn texture_creation_desc_from_color_image<'a>(
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(&image.buffer);
         let coefficients = match pixel_format.yuv_matrix_coefficients() {
-            re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
-            re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
+            re_sdk_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+            re_sdk_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
         };
 
         let range = if pixel_format.is_limited_yuv_range() {

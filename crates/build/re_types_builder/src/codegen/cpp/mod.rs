@@ -3,7 +3,8 @@ mod forward_decl;
 mod includes;
 mod method;
 
-use std::{collections::HashSet, str::FromStr as _};
+use std::collections::HashSet;
+use std::str::FromStr as _;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
@@ -11,20 +12,20 @@ use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
-use crate::{
-    ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD, Docs, ElementType,
-    GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
-    codegen::{autogen_warning, common::collect_snippets_for_api_docs},
-    format_path,
-    objects::{EnumIntegerType, ObjectClass},
-};
-
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
 use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
-
-use super::{Target, common::ExampleInfo};
+use super::Target;
+use super::common::ExampleInfo;
+use crate::codegen::autogen_warning;
+use crate::codegen::common::collect_snippets_for_api_docs;
+use crate::objects::{EnumIntegerType, ObjectClass};
+use crate::{
+    ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD, Docs, ElementType,
+    GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
+    format_path,
+};
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
 
@@ -399,7 +400,7 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    #[allow(clippy::unnecessary_wraps)] // TODO(emilk): implement proper error handling instead of panicking
+    #[expect(clippy::unnecessary_wraps)] // TODO(emilk): implement proper error handling instead of panicking
     pub fn new(
         reporter: &Reporter,
         objects: &Objects,
@@ -1052,7 +1053,6 @@ impl QuotedObject {
         hpp_includes.insert_system("cstring"); // std::memcpy
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
-        #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
         let enum_data_declarations = obj
@@ -2442,7 +2442,6 @@ fn quote_variable_with_docstring(
 }
 
 fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
-    #[allow(clippy::match_same_arms)]
     let typ = match &obj_field.typ {
         Type::Unit => panic!("Can't express the unit type directly"),
 
@@ -2508,7 +2507,6 @@ fn quote_variable(
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
-    #[allow(clippy::match_same_arms)]
     match typ {
         ElementType::UInt8 => quote! { uint8_t },
         ElementType::UInt16 => quote! { uint16_t },

@@ -1,4 +1,6 @@
-use re_viewer_context::{Item, PublishedViewInfo, ScreenshotTarget, ViewId, ViewRectPublisher};
+use re_viewer_context::{
+    Item, ScreenshotTarget, SystemCommand, SystemCommandSender as _, ViewId, ViewRectPublisher,
+};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -49,37 +51,15 @@ impl ContextMenuAction for ScreenshotAction {
     }
 
     fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {
-        let Some(view_info) = ctx.egui_context().memory_mut(|mem| {
-            mem.caches
-                .cache::<ViewRectPublisher>()
-                .get(view_id)
-                .cloned()
-        }) else {
-            return;
-        };
-
-        let PublishedViewInfo { name, rect } = view_info;
-
-        let rect = rect.shrink(2.5); // Hacky: Shrink so we don't accidentally include the border of the view.
-
-        if !rect.is_positive() {
-            re_log::info!("View too small for a screenshot");
-            return;
-        }
-
         let target = match self {
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,
-            Self::SaveScreenshot => ScreenshotTarget::SaveToDisk,
+            Self::SaveScreenshot => ScreenshotTarget::SaveToPathFromFileDialog,
         };
-
-        ctx.egui_context()
-            .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
-                re_viewer_context::ScreenshotInfo {
-                    ui_rect: Some(rect),
-                    pixels_per_point: ctx.egui_context().pixels_per_point(),
-                    name,
-                    target,
-                },
-            )));
+        ctx.viewer_context
+            .command_sender()
+            .send_system(SystemCommand::SaveScreenshot {
+                target,
+                view_id: Some(*view_id),
+            });
     }
 }

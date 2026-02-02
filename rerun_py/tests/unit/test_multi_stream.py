@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import platform
 import tempfile
+from typing import TYPE_CHECKING
 
 import rerun as rr
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_init_twice() -> None:
@@ -25,24 +29,37 @@ def test_init_twice() -> None:
     assert recording_id == rr.get_recording_id()
 
 
-def test_isolated_streams() -> None:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        rec1_path = f"{tmpdir}/rec1.rrd"
-        rec2_path = f"{tmpdir}/rec2.rrd"
+def test_recording_stream_twice() -> None:
+    """For `RecordingStream`, the default should be to have new, unique recording ids."""
 
-        rec1 = rr.RecordingStream("rerun_example_multi_stream")
-        rec1.log("/data1", rr.TextLog("Data1"))
-        rec1.save(rec1_path)
+    with rr.RecordingStream("rerun_example_bug") as rec:
+        id1 = rec.get_recording_id()
 
-        rec2 = rr.RecordingStream("rerun_example_multi_stream")
-        rec2.log("/data2", rr.TextLog("Data2"))
-        rec2.save(rec2_path)
+    with rr.RecordingStream("rerun_example_bug") as rec:
+        id2 = rec.get_recording_id()
 
-        rec1_data = rr.dataframe.load_recording(rec1_path)
-        rec2_data = rr.dataframe.load_recording(rec2_path)
+    assert id1 != id2
 
-        assert rec1_data.view(index="log_tick", contents="/data1").select().read_all().num_rows == 1
-        assert rec2_data.view(index="log_tick", contents="/data2").select().read_all().num_rows == 1
+
+def test_isolated_streams(tmp_path: Path) -> None:
+    rec1_path = f"{tmp_path}/rec1.rrd"
+    rec2_path = f"{tmp_path}/rec2.rrd"
+
+    rec1 = rr.RecordingStream("rerun_example_multi_stream", recording_id="rec1")
+    rec1.log("/data1", rr.TextLog("Data1"))
+    rec1.save(rec1_path)
+
+    rec2 = rr.RecordingStream("rerun_example_multi_stream", recording_id="rec2")
+    rec2.log("/data2", rr.TextLog("Data2"))
+    rec2.save(rec2_path)
+
+    server = rr.server.Server(datasets={"test_dataset": tmp_path})
+    ds = server.client().get_dataset("test_dataset")
+    assert ds.filter_segments("rec1").filter_contents("/data1").reader(index="log_tick").count() == 1
+    assert ds.filter_segments("rec2").filter_contents("/data2").reader(index="log_tick").count() == 1
+    assert (
+        ds.filter_segments(["rec1", "rec2"]).filter_contents(["/data1", "/data2"]).reader(index="log_tick").count() == 2
+    )
 
 
 def test_cleanup_reinit() -> None:

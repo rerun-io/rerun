@@ -11,15 +11,15 @@ use re_viewer_context::{
     ViewSystemExecutionError, ViewerContext,
 };
 
-use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
-    visualizer_system::EmptySystem,
-};
+use crate::dataframe_ui::dataframe_ui;
+use crate::expanded_rows::ExpandedRowsCache;
+use crate::view_query;
+use crate::visualizer_system::EmptySystem;
 
 #[derive(Default)]
 struct DataframeViewState {
     /// Cache for the expanded rows.
-    expended_rows_cache: ExpandedRowsCache,
+    expanded_rows_cache: ExpandedRowsCache,
 
     /// List of view columns for the current query, cached here for the column visibility UI.
     view_columns: Option<Vec<ColumnDescriptor>>,
@@ -169,7 +169,7 @@ Configure in the selection panel:
             ctx,
             ui,
             &query_handle,
-            &mut state.expended_rows_cache,
+            &mut state.expanded_rows_cache,
             &query.view_id,
         );
 
@@ -206,11 +206,9 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
         .clicked()
     {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(Item::View(view_id).into()));
+            .send_system(SystemCommand::set_selection(Item::View(view_id)));
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(DataframeView => []);
 
 #[test]
 fn test_help_view() {

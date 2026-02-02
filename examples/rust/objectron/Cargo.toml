@@ -1,25 +1,22 @@
 [package]
 name = "objectron"
-version = "0.26.0-alpha.1+dev"
+version = "0.30.0-alpha.1+dev"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "MIT OR Apache-2.0"
 publish = false
 
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", features = [
-  "web_viewer",
-  "clap",
-] }
+rerun = { path = "../../../crates/top/rerun", features = ["web_viewer", "clap"] }
 
-anyhow = "1.0"
-clap = { version = "4.0", features = ["derive"] }
-glam = "0.30"
-prost = "0.13"
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+glam.workspace = true
+prost.workspace = true
 
 
 [build-dependencies]
 re_build_tools = { path = "../../../crates/build/re_build_tools" }
-prost-build = "0.13"
-protoc-prebuilt = "0.3"
+prost-build.workspace = true
+protoc-prebuilt.workspace = true

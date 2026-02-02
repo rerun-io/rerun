@@ -1,8 +1,8 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, EntityPath, TimelineName};
-use re_types_core::ComponentDescriptor;
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes};
+use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimelineName};
 
 use crate::ChunkStore;
 
@@ -66,11 +66,14 @@ impl std::ops::Sub for ChunkStoreStats {
 }
 
 impl ChunkStore {
+    /// Returns the *physical* stats for this store.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     #[inline]
     pub fn stats(&self) -> ChunkStoreStats {
         ChunkStoreStats {
             static_chunks: self.static_chunks_stats,
-            temporal_chunks: self.temporal_chunks_stats,
+            temporal_chunks: self.temporal_physical_chunks_stats,
         }
     }
 }
@@ -108,6 +111,18 @@ pub struct ChunkStoreChunkStats {
 
     /// How many _component batches_ ("cells").
     pub num_events: u64,
+}
+
+impl SizeBytes for ChunkStoreChunkStats {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl std::fmt::Display for ChunkStoreChunkStats {
@@ -213,26 +228,32 @@ impl ChunkStoreChunkStats {
 
 /// ## Entity stats
 impl ChunkStore {
-    /// Stats about all chunks with static data for an entity.
+    /// *Physical* stats about all chunks with static data for an entity.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     pub fn entity_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        self.static_chunk_ids_per_entity.get(entity_path).map_or(
-            ChunkStoreChunkStats::default(),
-            |static_chunks_per_component| {
-                let chunk_ids: ahash::HashSet<re_chunk::ChunkId> =
-                    static_chunks_per_component.values().copied().collect();
+        self.static_chunk_ids_per_entity
+            .get(entity_path)
+            .map_or_else(
+                ChunkStoreChunkStats::default,
+                |static_chunks_per_component| {
+                    let chunk_ids: ahash::HashSet<re_chunk::ChunkId> =
+                        static_chunks_per_component.values().copied().collect();
 
-                chunk_ids
-                    .into_iter()
-                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id))
-                    .map(ChunkStoreChunkStats::from_chunk)
-                    .sum()
-            },
-        )
+                    chunk_ids
+                        .into_iter()
+                        .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id))
+                        .map(ChunkStoreChunkStats::from_chunk)
+                        .sum()
+                },
+            )
     }
 
-    /// Stats about all the chunks that has data for an entity on a specific timeline.
+    /// *Physical* stats about all the chunks that has data for an entity on a specific timeline.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// Does NOT include static data.
     pub fn entity_stats_on_timeline(
@@ -247,8 +268,8 @@ impl ChunkStore {
             .and_then(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.get(timeline)
             })
-            .map_or(
-                ChunkStoreChunkStats::default(),
+            .map_or_else(
+                ChunkStoreChunkStats::default,
                 |chunk_id_sets| -> ChunkStoreChunkStats {
                     chunk_id_sets
                         .per_start_time
@@ -266,32 +287,34 @@ impl ChunkStore {
 impl ChunkStore {
     /// Returns the number of static events logged for an entity for a specific component.
     ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
+    ///
     /// This ignores temporal events.
     pub fn num_static_events_for_component(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> u64 {
         re_tracing::profile_function!();
 
         self.static_chunk_ids_per_entity
             .get(entity_path)
-            .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(component_descr)
-            })
+            .and_then(|static_chunks_per_component| static_chunks_per_component.get(&component))
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-            .and_then(|chunk| chunk.num_events_for_component(component_descr))
+            .and_then(|chunk| chunk.num_events_for_component(component))
             .unwrap_or(0)
     }
 
     /// Returns the number of temporal events logged for an entity for a specific component on a given timeline.
+    ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// This ignores static events.
     pub fn num_temporal_events_for_component_on_timeline(
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> u64 {
         re_tracing::profile_function!();
 
@@ -301,7 +324,7 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(timeline)
             })
             .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(component_descr)
+                temporal_chunk_ids_per_component.get(&component)
             })
             .map_or(0, |chunk_id_sets| {
                 chunk_id_sets
@@ -309,28 +332,160 @@ impl ChunkStore {
                     .values()
                     .flat_map(|chunk_ids| chunk_ids.iter())
                     .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-                    .filter_map(|chunk| chunk.num_events_for_component(component_descr))
+                    .filter_map(|chunk| chunk.num_events_for_component(component))
                     .sum()
             })
     }
 
     /// Returns the number of temporal events logged for an entity for a specific component on all timelines.
     ///
+    /// I.e. this only accounts for chunks that are physically loaded in memory.
+    ///
     /// This ignores static events.
     pub fn num_temporal_events_for_component_on_all_timelines(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> u64 {
         self.timelines()
             .keys()
             .map(|timeline| {
-                self.num_temporal_events_for_component_on_timeline(
-                    timeline,
-                    entity_path,
-                    component_descr,
-                )
+                self.num_temporal_events_for_component_on_timeline(timeline, entity_path, component)
             })
             .sum()
+    }
+}
+
+impl SizeBytes for ChunkStore {
+    fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
+        let Self {
+            chunks_per_chunk_id,
+            static_chunk_ids_per_entity,
+            temporal_chunk_ids_per_entity,
+            temporal_chunk_ids_per_entity_per_component,
+            id,
+            config,
+            time_type_registry,
+            type_registry,
+            per_column_metadata,
+            chunk_ids_per_min_row_id,
+            chunks_lineage,
+            dangling_splits,
+            leaky_compactions,
+            temporal_physical_chunks_stats,
+            static_chunks_stats,
+            queried_chunk_id_tracker,
+            insert_id,
+            gc_id,
+            event_id: _, // no heap data
+        } = self;
+
+        // Avoid the amortizing effects of Arc::total_size_bytes:
+        let chunks_size = {
+            re_tracing::profile_scope!("chunks");
+            chunks_per_chunk_id
+                .iter()
+                .map(|(chunk_id, chunk)| {
+                    chunk_id.total_size_bytes() + <Chunk as SizeBytes>::total_size_bytes(&**chunk)
+                })
+                .sum::<u64>()
+        };
+
+        use re_tracing::profile_scope;
+
+        let include_slow_things = false; // TODO(emilk): speed up the measurement of the slow things
+
+        chunks_size
+            + {
+                profile_scope!("static_chunk_ids_per_entity");
+                static_chunk_ids_per_entity.heap_size_bytes()
+            }
+            + {
+                if include_slow_things {
+                    profile_scope!("temporal_chunk_ids_per_entity");
+                    temporal_chunk_ids_per_entity.heap_size_bytes()
+                } else {
+                    0
+                }
+            }
+            + {
+                if include_slow_things {
+                    profile_scope!("temporal_chunk_ids_per_entity_per_component");
+                    temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
+                } else {
+                    0
+                }
+            }
+            + id.heap_size_bytes()
+            + config.heap_size_bytes()
+            + {
+                profile_scope!("time_type_registry");
+                time_type_registry.heap_size_bytes()
+            }
+            + {
+                profile_scope!("type_registry");
+                type_registry.heap_size_bytes()
+            }
+            + {
+                profile_scope!("per_column_metadata");
+                per_column_metadata.heap_size_bytes()
+            }
+            + {
+                profile_scope!("chunk_ids_per_min_row_id");
+                chunk_ids_per_min_row_id.heap_size_bytes()
+            }
+            + {
+                profile_scope!("chunks_lineage");
+                chunks_lineage.heap_size_bytes()
+            }
+            + {
+                profile_scope!("dangling_splits");
+                dangling_splits.heap_size_bytes()
+            }
+            + {
+                profile_scope!("leaky_compactions");
+                leaky_compactions.heap_size_bytes()
+            }
+            + {
+                profile_scope!("temporal_physical_chunks_stats");
+                temporal_physical_chunks_stats.heap_size_bytes()
+            }
+            + {
+                profile_scope!("static_chunks_stats");
+                static_chunks_stats.heap_size_bytes()
+            }
+            + {
+                profile_scope!("queried_chunk_id_tracker");
+                queried_chunk_id_tracker.heap_size_bytes()
+            }
+            + insert_id.heap_size_bytes()
+            + gc_id.heap_size_bytes()
+    }
+}
+
+impl MemUsageTreeCapture for ChunkStore {
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
+        let mut memory_per_entity: BTreeMap<EntityPath, u64> = Default::default();
+
+        {
+            re_tracing::profile_scope!("per-entity-stats");
+            for chunk in self.chunks_per_chunk_id.values() {
+                let entity_path = chunk.entity_path();
+                let entry = memory_per_entity.entry(entity_path.clone()).or_default();
+                *entry += <Chunk as SizeBytes>::total_size_bytes(&**chunk); // avoid amortization of Arc
+            }
+        }
+
+        let mut node = MemUsageNode::new();
+
+        for (entity_path, size) in memory_per_entity {
+            node.add(entity_path.to_string(), MemUsageTree::Bytes(size));
+        }
+
+        node.with_total_size_bytes(self.total_size_bytes())
     }
 }

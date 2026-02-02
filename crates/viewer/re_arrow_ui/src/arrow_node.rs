@@ -1,5 +1,4 @@
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
-
 use re_format::format_uint;
 use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;

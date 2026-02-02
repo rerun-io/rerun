@@ -3,10 +3,8 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: Boolean(
-        NonNullable(
-            false,
-        ),
+    filter: NonNullableBoolean(
+        IsFalse,
     ),
     field: Field {
         name: "column",

@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+range: [{x_range: [0.0, 100.0], y_range: [0.0, 100.0]}]

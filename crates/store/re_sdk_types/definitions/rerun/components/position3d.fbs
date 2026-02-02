@@ -1,0 +1,13 @@
+namespace rerun.components;
+
+// ---
+
+/// A position in 3D space.
+struct Position3D (
+  "attr.python.aliases": "npt.NDArray[np.float32] | Sequence[float] | Tuple[float, float, float]",
+  "attr.python.array_aliases": "npt.NDArray[np.float32] | Sequence[float]",
+  "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  xyz: rerun.datatypes.Vec3D (order: 100);
+}

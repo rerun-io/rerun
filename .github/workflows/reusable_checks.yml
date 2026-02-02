@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -33,7 +33,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -42,6 +42,7 @@ permissions:
 jobs:
   no-codegen-changes:
     name: Check if running codegen would produce any changes
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
@@ -57,9 +58,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Codegen check
         run: pixi run codegen --force --check --warnings-as-errors
@@ -72,21 +73,21 @@ jobs:
   # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
   # at least for the time being.
   # - name: Check for zombie TODOs
-  #   shell: bash
   #   run: |
   #     pixi run ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 
   rerun-lints:
     name: Rerun lints
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -96,6 +97,9 @@ jobs:
       - name: Rerun lints
         run: pixi run lint-rerun
 
+      - name: Check dependencies
+        run: pixi run scripts/check_utils_dependencies.py
+
   toml-format-check:
     name: Toml format check
     runs-on: ubuntu-latest
@@ -104,12 +108,27 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Toml format check
         run: pixi run toml-fmt-check
+
+  uv-lock-check:
+    name: Check uv.lock is up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check uv.lock
+        run: pixi run uv-lock-check
 
   check-too-large-files:
     name: Check for too large files
@@ -119,9 +138,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Check for too large files
         run: pixi run check-large-files
@@ -134,27 +153,30 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Check for wrong publish flags
         run: pixi run check-publish-flags
 
   check-example-thumbnails:
-    name: Check Python example thumbnails
+    name: Check example thumbnails
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
-      - name: Check Python example thumbnails
-        run: pixi run ./scripts/ci/thumbnails.py check
+      - name: Check example thumbnails
+        # Use uv run --frozen python instead of uvpy.
+        # It's nice to get valid checks here even if the uv lockfile is out-of-date
+        # uv-lock-check will independently validate the lockfile status.
+        run: pixi run uv run --frozen python ./scripts/ci/thumbnails.py check
 
   check-example-manifest-coverage:
     name: Check example manifest coverage
@@ -164,9 +186,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -187,9 +209,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -216,7 +238,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Check spelling of entire workspace
-        uses: crate-ci/typos@v1.18.0
+        uses: crate-ci/typos@v1.37.3
 
   # ---------------------------------------------------------------------------
 
@@ -228,9 +250,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: prettier --check
         run: pixi run misc-fmt-check
@@ -262,29 +284,32 @@ jobs:
           key: cache-lychee-${{ github.sha }}
           restore-keys: cache-lychee-
 
+      - name: Set up pixi for PR Link Checker
+        if: ${{ inputs.CHANNEL == 'pr' }}
+        uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
       # For PRs: Check only links in added lines
       - name: PR Link Checker (added lines only)
         if: ${{ inputs.CHANNEL == 'pr' }}
         run: |
-          # Install lychee
-          curl -sSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.20.1/lychee-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          sudo mv lychee /usr/local/bin/
-
           # Fetch the base branch
           git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
 
           # Run our custom PR link checker
-          python3 scripts/ci/pr_link_checker.py --base-ref origin/${{ github.base_ref }}
+          pixi run link-check-pr origin/${{ github.base_ref }}
 
       # For nightly: Check all links in the entire codebase
       - name: Full Link Checker
         if: ${{ inputs.CHANNEL == 'nightly' }}
         id: lychee
-        uses: lycheeverse/lychee-action@v2.6.1
+        uses: lycheeverse/lychee-action@v2.7.0
         with:
           fail: true
-          lycheeVersion: "v0.20.1"
+          lycheeVersion: "v0.21.0"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
+          # If updating version or args update the pixi.toml to match.
           args: |
-            --verbose --cache --max-cache-age 1d . --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+            --verbose --cache --max-cache-age 1d . --root-dir $(pwd) "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"

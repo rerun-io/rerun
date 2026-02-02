@@ -10,7 +10,7 @@ An entity can only ever contain a single array of any given component type.
 If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../../concepts/entity-component.md).
+on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).
 
 
 * [`AggregationPolicy`](components/aggregation_policy.md): Policy for aggregation of multiple scalar plot values.
@@ -56,11 +56,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
 * [`Plane3D`](components/plane3d.md): An infinite 3D plane represented by a unit normal vector and a distance.
-* [`PoseRotationAxisAngle`](components/pose_rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
-* [`PoseRotationQuat`](components/pose_rotation_quat.md): A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.
-* [`PoseScale3D`](components/pose_scale3d.md): A 3D scale factor that doesn't propagate in the transform hierarchy.
-* [`PoseTransformMat3x3`](components/pose_transform_mat3x3.md): A 3x3 transformation matrix Matrix that doesn't propagate in the transform hierarchy.
-* [`PoseTranslation3D`](components/pose_translation3d.md): A translation vector in 3D space that doesn't propagate in the transform hierarchy.
 * [`Position2D`](components/position2d.md): A position in 2D space.
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
@@ -82,6 +77,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
 * [`Timestamp`](components/timestamp.md): When the recording started.
+* [`TransformFrameId`](components/transform_frame_id.md): A string identifier for a transform frame.
 * [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.

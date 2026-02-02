@@ -1,28 +1,26 @@
 use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
-use re_types::{
-    Archetype as _,
-    archetypes::Pinhole,
-    components::{self},
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Pinhole;
+use re_sdk_types::components;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewOutlineMasks,
-    ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
-use crate::{
-    contexts::TransformTreeContext, resolution_of_image_at, space_camera_3d::SpaceCamera3D,
-    ui::SpatialViewState, visualizers::process_radius,
-};
+use super::SpatialViewVisualizerData;
+use crate::contexts::TransformTreeContext;
+use crate::pinhole_wrapper::PinholeWrapper;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::process_radius;
+use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 
 pub struct CamerasVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub space_cameras: Vec<SpaceCamera3D>,
+    pub pinhole_cameras: Vec<PinholeWrapper>,
 }
 
 impl Default for CamerasVisualizer {
@@ -31,7 +29,7 @@ impl Default for CamerasVisualizer {
             // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
             // (extrinsics, represented by [`transform3d_arrow::Transform3DArrowsPart`] are 3D though)
             data: (SpatialViewVisualizerData::new(None)),
-            space_cameras: Vec::new(),
+            pinhole_cameras: Vec::new(),
         }
     }
 }
@@ -43,100 +41,111 @@ impl IdentifiedViewSystem for CamerasVisualizer {
 }
 
 struct CameraComponentDataWithFallbacks {
-    pinhole: crate::Pinhole,
+    child_frame: components::TransformFrameId,
+
+    color: egui::Color32,
+    line_width: re_renderer::Size,
     camera_xyz: components::ViewCoordinates,
     image_plane_distance: f32,
 }
 
 impl CamerasVisualizer {
-    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        tokens: &re_ui::DesignTokens,
+        ctx: &re_viewer_context::QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
-        data_result: &DataResult,
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
-    ) {
-        // Check for valid resolution.
-        let w = pinhole_properties.pinhole.resolution.x;
-        let h = pinhole_properties.pinhole.resolution.y;
+        view_kind: SpatialViewKind,
+    ) -> Result<(), String> {
+        let instance = Instance::from(0);
+        let ent_path = ctx.target_entity_path;
+
+        // We're currently NOT using `CoordinateFrame` component for this visualization but instead `Pinhole::child_frame`.
+        // Otherwise, you'd need to log a redundant `CoordinateFrame` to see the camera frustum, which can be unintuitive.
+        //
+        // Note that `child_frame` defaults to the entity's implicit frame, so if no frames are set, it doesn't make a difference.
+        //
+        // In theory, `CoordinateFrame::frame_id` and `Pinhole::child_frame` could disagree, making it unclear what to show.
+        // Sticking with the semantics of `CoordinateFrame::frame_id`, we should give it precedence,
+        // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases, which is arguably
+        // even more confusing. So instead, we rely _solely_ on `Pinhole::child_frame` for now.
+        let pinhole_frame_id = re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
+
+        // Query the pinhole from the transform tree since it uses atomic-latest-at.
+        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
+        else {
+            // This implies that the transform context didn't see the pinhole transform.
+            // This can happen with various frame id mismatches. TODO(andreas): When exactly does this happen? Can we add a unit test and improve the message?
+            return Err(format!(
+                "The pinhole's child frame {:?} does not form the root of a 2D subspace. Ensure you're transform tree is valid.",
+                transforms.format_frame(pinhole_frame_id)
+            ));
+        };
+        let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
+
+        // Check for a valid resolution.
+        let resolution = resolved_pinhole
+            .resolution
+            .unwrap_or_else(|| typed_fallback_for(ctx, Pinhole::descriptor_resolution().component));
+        let w = resolution.x();
+        let h = resolution.y();
         let z = pinhole_properties.image_plane_distance;
-        let color = pinhole_properties
-            .pinhole
-            .color
-            .unwrap_or(tokens.frustum_color);
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
-            return;
+            return Err("Invalid pinhole resolution.".to_owned());
         }
 
-        let instance = Instance::from(0);
-        let ent_path = &data_result.entity_path;
+        let pinhole = crate::Pinhole {
+            image_from_camera: (*resolved_pinhole.image_from_camera).into(),
+            resolution: glam::vec2(w, h),
+        };
 
-        // Assuming the fallback provider did the right thing, this value should always be set.
-        // If the camera is our reference, there is nothing for us to display.
-        if transforms.reference_path() == ent_path {
-            self.space_cameras.push(SpaceCamera3D {
+        // If the camera is the target frame of a 2D view, there is nothing for us to display.
+        if transforms.target_frame() == pinhole_frame_id && view_kind == SpatialViewKind::TwoD {
+            self.pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
-                pinhole: Some(pinhole_properties.pinhole),
+                pinhole,
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
-            return;
+            return Err("Can't visualize pinholes at the view's origin".to_owned());
         }
-
-        // The camera transform does not include the pinhole transform.
-        let Some(transform_info) = transforms.transform_info_for_entity(ent_path.hash()) else {
-            return;
-        };
-        let Some(twod_in_threed_info) = &transform_info.twod_in_threed_info else {
-            // This implies that the transform context didn't see the pinhole transform.
-            // Should be impossible!
-            re_log::error_once!(
-                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!"
-            );
-            return;
-        };
-        if &twod_in_threed_info.parent_pinhole != ent_path {
-            // This implies that the camera is under another camera.
-            // This should be reported already as an error at this point.
-            return;
-        }
-        let world_from_camera = twod_in_threed_info.reference_from_pinhole_entity;
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
+        let Some(world_from_camera) = transforms.target_from_pinhole_root(pinhole_frame_id) else {
+            return Err("Pinhole is not connected to the view's target frame.".to_owned());
+        };
+        let world_from_camera = world_from_camera.as_affine3a();
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
-            return;
+            return Err("Can only visualize pinhole under isometric transforms.".to_owned());
         };
 
         debug_assert!(world_from_camera_iso.is_finite());
 
-        self.space_cameras.push(SpaceCamera3D {
+        self.pinhole_cameras.push(PinholeWrapper {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates: pinhole_properties.camera_xyz,
             world_from_camera: world_from_camera_iso,
-            pinhole: Some(pinhole_properties.pinhole),
+            pinhole,
             picture_plane_distance: pinhole_properties.image_plane_distance,
         });
 
         // Setup a RDF frustum (for non-RDF we apply a transformation matrix later).
         let corners = [
-            pinhole_properties.pinhole.unproject(vec3(0.0, 0.0, z)),
-            pinhole_properties.pinhole.unproject(vec3(0.0, h, z)),
-            pinhole_properties.pinhole.unproject(vec3(w, h, z)),
-            pinhole_properties.pinhole.unproject(vec3(w, 0.0, z)),
+            pinhole.unproject(vec3(0.0, 0.0, z)),
+            pinhole.unproject(vec3(0.0, h, z)),
+            pinhole.unproject(vec3(w, h, z)),
+            pinhole.unproject(vec3(w, 0.0, z)),
         ];
 
         let up_triangle = [
-            pinhole_properties.pinhole.unproject(vec3(0.4 * w, 0.0, z)),
-            pinhole_properties
-                .pinhole
-                .unproject(vec3(0.5 * w, -0.1 * w, z)),
-            pinhole_properties.pinhole.unproject(vec3(0.6 * w, 0.0, z)),
+            pinhole.unproject(vec3(0.4 * w, 0.0, z)),
+            pinhole.unproject(vec3(0.5 * w, -0.1 * w, z)),
+            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
         ];
 
         let strips = vec![
@@ -168,11 +177,7 @@ impl CamerasVisualizer {
             ),
         ];
 
-        let radius = pinhole_properties
-            .pinhole
-            .line_width
-            .unwrap_or(re_renderer::Size::new_ui_points(1.0));
-
+        let radius = pinhole_properties.line_width;
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id =
@@ -193,7 +198,7 @@ impl CamerasVisualizer {
             let lines = batch
                 .add_strip(strip.into_iter())
                 .radius(radius)
-                .color(color)
+                .color(pinhole_properties.color)
                 .flags(flags)
                 .picking_instance_id(instance_layer_id.instance);
 
@@ -202,27 +207,20 @@ impl CamerasVisualizer {
             }
         }
 
-        // world_from_camera is the transform to the pinhole origin
-        self.data.add_bounding_box_from_points(
-            ent_path.hash(),
-            std::iter::once(glam::Vec3::ZERO),
-            world_from_camera,
-        );
+        // world_from_camera is the transform to the pinhole origin.
+        self.data
+            .add_bounding_box(ent_path.hash(), macaw::BoundingBox::ZERO, world_from_camera);
+
+        Ok(())
     }
 }
 
 impl VisualizerSystem for CamerasVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Pinhole>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Pinhole>()
     }
 
     fn execute(
@@ -230,8 +228,11 @@ impl VisualizerSystem for CamerasVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let transforms = context_systems.get::<TransformTreeContext>()?;
+        let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -240,54 +241,54 @@ impl VisualizerSystem for CamerasVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let latest_at = query.latest_at_query();
-            let query_ctx = ctx.query_context(data_result, &latest_at);
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            let query_shadowed_components = false;
             let query_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &time_query,
                 data_result,
-                Pinhole::all_components().iter(),
-                query_shadowed_components,
+                Pinhole::all_component_identifiers(),
+                Some(instruction),
             );
 
-            let Some(pinhole_projection) = query_results
+            // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the
+            // pinhole information from the transform tree instead, which already has this and other properties queried.
+            if query_results
                 .get_required_mono::<components::PinholeProjection>(
-                    &Pinhole::descriptor_image_from_camera(),
+                    Pinhole::descriptor_image_from_camera().component,
                 )
-            else {
+                .is_none()
+            {
                 continue;
-            };
+            }
 
-            let resolution = query_results
-                .get_mono::<components::Resolution>(&Pinhole::descriptor_resolution())
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
-            let camera_xyz = query_results
-                .get_mono::<components::ViewCoordinates>(&Pinhole::descriptor_camera_xyz())
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+            let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
+                Pinhole::descriptor_camera_xyz().component,
+            );
+            let child_frame = query_results.get_mono_with_fallback::<components::TransformFrameId>(
+                Pinhole::descriptor_child_frame().component,
+            );
             let image_plane_distance = query_results
-                .get_mono::<components::ImagePlaneDistance>(
-                    &Pinhole::descriptor_image_plane_distance(),
-                )
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+                .get_mono_with_fallback::<components::ImagePlaneDistance>(
+                    Pinhole::descriptor_image_plane_distance().component,
+                );
             let color = query_results
-                .get_mono::<components::Color>(&Pinhole::descriptor_color())
-                .map(|color| color.into());
-            let line_width = query_results
-                .get_mono::<components::Radius>(&Pinhole::descriptor_line_width())
-                .map(|radius| process_radius(&data_result.entity_path, radius));
+                .get_mono_with_fallback::<components::Color>(Pinhole::descriptor_color().component)
+                .into();
+            let line_width = process_radius(
+                &data_result.entity_path,
+                query_results.get_mono_with_fallback::<components::Radius>(
+                    Pinhole::descriptor_line_width().component,
+                ),
+            );
 
             let component_data = CameraComponentDataWithFallbacks {
-                pinhole: crate::Pinhole {
-                    image_from_camera: pinhole_projection.0.into(),
-                    resolution: resolution.into(),
-                    color,
-                    line_width,
-                },
+                child_frame,
+                color,
+                line_width,
                 camera_xyz,
                 image_plane_distance: image_plane_distance.into(),
             };
@@ -296,73 +297,22 @@ impl VisualizerSystem for CamerasVisualizer {
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash());
 
-            self.visit_instance(
-                ctx.tokens(),
+            if let Err(err) = self.visit_instance(
+                &ctx.query_context(data_result, &query.latest_at_query()),
                 &mut line_builder,
                 transforms,
-                data_result,
                 &component_data,
                 entity_highlight,
-            );
+                view_kind,
+            ) {
+                output.report_error_for(instruction.id, err);
+            }
         }
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<components::ImagePlaneDistance> for CamerasVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::ImagePlaneDistance {
-        let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
-            return Default::default();
-        };
-
-        let scene_size = state.bounding_boxes.smoothed.size().length();
-
-        if scene_size.is_finite() && scene_size > 0.0 {
-            // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
-            scene_size * 0.02
-        } else {
-            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-            // this value works better with the default camera setup.
-            0.3
-        }
-        .into()
-    }
-}
-
-impl TypedComponentFallbackProvider<components::ViewCoordinates> for CamerasVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> components::ViewCoordinates {
-        Pinhole::DEFAULT_CAMERA_XYZ
-    }
-}
-
-impl TypedComponentFallbackProvider<components::Resolution> for CamerasVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Resolution {
-        // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
-        // See https://github.com/rerun-io/rerun/issues/3852
-        resolution_of_image_at(ctx.viewer_ctx(), ctx.query, ctx.target_entity_path)
-            // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
-            // TODO(andreas): We should display a warning about this somewhere.
-            // Since it's not a required component, logging a warning about this might be too noisy.
-            .unwrap_or(components::Resolution::from([0.0, 0.0]))
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [
-    components::ImagePlaneDistance,
-    components::ViewCoordinates,
-    components::Resolution
-]);

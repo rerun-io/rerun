@@ -1,12 +1,7 @@
-// TODO(#10460): At some point all these descriptors needs to be interned and have handles or
-// something. And of course they need to be codegen. But we'll get there once we're back to
-// natively tagged components.
-
 use arrow::datatypes::{
     DataType as ArrowDatatype, Field as ArrowField, FieldRef as ArrowFieldRef,
     Fields as ArrowFields,
 };
-
 use re_log_types::EntityPath;
 use re_types_core::{ArchetypeName, ComponentType};
 

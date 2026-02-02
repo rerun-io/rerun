@@ -127,10 +127,6 @@ class Uploader:
         gcs = storage.Client("rerun-open")
         self.bucket = gcs.bucket("rerun-static-img")
 
-    def _check_aspect_ratio(self, image: Path | Image) -> None:
-        if isinstance(image, Path):
-            image = PIL.Image.open(image)
-
     def upload_file(self, path: Path) -> str:
         """
         Upload a single file to Google Cloud.
@@ -147,14 +143,12 @@ class Uploader:
 
         """
 
-        self._check_aspect_ratio(path)
-
-        image_data = path.read_bytes()
-        digest = data_hash(image_data)
+        data = path.read_bytes()
+        digest = data_hash(data)
         object_name = f"{digest}_{path.name}"
         content_type, content_encoding = mimetypes.guess_type(path)
 
-        self.upload_data(image_data, object_name, content_type, content_encoding)
+        self.upload_data(data, object_name, content_type, content_encoding)
 
         return object_name
 
@@ -176,7 +170,6 @@ class Uploader:
 
         """
         image = PIL.Image.open(image_path)
-        self._check_aspect_ratio(image)
 
         content_type, _ = mimetypes.guess_type(image_path)
 
@@ -207,7 +200,6 @@ class Uploader:
         clipboard = image_from_clipboard()
         if isinstance(clipboard, PIL.Image.Image):
             image = clipboard
-            self._check_aspect_ratio(image)
 
             return self.upload_stack(
                 image,
@@ -352,14 +344,13 @@ def run(args: argparse.Namespace) -> None:
 
             object_name = uploader.upload_file(args.path)
             html_str = f"https://static.rerun.io/{object_name}"
-        else:
-            if args.path is None:
-                if args.name is None:
-                    raise RuntimeError("Name is required when uploading from clipboard")
-                else:
-                    html_str = uploader.upload_stack_from_clipboard(args.name)
+        elif args.path is None:
+            if args.name is None:
+                raise RuntimeError("Name is required when uploading from clipboard")
             else:
-                html_str = uploader.upload_stack_from_file(args.path, args.name)
+                html_str = uploader.upload_stack_from_clipboard(args.name)
+        else:
+            html_str = uploader.upload_stack_from_file(args.path, args.name)
 
     except RuntimeError as e:
         print(f"Error: {e.args[0]}", file=sys.stderr)

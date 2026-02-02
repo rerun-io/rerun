@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 import rerun as rr
 
@@ -8,7 +10,7 @@ import rerun as rr
     ["archetype", "expected"],
     [
         [
-            rr.Transform3D(),
+            rr.Transform3D().from_fields(clear_unset=True),
             (
                 "rr.Transform3D(\n"
                 "  translation=[],\n"
@@ -17,23 +19,14 @@ import rerun as rr
                 "  scale=[],\n"
                 "  mat3x3=[],\n"
                 "  relation=[],\n"
-                "  axis_length=[]\n"
+                "  child_frame=[],\n"
+                "  parent_frame=[]\n"
                 ")"
             ),
         ],
         [
             rr.Transform3D(translation=[10, 10, 10]),
-            (
-                "rr.Transform3D(\n"
-                "  translation=[[10.0, 10.0, 10.0]],\n"
-                "  rotation_axis_angle=[],\n"
-                "  quaternion=[],\n"
-                "  scale=[],\n"
-                "  mat3x3=[],\n"
-                "  relation=[],\n"
-                "  axis_length=[]\n"
-                ")"
-            ),
+            ("rr.Transform3D(\n  translation=[[10.0, 10.0, 10.0]]\n)"),
         ],
         [
             rr.Points2D(positions=[[0, 0], [1, 1], [2, 2]]),
@@ -98,3 +91,15 @@ rr.Points3D(
 )
 def test_archetype_str(archetype: rr._baseclasses.Archetype, expected: str) -> None:
     assert str(archetype) == expected
+
+
+def test_archetype_str_normalization() -> None:
+    """Test that archetype names are correct regardless of import path."""
+    # `import rerun`
+    assert rr.Points3D.archetype() == "rerun.archetypes.Points3D"
+    assert rr.Points3D.archetype_short_name() == "Points3D"
+
+    # `import rerun_sdk.rerun`
+    with patch.object(rr.Points3D, "__module__", "rerun_sdk.rerun.archetypes.points3d"):
+        assert rr.Points3D.archetype() == "rerun.archetypes.Points3D"
+        assert rr.Points3D.archetype_short_name() == "Points3D"

@@ -1,17 +1,13 @@
 use re_log_types::{EntityPath, Instance};
-use re_renderer::{
-    PickingLayerInstanceId,
-    renderer::{LineDrawDataError, LineStripFlags},
-};
-use re_types::{
-    archetypes::GeoLineStrings,
-    components::{Color, Radius},
-};
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::{LineDrawDataError, LineStripFlags};
+use re_sdk_types::archetypes::GeoLineStrings;
+use re_sdk_types::components::{Color, Radius};
+use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -35,7 +31,10 @@ impl IdentifiedViewSystem for GeoLineStringsVisualizer {
 }
 
 impl VisualizerSystem for GeoLineStringsVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<GeoLineStrings>()
     }
 
@@ -44,24 +43,47 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            let results =
-                data_result.query_archetype_with_history::<GeoLineStrings>(ctx, view_query);
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let results = data_result.query_archetype_with_history::<GeoLineStrings>(
+                ctx,
+                view_query,
+                instruction,
+            );
 
             let mut batch_data = GeoLineStringsBatch::default();
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_lines = results.iter_as(timeline, GeoLineStrings::descriptor_line_strings());
-            let all_colors = results.iter_as(timeline, GeoLineStrings::descriptor_colors());
-            let all_radii = results.iter_as(timeline, GeoLineStrings::descriptor_radii());
+            let all_lines = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                GeoLineStrings::descriptor_line_strings().component,
+            );
+            let all_colors = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                GeoLineStrings::descriptor_colors().component,
+            );
+            let all_radii = results.iter_as(
+                |error| output.report_warning_for(instruction.id, error),
+                timeline,
+                GeoLineStrings::descriptor_radii().component,
+            );
 
             // fallback component values
-            let fallback_color: Color =
-                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
-            let fallback_radius: Radius =
-                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
+            let fallback_color: Color = typed_fallback_for(
+                &ctx.query_context(data_result, &view_query.latest_at_query()),
+                GeoLineStrings::descriptor_colors().component,
+            );
+            let fallback_radius: Radius = typed_fallback_for(
+                &ctx.query_context(data_result, &view_query.latest_at_query()),
+                GeoLineStrings::descriptor_radii().component,
+            );
 
             // iterate over each chunk and find all relevant component slices
             for (_index, lines, colors, radii) in re_query::range_zip_1x2(
@@ -105,15 +127,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 .push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(Vec::new())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
+        Ok(output)
     }
 }
 
@@ -166,7 +180,10 @@ impl GeoLineStringsVisualizer {
                     .radius(super::radius_to_size(
                         *radius,
                         projector,
-                        strip.first().copied().unwrap_or(walkers::lat_lon(0.0, 0.0)),
+                        strip
+                            .first()
+                            .copied()
+                            .unwrap_or_else(|| walkers::lat_lon(0.0, 0.0)),
                     ))
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
                     .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
@@ -183,17 +200,3 @@ impl GeoLineStringsVisualizer {
         Ok(())
     }
 }
-
-impl TypedComponentFallbackProvider<Color> for GeoLineStringsVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<Radius> for GeoLineStringsVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius::new_ui_points(2.0)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(GeoLineStringsVisualizer => [Color, Radius]);

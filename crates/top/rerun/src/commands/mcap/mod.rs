@@ -1,12 +1,13 @@
-use std::{collections::BTreeSet, fs::File, io::BufWriter, sync::mpsc::Receiver};
+use std::collections::BTreeSet;
+use std::fs::File;
+use std::io::BufWriter;
 
 use clap::Subcommand;
-use re_log_encoding::encoder::DroppableEncoder;
+use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId};
 use re_mcap::{LayerIdentifier, SelectedLayers};
-use re_sdk::{
-    ApplicationId, DataLoader, DataLoaderSettings, LoadedData, external::re_data_loader::McapLoader,
-};
+use re_sdk::external::re_data_loader::McapLoader;
+use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct ConvertCommand {
@@ -56,12 +57,12 @@ impl ConvertCommand {
         let application_id = application_id
             .to_owned()
             .map(ApplicationId::from)
-            .unwrap_or(ApplicationId::from(path_to_input_mcap.clone()));
+            .unwrap_or_else(|| ApplicationId::from(path_to_input_mcap.clone()));
 
         let recording_id = recording_id
             .to_owned()
             .map(RecordingId::from)
-            .unwrap_or(RecordingId::random());
+            .unwrap_or_else(RecordingId::random);
 
         let selected_layers = if selected_layers.is_empty() {
             SelectedLayers::All
@@ -79,7 +80,7 @@ impl ConvertCommand {
             &McapLoader::with_raw_fallback(selected_layers, !*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
-        let (tx, rx) = std::sync::mpsc::channel::<LoadedData>();
+        let (tx, rx) = crossbeam::channel::bounded::<LoadedData>(1024);
         loader.load_from_path(
             &DataLoaderSettings {
                 application_id: Some(application_id),
@@ -126,13 +127,13 @@ impl McapCommands {
 
 fn process_mcap<W: std::io::Write>(
     writer: W,
-    receiver: &Receiver<LoadedData>,
+    receiver: &crossbeam::channel::Receiver<LoadedData>,
 ) -> anyhow::Result<()> {
     let mut num_total_msgs = 0;
     let mut topics = BTreeSet::new();
-    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = re_build_info::CrateVersion::LOCAL;
-    let mut encoder = DroppableEncoder::new(version, options, writer)?;
+    let mut encoder = Encoder::new_eager(version, options, writer)?;
 
     while let Ok(res) = receiver.recv() {
         num_total_msgs += 1;

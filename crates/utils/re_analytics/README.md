@@ -18,6 +18,8 @@ Find out its location by running `rerun analytics config`.
 ### Opting out
 Run `rerun analytics disable` to opt out of all usage data collection.
 
+In debug builds, analytics is off by default. Turn it on by setting the environment variable `FORCE_RERUN_ANALYTICS=1`.
+
 ### What data is collected?
 The exact set of analytics events and parameters can be found here: <https://github.com/rerun-io/rerun/blob/main/crates/utils/re_analytics/src/event.rs>
 
@@ -33,9 +35,12 @@ The exact set of analytics events and parameters can be found here: <https://git
     so that we can understand if users are more likely to look at few applications often,
     or tend to use Rerun for many temporary scripts. Again, this helps us prioritize.
 - We may for instance add events that help us understand how well the auto-layout works.
+- If you log in to Rerun's cloud services in the app, the login event is stored with your
+    email address and organization.
 
 ### What data is NOT collected?
-- No Personally Identifiable Information, such as user name or IP address, is collected.
+- No Personally Identifiable Information, such as user name or IP address, is collected if
+    you don't log in to our cloud services and use Rerun anonymously.
     - This assumes you don't manually and explicitly associate your email with
     the analytics events using the analytics helper cli.
     (Don't do this, it's just meant for internal use for the Rerun team.)

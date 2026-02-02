@@ -25,6 +25,9 @@ default = []
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_log_types/serde"]
 
+## Enable some feature only used for tests
+testing = []
+
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -34,23 +37,27 @@ re_chunk = { workspace = true, features = ["serde"] }
 re_chunk_store.workspace = true
 re_format.workspace = true
 re_int_histogram.workspace = true
-re_log.workspace = true
+re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
+re_log.workspace = true
+re_mutex.workspace = true
 re_query.workspace = true
-re_smart_channel.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 re_uri.workspace = true
 
 ahash.workspace = true
+arrow.workspace = true
 document-features.workspace = true
 emath.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-parking_lot.workspace = true
+poll-promise.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
+static_assertions.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 

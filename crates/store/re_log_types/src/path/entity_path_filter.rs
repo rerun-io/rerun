@@ -208,7 +208,7 @@ impl std::iter::Sum for EntityPathFilter {
 ///  - Only consider `+` and `-` characters as special if they are the first character of a token.
 ///  - Split on whitespace does not following a relevant `+` or `-` character.
 fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
-    #![allow(clippy::unwrap_used)]
+    #![expect(clippy::unwrap_used)]
 
     // We parse on bytes, and take care to only split on either side of a one-byte ASCII,
     // making the `from_utf8(…)`s below safe to unwrap.
@@ -260,7 +260,7 @@ fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
         bytes = &bytes[i..];
     }
 
-    // Safety: we split at proper character boundaries
+    // unwrap: we split at proper character boundaries
     tokens
         .iter()
         .map(|token| std::str::from_utf8(token).unwrap())
@@ -321,7 +321,7 @@ impl EntityPathFilter {
     /// The rest of the line is trimmed and treated as an entity path after variable substitution through [`Self::resolve_forgiving`]/[`Self::resolve_strict`].
     ///
     /// Conflicting rules are resolved by the last rule.
-    #[allow(clippy::unnecessary_wraps)] // TODO(andreas): Do some error checking here?
+    #[expect(clippy::unnecessary_wraps)] // TODO(andreas): Do some error checking here?
     pub fn parse_strict(rules: impl AsRef<str>) -> Result<Self, EntityPathFilterError> {
         Ok(Self::parse_forgiving(rules))
     }
@@ -782,6 +782,82 @@ impl ResolvedEntityPathFilter {
     pub fn rules(&self) -> impl Iterator<Item = (&ResolvedEntityPathRule, &RuleEffect)> {
         self.rules.iter()
     }
+
+    /// Evaluate how a path matches against this filter.
+    ///
+    /// This returns detailed information about:
+    /// - Whether any part of the subtree rooted at this path should be included
+    /// - Whether this specific path matches the filter
+    /// - Whether this specific path is explicitly included (not just via subtree)
+    pub fn evaluate(&self, path: &EntityPath) -> FilterEvaluation {
+        let mut subtree_included = false;
+        let mut matches_exactly = false;
+        let mut last_match: Option<(RuleEffect, bool)> = None;
+        let mut found_include_in_subtree = false;
+
+        for (rule, effect) in self.rules() {
+            if !found_include_in_subtree
+                && *effect == RuleEffect::Include
+                && rule.resolved_path.starts_with(path)
+            {
+                found_include_in_subtree = true;
+                subtree_included = true;
+            }
+
+            if !matches_exactly
+                && *effect == RuleEffect::Include
+                && !rule.rule.include_subtree()
+                && rule.resolved_path == *path
+            {
+                matches_exactly = true;
+            }
+
+            if rule.matches(path) {
+                last_match = Some((*effect, rule.rule.include_subtree()));
+            }
+        }
+
+        if let Some((effect, include_subtree)) = last_match {
+            match effect {
+                RuleEffect::Include => subtree_included = true,
+                RuleEffect::Exclude => {
+                    if include_subtree && !found_include_in_subtree {
+                        // Entire subtree is excluded, and we've already checked that nothing
+                        // in the subtree was explicitly included.
+                        subtree_included = false;
+                    }
+                }
+            }
+        }
+
+        let matches = last_match.is_some_and(|(effect, _)| effect == RuleEffect::Include);
+
+        FilterEvaluation {
+            subtree_included,
+            matches,
+            matches_exactly,
+        }
+    }
+}
+
+/// Result of evaluating a filter against an entity path.
+///
+/// This provides detailed information about how a path matches a filter,
+/// which is useful for efficiently walking entity trees.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FilterEvaluation {
+    /// Whether any part of the subtree rooted at this path should be included.
+    ///
+    /// If `false`, the entire subtree can be skipped during tree traversal.
+    pub subtree_included: bool,
+
+    /// Whether this specific path matches the filter.
+    pub matches: bool,
+
+    /// Whether this specific path is explicitly included (not just via a subtree rule).
+    ///
+    /// This is `true` when there's an exact (non-subtree) inclusion rule for this path.
+    pub matches_exactly: bool,
 }
 
 impl EntityPathRule {
@@ -970,10 +1046,8 @@ impl std::hash::Hash for ResolvedEntityPathRule {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        EntityPath, EntityPathFilter, EntityPathSubs, RuleEffect,
-        path::entity_path_filter::{ResolvedEntityPathRule, split_whitespace_smart},
-    };
+    use crate::path::entity_path_filter::{ResolvedEntityPathRule, split_whitespace_smart};
+    use crate::{EntityPath, EntityPathFilter, EntityPathSubs, RuleEffect};
 
     #[test]
     fn test_resolved_rule_order() {
@@ -1284,6 +1358,154 @@ mod tests {
         assert_eq!(
             filter.formatted_without_properties(),
             "+ /**\n+ /__properties/**"
+        );
+    }
+
+    #[test]
+    fn test_evaluate_filter() {
+        let subst_env = EntityPathSubs::empty();
+
+        // Test with a simple include-all filter
+        let filter = EntityPathFilter::parse_forgiving("+ /**").resolve_forgiving(&subst_env);
+
+        let eval = filter.evaluate(&EntityPath::from("/world"));
+        assert!(eval.subtree_included, "/**should include /world subtree");
+        assert!(eval.matches, "/**should match /world");
+        assert!(!eval.matches_exactly, "/** doesn't exactly match /world");
+
+        // Test with complex filter rules
+        let filter = EntityPathFilter::parse_forgiving(
+            r"
+            + /world/**
+            - /world/car/**
+            + /world/car/driver
+            ",
+        )
+        .resolve_forgiving(&subst_env);
+
+        // Test /world - should be included
+        let eval = filter.evaluate(&EntityPath::from("/world"));
+        assert!(eval.subtree_included, "/world subtree should be included");
+        assert!(eval.matches, "/world should match");
+        assert!(
+            !eval.matches_exactly,
+            "/world should not match exactly (matched by /world/** subtree rule)"
+        );
+
+        // Test /world/house - should be included by /world/**
+        let eval = filter.evaluate(&EntityPath::from("/world/house"));
+        assert!(
+            eval.subtree_included,
+            "/world/house subtree should be included"
+        );
+        assert!(eval.matches, "/world/house should match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/house should not match exactly (matched by /world/** subtree rule)"
+        );
+
+        // Test /world/car - should not match but subtree should be included (has exception deeper)
+        let eval = filter.evaluate(&EntityPath::from("/world/car"));
+        assert!(
+            eval.subtree_included,
+            "/world/car subtree should be included (has /world/car/driver exception)"
+        );
+        assert!(!eval.matches, "/world/car should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/car should not match exactly (excluded by - /world/car/**)"
+        );
+
+        // Test /world/car/driver - should be included
+        let eval = filter.evaluate(&EntityPath::from("/world/car/driver"));
+        assert!(
+            eval.subtree_included,
+            "/world/car/driver subtree should be included"
+        );
+        assert!(eval.matches, "/world/car/driver should match");
+        assert!(
+            eval.matches_exactly,
+            "/world/car/driver should match exactly (non-subtree rule)"
+        );
+
+        // Test /world/car/hood - should be excluded
+        let eval = filter.evaluate(&EntityPath::from("/world/car/hood"));
+        assert!(
+            !eval.subtree_included,
+            "/world/car/hood subtree should be excluded"
+        );
+        assert!(!eval.matches, "/world/car/hood should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/car/hood should not match exactly (excluded)"
+        );
+
+        // Test /other - should be excluded (no matching rule)
+        let eval = filter.evaluate(&EntityPath::from("/other"));
+        assert!(!eval.subtree_included, "/other subtree should be excluded");
+        assert!(!eval.matches, "/other should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/other should not match exactly (no matching rule)"
+        );
+
+        // Test exact match without subtree
+        let filter = EntityPathFilter::parse_forgiving(
+            r"
+            + /world
+            + /world/car/driver
+            ",
+        )
+        .resolve_forgiving(&subst_env);
+
+        let eval = filter.evaluate(&EntityPath::from("/world"));
+        assert!(eval.subtree_included, "/world should be included");
+        assert!(eval.matches, "/world should match");
+        assert!(
+            eval.matches_exactly,
+            "/world should match exactly (non-subtree rule)"
+        );
+
+        // Children should not be included (no subtree rule)
+        let eval = filter.evaluate(&EntityPath::from("/world/house"));
+        assert!(
+            !eval.subtree_included,
+            "/world/house should not be included (parent has no subtree rule)"
+        );
+        assert!(!eval.matches, "/world/house should not match");
+        assert!(
+            !eval.matches_exactly,
+            "/world/house should not match exactly (no rule for this path)"
+        );
+
+        // Test subtree_included when there's an include rule deeper in the tree
+        let filter = EntityPathFilter::parse_forgiving(
+            r"
+            + /world/car/driver
+            ",
+        )
+        .resolve_forgiving(&subst_env);
+
+        let eval = filter.evaluate(&EntityPath::from("/world"));
+        assert!(
+            eval.subtree_included,
+            "/world should have subtree_included=true because /world/car/driver is included"
+        );
+        assert!(!eval.matches, "/world should not match directly");
+        assert!(
+            !eval.matches_exactly,
+            "/world should not match exactly (no rule for this path)"
+        );
+
+        let eval = filter.evaluate(&EntityPath::from("/world/car"));
+        assert!(
+            eval.subtree_included,
+            "/world/car should have subtree_included=true because /world/car/driver is included"
+        );
+        assert!(!eval.matches, "/world/car should not match directly");
+        assert!(
+            !eval.matches_exactly,
+            "/world/car should not match exactly (no rule for this path)"
         );
     }
 

@@ -1,13 +1,17 @@
 #![expect(clippy::disallowed_methods)] // It's a test, it's fine to hardcode a color!
 
+use glam::Vec3;
 use re_log_types::TimePoint;
 use re_renderer::Color32;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::{FillMode, Position3D};
+use re_sdk_types::{AsComponents, RowId, archetypes};
+use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::OsThreshold;
 use re_test_viewport::TestContextExt as _;
-use re_types::{AsComponents, RowId, archetypes, components::FillMode};
-use re_view_spatial::{SpatialView3D, SpatialViewState, ViewEye};
-use re_viewer_context::{RecommendedView, ViewClass as _};
-use re_viewport_blueprint::ViewBlueprint;
+use re_view_spatial::SpatialView3D;
+use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn test_transparent_geometry<A: AsComponents>(
     name: &str,
@@ -34,70 +38,69 @@ fn test_transparent_geometry<A: AsComponents>(
         });
     }
 
-    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint =
             ViewBlueprint::new(SpatialView3D::identifier(), RecommendedView::root());
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
+
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        );
+
+        eye_property.save_blueprint_component(
+            ctx,
+            &EyeControls3D::descriptor_look_target(),
+            &Position3D::ZERO,
+        );
 
         view_id
     });
 
     let size = egui::vec2(300.0, 300.0);
 
-    let camera_orientation = std::sync::Arc::new(std::sync::atomic::AtomicI32::new(1));
+    let default_options = re_ui::testing::default_snapshot_options_for_3d(size);
+    let mut harness = test_context.setup_kittest_for_rendering_3d(size);
+    harness.with_options(
+        re_ui::testing::default_snapshot_options_for_3d(size)
+            // Transparency rendering on MacOS diverges significantly from the other platforms.
+            // (not just on CI but also locally)
+            .threshold(OsThreshold::new(default_options.threshold).macos(2.5))
+            .failed_pixel_count_threshold(
+                OsThreshold::new(default_options.failed_pixel_count_threshold).macos(150),
+            ),
+    );
+    let mut harness = harness.build_ui(|ui| {
+        test_context.run_with_single_view(ui, view_id);
+    });
 
-    let mut harness = {
-        let camera_orientation = camera_orientation.clone();
-        test_context
-            .setup_kittest_for_rendering()
-            .with_size(size)
-            .build_ui(move |ui| {
-                // TODO(#8265): Could simplify this a lot of we could set the camera in blueprint.
-                {
-                    let mut view_states = test_context.view_states.lock();
-                    let view_class = test_context
-                        .view_class_registry
-                        .get_class_or_log_error(SpatialView3D::identifier());
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                    let view_state: &mut SpatialViewState = view_state
-                        .as_any_mut()
-                        .downcast_mut::<SpatialViewState>()
-                        .expect("view state is not of correct type");
-
-                    let orientation =
-                        camera_orientation.load(std::sync::atomic::Ordering::Acquire) as f32;
-                    view_state.state_3d.view_eye = Some(ViewEye::new_orbital(
-                        glam::Vec3::ZERO,
-                        3.5,
-                        glam::Quat::from_affine3(
-                            &glam::Affine3A::look_at_rh(
-                                glam::vec3(0.25, orientation, 0.25),
-                                glam::Vec3::ZERO,
-                                glam::Vec3::Z,
-                            )
-                            .inverse(),
-                        ),
-                        glam::Vec3::Z,
-                    ));
-                    view_state.state_3d.last_eye_interaction = Some(std::time::Instant::now());
-                }
-
-                test_context.run_with_single_view(ui, view_id);
-            })
-    };
-
-    for i in 0..2 {
+    for (i, orientation_y) in [-1.0, 1.0].into_iter().enumerate() {
         // Flip the camera orientation to ensure sorting works as expected.
-        camera_orientation.store(1 - i * 2, std::sync::atomic::Ordering::Release);
+
+        test_context.with_blueprint_ctx(|ctx, _| {
+            let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+                ctx.current_blueprint(),
+                ctx.blueprint_query(),
+                view_id,
+            );
+
+            let len = 3.5;
+            let dir = Vec3::new(0.25, orientation_y, 0.25).normalize();
+            let position = len * dir;
+
+            eye_property.save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::from(position),
+            );
+        });
+        // Write blueprint by handling system commands.
+        test_context.handle_system_commands(&harness.ctx);
+
         harness.run_steps(1);
-        harness.snapshot_options(
-            format!("transparent_{name}_{i}"),
-            &SnapshotOptions::default()
-                .threshold(1.4) // Transparent overlaps has some numerical inaccuracies which causes differences for a lot of pixels.
-                .failed_pixel_count_threshold(650),
-        );
+        harness.snapshot(format!("transparent_{name}_{i}"));
     }
 }
 

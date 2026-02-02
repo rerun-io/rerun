@@ -1,33 +1,28 @@
-use std::{
-    collections::BTreeMap,
-    ops::ControlFlow,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-};
+use std::collections::BTreeMap;
+use std::ops::ControlFlow;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
-use parking_lot::Mutex;
-use smallvec::SmallVec;
-
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::EntityPathSubs;
-use re_types::blueprint::{
-    archetypes as blueprint_archetypes,
-    components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
+use re_log_types::{EntityPathHash, EntityPathSubs};
+use re_mutex::Mutex;
+use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
+use re_sdk_types::blueprint::components::{
+    AutoLayout, AutoViews, RootContainer, ViewMaximized, ViewerRecommendationHash,
 };
-use re_types::{
-    Archetype as _, ViewClassIdentifier, blueprint::components::ViewerRecommendationHash,
-};
+use re_sdk_types::{Archetype as _, ViewClassIdentifier};
 use re_viewer_context::{
-    ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow, blueprint_id_to_tile_id,
+    BlueprintContext as _, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
+    blueprint_id_to_tile_id,
 };
+use smallvec::SmallVec;
 
-use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand, container::ContainerBlueprint};
+use crate::container::ContainerBlueprint;
+use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand};
 
 // ----------------------------------------------------------------------------
 
@@ -91,23 +86,24 @@ impl ViewportBlueprint {
         let results = blueprint_engine.cache().latest_at(
             query,
             &VIEWPORT_PATH.into(),
-            blueprint_archetypes::ViewportBlueprint::all_components().iter(),
+            blueprint_archetypes::ViewportBlueprint::all_component_identifiers(),
         );
 
         let root_container = results.component_mono::<RootContainer>(
-            &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+            blueprint_archetypes::ViewportBlueprint::descriptor_root_container().component,
         );
         let maximized = results.component_mono::<ViewMaximized>(
-            &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
+            blueprint_archetypes::ViewportBlueprint::descriptor_maximized().component,
         );
         let auto_layout = results.component_mono::<AutoLayout>(
-            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
+            blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout().component,
         );
         let auto_views = results.component_mono::<AutoViews>(
-            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
+            blueprint_archetypes::ViewportBlueprint::descriptor_auto_views().component,
         );
         let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>(
-            &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
+            blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations()
+                .component,
         );
 
         let root_container: Option<ContainerId> = root_container.map(|id| id.0.into());
@@ -742,11 +738,10 @@ impl ViewportBlueprint {
         }
     }
 
-    #[allow(clippy::unused_self)]
     pub fn views_containing_entity_path(
         &self,
         ctx: &ViewerContext<'_>,
-        path: &EntityPath,
+        path: EntityPathHash,
     ) -> Vec<ViewId> {
         self.views
             .iter()

@@ -177,10 +177,8 @@
 // TODO(cmc): might want to support implicitly dropping file suffixes at some point, e.g.
 // `#import <my_shader>` which works with "my_shader.wgsl"
 
-use std::{
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use ahash::{HashMap, HashSet, HashSetExt as _};
 use anyhow::{Context as _, anyhow, bail, ensure};
@@ -638,10 +636,10 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 // TODO(cmc): might want an actual test using `RERUN_SHADER_PATH`
 #[cfg(test)]
 mod tests_file_resolver {
-    use crate::MemFileSystem;
     use unindent::unindent;
 
     use super::*;
+    use crate::MemFileSystem;
 
     #[test]
     fn acyclic_interpolation() {
@@ -781,7 +779,7 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[allow(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
+    #[expect(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
     #[should_panic]
     fn cyclic_direct() {
         let fs = MemFileSystem::get();
@@ -822,7 +820,7 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[allow(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
+    #[expect(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
     #[should_panic]
     fn cyclic_indirect() {
         let fs = MemFileSystem::get();

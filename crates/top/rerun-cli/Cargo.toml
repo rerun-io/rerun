@@ -23,6 +23,12 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
+
+[package.metadata.cargo-shear]
+# TODO(lancedb/lance#3073): remove `lance` feature flag
+ignored = ["re_server"]
+
+
 [[bin]]
 name = "rerun"
 path = "src/bin/rerun.rs"
@@ -38,7 +44,7 @@ doc = false
 default = ["web_viewer", "base"]
 
 ## Our base feature set, included in `default` and in `release`, but excludes the web viewer.
-base = ["native_viewer", "map_view", "oss_server"]
+base = ["native_viewer", "map_view", "oss_server", "perf_telemetry"]
 
 # !!!IMPORTANT!!!
 #
@@ -61,7 +67,7 @@ base = ["native_viewer", "map_view", "oss_server"]
 ## The features we enable when we build the pre-built binaries during our releases,
 ## but excluding the web viewer.
 ## This may enable features that require extra build tools that not everyone has.
-release_no_web_viewer = ["base", "nasm"]
+release_no_web_viewer = ["base", "lance", "nasm"]
 
 ## The features we enable when we build the pre-built binaries during our releases.
 ## These are the binaries we put in our release artifacts, and bundle in our Python wheel.
@@ -84,7 +90,12 @@ native_viewer = ["rerun/native_viewer"]
 ## Enable the in-memory Rerun Server, useful for testing.
 oss_server = ["rerun/oss_server"]
 
-## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+## Add support for Lance tables in the in-memory OSS Rerun Server (`oss_server` feature flag).
+## This is opt-in because of <https://github.com/lance-format/lance/issues/3073>.
+# TODO(lancedb/lance#3073): remove feature flag
+lance = ["re_server/lance"]
+
+## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).
 ##
 ## This only works on native, and only with `TELEMETRY_ENABLED` set.
 perf_telemetry = ["rerun/perf_telemetry"]
@@ -112,6 +123,8 @@ rerun = { workspace = true, default-features = false, features = [
   "run",
   "server",
 ] }
+
+re_server = { workspace = true, optional = true }
 
 document-features.workspace = true
 mimalloc.workspace = true

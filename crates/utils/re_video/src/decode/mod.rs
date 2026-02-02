@@ -87,7 +87,6 @@ mod ffmpeg_cli;
 
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::FFmpegCliDecoder;
-
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
@@ -125,6 +124,12 @@ pub enum DecodeError {
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
+}
+
+impl re_byte_size::SizeBytes for DecodeError {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
 }
 
 impl DecodeError {
@@ -207,9 +212,9 @@ pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
-    output_sender: crossbeam::channel::Sender<FrameResult>,
+    output_sender: crate::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
-    #![allow(unused_variables, clippy::needless_return)] // With some feature flags
+    #![allow(clippy::allow_attributes, unused_variables, clippy::needless_return)] // With some feature flags
 
     re_tracing::profile_function!();
 
@@ -266,7 +271,7 @@ pub fn new_decoder(
 ///
 /// In MP4, one sample is one frame.
 pub struct Chunk {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
@@ -310,6 +315,21 @@ pub struct Chunk {
     /// Typically the time difference in presentation timestamp to the next sample.
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
+}
+
+impl re_byte_size::SizeBytes for Chunk {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            is_sync: _,
+            data,
+            sample_idx: _,
+            frame_nr: _,
+            decode_timestamp: _,
+            presentation_timestamp: _,
+            duration: _,
+        } = self;
+        data.heap_size_bytes()
+    }
 }
 
 /// Data for a decoded frame on native targets.
@@ -363,7 +383,7 @@ impl FrameContent {
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
@@ -475,7 +495,7 @@ impl PixelFormat {
 /// Pixel layout used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvPixelLayout` type.
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YuvPixelLayout {
     Y_U_V444,

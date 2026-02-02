@@ -2,8 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Display;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::Context as _;
@@ -25,6 +24,9 @@ pub struct Example {
     ///
     /// Set to true if the example produces a warning that is outside of our control, i.e. in a dependency.
     pub allow_warnings: bool,
+
+    /// If `true`, include this example in the manifest generation.
+    pub include_in_manifest: bool,
 }
 
 impl Example {
@@ -76,6 +78,7 @@ impl Example {
             thumbnail_dimensions: readme.thumbnail_dimensions,
             script_args: readme.build_args,
             allow_warnings: readme.allow_warnings,
+            include_in_manifest: readme.include_in_manifest,
             readme_body: body,
             language,
         }))
@@ -86,9 +89,10 @@ impl Example {
 pub enum Language {
     Rust,
     Python,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     C,
     Cpp,
+    Notebook,
 }
 
 impl Language {
@@ -100,6 +104,7 @@ impl Language {
             Self::Python => Path::new("python"),
             Self::C => Path::new("c"),
             Self::Cpp => Path::new("cpp"),
+            Self::Notebook => Path::new("notebook"),
         }
     }
 
@@ -110,6 +115,7 @@ impl Language {
             Self::Python => "py",
             Self::C => "c",
             Self::Cpp => "cpp",
+            Self::Notebook => "ipynb",
         }
     }
 }
@@ -135,7 +141,7 @@ impl ExamplesManifest {
 #[derive(serde::Deserialize)]
 pub struct ExampleCategory {
     /// Used to sort categories in the `rerun.io/examples` navbar.
-    #[allow(unused)]
+    #[expect(unused)]
     pub order: u64,
 
     /// `snake_case` name.
@@ -184,7 +190,19 @@ impl Channel {
     pub fn examples(self, workspace_root: impl AsRef<Path>) -> anyhow::Result<Vec<Example>> {
         // currently we only treat Python examples as runnable
         let language = Language::Python;
+        self.collect_language(workspace_root, language)
+    }
 
+    pub fn notebooks(self, workspace_root: impl AsRef<Path>) -> anyhow::Result<Vec<Example>> {
+        let language = Language::Notebook;
+        self.collect_language(workspace_root, language)
+    }
+
+    fn collect_language(
+        self,
+        workspace_root: impl AsRef<Path>,
+        language: Language,
+    ) -> anyhow::Result<Vec<Example>> {
         let mut examples = vec![];
 
         let dir = workspace_root
@@ -238,8 +256,9 @@ impl Channel {
                     thumbnail_dimensions: readme.thumbnail_dimensions,
                     script_args: readme.build_args,
                     readme_body: body,
-                    language: Language::Python,
+                    language,
                     allow_warnings: readme.allow_warnings,
+                    include_in_manifest: readme.include_in_manifest,
                 });
             }
         }
@@ -317,6 +336,12 @@ struct Frontmatter {
     /// Set to true if the example produces a warning that is outside of our control, i.e. in a dependency.
     #[serde(default)]
     allow_warnings: bool,
+
+    /// If `true`, include this example in the manifest generation.
+    ///
+    /// Defaults to `false` so examples can be built/tested via channel without being included in manifests.
+    #[serde(default)]
+    include_in_manifest: bool,
 }
 
 impl Frontmatter {
@@ -333,15 +358,12 @@ impl Frontmatter {
         let start = start + START.len();
 
         let Some(end) = content[start..].find(END) else {
-            anyhow::bail!(
-                "{:?} has invalid frontmatter: missing {END:?} terminator",
-                path
-            );
+            anyhow::bail!("{path:?} has invalid frontmatter: missing {END:?} terminator");
         };
         let end = start + end;
 
         let frontmatter: Self = toml::from_str(content[start..end].trim()).map_err(|err| {
-            #[allow(clippy::unwrap_used)]
+            #[expect(clippy::unwrap_used)]
             let p = path.parent().unwrap().file_name().unwrap();
             anyhow::anyhow!("Failed to parse TOML metadata of {p:?}: {err}")
         })?;

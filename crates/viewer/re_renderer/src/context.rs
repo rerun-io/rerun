@@ -1,21 +1,18 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
+use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+use re_mutex::Mutex;
 use type_map::concurrent::TypeMap;
 
-use crate::{
-    FileServer, RecommendedFileResolver,
-    allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    device_caps::DeviceCaps,
-    error_handling::{ErrorTracker, WgpuErrorScope},
-    global_bindings::GlobalBindings,
-    renderer::{Renderer, RendererExt},
-    resource_managers::TextureManager2D,
-    wgpu_resources::WgpuResourcePools,
-};
+use crate::allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt};
+use crate::device_caps::DeviceCaps;
+use crate::error_handling::{ErrorTracker, WgpuErrorScope};
+use crate::global_bindings::GlobalBindings;
+use crate::renderer::{Renderer, RendererExt};
+use crate::resource_managers::TextureManager2D;
+use crate::wgpu_resources::WgpuResourcePools;
+use crate::{FileServer, RecommendedFileResolver};
 
 /// Frame idx used before starting the first frame.
 const STARTUP_FRAME_IDX: u64 = u64::MAX;
@@ -85,7 +82,8 @@ impl RenderConfig {
     /// to keep image comparison thresholds low.
     pub fn testing() -> Self {
         Self {
-            msaa_mode: MsaaMode::Off,
+            // we use "testing" also for generating nice looking screenshots
+            msaa_mode: MsaaMode::Msaa4x,
         }
     }
 }
@@ -205,7 +203,7 @@ impl Renderers {
             let renderer = Arc::new(R::create_renderer(ctx));
             self.renderers_by_key.push(renderer.clone());
 
-            RendererWithKey { key, renderer }
+            RendererWithKey { renderer, key }
         })
     }
 
@@ -290,7 +288,7 @@ impl RenderContext {
             device.on_uncaptured_error({
                 let err_tracker = Arc::clone(&err_tracker);
                 let frame_index_for_uncaptured_errors = frame_index_for_uncaptured_errors.clone();
-                Box::new(move |err| {
+                Arc::new(move |err| {
                     err_tracker.handle_error(
                         err,
                         frame_index_for_uncaptured_errors.load(Ordering::Acquire),
@@ -377,9 +375,10 @@ impl RenderContext {
             // * On WebGPU poll is a no-op and we don't get here.
             // * On WebGL we'll just immediately timeout since we can't actually wait for frames.
             if !cfg!(target_arch = "wasm32")
-                && let Err(err) = self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
-                    newest_submission_to_wait_for,
-                ))
+                && let Err(err) = self.device.poll(wgpu::PollType::Wait {
+                    submission_index: Some(newest_submission_to_wait_for),
+                    timeout: None,
+                })
             {
                 re_log::warn_once!(
                     "Failed to limit number of in-flight GPU frames to {}: {:?}",
@@ -412,10 +411,12 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             self.before_submit();
         }
 
-        // Request write used staging buffer back.
-        // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
+        // Request write-staging buffers back.
+        // Ideally we'd do this as closely as possible to the last submission containing any cpu->gpu operations as possible.
         self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
-        // Map all read staging buffers.
+
+        // Schedule mapping for all read staging buffers.
+        // Ideally we'd do this as closely as possible to the last submission containing any gpu->cpu operations as possible.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
         // Close previous' frame error scope.
@@ -501,7 +502,8 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     pub fn before_submit(&mut self) {
         re_tracing::profile_function!();
 
-        // Unmap all write staging buffers.
+        // Unmap all write staging buffers, so we don't get validation errors about buffers still being mapped
+        // that the gpu wants to read from.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
         if let Some(command_encoder) = self

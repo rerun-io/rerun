@@ -1,5 +1,6 @@
 //! This testdata was mostly written by claude just to have a large variety of types
-#![allow(clippy::from_iter_instead_of_collect)]
+
+use std::sync::Arc;
 
 use arrow::array::{
     Array, BinaryArray, BooleanArray, DictionaryArray, FixedSizeListArray, Float64Array,
@@ -9,7 +10,6 @@ use arrow::array::{
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Fields, UnionFields};
 use re_arrow_util::concat_arrays;
-use std::sync::Arc;
 
 /// Creates a basic struct array with coordinates (x, y, z)
 pub fn create_coordinates_struct(step: i32) -> Arc<dyn Array> {

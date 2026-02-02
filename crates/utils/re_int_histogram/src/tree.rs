@@ -19,9 +19,9 @@ type Level = u64;
 
 // ----------------------------------------------------------------------------
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 mod small_and_slow {
-    #[allow(clippy::wildcard_imports)]
+    #[allow(clippy::allow_attributes, clippy::wildcard_imports)] // for the sake of doclinks
     use super::*;
 
     // Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
@@ -44,7 +44,7 @@ mod small_and_slow {
 // ----------------------------------------------------------------------------
 
 mod large_and_fast {
-    #[allow(clippy::wildcard_imports)]
+    #[allow(clippy::allow_attributes, clippy::wildcard_imports)] // for the sake of doclinks
     use super::*;
 
     // High memory use, faster
@@ -72,7 +72,6 @@ const ROOT_LEVEL: Level = 64 - LEVEL_STEP;
 static_assertions::const_assert_eq!(ROOT_LEVEL + LEVEL_STEP, 64);
 static_assertions::const_assert_eq!((ROOT_LEVEL - BOTTOM_LEVEL) % LEVEL_STEP, 0);
 const NUM_NODE_STEPS: u64 = (ROOT_LEVEL - BOTTOM_LEVEL) / LEVEL_STEP;
-#[allow(dead_code)] // used in static assert
 const NUM_STEPS_IN_DENSE_LEAF: u64 = 64 - NUM_NODE_STEPS * LEVEL_STEP;
 static_assertions::const_assert_eq!(1 << NUM_STEPS_IN_DENSE_LEAF, NUM_CHILDREN_IN_DENSE);
 
@@ -232,6 +231,61 @@ impl Int64Histogram {
             },
         }
     }
+
+    /// Find the next key greater than the given time.
+    ///
+    /// If found, returns that key. Otherwise wraps around and returns the minimum key.
+    /// Returns `None` only if the histogram is empty.
+    pub fn next_key_after(&self, time: i64) -> Option<i64> {
+        // Use cutoff_size=1 to get individual keys
+        if let Some((range, _)) = self
+            .range(
+                (std::ops::Bound::Excluded(time), std::ops::Bound::Unbounded),
+                1,
+            )
+            .next()
+        {
+            Some(range.min)
+        } else {
+            // Wrap around to the minimum key
+            self.min_key()
+        }
+    }
+
+    /// Find the previous key less than the given time.
+    ///
+    /// If found, returns that key. Otherwise wraps around and returns the maximum key.
+    /// Returns `None` only if the histogram is empty.
+    pub fn prev_key_before(&self, time: i64) -> Option<i64> {
+        // Fast path: if the maximum key is less than time, we can return it directly
+        // This is O(log n) and avoids iterating through ranges
+        if let Some(max) = self.max_key() {
+            if max < time {
+                return Some(max);
+            }
+        } else {
+            // Empty histogram
+            return None;
+        }
+
+        // Optimization: Use a larger cutoff_size to reduce the number of ranges we iterate through.
+        // With cutoff_size=1024, we get ranges up to 1024 keys long, which dramatically reduces
+        // the number of iterations for sparse histograms.
+        // According to the documentation, the ends (min/max) of returned ranges are guaranteed
+        // to be keys with non-zero count, so the max of the last range is the correct answer.
+        let mut last_range_max = None;
+        for (range, _) in self.range(
+            (std::ops::Bound::Unbounded, std::ops::Bound::Excluded(time)),
+            1024,
+        ) {
+            last_range_max = Some(range.max);
+        }
+
+        last_range_max.or_else(|| {
+            // No keys before time, wrap around to max
+            self.max_key()
+        })
+    }
 }
 
 /// An iterator over an [`Int64Histogram`].
@@ -261,7 +315,6 @@ impl Iterator for Iter<'_> {
 // ----------------------------------------------------------------------------
 // Low-level data structure.
 
-#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug)]
 enum Node {
     /// An inner node, addressed by the next few bits of the key/address.
@@ -817,9 +870,60 @@ impl Iterator for TreeIterator<'_> {
 }
 
 // ----------------------------------------------------------------------------
+// SizeBytes implementation
+
+impl re_byte_size::SizeBytes for Int64Histogram {
+    fn heap_size_bytes(&self) -> u64 {
+        self.root.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::SizeBytes for Node {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::BranchNode(node) => node.heap_size_bytes(),
+            Self::SparseLeaf(sparse) => sparse.heap_size_bytes(),
+            Self::DenseLeaf(dense) => dense.heap_size_bytes(),
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for BranchNode {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            total_count: _,
+            children,
+        } = self;
+
+        children
+            .iter()
+            .flatten()
+            .map(|c| c.total_size_bytes())
+            .sum()
+    }
+}
+
+impl re_byte_size::SizeBytes for SparseLeaf {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { addrs, counts } = self;
+
+        // SmallVec has heap data when it exceeds inline capacity
+        addrs.heap_size_bytes() + counts.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::SizeBytes for DenseLeaf {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // DenseLeaf is a fixed-size array on the stack
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::cast_possible_wrap)] // ok in tests
+
     use super::*;
 
     #[test]
@@ -1070,5 +1174,86 @@ mod tests {
 
         assert_eq!((set.min_key(), set.max_key()), (None, None));
         assert_eq!(set.range(.., 1).count(), 0);
+    }
+
+    #[test]
+    fn test_next_key_after() {
+        let mut hist = Int64Histogram::default();
+
+        // Empty histogram
+        assert_eq!(hist.next_key_after(0), None);
+
+        // Single key
+        hist.increment(10, 1);
+        assert_eq!(hist.next_key_after(5), Some(10));
+        assert_eq!(hist.next_key_after(10), Some(10)); // wraps around
+        assert_eq!(hist.next_key_after(15), Some(10)); // wraps around
+
+        // Multiple keys
+        hist.increment(20, 1);
+        hist.increment(30, 1);
+        assert_eq!(hist.next_key_after(5), Some(10));
+        assert_eq!(hist.next_key_after(10), Some(20));
+        assert_eq!(hist.next_key_after(15), Some(20));
+        assert_eq!(hist.next_key_after(25), Some(30));
+        assert_eq!(hist.next_key_after(30), Some(10)); // wraps around
+        assert_eq!(hist.next_key_after(35), Some(10)); // wraps around
+
+        // Sparse keys
+        hist = Int64Histogram::default();
+        hist.increment(1000, 1);
+        hist.increment(2000, 1);
+        hist.increment(3000, 1);
+        assert_eq!(hist.next_key_after(500), Some(1000));
+        assert_eq!(hist.next_key_after(1500), Some(2000));
+        assert_eq!(hist.next_key_after(2500), Some(3000));
+        assert_eq!(hist.next_key_after(3500), Some(1000)); // wraps around
+    }
+
+    #[test]
+    fn test_prev_key_before() {
+        let mut hist = Int64Histogram::default();
+
+        // Empty histogram
+        assert_eq!(hist.prev_key_before(0), None);
+
+        // Single key
+        hist.increment(10, 1);
+        assert_eq!(hist.prev_key_before(15), Some(10));
+        assert_eq!(hist.prev_key_before(10), Some(10)); // wraps around
+        assert_eq!(hist.prev_key_before(5), Some(10)); // wraps around
+
+        // Multiple keys
+        hist.increment(20, 1);
+        hist.increment(30, 1);
+        assert_eq!(hist.prev_key_before(35), Some(30));
+        assert_eq!(hist.prev_key_before(30), Some(20));
+        assert_eq!(hist.prev_key_before(25), Some(20));
+        assert_eq!(hist.prev_key_before(15), Some(10));
+        assert_eq!(hist.prev_key_before(10), Some(30)); // wraps around
+        assert_eq!(hist.prev_key_before(5), Some(30)); // wraps around
+
+        // Sparse keys
+        hist = Int64Histogram::default();
+        hist.increment(1000, 1);
+        hist.increment(2000, 1);
+        hist.increment(3000, 1);
+        assert_eq!(hist.prev_key_before(3500), Some(3000));
+        assert_eq!(hist.prev_key_before(2500), Some(2000));
+        assert_eq!(hist.prev_key_before(1500), Some(1000));
+        assert_eq!(hist.prev_key_before(500), Some(3000)); // wraps around
+
+        // Fast path: max_key < time
+        assert_eq!(hist.max_key(), Some(3000));
+        assert_eq!(hist.prev_key_before(5000), Some(3000));
+
+        // Dense histogram with many keys (tests optimization)
+        hist = Int64Histogram::default();
+        for i in 0..1000 {
+            hist.increment(i, 1);
+        }
+        assert_eq!(hist.prev_key_before(500), Some(499));
+        assert_eq!(hist.prev_key_before(1000), Some(999));
+        assert_eq!(hist.prev_key_before(0), Some(999)); // wraps around
     }
 }

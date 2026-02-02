@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -18,24 +18,40 @@ from ..datatypes import (
 )
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
+
+# Note: numpy._typing._SupportsArray exists but is private API.
+# We define our own for stability and to avoid depending on numpy internals.
+@runtime_checkable
+class SupportsDunderArray(Protocol):
+    """
+    An object that supports conversion to numpy array via __array__().
+
+    This includes torch.Tensor, JAX arrays, CuPy arrays, etc.
+    Unlike npt.ArrayLike, this excludes scalars, strings, and other non-array types.
+    """
+
+    def __array__(self) -> np.ndarray[Any, Any]: ...
+
+
 if TYPE_CHECKING:
-    ImageLike = Union[
-        npt.NDArray[np.float16],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float64],
-        npt.NDArray[np.floating],
-        npt.NDArray[np.int16],
-        npt.NDArray[np.int32],
-        npt.NDArray[np.int64],
-        npt.NDArray[np.int8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-        npt.NDArray[np.uint64],
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.integer],
-        np.ndarray[Any, np.dtype[np.floating | np.integer]],
-        PILImage.Image,
-    ]
+    ImageLike = (
+        npt.NDArray[np.float16]
+        | npt.NDArray[np.float32]
+        | npt.NDArray[np.float64]
+        | npt.NDArray[np.floating]
+        | npt.NDArray[np.int16]
+        | npt.NDArray[np.int32]
+        | npt.NDArray[np.int64]
+        | npt.NDArray[np.int8]
+        | npt.NDArray[np.uint16]
+        | npt.NDArray[np.uint32]
+        | npt.NDArray[np.uint64]
+        | npt.NDArray[np.uint8]
+        | npt.NDArray[np.integer]
+        | np.ndarray[Any, np.dtype[np.floating | np.integer]]
+        | PILImage.Image
+        | SupportsDunderArray  # Includes torch.Tensor and other array protocol objects
+    )
     from . import EncodedImage, Image
 
 

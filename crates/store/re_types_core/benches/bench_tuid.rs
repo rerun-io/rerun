@@ -1,7 +1,7 @@
 // Allow unwrap() in benchmarks
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 fn bench_arrow(c: &mut Criterion) {
     use re_types_core::Loggable as _;

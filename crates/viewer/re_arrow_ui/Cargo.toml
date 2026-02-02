@@ -18,14 +18,17 @@ workspace = true
 [dependencies]
 re_arrow_util.workspace = true
 re_format.workspace = true
+re_log_types.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
 
 arrow.workspace = true
+jiff.workspace = true
 egui.workspace = true
 
 [dev-dependencies]
-re_types.workspace = true
+re_sdk_types.workspace = true
+re_ui = { workspace = true, features = ["testing"] }
 
 egui_kittest.workspace = true
 insta.workspace = true

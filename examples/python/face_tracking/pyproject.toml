@@ -1,11 +1,11 @@
 [project]
 name = "face_tracking"
 version = "0.1.0"
-requires-python = "<3.12" # TODO(ab): relax when mediapipe supports 3.12
+requires-python = ">=3.10,<3.12" # TODO(ab): relax when mediapipe supports 3.12
 readme = "README.md"
 dependencies = [
   "mediapipe==0.10.11 ; sys_platform != 'darwin'",
-  "mediapipe==0.10.9 ; sys_platform == 'darwin'",  # https://github.com/google/mediapipe/issues/5188
+  "mediapipe==0.10.9 ; sys_platform == 'darwin'", # https://github.com/google/mediapipe/issues/5188
   "numpy",
   "opencv-python>4.6",
   "requests",

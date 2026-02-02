@@ -1,4 +1,5 @@
-use std::{ops::Range, sync::mpsc};
+use std::ops::Range;
+use std::sync::mpsc;
 
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
@@ -79,9 +80,11 @@ impl GpuReadbackBuffer {
                 src_texture
                     .format()
                     .block_copy_size(Some(source.aspect))
-                    .ok_or(GpuReadbackError::UnsupportedTextureFormatForReadback(
-                        source.texture.format(),
-                    ))? as u64,
+                    .ok_or_else(|| {
+                        GpuReadbackError::UnsupportedTextureFormatForReadback(
+                            source.texture.format(),
+                        )
+                    })? as u64,
             );
 
             let buffer_info = Texture2DBufferInfo::new(src_texture.format(), *copy_extents);
@@ -234,6 +237,8 @@ impl GpuReadbackBelt {
     /// TODO(andreas): Adaptive chunk sizes
     /// TODO(andreas): Shrinking after usage spikes (e.g. screenshots of different sizes!)
     pub fn new(chunk_size: wgpu::BufferSize) -> Self {
+        // we must use an unbounded channel to avoid blocking on web
+        #[expect(clippy::disallowed_methods)]
         let (sender, receiver) = mpsc::channel();
         Self {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_ALIGNMENT),
@@ -311,6 +316,12 @@ impl GpuReadbackBelt {
     /// Prepare used buffers for CPU read.
     ///
     /// This should be called after the command encoder(s) used in [`GpuReadbackBuffer`] copy operations are submitted.
+    ///
+    /// Implementation note:
+    /// We can't use [`wgpu::CommandEncoder::map_buffer_on_submit`] here because for that we'd need to know which
+    /// command encoder is the last one scheduling any gpu->cpu copy operations.
+    /// Note that if chunks were fully tied to a single encoder, we could call [`wgpu::CommandEncoder::map_buffer_on_submit`]
+    /// once we know a chunk has all its gpu->cpu copy operations scheduled on that very encoder.
     pub fn after_queue_submit(&mut self) {
         re_tracing::profile_function!();
 

@@ -32,7 +32,6 @@ on:
           - linux-x64
           - windows-x64
           - macos-arm64
-          - macos-x64
         description: "Platform to build for"
         required: true
       CONCURRENCY:
@@ -62,10 +61,11 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
+  packages: "read"
   id-token: "write"
 
 jobs:
@@ -83,15 +83,15 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="buildjet-16vcpu-ubuntu-2204-arm"
+              runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.17.0'"
               lib_name="librerun_c.a"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.17.0'"
               lib_name="librerun_c.a"
               ;;
             windows-x64)
@@ -101,14 +101,8 @@ jobs:
               lib_name="rerun_c.lib"
               ;;
             macos-arm64)
-              runner="macos-15" # Small runners, because building rerun_c is fast
+              runner="macos-26" # Small runners, because building rerun_c is fast
               target="aarch64-apple-darwin"
-              container="null"
-              lib_name="librerun_c.a"
-              ;;
-            macos-x64)
-              runner="macos-15" # Small runners, because building rerun_c is fast
-              target="x86_64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"
               ;;
@@ -121,6 +115,7 @@ jobs:
 
   rs-build-rerun_c:
     name: Build rerun_c (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 
@@ -128,8 +123,8 @@ jobs:
     container:
       image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
       credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Show context
@@ -148,9 +143,9 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
@@ -173,7 +168,7 @@ jobs:
       - name: "Upload rerun_c (commit)"
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
@@ -182,7 +177,7 @@ jobs:
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false

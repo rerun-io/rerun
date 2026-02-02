@@ -1,21 +1,21 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
-use datafusion::prelude::{SessionContext, col, lit};
+use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use egui::{Frame, Margin, RichText};
-
-use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
-use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::cloud::v1alpha1::EntryKind;
-use re_redap_client::ConnectionRegistryHandle;
-use re_sorbet::{BatchType, ColumnDescriptorRef};
+use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
+use re_redap_client::{
+    ClientCredentialsError, ConnectionRegistryHandle, CredentialSource, Credentials,
+};
+use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
-use re_viewer_context::{AsyncRuntimeHandle, GlobalContext, ViewerContext};
+use re_viewer_context::{
+    AsyncRuntimeHandle, EditRedapServerModalCommand, GlobalContext, ViewerContext,
+};
 
 use crate::context::Context;
 use crate::entries::{Dataset, Entries, Entry, Table};
@@ -39,7 +39,7 @@ impl Server {
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
-        let tables_session_ctx = Arc::new(SessionContext::new());
+        let tables_session_ctx = Self::session_context();
 
         let entries = Entries::new(
             connection_registry.clone(),
@@ -58,9 +58,20 @@ impl Server {
         }
     }
 
+    fn session_context() -> Arc<SessionContext> {
+        let session_ctx = SessionContext::new_with_config(
+            SessionConfig::new()
+                // In order to quickly show results when filtering a table, we disable batch coalescing.
+                // This may be slightly inefficient, but is worth it if the user sees immediate
+                // results.
+                .with_coalesce_batches(false),
+        );
+        Arc::new(session_ctx)
+    }
+
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx = Arc::new(SessionContext::new());
+        self.tables_session_ctx = Self::session_context();
 
         self.entries = Entries::new(
             self.connection_registry.clone(),
@@ -119,33 +130,7 @@ impl Server {
     fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                if err.is_missing_token() || err.is_wrong_token() {
-                    let message = if err.is_missing_token() {
-                        "This server requires a token to access its data."
-                    } else {
-                        "The provided token is invalid for this server."
-                    };
-                    let edit_message = if err.is_missing_token() {
-                        "Add a token"
-                    } else {
-                        "Edit token"
-                    };
-                    Alert::warning().show(ui, |ui| {
-                        ui.vertical(|ui| {
-                            ui.strong(message);
-                            if ui
-                                .link(RichText::new(edit_message).strong().underline())
-                                .clicked()
-                            {
-                                ctx.command_sender
-                                    .send(Command::OpenEditServerModal(self.origin.clone()))
-                                    .ok();
-                            }
-                        });
-                    });
-                } else {
-                    ui.error_label(err.to_string());
-                }
+                error_ui(viewer_ctx, ctx, ui, &self.origin, err);
             });
             return;
         }
@@ -216,28 +201,17 @@ impl Server {
             let default_visible = if desc.entity_path().is_some_and(|entity_path| {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
-                // Property column, just hide indicator components
-                // TODO(grtlr): Indicators are gone, but since servers might still
-                // have this column we keep this check for now.
-                let is_indicator = desc
-                    .column_name(BatchType::Dataframe)
-                    .ends_with("Indicator");
-                if is_indicator {
-                    re_log::warn_once!(
-                        "Encountered unexpected indicator column name: {}",
-                        desc.column_name(BatchType::Dataframe)
-                    );
-                }
-                !is_indicator
+                // Property columns are visible by default
+                true
             } else {
                 matches!(
                     desc.display_name().as_str(),
-                    RECORDING_LINK_COLUMN_NAME | DATASET_MANIFEST_ID_FIELD_NAME
+                    RECORDING_LINK_COLUMN_NAME | ScanSegmentTableResponse::FIELD_SEGMENT_ID
                 )
             };
 
             let column_sort_key = match desc.display_name().as_str() {
-                DATASET_MANIFEST_ID_FIELD_NAME => 0,
+                ScanSegmentTableResponse::FIELD_SEGMENT_ID => 0,
                 RECORDING_LINK_COLUMN_NAME => 1,
                 _ => 2,
             };
@@ -253,9 +227,9 @@ impl Server {
 
             blueprint
         })
-        .generate_partition_links(
+        .generate_segment_links(
             RECORDING_LINK_COLUMN_NAME,
-            DATASET_MANIFEST_ID_FIELD_NAME,
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
             self.origin.clone(),
             dataset.id(),
         )
@@ -270,6 +244,81 @@ impl Server {
     }
 }
 
+fn error_ui(
+    viewer_ctx: &ViewerContext<'_>,
+    ctx: &Context<'_>,
+    ui: &mut egui::Ui,
+    origin: &re_uri::Origin,
+    err: &re_redap_client::ApiError,
+) {
+    let edit_alert = |ui: &mut egui::Ui, message: &str, edit_message: &str| {
+        Alert::warning().show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.strong(message);
+                if ui
+                    .link(RichText::new(edit_message).strong().underline())
+                    .clicked()
+                {
+                    ctx.command_sender
+                        .send(Command::OpenEditServerModal(EditRedapServerModalCommand {
+                            origin: origin.clone(),
+                            open_on_success: None,
+                            title: None,
+                        }))
+                        .ok();
+                }
+            });
+        });
+    };
+
+    if let Some(conn_err) = err.as_client_credentials_error() {
+        let logged_in = viewer_ctx.global_context.logged_in();
+
+        let has_token = !matches!(
+            conn_err,
+            ClientCredentialsError::UnauthenticatedMissingToken { .. }
+        );
+
+        let edit_message = match (logged_in, has_token) {
+            (true, true) => "Edit login or token",
+            (true, false) => "Edit login or add token",
+            (false, true) => "Log in or edit token",
+            (false, false) => "Log in or add token",
+        };
+
+        let message = match conn_err {
+            ClientCredentialsError::RefreshError { .. } => {
+                "There was an error refreshing your credentials"
+            }
+
+            ClientCredentialsError::SessionExpired => "Your session has expired",
+
+            ClientCredentialsError::UnauthenticatedMissingToken { .. } => {
+                "This server requires authentication to access its data."
+            }
+
+            ClientCredentialsError::UnauthenticatedBadToken { credentials, .. } => {
+                match credentials.source {
+                    CredentialSource::PerOrigin => "The credentials for this origin are invalid",
+                    CredentialSource::Fallback => "The fallback credentials are invalid",
+                    CredentialSource::EnvVar => {
+                        "The credentials provided via environment variable REDAP_TOKEN are invalid"
+                    }
+                }
+            }
+        };
+
+        edit_alert(ui, message, edit_message);
+    } else if matches!(
+        &err.kind,
+        re_redap_client::ApiErrorKind::InvalidServer | re_redap_client::ApiErrorKind::Connection
+    ) {
+        edit_alert(ui, &err.to_string(), "Edit server settings");
+    } else {
+        ui.error_label(err.to_string());
+    }
+}
+
 /// All servers known to the viewer, and their catalog data.
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
@@ -279,8 +328,8 @@ pub struct RedapServers {
     pending_servers: Vec<re_uri::Origin>,
 
     // message queue for commands
-    command_sender: Sender<Command>,
-    command_receiver: Receiver<Command>,
+    command_sender: crossbeam::channel::Sender<Command>,
+    command_receiver: crossbeam::channel::Receiver<Command>,
 
     server_modal_ui: ServerModal,
 }
@@ -318,7 +367,7 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
 
 impl Default for RedapServers {
     fn default() -> Self {
-        let (command_sender, command_receiver) = std::sync::mpsc::channel();
+        let (command_sender, command_receiver) = create_channel(256);
 
         Self {
             servers: Default::default(),
@@ -330,15 +379,41 @@ impl Default for RedapServers {
     }
 }
 
+/// Create a blocking channel on native, and an unbounded channel on web.
+fn create_channel<T>(
+    size: usize,
+) -> (
+    crossbeam::channel::Sender<T>,
+    crossbeam::channel::Receiver<T>,
+) {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            _ = size;
+            crossbeam::channel::unbounded() // we're not allowed to block on web
+        } else {
+            crossbeam::channel::bounded(size)
+        }
+    }
+}
+
 pub enum Command {
+    /// Open a modal to add a new server.
     OpenAddServerModal,
 
-    OpenEditServerModal(re_uri::Origin),
+    /// Open a modal to edit an existing server.
+    OpenEditServerModal(EditRedapServerModalCommand),
 
     /// Add a server with an optional JWT token.
     ///
     /// If the token is None, this does *not* remove an existing token.
-    AddServer(re_uri::Origin, Option<Jwt>),
+    ///
+    /// The closure can be used to run something after adding the server (useful since [`Command`]s
+    /// are not ran in order with [`re_viewer_context::SystemCommand`]s).
+    AddServer {
+        origin: re_uri::Origin,
+        credentials: Option<re_redap_client::Credentials>,
+        on_add: Option<Box<dyn FnOnce() + Send>>,
+    },
 
     /// Remove a server and its token.
     RemoveServer(re_uri::Origin),
@@ -359,12 +434,41 @@ impl RedapServers {
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         self.command_sender
-            .send(Command::AddServer(origin, None))
+            .send(Command::AddServer {
+                origin,
+                credentials: None,
+                on_add: None,
+            })
             .ok();
     }
 
     pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
         self.servers.values()
+    }
+
+    pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
+        self.servers
+            .get(origin)
+            .and_then(|server| server.connection_registry.credentials(origin))
+            .is_some()
+    }
+
+    pub fn logout(&mut self) {
+        self.server_modal_ui.logout();
+        // Log out from the servers that used the accounts token.
+        for server in self.servers.values() {
+            if matches!(
+                server.connection_registry.credentials(&server.origin),
+                Some(Credentials::Stored)
+            ) {
+                server
+                    .connection_registry
+                    .remove_credentials(&server.origin);
+                self.command_sender
+                    .send(Command::RefreshCollection(server.origin.clone()))
+                    .ok();
+            }
+        }
     }
 
     /// Per-frame housekeeping.
@@ -379,7 +483,11 @@ impl RedapServers {
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
             self.command_sender
-                .send(Command::AddServer(origin, None))
+                .send(Command::AddServer {
+                    origin,
+                    credentials: None,
+                    on_add: None,
+                })
                 .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
@@ -409,9 +517,13 @@ impl RedapServers {
                     .open(ServerModalMode::Edit(origin), connection_registry);
             }
 
-            Command::AddServer(origin, jwt) => {
-                if let Some(token) = jwt {
-                    connection_registry.set_token(&origin, token);
+            Command::AddServer {
+                origin,
+                credentials,
+                on_add,
+            } => {
+                if let Some(credentials) = credentials {
+                    connection_registry.set_credentials(&origin, credentials);
                 }
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
@@ -431,11 +543,14 @@ impl RedapServers {
                         origin.to_string()
                     );
                 }
+                if let Some(on_add) = on_add {
+                    on_add();
+                }
             }
 
             Command::RemoveServer(origin) => {
                 self.servers.remove(&origin);
-                connection_registry.remove_token(&origin);
+                connection_registry.remove_credentials(&origin);
             }
 
             Command::RefreshCollection(origin) => {
@@ -463,6 +578,12 @@ impl RedapServers {
 
     pub fn open_add_server_modal(&self) {
         self.command_sender.send(Command::OpenAddServerModal).ok();
+    }
+
+    pub fn open_edit_server_modal(&self, command: EditRedapServerModalCommand) {
+        self.command_sender
+            .send(Command::OpenEditServerModal(command))
+            .ok();
     }
 
     pub fn entry_ui(
@@ -515,7 +636,7 @@ impl RedapServers {
         let result = self.command_sender.send(command);
 
         if let Err(err) = result {
-            re_log::warn_once!("Failed to send command: {}", err);
+            re_log::warn_once!("Failed to send command: {err}");
         }
     }
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any
 
 from rerun._baseclasses import ComponentDescriptor
@@ -12,6 +11,8 @@ from .error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any]
 
 
 class DynamicArchetype(AsComponents):
@@ -80,7 +81,7 @@ class DynamicArchetype(AsComponents):
         archetype:
             All values in this class will be grouped under this archetype.
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         components:
             The components to be logged.
@@ -137,7 +138,7 @@ class DynamicArchetype(AsComponents):
         self._name = name
 
     def _with_descriptor_internal(
-        self, descriptor: ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+        self, descriptor: ComponentDescriptor, value: Any, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
@@ -145,7 +146,7 @@ class DynamicArchetype(AsComponents):
             self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
         return self
 
-    def with_component_from_data(self, field: str, value: Any, drop_untyped_nones: bool = True) -> DynamicArchetype:
+    def with_component_from_data(self, field: str, value: Any, *, drop_untyped_nones: bool = True) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         descriptor = ComponentDescriptor(component=field)
         if self._archetype is not None:
@@ -153,7 +154,7 @@ class DynamicArchetype(AsComponents):
         return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
     def with_component_override(
-        self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True
+        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle with name and component type."""
         descriptor = ComponentDescriptor(component=field, component_type=component_type)
@@ -216,7 +217,7 @@ class DynamicArchetype(AsComponents):
         archetype:
             All values in this class will be grouped under this archetype.
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         components:
             The components to be logged.
@@ -226,13 +227,3 @@ class DynamicArchetype(AsComponents):
         return ComponentColumnList([
             ComponentColumn(batch.component_descriptor(), batch) for batch in inst._component_batches
         ])
-
-    @property
-    def component_batches(self) -> list[DescribedComponentBatch]:
-        # TODO(#10908): Prune this type in 0.26
-        warnings.warn(
-            "Accessing `component_batches` directly is deprecated, access via `as_component_batches` instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        return self._component_batches

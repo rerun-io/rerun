@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use crate::{Backtrace, BacktraceHash};
-
-use crate::CountAndSize;
+use crate::{Backtrace, BacktraceHash, CountAndSize};
 
 // ----------------------------------------------------------------------------
 
@@ -44,8 +42,8 @@ impl std::fmt::Display for ReadableBacktrace {
 }
 
 impl ReadableBacktrace {
+    #[allow(clippy::allow_attributes, unused_mut)] // wasm vs native diff
     fn new(mut backtrace: Backtrace) -> Self {
-        #![allow(unused_mut)] // difference between native and wasm
         Self {
             readable: backtrace.format(),
         }
@@ -169,6 +167,9 @@ impl AllocationTracker {
                 })
             })
             .collect();
+
+        // TODO(emilk): this could be faster with `select_nth_unstable`
+        #[expect(clippy::cast_possible_wrap)]
         vec.sort_by_key(|stats| -(stats.extant.size as i64));
         vec.truncate(n);
         vec.shrink_to_fit();

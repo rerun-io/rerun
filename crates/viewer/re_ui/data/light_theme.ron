@@ -6,6 +6,9 @@
   "modal_button_width": 50,
   "default_modal_width": 400,
 
+  "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
+  "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill
+
   "Alias": {
     "native_frame_stroke": {
       "color": "{Gray.750}",
@@ -48,6 +51,11 @@
       "color": "{Blue.300}"
     },
 
+    "viewport_background": {
+      "color": "{Gray.1000}"
+    },
+
+
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.750}"
@@ -59,9 +67,7 @@
     "section_header_color": {
       "color": "{Gray.875}"
     },
-    "loop_selection_color": {
-      "color": "#6386C9B2"
-    },
+
     "loop_everything_color": {
       "color": "#06A35C"
     },
@@ -91,6 +97,15 @@
     },
     "selection_stroke_color": {
       "color": "{Blue.900}"
+    },
+    "focus_outline_stroke": {
+      "color": "{Blue.400}",
+      "width": 1
+    },
+    "focus_halo_stroke": {
+      "color": "{Blue.350}",
+      "alpha": 75,
+      "width": 2
     },
 
     "panel_bg_color": {
@@ -125,6 +140,9 @@
     },
     "table_interaction_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
+    },
+    "table_interaction_row_selection_fill": {
+      "color": "{Gray.900}"
     },
     "table_sort_icon_color": {
       "color": "{Blue.250}"
@@ -223,6 +241,9 @@
     "density_graph_unselected": {
       "color": "{Gray.300}"
     },
+    "density_graph_outside_valid_ranges": {
+      "color": "{Gray.700}"
+    },
 
     "axis_color_x": {
       "color": "{Red.550}"
@@ -272,18 +293,21 @@
     },
 
     "code_index_color": {
-      "color": "#BF68AF"
+      "color": "#894783"
+    },
+    "code_null_color": {
+      "color": "#855E00"
     },
     "code_primitive_color": {
-      "color": "#32AA79"
+      "color": "#007745"
     },
     "code_string_color": {
-      "color": "#7782EA"
+      "color": "#545AA6"
     },
 
     // TODO(ab, katya): review these
     "code_keyword_color": {
-      "color": "#D176BF",
+      "color": "#855E00",
     },
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",

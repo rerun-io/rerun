@@ -3,12 +3,14 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: IntCompares {
-        operator: Ne,
-        value: Some(
-            2,
-        ),
-    },
+    filter: Int(
+        IntFilter {
+            operator: Ne,
+            rhs_value: Some(
+                2,
+            ),
+        },
+    ),
     field: Field {
         name: "column",
         data_type: List(
@@ -66,12 +68,6 @@ TestResult {
     [
       PrimitiveArray<Int64>
     [
-      1,
-      2,
-      3,
-    ],
-      PrimitiveArray<Int64>
-    [
       4,
       5,
       6,
@@ -81,12 +77,6 @@ TestResult {
       7,
       4,
       9,
-    ],
-      PrimitiveArray<Int64>
-    [
-      5,
-      2,
-      1,
     ],
     ],
 }

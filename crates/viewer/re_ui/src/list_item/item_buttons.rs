@@ -1,6 +1,7 @@
-use crate::UiExt as _;
-use crate::list_item::ContentContext;
 use egui::Widget;
+
+use crate::list_item::ContentContext;
+use crate::{OnResponseExt as _, UiExt as _};
 
 type ButtonFn<'a> = Box<dyn FnOnce(&mut egui::Ui) + 'a>;
 
@@ -58,6 +59,7 @@ impl<'a> ItemButtons<'a> {
         rect: &mut egui::Rect,
     ) {
         if self.buttons.is_empty() || !self.should_show_buttons(context) {
+            ui.skip_ahead_auto_ids(1); // Make sure the id of `ui` remains the same after the call regardless
             return;
         }
 
@@ -105,8 +107,8 @@ where
     /// By default, buttons are only shown on hover or when selected, use
     /// [`Self::with_always_show_buttons`] to change that.
     ///
-    /// Usually you want to add an [`crate::list_item::ItemMenuButton`] or
-    /// [`crate::list_item::ItemActionButton`].
+    /// Usually you want to add an [`crate::UiExt::small_icon_button`] and use the helpers from
+    /// [`crate::OnResponseExt`] to add actions / menus.
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
@@ -125,8 +127,8 @@ where
     /// By default, buttons are only shown on hover or when selected, use
     /// [`Self::with_always_show_buttons`] to change that.
     ///
-    /// Usually you want to add [`crate::list_item::ItemMenuButton`]s or
-    /// [`crate::list_item::ItemActionButton`]s.
+    /// Usually you want to add an [`crate::UiExt::small_icon_button`] and use the helpers from
+    /// [`crate::OnResponseExt`] to add actions / menus.
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
@@ -149,7 +151,7 @@ where
         self
     }
 
-    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add a button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -166,7 +168,7 @@ where
         self.with_action_button_enabled(icon, alt_text, true, on_click)
     }
 
-    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add an enabled/disabled button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -182,20 +184,25 @@ where
         on_click: impl FnOnce() + 'a,
     ) -> Self {
         let hover_text = alt_text.into();
-        self.with_button(
-            super::ItemActionButton::new(icon, &hover_text, on_click)
+        self.with_button(move |ui: &mut egui::Ui| {
+            let thing = ui
+                .small_icon_button_widget(icon, &hover_text)
+                .on_click(on_click)
                 .enabled(enabled)
-                .hover_text(hover_text),
-        )
+                .on_hover_text(hover_text);
+            ui.add(thing)
+        })
     }
 
-    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    /// Helper to add a menu button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
     /// The `alt_text` will also be used for the tooltip.
     ///
     /// See [`Self::with_button`] for more information.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_menu_button(
         self,
@@ -204,12 +211,19 @@ where
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
         let hover_text = alt_text.into();
-        self.with_button(
-            super::ItemMenuButton::new(icon, &hover_text, add_contents).hover_text(hover_text),
-        )
+        self.with_always_show_buttons(true)
+            .with_button(|ui: &mut egui::Ui| {
+                ui.add(
+                    ui.small_icon_button_widget(icon, &hover_text)
+                        .on_hover_text(hover_text)
+                        .on_menu(add_contents),
+                )
+            })
     }
 
     /// Set the help text tooltip to be shown in the header.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_help_text(self, help: impl Into<egui::WidgetText> + 'a) -> Self {
         self.with_help_ui(|ui| {
@@ -218,6 +232,8 @@ where
     }
 
     /// Set the help markdown tooltip to be shown in the header.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_help_markdown(self, help: &'a str) -> Self {
         self.with_help_ui(|ui| {
@@ -226,8 +242,21 @@ where
     }
 
     /// Set the help UI closure to be shown in the header.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_help_ui(self, help: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
-        self.with_button(|ui: &mut egui::Ui| ui.help_button(help))
+        self.with_always_show_buttons(true)
+            .with_button(|ui: &mut egui::Ui| ui.help_button(help))
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for ItemButtons<'a> {
+    fn buttons(&self) -> &Self {
+        self
+    }
+
+    fn buttons_mut(&mut self) -> &mut Self {
+        self
     }
 }

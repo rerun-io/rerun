@@ -12,11 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -27,15 +27,16 @@ jobs:
 
   py-lints:
     name: Python lints (ruff, mypy, …)
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -43,22 +44,24 @@ jobs:
       - name: Lint Python
         run: pixi run py-lint
 
+      - name: Notebook strip check
+        run: pixi run nb-strip-check
+
   # ---------------------------------------------------------------------------
 
   py-test-docs:
     name: Test Python Docs
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
-          environments: py-docs
+          pixi-version: v0.55.0
 
       - name: Build via mkdocs
-        shell: bash
         run: |
-          pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
+          pixi run uv run --group docs mkdocs build --strict -f rerun_py/mkdocs.yml

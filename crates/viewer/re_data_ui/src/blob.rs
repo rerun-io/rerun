@@ -1,20 +1,17 @@
+use std::sync::Arc;
+
+use re_chunk_store::UnitChunkShared;
+use re_log_types::EntityPath;
+use re_sdk_types::components::{Blob, MediaType, VideoTimestamp};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, RowId, archetypes, components};
+use re_types_core::Component as _;
+use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::{UiExt as _, icons};
+use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
+
 use crate::image::ImageUi;
 use crate::video::VideoUi;
 use crate::{EntityDataUi, find_and_deserialize_archetype_mono_component};
-use re_chunk_store::UnitChunkShared;
-use re_log_types::EntityPath;
-use re_types::{
-    ComponentDescriptor, RowId, archetypes, components,
-    components::{Blob, MediaType, VideoTimestamp},
-};
-use re_types_core::Component as _;
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    UiExt as _, icons,
-    list_item::{self, PropertyContent},
-};
-use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
-use std::sync::Arc;
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(
@@ -91,7 +88,7 @@ impl EntityDataUi for Blob {
 }
 
 /// Show EXIF data about the given blob (image), if possible.
-fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatypes::Blob) {
+fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_sdk_types::datatypes::Blob) {
     let exif_result = ui.ctx().memory_mut(|mem| {
         // Cache EXIF parsing to avoid re-parsing every frame.
         // The parsing is really fast, so this is not really needed.
@@ -128,8 +125,8 @@ fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatype
 
 /// Utility for displaying additional UI for blobs.
 pub struct BlobUi {
-    descr: ComponentDescriptor,
-    blob: re_types::datatypes::Blob,
+    component: ComponentIdentifier,
+    blob: re_sdk_types::datatypes::Blob,
 
     /// Additional image ui if any.
     image: Option<ImageUi>,
@@ -157,7 +154,7 @@ impl BlobUi {
         }
 
         let blob = blob_chunk
-            .component_mono::<components::Blob>(blob_descr)?
+            .component_mono::<components::Blob>(blob_descr.component)?
             .ok()?;
 
         // Media type comes typically alongside the blob in various different archetypes.
@@ -176,7 +173,9 @@ impl BlobUi {
             .find_map(|(descr, chunk)| {
                 (descr == &video_timestamp_descr).then(|| {
                     chunk
-                        .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)?
+                        .component_mono::<components::VideoTimestamp>(
+                            video_timestamp_descr.component,
+                        )?
                         .ok()
                 })
             })
@@ -198,37 +197,38 @@ impl BlobUi {
         entity_path: &re_log_types::EntityPath,
         blob_component_descriptor: &ComponentDescriptor,
         blob_row_id: Option<RowId>,
-        blob: re_types::datatypes::Blob,
+        blob: re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Self {
-        let mut image = None;
-        let mut video = None;
+        let (image, video) = if let Some(blob_row_id) = blob_row_id {
+            (
+                ImageUi::from_blob(
+                    ctx,
+                    blob_row_id,
+                    blob_component_descriptor,
+                    &blob,
+                    media_type,
+                ),
+                VideoUi::from_blob(
+                    ctx,
+                    entity_path,
+                    blob_row_id,
+                    blob_component_descriptor,
+                    &blob,
+                    media_type,
+                    video_timestamp,
+                ),
+            )
+        } else {
+            (None, None)
+        };
 
-        if let Some(blob_row_id) = blob_row_id {
-            image = ImageUi::from_blob(
-                ctx,
-                blob_row_id,
-                blob_component_descriptor,
-                &blob,
-                media_type,
-            );
-
-            video = VideoUi::from_blob(
-                ctx,
-                entity_path,
-                blob_row_id,
-                blob_component_descriptor,
-                &blob,
-                media_type,
-                video_timestamp,
-            );
-        }
         Self {
             image,
             video,
             row_id: blob_row_id,
-            descr: blob_component_descriptor.clone(),
+            component: blob_component_descriptor.component,
             blob,
             media_type: media_type.cloned(),
         }
@@ -274,10 +274,13 @@ impl BlobUi {
         entity_path: &EntityPath,
     ) {
         if let Some(row_id) = self.row_id
-            && !ui_layout.is_single_line()
-            && ui_layout != UiLayout::Tooltip
+            && ui_layout == UiLayout::SelectionPanel
         {
-            exif_ui(ui, StoredBlobCacheKey::new(row_id, &self.descr), &self.blob);
+            exif_ui(
+                ui,
+                StoredBlobCacheKey::new(row_id, self.component),
+                &self.blob,
+            );
         }
 
         if let Some(image) = &self.image {

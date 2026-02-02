@@ -3,7 +3,8 @@ use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
 use re_viewer_context::VisualizerCollection;
 
-use crate::{view_kind::SpatialViewKind, visualizers::SpatialViewVisualizerData};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::SpatialViewVisualizerData;
 
 #[derive(Clone)]
 pub struct SceneBoundingBoxes {

@@ -1,0 +1,13 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+vertex_positions: [[0.0, 0.0, 0.0]]
+triangle_indices: [[0, 1, 2]]
+vertex_normals: [[0.0, 0.0, 0.0]]
+vertex_colors: [3161148927]
+vertex_texcoords: [[0.0, 0.0]]
+albedo_factor: [4294967295]
+albedo_texture_buffer: [[0]]
+albedo_texture_format: [{width: 0, height: 0, pixel_format: null, color_model: null, channel_datatype: null}]
+class_ids: [0]

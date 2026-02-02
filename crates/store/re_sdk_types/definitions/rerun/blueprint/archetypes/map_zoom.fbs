@@ -1,0 +1,16 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration of the map view zoom level.
+//TODO(ab): Turn this archetype into `MapArea` and include a `center: LatLon` component or similar
+table MapZoom (
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "datatypes.Float64Like"
+) {
+  // --- Optional ---
+
+  /// Zoom level for the map.
+  ///
+  /// Zoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).
+  zoom: rerun.blueprint.components.ZoomLevel ("attr.rerun.component_optional", order: 1000);
+}

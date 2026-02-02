@@ -1,0 +1,49 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// 3D line strips with positions and optional colors, radii, labels, etc.
+///
+/// \example archetypes/line_strips3d_simple !api title="Simple example" image="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1200w.png"
+/// \example archetypes/line_strips3d_segments_simple !api title="Many individual segments" image="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1200w.png"
+/// \example archetypes/line_strips3d_batch title="Many strips" image="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1200w.png"
+/// \example archetypes/line_strips3d_ui_radius title="Lines with scene & UI radius each" image="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1200w.png"
+table LineStrips3D (
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "Lines3D",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// All the actual 3D line strips that make up the batch.
+  strips: [rerun.components.LineStrip3D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional radii for the line strips.
+  radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Optional colors for the line strips.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// Optional text labels for the line strips.
+  ///
+  /// If there's a single label present, it will be placed at the center of the entity.
+  /// Otherwise, each instance will have its own label.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Whether the text labels should be shown.
+  ///
+  /// If not set, labels will automatically appear when there is exactly one label for this entity
+  /// or the number of instances on this entity is under a certain threshold.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3050);
+
+  /// Optional [components.ClassId]s for the lines.
+  ///
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+}

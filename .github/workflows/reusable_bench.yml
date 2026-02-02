@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -42,7 +42,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   # contents permission to update benchmark contents in gh-pages branch
@@ -56,6 +56,7 @@ jobs:
 
   rs-benchmarks:
     name: Rust Criterion benchmarks
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
@@ -72,14 +73,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
-          # default: for the rendering step
-          # wheel-test-min: minimal env for roundtrips (less heavy than wheel-test/examples)
-          environments: >-
-            default
-            wheel-test-min
+          pixi-version: v0.55.0
 
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
@@ -88,8 +84,7 @@ jobs:
         # Use bash shell so we get pipefail behavior with tee
         # Running under `pixi` so we get `nasm`
         run: |
-          pixi run -e wheel-test-min \
-            cargo bench \
+          pixi run cargo bench \
             --all-features \
             -p re_entity_db \
             -p re_log_encoding \
@@ -118,7 +113,7 @@ jobs:
           gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/compare/${{ inputs.COMPARE_TO }}
 
       - name: Install cargo-benchcmp
-        run: pixi run cargo install --quiet cargo-benchcmp
+        run: pixi run cargo install cargo-benchcmp
 
       - name: Compare results with benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}

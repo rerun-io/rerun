@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use egui::{
-    NumExt as _, TextWrapMode,
-    text::{LayoutJob, TextWrapping},
-};
+use egui::text::{LayoutJob, TextWrapping};
+use egui::{NumExt as _, TextWrapMode};
 
-use crate::{UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
+use crate::UiExt as _;
+use crate::syntax_highlighting::SyntaxHighlightedBuilder;
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -122,16 +121,18 @@ impl UiLayout {
             && ui.spacing().tooltip_width < galley.size().x
         {
             // This will make the tooltip too wide.
-            assert!(
-                cfg!(debug_assertions),
-                "DEBUG ASSERT: adding galley with width: {} to a tooltip.",
+            // TODO(#11211): do proper fix
+
+            debug_assert!(
+                galley.size().x < ui.spacing().tooltip_width + 1000.0,
+                "DEBUG ASSERT: adding huge galley with width: {} to a tooltip.",
                 galley.size().x
             );
 
             // Ugly hack that may or may not work correctly.
             let mut layout_job = Arc::unwrap_or_clone(galley.job.clone());
             layout_job.wrap.max_width = ui.spacing().tooltip_width;
-            galley = ui.fonts(|f| f.layout_job(layout_job));
+            galley = ui.fonts_mut(|f| f.layout_job(layout_job));
         }
 
         let text = galley.text();
@@ -191,7 +192,7 @@ impl UiLayout {
             Self::SelectionPanel => {}
         }
 
-        let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
+        let galley = ui.fonts_mut(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
         Self::decorate_url(ui, galley)
     }

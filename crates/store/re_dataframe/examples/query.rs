@@ -1,12 +1,11 @@
-#![allow(clippy::unwrap_used, clippy::match_same_arms)]
+#![expect(clippy::unwrap_used)]
 
 use itertools::Itertools as _;
-
+use re_arrow_util::format_record_batch;
 use re_dataframe::{
     AbsoluteTimeRange, ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression,
     SparseFillStrategy, TimeInt,
 };
-use re_format_arrow::format_record_batch;
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();

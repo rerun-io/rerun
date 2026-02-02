@@ -1,12 +1,14 @@
 //! Prometheus-specific metric conversion and encoding utilities
 
-use parking_lot::Mutex;
+#![expect(clippy::cast_possible_wrap)] // u64 -> i64
+
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::sync::Arc;
 
 use opentelemetry::KeyValue;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
+use parking_lot::Mutex;
 use prometheus_client::encoding::EncodeLabelSet;
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;

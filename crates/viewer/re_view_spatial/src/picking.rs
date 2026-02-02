@@ -64,7 +64,7 @@ impl PickingResult {
 /// Picking context in which picking is performed.
 pub struct PickingContext {
     /// Cursor position in the UI coordinate system.
-    #[allow(unused)]
+    #[expect(unused)]
     pub pointer_in_ui: glam::Vec2,
 
     /// Cursor position on the renderer canvas in pixels.

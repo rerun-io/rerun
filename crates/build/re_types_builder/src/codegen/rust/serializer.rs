@@ -1,19 +1,14 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::{
-    Object, Objects, TypeRegistry,
-    data_type::{AtomicDataType, DataType, UnionMode},
-    objects::EnumIntegerType,
+use super::arrow::{
+    ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
+    quoted_arrow_primitive_type,
 };
-
-use super::{
-    arrow::{
-        ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
-        quoted_arrow_primitive_type,
-    },
-    util::{is_tuple_struct_from_obj, quote_comment},
-};
+use super::util::{is_tuple_struct_from_obj, quote_comment};
+use crate::data_type::{AtomicDataType, DataType, UnionMode};
+use crate::objects::EnumIntegerType;
+use crate::{Object, Objects, TypeRegistry};
 
 // ---
 
@@ -474,7 +469,6 @@ enum InnerRepr {
 ///
 /// TODO(#2993): However, we still emit a validity/null bitmaps for lists inside lists
 /// since Python and Rust do so.
-#[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
     datatype: &DataType,
@@ -636,7 +630,7 @@ fn quote_arrow_field_serializer(
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
@@ -655,7 +649,7 @@ fn quote_arrow_field_serializer(
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
@@ -679,7 +673,7 @@ fn quote_arrow_field_serializer(
                     // whole utf8 validation _again_.
                     // It would be nice to use quote_comment here and put this safety notice in the generated code,
                     // but that seems to push us over some complexity limit causing rustfmt to fail.
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
                 }}
             }
@@ -766,15 +760,53 @@ fn quote_arrow_field_serializer(
 
                 match inner_repr {
                     InnerRepr::ScalarBuffer => {
-                        // TODO(emilk): this can probably be optimized
-                        quote! {
-                            #data_src
+                        // Special optimization for Blob (Vec<u8>): reuse ScalarBuffer for single-blob case.
+                        // For other ScalarBuffer types, use standard concat approach.
+                        let is_blob =
+                            matches!(inner_datatype, DataType::Atomic(AtomicDataType::UInt8));
+
+                        if is_blob {
+                            // Blob optimization: avoid allocation for single-buffer case
+                            quote! {
+                                {
+                                    let mut iter = #data_src
+                                        .iter()
+                                        #flatten_if_needed;
+                                    let first = iter.next();
+                                    let second = iter.next();
+
+                                    match (first, second) {
+                                        (Some(single), None) => {
+                                            // Single buffer: cheap Arc clone
+                                            single.clone()
+                                        }
+                                        (Some(first_buf), Some(second_buf)) => {
+                                            // Multiple buffers: single Vec allocation for slices
+                                            std::iter::once(first_buf.as_ref() as &[_])
+                                                .chain(std::iter::once(second_buf.as_ref() as &[_]))
+                                                .chain(iter.map(|b| b.as_ref() as &[_]))
+                                                .collect::<Vec<_>>()
+                                                .concat()
+                                                .into()
+                                        }
+                                        _ => {
+                                            // Empty case
+                                            Vec::new().into()
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Standard path for other ScalarBuffer types
+                            quote! {
+                                #data_src
                                 .iter()
                                 #flatten_if_needed
-                                .map(|b| b as &[_])
+                                .map(|b| b.as_ref() as &[_])
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into()
+                            }
                         }
                     }
                     InnerRepr::NativeIterable => {

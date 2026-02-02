@@ -9,9 +9,9 @@ use std::ops::RangeInclusive;
 use egui::emath::Rangef;
 use egui::{NumExt as _, lerp, remap};
 use itertools::Itertools as _;
-
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal};
-use re_viewer_context::{PlayState, TimeControl, TimeView};
+use re_sdk_types::blueprint::components::PlayState;
+use re_viewer_context::{TimeControlCommand, TimeView};
 
 /// The ideal gap between time segments.
 ///
@@ -70,6 +70,8 @@ pub struct TimeRangesUi {
     ///
     /// Before the first and after the last we extrapolate.
     /// Between the segments we interpolate.
+    ///
+    /// Data within each segment, stretches of data may or may not be valid.
     pub segments: Vec<Segment>,
 
     /// x distance per time unit inside the segments,
@@ -94,10 +96,15 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[AbsoluteTimeRange]) -> Self {
+    /// "valid" means "fully loaded", as opposed to "partially loaded"
+    pub fn new(
+        time_x_range: Rangef,
+        time_view: TimeView,
+        time_ranges: &[AbsoluteTimeRange],
+    ) -> Self {
         re_tracing::profile_function!();
 
-        debug_assert!(x_range.min < x_range.max);
+        debug_assert!(time_x_range.min < time_x_range.max);
 
         //        <------- time_view ------>
         //        <-------- x_range ------->
@@ -105,8 +112,8 @@ impl TimeRangesUi {
         //    [segment] [long segment]
         //             ^ gap
 
-        let gap_width_in_ui = gap_width(&x_range, time_ranges);
-        let x_range = (x_range.min as f64)..=(x_range.max as f64);
+        let gap_width_in_ui = gap_width(&time_x_range, time_ranges);
+        let x_range = (time_x_range.min as f64)..=(time_x_range.max as f64);
         let width_in_ui = *x_range.end() - *x_range.start();
         let points_per_time = width_in_ui / time_view.time_spanned;
         let points_per_time = if points_per_time > 0.0 && points_per_time.is_finite() {
@@ -141,13 +148,13 @@ impl TimeRangesUi {
             .map(|&tight_time_range| {
                 let range_width = tight_time_range.abs_length() as f64 * points_per_time;
                 let right = left + range_width;
-                let x_range = left..=right;
+                let x_range_unexpanded = left..=right;
                 left = right + gap_width_in_ui;
 
                 // expand each span outwards a bit to make selection of outer data points easier.
                 // Also gives zero-width segments some width!
-                let x_range =
-                    (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
+                let x_range = (*x_range_unexpanded.start() - expansion_in_ui)
+                    ..=(*x_range_unexpanded.end() + expansion_in_ui);
 
                 let time_range = AbsoluteTimeRangeF::new(
                     tight_time_range.min() - expansion_in_time,
@@ -192,9 +199,10 @@ impl TimeRangesUi {
         slf
     }
 
-    /// Clamp the time to the valid ranges.
+    /// Clamp the time to range within we have any data.
     ///
     /// Used when user is dragging the time handle.
+    /// This may still contain data outside of the range a store marks as valid.
     pub fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
         if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
             time = time.clamp(
@@ -219,17 +227,23 @@ impl TimeRangesUi {
         value
     }
 
-    // Make sure playback time doesn't get stuck between non-continuous regions:
-    pub fn snap_time_control(&self, time_ctrl: &mut TimeControl) {
+    /// Make sure playback time doesn't get stuck between non-continuous regions:
+    pub fn snap_time_control(
+        &self,
+        time_ctrl: &re_viewer_context::TimeControl,
+        time_commands: &mut Vec<TimeControlCommand>,
+    ) {
         if time_ctrl.play_state() != PlayState::Playing {
             return;
         }
 
         // Make sure time doesn't get stuck between non-continuous regions:
         if let Some(time) = time_ctrl.time() {
-            let time = self.snap_time_to_segments(time);
-            time_ctrl.set_time(time);
-        } else if let Some(selection) = time_ctrl.loop_selection() {
+            let new_time = self.snap_time_to_segments(time);
+            if new_time != time {
+                time_commands.push(TimeControlCommand::SetTime(new_time));
+            }
+        } else if let Some(selection) = time_ctrl.time_selection() {
             let snapped_min = self.snap_time_to_segments(selection.min);
             let snapped_max = self.snap_time_to_segments(selection.max);
 
@@ -241,9 +255,8 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            time_ctrl.set_loop_selection(AbsoluteTimeRangeF::new(
-                snapped_max - selection.length(),
-                snapped_max,
+            time_commands.push(TimeControlCommand::SetTimeSelection(
+                AbsoluteTimeRangeF::new(snapped_max - selection.length(), snapped_max).to_int(),
             ));
         }
     }
@@ -278,6 +291,32 @@ impl TimeRangesUi {
 
         // extrapolate:
         Some(last_x + self.points_per_time * (needle_time - last_time).as_f64())
+    }
+
+    /// Given the X coord of a pointer position, get a "smart aimed" time close to it.
+    ///
+    /// In effect, this will automatically choose the snap-radius based on zoom level.
+    pub fn snapped_time_from_x(&self, ui: &egui::Ui, pointer_x: f32) -> Option<TimeReal> {
+        let aim_radius = ui.input(|i| i.aim_radius()) as f64;
+
+        let time = self.time_from_x_f32(pointer_x)?;
+        let time = time.round();
+
+        let time_per_x = 1.0 / self.points_per_time;
+
+        let coarse_snapping = ui.input(|i| i.modifiers.shift);
+        let fine_snap_interval = time_snap_value_smaller_than(2.0 * aim_radius * time_per_x);
+
+        let snap_interval = if coarse_snapping {
+            i64::max(
+                10 * fine_snap_interval,
+                time_snap_value_smaller_than(50.0 * time_per_x),
+            )
+        } else {
+            fine_snap_interval
+        };
+
+        Some(time.closest_multiple_of(snap_interval).into())
     }
 
     pub fn time_from_x_f32(&self, needle_x: f32) -> Option<TimeReal> {
@@ -433,4 +472,37 @@ fn test_time_ranges_ui_2() {
             "time_in: {time_in:?}, time_out: {time_out:?}, x: {x}, time_range_ui: {time_range_ui:#?}"
         );
     }
+}
+
+/// Find the largest value, smaller than `max`, that is "round" (even multiple of 10, or half that).
+fn time_snap_value_smaller_than(max: f64) -> i64 {
+    let max = max.abs();
+    if max <= 1.0 {
+        return 1;
+    }
+
+    let magnitude = max.log10().floor() as u32;
+    let magnitude = magnitude.at_most(16); // Avoid overfloing i64 below
+    let step = 10_i64.pow(magnitude);
+
+    if 5.0 * step as f64 <= max {
+        5 * step
+    } else {
+        step
+    }
+}
+
+#[test]
+fn test_largest_round_value_smaller_than() {
+    assert_eq!(time_snap_value_smaller_than(9.9), 5);
+    assert_eq!(time_snap_value_smaller_than(10.0), 10);
+    assert_eq!(time_snap_value_smaller_than(10.2), 10);
+    assert_eq!(time_snap_value_smaller_than(40.9), 10);
+    assert_eq!(time_snap_value_smaller_than(50.0), 50);
+    assert_eq!(time_snap_value_smaller_than(50.1), 50);
+    assert_eq!(time_snap_value_smaller_than(90.9), 50);
+    assert_eq!(time_snap_value_smaller_than(100.0), 100);
+    assert_eq!(time_snap_value_smaller_than(100.1), 100);
+    assert_eq!(time_snap_value_smaller_than(1.1e12), 1_000_000_000_000);
+    assert_eq!(time_snap_value_smaller_than(6.1e12), 5_000_000_000_000);
 }

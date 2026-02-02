@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-
 use re_log::ResultExt as _;
-use re_log_encoding::encoder::encode_as_bytes_local;
+use re_log_encoding::Encoder;
 use re_log_types::LogMsg;
 
+use crate::RecordingStream;
+use crate::log_sink::SinkFlushError;
 use crate::sink::LogSink;
-use crate::{RecordingStream, log_sink::SinkFlushError};
 
 /// The storage used by [`BinaryStreamSink`].
 ///
@@ -42,7 +42,7 @@ impl BinaryStreamStorage {
             return None;
         }
 
-        encode_as_bytes_local(inner.drain(..).map(Ok)).ok_or_log_error()
+        Encoder::encode(inner.drain(..).map(Ok)).ok_or_log_error()
     }
 
     /// Flush the batcher and log encoder to guarantee that all logged messages
@@ -103,9 +103,5 @@ impl LogSink for BinaryStreamSink {
     #[inline]
     fn flush_blocking(&self, _timeout: std::time::Duration) -> Result<(), SinkFlushError> {
         Ok(())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }

@@ -1,0 +1,17 @@
+namespace rerun.blueprint.archetypes;
+
+/// Override the visualizers for an entity.
+///
+/// This archetype is a stop-gap mechanism based on the current implementation details
+/// of the visualizer system. It is not intended to be a long-term solution, but provides
+/// enough utility to be useful in the short term.
+///
+/// This can only be used as part of blueprints. It will have no effect if used
+/// in a regular entity.
+table ActiveVisualizers (
+    "attr.rerun.scope": "blueprint",
+    "attr.python.aliases": "str | Sequence[str]"
+) {
+   /// Id's of the visualizers that should be active.
+   instruction_ids: [rerun.blueprint.components.VisualizerInstructionId] ("attr.rerun.component_required", order: 1000);
+}

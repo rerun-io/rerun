@@ -3,7 +3,7 @@ use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::UiExt as _;
 use re_viewer_context::VariantName;
 
-use crate::filters::Filter;
+use crate::filters::ColumnFilter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
@@ -44,14 +44,30 @@ pub struct SortBy {
     pub direction: SortDirection,
 }
 
-/// Information required to generate a partition link column.
+impl SortBy {
+    pub fn ascending(col_name: impl Into<String>) -> Self {
+        Self {
+            column_physical_name: col_name.into(),
+            direction: SortDirection::Ascending,
+        }
+    }
+
+    pub fn descending(col_name: impl Into<String>) -> Self {
+        Self {
+            column_physical_name: col_name.into(),
+            direction: SortDirection::Descending,
+        }
+    }
+}
+
+/// Information required to generate a segment link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PartitionLinksSpec {
+pub struct SegmentLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
-    pub partition_id_column_name: String,
+    /// Name of the existing column containing the segment id.
+    pub segment_id_column_name: String,
 
     /// Origin to use for the links.
     pub origin: re_uri::Origin,
@@ -60,13 +76,13 @@ pub struct PartitionLinksSpec {
     pub dataset_id: EntryId,
 }
 
-/// Information required to generate a partition link column.
+/// Information required to generate an entry link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EntryLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
+    /// Name of the existing column containing the entry id.
     pub entry_id_column_name: String,
 
     /// Origin to use for the links.
@@ -74,10 +90,10 @@ pub struct EntryLinksSpec {
 }
 
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
-    pub partition_links: Option<PartitionLinksSpec>,
+    pub segment_links: Option<SegmentLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
 
     /// Always-on filter specified by calling code.
@@ -86,7 +102,7 @@ pub struct TableBlueprint {
     pub prefilter: Option<datafusion::logical_expr::Expr>,
 
     /// Filters specified by the user in the UI.
-    pub filters: Vec<Filter>,
+    pub column_filters: Vec<ColumnFilter>,
 }
 
 /// The blueprint for a specific column.

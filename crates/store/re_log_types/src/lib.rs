@@ -33,27 +33,23 @@ mod vec_deque_ext;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::{
-    arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
-    entry_id::{EntryId, EntryIdOrName},
-    index::{
-        AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
-        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,
-    },
-    instance::Instance,
-    path::*,
-    vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
+pub use re_types_core::TimelineName;
+
+pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
+pub use self::entry_id::{EntryId, EntryIdOrName};
+pub use self::index::{
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
+    TimeReal, TimeType, Timeline, Timestamp, TimestampFormat, TimestampFormatKind, TryFromIntError,
 };
+pub use self::instance::Instance;
+pub use self::path::*;
+pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {
-    pub use arrow;
-
-    pub use re_tuid;
-    pub use re_types_core;
+    pub use {arrow, re_tuid, re_types_core};
 }
 
 #[macro_export]
@@ -140,8 +136,8 @@ fn store_kind_str_roundtrip() {
 /// can override the recording id though. In that case, the user is responsible for making the
 /// application id/recording id pair unique or not, based on their needs.
 ///
-/// In the context of remote recordings (aka a dataset's partition), the application id is the
-/// dataset entry id, and the recording id is the partition id. The former is a UUID, and the latter
+/// In the context of remote recordings (aka a dataset's segment), the application id is the
+/// dataset entry id, and the recording id is the segment id. The former is a UUID, and the latter
 /// is, by definition, unique within the dataset entry. As a result, the uniqueness of the `StoreId`
 /// is always guaranteed in this case.
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -336,7 +332,7 @@ impl std::fmt::Display for ApplicationId {
 ///
 /// In the context of a recording from the logging SDK, it is by default a uuid, but it is not
 /// required to be so. It may be a user-chosen name as well. In the context of a remote recording,
-/// this is the partition id.
+/// this is the segment id.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingId(Arc<String>);
@@ -473,7 +469,6 @@ impl BlueprintActivationCommand {
 /// `.rrd` files.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
-#[allow(clippy::large_enum_variant)]
 // TODO(#8631): Remove `LogMsg`
 pub enum LogMsg {
     /// A new recording has begun.
@@ -561,8 +556,8 @@ pub struct SetStoreInfo {
 pub struct StoreInfo {
     /// Should be unique for each recording.
     ///
-    /// The store id contains both the application id (or dataset id) and the reocrding id (or
-    /// partition id).
+    /// The store id contains both the application id (or dataset id) and the recording id (or
+    /// segment id).
     pub store_id: StoreId,
 
     /// If this store is the result of a clone, which store was it cloned from?
@@ -582,6 +577,49 @@ pub struct StoreInfo {
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
     pub store_version: Option<CrateVersion>,
+}
+
+impl StoreInfo {
+    /// Creates a new store info using the current crate version.
+    pub fn new(store_id: StoreId, store_source: StoreSource) -> Self {
+        Self {
+            store_id,
+            cloned_from: None,
+            store_source,
+            store_version: Some(CrateVersion::LOCAL),
+        }
+    }
+
+    /// Creates a new store info without any versioning information.
+    pub fn new_unversioned(store_id: StoreId, store_source: StoreSource) -> Self {
+        Self {
+            store_id,
+            cloned_from: None,
+            store_source,
+            store_version: None,
+        }
+    }
+
+    /// Creates a new store info for testing purposes.
+    pub fn testing() -> Self {
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
+        Self::new_unversioned(
+            StoreId::random(StoreKind::Recording, "test_app"),
+            StoreSource::Other("test".to_owned()),
+        )
+    }
+
+    /// Creates a new store info for testing purposes with a fixed store id.
+    ///
+    /// Most of the time we don't want to fix the store id since it is used as a key in static store subscribers, which might not get teared down after every test.
+    /// Use this only if the recording id may show up somewhere in the test output.
+    pub fn testing_with_recording_id(recording_id: impl Into<RecordingId>) -> Self {
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
+        Self::new_unversioned(
+            StoreId::new(StoreKind::Recording, "test_app", recording_id),
+            StoreSource::Other("test".to_owned()),
+        )
+    }
 }
 
 impl StoreInfo {
@@ -829,6 +867,21 @@ pub struct TableMsg {
     pub data: ArrowRecordBatch,
 }
 
+impl re_byte_size::SizeBytes for TableMsg {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { id: _, data } = self;
+
+        data.heap_size_bytes()
+    }
+}
+
+impl TableMsg {
+    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
+        self.data.schema_metadata_mut().insert(key, value);
+    }
+}
+
 // ---
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
@@ -846,6 +899,20 @@ pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
         TimeInt::saturated_temporal(frame_nr),
+    )
+}
+
+#[inline]
+pub fn build_index_value(value: impl TryInto<TimeInt>, time_type: TimeType) -> (Timeline, TimeInt) {
+    let timeline_name = match time_type {
+        TimeType::Sequence => "frame_nr",
+        TimeType::DurationNs => "duration",
+        TimeType::TimestampNs => "timestamp",
+    };
+
+    (
+        Timeline::new(timeline_name, time_type),
+        TimeInt::saturated_temporal(value),
     )
 }
 

@@ -160,7 +160,7 @@ rec.spawn()
 
 These functions were [deprecated](migration-0-22.md#python-api-changes) in 0.22 and are no longer available.
 
-Calls to `rr.log_components()` API are now superseded by the new partial update API. See the [documentation](../../concepts/latest-at.md#partial-updates) and the [migration instructions](migration-0-22.md#partial-updates).
+Calls to `rr.log_components()` API are now superseded by the new partial update API. See the [documentation](../../concepts/logging-and-ingestion/latest-at.md#partial-updates) and the [migration instructions](migration-0-22.md#partial-updates).
 
 Calls to `rr.connect()` and `rr.connect_tcp()` must be changed to [`rr.connect_grpc()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.connect_grpc).
 

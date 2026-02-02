@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A time range on an unspecified timeline using either relative or absolute boundaries.
+table TimeRange (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.repr": "transparent"
+) {
+  time_range: rerun.datatypes.TimeRange (order: 100);
+}

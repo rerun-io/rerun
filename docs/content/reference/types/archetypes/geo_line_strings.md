@@ -31,7 +31,7 @@ Also known as "line strips" or "polylines".
 
 snippet: archetypes/geo_line_strings_simple
 
-<picture data-inline-viewer="snippets/geo_line_strings_simple">
+<picture data-inline-viewer="snippets/archetypes/geo_line_strings_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/1024w.png">

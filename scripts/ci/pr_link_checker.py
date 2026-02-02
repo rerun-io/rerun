@@ -9,6 +9,7 @@ checking links in the entire codebase on every PR.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import os
 import re
 import subprocess
@@ -17,18 +18,86 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import tomlkit
+
 
 def eprint(*args: Any, **kwargs: Any) -> None:
     """Prints a message to stderr."""
     print(*args, file=sys.stderr, **kwargs)
 
 
-def get_added_lines_with_links(base_ref: str = "origin/main") -> dict[str, list[str]]:
+def load_lychee_excludes(config_path: str = "lychee.toml") -> list[str]:
+    """Load and normalize exclude_path patterns from lychee config file."""
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            config = tomlkit.load(f)
+            exclude_paths = config.get("exclude_path", [])
+
+            # Validate that exclude_path is actually a list
+            if not isinstance(exclude_paths, list):
+                eprint(f"Error: 'exclude_path' in {config_path} must be a list, got {type(exclude_paths).__name__}")
+                sys.exit(1)
+
+            # Normalize patterns (strip leading ./) and validate each is a string
+            normalized = []
+            for pattern in exclude_paths:
+                if not isinstance(pattern, str):
+                    eprint(f"Error: exclude_path patterns must be strings, got {type(pattern).__name__}: {pattern}")
+                    sys.exit(1)
+                normalized.append(pattern.lstrip("./"))
+
+            return normalized
+    except FileNotFoundError:
+        eprint(f"Error: lychee config file '{config_path}' not found.")
+        eprint("This file is required to determine which files to exclude from link checking.")
+        sys.exit(1)
+    except Exception as e:
+        eprint(f"Error: Failed to parse lychee config '{config_path}': {e}")
+        eprint("Please ensure the config file is valid TOML format.")
+        sys.exit(1)
+
+
+def should_exclude_file(filepath: str, exclude_patterns: list[str]) -> bool:
+    """Check if a file matches any exclude pattern from lychee config."""
+    if not exclude_patterns:
+        return False
+
+    normalized = filepath.lstrip("./")
+    for pattern in exclude_patterns:
+        # Exact match or directory prefix match
+        if normalized == pattern or normalized.startswith(pattern + "/"):
+            return True
+        # Glob pattern match
+        if fnmatch.fnmatch(normalized, pattern):
+            return True
+    return False
+
+
+def get_added_lines_with_links(
+    base_ref: str = "origin/main", exclude_patterns: list[str] | None = None
+) -> dict[str, list[str]]:
     """
     Get lines added in the current branch that contain URLs.
 
     Returns a dict mapping filenames to lists of lines containing links.
     """
+    if exclude_patterns is None:
+        exclude_patterns = []
+
+    # Get the subdirectory prefix if we're not at the git root.
+    # This is needed because git diff returns paths relative to the git root,
+    # but we may be running from a subdirectory (e.g., rerun/ in the reality repo).
+    try:
+        prefix_result = subprocess.run(
+            ["git", "rev-parse", "--show-prefix"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        git_prefix = prefix_result.stdout.strip()
+    except subprocess.CalledProcessError:
+        git_prefix = ""
+
     # Get the diff of added lines (try committed changes first, then staged changes)
     # Disable external diff tools to get standard git diff format
     env = os.environ.copy()
@@ -63,7 +132,13 @@ def get_added_lines_with_links(base_ref: str = "origin/main") -> dict[str, list[
             # Extract filename from +++ b/path/to/file
             if line.startswith("+++ b/"):
                 current_file = line[6:]  # Remove '+++ b/'
-                if current_file not in lines_by_file:
+                # Strip git subdirectory prefix if running from a subdirectory
+                if git_prefix and current_file.startswith(git_prefix):
+                    current_file = current_file[len(git_prefix) :]
+                # Skip files that match lychee exclude patterns
+                if should_exclude_file(current_file, exclude_patterns):
+                    current_file = None
+                elif current_file not in lines_by_file:
                     lines_by_file[current_file] = []
             else:
                 current_file = None
@@ -183,8 +258,11 @@ def main() -> int:
 
     args = parser.parse_args()
 
+    # Load lychee exclude patterns
+    exclude_patterns = load_lychee_excludes()
+
     # Get lines with links from the diff
-    lines_by_file = get_added_lines_with_links(args.base_ref)
+    lines_by_file = get_added_lines_with_links(args.base_ref, exclude_patterns)
 
     if not lines_by_file:
         eprint("No added lines with links found.")

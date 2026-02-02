@@ -6,7 +6,9 @@ title: "DataframeView"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 A view to display any data in a tabular form.
 
-Any data from the store can be shown, using a flexibly, user-configurable query.
+Any data from the store can be shown, using a flexible, user-configurable query.
+
+See [Dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries) to learn more about the query model.
 
 ## Properties
 
@@ -28,7 +30,7 @@ Query of the dataframe.
 
 snippet: views/dataframe
 
-<picture data-inline-viewer="snippets/dataframe">
+<picture data-inline-viewer="snippets/views/dataframe">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1024w.png">

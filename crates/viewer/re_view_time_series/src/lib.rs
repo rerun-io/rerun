@@ -11,9 +11,12 @@ mod series_query;
 mod util;
 mod view_class;
 
-use re_types::components::{AggregationPolicy, MarkerShape};
+use re_sdk_types::{
+    blueprint::components::VisualizerInstructionId,
+    components::{AggregationPolicy, MarkerShape},
+};
 use re_viewer_context::external::re_entity_db::InstancePath;
-
+use re_viewport_blueprint::ViewPropertyQueryError;
 pub use view_class::TimeSeriesView;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the view
@@ -76,8 +79,8 @@ pub enum PlotSeriesKind {
 pub struct PlotSeries {
     pub instance_path: InstancePath,
 
-    /// Id used for this series in the egui plot view.
-    pub id: egui::Id,
+    /// Id of the visualizer instruction that is responsible for this series.
+    pub visualizer_instruction_id: VisualizerInstructionId,
 
     /// Whether the individual series is visible.
     ///
@@ -106,4 +109,29 @@ pub struct PlotSeries {
     /// How many raw data points were aggregated into a single step of the graph?
     /// This is an average.
     pub aggregation_factor: f64,
+}
+
+impl PlotSeries {
+    /// Returns a unique id for a given plot series.
+    ///
+    /// NOTE: A single visualizer instruction can be responsible for multiple series,
+    /// so we use the instance path number as an additional differentiator.
+    pub fn id(&self) -> egui::Id {
+        egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
+    }
+}
+
+/// Error that can occur when loading a single series.
+enum LoadSeriesError {
+    ViewPropertyQuery(ViewPropertyQueryError),
+    InstructionSpecificVisualizerError {
+        instruction_id: VisualizerInstructionId,
+        err: String,
+    },
+}
+
+impl From<ViewPropertyQueryError> for LoadSeriesError {
+    fn from(err: ViewPropertyQueryError) -> Self {
+        Self::ViewPropertyQuery(err)
+    }
 }

@@ -3,7 +3,7 @@
 Simple example of a ROS node that republishes some common types to Rerun.
 
 The solution here is mostly a toy example to show how ROS concepts can be
-mapped to Rerun. Fore more information on future improved ROS support,
+mapped to Rerun. For more information on future improved ROS support,
 see the tracking issue: <https://github.com/rerun-io/rerun/issues/1537>.
 
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from typing import Callable
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -22,29 +23,25 @@ try:
     import cv_bridge
     import laser_geometry
     import rclpy
-    import rerun_urdf
-    import trimesh
     from image_geometry import PinholeCameraModel
     from nav_msgs.msg import Odometry
     from numpy.lib.recfunctions import structured_to_unstructured
     from rclpy.callback_groups import ReentrantCallbackGroup
     from rclpy.node import Node
     from rclpy.qos import QoSDurabilityPolicy, QoSProfile
-    from rclpy.time import Duration, Time
-    from sensor_msgs.msg import CameraInfo, Image, LaserScan, PointCloud2, PointField
+    from rclpy.time import Time
+    from sensor_msgs.msg import CameraInfo, Image, LaserScan
     from sensor_msgs_py import point_cloud2
     from std_msgs.msg import String
-    from tf2_ros import TransformException
-    from tf2_ros.buffer import Buffer
-    from tf2_ros.transform_listener import TransformListener
+    from tf2_msgs.msg import TFMessage
 
 except ImportError:
     print(
         """
 Could not import the required ROS2 packages.
 
-Make sure you have installed ROS2 (https://docs.ros.org/en/humble/index.html)
-and sourced /opt/ros/humble/setup.bash
+Make sure you have installed ROS2 (https://docs.ros.org/en/kilted/index.html)
+and sourced /opt/ros/kilted/setup.bash
 
 See: README.md for more details.
 """,
@@ -56,191 +53,105 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
     def __init__(self) -> None:
         super().__init__("rr_turtlebot")
 
-        # Used for subscribing to latching topics
-        latching_qos = QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
-
-        # Allow concurrent callbacks
-        self.callback_group = ReentrantCallbackGroup()
-
-        # Subscribe to TF topics
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
-
-        # Define a mapping for transforms
-        self.path_to_frame = {
-            "map": "map",
-            "map/points": "camera_depth_frame",
-            "map/robot": "base_footprint",
-            "map/robot/scan": "base_scan",
-            "map/robot/camera": "camera_rgb_optical_frame",
-            "map/robot/camera/points": "camera_depth_frame",
-        }
-
         # Assorted helpers for data conversions
-        self.model = PinholeCameraModel()
+        self.pinhole_model = PinholeCameraModel()
         self.cv_bridge = cv_bridge.CvBridge()
         self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
+        self.subscribers: list[rclpy.Subscription] = []
 
-        # Log a bounding box as a visual placeholder for the map
-        # # TODO(jleibs): Log the real map once [#1531](https://github.com/rerun-io/rerun/issues/1531) is merged
-        rr.log(
-            "map/box",
-            rr.Boxes3D(half_sizes=[3, 3, 1], centers=[0, 0, 1], colors=[255, 255, 255, 255]),
-            static=True,
+        # Subscribe to the topics we want to republish to Rerun.
+        # See the callback methods below for how each message type is handled.
+        self.subscribe("/tf", TFMessage, self.tf_callback)
+        self.subscribe("/tf_static", TFMessage, self.tf_callback, latching=True)
+        self.subscribe("/odom", Odometry, self.odom_callback)
+        self.subscribe("/scan", LaserScan, self.scan_callback)
+        self.subscribe("/rgbd_camera/camera_info", CameraInfo, self.cam_info_callback)
+        self.subscribe("/rgbd_camera/image", Image, self.image_callback)
+        self.subscribe("/rgbd_camera/depth_image", Image, self.depth_callback)
+        self.subscribe("/robot_description", String, self.urdf_callback, latching=True)
+
+    def subscribe(
+        self, topic: str, msg_type: type, callback: Callable[[rclpy.MsgT], None], latching: bool = False
+    ) -> None:
+        """Adds a subscriber to a topic with the given message type and callback."""
+        # `qos_profile` can either be an int (history depth) or a QoSProfile.
+        # See: https://docs.ros.org/en/rolling/p/rclpy/rclpy.node.html#rclpy.node.Node.create_subscription
+        qos_profile = QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL) if latching else 10
+        sub = self.create_subscription(
+            msg_type=msg_type,
+            topic=topic,
+            callback=callback,
+            qos_profile=qos_profile,
+            callback_group=ReentrantCallbackGroup(),  # allow concurrent callbacks
         )
-
-        # Subscriptions
-        self.info_sub = self.create_subscription(
-            CameraInfo,
-            "/intel_realsense_r200_depth/camera_info",
-            self.cam_info_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        self.odom_sub = self.create_subscription(
-            Odometry,
-            "/odom",
-            self.odom_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        self.img_sub = self.create_subscription(
-            Image,
-            "/intel_realsense_r200_depth/image_raw",
-            self.image_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        self.points_sub = self.create_subscription(
-            PointCloud2,
-            "/intel_realsense_r200_depth/points",
-            self.points_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        self.scan_sub = self.create_subscription(
-            LaserScan,
-            "/scan",
-            self.scan_callback,
-            10,
-            callback_group=self.callback_group,
-        )
-
-        # The urdf is published as latching
-        self.urdf_sub = self.create_subscription(
-            String,
-            "/robot_description",
-            self.urdf_callback,
-            qos_profile=latching_qos,
-            callback_group=self.callback_group,
-        )
-
-    def log_tf_as_transform3d(self, path: str, time: Time) -> None:
-        """
-        Helper to look up a transform with tf and log using `log_transform3d`.
-
-        Note: we do the lookup on the client side instead of re-logging the raw transforms until
-        Rerun has support for Derived Transforms [#1533](https://github.com/rerun-io/rerun/issues/1533)
-        """
-        # Get the parent path
-        parent_path = path.rsplit("/", 1)[0]
-
-        # Find the corresponding frames from the mapping
-        child_frame = self.path_to_frame[path]
-        parent_frame = self.path_to_frame[parent_path]
-
-        # Do the TF lookup to get transform from child (source) -> parent (target)
-        try:
-            tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
-            t = tf.transform.translation
-            q = tf.transform.rotation
-            rr.log(path, rr.Transform3D(translation=[t.x, t.y, t.z], rotation=rr.Quaternion(xyzw=[q.x, q.y, q.z, q.w])))
-        except TransformException as ex:
-            print(f"Failed to get transform: {ex}")
+        self.subscribers.append(sub)
 
     def cam_info_callback(self, info: CameraInfo) -> None:
-        """Log a `CameraInfo` with `log_pinhole`."""
+        """
+        Logs CameraInfo as a Rerun Pinhole.
+        """
         time = Time.from_msg(info.header.stamp)
-        rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
-
-        self.model.fromCameraInfo(info)
-
+        self.pinhole_model.from_camera_info(info)
+        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         rr.log(
-            "map/robot/camera/img",
+            "rgbd_camera/camera_info",
             rr.Pinhole(
-                resolution=[self.model.width, self.model.height],
-                image_from_camera=self.model.intrinsicMatrix(),
+                resolution=[info.width, info.height],
+                image_from_camera=self.pinhole_model.intrinsic_matrix(),
+                image_plane_distance=1.0,
+                parent_frame=info.header.frame_id,
+                # Specifying a `child_frame` for the 2D image plane allows Rerun to
+                # visualize the pinhole frustum together with the image in 3D views.
+                # This has to match the coordinate frames used when logging images,
+                # see `image_callback` below.
+                child_frame=info.header.frame_id + "_image_plane",
             ),
         )
 
     def odom_callback(self, odom: Odometry) -> None:
-        """Update transforms when odom is updated."""
+        """
+        Logs data from Odometry as Rerun Scalars.
+        """
         time = Time.from_msg(odom.header.stamp)
-        rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
-
+        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
         # Capture time-series data for the linear and angular velocities
-        rr.log("odometry/vel", rr.Scalars(odom.twist.twist.linear.x))
-        rr.log("odometry/ang_vel", rr.Scalars(odom.twist.twist.angular.z))
-
-        # Update the robot pose itself via TF
-        self.log_tf_as_transform3d("map/robot", time)
+        rr.log("odom/twist/linear/x", rr.Scalars(odom.twist.twist.linear.x))
+        rr.log("odom/twist/angular/z", rr.Scalars(odom.twist.twist.angular.z))
 
     def image_callback(self, img: Image) -> None:
-        """Log an `Image` with `log_image` using `cv_bridge`."""
+        """
+        Logs an RGB image as a Rerun Image.
+        """
         time = Time.from_msg(img.header.stamp)
-        rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
+        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
+        rr.log("rgbd_camera/image", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
+        # Make sure the image plane frame matches what we set in `cam_info_callback`.
+        rr.log("rgbd_camera/image", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
-        rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
-        self.log_tf_as_transform3d("map/robot/camera", time)
-
-    def points_callback(self, points: PointCloud2) -> None:
-        """Log a `PointCloud2` with `log_points`."""
-        time = Time.from_msg(points.header.stamp)
-        rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
-
-        pts = point_cloud2.read_points(points, field_names=["x", "y", "z"], skip_nans=True)
-
-        # The realsense driver exposes a float field called 'rgb', but the data is actually stored
-        # as bytes within the payload (not a float at all). Patch points.field to use the correct
-        # r,g,b, offsets so we can extract them with read_points.
-        points.fields = [
-            PointField(name="r", offset=16, datatype=PointField.UINT8, count=1),
-            PointField(name="g", offset=17, datatype=PointField.UINT8, count=1),
-            PointField(name="b", offset=18, datatype=PointField.UINT8, count=1),
-        ]
-
-        colors = point_cloud2.read_points(points, field_names=["r", "g", "b"], skip_nans=True)
-
-        pts = structured_to_unstructured(pts)
-        colors = colors = structured_to_unstructured(colors)
-
-        # Log points once rigidly under robot/camera/points. This is a robot-centric
-        # view of the world.
-        rr.log("map/robot/camera/points", rr.Points3D(pts, colors=colors))
-        self.log_tf_as_transform3d("map/robot/camera/points", time)
-
-        # Log points a second time after transforming to the map frame. This is a map-centric
-        # view of the world.
-        #
-        # Once Rerun supports fixed-frame aware transforms [#1522](https://github.com/rerun-io/rerun/issues/1522)
-        # this will no longer be necessary.
-        rr.log("map/points", rr.Points3D(pts, colors=colors))
-        self.log_tf_as_transform3d("map/points", time)
+    def depth_callback(self, img: Image) -> None:
+        """
+        Logs a depth image as a Rerun DepthImage.
+        """
+        time = Time.from_msg(img.header.stamp)
+        depth_image = rr.DepthImage(
+            self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"),
+            meter=1.0,
+            colormap="viridis",
+        )
+        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
+        rr.log("rgbd_camera/depth_image", depth_image)
+        rr.log("rgbd_camera/depth_image", rr.CoordinateFrame(frame=img.header.frame_id + "_image_plane"))
 
     def scan_callback(self, scan: LaserScan) -> None:
         """
-        Log a LaserScan after transforming it to line-segments.
+        Logs a LaserScan after transforming it to line-segments.
 
         Note: we do a client-side transformation of the LaserScan data into Rerun
         points / lines until Rerun has native support for LaserScan style projections:
         [#1534](https://github.com/rerun-io/rerun/issues/1534)
         """
         time = Time.from_msg(scan.header.stamp)
-        rr.set_time("ros_time", np.datetime64(time.nanoseconds, "ns"))
+        rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
         # Project the laser scan to a collection of points
         points = self.laser_proj.projectLaser(scan)
@@ -251,21 +162,57 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         origin = (pts / np.linalg.norm(pts, axis=1).reshape(-1, 1)) * 0.3
         segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
-        rr.log("map/robot/scan", rr.LineStrips3D(segs, radii=0.0025))
-        self.log_tf_as_transform3d("map/robot/scan", time)
+        rr.log("scan", rr.LineStrips3D(segs, radii=0.0025, colors=[255, 165, 0]))
+        rr.log("scan", rr.CoordinateFrame(frame=scan.header.frame_id))
 
     def urdf_callback(self, urdf_msg: String) -> None:
-        """Log a URDF using `log_scene` from `rerun_urdf`."""
-        urdf = rerun_urdf.load_urdf_from_msg(urdf_msg)
+        """
+        Forwards the robot description message to Rerun's built-in URDF loader.
 
-        # The turtlebot URDF appears to have scale set incorrectly for the camera-link
-        # Although rviz loads it properly `yourdfpy` does not.
-        orig, _ = urdf.scene.graph.get("camera_link")
-        scale = trimesh.transformations.scale_matrix(0.00254)
-        urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
-        scaled = urdf.scene.scaled(1.0)
+        Documentation about URDF support in Rerun can be found here:
+        https://rerun.io/docs/howto/urdf
+        """
+        # NOTE: file_path is not known here, robot.urdf is just a placeholder to let
+        # Rerun know the file type. Since we run this example in a ROS environment,
+        # Rerun can use AMENT_PREFIX_PATH etc to resolve asset paths of the URDF.
+        rr.log_file_from_contents(
+            file_path="robot.urdf",
+            file_contents=urdf_msg.data.encode("utf-8"),
+            entity_path_prefix="urdf",
+            static=True,
+        )
 
-        rerun_urdf.log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", static=True)
+    def tf_callback(self, tf_msg: TFMessage) -> None:
+        """
+        Logs TF transforms to Rerun as Transform3D messages,
+        with `parent_frame` and `child_frame` fields set.
+
+        Documentation about transforms in Rerun can be found here:
+        https://rerun.io/docs/concepts/transforms
+        """
+        for transform in tf_msg.transforms:
+            time = Time.from_msg(transform.header.stamp)
+            rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
+            rr.log(
+                "transforms",
+                rr.Transform3D(
+                    translation=[
+                        transform.transform.translation.x,
+                        transform.transform.translation.y,
+                        transform.transform.translation.z,
+                    ],
+                    rotation=rr.Quaternion(
+                        xyzw=[
+                            transform.transform.rotation.x,
+                            transform.transform.rotation.y,
+                            transform.transform.rotation.z,
+                            transform.transform.rotation.w,
+                        ]
+                    ),
+                    parent_frame=transform.header.frame_id,
+                    child_frame=transform.child_frame_id,
+                ),
+            )
 
 
 def main() -> None:

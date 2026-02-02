@@ -1,8 +1,16 @@
+//! # UI for notifications.
+//!
+//! Notifications are drawn both as a toast for some time when
+//! they're first created and in the notification panel.
+//!
+//! ## Special cased text
+//! - If a notifications text contains `"\nDetails:"` the section after that
+//!   will be displayed inside a collapsible details header.
+
 use std::time::Duration;
 
 use egui::{NumExt as _, Widget as _};
 use jiff::Timestamp;
-
 pub use re_log::Level;
 
 use crate::{UiExt as _, icons};
@@ -92,6 +100,9 @@ impl egui::Widget for Link {
 pub struct Notification {
     level: NotificationLevel,
     text: String,
+
+    /// if set this notifications will have a collapsible details section.
+    details: Option<String>,
     link: Option<Link>,
 
     /// If set, the notification will NEVER be shown again
@@ -113,12 +124,18 @@ impl Notification {
         Self {
             level,
             text: text.into(),
+            details: None,
             link: None,
             permanent_dismiss_id: None,
             created_at: Timestamp::now(),
             toast_ttl: base_ttl(),
             is_unread: true,
         }
+    }
+
+    pub fn with_details(mut self, details: impl Into<String>) -> Self {
+        self.details = Some(details.into());
+        self
     }
 
     pub fn with_link(mut self, link: Link) -> Self {
@@ -193,11 +210,27 @@ impl NotificationUi {
         self.unread_notification_level
     }
 
+    /// Given that the log is relevant this creates a notification
+    /// based on that log.
+    ///
+    /// ## Special cased text
+    /// - If a notifications text contains `"\nDetails:"` the section after that
+    ///   will be displayed inside a collapsible details header.
     pub fn add_log(&mut self, message: re_log::LogMsg) {
         let re_log::LogMsg { level, target, msg } = message;
 
         if is_relevant(&target, level) {
-            self.add(Notification::new(level.into(), msg));
+            let (split_msg, msg_details) = msg.split_once("\nDetails:").unzip();
+
+            let msg = split_msg.unwrap_or(&msg);
+
+            let mut notification = Notification::new(level.into(), msg);
+
+            if let Some(msg_details) = msg_details {
+                notification = notification.with_details(msg_details);
+            }
+
+            self.add(notification);
         }
     }
 
@@ -244,7 +277,7 @@ impl NotificationUi {
             .frame(ui.tokens().popup_frame(ui.style()))
             // Put the popup below the button, but all the way to the right of the screen:
             .anchor(egui::PopupAnchor::Position(egui::pos2(
-                ui.ctx().screen_rect().right() - gap,
+                ui.ctx().content_rect().right() - gap,
                 ui.max_rect().bottom() + gap,
             )))
             .align(egui::RectAlign::BOTTOM_END)
@@ -275,7 +308,7 @@ impl NotificationUi {
         let notifications = &mut self.notifications;
 
         let panel_width = 356.0;
-        let panel_max_height = (ui.ctx().screen_rect().height() - 100.0)
+        let panel_max_height = (ui.ctx().content_rect().height() - 100.0)
             .at_least(0.0)
             .at_most(640.0);
 
@@ -341,7 +374,7 @@ impl NotificationUi {
 }
 
 fn base_ttl() -> Duration {
-    Duration::from_secs_f64(4.0)
+    Duration::from_secs(4)
 }
 
 struct Toasts {
@@ -363,7 +396,9 @@ impl Toasts {
 
     /// Shows and updates all toasts
     fn show(&self, egui_ctx: &egui::Context, notifications: &mut [Notification]) {
-        let dt = Duration::from_secs_f32(egui_ctx.input(|i| i.unstable_dt));
+        let dt = Duration::try_from_secs_f32(egui_ctx.input(|i| i.unstable_dt))
+            .unwrap_or(std::time::Duration::from_millis(100));
+
         let mut offset = egui::vec2(-8.0, 32.0);
 
         let mut first_nonzero_ttl = None;
@@ -385,7 +420,9 @@ impl Toasts {
                 })
                 .response;
 
-            if !response.hovered() {
+            if !response.hovered()
+                && !egui_ctx.rect_contains_pointer(response.layer_id, response.interact_rect)
+            {
                 notification.toast_ttl = notification.toast_ttl.saturating_sub(dt);
             }
 
@@ -423,6 +460,7 @@ fn show_notification(
     let Notification {
         level,
         text,
+        details,
         link,
         permanent_dismiss_id,
         created_at,
@@ -448,10 +486,14 @@ fn show_notification(
                 ui.horizontal_top(|ui| {
                     ui.add(level.image(ui));
 
-                    ui.horizontal_top(|ui| {
+                    ui.vertical(|ui| {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.set_width(270.0);
-                        ui.label(egui::RichText::new(text.clone()));
+                        ui.label(text);
+
+                        if let Some(details) = details {
+                            ui.collapsing_header("Details", false, |ui| ui.label(details));
+                        }
                     });
 
                     ui.add_space(4.0);
@@ -516,8 +558,11 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
     ui.horizontal_top(|ui| {
         ui.set_min_width(30.0);
         ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
-            ui.label(egui::RichText::new(formatted).weak())
-                .on_hover_text(created_at.to_string());
+            ui.add(
+                egui::Label::new(egui::RichText::new(formatted).weak())
+                    .wrap_mode(egui::TextWrapMode::Extend),
+            )
+            .on_hover_text(created_at.to_string());
         });
     });
 }

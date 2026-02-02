@@ -5,7 +5,8 @@ import inspect
 import os
 import threading
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -161,6 +162,7 @@ class catch_and_log_exceptions:
     def __init__(
         self,
         context: str | None = None,
+        *,
         depth_to_user_code: int = 1,
         exception_return_value: Any = None,
         strict: bool | None = None,
@@ -277,7 +279,7 @@ class RerunMissingDependencyError(ImportError):
     def __init__(self, package: str, optional_dep: str) -> None:
         super().__init__(
             f"'{package}' could not be imported. "
-            f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
+            f"Please install it, or install rerun as rerun-sdk[{optional_dep}]/rerun-sdk[all] "
             "to use this functionality."
         )
 
@@ -288,7 +290,7 @@ class RerunIncompatibleDependencyVersionError(ImportError):
     def __init__(self, package: str, actual_version: str, compatible_versions: list[int]) -> None:
         super().__init__(
             f"'{package}' version {actual_version} is incompatible with rerun. "
-            f"Please install rerun as rerun[{package}]/rerun[all] "
+            f"Please install rerun as rerun-sdk[{package}]/rerun-sdk[all] "
             f"to use this functionality. "
             f"Compatible major version(s): {', '.join(map(str, compatible_versions))}"
         )

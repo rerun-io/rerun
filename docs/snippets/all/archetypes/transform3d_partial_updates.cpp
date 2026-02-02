@@ -15,8 +15,7 @@ int main() {
     // Set up a 3D box.
     rec.log(
         "box",
-        rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-        rerun::Transform3D().with_axis_length(10.0)
+        rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid)
     );
 
     // Update only the rotation of the box.
@@ -24,7 +23,7 @@ int main() {
         auto rad = truncated_radians(deg * 4);
         rec.log(
             "box",
-            rerun::Transform3D::update_fields().with_rotation_axis_angle(
+            rerun::Transform3D::from_rotation(
                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
             )
         );
@@ -34,9 +33,7 @@ int main() {
     for (int t = 0; t <= 50; t++) {
         rec.log(
             "box",
-            rerun::Transform3D::update_fields().with_translation(
-                {0.0f, 0.0f, static_cast<float>(t) / 10.0f}
-            )
+            rerun::Transform3D::from_translation({0.0f, 0.0f, static_cast<float>(t) / 10.0f})
         );
     }
 
@@ -45,12 +42,12 @@ int main() {
         auto rad = truncated_radians((deg + 45) * 4);
         rec.log(
             "box",
-            rerun::Transform3D::update_fields().with_rotation_axis_angle(
+            rerun::Transform3D::from_rotation(
                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
             )
         );
     }
 
-    // Clear all of the box's attributes, and reset its axis length.
-    rec.log("box", rerun::Transform3D::clear_fields().with_axis_length(15.0));
+    // Clear all of the box's attributes.
+    rec.log("box", rerun::Transform3D::clear_fields());
 }

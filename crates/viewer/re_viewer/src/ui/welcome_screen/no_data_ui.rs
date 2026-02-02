@@ -1,5 +1,4 @@
 use egui::Ui;
-
 use re_ui::{DesignTokens, UiExt as _};
 
 /// Show a minimal welcome section.

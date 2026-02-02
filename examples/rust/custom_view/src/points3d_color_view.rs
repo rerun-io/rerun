@@ -1,22 +1,20 @@
-#![allow(clippy::disallowed_methods)] // It's just an example
+#![expect(clippy::disallowed_methods)] // It's just an example
+
+use rerun::external::egui;
+use rerun::external::re_data_ui::{DataUi, item_ui};
+use rerun::external::re_entity_db::InstancePath;
+use rerun::external::re_log_types::EntityPath;
+use rerun::external::re_sdk_types::ViewClassIdentifier;
+use rerun::external::re_ui::{self, Help};
+use rerun::external::re_viewer_context::{
+    HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
+    PerVisualizerTypeInViewClass, RecommendedVisualizers, SelectionHighlight,
+    SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext, VisualizableEntities,
+};
 
 use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
-use rerun::external::{
-    egui,
-    re_data_ui::{DataUi, item_ui},
-    re_entity_db::InstancePath,
-    re_log_types::EntityPath,
-    re_types::ViewClassIdentifier,
-    re_ui::{self, Help},
-    re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item,
-        MaybeVisualizableEntities, PerVisualizer, SelectionHighlight, SmallVisualizerSet,
-        SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority,
-        ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-        ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
-        VisualizableEntities,
-    },
-};
 
 /// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -116,9 +114,9 @@ impl ViewClass for ColorCoordinatesView {
     ) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
-            .maybe_visualizable_entities_per_visualizer
+            .visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
-            .is_some_and(|entities| entities.iter().any(include_entity))
+            .is_some_and(|entities| entities.keys().any(include_entity))
         {
             ViewSpawnHeuristics::root()
         } else {
@@ -131,20 +129,19 @@ impl ViewClass for ColorCoordinatesView {
     /// The default implementation of `choose_default_visualizers` activates visualizers only
     /// if the respective indicator is present.
     /// We want to enable the visualizer here though for any visualizable entity instead!
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+    ) -> RecommendedVisualizers {
         if visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
-            SmallVisualizerSet::from_slice(&[Points3DColorVisualizer::identifier()])
+            RecommendedVisualizers::default(Points3DColorVisualizer::identifier())
         } else {
-            SmallVisualizerSet::new()
+            RecommendedVisualizers::empty()
         }
     }
 

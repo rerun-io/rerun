@@ -1,22 +1,22 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType, BinaryArray,
-        BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
-        LargeBinaryArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-        StringArray as ArrowStringArray, StructArray as ArrowStructArray,
-    },
-    buffer::{BooleanBuffer as ArrowBooleanBuffer, Buffer, ScalarBuffer as ArrowScalarBuffer},
-    datatypes::ArrowNativeType,
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType, BinaryArray,
+    BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
+    LargeBinaryArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+    StringArray as ArrowStringArray, StructArray as ArrowStructArray,
 };
+use arrow::buffer::{
+    BooleanBuffer as ArrowBooleanBuffer, Buffer, ScalarBuffer as ArrowScalarBuffer,
+};
+use arrow::datatypes::ArrowNativeType;
 use itertools::{Either, Itertools as _, izip};
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_span::Span;
-use re_types_core::{ArrowString, Component, ComponentDescriptor};
+use re_types_core::{ArrowString, Component, ComponentIdentifier};
 
+use crate::cast::error_on_downcast_failure;
 use crate::{Chunk, RowId, TimeColumn};
 
 // ---
@@ -32,12 +32,9 @@ impl Chunk {
     /// Return the raw component list array values for a given component.
     ///
     /// Use with great care: Component data may have arbitrary gaps.
-    pub fn raw_component_array(
-        &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<&ArrowArrayRef> {
+    pub fn raw_component_array(&self, component: ComponentIdentifier) -> Option<&ArrowArrayRef> {
         self.components
-            .get(component_descr)
+            .get_array(component)
             .map(|list_array| list_array.values())
     }
 
@@ -78,10 +75,10 @@ impl Chunk {
     /// See also [`Self::iter_indices`].
     pub fn iter_component_indices(
         &self,
-        timeline: &TimelineName,
-        component_descr: &ComponentDescriptor,
+        timeline: TimelineName,
+        component: ComponentIdentifier,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ + use<'_> {
-        let Some(list_array) = self.components.get(component_descr) else {
+        let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -98,7 +95,7 @@ impl Chunk {
                 Either::Right(Either::Left(Either::Right(indices)))
             }
         } else {
-            let Some(time_column) = self.timelines.get(timeline) else {
+            let Some(time_column) = self.timelines.get(&timeline) else {
                 return Either::Left(std::iter::empty());
             };
 
@@ -145,9 +142,9 @@ impl Chunk {
     /// See also [`Self::iter_timepoints`].
     pub fn iter_component_timepoints(
         &self,
-        component_descr: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> impl Iterator<Item = TimePoint> + '_ + use<'_> {
-        let Some(list_array) = self.components.get(component_descr) else {
+        let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -191,16 +188,16 @@ impl Chunk {
         }
     }
 
-    /// Returns an iterator over the offsets (`(offset, len)`) of a [`Chunk`], for a given
+    /// Returns an iterator over the offsets & lengths of component arrays within [`Chunk`], for a given
     /// component.
     ///
-    /// I.e. each `(offset, len)` pair describes the position of a component batch in the
+    /// I.e. each span describes the position of a component batch in the
     /// underlying arrow array of values.
-    pub fn iter_component_offsets<'a>(
-        &'a self,
-        component_descriptor: &ComponentDescriptor,
-    ) -> impl Iterator<Item = Span<usize>> + 'a + use<'a> {
-        let Some(list_array) = self.components.get(component_descriptor) else {
+    pub fn iter_component_offsets(
+        &self,
+        component: ComponentIdentifier,
+    ) -> impl Iterator<Item = Span<usize>> {
+        let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -234,16 +231,16 @@ impl Chunk {
     #[inline]
     pub fn iter_slices<'a, S: 'a + ChunkComponentSlicer>(
         &'a self,
-        component_descriptor: ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> impl Iterator<Item = S::Item<'a>> + 'a + use<'a, S> {
-        let Some(list_array) = self.components.get(&component_descriptor) else {
+        let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
 
-        let component_offset_values = self.iter_component_offsets(&component_descriptor);
+        let component_offset_values = self.iter_component_offsets(component);
 
         Either::Right(S::slice(
-            component_descriptor,
+            component,
             &**list_array.values() as _,
             component_offset_values,
         ))
@@ -263,20 +260,16 @@ impl Chunk {
     /// See also [`Self::iter_slices_from_struct_field`].
     pub fn iter_slices_from_struct_field<'a, S: 'a + ChunkComponentSlicer>(
         &'a self,
-        component_descriptor: ComponentDescriptor,
+        component: ComponentIdentifier,
         field_name: &'a str,
     ) -> impl Iterator<Item = S::Item<'a>> + 'a {
-        let Some(list_array) = self.components.get(&component_descriptor) else {
+        let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
 
         let Some(struct_array) = list_array.values().downcast_array_ref::<ArrowStructArray>()
         else {
-            if cfg!(debug_assertions) {
-                panic_downcast_failed(component_descriptor);
-            } else {
-                re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-            }
+            error_on_downcast_failure(component, "ArrowStructArray", list_array.data_type());
             return Either::Left(std::iter::empty());
         };
 
@@ -287,30 +280,30 @@ impl Chunk {
             .find_map(|(i, field)| (field.name() == field_name).then_some(i))
         else {
             if cfg!(debug_assertions) {
-                panic_field_not_found(component_descriptor, field_name);
-            } else {
-                re_log::error_once!(
-                    "field {field_name} not found for {component_descriptor}, data discarded"
+                panic!(
+                    "[DEBUG ASSERT] field {field_name} not found for {component}, data discarded"
                 );
+            } else {
+                re_log::error_once!("field {field_name} not found for {component}, data discarded");
             }
             return Either::Left(std::iter::empty());
         };
 
         if field_idx >= struct_array.num_columns() {
             if cfg!(debug_assertions) {
-                panic_field_not_found(component_descriptor, field_name);
-            } else {
-                re_log::error_once!(
-                    "field {field_name} not found for {component_descriptor}, data discarded"
+                panic!(
+                    "[DEBUG ASSERT] field {field_name} not found for {component}, data discarded"
                 );
+            } else {
+                re_log::error_once!("field {field_name} not found for {component}, data discarded");
                 return Either::Left(std::iter::empty());
             }
         }
 
-        let component_offset_values = self.iter_component_offsets(&component_descriptor);
+        let component_offset_values = self.iter_component_offsets(component);
 
         Either::Right(S::slice(
-            component_descriptor,
+            component,
             struct_array.column(field_idx),
             component_offset_values,
         ))
@@ -326,17 +319,15 @@ pub trait ChunkComponentSlicer {
     type Item<'a>;
 
     fn slice<'a>(
-        // TODO(#10460): A reference to component descriptor should be enough since the returned iterator doesn't depend on it being alive.
-        // However, I wasn't able to get this idea across to the borrow checker.
-        component_descriptor: ComponentDescriptor,
+        component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Self::Item<'a>> + 'a;
+    ) -> impl Iterator<Item = Self::Item<'a>>;
 }
 
 /// The actual implementation of `impl_native_type!`, so that we don't have to work in a macro.
 fn slice_as_native<'a, P, T>(
-    component_descriptor: ComponentDescriptor,
+    component: ComponentIdentifier,
     array: &'a dyn ArrowArray,
     component_spans: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = &'a [T]> + 'a
@@ -345,11 +336,7 @@ where
     T: ArrowNativeType,
 {
     let Some(values) = array.downcast_array_ref::<ArrowPrimitiveArray<P>>() else {
-        if cfg!(debug_assertions) {
-            panic_downcast_failed(component_descriptor);
-        } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-        }
+        error_on_downcast_failure(component, "ArrowPrimitiveArray<T>", array.data_type());
         return Either::Left(std::iter::empty());
     };
     let values = values.values().as_ref();
@@ -365,12 +352,12 @@ macro_rules! impl_native_type {
             type Item<'a> = &'a [$native_type];
 
             fn slice<'a>(
-                component_descriptor: ComponentDescriptor,
+                component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_native::<$arrow_primitive_type, $native_type>(
-                    component_descriptor,
+                    component,
                     array,
                     component_spans,
                 )
@@ -395,7 +382,7 @@ impl_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_native_type!`, so that we don't have to work in a macro.
 fn slice_as_array_native<'a, const N: usize, P, T>(
-    component_descriptor: ComponentDescriptor,
+    component: ComponentIdentifier,
     array: &'a dyn ArrowArray,
     component_spans: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = &'a [[T; N]]> + 'a
@@ -405,11 +392,7 @@ where
     T: ArrowNativeType + bytemuck::Pod,
 {
     let Some(fixed_size_list_array) = array.downcast_array_ref::<ArrowFixedSizeListArray>() else {
-        if cfg!(debug_assertions) {
-            panic_downcast_failed(component_descriptor);
-        } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-        }
+        error_on_downcast_failure(component, "ArrowFixedSizeListArray", array.data_type());
         return Either::Left(std::iter::empty());
     };
 
@@ -417,11 +400,11 @@ where
         .values()
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
-        if cfg!(debug_assertions) {
-            panic_downcast_failed(component_descriptor);
-        } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowPrimitiveArray<P>",
+            fixed_size_list_array.data_type(),
+        );
         return Either::Left(std::iter::empty());
     };
 
@@ -444,12 +427,12 @@ macro_rules! impl_array_native_type {
             type Item<'a> = &'a [[$native_type; N]];
 
             fn slice<'a>(
-                component_descriptor: ComponentDescriptor,
+                component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_array_native::<N, $arrow_primitive_type, $native_type>(
-                    component_descriptor,
+                    component,
                     array,
                     component_spans,
                 )
@@ -474,7 +457,7 @@ impl_array_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_buffer_native_type!`, so that we don't have to work in a macro.
 fn slice_as_buffer_native<'a, P, T>(
-    component_descriptor: ComponentDescriptor,
+    component: ComponentIdentifier,
     array: &'a dyn ArrowArray,
     component_spans: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = Vec<ArrowScalarBuffer<T>>> + 'a
@@ -483,30 +466,20 @@ where
     T: ArrowNativeType,
 {
     let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
-        if cfg!(debug_assertions) {
-            panic_unexpected_data_type(component_descriptor, array);
-        } else {
-            re_log::error_once!(
-                "{component_descriptor} had unexpected datatype: {:?}. Data discarded",
-                array.data_type()
-            );
-            return Either::Left(std::iter::empty());
-        }
+        error_on_downcast_failure(component, "ArrowListArray", array.data_type());
+        return Either::Left(std::iter::empty());
     };
 
     let Some(values) = inner_list_array
         .values()
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
-        if cfg!(debug_assertions) {
-            panic_unexpected_data_type(component_descriptor, array);
-        } else {
-            re_log::error_once!(
-                "{component_descriptor} had unexpected datatype: {:?}. Data discarded",
-                array.data_type()
-            );
-            return Either::Left(std::iter::empty());
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowPrimitiveArray<P>",
+            inner_list_array.data_type(),
+        );
+        return Either::Left(std::iter::empty());
     };
 
     let values = values.values();
@@ -526,7 +499,7 @@ where
 
 // We special case `&[u8]` so that it works both for `List[u8]` and `Binary/LargeBinary` arrays.
 fn slice_as_u8<'a>(
-    component_descriptor: ComponentDescriptor,
+    component: ComponentIdentifier,
     array: &'a dyn ArrowArray,
     component_spans: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = Vec<Buffer>> + 'a {
@@ -561,7 +534,7 @@ fn slice_as_u8<'a>(
     } else {
         Either::Right(
             slice_as_buffer_native::<arrow::array::types::UInt8Type, u8>(
-                component_descriptor,
+                component,
                 array,
                 component_spans,
             )
@@ -582,12 +555,12 @@ macro_rules! impl_buffer_native_type {
             type Item<'a> = Vec<ArrowScalarBuffer<$native_type>>;
 
             fn slice<'a>(
-                component_descriptor: ComponentDescriptor,
+                component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_buffer_native::<$primitive_type, $native_type>(
-                    component_descriptor,
+                    component,
                     array,
                     component_spans,
                 )
@@ -601,11 +574,11 @@ impl ChunkComponentSlicer for &[u8] {
     type Item<'a> = Vec<Buffer>;
 
     fn slice<'a>(
-        component_descriptor: ComponentDescriptor,
+        component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
-        slice_as_u8(component_descriptor, array, component_spans)
+    ) -> impl Iterator<Item = Self::Item<'a>> {
+        slice_as_u8(component, array, component_spans)
     }
 }
 
@@ -624,7 +597,7 @@ impl_buffer_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_list_native_type!`, so that we don't have to work in a macro.
 fn slice_as_array_list_native<'a, const N: usize, P, T>(
-    component_descriptor: ComponentDescriptor,
+    component: ComponentIdentifier,
     array: &'a dyn ArrowArray,
     component_spans: impl Iterator<Item = Span<usize>> + 'a,
 ) -> impl Iterator<Item = Vec<&'a [[T; N]]>> + 'a
@@ -634,11 +607,7 @@ where
     T: ArrowNativeType + bytemuck::Pod,
 {
     let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
-        if cfg!(debug_assertions) {
-            panic_downcast_failed(component_descriptor);
-        } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-        }
+        error_on_downcast_failure(component, "ArrowListArray", array.data_type());
         return Either::Left(std::iter::empty());
     };
 
@@ -649,11 +618,11 @@ where
         .values()
         .downcast_array_ref::<ArrowFixedSizeListArray>()
     else {
-        if cfg!(debug_assertions) {
-            panic_downcast_failed(component_descriptor);
-        } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowFixedSizeListArray",
+            inner_list_array.data_type(),
+        );
         return Either::Left(std::iter::empty());
     };
 
@@ -661,11 +630,11 @@ where
         .values()
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
-        if cfg!(debug_assertions) {
-            panic_downcast_failed(component_descriptor);
-        } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-        }
+        error_on_downcast_failure(
+            component,
+            "ArrowPrimitiveArray<P>",
+            fixed_size_list_array.data_type(),
+        );
         return Either::Left(std::iter::empty());
     };
 
@@ -695,12 +664,12 @@ macro_rules! impl_array_list_native_type {
             type Item<'a> = Vec<&'a [[$native_type; N]]>;
 
             fn slice<'a>(
-                component_descriptor: ComponentDescriptor,
+                component: ComponentIdentifier,
                 array: &'a dyn ArrowArray,
                 component_spans: impl Iterator<Item = Span<usize>> + 'a,
-            ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+            ) -> impl Iterator<Item = Self::Item<'a>> {
                 slice_as_array_list_native::<N, $primitive_type, $native_type>(
-                    component_descriptor,
+                    component,
                     array,
                     component_spans,
                 )
@@ -727,16 +696,12 @@ impl ChunkComponentSlicer for String {
     type Item<'a> = Vec<ArrowString>;
 
     fn slice<'a>(
-        component_descriptor: ComponentDescriptor,
+        component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Vec<ArrowString>> + 'a {
+    ) -> impl Iterator<Item = Vec<ArrowString>> {
         let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
-            if cfg!(debug_assertions) {
-                panic_downcast_failed(component_descriptor);
-            } else {
-                re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-            }
+            error_on_downcast_failure(component, "ArrowStringArray", array.data_type());
             return Either::Left(std::iter::empty());
         };
 
@@ -759,16 +724,12 @@ impl ChunkComponentSlicer for bool {
     type Item<'a> = ArrowBooleanBuffer;
 
     fn slice<'a>(
-        component_descriptor: ComponentDescriptor,
+        component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+    ) -> impl Iterator<Item = Self::Item<'a>> {
         let Some(values) = array.downcast_array_ref::<ArrowBooleanArray>() else {
-            if cfg!(debug_assertions) {
-                panic_downcast_failed(component_descriptor);
-            } else {
-                re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
-            }
+            error_on_downcast_failure(component, "ArrowBooleanArray", array.data_type());
             return Either::Left(std::iter::empty());
         };
         let values = values.values().clone();
@@ -934,15 +895,9 @@ impl Chunk {
     #[inline]
     pub fn iter_component<C: Component>(
         &self,
-        component_descriptor: &ComponentDescriptor,
+        component: ComponentIdentifier,
     ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + '_ + use<'_, C>> {
-        debug_assert_eq!(
-            component_descriptor.component_type,
-            Some(C::name()),
-            "component type mismatch"
-        );
-
-        let Some(list_array) = self.components.get(component_descriptor) else {
+        let Some(list_array) = self.components.get_array(component) else {
             return ChunkComponentIter {
                 values: Arc::new(vec![]),
                 offsets: Either::Left(std::iter::empty()),
@@ -972,30 +927,9 @@ impl Chunk {
         // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
         ChunkComponentIter {
             values: Arc::new(values),
-            offsets: Either::Right(self.iter_component_offsets(component_descriptor)),
+            offsets: Either::Right(self.iter_component_offsets(component)),
         }
     }
-}
-
-#[expect(clippy::panic, clippy::needless_pass_by_value)]
-fn panic_downcast_failed(component_descriptor: ComponentDescriptor) -> ! {
-    panic!("downcast failed for {component_descriptor}, data discarded")
-}
-
-#[expect(clippy::panic, clippy::needless_pass_by_value)]
-fn panic_field_not_found(component_descriptor: ComponentDescriptor, field_name: &str) -> ! {
-    panic!("field {field_name} not found for {component_descriptor}, data discarded")
-}
-
-#[expect(clippy::panic, clippy::needless_pass_by_value)]
-fn panic_unexpected_data_type(
-    component_descriptor: ComponentDescriptor,
-    array: &dyn ArrowArray,
-) -> ! {
-    panic!(
-        "DEBUG BUILD: {component_descriptor} had unexpected datatype: {:?}",
-        array.data_type()
-    )
 }
 
 #[expect(clippy::panic)]
@@ -1014,10 +948,8 @@ mod tests {
     use std::sync::Arc;
 
     use itertools::{Itertools as _, izip};
-    use re_log_types::{
-        EntityPath, TimeInt, TimePoint,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, TimePoint};
 
     use crate::{Chunk, RowId, Timeline};
 

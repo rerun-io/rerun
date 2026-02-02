@@ -1,15 +1,12 @@
 use egui::WidgetText;
-
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_log_types::ComponentPath;
 use re_ui::{Icon, SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::{
-    item_heading_with_breadcrumbs::separator_icon_ui,
-    item_title::{ItemTitle, is_component_static},
-};
+use crate::item_heading_with_breadcrumbs::separator_icon_ui;
+use crate::item_title::{ItemTitle, is_component_static};
 
 /// Just the title of the item; for when multiple items are selected
 pub fn item_title_list_item(
@@ -71,7 +68,7 @@ fn item_heading_no_breadcrumbs(
             // Break up into entity path and component descriptor:
             let ComponentPath {
                 entity_path,
-                component_descriptor,
+                component,
             } = component_path;
 
             item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::from(entity_path.clone()));
@@ -83,11 +80,7 @@ fn item_heading_no_breadcrumbs(
             } else {
                 &icons::COMPONENT_TEMPORAL
             };
-            icon_and_title(
-                ui,
-                component_icon,
-                component_descriptor.syntax_highlighted(ui.style()),
-            );
+            icon_and_title(ui, component_icon, component.syntax_highlighted(ui.style()));
         }
         Item::DataResult(view_id, instance_path) => {
             // Break up into view and instance path:

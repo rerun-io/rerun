@@ -3,9 +3,6 @@ title: Explore a recording with the dataframe view
 order: 1
 ---
 
-
-
-
 In this first part of the guide, we run the [face tracking example](https://rerun.io/examples/video-image/face_tracking) and explore the data in the viewer.
 
 ## Create a recording
@@ -20,13 +17,11 @@ Here is such a recording:
 
 A person's face is visible and being tracked. Their jaws occasionally open and close. In the middle of the recording, the face is also temporarily hidden and no longer tracked.
 
-
 ## Explore the data
 
 Amongst other things, the [MediaPipe Face Landmark](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker) package used by the face tracking example outputs so-called blendshapes signals, which provide information on various aspects of the face expression. These signals are logged under the `/blendshapes` root entity by the face tracking example.
 
 One signal, `jawOpen` (logged under the `/blendshapes/0/jawOpen` entity as a [`Scalar`](../../reference/types/components/scalar.md) component), is of particular interest for our purpose. Let's inspect it further using a timeseries view:
-
 
 <picture>
   <img src="https://static.rerun.io/data-out-jaw-open-signal/258f5ffe043b8affcc54d5ea1bc864efe7403f2c/full.png" alt="">
@@ -49,13 +44,13 @@ Let's create a dataframe view to further inspect the data:
 </picture>
 
 Here is how this view is configured:
-- Its content is set to `/blendshapes/0/jawOpen`. As a result, the table only contains columns pertaining to that entity (along with any timeline(s)). For this entity, a single column exists in the table, corresponding to entity's single component (a `Scalar`).
-- The `frame_nr` timeline is used as index for the table. This means that the table will contain one row for each distinct value of `frame_nr` for which data is available.
-- The rows can further be filtered by time range. In this case, we keep the default "infinite" boundaries, so no filtering is applied.
-- The dataframe view has other advanced features which we are not using here, including filtering rows based on the existence of data for a given column, or filling empty cells with latest-at data.
+
+-   Its content is set to `/blendshapes/0/jawOpen`. As a result, the table only contains columns pertaining to that entity (along with any timeline(s)). For this entity, a single column exists in the table, corresponding to entity's single component (a `Scalar`).
+-   The `frame_nr` timeline is used as index for the table. This means that the table will contain one row for each distinct value of `frame_nr` for which data is available.
+-   The rows can further be filtered by time range. In this case, we keep the default "infinite" boundaries, so no filtering is applied.
+-   The dataframe view has other advanced features which we are not using here, including filtering rows based on the existence of data for a given column, or filling empty cells with latest-at data.
 
 Now, let's look at the actual data as represented in the above screenshot. At around frame #140, the jaws are open, and, accordingly, the `jawOpen` signal has values around 0.55. Shortly after, they close again and the signal decreases to below 0.1. Then, the signal becomes empty. This happens in rows corresponding to the period of time when the face cannot be tracked and all the signals are cleared.
-
 
 ## Next steps
 

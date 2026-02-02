@@ -4,19 +4,34 @@ mod connection_client;
 mod connection_registry;
 mod grpc;
 
-pub use self::{
-    connection_client::GenericConnectionClient,
-    connection_registry::{
-        ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
-    },
-    grpc::{
-        ConnectionError, RedapClient, UiCommand, channel,
-        get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
-        stream_dataset_from_redap,
-    },
+pub use self::connection_client::{GenericConnectionClient, SegmentQueryParams};
+pub use self::connection_registry::{
+    ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
+    CredentialSource, Credentials, SourcedCredentials,
+};
+pub use self::grpc::{
+    RedapClient, channel, fetch_chunks_response_to_chunk_and_segment_id,
+    stream_blueprint_and_segment_from_server,
 };
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+
+/// Responses from the Data Platform can optionally include this header to communicate back the trace id of the request.
+const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
+
+/// Controls how to load chunks from the remote server.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum StreamMode {
+    /// Load all data into memory.
+    #[default]
+    FullLoad,
+
+    /// Larger-than-RAM support.
+    ///
+    /// Load chunks as needed.
+    /// Will start by loading the RRD manifest.
+    OnDemand,
+}
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
@@ -77,68 +92,205 @@ impl std::error::Error for TonicStatusError {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum StreamError {
-    #[error(transparent)]
-    ClientConnectionError(#[from] ClientConnectionError),
-
-    #[error(transparent)]
-    TonicStatus(#[from] TonicStatusError),
-
-    #[error(transparent)]
-    Tokio(#[from] tokio::task::JoinError),
-
-    #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
-
-    #[error(transparent)]
-    ChunkError(#[from] re_chunk::ChunkError),
-
-    #[error(transparent)]
-    DecodeError(#[from] re_log_encoding::decoder::DecodeError),
-
-    #[error(transparent)]
-    TypeConversionError(#[from] re_protos::TypeConversionError),
-
-    #[error("Column '{0}' is missing from the dataframe")]
-    MissingDataframeColumn(String),
-
-    #[error("{0}")]
-    MissingData(String),
-
-    #[error("arrow error: {0}")]
-    ArrowError(#[from] arrow::error::ArrowError),
+#[derive(Debug)]
+pub struct ApiError {
+    pub message: String,
+    pub kind: ApiErrorKind,
+    pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    // when the error comes from the server returning a trace id, we include it in the client
+    // error for easier reporting.
+    trace_id: Option<String>,
 }
 
-const _: () = assert!(
-    std::mem::size_of::<StreamError>() <= 80,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);
+/// Convenience for `Result<T, ApiError>`
+pub type ApiResult<T = ()> = Result<T, ApiError>;
 
-impl From<tonic::Status> for StreamError {
-    fn from(value: tonic::Status) -> Self {
-        Self::TonicStatus(value.into())
+#[derive(Debug, PartialEq, Eq)]
+pub enum ApiErrorKind {
+    NotFound,
+    AlreadyExists,
+    PermissionDenied,
+    Unauthenticated,
+
+    /// The gRPC endpoint has not been implemented
+    Unimplemented,
+    Connection,
+    Timeout,
+    Internal,
+    InvalidArguments,
+    Serialization,
+    InvalidServer,
+}
+
+impl From<tonic::Code> for ApiErrorKind {
+    fn from(code: tonic::Code) -> Self {
+        match code {
+            tonic::Code::NotFound => Self::NotFound,
+            tonic::Code::AlreadyExists => Self::AlreadyExists,
+            tonic::Code::PermissionDenied => Self::PermissionDenied,
+            tonic::Code::Unauthenticated => Self::Unauthenticated,
+            tonic::Code::Unimplemented => Self::Unimplemented,
+            tonic::Code::Unavailable => Self::Connection,
+            tonic::Code::InvalidArgument => Self::InvalidArguments,
+            tonic::Code::DeadlineExceeded => Self::Timeout,
+            _ => Self::Internal,
+        }
     }
 }
 
-// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
-// requires:
-// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
-//   where).
-// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
-//   (maybe it should be in `GlobalContext`?).
-#[cfg(target_arch = "wasm32")]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static,
-{
-    wasm_bindgen_futures::spawn_local(future);
+impl std::fmt::Display for ApiErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotFound => write!(f, "NotFound"),
+            Self::AlreadyExists => write!(f, "AlreadyExists"),
+            Self::PermissionDenied => write!(f, "PermissionDenied"),
+            Self::Unauthenticated => write!(f, "Unauthenticated"),
+            Self::Unimplemented => write!(f, "Unimplemented"),
+            Self::Connection => write!(f, "Connection"),
+            Self::Internal => write!(f, "Internal"),
+            Self::InvalidArguments => write!(f, "InvalidArguments"),
+            Self::Serialization => write!(f, "Serialization"),
+            Self::Timeout => write!(f, "Timeout"),
+            Self::InvalidServer => write!(f, "InvalidServer"),
+        }
+    }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static + Send,
-{
-    tokio::spawn(future);
+impl ApiError {
+    #[inline]
+    fn new(kind: ApiErrorKind, message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind,
+            source: None,
+            trace_id: None,
+        }
+    }
+
+    #[inline]
+    fn new_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        kind: ApiErrorKind,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind,
+            source: Some(Box::new(err)),
+            trace_id: None,
+        }
+    }
+
+    #[inline]
+    fn new_with_source_and_trace(
+        err: impl std::error::Error + Send + Sync + 'static,
+        kind: ApiErrorKind,
+        message: impl Into<String>,
+        trace_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind,
+            source: Some(Box::new(err)),
+            trace_id: Some(trace_id.into()),
+        }
+    }
+
+    pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
+        let message = format!("{}: {}", message.into(), err.message());
+        let kind = ApiErrorKind::from(err.code());
+        let trace_id = err
+            .metadata()
+            .get(GRPC_RESPONSE_TRACEID_HEADER)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_owned());
+        if let Some(trace_id) = trace_id {
+            Self::new_with_source_and_trace(err, kind, message, trace_id)
+        } else {
+            Self::new_with_source(err, kind, message)
+        }
+    }
+
+    pub fn serialization(message: impl Into<String>) -> Self {
+        Self::new(ApiErrorKind::Serialization, message)
+    }
+
+    pub fn serialization_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Serialization, message)
+    }
+
+    pub fn invalid_arguments_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::InvalidArguments, message)
+    }
+
+    pub fn internal_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Internal, message)
+    }
+
+    pub fn connection_with_source(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Connection, message)
+    }
+
+    pub fn connection(message: impl Into<String>) -> Self {
+        Self::new(ApiErrorKind::Connection, message)
+    }
+
+    pub fn credentials_with_source(
+        err: ClientCredentialsError,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Unauthenticated, message)
+    }
+
+    #[expect(clippy::needless_pass_by_value)]
+    pub fn invalid_server(origin: re_uri::Origin) -> Self {
+        Self::new(
+            ApiErrorKind::InvalidServer,
+            format!("{origin} is not a valid Rerun server"),
+        )
+    }
+
+    /// Helper method to downcast the source error to a `ClientCredentialsError` if possible.
+    #[inline]
+    pub fn as_client_credentials_error(&self) -> Option<&ClientCredentialsError> {
+        self.source
+            .as_deref()?
+            .downcast_ref::<ClientCredentialsError>()
+    }
+
+    #[inline]
+    pub fn is_client_credentials_error(&self) -> bool {
+        self.kind == ApiErrorKind::Unauthenticated
+            && matches!(self.source.as_deref(), Some(e) if e.is::<ClientCredentialsError>())
+    }
+}
+
+impl std::fmt::Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)?;
+        if let Some(ref trace_id) = self.trace_id {
+            write!(f, " (trace-id: {trace_id})")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for ApiError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_deref()
+            .map(|e| e as &(dyn std::error::Error + 'static))
+    }
 }

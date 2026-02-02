@@ -3,8 +3,7 @@ use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
-
-use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
+use re_chunk_store::{ChunkStore, LatestAtQuery, OnMissingChunk, RangeQuery};
 use re_log_types::{
     AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
@@ -86,7 +85,15 @@ impl DatastoreUi {
         }
         .show(ui, |ui| {
             let exit_focused_chunk = if let Some(focused_chunk) = &mut self.focused_chunk {
-                focused_chunk.ui(ui, timestamp_format)
+                focused_chunk.ui(
+                    ui,
+                    timestamp_format,
+                    match self.store_kind {
+                        StoreKind::Recording => ctx.recording.storage_engine(),
+                        StoreKind::Blueprint => ctx.blueprint.storage_engine(),
+                    }
+                    .store(),
+                )
             } else {
                 self.chunk_store_ui(
                     ui,
@@ -133,36 +140,40 @@ impl DatastoreUi {
         //
 
         let chunk_iterator = match &self.chunk_list_mode {
-            ChunkListMode::All => Either::Left(chunk_store.iter_chunks().map(Arc::clone)),
+            ChunkListMode::All => Either::Left(chunk_store.iter_physical_chunks().map(Arc::clone)),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_descr,
+                component,
                 query: ChunkListQueryMode::LatestAt(at),
                 ..
             } => Either::Right(
                 chunk_store
                     .latest_at_relevant_chunks(
+                        OnMissingChunk::Report,
                         &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
-                        component_descr,
+                        *component,
                     )
-                    .into_iter(),
+                    // TODO(RR-3295): what should we do with virtual chunks here?
+                    .into_iter_verbose(),
             ),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_descr,
+                component,
                 query: ChunkListQueryMode::Range(range),
                 ..
             } => Either::Right(
                 chunk_store
                     .range_relevant_chunks(
+                        OnMissingChunk::Report,
                         &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
-                        component_descr,
+                        *component,
                     )
-                    .into_iter(),
+                    // TODO(RR-3295): what should we do with virtual chunks here?
+                    .into_iter_verbose(),
             ),
         };
 
@@ -210,11 +221,10 @@ impl DatastoreUi {
         } else {
             let component_filter = self.component_filter.to_lowercase();
             Either::Right(chunk_iterator.filter(move |chunk| {
-                chunk.components().keys().any(|name| {
-                    name.display_name()
-                        .to_lowercase()
-                        .contains(&component_filter)
-                })
+                chunk
+                    .components()
+                    .keys()
+                    .any(|name| name.as_str().to_lowercase().contains(&component_filter))
             }))
         };
 
@@ -331,7 +341,7 @@ impl DatastoreUi {
                     chunk
                         .components()
                         .keys()
-                        .map(|name| name.display_name())
+                        .map(|name| name.as_str())
                         .join(", "),
                 );
             });

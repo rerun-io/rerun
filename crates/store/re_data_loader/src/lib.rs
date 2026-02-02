@@ -26,14 +26,12 @@ pub mod loader_mcap;
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
 
+pub use self::load_file::load_from_file_contents;
+pub use self::loader_archetype::ArchetypeLoader;
+pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_mcap::McapLoader;
-
-pub use self::{
-    load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
-    loader_directory::DirectoryLoader, loader_rrd::RrdLoader, loader_urdf::UrdfDataLoader,
-    loader_urdf::UrdfTree,
-};
-
+pub use self::loader_rrd::RrdLoader;
+pub use self::loader_urdf::{UrdfDataLoader, UrdfTree};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     load_file::load_from_path,
@@ -296,7 +294,7 @@ pub trait DataLoader: Send + Sync {
         &self,
         settings: &DataLoaderSettings,
         path: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError>;
 
     /// Loads data from in-memory file contents and sends it to `tx`.
@@ -329,7 +327,7 @@ pub trait DataLoader: Send + Sync {
         settings: &DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError>;
 }
 
@@ -347,7 +345,7 @@ pub enum DataLoaderError {
     Chunk(#[from] re_chunk::ChunkError),
 
     #[error(transparent)]
-    Decode(#[from] re_log_encoding::decoder::DecodeError),
+    Decode(#[from] re_log_encoding::DecodeError),
 
     #[error("No data-loader support for {0:?}")]
     Incompatible(std::path::PathBuf),
@@ -473,9 +471,11 @@ pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
     "pbm", "pgm", "png", "ppm", "tga", "tif", "tiff", "webp",
 ];
 
+pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
+
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
-pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl"];
+pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl", "dae"];
 
 // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
 pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
@@ -483,7 +483,7 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
 /// 3rd party formats with built-in support.
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "urdf"];
 
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
@@ -494,6 +494,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
         .iter()
         .chain(SUPPORTED_THIRD_PARTY_FORMATS)
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(SUPPORTED_DEPTH_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
         .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)
@@ -516,4 +517,5 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("rrd"));
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
+    assert!(is_supported_file_extension("urdf"));
 }

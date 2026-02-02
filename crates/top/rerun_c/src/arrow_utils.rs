@@ -6,8 +6,8 @@ use crate::{CError, CErrorCode};
 ///
 /// ### Safety
 /// This struct assumes that the incoming data agrees with the C data interface.
-#[allow(unsafe_code)]
-#[allow(clippy::result_large_err)]
+#[expect(unsafe_code)]
+#[expect(clippy::result_large_err)]
 pub unsafe fn arrow_array_from_c_ffi(
     array: FFI_ArrowArray,
     datatype: arrow::datatypes::DataType,

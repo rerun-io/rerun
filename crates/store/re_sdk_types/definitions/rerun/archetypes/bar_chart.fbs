@@ -1,0 +1,32 @@
+
+namespace rerun.archetypes;
+
+
+/// A bar chart.
+///
+/// The bar heights will be the provided values, and the x coordinates of the bars will be the provided abscissa or default to the index of the provided values.
+///
+/// \example archetypes/bar_chart title="Simple bar chart" image="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1200w.png"
+table BarChart (
+  "attr.docs.category": "Plotting",
+  "attr.docs.view_types": "BarChartView",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "BarChart",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
+  values: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
+
+  // --- Optional ---
+
+  /// The color of the bar chart
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+  abscissa: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+  widths: [rerun.components.Length] ("attr.rerun.component_optional", nullable, order: 4000);
+}

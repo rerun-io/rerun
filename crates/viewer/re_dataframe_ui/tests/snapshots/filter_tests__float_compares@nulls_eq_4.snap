@@ -3,12 +3,14 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: FloatCompares {
-        operator: Eq,
-        value: Some(
-            4.0,
-        ),
-    },
+    filter: Float(
+        FloatFilter {
+            operator: Eq,
+            rhs_value: Some(
+                4.0,
+            ),
+        },
+    ),
     field: Field {
         name: "column",
         data_type: Float64,

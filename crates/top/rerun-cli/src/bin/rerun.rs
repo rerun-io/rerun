@@ -19,8 +19,8 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 fn main() -> std::process::ExitCode {
     let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
 
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
-        // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
+        // TODO(tokio-rs/tracing#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
         eprintln!(
             "Turning off stderr logging because of perf_telemetry needs exclusive access to the global tracing subscriber"
         );

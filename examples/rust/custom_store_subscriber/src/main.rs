@@ -12,14 +12,10 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use rerun::{
-    ChunkStoreEvent, ChunkStoreSubscriber, ComponentDescriptor, EntityPath, StoreId,
-    external::{
-        anyhow, re_build_info, re_chunk_store, re_log,
-        re_log_types::{AbsoluteTimeRange, TimelineName},
-    },
-    time::{TimeInt, TimeType},
-};
+use rerun::external::re_log_types::{AbsoluteTimeRange, TimelineName};
+use rerun::external::{anyhow, re_build_info, re_chunk_store, re_log};
+use rerun::time::{TimeInt, TimeType};
+use rerun::{ChunkStoreEvent, ChunkStoreSubscriber, ComponentDescriptor, EntityPath, StoreId};
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
     let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
@@ -102,9 +98,13 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
 
     fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
+            let Some(chunk) = event.delta_chunk() else {
+                continue;
+            };
+
             // update counters
             let per_component = self.counters.entry(event.store_id.clone()).or_default();
-            for component_descr in event.chunk.component_descriptors() {
+            for component_descr in chunk.component_descriptors() {
                 let count = per_component.entry(component_descr.clone()).or_default();
 
                 // if first occurrence, speak!
@@ -169,17 +169,18 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
 
     fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
-            for (timeline, time_column) in event.chunk.timelines() {
+            let Some(chunk) = event.delta_chunk() else {
+                continue;
+            };
+
+            for (timeline, time_column) in chunk.timelines() {
                 // Remember the type of the time column:
                 self.time_column_times
                     .insert(*timeline, time_column.timeline().typ());
 
                 for time in time_column.times() {
                     // update counters
-                    let per_timeline = self
-                        .times
-                        .entry(event.chunk.entity_path().clone())
-                        .or_default();
+                    let per_timeline = self.times.entry(chunk.entity_path().clone()).or_default();
                     let per_time = per_timeline.entry(*timeline).or_default();
                     let count = per_time.entry(time).or_default();
 

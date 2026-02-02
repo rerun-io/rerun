@@ -6,6 +6,9 @@
 //!   `Error` enum, and implement a mapping to a user-facing Python error in the `to_py_err`
 //!   function. Then, use `?`.
 //!
+//! - For errors at the API boundaries between client and server, prefer mapping to
+//!   [`re_redap_client::ApiError`] rather than wrapping the error in a new enum variant.
+//!
 //! - Don't hesitate to introduce new error classes if this could help the user catch specific
 //!   errors. Use the [`pyo3::create_exception`] macro for that and update [`super::register`] to
 //!   expose it.
@@ -16,10 +19,24 @@
 use std::error::Error as _;
 
 use pyo3::PyErr;
-use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
+use pyo3::exceptions::{
+    PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
+};
+use re_redap_client::ApiErrorKind;
 
-use re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError;
-use re_redap_client::{ClientConnectionError, ConnectionError};
+pyo3::create_exception!(
+    rerun_bindings.rerun_bindings,
+    NotFoundError,
+    PyException,
+    "Raised when the requested resource is not found."
+);
+
+pyo3::create_exception!(
+    rerun_bindings.rerun_bindings,
+    AlreadyExistsError,
+    PyException,
+    "Raised when trying to create a resource that already exists."
+);
 
 // ---
 
@@ -28,12 +45,6 @@ use re_redap_client::{ClientConnectionError, ConnectionError};
 #[derive(Debug, thiserror::Error)]
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
-    #[error("{0}")]
-    ClientConnectionError(#[from] ClientConnectionError),
-
-    #[error("{0}")]
-    ConnectionError(#[from] ConnectionError),
-
     #[error("{0}")]
     TonicStatusError(Box<tonic::Status>),
 
@@ -50,7 +61,7 @@ enum ExternalError {
     ChunkStoreError(Box<re_chunk_store::ChunkStoreError>),
 
     #[error("{0}")]
-    StreamError(Box<re_redap_client::StreamError>),
+    ApiError(Box<re_redap_client::ApiError>),
 
     #[error("{0}")]
     ArrowError(#[from] arrow::error::ArrowError),
@@ -62,7 +73,7 @@ enum ExternalError {
     DatafusionError(Box<datafusion::error::DataFusionError>),
 
     #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
+    CodecError(#[from] re_log_encoding::rrd::CodecError),
 
     #[error(transparent)]
     SorbetError(#[from] re_sorbet::SorbetError),
@@ -97,32 +108,15 @@ macro_rules! impl_from_boxed {
 
 impl_from_boxed!(re_chunk::ChunkError, ChunkError);
 impl_from_boxed!(re_chunk_store::ChunkStoreError, ChunkStoreError);
-impl_from_boxed!(re_redap_client::StreamError, StreamError);
+impl_from_boxed!(re_redap_client::ApiError, ApiError);
 impl_from_boxed!(tonic::transport::Error, TonicTransportError);
 impl_from_boxed!(tonic::Status, TonicStatusError);
 impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
 impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
 
-impl From<re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError> for ExternalError {
-    fn from(value: GetDatasetSchemaResponseError) -> Self {
-        match value {
-            GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
-            GetDatasetSchemaResponseError::TypeConversionError(err) => {
-                re_redap_client::StreamError::from(err).into()
-            }
-        }
-    }
-}
-
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
-            ExternalError::ClientConnectionError(err) => {
-                PyConnectionError::new_err(err.to_string())
-            }
-
-            ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
-
             ExternalError::TonicStatusError(status) => {
                 if status.code() == tonic::Code::DeadlineExceeded {
                     PyTimeoutError::new_err("Deadline expired before operation could complete")
@@ -152,9 +146,23 @@ impl From<ExternalError> for PyErr {
                 PyValueError::new_err(format!("Chunk store error: {err}"))
             }
 
-            ExternalError::StreamError(err) => {
-                PyValueError::new_err(format!("Data streaming error: {err}"))
-            }
+            ExternalError::ApiError(err) => match err.kind {
+                ApiErrorKind::Connection | ApiErrorKind::InvalidServer => {
+                    PyConnectionError::new_err(err.to_string())
+                }
+                ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
+                    PyPermissionError::new_err(err.to_string())
+                }
+                ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
+                    PyValueError::new_err(err.to_string())
+                }
+                ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
+                ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
+                ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
+                ApiErrorKind::Unimplemented | ApiErrorKind::Internal => {
+                    PyRuntimeError::new_err(err.to_string())
+                }
+            },
 
             ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
 
@@ -183,7 +191,7 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::TokenError(err) => {
-                PyValueError::new_err(format!("Invalid token: {err}"))
+                PyPermissionError::new_err(format!("Invalid token: {err}"))
             }
         }
     }

@@ -17,6 +17,11 @@ impl re_byte_size::SizeBytes for TimeInt {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl std::fmt::Debug for TimeInt {
@@ -147,6 +152,36 @@ impl TimeInt {
             None => self,
         }
     }
+
+    /// Calculates the midpoint (average) between `self` and `rhs`.
+    ///
+    /// If either is static (non-temporal), then this returns [`Self::STATIC`].
+    #[inline]
+    pub fn midpoint(&self, rhs: Self) -> Self {
+        match (self.0, rhs.0) {
+            (Some(lhs), Some(rhs)) => Self::from(lhs.midpoint(rhs)),
+            _ => Self::STATIC,
+        }
+    }
+
+    pub fn closest_multiple_of(&self, snap_interval: i64) -> Self {
+        debug_assert!(1 <= snap_interval);
+        match self.0 {
+            Some(t) => {
+                let v = t.get();
+                let snapped = (v + snap_interval / 2).div_euclid(snap_interval) * snap_interval;
+                Self::new_temporal(snapped)
+            }
+            None => Self::STATIC,
+        }
+    }
+
+    pub fn saturating_sub(&self, arg: i64) -> Self {
+        match self.0 {
+            Some(t) => Self::new_temporal(t.get().saturating_sub(arg)),
+            None => Self::STATIC,
+        }
+    }
 }
 
 impl TryFrom<i64> for TimeInt {
@@ -205,6 +240,18 @@ impl From<re_types_core::datatypes::TimeInt> for TimeInt {
     #[inline]
     fn from(time: re_types_core::datatypes::TimeInt) -> Self {
         Self::new_temporal(time.0)
+    }
+}
+
+impl std::ops::Neg for TimeInt {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        match self.0 {
+            Some(t) => Self(Some(-t)),
+            None => self,
+        }
     }
 }
 

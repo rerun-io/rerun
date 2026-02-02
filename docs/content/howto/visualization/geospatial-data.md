@@ -53,7 +53,7 @@ An access token may be freely obtained by creating a Mapbox account.
 
 ## Creating a map view from code
 
-Like other views, the map view can be configured using the [blueprint API](https://rerun.io/docs/howto/configure-viewer-through-code):
+Like other views, the map view can be configured using the [blueprint API](../../getting-started/configure-the-viewer.md#programmatic-blueprints):
 
 ```python
 import rerun.blueprint as rrb

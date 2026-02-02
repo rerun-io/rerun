@@ -35,6 +35,7 @@ re_tracing.workspace = true
 # External
 anyhow.workspace = true
 camino.workspace = true
+crossbeam.workspace = true
 clang-format.workspace = true
 colored.workspace = true
 flatbuffers.workspace = true
@@ -44,11 +45,11 @@ prettyplease.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
 rayon.workspace = true
-rust-format.workspace = true                                        # TODO(#9943): Update or remove
+regex-lite.workspace = true
 serde = { workspace = true, features = ["derive"] }
 syn.workspace = true
 tempfile.workspace = true
-toml = { workspace = true, features = ["parse", "preserve_order"] }
+toml = { workspace = true, features = ["parse", "preserve_order", "serde"] }
 unindent.workspace = true
 xshell.workspace = true
 

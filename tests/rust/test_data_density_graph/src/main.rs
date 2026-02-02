@@ -4,11 +4,10 @@
 //! cargo run -p test_data_density_graph
 //! ```
 
-use rerun::{
-    RecordingStream,
-    external::{re_chunk_store, re_log},
-};
-use rerun::{external::re_log_types::NonMinI64, time::TimeInt};
+use rerun::RecordingStream;
+use rerun::external::re_log_types::NonMinI64;
+use rerun::external::{re_chunk_store, re_log};
+use rerun::time::TimeInt;
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
@@ -107,7 +106,7 @@ fn log(
         log_times.push(time);
 
         if !sorted {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             use rand::seq::SliceRandom as _;
             log_times.shuffle(&mut rng);
         }

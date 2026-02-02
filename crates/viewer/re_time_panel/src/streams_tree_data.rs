@@ -1,15 +1,14 @@
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
-use re_types::ComponentDescriptor;
-use smallvec::SmallVec;
-
 use re_chunk_store::ChunkStore;
 use re_data_ui::{ArchetypeComponentMap, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath};
+use re_sdk_types::ComponentDescriptor;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
+use smallvec::SmallVec;
 
 use crate::time_panel::TimePanelSource;
 
@@ -97,7 +96,7 @@ pub struct EntityData {
 
     pub default_open: bool,
 
-    pub children: Vec<EntityData>,
+    pub children: Vec<Self>,
 }
 
 impl EntityData {
@@ -111,7 +110,9 @@ impl EntityData {
             .path
             .last()
             .map(|entity_part| entity_part.ui_string());
-        let mut label = entity_part_ui_string.clone().unwrap_or("/".to_owned());
+        let mut label = entity_part_ui_string
+            .clone()
+            .unwrap_or_else(|| "/".to_owned());
 
         let must_pop = if let Some(part) = &entity_part_ui_string {
             hierarchy.push(part.clone());
@@ -188,15 +189,13 @@ impl EntityData {
                 .map(Iterator::collect)
                 .unwrap_or_default();
 
+            if !node_info.is_leaf && !entity_tree.path.is_root() {
+                // Indicate that we have children
+                label.push('/');
+            }
             Self {
                 entity_path: entity_tree.path.clone(),
-                label: if node_info.is_leaf || entity_tree.path.is_root() {
-                    label
-                } else {
-                    // Indicate that we have children
-                    label.push('/');
-                    label
-                },
+                label,
                 highlight_sections,
                 default_open: node_info.default_open,
                 children: node_info.children,
@@ -258,7 +257,12 @@ pub fn components_for_entity(
     entity_path: &EntityPath,
 ) -> ArchetypeComponentMap {
     if let Some(components) = store.all_components_for_entity(entity_path) {
-        sorted_component_list_by_archetype_for_ui(viewer_context.reflection(), components.iter())
+        sorted_component_list_by_archetype_for_ui(
+            viewer_context.reflection(),
+            components
+                .iter()
+                .filter_map(|component| store.entity_component_descriptor(entity_path, *component)),
+        )
     } else {
         ArchetypeComponentMap::default()
     }
@@ -284,7 +288,7 @@ impl EntityOrComponentData<'_> {
                 component_descriptor,
             } => Item::ComponentPath(ComponentPath::new(
                 entity_data.entity_path.clone(),
-                component_descriptor.clone(),
+                component_descriptor.component,
             )),
         }
     }

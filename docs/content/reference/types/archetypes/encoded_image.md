@@ -32,7 +32,15 @@ For images that refer to video frames see [`archetypes.VideoFrameReference`](htt
 
 ## Example
 
-### encoded_image
+### Encoded image
 
 snippet: archetypes/encoded_image
+
+<picture data-inline-viewer="snippets/archetypes/encoded_image">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png">
+  <img src="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/full.png">
+</picture>
 

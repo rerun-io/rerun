@@ -1,13 +1,12 @@
+use egui::text::LayoutJob;
+use egui::{Color32, Style, TextFormat, TextStyle};
 use re_entity_db::InstancePath;
-use re_log_types::{
-    ComponentPath, EntityPath, EntityPathPart, Instance,
-    external::re_types_core::{
-        ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
-    },
+use re_log_types::external::re_types_core::{
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
 };
+use re_log_types::{ComponentPath, EntityPath, EntityPathPart, Instance};
 
 use crate::HasDesignTokens as _;
-use egui::{Color32, Style, TextFormat, TextStyle, text::LayoutJob};
 
 // ----------------------------------------------------------------------------
 pub trait SyntaxHighlighting {
@@ -120,6 +119,8 @@ macro_rules! impl_style_fns {
 }
 
 impl SyntaxHighlightedBuilder {
+    impl_style_fns!("null", null, with_null, append_null, Null);
+
     impl_style_fns!(
         "Some primitive value, e.g. a number or bool.",
         primitive,
@@ -272,6 +273,7 @@ enum SyntaxHighlightedStyle {
     Identifier,
     Keyword,
     Index,
+    Null,
     Primitive,
     Syntax,
     Body,
@@ -288,6 +290,7 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
             Self::Identifier => write!(f, "Identifier"),
             Self::Keyword => write!(f, "Keyword"),
             Self::Index => write!(f, "Index"),
+            Self::Null => write!(f, "Null"),
             Self::Primitive => write!(f, "Primitive"),
             Self::Syntax => write!(f, "Syntax"),
             Self::Body => write!(f, "Body"),
@@ -336,17 +339,18 @@ impl SyntaxHighlightedStyle {
             // TODO(lucas): Find a better way to deal with body / monospace style
             Self::Keyword => Self::body_with_color(style, style.tokens().code_keyword_color),
             Self::Index => Self::monospace_with_color(style, style.tokens().code_index_color),
+            Self::Null => Self::monospace_with_color(style, style.tokens().code_null_color),
             Self::Primitive => {
                 Self::monospace_with_color(style, style.tokens().code_primitive_color)
             }
-            Self::Syntax => Self::monospace_with_color(style, style.tokens().text_strong),
+            Self::Syntax => Self::monospace_with_color(style, style.tokens().text_subdued),
             Self::Body => Self::body(style),
             Self::BodyDefault => {
                 let mut format = Self::body(style);
                 format.color = style
                     .visuals
                     .override_text_color
-                    .unwrap_or(style.tokens().text_default);
+                    .unwrap_or_else(|| style.tokens().text_default);
                 format
             }
             Self::BodyItalics => {
@@ -408,7 +412,7 @@ impl SyntaxHighlighting for ComponentType {
 
 impl SyntaxHighlighting for ArchetypeName {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.as_str());
+        builder.append_identifier(self.short_name());
     }
 }
 
@@ -428,12 +432,12 @@ impl SyntaxHighlighting for ComponentPath {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         let Self {
             entity_path,
-            component_descriptor,
+            component,
         } = self;
         builder
             .append(entity_path)
             .append_syntax(":")
-            .append(component_descriptor);
+            .append(component);
     }
 }
 

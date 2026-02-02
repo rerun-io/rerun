@@ -1,25 +1,23 @@
-use tonic::{
-    Request, Status,
-    metadata::{Ascii, MetadataValue},
-    service::Interceptor,
-};
-
-use crate::{Error, Jwt, RedapProvider, provider::VerificationOptions};
+use tonic::metadata::{Ascii, MetadataValue};
+use tonic::service::Interceptor;
+use tonic::{Request, Status};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
+use crate::provider::VerificationOptions;
+use crate::{Error, Jwt, RedapProvider};
 
 #[derive(Debug, Clone)]
 pub struct UserContext {
     pub user_id: String,
 
-    #[cfg(feature = "workos")]
-    pub permissions: Vec<crate::workos::Permission>,
+    #[cfg(feature = "oauth")]
+    pub permissions: Vec<crate::oauth::Permission>,
 }
 
-#[cfg(feature = "workos")]
+#[cfg(feature = "oauth")]
 impl UserContext {
     pub fn has_read_permission(&self) -> bool {
-        use crate::workos::Permission as P;
+        use crate::oauth::Permission as P;
 
         self.permissions
             .iter()
@@ -27,7 +25,7 @@ impl UserContext {
     }
 
     pub fn has_write_permission(&self) -> bool {
-        use crate::workos::Permission as P;
+        use crate::oauth::Permission as P;
 
         self.permissions.iter().any(|p| p == &P::ReadWrite)
     }
@@ -40,7 +38,8 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
         let token = value.to_str().map_err(|_err| Error::MalformedToken)?;
         let token = token
             .strip_prefix(TOKEN_PREFIX)
-            .ok_or(Error::MalformedToken)?;
+            .ok_or(Error::MalformedToken)?
+            .trim();
         Ok(Self(token.to_owned()))
     }
 }
@@ -78,7 +77,7 @@ impl Interceptor for Authenticator {
             req.extensions_mut().insert(UserContext {
                 user_id: claims.sub().to_owned(),
 
-                #[cfg(feature = "workos")]
+                #[cfg(feature = "oauth")]
                 permissions: claims.permissions().to_vec(),
             });
         }

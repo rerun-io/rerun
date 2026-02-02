@@ -1,9 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use arrow::{
-    array::{RecordBatch, RecordBatchOptions},
-    datatypes::{Fields, Schema},
-};
+use arrow::array::{RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Fields, Schema};
 use re_log::ResultExt as _;
 
 fn trim_archetype_prefix(name: &str) -> &str {
@@ -61,9 +60,9 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
             }
 
             // These metadata fields don't require value changes.
-            rename_key(&mut metadata, "rerun.index_name", "rerun:index_name");
-            rename_key(&mut metadata, "rerun.entity_path", "rerun:entity_path");
-            rename_key(&mut metadata, "rerun.kind", "rerun:kind");
+            rename_key(&mut metadata, "rerun.index_name", crate::metadata::SORBET_INDEX_NAME);
+            rename_key(&mut metadata, "rerun.entity_path", crate::metadata::SORBET_ENTITY_PATH);
+            rename_key(&mut metadata, "rerun.kind", crate::metadata::RERUN_KIND);
             rename_key(&mut metadata, "rerun.is_static", "rerun:is_static");
             rename_key(&mut metadata, "rerun.is_indicator", "rerun:is_indicator");
             rename_key(&mut metadata, "rerun.is_tombstone", "rerun:is_tombstone");
@@ -192,7 +191,9 @@ fn port_recording_info(batch: &mut RecordBatch) {
 
     // We renamed `RecordingProperties` to `RecordingInfo`,
     // and moved it from `/__properties/recording` to `/__properties`.
-    if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path")
+    if let Some(entity_path) = batch
+        .schema_metadata_mut()
+        .get_mut(crate::metadata::SORBET_ENTITY_PATH)
         && entity_path == "/__properties/recording"
     {
         *entity_path = "/__properties".to_owned();
@@ -220,7 +221,9 @@ fn port_recording_info(batch: &mut RecordBatch) {
             .with_metadata(field.metadata().clone());
 
             // Migrate per-column entity paths (if any):
-            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path")
+            if let Some(entity_path) = field
+                .metadata_mut()
+                .get_mut(crate::metadata::SORBET_ENTITY_PATH)
                 && entity_path == "/__properties/recording"
             {
                 *entity_path = "/__properties".to_owned();

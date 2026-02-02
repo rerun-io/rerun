@@ -1,0 +1,36 @@
+name: "Doc Redirects Check"
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-checks_doc_redirects
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+permissions:
+  contents: "read"
+
+jobs:
+  check-doc-redirects:
+    name: Check doc redirects
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}
+          fetch-depth: 0 # Need full history for git diff against main
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check doc redirects
+        run: pixi run python scripts/ci/check_doc_redirects.py --base origin/main

@@ -4,6 +4,7 @@ tags = ["2D", "3D", "Camera", "Photogrammetry"]
 thumbnail = "https://static.rerun.io/open-photogrammetry-format/c9bec43a3a3abd725a55ee8eb527a4c0cb01979b/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
+include_in_manifest = true
 build_args = ["--jpeg-quality=50"]
 -->
 

@@ -1,4 +1,6 @@
-use std::{collections::HashMap, hash::Hash, ops::Deref};
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::ops::Deref;
 
 use parking_lot::{RwLock, RwLockReadGuard};
 use slotmap::{Key, SlotMap};

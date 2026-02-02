@@ -1,19 +1,23 @@
+use std::mem;
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, SchemaRef};
+use crossbeam::channel::{Receiver, TryRecvError};
 use datafusion::common::{DataFusionError, TableReference};
+use datafusion::execution::SendableRecordBatchStream;
 use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
-use parking_lot::Mutex;
-
+use futures::{StreamExt as _, TryStreamExt as _};
+use re_log::{error, warn};
 use re_log_types::Timestamp;
-use re_sorbet::{BatchType, SorbetBatch};
+use re_mutex::Mutex;
+use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 use re_viewer_context::AsyncRuntimeHandle;
 
-use crate::RequestedObject;
-use crate::filters::Filter;
-use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
+use crate::ColumnFilter;
+use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
+use crate::table_selection::TableSelectionState;
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -35,28 +39,28 @@ fn col(name: &str) -> datafusion::logical_expr::Expr {
 #[derive(Debug, Clone, PartialEq, Default)]
 struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
-    pub partition_links: Option<PartitionLinksSpec>,
+    pub segment_links: Option<SegmentLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
     pub prefilter: Option<datafusion::prelude::Expr>,
-    pub filters: Vec<Filter>,
+    pub column_filters: Vec<ColumnFilter>,
 }
 
 impl From<&TableBlueprint> for DataFusionQueryData {
     fn from(value: &TableBlueprint) -> Self {
         let TableBlueprint {
             sort_by,
-            partition_links,
+            segment_links,
             entry_links,
             prefilter,
-            filters,
+            column_filters,
         } = value;
 
         Self {
             sort_by: sort_by.clone(),
-            partition_links: partition_links.clone(),
+            segment_links: segment_links.clone(),
             entry_links: entry_links.clone(),
             prefilter: prefilter.clone(),
-            filters: filters.clone(),
+            column_filters: column_filters.clone(),
         }
     }
 }
@@ -72,6 +76,8 @@ pub struct DataFusionQueryResult {
 
     /// The migrated schema of the record batches (useful when the list of batches is empty).
     pub sorbet_schema: re_sorbet::SorbetSchema,
+
+    pub finished: bool,
 }
 
 /// A table blueprint along with the context required to execute the corresponding datafusion query.
@@ -96,40 +102,33 @@ impl DataFusionQuery {
         }
     }
 
-    /// Execute the query to produce the data to display.
-    ///
-    /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
-    /// `clone()` as required.
-    async fn execute(self) -> Result<DataFusionQueryResult, DataFusionError> {
+    async fn batch_stream(self) -> Result<SendableRecordBatchStream, DataFusionError> {
         let mut dataframe = self.session_ctx.table(self.table_ref).await?;
 
         let DataFusionQueryData {
             sort_by,
-            partition_links,
+            segment_links,
             entry_links,
             prefilter,
-            filters,
+            column_filters,
         } = &self.query_data;
 
         //
-        // Partition links
+        // Segment links
         //
 
         // Important: the needs to happen first, in case we sort/filter/etc. based on that
         // particular column.
-        if let Some(partition_links) = partition_links {
+        if let Some(segment_links) = segment_links {
             //TODO(ab): we should get this from `re_uri::DatasetDataUri` instead of hardcoding
             let uri = format!(
-                "{}/dataset/{}/data?partition_id=",
-                partition_links.origin, partition_links.dataset_id
+                "{}/dataset/{}/data?segment_id=",
+                segment_links.origin, segment_links.dataset_id
             );
 
             dataframe = dataframe.with_column(
-                &partition_links.column_name,
-                concat(vec![
-                    lit(uri),
-                    col(&partition_links.partition_id_column_name),
-                ]),
+                &segment_links.column_name,
+                concat(vec![lit(uri), col(&segment_links.segment_id_column_name)]),
             )?;
         }
 
@@ -162,13 +161,11 @@ impl DataFusionQuery {
         // Filters
         //
 
-        let schema = dataframe.schema();
-
-        let filter_exprs = filters
+        let filter_exprs = column_filters
             .iter()
             .filter_map(|filter| {
                 filter
-                    .as_filter_expression(schema)
+                    .as_filter_expression()
                     .inspect_err(|err| {
                         // TODO(ab): error handling will need to be improved once we introduce non-
                         // UI means of setting up filters.
@@ -194,42 +191,96 @@ impl DataFusionQuery {
         }
 
         //
-        // Collect record batches
+        // Execute the query
         //
 
-        let original_schema = Arc::clone(dataframe.schema().inner());
-        let record_batches = dataframe.collect().await?;
+        let stream = dataframe.execute_stream().await?;
 
-        //
-        // Convert to `SorbetBatch`
-        //
-
-        let sorbet_batches = record_batches
-            .iter()
-            .map(|record_batch| {
-                SorbetBatch::try_from_record_batch(record_batch, BatchType::Dataframe)
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| DataFusionError::External(err.into()))?;
-
-        //
-        // Get (or create) `SorbetSchema`
-        //
-
-        let sorbet_schema = sorbet_batches
-            .first()
-            .map(|batch| Ok(batch.sorbet_schema().clone()))
-            .unwrap_or_else(|| {
-                re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::clone(&original_schema))
-                    .map_err(|err| DataFusionError::External(err.into()))
-            })?;
-
-        Ok(DataFusionQueryResult {
-            sorbet_batches,
-            original_schema,
-            sorbet_schema,
-        })
+        Ok(stream)
     }
+
+    /// Execute the query to produce the data to display.
+    ///
+    /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
+    /// `clone()` as required.
+    fn execute_streaming(self, runtime: &AsyncRuntimeHandle) -> Receiver<QueryEvent> {
+        let (tx, rx) = crate::create_channel(1000);
+        runtime.spawn_future(async move {
+            if let Ok(stream) = self.batch_stream().await {
+                let schema = stream.schema();
+
+                let mut sorbet_stream = stream.and_then(|s| {
+                    std::future::ready(
+                        SorbetBatch::try_from_record_batch(&s, BatchType::Dataframe)
+                            .map_err(|err| DataFusionError::External(err.into())),
+                    )
+                });
+
+                let mut sent_schemas = false;
+                let mut sent_error = false;
+
+                while let Some(frame) = sorbet_stream.next().await {
+                    match frame {
+                        Ok(batch) => {
+                            if !sent_schemas {
+                                let sorbet_schema = batch.sorbet_schema().clone();
+                                let original_schema = Arc::clone(&schema);
+                                if tx
+                                    .send(QueryEvent::Schema {
+                                        original_schema,
+                                        sorbet_schema,
+                                    })
+                                    .is_err()
+                                {
+                                    return; // Receiver dropped, stop streaming
+                                }
+                                sent_schemas = true;
+                            }
+                            if tx.send(QueryEvent::Batch(batch)).is_err() {
+                                return; // Receiver dropped, stop streaming
+                            }
+                        }
+                        Err(err) => {
+                            sent_error = true;
+                            tx.send(QueryEvent::Error(err)).ok();
+                        }
+                    }
+                }
+
+                // We got no results, try to derive the sorbet schema from the raw arrow schema
+                if !sent_schemas && !sent_error {
+                    let sorbet_schema = SorbetSchema::try_from_raw_arrow_schema(schema.clone());
+                    match sorbet_schema {
+                        Ok(sorbet_schema) => {
+                            tx.send(QueryEvent::Schema {
+                                original_schema: schema,
+                                sorbet_schema,
+                            })
+                            .ok();
+                        }
+                        Err(err) => {
+                            tx.send(QueryEvent::Error(DataFusionError::External(err.into())))
+                                .ok();
+                        }
+                    }
+                }
+            }
+        });
+        rx
+    }
+}
+
+/// A event produced during the streaming execution of a datafusion query.
+///
+/// It's guaranteed that the first event is either [`QueryEvent::Schema`] or [`QueryEvent::Error`].
+#[derive(Debug)]
+pub enum QueryEvent {
+    Schema {
+        original_schema: SchemaRef,
+        sorbet_schema: re_sorbet::SorbetSchema,
+    },
+    Batch(SorbetBatch),
+    Error(DataFusionError),
 }
 
 impl PartialEq for DataFusionQuery {
@@ -246,9 +297,6 @@ impl PartialEq for DataFusionQuery {
     }
 }
 
-type RequestedDataFusionQueryResult =
-    RequestedObject<Result<DataFusionQueryResult, DataFusionError>>;
-
 /// Helper struct to manage the datafusion async query and the resulting `SorbetBatch`.
 #[derive(Clone)]
 pub struct DataFusionAdapter {
@@ -261,11 +309,13 @@ pub struct DataFusionAdapter {
     query: DataFusionQuery,
 
     // Used to have something to display while the new dataframe is being queried.
-    pub last_query_results: Option<DataFusionQueryResult>,
+    pub last_query_results: Option<Result<DataFusionQueryResult, Arc<DataFusionError>>>,
 
     // TODO(ab, lucasmerlin): this `Mutex` is only needed because of the `Clone` bound in egui
     // so we should clean that up if the bound is lifted.
-    pub requested_query_result: Arc<Mutex<RequestedDataFusionQueryResult>>,
+    pub rx: Arc<Mutex<Receiver<QueryEvent>>>,
+
+    pub results: Option<Result<DataFusionQueryResult, Arc<DataFusionError>>>,
 
     pub queried_at: Timestamp,
 }
@@ -288,18 +338,17 @@ impl DataFusionAdapter {
     ) -> Self {
         let adapter = ui.data(|data| data.get_temp::<Self>(id));
 
-        let adapter = adapter.unwrap_or_else(|| {
+        let mut adapter = adapter.unwrap_or_else(|| {
             let initial_query = DataFusionQueryData::from(&initial_blueprint);
             let query = DataFusionQuery::new(Arc::clone(session_ctx), table_ref, initial_query);
+
+            let rx = query.clone().execute_streaming(runtime);
 
             let table_state = Self {
                 id,
                 blueprint: initial_blueprint,
-                requested_query_result: Arc::new(Mutex::new(RequestedObject::new_with_repaint(
-                    runtime,
-                    ui.ctx().clone(),
-                    query.clone().execute(),
-                ))),
+                rx: Arc::new(Mutex::new(rx)),
+                results: None,
                 query,
                 last_query_results: None,
                 queried_at: Timestamp::now(),
@@ -312,7 +361,62 @@ impl DataFusionAdapter {
             table_state
         });
 
-        adapter.requested_query_result.lock().on_frame_start();
+        {
+            let rx = adapter.rx.lock();
+            let mut changed = false;
+            loop {
+                match rx.try_recv() {
+                    Ok(QueryEvent::Schema {
+                        sorbet_schema,
+                        original_schema,
+                    }) => {
+                        adapter.results = Some(Ok(DataFusionQueryResult {
+                            original_schema,
+                            sorbet_schema,
+                            sorbet_batches: vec![],
+                            finished: false,
+                        }));
+                        changed = true;
+                    }
+                    Ok(QueryEvent::Batch(batch)) => match &mut adapter.results {
+                        Some(Ok(data)) => {
+                            data.sorbet_batches.push(batch);
+                            changed = true;
+
+                            // We received some data, so stop showing any previous results.
+                            adapter.last_query_results = None;
+                        }
+                        Some(Err(err)) => {
+                            warn!("Received data after receiving an error: {err}");
+                        }
+                        None => {
+                            error!("Received data before receiving schema");
+                        }
+                    },
+                    Ok(QueryEvent::Error(err)) => {
+                        error!("DataFusion query error: {err}");
+                        adapter.results = Some(Err(Arc::new(err)));
+                        changed = true;
+                    }
+                    Err(TryRecvError::Empty) => {
+                        break;
+                    }
+                    Err(TryRecvError::Disconnected) => {
+                        if let Some(Ok(data)) = &mut adapter.results {
+                            data.finished = true;
+                            changed = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if changed {
+                ui.data_mut(|data| {
+                    data.insert_temp(adapter.id, adapter.clone());
+                });
+            }
+        }
 
         adapter
     }
@@ -338,17 +442,17 @@ impl DataFusionAdapter {
         if self.query.query_data != new_query_data {
             self.query.query_data = new_query_data;
 
-            let mut dataframe = self.requested_query_result.lock();
+            self.last_query_results = mem::take(&mut self.results);
 
-            if let Some(Ok(sorbet_batches)) = dataframe.try_as_ref() {
-                self.last_query_results = Some(sorbet_batches.clone());
+            if let Some(Ok(results)) = &mut self.last_query_results {
+                results.finished = true;
             }
 
-            *dataframe = RequestedObject::new_with_repaint(
-                runtime,
-                ui.ctx().clone(),
-                self.query.clone().execute(),
-            );
+            let rx = self.query.clone().execute_streaming(runtime);
+
+            self.rx = Arc::new(Mutex::new(rx));
+
+            TableSelectionState::clear(ui.ctx(), self.id);
         }
 
         ui.data_mut(|data| {

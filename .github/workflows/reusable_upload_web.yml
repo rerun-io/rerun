@@ -33,7 +33,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "write"
@@ -153,6 +153,8 @@ jobs:
             | ------ | ------- | ---- | -------- |
             | ✅ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
 
+            View image diff on [kitdiff](https://rerun-io.github.io/kitdiff/?url=${{github.event.pull_request.html_url}}).
+
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Status comment
@@ -168,5 +170,7 @@ jobs:
             | Result | Commit  | Link | Manifest |
             | ------ | ------- | ----- |
             | ❌ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
+
+            View image diff on [kitdiff](https://rerun-io.github.io/kitdiff/?url=${{github.event.pull_request.html_url}}).
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>

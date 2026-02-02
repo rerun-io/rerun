@@ -50,7 +50,7 @@ TODO(ab)
 ## Code generation
 
 Keeping the various SDKs in sync with the Rerun Viewer requires automation to be tractable.
-The Python SDK is no exception, and large parts of its implementation is generated using the `re_types` and `re_types_builder` crates, based on the object definitions found in `crates/store/re_types/definitions` and the generation code found in `crates/build/re_types_builder/src/codegen/python.rs`.
+The Python SDK is no exception, and large parts of its implementation is generated using the `re_sdk_types` and `re_types_builder` crates, based on the object definitions found in `crates/store/re_sdk_types/definitions` and the generation code found in `crates/build/re_types_builder/src/codegen/python.rs`.
 
 #### Archetype
 
@@ -170,3 +170,18 @@ TODO(ab):
 - both mypy and pyright
 - tests (in `rerun_py/tests/unit/`) serve as typing test as well and should minimize use of `# noqa` and similar
 - unfortunately, PyCharm [doesn't properly support converters](https://youtrack.jetbrains.com/issue/PY-34243/attr.s-attr.ibconverter...-type-hinting-false-positive).
+
+## Internal/wrapper pattern
+
+Experience shows that the pattern of using a pure-Python wrapper around pyo3-based internal object is successful. It allows:
+- keeping the "accept anything" magic on the Python side;
+- having simple, canonically typed methods for rust-based objects (making it more likely to benefit from pyo3 magic type conversions).
+
+See `rerun.catalog.CatalogClient` for an example of this pattern.
+
+To use this pattern:
+
+- Create a Rust object named `PyMyObjectInternal` in `src`. Expose it with pyo3 as `MyObjectInternal`.
+- Crate type stubs for that object in `rerun_bindings`. These stubs should have no/minimal docstrings, since the rust-side docstrings are the reference. They should have precise type annotations, though.
+- For internal objects, prefer simple signatures, ideally with a single type per argument.
+- Create a wrapping public class `MyObject` in `rerun_sdk/rerun`. It should have a single data member called `_internal`, holding the internal object instance.

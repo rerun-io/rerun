@@ -1,8 +1,7 @@
-use std::{
-    io::Read as _,
-    path::PathBuf,
-    sync::{Arc, LazyLock, atomic::AtomicBool},
-};
+use std::io::Read as _;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, LazyLock};
 
 use ahash::HashMap;
 use indexmap::IndexSet;
@@ -122,7 +121,7 @@ impl crate::DataLoader for ExternalLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: PathBuf,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         use std::process::{Command, Stdio};
 
@@ -135,7 +134,7 @@ impl crate::DataLoader for ExternalLoader {
 
         #[derive(PartialEq, Eq)]
         struct CompatibleLoaderFound;
-        let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
+        let (tx_feedback, rx_feedback) = crossbeam::channel::bounded::<CompatibleLoaderFound>(64);
 
         let args = settings.to_cli_args();
         for exe in external_loaders {
@@ -184,9 +183,8 @@ impl crate::DataLoader for ExternalLoader {
                 // streaming data to stdout.
                 let is_sending_data = Arc::new(AtomicBool::new(false));
 
-
                 let stdout = std::io::BufReader::new(stdout);
-                match re_log_encoding::decoder::Decoder::new(stdout) {
+                match re_log_encoding::Decoder::decode_eager(stdout) {
                     Ok(decoder) => {
                         let filepath = filepath.clone();
                         let tx = tx.clone();
@@ -204,7 +202,7 @@ impl crate::DataLoader for ExternalLoader {
                             return;
                         }
                     }
-                    Err(re_log_encoding::decoder::DecodeError::Read(_)) => {
+                    Err(re_log_encoding::DecodeError::Read(_)) => {
                         // The child was not interested in that file and left without logging
                         // anything.
                         // That's fine, we just need to make sure to check its exit status further
@@ -299,7 +297,7 @@ impl crate::DataLoader for ExternalLoader {
         _settings: &crate::DataLoaderSettings,
         path: PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
-        _tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        _tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         // TODO(#5324): You could imagine a world where plugins can be streamed rrd data via their
         // standard input… but today is not world.
@@ -307,16 +305,16 @@ impl crate::DataLoader for ExternalLoader {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn decode_and_stream<R: std::io::Read>(
+#[expect(clippy::needless_pass_by_value)]
+fn decode_and_stream(
     filepath: &std::path::Path,
-    tx: &std::sync::mpsc::Sender<crate::LoadedData>,
+    tx: &crossbeam::channel::Sender<crate::LoadedData>,
     is_sending_data: Arc<AtomicBool>,
-    decoder: re_log_encoding::decoder::Decoder<R>,
+    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
-    for msg in decoder {
+    for msg in msgs {
         is_sending_data.store(true, std::sync::atomic::Ordering::Relaxed);
 
         let msg = match msg {

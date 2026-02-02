@@ -3,14 +3,11 @@
 mod test_view;
 
 use ahash::HashMap;
-
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::{SnapshotOptions, SnapshotResult};
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
-
-use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
-
 use re_viewport::execute_systems_for_view;
-
+use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
@@ -25,7 +22,15 @@ pub trait TestContextExt {
     fn ui_for_single_view(&self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId);
 
     /// [`TestContext::run`] inside a central panel that displays the ui for a single given view.
-    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId);
+    fn run_with_single_view(&self, ui: &mut egui::Ui, view_id: ViewId);
+
+    fn run_view_ui_and_save_snapshot(
+        &self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    ) -> SnapshotResult;
 }
 
 impl TestContextExt for TestContext {
@@ -41,7 +46,7 @@ impl TestContextExt for TestContext {
     ///
     /// Important pre-requisite:
     /// - The current timeline must already be set to the timeline of interest, because some
-    ///   updates are timeline-dependant (in particular those related to visible time rane).
+    ///   updates are timeline-dependant (in particular those related to visible time range).
     /// - The view classes used by view must be already registered (see
     ///   [`TestContext::register_view_class`]).
     /// - The data store must be already populated for the views to have any content (see, e.g.,
@@ -66,7 +71,7 @@ impl TestContextExt for TestContext {
                     viewport_blueprint.save_to_blueprint_store(ctx);
                 });
 
-                self.handle_system_commands();
+                self.handle_system_commands(egui_ctx);
 
                 // Reload the blueprint store and execute all view queries.
                 let blueprint_query = self.blueprint_query.clone();
@@ -81,46 +86,30 @@ impl TestContextExt for TestContext {
                             let view_blueprint = viewport_blueprint
                                 .view(view_id)
                                 .expect("view is known to exist");
+
+                            let class_registry = ctx.view_class_registry();
                             let class_identifier = view_blueprint.class_identifier();
+                            let class = class_registry.class(class_identifier).unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"));
 
-                            let visualizable_entities = ctx
-                                .view_class_registry()
-                                .class(class_identifier)
-                                .unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"))
-                                .determine_visualizable_entities(
-                                    ctx.maybe_visualizable_entities_per_visualizer,
-                                    ctx.recording(),
-                                    &ctx.view_class_registry()
-                                        .new_visualizer_collection(class_identifier),
-                                    &view_blueprint.space_origin,
-                                );
+                            let visualizable_entities_for_view = ctx.collect_visualizable_entities_for_view_class(class_identifier);
 
-                            let indicated_entities_per_visualizer = ctx
-                                .view_class_registry()
-                                .indicated_entities_per_visualizer(ctx.recording().store_id());
+                            let query_range = view_blueprint.query_range(
+                                ctx.blueprint_db(),
+                                ctx.blueprint_query,
+                                ctx.time_ctrl.timeline(),
+                                class_registry,
+                                self.view_states.lock().get_mut_or_create(*view_id, class),
+                            );
 
-                            let mut data_query_result = view_blueprint.contents.execute_query(
+                            let data_query_result = view_blueprint.contents.build_data_result_tree(
                                 ctx.store_context,
-                                ctx.view_class_registry(),
+                                ctx.time_ctrl.timeline(),
+                                class_registry,
                                 ctx.blueprint_query,
-                                &visualizable_entities,
-                            );
-
-                            let resolver = DataQueryPropertyResolver::new(
-                                view_blueprint,
-                                ctx.view_class_registry(),
-                                ctx.maybe_visualizable_entities_per_visualizer,
-                                &visualizable_entities,
-                                &indicated_entities_per_visualizer,
-                            );
-
-                            resolver.update_overrides(
-                                ctx.store_context.blueprint,
-                                ctx.blueprint_query,
-                                ctx.rec_cfg.time_ctrl.read().timeline(),
-                                ctx.view_class_registry(),
-                                &mut data_query_result,
-                                &mut self.view_states.lock(),
+                                &query_range,
+                                &visualizable_entities_for_view,
+                                ctx.indicated_entities_per_visualizer,
+                                ctx.app_options(),
                             );
 
                             query_results.insert(*view_id, data_query_result);
@@ -143,27 +132,55 @@ impl TestContextExt for TestContext {
             ViewBlueprint::try_from_db(view_id, ctx.store_context.blueprint, ctx.blueprint_query)
                 .expect("expected the view id to be known to the blueprint store");
 
-        let view_class = ctx
-            .view_class_registry()
-            .get_class_or_log_error(view_blueprint.class_identifier());
+        let class_registry = ctx.view_class_registry();
+        let class_identifier = view_blueprint.class_identifier();
+        let view_class = class_registry.get_class_or_log_error(class_identifier);
 
         let mut view_states = self.view_states.lock();
+        view_states.reset_visualizer_errors();
         let view_state = view_states.get_mut_or_create(view_id, view_class);
 
-        let (view_query, system_execution_output) =
-            execute_systems_for_view(ctx, &view_blueprint, view_state);
+        let context_system_once_per_frame_results = class_registry
+            .run_once_per_frame_context_systems(ctx, std::iter::once(class_identifier));
+        let (view_query, system_execution_output) = execute_systems_for_view(
+            ctx,
+            &view_blueprint,
+            view_state,
+            &context_system_once_per_frame_results,
+        );
+        view_states.report_visualizer_errors(view_id, &system_execution_output);
 
+        let view_state = view_states.get_mut_or_create(view_id, view_class);
         view_class
             .ui(ctx, ui, view_state, &view_query, system_execution_output)
             .expect("failed to run view ui");
     }
 
     /// [`TestContext::run`] for a single view.
-    fn run_with_single_view(&mut self, ui: &mut egui::Ui, view_id: ViewId) {
+    fn run_with_single_view(&self, ui: &mut egui::Ui, view_id: ViewId) {
         self.run_ui(ui, |ctx, ui| {
             self.ui_for_single_view(ui, ctx, view_id);
         });
 
-        self.handle_system_commands();
+        self.handle_system_commands(ui.ctx());
+    }
+
+    fn run_view_ui_and_save_snapshot(
+        &self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    ) -> SnapshotResult {
+        let mut harness = self.setup_kittest_for_rendering_3d(size).build_ui(|ui| {
+            self.run_with_single_view(ui, view_id);
+        });
+        harness.run();
+
+        if let Some(snapshot_options) = snapshot_options {
+            harness.try_snapshot_options(snapshot_name, &snapshot_options)
+        } else {
+            harness.try_snapshot(snapshot_name)
+        }
     }
 }

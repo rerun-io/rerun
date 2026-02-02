@@ -6,18 +6,22 @@ from __future__ import annotations
 
 import os
 import subprocess
+from pathlib import Path
 
-repo_root = None
 
-
-def get_repo_root() -> str:
-    global repo_root
-    if repo_root is not None:
-        return repo_root
-    else:
-        get_rev_parse = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True)
-        assert get_rev_parse.returncode == 0
-        return get_rev_parse.stdout.decode("utf-8").strip()
+def get_rerun_root() -> str:
+    # Search upward for .RERUN_ROOT sentinel file
+    # TODO(RR-3355): Use a shared utility for this
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        # Look for sentinel file
+        if (current / ".RERUN_ROOT").exists():
+            return str(current)
+        # Break if we reach a git root
+        if (current / ".git").exists():
+            break
+        current = current.parent
+    raise FileNotFoundError(f"Could not find .RERUN_ROOT sentinel file in any parent directory under {current}")
 
 
 def run(
@@ -27,9 +31,9 @@ def run(
     timeout: int | None = None,
     cwd: str | None = None,
 ) -> None:
-    # Run from the repo root if not specify otherwise.
+    # Run from the rerun root if not specify otherwise.
     if cwd is None:
-        cwd = get_repo_root()
+        cwd = get_rerun_root()
 
     print(f"> {subprocess.list2cmdline(args)}")
     result = subprocess.run(
@@ -49,6 +53,9 @@ def run(
 
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     env = os.environ.copy()
+
+    # Force UTF-8 encoding for Python I/O to handle Unicode output on Windows
+    env["PYTHONIOENCODING"] = "utf-8"
 
     # raise exception on warnings, e.g. when using a @deprecated function:
     env["PYTHONWARNINGS"] = "error"
@@ -70,10 +77,10 @@ def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     return env
 
 
-def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
+def run_comparison(rrd0_path: Path | str, rrd1_path: Path | str, full_dump: bool) -> None:
     cmd = ["rerun", "rrd", "compare", "--unordered", "--ignore-chunks-without-components"]
     if full_dump:
         cmd += ["--full-dump"]
-    cmd += [rrd0_path, rrd1_path]
+    cmd += [str(rrd0_path), str(rrd1_path)]
 
     run(cmd, env=roundtrip_env(), timeout=60)

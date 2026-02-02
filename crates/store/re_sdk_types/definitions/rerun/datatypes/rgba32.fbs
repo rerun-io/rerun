@@ -1,0 +1,22 @@
+namespace rerun.datatypes;
+
+// ---
+
+/// An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+///
+/// The color is stored as a 32-bit integer, where the most significant
+/// byte is `R` and the least significant byte is `A`.
+///
+/// \py Float colors are assumed to be in 0-1 gamma sRGB space.
+/// \py All other colors are assumed to be in 0-255 gamma sRGB space.
+/// \py If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
+struct Rgba32 (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "int | Sequence[int | float] | npt.NDArray[np.uint8 | np.float32 | np.float64]",
+  "attr.python.array_aliases": "int | npt.ArrayLike",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  rgba: uint (order: 100);
+}

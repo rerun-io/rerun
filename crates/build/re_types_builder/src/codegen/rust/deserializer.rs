@@ -1,14 +1,12 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::{
-    Object, Objects, TypeRegistry,
-    codegen::rust::{
-        arrow::{ArrowDataTypeTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path},
-        util::{is_tuple_struct_from_obj, quote_comment},
-    },
-    data_type::{AtomicDataType, DataType, UnionMode},
+use crate::codegen::rust::arrow::{
+    ArrowDataTypeTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
 };
+use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_comment};
+use crate::data_type::{AtomicDataType, DataType, UnionMode};
+use crate::{Object, Objects, TypeRegistry};
 
 // ---
 
@@ -399,7 +397,7 @@ pub fn quote_arrow_deserializer(
                             }
 
                             // Safety: all checked above.
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe { #quoted_obj_field_name.get_unchecked(offset as usize) }
                                 .clone()
                                 #quoted_unwrap
@@ -493,7 +491,6 @@ enum InnerRepr {
 ///
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
-#[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_deserializer(
     objects: &Objects,
     datatype: &DataType,
@@ -572,7 +569,6 @@ fn quote_arrow_field_deserializer(
                                     ));
                                 }
 
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                 let data = arrow_data_buf.slice_with_length(start, len);
                                 Ok(data)
                             })
@@ -639,7 +635,7 @@ fn quote_arrow_field_deserializer(
                                 (start, end), #data_src_buf.len(),
                             ));
                         }
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
+                        // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_buf.slice_with_length(start, len);
 
                         Ok(data)
@@ -714,7 +710,7 @@ fn quote_arrow_field_deserializer(
                                     ));
                                 }
                                 // Safety: all checked above.
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                 let data = unsafe { #data_src_inner.get_unchecked(start..end) };
 
                                 // NOTE: The call to `Option::unwrap_or_default` is very important here.
@@ -748,7 +744,7 @@ fn quote_arrow_field_deserializer(
                                 // .collect::<DeserializationResult<Vec<_>>>()?;
 
                                 #comment_note_unwrap
-                                #[allow(clippy::unwrap_used)]
+                                #[expect(clippy::unwrap_used)]
                                 Ok(array_init::from_iter(data).unwrap())
                             }).transpose()
                         )
@@ -791,12 +787,12 @@ fn quote_arrow_field_deserializer(
             let quoted_inner_data_range = match inner_repr {
                 InnerRepr::ScalarBuffer => {
                     quote! {
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): unsafe slice_unchecked when https://github.com/apache/arrow-rs/pull/6901 is merged and released
+                        // TODO(apache/arrow-rs#6900): unsafe slice_unchecked when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_inner.clone().slice(start,  end - start);
                     }
                 }
                 InnerRepr::NativeIterable => quote! {
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     let data = unsafe { #data_src_inner.get_unchecked(start..end) };
 
                     // NOTE: The call to `Option::unwrap_or_default` is very important here.
@@ -922,18 +918,19 @@ fn quote_array_downcast(
 }
 
 #[derive(Debug, Clone, Copy)]
-#[allow(dead_code)]
 enum IteratorKind {
     /// `Iterator<Item = DeserializationResult<Option<T>>>`.
     ResultOptionValue,
 
     /// `Iterator<Item = Option<DeserializationResult<T>>>`.
+    #[expect(dead_code)] // currently unused
     OptionResultValue,
 
     /// `Iterator<Item = Option<T>>`.
     OptionValue,
 
     /// `Iterator<Item = DeserializationResult<T>>`.
+    #[expect(dead_code)] // currently unused
     ResultValue,
 
     /// `Iterator<Item = T>`.
@@ -956,7 +953,7 @@ fn quote_iterator_transparency(
     iter_kind: IteratorKind,
     extra_wrapper: Option<TokenStream>,
 ) -> TokenStream {
-    #![allow(clippy::collapsible_else_if)]
+    #![expect(clippy::collapsible_else_if)]
 
     let inner_obj = if let DataType::Object { fqname, .. } = datatype {
         Some(&objects[fqname])

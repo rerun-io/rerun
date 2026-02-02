@@ -1,10 +1,11 @@
+use std::fmt;
 use std::sync::Arc;
-use std::{fmt, time::Duration};
+use std::time::Duration;
 
 use parking_lot::Mutex;
 use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
-use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
+use re_log_encoding::{EncodeError, Encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
@@ -34,8 +35,14 @@ impl SinkFlushError {
 }
 
 /// Where the SDK sends its log messages.
-pub trait LogSink: Send + Sync + 'static {
+pub trait LogSink: Send + Sync + 'static + std::any::Any {
     /// Send this log message.
+    ///
+    /// In order to apply backpressure, implementing sinks should block
+    /// the call until there is enough capacity to accept the message.
+    ///
+    /// It is however NOT expected that `send` will _always_ block,
+    /// just when the sink is overwhelmed.
     fn send(&self, msg: LogMsg);
 
     /// Send all these log messages.
@@ -95,9 +102,6 @@ pub trait LogSink: Send + Sync + 'static {
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
         ChunkBatcherConfig::DEFAULT
     }
-
-    /// As [`std::any::Any`] for dynamic downcasting.
-    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 // ----------------------------------------------------------------------------
@@ -158,8 +162,7 @@ impl LogSink for MultiSink {
             mut flush_num_bytes,
             mut flush_num_rows,
             mut chunk_max_rows_if_unsorted,
-            mut max_commands_in_flight,
-            mut max_chunks_in_flight,
+            mut max_bytes_in_flight,
         } = ChunkBatcherConfig::DEFAULT;
 
         // Use a mix of the existing sinks thus that we flush *less* often.
@@ -172,8 +175,7 @@ impl LogSink for MultiSink {
             flush_num_rows = flush_num_rows.max(config.flush_num_rows);
             chunk_max_rows_if_unsorted =
                 chunk_max_rows_if_unsorted.max(config.chunk_max_rows_if_unsorted);
-            max_commands_in_flight = max_commands_in_flight.max(config.max_commands_in_flight);
-            max_chunks_in_flight = max_chunks_in_flight.max(config.max_chunks_in_flight);
+            max_bytes_in_flight = max_bytes_in_flight.max(config.max_bytes_in_flight);
         }
 
         ChunkBatcherConfig {
@@ -181,13 +183,8 @@ impl LogSink for MultiSink {
             flush_num_bytes,
             flush_num_rows,
             chunk_max_rows_if_unsorted,
-            max_commands_in_flight,
-            max_chunks_in_flight,
+            max_bytes_in_flight,
         }
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 
@@ -211,7 +208,7 @@ macro_rules! impl_multi_sink_tuple {
         where
             $($T: LogSink + MultiSinkCompatible,)*
         {
-            #[allow(non_snake_case)] // so that we only need one metavar
+            #[expect(non_snake_case)] // so that we only need one metavar
             #[inline]
             fn into_multi_sink(self) -> MultiSink {
                 let ($($T,)*) = self;
@@ -290,10 +287,6 @@ impl LogSink for BufferedSink {
     fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
         Ok(())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl fmt::Debug for BufferedSink {
@@ -348,10 +341,6 @@ impl LogSink for MemorySink {
         // a flush of the batcher. Queueing a second flush here seems to lead to a deadlock
         // at shutdown.
         std::mem::take(&mut (self.0.write()))
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 
@@ -435,7 +424,7 @@ impl MemorySinkStorage {
     /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn concat_memory_sinks_as_bytes(sinks: &[&Self]) -> Result<Vec<u8>, EncodeError> {
-        let mut encoder = local_raw_encoder()?;
+        let mut encoder = Encoder::local()?;
 
         for sink in sinks {
             // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
@@ -451,7 +440,7 @@ impl MemorySinkStorage {
 
         encoder.finish()?;
 
-        Ok(encoder.into_inner())
+        encoder.into_inner()
     }
 
     /// Drain the stored messages and return them as an in-memory RRD.
@@ -466,7 +455,7 @@ impl MemorySinkStorage {
         let mut inner = self.inner.lock();
         inner.has_been_used = true;
 
-        encode_as_bytes_local(std::mem::take(&mut inner.msgs).into_iter().map(Ok))
+        Encoder::encode(std::mem::take(&mut inner.msgs).into_iter().map(Ok))
     }
 
     #[inline]
@@ -512,10 +501,6 @@ impl LogSink for CallbackSink {
     #[inline]
     fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
         Ok(())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 
@@ -571,8 +556,16 @@ impl Default for GrpcSink {
 }
 
 impl LogSink for GrpcSink {
-    fn send(&self, msg: LogMsg) {
-        self.client.send(msg);
+    fn send(&self, mut log_msg: LogMsg) {
+        if let Some(metadata_key) = re_sorbet::TimestampLocation::GrpcSink.metadata_key() {
+            // Used for latency measurements:
+            log_msg.insert_arrow_record_batch_metadata(
+                metadata_key.to_owned(),
+                re_sorbet::timestamp_metadata::now_timestamp(),
+            );
+        }
+
+        self.client.send_blocking(log_msg);
     }
 
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
@@ -587,9 +580,5 @@ impl LogSink for GrpcSink {
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
         // The GRPC sink is typically used for live streams.
         ChunkBatcherConfig::LOW_LATENCY
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }

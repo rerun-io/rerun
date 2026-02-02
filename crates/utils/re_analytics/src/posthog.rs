@@ -1,7 +1,8 @@
-use crate::{AnalyticsEvent, Property};
 use std::collections::HashMap;
 
 use jiff::Timestamp;
+
+use crate::{AnalyticsEvent, Property};
 
 /// The "public" API key can be obtained at <https://eu.posthog.com/project/settings#project-api-key>.
 /// Make sure you are logged in to the right organization and have the correct project open.
@@ -13,6 +14,7 @@ pub const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_sgKidIE4WYYFSJHd8LEYY1UZqASpnf
 pub enum PostHogEvent<'a> {
     Capture(PostHogCaptureEvent<'a>),
     Identify(PostHogIdentifyEvent<'a>),
+    Alias(PostHogSetPersonPropertiesEvent<'a>),
 }
 
 impl<'a> PostHogEvent<'a> {
@@ -42,12 +44,18 @@ impl<'a> PostHogEvent<'a> {
                     .chain([("session_id", session_id.into())])
                     .collect(),
             }),
-            crate::EventKind::Update => Self::Identify(PostHogIdentifyEvent {
+            crate::EventKind::Identify => Self::Identify(PostHogIdentifyEvent {
                 timestamp: event.time_utc,
                 event: "$identify",
                 distinct_id: analytics_id,
                 properties: [("session_id", session_id.into())].into(),
                 set: properties.collect(),
+            }),
+            crate::EventKind::SetPersonProperties => Self::Alias(PostHogSetPersonPropertiesEvent {
+                timestamp: event.time_utc,
+                event: "$set",
+                distinct_id: analytics_id,
+                properties: [("$set", properties.collect())].into(),
             }),
         }
     }
@@ -71,6 +79,15 @@ pub struct PostHogIdentifyEvent<'a> {
     properties: HashMap<&'a str, serde_json::Value>,
     #[serde(rename = "$set")]
     set: HashMap<&'a str, serde_json::Value>,
+}
+
+// See https://posthog.com/docs/product-analytics/person-properties.
+#[derive(Debug, serde::Serialize)]
+pub struct PostHogSetPersonPropertiesEvent<'a> {
+    timestamp: Timestamp,
+    event: &'a str,
+    distinct_id: &'a str,
+    properties: HashMap<&'a str, serde_json::Value>,
 }
 
 // See https://posthog.com/docs/api/post-only-endpoints#batch-events.

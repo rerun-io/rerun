@@ -19,7 +19,6 @@ def main() -> None:
         choices=[
             "linux-arm64",
             "linux-x64",
-            "macos-x64",
             "macos-arm64",
             "windows-x64",
         ],
@@ -31,7 +30,6 @@ def main() -> None:
     artifact_names: dict[tuple[str, str], str] = {}
     artifact_names["rerun-cli", "linux-arm64"] = "rerun"
     artifact_names["rerun-cli", "linux-x64"] = "rerun"
-    artifact_names["rerun-cli", "macos-x64"] = "rerun"
     artifact_names["rerun-cli", "macos-arm64"] = "rerun"
     artifact_names["rerun-cli", "windows-x64"] = "rerun.exe"
 

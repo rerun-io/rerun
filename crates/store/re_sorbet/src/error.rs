@@ -15,7 +15,7 @@ pub enum SorbetError {
     UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
 
     #[error(transparent)]
-    WrongDatatypeError(#[from] crate::WrongDatatypeError),
+    WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),
 
     #[error(transparent)]
     ArrowError(#[from] ArrowError),

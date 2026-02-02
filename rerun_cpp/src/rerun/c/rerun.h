@@ -517,11 +517,8 @@ extern void rr_recording_stream_connect_grpc(
 /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
 ///
 /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-/// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+/// You can control the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
 /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
-///
-/// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-/// on the same machine, otherwise you're potentially doubling your memory usage!
 ///
 /// `newest_first` controls whether or not to play back the newest data first to clients.
 extern void rr_recording_stream_serve_grpc(

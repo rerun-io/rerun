@@ -5,7 +5,6 @@
 use std::sync::OnceLock;
 
 use egui::Popup;
-
 use re_entity_db::InstancePath;
 use re_log_types::TableId;
 use re_ui::UiExt as _;
@@ -19,17 +18,15 @@ mod actions;
 pub mod collapse_expand;
 mod sub_menu;
 
-use actions::{
-    CopyEntityPathToClipboard,
-    add_container::AddContainerAction,
-    add_entities_to_new_view::AddEntitiesToNewViewAction,
-    add_view::AddViewAction,
-    clone_view::CloneViewAction,
-    collapse_expand_all::CollapseExpandAllAction,
-    move_contents_to_new_container::MoveContentsToNewContainerAction,
-    remove::RemoveAction,
-    show_hide::{HideAction, ShowAction},
-};
+use actions::add_container::AddContainerAction;
+use actions::add_entities_to_new_view::AddEntitiesToNewViewAction;
+use actions::add_view::AddViewAction;
+use actions::clone_view::CloneViewAction;
+use actions::collapse_expand_all::CollapseExpandAllAction;
+use actions::move_contents_to_new_container::MoveContentsToNewContainerAction;
+use actions::remove::RemoveAction;
+use actions::show_hide::{HideAction, ShowAction};
+use actions::{CopyEntityPathToClipboard, TrackEntity};
 use re_ui::menu::menu_style;
 use sub_menu::SubMenu;
 
@@ -123,7 +120,7 @@ fn context_menu_ui_for_item_with_context_impl(
                         if item_response.hovered() && item_response.secondary_clicked() {
                             show_context_menu(&item_collection);
                             ctx.command_sender()
-                                .send_system(SystemCommand::SetSelection(item_collection));
+                                .send_system(SystemCommand::set_selection(item_collection));
                         } else {
                             show_context_menu(ctx.selection());
                         }
@@ -137,7 +134,7 @@ fn context_menu_ui_for_item_with_context_impl(
 
                     if item_response.secondary_clicked() {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(item_collection));
+                            .send_system(SystemCommand::set_selection(item_collection));
                     }
                 }
 
@@ -169,6 +166,7 @@ fn action_list(
                 Box::new(HideAction),
                 Box::new(RemoveAction),
                 Box::new(CopyEntityPathToClipboard),
+                Box::new(TrackEntity),
             ],
             vec![
                 Box::new(actions::ScreenshotAction::CopyScreenshot),
@@ -338,7 +336,7 @@ trait ContextMenuAction {
     ///
     /// The default implementation delegates to [`Self::label`].
     ///
-    /// Note: this is run from inside a [`egui::Response.context_menu()`] closure and must call
+    /// Note: this is run from inside a [`egui::Response::context_menu()`] closure and must call
     /// [`Self::process_selection`] when triggered by the user.
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut egui::Ui) -> egui::Response {
         let label = self.label(ctx);
@@ -400,7 +398,7 @@ trait ContextMenuAction {
     fn process_data_source(
         &self,
         _ctx: &ContextMenuContext<'_>,
-        _data_source: &re_smart_channel::SmartChannelSource,
+        _data_source: &re_log_channel::LogSource,
     ) {
     }
 

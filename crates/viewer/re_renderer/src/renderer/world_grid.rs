@@ -1,20 +1,14 @@
-use crate::{
-    DrawableCollector, ViewBuilder,
-    allocator::create_and_fill_uniform_buffer,
-    draw_phases::DrawPhase,
-    include_shader_module,
-    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    wgpu_resources::{
-        BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
+use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
-use crate::Rgba;
-
-use smallvec::smallvec;
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::draw_phases::DrawPhase;
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{DrawableCollector, Rgba, ViewBuilder, include_shader_module};
 
 /// Configuration for the world grid renderer.
 pub struct WorldGridConfiguration {

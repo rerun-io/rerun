@@ -1,51 +1,44 @@
 use ahash::HashSet;
+use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::blueprint::archetypes::{EyeControls3D, LineGrid3D};
-use re_types::components;
-use re_types::{Component as _, View as _, ViewClassIdentifier, blueprint::archetypes::Background};
+use re_sdk_types::blueprint::archetypes::{
+    Background, EyeControls3D, LineGrid3D, SpatialInformation,
+};
+use re_sdk_types::blueprint::components::Eye3DKind;
+use re_sdk_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
+use re_sdk_types::datatypes::Vec3D;
+use re_sdk_types::view_coordinates::SignedAxis3;
+use re_sdk_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
+use re_tf::query_view_coordinates;
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _, ViewClassRegistryError,
-    ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass,
+    QueryContext, RecommendedView, RecommendedVisualizers, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
+use smallvec::SmallVec;
 
-use crate::transform_cache::query_view_coordinates;
-use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer};
-use crate::{
-    contexts::register_spatial_contexts,
-    heuristics::default_visualized_entities_for_visualizer_kind,
-    spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::{SpatialViewState, format_vector},
-    view_kind::SpatialViewKind,
-    visualizers::register_3d_spatial_visualizers,
+use crate::contexts::register_spatial_contexts;
+use crate::heuristics::IndicatedVisualizableEntities;
+use crate::shared_fallbacks;
+use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{
+    CamerasVisualizer, TransformAxes3DVisualizer, register_3d_spatial_visualizers,
 };
-
-#[derive(Default)]
-pub struct VisualizableFilterContext3D {
-    // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
-    pub entities_in_main_3d_space: IntSet<EntityPath>,
-    pub entities_under_pinholes: IntSet<EntityPath>,
-}
-
-impl VisualizableFilterContext for VisualizableFilterContext3D {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
 
 #[derive(Default)]
 pub struct SpatialView3D;
 
-type ViewType = re_types::blueprint::views::Spatial3DView;
+type ViewType = re_sdk_types::blueprint::views::Spatial3DView;
 
 impl ViewClass for SpatialView3D {
     fn identifier() -> ViewClassIdentifier {
@@ -72,9 +65,198 @@ impl ViewClass for SpatialView3D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry
+            .register_fallback_provider(LineGrid3D::descriptor_color().component, |_| {
+                re_sdk_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
+            });
+
+        system_registry.register_fallback_provider(
+            LineGrid3D::descriptor_plane().component,
+            |ctx| {
+                const DEFAULT_PLANE: Plane3D = Plane3D::XY;
+
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    return DEFAULT_PLANE;
+                };
+
+                view_state
+                    .state_3d
+                    .scene_view_coordinates
+                    .and_then(|view_coordinates| view_coordinates.up())
+                    .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
+            },
+        );
+
+        system_registry
+            .register_fallback_provider(LineGrid3D::descriptor_stroke_width().component, |_| {
+                re_sdk_types::components::StrokeWidth::from(1.0)
+            });
+
+        system_registry.register_fallback_provider(
+            Background::descriptor_kind().component,
+            |ctx| match ctx.egui_ctx().theme() {
+                egui::Theme::Dark => {
+                    re_sdk_types::blueprint::components::BackgroundKind::GradientDark
+                }
+                egui::Theme::Light => {
+                    re_sdk_types::blueprint::components::BackgroundKind::GradientBright
+                }
+            },
+        );
+
+        fn eye_property(ctx: &QueryContext<'_>) -> ViewProperty {
+            ViewProperty::from_archetype::<EyeControls3D>(
+                ctx.view_ctx.blueprint_db(),
+                ctx.view_ctx.blueprint_query(),
+                ctx.view_ctx.view_id,
+            )
+        }
+
+        system_registry.register_fallback_provider(
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_speed().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                    );
+                    return 1.0.into();
+                };
+
+                let eye = eye_property(ctx);
+
+
+                let Ok(kind) = eye.component_or_fallback::<Eye3DKind>(ctx.view_ctx, EyeControls3D::descriptor_kind().component) else {
+                    return 1.0.into();
+                };
+
+                // Minimum speed to ensure the camera is always usable, even for zero-sized
+                // scenes (e.g., a single point). See: https://github.com/rerun-io/rerun/issues/9433
+                const MIN_SPEED: f64 = 0.01;
+
+                let speed = match kind {
+                    Eye3DKind::FirstPerson => {
+                        let l = view_state.bounding_boxes.current.size().length() as f64;
+                        if l.is_finite() {
+                            (0.1 * l).max(MIN_SPEED)
+                        } else {
+                            1.0
+                        }
+                    },
+                    Eye3DKind::Orbital => {
+                        let Ok(position) = eye.component_or_fallback::<Position3D>(ctx.view_ctx, EyeControls3D::descriptor_position().component) else {
+                            return 1.0.into();
+                        };
+                        let Ok(look_target) = eye.component_or_fallback::<Position3D>(ctx.view_ctx, EyeControls3D::descriptor_look_target().component) else {
+                            return 1.0.into();
+                        };
+
+                        // Use the orbit radius for speed.
+                        Vec3::from_array(position.0.0).as_dvec3().distance(Vec3::from_array(look_target.0.0).as_dvec3())
+                    },
+                };
+
+                LinearSpeed::from(speed)
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_look_target().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `Position3D` queried on 3D view outside the context of a spatial view."
+                    );
+                    return Position3D::ZERO;
+                };
+                let center = view_state.bounding_boxes.current.center();
+
+                if !center.is_finite() {
+                    return Position3D::ZERO;
+                }
+
+                Position3D::from(center)
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_position().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `Position3D` queried on 3D view outside the context of a spatial view."
+                    );
+                    return Position3D::ZERO;
+                };
+                let mut center = view_state.bounding_boxes.current.center();
+
+                if !center.is_finite() {
+                    center = Vec3::ZERO;
+                }
+
+                let mut radius = 1.5 * view_state.bounding_boxes.current.half_size().length();
+                if !radius.is_finite() || radius == 0.0 {
+                    radius = 1.0;
+                }
+
+
+                let scene_view_coordinates =
+                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
+
+                let scene_right = scene_view_coordinates
+                    .right()
+                    .unwrap_or(SignedAxis3::POSITIVE_X);
+                let scene_forward = scene_view_coordinates
+                    .forward()
+                    .unwrap_or(SignedAxis3::POSITIVE_Y);
+                let scene_up = scene_view_coordinates
+                    .up()
+                    .unwrap_or(SignedAxis3::POSITIVE_Z);
+
+                let eye_up: glam::Vec3 = scene_up.into();
+
+                let eye_dir = {
+                    // Make sure that the right of the scene is to the right for
+                    // the default camera view.
+                    let right = scene_right.into();
+                    let fwd = eye_up.cross(right);
+                    0.75 * fwd + 0.25 * right - 0.25 * eye_up
+                };
+
+                let eye_dir = eye_dir.try_normalize().unwrap_or_else(|| scene_forward.into());
+
+                let eye_pos = center - radius * eye_dir;
+
+                Position3D::from(eye_pos)
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_eye_up().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `Vector3D` queried on 3D view outside the context of a spatial view."
+                    );
+                    return Vector3D(Vec3D::new(0.0, 0.0, 1.0));
+                };
+
+                let scene_view_coordinates =
+                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
+
+                let scene_up = scene_view_coordinates
+                    .up()
+                    .unwrap_or(SignedAxis3::POSITIVE_Z);
+
+                let eye_up = glam::Vec3::from(scene_up).normalize_or(Vec3::Z);
+
+                Vector3D(Vec3D::new(eye_up.x, eye_up.y, eye_up.z))
+            },
+        );
+
+        shared_fallbacks::register_fallbacks(system_registry);
+
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
-        crate::transform_cache::TransformCacheStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_3d_spatial_visualizers(system_registry)?;
@@ -138,84 +320,22 @@ impl ViewClass for SpatialView3D {
         .flatten()
     }
 
-    fn visualizable_filter_context(
-        &self,
-        space_origin: &EntityPath,
-        entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn VisualizableFilterContext> {
-        re_tracing::profile_function!();
-
-        // TODO(andreas): The `VisualizableFilterContext` depends entirely on the spatial topology.
-        // If the topology hasn't changed, we don't need to recompute any of this.
-        // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
-
-        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
-            let primary_space = topo.subspace_for_entity(space_origin);
-            if !primary_space.supports_3d_content() {
-                // If this is strict 2D space, only display the origin entity itself.
-                // Everything else we have to assume requires some form of transformation.
-                return VisualizableFilterContext3D {
-                    entities_in_main_3d_space: std::iter::once(space_origin.clone()).collect(),
-                    entities_under_pinholes: Default::default(),
-                };
-            }
-
-            // All entities in the 3D space are visualizable + everything under pinholes.
-            let mut entities_in_main_3d_space = primary_space.entities.clone();
-            let mut entities_under_pinholes = IntSet::<EntityPath>::default();
-
-            for child_origin in &primary_space.child_spaces {
-                let Some(child_space) = topo.subspace_for_subspace_origin(child_origin.hash())
-                else {
-                    // Should never happen, implies that a child space is not in the list of subspaces.
-                    continue;
-                };
-
-                if child_space
-                    .connection_to_parent
-                    .contains(SubSpaceConnectionFlags::Pinhole)
-                {
-                    // Note that for this the connection to the parent is allowed to contain the disconnected flag.
-                    // Entities _at_ pinholes are a special case: we display both 3D and 2D visualizers for them.
-                    entities_in_main_3d_space.insert(child_space.origin.clone());
-                    entities_under_pinholes.extend(child_space.entities.iter().cloned());
-                }
-            }
-
-            VisualizableFilterContext3D {
-                entities_in_main_3d_space,
-                entities_under_pinholes,
-            }
-        });
-
-        Box::new(context.unwrap_or_default())
-    }
-
-    /// Choose the default visualizers to enable for this entity.
-    fn choose_default_visualizers(
+    /// Auto picked visualizers for an entity if there was not explicit selection.
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
-        let arrows_viz = Transform3DArrowsVisualizer::identifier();
-        let axis_detector = AxisLengthDetector::identifier();
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+    ) -> RecommendedVisualizers {
+        let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();
 
-        let maybe_visualizable: HashSet<&ViewSystemIdentifier> =
-            maybe_visualizable_entities_per_visualizer
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
         let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
+            .iter()
+            .filter_map(|(visualizer, ents)| ents.contains_key(entity_path).then_some(visualizer))
+            .collect();
+
+        let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
             .iter()
             .filter_map(|(visualizer, ents)| {
                 if ents.contains(entity_path) {
@@ -226,40 +346,22 @@ impl ViewClass for SpatialView3D {
             })
             .collect();
 
-        // We never want to consider `Transform3DArrows` as directly indicated since it uses the
-        // the Transform3D archetype. This is often used to transform other 3D primitives, where
-        // it might be annoying to always have the arrows show up.
-        let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
-            .iter()
-            .filter_map(|(visualizer, ents)| {
-                if visualizer != &arrows_viz && ents.contains(entity_path) {
-                    Some(visualizer)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
         // Start with all the entities which are both indicated and visualizable.
-        let mut enabled_visualizers: SmallVisualizerSet = indicated
+        let mut enabled_visualizers: SmallVec<[ViewSystemIdentifier; 4]> = indicated
             .intersection(&visualizable)
             .copied()
             .copied()
             .collect();
 
         // Arrow visualizer is not enabled yet but we could…
-        if !enabled_visualizers.contains(&arrows_viz) && visualizable.contains(&arrows_viz) {
-            // … then we enable it if either:
-            // - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
-            // - If we already have the [`CamerasVisualizer`] active.
-            if maybe_visualizable.contains(&axis_detector)
-                || enabled_visualizers.contains(&camera_viz)
-            {
-                enabled_visualizers.push(arrows_viz);
+        if !enabled_visualizers.contains(&axes_viz) && visualizable.contains(&axes_viz) {
+            // …if we already have the [`CamerasVisualizer`] active.
+            if enabled_visualizers.contains(&camera_viz) {
+                enabled_visualizers.push(axes_viz);
             }
         }
 
-        enabled_visualizers
+        RecommendedVisualizers::default_many(enabled_visualizers)
     }
 
     fn spawn_heuristics(
@@ -269,32 +371,38 @@ impl ViewClass for SpatialView3D {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
+        let IndicatedVisualizableEntities {
+            indicated_entities,
+            excluded_entities,
+        } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
             SpatialViewKind::ThreeD,
             include_entity,
+            |indicated_entities| {
+                // ViewCoordinates is a strong indicator that a 3D view is needed.
+                // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
+                // from splitting the root space into several subspaces.
+                //
+                // TODO(andreas):
+                // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
+                // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
+                // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
+                let engine = ctx.recording_engine();
+                ctx.recording().tree().visit_children_recursively(|path| {
+                    if let Some(components) = engine.store().all_components_for_entity(path)
+                        && components.into_iter().any(|component| {
+                            archetypes::Pinhole::all_components().iter().any(|c| c.component == component)
+                            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
+                                || component
+                                    == archetypes::ViewCoordinates::descriptor_xyz().component
+                        })
+                    {
+                        indicated_entities.insert(path.clone());
+                    }
+                });
+            },
         );
-
-        // ViewCoordinates is a strong indicator that a 3D view is needed.
-        // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
-        // from splitting the root space into several subspaces.
-        //
-        // TODO(andreas):
-        // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
-        // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
-        // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
-        let engine = ctx.recording_engine();
-        ctx.recording().tree().visit_children_recursively(|path| {
-            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
-            if !engine
-                .store()
-                .entity_component_descriptors_with_type(path, components::ViewCoordinates::name())
-                .is_empty()
-            {
-                indicated_entities.insert(path.clone());
-            }
-        });
 
         // Spawn a view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
@@ -355,7 +463,18 @@ impl ViewClass for SpatialView3D {
                             origins.push(subspace.origin.clone());
                         }
 
-                        Some(origins.into_iter().map(RecommendedView::new_subtree))
+                        Some(origins.into_iter().map(RecommendedView::new_subtree).map(
+                            |mut subtree| {
+                                // Since we don't track the transform frames created by explicit
+                                // coordinate frames, we can't make assumptions about the tree if
+                                // there are any explicit coordinate frames.
+                                if !topo.has_explicit_coordinate_frame() {
+                                    subtree.exclude_entities(&excluded_entities);
+                                }
+
+                                subtree
+                            },
+                        ))
                     })
                     .flatten(),
             )
@@ -381,7 +500,7 @@ impl ViewClass for SpatialView3D {
             ui.grid_left_hand_label("Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen");
             ui.vertical(|ui| {
-                state.view_eye_ui(ui, scene_view_coordinates);
+                state.view_eye_ui(ui, ctx, view_id);
             });
             ui.end_row();
 
@@ -397,36 +516,21 @@ impl ViewClass for SpatialView3D {
                 ui.label(up_description).on_hover_ui(|ui| {
                     ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
                 });
-
-                if let Some(eye) = &state.state_3d.view_eye
-                    && let Some(eye_up) = eye.eye_up()
-                {
-                    ui.label(format!(
-                        "Current camera-eye up-axis is {}",
-                        format_vector(eye_up)
-                    ));
-                }
-
-                ui.re_checkbox(&mut state.state_3d.show_axes, "Show origin axes")
-                    .on_hover_text("Show X-Y-Z axes");
-                ui.re_checkbox(&mut state.state_3d.show_bbox, "Show bounding box")
-                    .on_hover_text("Show the current scene bounding box");
-                ui.re_checkbox(
-                    &mut state.state_3d.show_smoothed_bbox,
-                    "Show smoothed bounding box",
-                )
-                .on_hover_text("Show a smoothed bounding box used for some heuristics");
             });
             ui.end_row();
 
             state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
+
+            #[cfg(debug_assertions)]
+            ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<EyeControls3D>(&view_ctx, ui, self);
-            view_property_ui::<Background>(&view_ctx, ui, self);
-            view_property_ui_grid3d(&view_ctx, ui, self);
+            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<SpatialInformation>(&view_ctx, ui);
+            view_property_ui::<EyeControls3D>(&view_ctx, ui);
+            view_property_ui::<Background>(&view_ctx, ui);
+            view_property_ui_grid3d(&view_ctx, ui);
         });
 
         Ok(())
@@ -453,11 +557,7 @@ impl ViewClass for SpatialView3D {
 // The generic ui (via `view_property_ui::<Background>(ctx, ui, view_id, self, state);`)
 // is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
 // which we need here.
-fn view_property_ui_grid3d(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
-) {
+fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
     let property = ViewProperty::from_archetype::<LineGrid3D>(
         ctx.blueprint_db(),
         ctx.blueprint_query(),
@@ -477,7 +577,7 @@ fn view_property_ui_grid3d(
         for field in &reflection.fields {
             // TODO(#1611): The color picker for the color component doesn't show alpha values so far since alpha is almost never supported.
             // Here however, we need that alpha color picker!
-            if field.component_type == re_types::components::Color::name() {
+            if field.component_type == re_sdk_types::components::Color::name() {
                 re_view::view_property_component_ui_custom(
                     &query_ctx,
                     ui,
@@ -486,10 +586,9 @@ fn view_property_ui_grid3d(
                     field,
                     &|ui| {
                         let Ok(color) = property
-                            .component_or_fallback::<re_types::components::Color>(
+                            .component_or_fallback::<re_sdk_types::components::Color>(
                                 ctx,
-                                fallback_provider,
-                                &LineGrid3D::descriptor_color(),
+                                LineGrid3D::descriptor_color().component,
                             )
                         else {
                             ui.error_label("Failed to query color component");
@@ -503,7 +602,7 @@ fn view_property_ui_grid3d(
                         )
                         .changed()
                         {
-                            let color = re_types::components::Color::from(edit_color);
+                            let color = re_sdk_types::components::Color::from(edit_color);
                             property.save_blueprint_component(
                                 ctx.viewer_ctx,
                                 &LineGrid3D::descriptor_color(),
@@ -520,7 +619,6 @@ fn view_property_ui_grid3d(
                     &property,
                     field.display_name,
                     field,
-                    fallback_provider,
                 );
             }
         }

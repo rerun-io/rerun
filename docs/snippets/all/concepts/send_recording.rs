@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let new_recording = rerun::RecordingStreamBuilder::from_store_id(&store_id).spawn()?;
 
     // Forward all chunks to the new recording stream.
-    for chunk in store.iter_chunks() {
+    for chunk in store.iter_physical_chunks() {
         new_recording.send_chunk((**chunk).clone());
     }
 

@@ -17,7 +17,7 @@ pub use entity_add_info::{CanAddToView, EntityAddInfo, create_entity_add_info};
 use re_chunk::EntityPath;
 use re_viewer_context::ViewerContext;
 pub use view::ViewBlueprint;
-pub use view_contents::{DataQueryPropertyResolver, ViewContents};
+pub use view_contents::ViewContents;
 pub use view_properties::{ViewProperty, ViewPropertyQueryError, entity_path_for_view_property};
 pub use viewport_blueprint::{ViewportBlueprint, tree_simplification_options};
 pub use viewport_command::ViewportCommand;
@@ -25,15 +25,15 @@ pub use viewport_command::ViewportCommand;
 /// The entity path of the viewport blueprint in the blueprint store.
 pub const VIEWPORT_PATH: &str = "viewport";
 
-/// Converts a [`re_types::blueprint::components::ContainerKind`] into a [`egui_tiles::ContainerKind`].
+/// Converts a [`re_sdk_types::blueprint::components::ContainerKind`] into a [`egui_tiles::ContainerKind`].
 ///
-/// Does not implement the `From`/`To` traits because we don't want `re_types` to depend
+/// Does not implement the `From`/`To` traits because we don't want `re_sdk_types` to depend
 /// on `egui`, and we cannot do it from here because of orphan rules.
 #[inline]
 pub fn container_kind_to_egui(
-    kind: re_types::blueprint::components::ContainerKind,
+    kind: re_sdk_types::blueprint::components::ContainerKind,
 ) -> egui_tiles::ContainerKind {
-    use re_types::blueprint::components::ContainerKind;
+    use re_sdk_types::blueprint::components::ContainerKind;
     match kind {
         ContainerKind::Tabs => egui_tiles::ContainerKind::Tabs,
         ContainerKind::Horizontal => egui_tiles::ContainerKind::Horizontal,
@@ -42,15 +42,15 @@ pub fn container_kind_to_egui(
     }
 }
 
-/// Converts a [`egui_tiles::ContainerKind`] into a [`re_types::blueprint::components::ContainerKind`].
+/// Converts a [`egui_tiles::ContainerKind`] into a [`re_sdk_types::blueprint::components::ContainerKind`].
 ///
-/// Does not implement the `From`/`To` traits because we don't want `re_types` to depend
+/// Does not implement the `From`/`To` traits because we don't want `re_sdk_types` to depend
 /// on `egui`, and we cannot do it from here because of orphan rules.
 #[inline]
 pub fn container_kind_from_egui(
     kind: egui_tiles::ContainerKind,
-) -> re_types::blueprint::components::ContainerKind {
-    use re_types::blueprint::components::ContainerKind;
+) -> re_sdk_types::blueprint::components::ContainerKind {
+    use re_sdk_types::blueprint::components::ContainerKind;
     match kind {
         egui_tiles::ContainerKind::Tabs => ContainerKind::Tabs,
         egui_tiles::ContainerKind::Horizontal => ContainerKind::Horizontal,

@@ -15,7 +15,6 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 /// It is up to the callback implementer to handle this, if needed.
 //
 // TODO(#6412): probably don't need this anymore.
-#[allow(clippy::type_complexity)]
 #[derive(Clone)]
 pub struct ArrowRecordBatchReleaseCallback(Arc<dyn Fn(ArrowRecordBatch) + Send + Sync>);
 

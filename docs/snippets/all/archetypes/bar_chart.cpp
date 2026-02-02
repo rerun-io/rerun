@@ -15,4 +15,10 @@ int main() {
         "bar_chart_custom_abscissa",
         rerun::BarChart::i64({8, 4, 0, 9, 1, 4}).with_abscissa(abscissa_data)
     );
+
+    auto widths = std::vector<float>{1, 2, 1, 3, 4, 1};
+    rec.log(
+        "bar_chart_custom_abscissa_and_widths",
+        rerun::BarChart::i64({8, 4, 0, 9, 1, 4}).with_abscissa(abscissa_data).with_widths(widths)
+    );
 }

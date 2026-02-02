@@ -1,20 +1,19 @@
 use re_chunk_store::RowId;
-use re_log_types::{Instance, TimeInt, hash::Hash64};
+use re_log_types::hash::Hash64;
+use re_log_types::{Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{Archetype as _, ArrowString, archetypes::Asset3D, components::AlbedoFactor};
+use re_sdk_types::ArrowString;
+use re_sdk_types::archetypes::Asset3D;
+use re_sdk_types::components::AlbedoFactor;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
-
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
-    view_kind::SpatialViewKind,
-};
+use super::SpatialViewVisualizerData;
+use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::view_kind::SpatialViewKind;
 
 pub struct Asset3DVisualizer(SpatialViewVisualizerData);
 
@@ -30,7 +29,7 @@ struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
-    blob: re_types::datatypes::Blob,
+    blob: re_sdk_types::datatypes::Blob,
     media_type: Option<ArrowString>,
     albedo_factor: Option<&'a AlbedoFactor>,
 }
@@ -42,7 +41,7 @@ impl Asset3DVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         instances: &mut Vec<GpuMeshInstance>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Asset3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -80,10 +79,8 @@ impl Asset3DVisualizer {
 
                 // Let's draw the mesh once for every instance transform.
                 // TODO(#7026): This a rare form of hybrid joining.
-                for &world_from_pose in ent_context
-                    .transform_info
-                    .reference_from_instances(Asset3D::name())
-                {
+                for &world_from_pose in ent_context.transform_info.target_from_instances() {
+                    let world_from_pose = world_from_pose.as_affine3a();
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let pose_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_pose * pose_from_mesh;
@@ -114,17 +111,11 @@ impl IdentifiedViewSystem for Asset3DVisualizer {
 }
 
 impl VisualizerSystem for Asset3DVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Asset3D>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Asset3D>()
     }
 
     fn execute(
@@ -132,7 +123,9 @@ impl VisualizerSystem for Asset3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+        let preferred_view_kind = self.0.preferred_view_kind;
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -140,19 +133,30 @@ impl VisualizerSystem for Asset3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_blob_chunks) = results.get_required_chunks(Asset3D::descriptor_blob())
-                else {
+                let all_blob_chunks = results
+                    .get_required_chunk(Asset3D::descriptor_blob().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
+                if all_blob_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-                let all_media_types = results.iter_as(timeline, Asset3D::descriptor_media_type());
-                let all_albedo_factors =
-                    results.iter_as(timeline, Asset3D::descriptor_albedo_factor());
+                let all_media_types = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Asset3D::descriptor_media_type().component,
+                );
+                let all_albedo_factors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Asset3D::descriptor_albedo_factor().component,
+                );
 
                 let query_result_hash = results.query_result_hash();
 
@@ -182,26 +186,16 @@ impl VisualizerSystem for Asset3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
-            Ok(draw_data) => Ok(vec![draw_data.into()]),
-            Err(err) => {
-                re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
-                Ok(Vec::new()) // TODO(andreas): Pass error on?
-            }
-        }
+        Ok(
+            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+                ctx.viewer_ctx.render_ctx(),
+                &instances,
+            )?
+            .into()]),
+        )
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.0.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-re_viewer_context::impl_component_fallback_provider!(Asset3DVisualizer => []);

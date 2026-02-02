@@ -20,7 +20,12 @@ pub mod headers;
 // Note: Be careful with `#[path]` attributes: https://github.com/rust-lang/rust/issues/35016
 mod v1alpha1 {
     // Note: `allow(clippy::all)` does NOT allow all lints
-    #![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+    #![expect(
+        clippy::all,
+        clippy::allow_attributes,
+        clippy::nursery,
+        clippy::pedantic
+    )]
 
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
@@ -56,28 +61,15 @@ pub mod common {
 pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
-        pub mod ext {
-            pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
-        }
     }
 }
 
 pub mod cloud {
-    #[rustfmt::skip] // keep these constants single line for easy sorting
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_cloud_v1alpha1::*;
         pub mod ext {
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext::*;
         }
-
-        /// `DatasetManifest` mandatory field names. All mandatory metadata fields are prefixed
-        /// with "rerun_" to avoid conflicts with user-defined fields.
-        pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
-        pub const DATASET_MANIFEST_PARTITION_MANIFEST_UPDATED_AT_FIELD_NAME: &str = "rerun_partition_manifest_updated_at";
-        pub const DATASET_MANIFEST_RECORDING_TYPE_FIELD_NAME: &str = "rerun_partition_type";
-        pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
-        pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
-        pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
     }
 }
 
@@ -91,19 +83,32 @@ pub mod sdk_comms {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TypeConversionError {
-    #[error("missing required field: {package_name}.{type_name}.{field_name}")]
+    #[error("missing required field: '{package_name}.{type_name}.{field_name}'")]
     MissingField {
         package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
     },
 
-    #[error("invalid value for field {package_name}.{type_name}.{field_name}: {reason}")]
+    #[error("invalid value for field '{package_name}.{type_name}.{field_name}: {reason}'")]
     InvalidField {
         package_name: &'static str,
         type_name: &'static str,
         field_name: &'static str,
         reason: String,
+    },
+
+    #[error("missing required dataframe column {column_name:?} in '{package_name}.{type_name}'")]
+    MissingColumn {
+        package_name: &'static str,
+        type_name: &'static str,
+        column_name: &'static str,
+    },
+
+    #[error("invalid dataframe schema in '{package_name}.{type_name}'")]
+    InvalidSchema {
+        package_name: &'static str,
+        type_name: &'static str,
     },
 
     #[error("failed to parse timestamp: {0}")]
@@ -142,7 +147,6 @@ impl TypeConversionError {
         }
     }
 
-    #[allow(clippy::needless_pass_by_value)] // false-positive
     #[inline]
     pub fn invalid_field<T: prost::Name>(field_name: &'static str, reason: &impl ToString) -> Self {
         Self::InvalidField {
@@ -150,6 +154,23 @@ impl TypeConversionError {
             type_name: T::NAME,
             field_name,
             reason: reason.to_string(),
+        }
+    }
+
+    #[inline]
+    pub fn invalid_schema<T: prost::Name>() -> Self {
+        Self::InvalidSchema {
+            package_name: T::PACKAGE,
+            type_name: T::NAME,
+        }
+    }
+
+    #[inline]
+    pub fn missing_column<T: prost::Name>(column_name: &'static str) -> Self {
+        Self::MissingColumn {
+            package_name: T::PACKAGE,
+            type_name: T::NAME,
+            column_name,
         }
     }
 }
@@ -182,6 +203,22 @@ macro_rules! missing_field {
 macro_rules! invalid_field {
     ($type:ty, $field:expr, $reason:expr $(,)?) => {
         $crate::TypeConversionError::invalid_field::<$type>($field, &$reason)
+    };
+}
+
+/// Create [`TypeConversionError::InvalidSchema`]
+#[macro_export]
+macro_rules! invalid_schema {
+    ($type:ty $(,)?) => {
+        $crate::TypeConversionError::invalid_schema::<$type>()
+    };
+}
+
+/// Create [`TypeConversionError::MissingColumn`]
+#[macro_export]
+macro_rules! missing_column {
+    ($type:ty, $column:expr $(,)?) => {
+        $crate::TypeConversionError::missing_column::<$type>($column)
     };
 }
 
@@ -354,6 +391,8 @@ mod sizes {
             let Self {
                 encoder_version,
                 payload,
+                compression: _,
+                uncompressed_size: _,
             } = self;
 
             encoder_version.heap_size_bytes()

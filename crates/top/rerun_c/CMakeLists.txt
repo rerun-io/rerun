@@ -2,6 +2,7 @@
 
 # Determine build configuration (Debug or Release)
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
+
 if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
     set(CARGO_BUILD_FLAG "")
     set(RUST_BUILD_TYPE "debug")
@@ -13,13 +14,22 @@ else()
 endif()
 
 # Determine Rust's librerun path.
-# This assumes building with pixi, e.g. `pixi run -e cpp cpp-build-all`
+if(DEFINED ENV{CARGO_TARGET_DIR})
+    set(CARGO_TARGET_DIR $ENV{CARGO_TARGET_DIR})
+else()
+    set(CARGO_TARGET_DIR "target")
+endif()
+
+if(NOT IS_ABSOLUTE ${CARGO_TARGET_DIR})
+    set(CARGO_TARGET_DIR ${PROJECT_SOURCE_DIR}/${CARGO_TARGET_DIR})
+endif()
+
 if(APPLE)
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target_pixi/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${CARGO_TARGET_DIR}/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/librerun_c.a)
 elseif(UNIX) # if(LINUX) # CMake 3.25
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target_pixi/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${CARGO_TARGET_DIR}/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/librerun_c.a)
 elseif(WIN32)
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target_pixi/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/rerun_c.lib)
+    set(RERUN_C_BUILD_ARTIFACT ${CARGO_TARGET_DIR}/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/rerun_c.lib)
 else()
     message(FATAL_ERROR "Unsupported platform.")
 endif()

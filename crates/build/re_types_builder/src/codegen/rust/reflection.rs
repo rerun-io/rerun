@@ -5,13 +5,12 @@ use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
+use super::util::{append_tokens, doc_as_lines};
+use crate::codegen::{Target, autogen_warning};
 use crate::{
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects,
     Reporter,
-    codegen::{Target, autogen_warning},
 };
-
-use super::util::{append_tokens, doc_as_lines};
 
 /// Generate reflection about components and archetypes.
 pub fn generate_reflection(
@@ -23,7 +22,7 @@ pub fn generate_reflection(
     // Put into its own subfolder since codegen is set up in a way that it thinks that everything
     // inside the folder is either generated or an extension to the generated code.
     // This way we don't have to build an exception just for this file.
-    let path = Utf8PathBuf::from("crates/store/re_types/src/reflection/mod.rs");
+    let path = Utf8PathBuf::from("crates/store/re_sdk_types/src/reflection/mod.rs");
 
     let mut imports = BTreeSet::new();
     let component_reflection = generate_component_reflection(
@@ -35,10 +34,11 @@ pub fn generate_reflection(
     let archetype_reflection = generate_archetype_reflection(reporter, objects);
 
     let mut code = format!("// {}\n\n", autogen_warning!());
+    code.push_str("#![allow(clippy::allow_attributes)]\n");
+    code.push_str("#![allow(clippy::empty_line_after_doc_comments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::wildcard_imports)]\n\n");
     code.push_str("#![allow(unused_imports)]\n");
-    code.push_str("#![expect(clippy::empty_line_after_doc_comments)]\n");
     code.push('\n');
     for namespace in imports {
         code.push_str(&format!("use {namespace};\n"));
@@ -52,6 +52,7 @@ pub fn generate_reflection(
             Loggable as _,
             ComponentBatch as _,
             reflection::{
+                generate_component_identifier_reflection,
                 ArchetypeFieldReflection,
                 ArchetypeReflection,
                 ArchetypeReflectionMap,
@@ -68,9 +69,12 @@ pub fn generate_reflection(
         pub fn generate_reflection() -> Result<Reflection, SerializationError> {
             re_tracing::profile_function!();
 
+            let archetypes = generate_archetype_reflection();
+
             Ok(Reflection {
                 components: generate_component_reflection()?,
-                archetypes: generate_archetype_reflection(),
+                component_identifiers: generate_component_identifier_reflection(&archetypes),
+                archetypes
             })
         }
 
@@ -298,10 +302,10 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
     }
 }
 
-/// Returns `crate_name` as is, unless it's `re_types`, in which case it's replace by `crate`,
+/// Returns `crate_name` as is, unless it's `re_sdk_types`, in which case it's replace by `crate`,
 /// because that's where this code lives.
 fn patched_crate_name(crate_name: &str) -> String {
-    if crate_name == "re_types" {
+    if crate_name == "re_sdk_types" {
         "crate".to_owned()
     } else {
         crate_name.to_owned()

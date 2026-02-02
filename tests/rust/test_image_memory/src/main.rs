@@ -1,12 +1,12 @@
 //! Logs a bunch of big images to test Rerun memory usage.
 
 // Allow unwrap() in tests (allow-unwrap-in-tests doesn't apply)
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use mimalloc::MiMalloc;
-
 use re_memory::AccountingAllocator;
-use rerun::{archetypes::Image, external::image};
+use rerun::archetypes::Image;
+use rerun::external::image;
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc);

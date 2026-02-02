@@ -1,6 +1,5 @@
 use egui::NumExt as _;
-
-use re_types::datatypes::Range1D;
+use re_sdk_types::datatypes::Range1D;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 

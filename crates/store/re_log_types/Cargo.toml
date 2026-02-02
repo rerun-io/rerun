@@ -21,7 +21,7 @@ all-features = true
 [package.metadata.cargo-shear]
 ignored = [
   "num-traits", # Needed for `num-derive`'s macros to work.
-  "half",       # Needed so that `fixed` is pinned at the right version.
+  "half", # Needed so that `fixed` is pinned at the right version.
 ]
 
 
@@ -66,6 +66,7 @@ itertools.workspace = true
 jiff.workspace = true
 natord.workspace = true
 nohash-hasher.workspace = true
+parking_lot.workspace = true
 num-derive.workspace = true
 num-traits.workspace = true
 static_assertions.workspace = true
@@ -83,6 +84,10 @@ criterion.workspace = true
 mimalloc.workspace = true
 similar-asserts.workspace = true
 
+
+[[bench]]
+name = "parse_entity_path"
+harness = false
 
 [[bench]]
 name = "vec_deque_ext"

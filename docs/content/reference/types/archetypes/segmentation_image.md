@@ -38,7 +38,7 @@ Use [`archetypes.AnnotationContext`](https://rerun.io/docs/reference/types/arche
 
 snippet: archetypes/segmentation_image_simple
 
-<picture data-inline-viewer="snippets/segmentation_image_simple">
+<picture data-inline-viewer="snippets/archetypes/segmentation_image_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/1024w.png">

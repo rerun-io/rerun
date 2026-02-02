@@ -1,26 +1,19 @@
-use re_types::{
-    Archetype as _,
-    archetypes::EncodedImage,
-    components::{DrawOrder, MediaType, Opacity},
-    image::ImageKind,
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::EncodedImage;
+use re_sdk_types::components::{MediaType, Opacity};
 use re_view::HybridResults;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
-use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    contexts::SpatialSceneEntityContext,
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-};
-
-use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
+use super::SpatialViewVisualizerData;
+use super::entity_iterator::process_archetype;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::textured_rect_from_image;
+use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -41,17 +34,11 @@ impl IdentifiedViewSystem for EncodedImageVisualizer {
 }
 
 impl VisualizerSystem for EncodedImageVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<EncodedImage>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<EncodedImage>()
     }
 
     fn execute(
@@ -59,47 +46,31 @@ impl VisualizerSystem for EncodedImageVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
+        let mut output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_encoded_image(ctx, results, spatial_ctx);
                 Ok(())
             },
         )?;
 
-        // TODO(#1025): draw order is translated to depth offset, which works fine for opaque images,
-        // but for everything with transparency, actual drawing order is still important.
-        // We mitigate this a bit by at least sorting the images within each other.
-        // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
-        // visualizers are executed in the order of their identifiers.
-        // -> The draw order is always DepthImage then Image then SegmentationImage,
-        //    which happens to be exactly what we want 🙈
-        self.data.pickable_rects.sort_by_key(|image| {
-            (
-                image.textured_rect.options.depth_offset,
-                egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
-            )
-        });
-
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
     }
 }
 
@@ -108,22 +79,35 @@ impl EncodedImageVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         results: &HybridResults<'_>,
-        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        spatial_ctx: &mut SpatialSceneVisualizerInstructionContext<'_>,
     ) {
-        use super::entity_iterator::iter_slices;
+        re_tracing::profile_function!();
+
         use re_view::RangeResultsExt as _;
+
+        use super::entity_iterator::iter_slices;
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_blob_chunks) = results.get_required_chunks(EncodedImage::descriptor_blob())
-        else {
+        let all_blob_chunks = results
+            .get_required_chunk(EncodedImage::descriptor_blob().component)
+            .ensure_required(|err| spatial_ctx.report_error(err));
+        if all_blob_chunks.is_empty() {
             return;
-        };
+        }
 
         let timeline = ctx.query.timeline();
         let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-        let all_media_types = results.iter_as(timeline, EncodedImage::descriptor_media_type());
-        let all_opacities = results.iter_as(timeline, EncodedImage::descriptor_opacity());
+        let all_media_types = results.iter_as(
+            |err| spatial_ctx.report_warning(err),
+            timeline,
+            EncodedImage::descriptor_media_type().component,
+        );
+        let all_opacities = results.iter_as(
+            |err| spatial_ctx.report_warning(err),
+            timeline,
+            EncodedImage::descriptor_opacity().component,
+        );
 
         for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,
@@ -138,9 +122,9 @@ impl EncodedImageVisualizer {
                 .map(|media_type| MediaType(media_type.into()));
 
             let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
-                c.entry(
+                c.entry_encoded_color(
                     tensor_data_row_id,
-                    &EncodedImage::descriptor_blob(),
+                    EncodedImage::descriptor_blob().component,
                     blob,
                     media_type.as_ref(),
                 )
@@ -158,13 +142,15 @@ impl EncodedImageVisualizer {
 
             let opacity: Option<&Opacity> =
                 opacities.and_then(|opacity| opacity.first().map(bytemuck::cast_ref));
-            let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
+            let opacity = opacity.copied().unwrap_or_else(|| {
+                typed_fallback_for(ctx, EncodedImage::descriptor_opacity().component)
+            });
             #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
             let colormap = None;
 
-            if let Some(textured_rect) = textured_rect_from_image(
+            match textured_rect_from_image(
                 ctx.viewer_ctx(),
                 entity_path,
                 spatial_ctx,
@@ -173,45 +159,21 @@ impl EncodedImageVisualizer {
                 multiplicative_tint,
                 EncodedImage::name(),
             ) {
-                self.data.add_pickable_rect(
-                    PickableTexturedRect {
-                        ent_path: entity_path.clone(),
-                        textured_rect,
-                        source_data: PickableRectSourceData::Image {
-                            image,
-                            depth_meter: None,
+                Ok(textured_rect) => {
+                    self.data.add_pickable_rect(
+                        PickableTexturedRect {
+                            ent_path: entity_path.clone(),
+                            textured_rect,
+                            source_data: PickableRectSourceData::Image {
+                                image,
+                                depth_meter: None,
+                            },
                         },
-                    },
-                    spatial_ctx.view_class_identifier,
-                );
+                        spatial_ctx.view_class_identifier,
+                    );
+                }
+                Err(err) => spatial_ctx.report_error(re_error::format(err)),
             }
         }
     }
 }
-
-impl TypedComponentFallbackProvider<Opacity> for EncodedImageVisualizer {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        // Color images should be transparent whenever they're on top of other images,
-        // But fully opaque if there are no other images in the scene.
-        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
-            return 1.0.into();
-        };
-
-        // Known cosmetic issues with this approach:
-        // * The first frame we have more than one image, the image will be opaque.
-        //      It's too complex to do a full view query just for this here.
-        //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
-        // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
-        view_state
-            .fallback_opacity_for_image_kind(ImageKind::Color)
-            .into()
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for EncodedImageVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_IMAGE
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(EncodedImageVisualizer => [DrawOrder, Opacity]);

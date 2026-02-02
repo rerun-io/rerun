@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -30,38 +30,42 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
+  packages: "read"
 
 jobs:
   build-wheels:
     name: Build Wheels
     runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 60
     container:
-      image: rerunio/ci_docker:0.16.0
+      image: ghcr.io/rerun-io/ci_docker:0.17.0
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
-          environments: wheel-test-min
+          pixi-version: v0.55.0
 
       - name: Build rerun-cli
         run: |
           pixi run rerun-build-native-and-web-release
 
-      - name: Copy rerun-cli to wheel foldcer
+      - name: Copy rerun-cli to wheel folder
         run: |
-          cp target_pixi/release/rerun rerun_py/rerun_sdk/rerun_cli
+          cp target/release/rerun rerun_py/rerun_sdk/rerun_cli
 
       - name: Build the wheel
         run: |
-          pixi run python scripts/ci/build_and_upload_wheels.py \
+          pixi run uvpy scripts/ci/build_and_upload_wheels.py \
             --mode pr \
             --target x86_64-unknown-linux-gnu \
             --dir unused \
@@ -69,14 +73,14 @@ jobs:
 
       - name: Install built wheel
         run: |
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir dist/x86_64-unknown-linux-gnu
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir dist/x86_64-unknown-linux-gnu
 
       - name: Run e2e test
-        run: pixi run -e wheel-test-min RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: RUST_LOG=debug pixi run uvpy scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run docs/snippets/compare_snippet_output.py
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          pixi run -e wheel-test-min RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          RUST_LOG=debug pixi run uvpy docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build

@@ -4,11 +4,9 @@ use std::sync::Arc;
 use arrow::array::{Array as _, RecordBatch as ArrowRecordBatch};
 use egui_extras::{Column, TableRow};
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
-use re_log_types::{Timeline, TimestampFormat};
-use re_types::datatypes::TimeInt;
+use re_log_types::{TimeInt, Timeline, TimestampFormat};
 use re_ui::{UiExt as _, list_item};
 
 use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
@@ -48,13 +46,18 @@ impl ChunkUi {
     }
 
     // Return `true` if the user wants to exit the chunk viewer.
-    pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
+    pub(crate) fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        store: &re_chunk_store::ChunkStore,
+    ) -> bool {
         ui.sanity_check();
 
         let tokens = ui.tokens();
 
         let table_style = re_ui::TableStyle::Dense;
-        let should_exit = self.chunk_info_ui(ui);
+        let should_exit = self.chunk_info_ui(ui, store);
 
         //
         // Sort
@@ -82,10 +85,11 @@ impl ChunkUi {
         let components = chunk
             .components()
             .iter()
-            .map(|(component_desc, list_array)| {
+            .map(|(component, column)| {
                 (
-                    component_desc.clone(),
-                    re_arrow_util::format_data_type(list_array.data_type()),
+                    component,
+                    // TODO(#11071): use re_arrow_ui to format the datatype here
+                    re_arrow_util::format_data_type(column.list_array.data_type()),
                 )
             })
             .collect::<BTreeMap<_, _>>();
@@ -101,15 +105,13 @@ impl ChunkUi {
                 });
             }
 
-            for (component_desc, datatype) in &components {
+            for (component, datatype) in &components {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let response = ui
-                        .button(component_desc.component.as_str())
-                        .on_hover_ui(|ui| {
-                            ui.label(format!("{datatype}\n\nClick header to copy"));
-                        });
+                    let response = ui.button(component.as_str()).on_hover_ui(|ui| {
+                        ui.label(format!("{datatype}\n\nClick header to copy"));
+                    });
 
                     if response.clicked() {
                         ui.ctx().copy_text(datatype.clone());
@@ -141,19 +143,25 @@ impl ChunkUi {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let time = TimeInt::from(time_column.times_raw()[row_index]);
+                    let time = TimeInt::try_from(time_column.times_raw()[row_index])
+                        .unwrap_or(TimeInt::STATIC);
                     ui.label(time_column.timeline().typ().format(time, timestamp_format));
                 });
             }
 
-            for component_desc in components.keys() {
+            for component in components.keys() {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let component_data = chunk.component_batch_raw(component_desc, row_index);
+                    let component_data = chunk.component_batch_raw(**component, row_index);
                     match component_data {
                         Some(Ok(data)) => {
-                            re_arrow_ui::arrow_ui(ui, re_ui::UiLayout::List, &*data);
+                            re_arrow_ui::arrow_ui(
+                                ui,
+                                re_ui::UiLayout::List,
+                                timestamp_format,
+                                &*data,
+                            );
                         }
                         Some(Err(err)) => {
                             ui.error_with_details_on_hover(err.to_string());
@@ -193,7 +201,7 @@ impl ChunkUi {
     }
 
     // Returns true if the user wants to exit the chunk viewer.
-    fn chunk_info_ui(&self, ui: &mut egui::Ui) -> bool {
+    fn chunk_info_ui(&self, ui: &mut egui::Ui, store: &re_chunk_store::ChunkStore) -> bool {
         let metadata_ui =
             |ui: &mut egui::Ui, metadata: &std::collections::HashMap<String, String>| {
                 for (key, value) in metadata.iter().sorted() {
@@ -208,7 +216,8 @@ impl ChunkUi {
                 ui.push_id(field.name().clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
-                            ui.label(re_arrow_util::format_data_type(field.data_type()));
+                            // TODO(#11071): use re_arrow_ui to format the datatype here
+                            ui.label(re_arrow_util::format_field_datatype(field));
                         });
 
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
@@ -294,6 +303,8 @@ impl ChunkUi {
                 }
             }
         });
+
+        ui.info_label(store.format_lineage(&self.chunk.id()));
 
         should_exit
     }

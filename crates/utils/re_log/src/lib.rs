@@ -11,6 +11,9 @@
 //!
 //! The `warn_once` etc macros are for when you want to suppress repeated
 //! logging of the exact same message.
+//!
+//! In the viewer these logs, if >= info, become notifications. See
+//! `re_ui::notifications` for more information.
 
 mod channel_logger;
 mod result_extensions;
@@ -24,28 +27,21 @@ mod setup;
 #[cfg(all(feature = "setup", target_arch = "wasm32"))]
 mod web_logger;
 
+pub use channel_logger::*;
 pub use log::{Level, LevelFilter};
-
-pub use result_extensions::ResultExt;
-
-// The tracing macros support more syntax features than the log, that's why we use them:
-pub use tracing::{debug, error, info, trace, warn};
-
 // The `re_log::info_once!(…)` etc are nice helpers, but the `log-once` crate is a bit lacking.
 // In the future we should implement our own macros to de-duplicate based on the callsite,
 // similar to how the log console in a browser will automatically suppress duplicates.
 pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn_once};
-
-pub use channel_logger::*;
-
 #[cfg(feature = "setup")]
 pub use multi_logger::{MultiLoggerNotSetupError, add_boxed_logger, add_logger};
-
-#[cfg(feature = "setup")]
-pub use setup::{setup_logging, setup_logging_with_filter};
-
+pub use result_extensions::ResultExt;
 #[cfg(all(feature = "setup", not(target_arch = "wasm32")))]
 pub use setup::PanicOnWarnScope;
+#[cfg(feature = "setup")]
+pub use setup::{setup_logging, setup_logging_with_filter};
+// The tracing macros support more syntax features than the log, that's why we use them:
+pub use tracing::{debug, error, info, trace, warn};
 
 /// Re-exports of other crates.
 pub mod external {
@@ -57,8 +53,6 @@ const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(not(debug_assertions))]
     "rustls",
-    // TODO(#10286): Remove once we have a wgpu version with https://github.com/gfx-rs/wgpu/pull/7850 landed.
-    "wgpu_hal::vulkan::conv",
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
@@ -81,6 +75,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "h2",
     "hyper",
     "prost_build",
+    "reqwest", // Spams "starting new connection: …"
     "sqlparser",
     "tonic_web",
     "tower",
@@ -202,6 +197,27 @@ fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> boo
     metadata.level() <= filter
 }
 
+/// Check if an environment variable is set to a truthy value.
+///
+/// Returns `true` if the environment variable is set to "1", "true", or "yes" (case-insensitive).
+/// Returns `false` otherwise (including when the variable is not set).
+///
+/// # Example
+///
+/// ```ignore
+/// if env_var_is_truthy("TELEMETRY_ENABLED") {
+///     // enable telemetry
+/// }
+/// ```
+pub fn env_var_is_truthy(var_name: &str) -> bool {
+    std::env::var(var_name)
+        .map(|v| {
+            let v = v.to_lowercase();
+            v == "1" || v == "true" || v == "yes"
+        })
+        .unwrap_or(false)
+}
+
 /// Shorten a path to a Rust source file.
 ///
 /// Example input:
@@ -213,7 +229,7 @@ fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> boo
 /// * `tokio-1.24.1/src/runtime/runtime.rs`
 /// * `rerun/src/main.rs`
 /// * `core/src/ops/function.rs`
-#[allow(dead_code)] // only used on web and in tests
+#[allow(clippy::allow_attributes, dead_code)] // only used on web and in tests
 fn shorten_file_path(file_path: &str) -> &str {
     if let Some(i) = file_path.rfind("/src/") {
         if let Some(prev_slash) = file_path[..i].rfind('/') {

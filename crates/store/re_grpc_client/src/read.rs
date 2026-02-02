@@ -1,31 +1,21 @@
+use re_log_encoding::ToApplication as _;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::sdk_comms::v1alpha1::{ReadMessagesRequest, ReadMessagesResponse};
 use tokio_stream::StreamExt as _;
 
-use re_log_encoding::protobuf_conversions::log_msg_from_proto;
-use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
-use re_protos::sdk_comms::v1alpha1::ReadMessagesResponse;
-use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
-
-use crate::MAX_DECODING_MESSAGE_SIZE;
-use crate::StreamError;
-use crate::TonicStatusError;
+use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, TonicStatusError};
 
 /// Read log messages from a proxy server.
 ///
 /// This is used by the viewer to _receive_ log messages.
-pub fn stream(
-    uri: re_uri::ProxyUri,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::Receiver<LogMsg> {
+pub fn stream(uri: re_uri::ProxyUri) -> re_log_channel::LogReceiver {
     re_log::debug!("Loading {uri} via gRPC…");
 
-    let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
-        re_smart_channel::SmartChannelSource::MessageProxy(uri.clone()),
-    );
+    let (tx, rx) =
+        re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri.clone()));
 
     crate::spawn_future(async move {
-        if let Err(err) = stream_async(uri, &tx, on_msg).await {
+        if let Err(err) = stream_async(uri, &tx).await {
             tx.quit(Some(Box::new(err))).ok();
         }
     });
@@ -35,8 +25,7 @@ pub fn stream(
 
 async fn stream_async(
     uri: re_uri::ProxyUri,
-    tx: &re_smart_channel::Sender<LogMsg>,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+    tx: &re_log_channel::LogSender,
 ) -> Result<(), StreamError> {
     let mut client = {
         let url = uri.origin.as_url();
@@ -50,7 +39,12 @@ async fn stream_async(
         };
 
         #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = { tonic::transport::Endpoint::new(url)?.connect().await? };
+        let tonic_client = {
+            tonic::transport::Endpoint::new(url)?
+                .http2_adaptive_window(true) // Optimize for throughput
+                .connect()
+                .await?
+        };
 
         MessageProxyServiceClient::new(tonic_client)
             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
@@ -70,20 +64,19 @@ async fn stream_async(
             Ok(Some(ReadMessagesResponse {
                 log_msg: Some(log_msg_proto),
             })) => {
-                let mut log_msg = log_msg_from_proto(&mut app_id_cache, log_msg_proto)?;
+                let mut log_msg = log_msg_proto.to_application((&mut app_id_cache, None))?;
 
-                // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
-                log_msg.insert_arrow_record_batch_metadata(
-                    re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
-                    re_sorbet::timestamp_metadata::now_timestamp(),
-                );
+                if let Some(metadata_key) = re_sorbet::TimestampLocation::IPCDecode.metadata_key() {
+                    // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
+                    log_msg.insert_arrow_record_batch_metadata(
+                        metadata_key.to_owned(),
+                        re_sorbet::timestamp_metadata::now_timestamp(),
+                    );
+                }
 
-                if tx.send(log_msg).is_err() {
+                if tx.send(log_msg.into()).is_err() {
                     re_log::debug!("gRPC stream smart channel closed");
                     break;
-                }
-                if let Some(on_msg) = &on_msg {
-                    on_msg();
                 }
             }
 

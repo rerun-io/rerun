@@ -1,28 +1,29 @@
 use egui::NumExt as _;
-
 use re_data_ui::{DataUi as _, item_ui};
 use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
-use re_ui::{
-    UiExt as _,
-    list_item::{PropertyContent, list_item_scope},
-};
+use re_ui::UiExt as _;
+use re_ui::list_item::{PropertyContent, list_item_scope};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     Item, ItemCollection, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError,
     ViewerContext, VisualizerCollection,
 };
 
+use crate::visualizers::DepthImageProcessResult;
 use crate::{
     PickableRectSourceData, PickableTexturedRect,
     picking::{PickableUiRect, PickingContext, PickingHitType},
     picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
-    visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
+    visualizers::{
+        CamerasVisualizer, DepthImageVisualizer, EncodedDepthImageVisualizer,
+        SpatialViewVisualizerData,
+    },
 };
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn picking(
     ctx: &ViewerContext<'_>,
     picking_context: &PickingContext,
@@ -88,7 +89,7 @@ pub fn picking(
         let query_result = ctx.lookup_query_result(query.view_id);
         let Some(data_result) = query_result
             .tree
-            .lookup_result_by_path(&instance_path.entity_path)
+            .lookup_result_by_path(instance_path.entity_path.hash())
         else {
             // No data result for this entity means it's no longer on screen.
             continue;
@@ -204,14 +205,14 @@ pub fn picking(
                 ItemContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
-                    tracked_entity: state.state_3d.tracked_entity.clone(),
+                    tracked_entity: state.last_tracked_entity().cloned(),
                     point_in_space_cameras: cameras_visualizer_output
-                        .space_cameras
+                        .pinhole_cameras
                         .iter()
                         .map(|cam| {
                             (
                                 cam.ent_path.clone(),
-                                hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
+                                hovered_point.map(|pos| cam.project_onto_2d(pos)),
                             )
                         })
                         .collect(),
@@ -244,6 +245,10 @@ fn get_pixel_picking_info(
         .view_systems
         .get::<DepthImageVisualizer>()
         .ok();
+    let encoded_depth_visualizer_output = system_output
+        .view_systems
+        .get::<EncodedDepthImageVisualizer>()
+        .ok();
 
     if hit.hit_type == PickingHitType::TexturedRect {
         iter_pickable_rects(&system_output.view_systems)
@@ -264,8 +269,18 @@ fn get_pixel_picking_info(
                     pixel_coordinates,
                 })
             })
-    } else if let Some((depth_image, depth_meter, texture)) =
-        depth_visualizer_output.and_then(|depth_images| {
+    } else if let Some(DepthImageProcessResult {
+        image_info,
+        depth_meter,
+        colormap,
+    }) = depth_visualizer_output
+        .and_then(|depth_images| {
+            depth_images
+                .depth_cloud_entities
+                .get(&hit.instance_path_hash.entity_path_hash)
+        })
+        .or_else(|| {
+            let depth_images = encoded_depth_visualizer_output?;
             depth_images
                 .depth_cloud_entities
                 .get(&hit.instance_path_hash.entity_path_hash)
@@ -274,13 +289,13 @@ fn get_pixel_picking_info(
         let pixel_coordinates = hit
             .instance_path_hash
             .instance
-            .to_2d_image_coordinate(depth_image.width());
+            .to_2d_image_coordinate(image_info.width());
         Some(PickedPixelInfo {
             source_data: PickableRectSourceData::Image {
-                image: depth_image.clone(),
+                image: image_info.clone(),
                 depth_meter: Some(*depth_meter),
             },
-            texture: texture.clone(),
+            texture: colormap.clone(),
             pixel_coordinates,
         })
     } else {

@@ -1,22 +1,21 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-
+use nohash_hasher::IntMap;
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 
+use super::view_class_placeholder::ViewClassPlaceholder;
+use super::visualizer_entity_subscriber::VisualizerEntitySubscriber;
+use crate::component_fallbacks::FallbackProviderRegistry;
+use crate::view::view_context_system::ViewContextSystemOncePerFrameResult;
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, ViewClass,
-    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, VisualizerCollection,
-    VisualizerSystem,
-};
-
-use super::{
-    view_class_placeholder::ViewClassPlaceholder,
-    visualizer_entity_subscriber::VisualizerEntitySubscriber,
+    IdentifiedViewSystem, IndicatedEntities, PerVisualizerType, QueryContext, ViewClass,
+    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizerCollection, VisualizerSystem,
 };
 
 #[derive(Debug, thiserror::Error)]
-#[allow(clippy::enum_variant_names)]
 pub enum ViewClassRegistryError {
     #[error("View with class identifier {0:?} was already registered.")]
     DuplicateClassIdentifier(ViewClassIdentifier),
@@ -34,9 +33,11 @@ pub enum ViewClassRegistryError {
 /// Utility for registering view systems, passed on to [`crate::ViewClass::on_register`].
 pub struct ViewSystemRegistrator<'a> {
     registry: &'a mut ViewClassRegistry,
+    fallback_registry: &'a mut FallbackProviderRegistry,
     identifier: ViewClassIdentifier,
     context_systems: HashSet<ViewSystemIdentifier>,
     visualizers: HashSet<ViewSystemIdentifier>,
+    pub app_options: &'a crate::AppOptions,
 }
 
 impl ViewSystemRegistrator<'_> {
@@ -62,6 +63,7 @@ impl ViewSystemRegistrator<'_> {
                 .entry(T::identifier())
                 .or_insert_with(|| ContextSystemTypeRegistryEntry {
                     factory_method: Box::new(|| Box::<T>::default()),
+                    once_per_frame_execution_method: T::execute_once_per_frame,
                     used_by: Default::default(),
                 })
                 .used_by
@@ -94,12 +96,14 @@ impl ViewSystemRegistrator<'_> {
         }
 
         if self.visualizers.insert(T::identifier()) {
+            let app_options = self.app_options;
             self.registry
                 .visualizers
                 .entry(T::identifier())
-                .or_insert_with(|| {
+                .or_insert_with(move || {
+                    let visualizer = T::default();
                     let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
-                        VisualizerEntitySubscriber::new(&T::default()),
+                        VisualizerEntitySubscriber::new(&visualizer, app_options),
                     ));
 
                     VisualizerTypeRegistryEntry {
@@ -118,6 +122,34 @@ impl ViewSystemRegistrator<'_> {
             ))
         }
     }
+
+    /// Register a fallback provider specific to the current view
+    /// and given component.
+    pub fn register_fallback_provider<C: re_sdk_types::Component>(
+        &mut self,
+        component: ComponentIdentifier,
+        provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
+    ) {
+        self.fallback_registry.register_view_fallback_provider(
+            self.identifier,
+            component,
+            provider,
+        );
+    }
+
+    /// Register a fallback provider specific to the current view
+    /// and given component.
+    pub fn register_array_fallback_provider<
+        C: re_sdk_types::Component,
+        I: IntoIterator<Item = C>,
+    >(
+        &mut self,
+        component: ComponentIdentifier,
+        provider: impl Fn(&QueryContext<'_>) -> I + Send + Sync + 'static,
+    ) {
+        self.fallback_registry
+            .register_view_array_fallback_provider(self.identifier, component, provider);
+    }
 }
 
 /// View class entry in [`ViewClassRegistry`].
@@ -128,7 +160,6 @@ pub struct ViewClassRegistryEntry {
     pub visualizer_system_ids: HashSet<ViewSystemIdentifier>,
 }
 
-#[allow(clippy::derivable_impls)] // Clippy gets this one wrong.
 impl Default for ViewClassRegistryEntry {
     fn default() -> Self {
         Self {
@@ -143,6 +174,7 @@ impl Default for ViewClassRegistryEntry {
 /// Context system type entry in [`ViewClassRegistry`].
 struct ContextSystemTypeRegistryEntry {
     factory_method: Box<dyn Fn() -> Box<dyn ViewContextSystem> + Send + Sync>,
+    once_per_frame_execution_method: fn(&ViewerContext<'_>) -> ViewContextSystemOncePerFrameResult,
     used_by: HashSet<ViewClassIdentifier>,
 }
 
@@ -177,8 +209,13 @@ impl ViewClassRegistry {
     /// Adds a new view class.
     ///
     /// Fails if a view class with the same name was already registered.
+    ///
+    /// Note that changes to app options later down the line may not be taken into account for already
+    /// registered views & visualizers.
     pub fn add_class<T: ViewClass + Default + 'static>(
         &mut self,
+        app_options: &crate::AppOptions,
+        fallback_registry: &mut FallbackProviderRegistry,
     ) -> Result<(), ViewClassRegistryError> {
         let class = Box::<T>::default();
 
@@ -187,6 +224,8 @@ impl ViewClassRegistry {
             identifier: T::identifier(),
             context_systems: Default::default(),
             visualizers: Default::default(),
+            fallback_registry,
+            app_options,
         };
 
         class.on_register(&mut registrator)?;
@@ -196,6 +235,8 @@ impl ViewClassRegistry {
             identifier,
             context_systems,
             visualizers,
+            fallback_registry: _,
+            app_options: _,
         } = registrator;
 
         if self
@@ -237,11 +278,32 @@ impl ViewClassRegistry {
         Ok(())
     }
 
+    /// Queries a View registry entry by class name, returning `None` if it is not registered.
+    pub fn class_entry(&self, name: ViewClassIdentifier) -> Option<&ViewClassRegistryEntry> {
+        self.view_classes.get(&name)
+    }
+
+    /// Queries a View registry entry type by class name and logs if it fails, returning a placeholder class.
+    pub fn get_class_entry_or_log_error(
+        &self,
+        name: ViewClassIdentifier,
+    ) -> &ViewClassRegistryEntry {
+        if let Some(result) = self.class_entry(name) {
+            result
+        } else {
+            re_log::error_once!("Unknown view class {:?}", name);
+            &self.placeholder
+        }
+    }
+
     /// Queries a View type by class name, returning `None` if it is not registered.
     pub fn class(&self, name: ViewClassIdentifier) -> Option<&dyn ViewClass> {
-        self.view_classes
-            .get(&name)
-            .map(|boxed| boxed.class.as_ref())
+        self.class_entry(name).map(|e| e.class.as_ref())
+    }
+
+    /// Queries a View type by class name and logs if it fails, returning a placeholder class.
+    pub fn get_class_or_log_error(&self, name: ViewClassIdentifier) -> &dyn ViewClass {
+        self.get_class_entry_or_log_error(name).class.as_ref()
     }
 
     /// Returns the user-facing name for the given view class.
@@ -251,16 +313,6 @@ impl ViewClassRegistry {
         self.view_classes
             .get(&name)
             .map_or("<unknown view class>", |boxed| boxed.class.display_name())
-    }
-
-    /// Queries a View type by class name and logs if it fails, returning a placeholder class.
-    pub fn get_class_or_log_error(&self, name: ViewClassIdentifier) -> &dyn ViewClass {
-        if let Some(result) = self.class(name) {
-            result
-        } else {
-            re_log::error_once!("Unknown view class {:?}", name);
-            self.placeholder.class.as_ref()
-        }
     }
 
     /// Iterates over all registered View class types, sorted by name.
@@ -273,13 +325,13 @@ impl ViewClassRegistry {
     /// For each visualizer, return the set of entities that may be visualizable with it.
     ///
     /// The list is kept up to date by store subscribers.
-    pub fn maybe_visualizable_entities_for_visualizer_systems(
+    pub fn visualizable_entities_for_visualizer_systems(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> PerVisualizer<MaybeVisualizableEntities> {
+    ) -> PerVisualizerType<VisualizableEntities> {
         re_tracing::profile_function!();
 
-        PerVisualizer::<MaybeVisualizableEntities>(
+        PerVisualizerType::<VisualizableEntities>(
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
@@ -287,7 +339,7 @@ impl ViewClassRegistry {
                         *id,
                         ChunkStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                             entry.entity_subscriber_handle,
-                            |subscriber| subscriber.maybe_visualizable_entities(store_id).cloned(),
+                            |subscriber| subscriber.visualizable_entities(store_id).cloned(),
                         )
                         .flatten()
                         .unwrap_or_default(),
@@ -297,14 +349,14 @@ impl ViewClassRegistry {
         )
     }
 
-    /// For each visualizer, the set of entities that have at least one matching indicator component.
+    /// For each visualizer, the set of entities that have at least one component with a matching archetype name.
     pub fn indicated_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> PerVisualizer<IndicatedEntities> {
+    ) -> PerVisualizerType<IndicatedEntities> {
         re_tracing::profile_function!();
 
-        PerVisualizer::<IndicatedEntities>(
+        PerVisualizerType::<IndicatedEntities>(
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
@@ -320,6 +372,40 @@ impl ViewClassRegistry {
                 })
                 .collect(),
         )
+    }
+
+    /// Runs the once-per-frame execution method for each context system once for each view that needs it.
+    ///
+    /// Passing the same view class identifier multiple times is fine,
+    /// as context systems are deduplicated based on their identifiers regardless.
+    pub fn run_once_per_frame_context_systems(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        view_classes: impl Iterator<Item = ViewClassIdentifier>,
+    ) -> IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult> {
+        re_tracing::profile_function!();
+
+        use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
+
+        let context_system_ids = view_classes
+            .filter_map(|view_class_identifier| self.view_classes.get(&view_class_identifier))
+            .flat_map(|view_class| view_class.context_system_ids.iter().copied())
+            .unique()
+            .collect_vec();
+
+        // TODO(andreas): Executing with rayon here is a bit of a deviation from our usual pattern.
+        // It would be nicer to return something with which the user can decide on how to execute.
+        context_system_ids
+            .into_par_iter()
+            .filter_map(|context_system_id| {
+                self.context_systems.get(&context_system_id).map(|entry| {
+                    (
+                        context_system_id,
+                        (entry.once_per_frame_execution_method)(viewer_ctx),
+                    )
+                })
+            })
+            .collect()
     }
 
     pub fn new_context_collection(
@@ -374,14 +460,5 @@ impl ViewClassRegistry {
                 })
                 .collect(),
         }
-    }
-
-    pub fn instantiate_visualizer(
-        &self,
-        visualizer_identifier: ViewSystemIdentifier,
-    ) -> Option<Box<dyn VisualizerSystem>> {
-        self.visualizers
-            .get(&visualizer_identifier)
-            .map(|entry| (entry.factory_method)())
     }
 }

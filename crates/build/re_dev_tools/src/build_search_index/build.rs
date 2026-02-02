@@ -1,5 +1,6 @@
-use super::{DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL, ingest, meili};
 use cargo_metadata::semver::Version;
+
+use super::{DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL, ingest, meili};
 
 /// Index documentation, examples, and API references for all languages
 #[derive(argh::FromArgs)]

@@ -1,9 +1,8 @@
 use egui::{Response, Ui};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, RecommendedView, SystemCommand, SystemCommandSender as _};
 use re_viewport_blueprint::ViewBlueprint;
@@ -88,36 +87,25 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
     let mut output: IntSet<ViewClassIdentifier> = IntSet::default();
 
     let view_class_registry = ctx.viewer_context.view_class_registry();
-    let recording = ctx.viewer_context.recording();
-    let maybe_visualizable_entities = view_class_registry
-        .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
 
     for entry in view_class_registry.iter_registry() {
-        let Some(suggested_origin) = entry
-            .class
-            .recommended_origin_for_entities(&entities_of_interest, recording)
-        else {
-            continue;
-        };
-
-        let visualizable_entities = entry.class.determine_visualizable_entities(
-            &maybe_visualizable_entities,
-            recording,
-            &view_class_registry.new_visualizer_collection(entry.identifier),
-            &suggested_origin,
-        );
-
         // We consider a view class to be recommended if all selected entities are
-        // "visualizable" with it. By "visualizable" we mean that either the entity itself, or any
+        // "visualizable" with it through a native type.
+        // By "visualizable" we mean that either the entity itself, or any
         // of its sub-entities, are visualizable.
 
-        let covered = entities_of_interest.iter().all(|entity| {
-            visualizable_entities.0.iter().any(|(_, entities)| {
-                entities
-                    .0
-                    .iter()
-                    .any(|visualizable_entity| visualizable_entity.starts_with(entity))
-            })
+        let covered = entities_of_interest.iter().all(|candidate_entity| {
+            ctx.viewer_context
+                .iter_visualizable_entities_for_view_class(entry.identifier)
+                .any(|(_visualizer, visualizable_entities)| {
+                    visualizable_entities
+                        .0
+                        .iter()
+                        .any(|(visualizable_entity, reason)| {
+                            visualizable_entity.starts_with(candidate_entity)
+                                && reason.any_match_with_native_semantics()
+                        })
+                })
         });
 
         if covered {
@@ -175,7 +163,7 @@ fn create_view_for_selected_entities(
         .add_views(std::iter::once(view), target_container_id, None);
     ctx.viewer_context
         .command_sender()
-        .send_system(SystemCommand::SetSelection(Item::View(view_id).into()));
+        .send_system(SystemCommand::set_selection(Item::View(view_id)));
     ctx.viewport_blueprint
         .mark_user_interaction(ctx.viewer_context);
 }

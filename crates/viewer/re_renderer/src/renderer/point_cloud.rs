@@ -7,36 +7,35 @@
 //! Quad spanning happens in the vertex shader, uploaded are only the data for the actual points (no vertex buffer!).
 //!
 //! Like with the `super::lines::LineRenderer`, we're rendering as all quads in a single triangle list draw call.
-//! (Rationale for this can be found in the [`lines.rs`]'s documentation)
+//! (Rationale for this can be found in the [`crate::renderer::lines`]'s documentation)
 //!
 //! For WebGL compatibility, data is uploaded as textures. Color is stored in a separate srgb texture, meaning
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::{num::NonZeroU64, ops::Range};
+use std::num::NonZeroU64;
+use std::ops::Range;
 
-use crate::{
-    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
-    allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
-    include_shader_module,
-    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    wgpu_resources::GpuRenderPipelinePoolAccessor,
-};
 use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
-use crate::{
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
-    },
-};
-
 use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::draw_phases::{
+    DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor,
+};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{
+    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
+    include_shader_module,
+};
 
 bitflags! {
     /// Property flags for a point batch
@@ -54,7 +53,8 @@ bitflags! {
 }
 
 pub mod gpu_data {
-    use crate::{Size, draw_phases::PickingLayerObjectId, wgpu_buffer_types};
+    use crate::draw_phases::PickingLayerObjectId;
+    use crate::{Size, wgpu_buffer_types};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
 

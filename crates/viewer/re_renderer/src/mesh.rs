@@ -1,16 +1,15 @@
-use std::{mem::size_of, ops::Range};
+use std::mem::size_of;
+use std::ops::Range;
 
 use ecolor::Rgba;
 use smallvec::{SmallVec, smallvec};
 
-use crate::{
-    RenderContext, Rgba32Unmul,
-    allocator::create_and_fill_uniform_buffer_batch,
-    debug_label::DebugLabel,
-    renderer::MeshRenderer,
-    resource_managers::GpuTexture2D,
-    wgpu_resources::{BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBuffer},
-};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::debug_label::DebugLabel;
+use crate::renderer::MeshRenderer;
+use crate::resource_managers::GpuTexture2D;
+use crate::wgpu_resources::{BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBuffer};
+use crate::{RenderContext, Rgba32Unmul};
 
 /// Defines how mesh vertices are built.
 pub mod mesh_vertices {
@@ -386,7 +385,7 @@ impl GpuMesh {
                     },
                 );
 
-                // TODO(andreas): handle texture transparency
+                // TODO(#12223): handle texture transparency
                 let is_transparent = material.albedo_factor.a() < 1.0;
 
                 materials.push(GpuMaterial {

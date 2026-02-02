@@ -1,17 +1,17 @@
 mod video_frame_reference;
 mod video_stream;
 
-use re_types::ViewClassIdentifier;
+use re_log_types::hash::Hash64;
+use re_log_types::{EntityPath, EntityPathHash};
+use re_renderer::renderer;
+use re_renderer::resource_managers::ImageDataDesc;
+use re_sdk_types::ViewClassIdentifier;
+use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
-use re_log_types::{EntityPath, EntityPathHash, hash::Hash64};
-use re_renderer::{renderer, resource_managers::ImageDataDesc};
-use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
-
-use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D};
-
 use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D};
 
 /// Identify a video stream for a given video.
 fn video_stream_id(
@@ -82,6 +82,7 @@ fn visualize_video_frame_texture(
                 outline_mask: highlight.overall,
                 depth_offset,
                 multiplicative_tint,
+                force_draw_with_transparency: false,
             },
         };
         visualizer_data.add_pickable_rect(
@@ -237,6 +238,7 @@ fn show_video_playback_issue(
                 outline_mask: highlight.overall,
                 #[expect(clippy::disallowed_methods)] // Ok to just dim it
                 multiplicative_tint: egui::Rgba::from_gray(0.5),
+            force_draw_with_transparency: true,
                 ..Default::default()
             },
     };

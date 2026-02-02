@@ -1,16 +1,15 @@
 use itertools::Either;
-
 use re_chunk::{Chunk, RowId};
 use re_log_types::{ApplicationId, EntityPath, TimePoint};
-use re_types::ComponentBatch;
-use re_types::archetypes::{AssetVideo, VideoFrameReference};
-use re_types::components::VideoTimestamp;
+use re_sdk_types::ComponentBatch;
+use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_sdk_types::components::VideoTimestamp;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 // ---
 
-/// Loads data from any supported file or in-memory contents as native [`re_types::Archetype`]s.
+/// Loads data from any supported file or in-memory contents as native [`re_sdk_types::Archetype`]s.
 ///
 /// This is a simple generic [`DataLoader`] for filetypes that match 1-to-1 with our builtin
 /// archetypes.
@@ -27,11 +26,22 @@ impl DataLoader for ArchetypeLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         use anyhow::Context as _;
 
-        if filepath.is_dir() {
+        // NOTE: We're not just checking whether this is or isn't any kind of file here: we
+        // are specifically checking whether this is a vanilla, run-of-the-mill, boring file.
+        // Not a socket, not a fifo, not some obscure named pipe, and certainly not a symlink to
+        // any of these things: just a basic file. Anything other than a vanilla file is assumed to
+        // be an RRD stream by default, and therefore will be handled by the RRD data loader.
+        //
+        // This is super important because, if that thing does turn out to be a fifo or something of
+        // that nature (e.g. `rerun <(curl …)`), and we end up reading from it, then the RRD data loader
+        // will end up executing on top of a racy, partial RRD stream (because these virtual streams
+        // have process-global state). The end result will be what looks like a bunch of corrupt data and
+        // the decoder which will start spewing random confusing errors.
+        if !filepath.is_file() {
             return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
         }
 
@@ -51,7 +61,7 @@ impl DataLoader for ArchetypeLoader {
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<LoadedData>,
+        tx: crossbeam::channel::Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         let extension = crate::extension(&filepath);
         if !crate::is_supported_file_extension(&extension) {
@@ -99,6 +109,14 @@ impl DataLoader for ArchetypeLoader {
         if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, loader = self.name(), "Loading image…",);
             rows.extend(load_image(
+                &filepath,
+                timepoint,
+                entity_path,
+                contents.into_owned(),
+            )?);
+        } else if crate::SUPPORTED_DEPTH_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, loader = self.name(), "Loading depth image…",);
+            rows.extend(load_depth_image(
                 &filepath,
                 timepoint,
                 entity_path,
@@ -165,7 +183,7 @@ fn load_image(
 
     let rows = [
         {
-            let mut arch = re_types::archetypes::EncodedImage::from_file_contents(contents);
+            let mut arch = re_sdk_types::archetypes::EncodedImage::from_file_contents(contents);
 
             if let Ok(format) = image::ImageFormat::from_path(filepath) {
                 arch = arch.with_media_type(format.to_mime_type());
@@ -177,6 +195,35 @@ fn load_image(
         },
         //
     ];
+
+    Ok(rows.into_iter())
+}
+
+fn load_depth_image(
+    filepath: &std::path::Path,
+    timepoint: TimePoint,
+    entity_path: EntityPath,
+    contents: Vec<u8>,
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
+    re_tracing::profile_function!();
+
+    let rows = [{
+        let mut arch = re_sdk_types::archetypes::EncodedDepthImage::from_file_contents(contents);
+
+        if let Ok(format) = image::ImageFormat::from_path(filepath) {
+            arch = arch.with_media_type(format.to_mime_type());
+        } else if filepath
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.to_lowercase() == "rvl")
+        {
+            arch = arch.with_media_type(re_sdk_types::components::MediaType::RVL);
+        }
+
+        Chunk::builder(entity_path)
+            .with_archetype(RowId::new(), timepoint, &arch)
+            .build()?
+    }];
 
     Ok(rows.into_iter())
 }
@@ -268,9 +315,9 @@ fn load_mesh(
 
     let rows = [
         {
-            let arch = re_types::archetypes::Asset3D::from_file_contents(
+            let arch = re_sdk_types::archetypes::Asset3D::from_file_contents(
                 contents,
-                re_types::components::MediaType::guess_from_path(filepath),
+                re_sdk_types::components::MediaType::guess_from_path(filepath),
             );
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &arch)
@@ -292,7 +339,7 @@ fn load_point_cloud(
     let rows = [
         {
             // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
-            let points3d = re_types::archetypes::Points3D::from_file_contents(contents)?;
+            let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)?;
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &points3d)
                 .build()?
@@ -313,9 +360,9 @@ fn load_text_document(
 
     let rows = [
         {
-            let arch = re_types::archetypes::TextDocument::from_file_contents(
+            let arch = re_sdk_types::archetypes::TextDocument::from_file_contents(
                 contents,
-                re_types::components::MediaType::guess_from_path(filepath),
+                re_sdk_types::components::MediaType::guess_from_path(filepath),
             )?;
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &arch)

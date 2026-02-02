@@ -1,6 +1,6 @@
 ---
-title: CLI manual
-order: 250
+title: ⌨️ CLI manual
+order: 1150
 ---
 
 ## rerun
@@ -41,6 +41,8 @@ The Rerun command-line interface:
 * `--bind <BIND>`
 > What bind address IP to use.
 >
+> `::` will listen on all interfaces, IPv6 and IPv4.
+>
 > [Default: `0.0.0.0`]
 
 * `--memory-limit <MEMORY_LIMIT>`
@@ -55,7 +57,8 @@ The Rerun command-line interface:
 > The server buffers log messages for the benefit of late-arriving viewers.
 > When this limit is reached, Rerun will drop the oldest data.
 > Example: `16GB` or `50%` (of system total).
-> Default is `0B`, or `25%` if any of the `--serve-*` flags are set.
+>
+> [Default: `1GiB`]
 
 * `--newest-first <NEWEST_FIRST>`
 > If true, play back the most recent data first when new clients connect.
@@ -92,16 +95,12 @@ The Rerun command-line interface:
 >
 > If started, the web server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
 >
-> Using this sets the default `--server-memory-limit` to 25% of available system memory.
->
 > [Default: `false`]
 
 * `--serve-grpc <SERVE_GRPC>`
 > This will host a gRPC server.
 >
 > The server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
->
-> Using this sets the default `--server-memory-limit` to 25% of available system memory.
 >
 > [Default: `false`]
 
@@ -242,12 +241,13 @@ Authentication with the redap.
 
 * `login`: Log into Rerun.
 * `token`: Retrieve the stored access token.
+* `generate-token`: Generate a fresh access token.
 
 ## rerun auth login
 
 Log into Rerun.
 
-This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
+This command opens a page in your default browser, allowing you to log in to the Rerun Data Platform.
 
 Once you've logged in, your credentials are stored on your machine.
 
@@ -256,10 +256,6 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 **Usage**: `rerun auth login [OPTIONS]`
 
 **Options**
-
-* `--login-url <LOGIN_URL>`
->
-> [Default: `https://rerun.io/login`]
 
 * `--no-open-browser <NO_OPEN_BROWSER>`
 > Post a link instead of directly opening in the browser.
@@ -270,6 +266,24 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 > Trigger the full login flow even if valid credentials already exist.
 >
 > [Default: `false`]
+
+## rerun auth generate-token
+
+Generate a fresh access token.
+
+You can use this token to authorize requests to the Rerun Data Platform.
+
+It's closer to an API key than an access token, as it can be revoked before it expires.
+
+**Usage**: `rerun auth generate-token --server <SERVER> --expiration <EXPIRATION>`
+
+**Options**
+
+* `--server <SERVER>`
+> Origin of the server to request the token from.
+
+* `--expiration <EXPIRATION>`
+> Duration of the token, either in: - "human time", e.g. `1 day`, or - ISO 8601 duration format, e.g. `P1D`.
 
 ## rerun mcap
 
@@ -541,11 +555,14 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 * `--full-metadata <FULL_METADATA>`
 > If true, includes `rerun.` prefixes on keys.
 
-* `--transposed <TRANSPOSED>`
-> Transpose record batches before printing them?
-
 * `--entity <ENTITY>`
 > Show only chunks belonging to this entity.
+
+* `--footers <FOOTERS>`
+> If true, displays all the parsed footers at the end.
+
+* `--transposed <TRANSPOSED>`
+> Transpose record batches before printing them?
 
 ## rerun rrd route
 
@@ -579,6 +596,13 @@ Note: Because the payload of the messages is never decoded, no migration or veri
 > If set, specifies the recording id of the output.
 >
 > When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
+
+* `--recompute-manifests <RECOMPUTE_MANIFESTS>`
+> If set, this will compute an RRD footer with the appropriate manifest for the routed data.
+>
+> By default, `rerun rrd route` will always drop all existing RRD manifests when routing data, as doing so invalidates their contents. This flag makes it possible to recompute an RRD manifest for the routed data, but beware that it has to decode the data, which means it is A) much slower and B) will migrate the data to the latest Sorbet specification automatically.
+>
+> [Default: `false`]
 
 ## rerun rrd stats
 
@@ -630,8 +654,8 @@ In-memory Rerun data server.
 
 **Options**
 
-* `--addr <ADDR>`
-> Address to listen on.
+* `--host <HOST>`
+> IP address to listen on.
 >
 > [Default: `0.0.0.0`]
 
@@ -640,8 +664,16 @@ In-memory Rerun data server.
 >
 > [Default: `51234`]
 
-* `-d, --dataset <DATASETS>`
-> Load a directory of RRD as dataset (can be specified multiple times).
+* `-d, --dataset <[NAME=]DIR_PATH>`
+> Load a directory of RRD as dataset (can be specified multiple times). You can specify only a path or provide a name such as `-d my_dataset=./path/to/files`.
+
+* `-t, --table <[NAME=]TABLE_PATH>`
+> Load a lance file as a table (can be specified multiple times). You can specify only a path or provide a name such as `-t my_table=./path/to/table`.
+
+* `--latency-ms <LATENCY_MS>`
+> Artificial latency to add to each request (in milliseconds).
+>
+> [Default: `0`]
 
 * `-V, --version `
 > Print version.

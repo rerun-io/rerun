@@ -1,6 +1,7 @@
+use std::f32::consts::PI;
+
 use egui_kittest::SnapshotResults;
 use re_ui::{UiExt as _, UiLayout};
-use std::f32::consts::PI;
 
 mod arrow_test_data;
 
@@ -23,11 +24,9 @@ pub fn test_arrow_ui() {
 fn arrow_list_ui(ui: &mut egui::Ui) {
     // We use a handful of realistic data in this test.
 
-    use re_types::{
-        ComponentBatch as _,
-        components::Blob,
-        datatypes::{Utf8, Vec3D},
-    };
+    use re_sdk_types::ComponentBatch as _;
+    use re_sdk_types::components::Blob;
+    use re_sdk_types::datatypes::{Utf8, Vec3D};
 
     let tests = [
         ("Empty string", Utf8::from("").to_arrow()),
@@ -73,7 +72,7 @@ fn arrow_list_ui(ui: &mut egui::Ui) {
         for (name, arrow_result) in tests {
             ui.grid_left_hand_label(name);
             let arrow = arrow_result.expect("Failed to convert to arrow");
-            re_arrow_ui::arrow_ui(ui, UiLayout::List, &arrow);
+            re_arrow_ui::arrow_ui(ui, UiLayout::List, Default::default(), &arrow);
             ui.end_row();
         }
     });
@@ -86,13 +85,15 @@ fn arrow_tree_ui() {
     let mut results = SnapshotResults::new();
 
     for (array_name, arrow) in arrays {
-        let mut harness = egui_kittest::Harness::builder()
-            .with_size((300.0, 500.0))
-            .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
+        let mut harness = re_ui::testing::new_harness(
+            re_ui::testing::TestOptions::Gui,
+            egui::Vec2::new(300.0, 500.0),
+        )
+        .build_ui(|ui| {
+            re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, &arrow);
-            });
+            re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, Default::default(), &arrow);
+        });
 
         harness.run();
 

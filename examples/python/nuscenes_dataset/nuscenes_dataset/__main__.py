@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import sys
 from typing import Any, Final
 
 import matplotlib
@@ -51,7 +52,7 @@ def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_n
             nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
         else:
             print(f"Could not find dataset at {root_dir} and could not automatically download specified scene.")
-            exit()
+            sys.exit()
 
     scene_names = [s["name"] for s in nusc.scene]
     if scene_name not in scene_names:
@@ -153,9 +154,9 @@ def log_lidar_and_ego_pose(
             rr.Transform3D(
                 translation=ego_pose["translation"],
                 rotation=rr.Quaternion(xyzw=rotation_xyzw),
-                axis_length=10.0,  # The length of the visualized axis.
                 relation=rr.TransformRelation.ParentFromChild,
             ),
+            rr.TransformAxes3D(10.0),  # The length of the visualized axis.
             rr.GeoPoints(lat_lon=position_lat_lon, radii=rr.Radius.ui_points(8.0), colors=0xFF0000FF),
         )
         # TODO(#10632): We don't want the radius for the trajectory line to be the same as the radius of the points.
@@ -330,7 +331,7 @@ def main() -> None:
                     origin="world",
                     # Set the image plane distance to 5m for all camera visualizations.
                     defaults=[rr.Pinhole.from_fields(image_plane_distance=5.0)],
-                    overrides={"world/anns": rr.Boxes3D.from_fields(fill_mode="solid")},
+                    overrides={"world/anns": rr.Boxes3D(fill_mode="solid")},
                 ),
                 rrb.Vertical(
                     rrb.TextDocumentView(origin="description", name="Description"),

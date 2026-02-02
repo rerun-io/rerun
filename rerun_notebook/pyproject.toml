@@ -1,12 +1,18 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-jupyter-builder>=0.5.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "rerun-notebook"
 description = "Implementation helper for running rerun-sdk in notebooks"
-version = "0.26.0-alpha.1+dev"
-dependencies = ["anywidget", "jupyter-ui-poll"]
+version = "0.30.0-alpha.1+dev"
+dependencies = [
+  "anywidget",
+  "jupyter-ui-poll",
+  # ipykernel 7.0.0 has a bug that prevents it from sending display data from a different thread.
+  # TODO(ipython/ipykernel/#1450)
+  "ipykernel<7.0.0",
+]
 readme = "README.md"
 keywords = ["rerun", "notebook"]
 
@@ -27,10 +33,7 @@ features = ["dev"]
 
 [tool.hatch.build]
 only-packages = true
-artifacts = [
-  "src/rerun_notebook/static/*",
-  "src/rerun_notebook/error_widget.js",
-]
+artifacts = ["src/rerun_notebook/static/*", "src/rerun_notebook/error_widget.js"]
 
 [tool.hatch.build.hooks.jupyter-builder]
 build-function = "hatch_jupyter_builder.npm_builder"

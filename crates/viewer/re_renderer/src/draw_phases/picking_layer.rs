@@ -9,24 +9,24 @@
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
+use re_mutex::Mutex;
+use smallvec::smallvec;
+
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::global_bindings::FrameUniformBuffer;
+use crate::rect::RectF32;
+use crate::texture_info::Texture2DBufferInfo;
+use crate::transform::{RectTransform, ndc_from_pixel};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
+    GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
+    RenderPipelineDesc, TextureDesc,
+};
 use crate::{
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
-    allocator::create_and_fill_uniform_buffer,
-    global_bindings::FrameUniformBuffer,
     include_shader_module,
-    rect::RectF32,
-    texture_info::Texture2DBufferInfo,
-    transform::{RectTransform, ndc_from_pixel},
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
-        GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc, TextureDesc,
-    },
 };
-
-use parking_lot::Mutex;
-use smallvec::smallvec;
 
 /// GPU retrieved & processed picking data result.
 pub struct PickingResult {
@@ -169,7 +169,6 @@ impl PickingLayerProcessor {
     ///
     /// `enable_picking_target_sampling` should be enabled only for debugging purposes.
     /// It allows to sample the picking layer texture in a shader.
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ctx: &RenderContext,
         view_name: &DebugLabel,
@@ -291,10 +290,10 @@ impl PickingLayerProcessor {
         ));
 
         Self {
-            bind_group_0,
             picking_target,
             picking_depth_target,
             readback_buffer,
+            bind_group_0,
             depth_readback_workaround,
         }
     }
@@ -310,6 +309,7 @@ impl PickingLayerProcessor {
             label: DebugLabel::from(format!("{view_name} - picking_layer pass")).get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.picking_target.default_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -568,6 +568,7 @@ impl DepthReadbackWorkaround {
             label: DebugLabel::from("Depth copy workaround").get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.readable_texture.default_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),

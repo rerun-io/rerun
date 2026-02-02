@@ -15,7 +15,7 @@ pub use component_path::ComponentPath;
 pub use data_path::DataPath;
 pub use entity_path::{EntityPath, EntityPathHash};
 pub use entity_path_filter::{
-    EntityPathFilter, EntityPathFilterError, EntityPathRule, EntityPathSubs,
+    EntityPathFilter, EntityPathFilterError, EntityPathRule, EntityPathSubs, FilterEvaluation,
     ResolvedEntityPathFilter, ResolvedEntityPathRule, RuleEffect,
 };
 pub use entity_path_part::EntityPathPart;
@@ -47,7 +47,6 @@ macro_rules! entity_path_vec {
     };
     ($($part: expr),* $(,)?) => {
         $crate::path::__private::vec![ $($crate::EntityPathPart::from(
-            #[allow(clippy::str_to_string, clippy::string_to_string)]
             $crate::path::__private::string::ToString::to_string(&$part)
         ),)+ ]
     };

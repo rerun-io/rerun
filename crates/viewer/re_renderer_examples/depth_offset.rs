@@ -8,10 +8,10 @@
 //! Press arrow left/right to increase/decrease the near plane distance.
 
 use re_renderer::Hsva;
-use re_renderer::{
-    renderer::{ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect},
-    view_builder::{self, Projection, ViewBuilder},
+use re_renderer::renderer::{
+    ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect,
 };
+use re_renderer::view_builder::{self, Projection, ViewBuilder};
 use winit::keyboard;
 
 mod framework;
@@ -104,7 +104,7 @@ impl framework::Example for Render2D {
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: self.near_plane,

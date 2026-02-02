@@ -1,11 +1,8 @@
 use bytemuck::Pod;
 
-use crate::{
-    DebugLabel, RenderContext,
-    wgpu_resources::{self, GpuTexture},
-};
-
 use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
+use crate::wgpu_resources::{self, GpuTexture};
+use crate::{DebugLabel, RenderContext};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum DataTextureSourceWriteError {
@@ -99,7 +96,6 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 
     /// The number of elements that can be written without allocating more memory.
     #[inline]
-    #[allow(unused)]
     pub fn capacity(&self) -> usize {
         self.buffers.iter().map(|b| b.capacity()).sum()
     }

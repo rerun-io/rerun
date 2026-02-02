@@ -10,24 +10,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Planetary motion is typically in the XY plane.
     rec.log_static("/", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?;
 
-    // Setup points, all are in the center of their own space:
+    // Setup spheres, all are in the center of their own space:
     rec.log(
         "sun",
-        &rerun::Points3D::new([[0.0, 0.0, 0.0]])
-            .with_radii([1.0])
-            .with_colors([rerun::Color::from_rgb(255, 200, 10)]),
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[1.0, 1.0, 1.0]])
+            .with_colors([rerun::Color::from_rgb(255, 200, 10)])
+            .with_fill_mode(rerun::components::FillMode::Solid),
     )?;
+
     rec.log(
         "sun/planet",
-        &rerun::Points3D::new([[0.0, 0.0, 0.0]])
-            .with_radii([0.4])
-            .with_colors([rerun::Color::from_rgb(40, 80, 200)]),
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.4, 0.4, 0.4]])
+            .with_colors([rerun::Color::from_rgb(40, 80, 200)])
+            .with_fill_mode(rerun::components::FillMode::Solid),
     )?;
+
     rec.log(
         "sun/planet/moon",
-        &rerun::Points3D::new([[0.0, 0.0, 0.0]])
-            .with_radii([0.15])
-            .with_colors([rerun::Color::from_rgb(180, 180, 180)]),
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.15, 0.15, 0.15]])
+            .with_colors([rerun::Color::from_rgb(180, 180, 180)])
+            .with_fill_mode(rerun::components::FillMode::Solid),
     )?;
 
     // Draw fixed paths where the planet & moon move.

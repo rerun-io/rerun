@@ -1,6 +1,5 @@
 use arrow::datatypes::DataType;
 use egui::Id;
-
 use re_ui::UiExt as _;
 use re_ui::list_item::PropertyContent;
 
@@ -16,7 +15,7 @@ pub struct DataTypeUi<'a> {
     /// A closure for showing a list item with info about nested fields.
     ///
     /// Only set if the type actually has nested fields.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     pub content: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
 }
 
@@ -154,7 +153,7 @@ fn data_type_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
     }
 }
 
-// TODO(#11071): there is some overlap here with `re_format_arrow` and `codegen`.
+// TODO(#11071): there is some overlap here with `re_arrow_util::format` and `codegen`.
 pub(crate) fn simple_data_type_string(datatype: &DataType) -> Option<&'static str> {
     match datatype {
         DataType::Null => Some("null"),

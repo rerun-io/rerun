@@ -3,15 +3,13 @@ use re_chunk_store::AbsoluteTimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{TimeInt, TimePoint};
 use re_query::{clamped_zip_1x2, range_zip_1x2};
-use re_types::{
-    Archetype as _,
-    archetypes::TextLog,
-    components::{Color, Text, TextLogLevel},
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::TextLog;
+use re_sdk_types::components::{Color, Text, TextLogLevel};
 use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]
@@ -37,7 +35,10 @@ impl IdentifiedViewSystem for TextLogSystem {
 }
 
 impl VisualizerSystem for TextLogSystem {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<TextLog>()
     }
 
@@ -46,15 +47,18 @@ impl VisualizerSystem for TextLogSystem {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut output = VisualizerExecutionOutput::default();
         let query =
             re_chunk_store::RangeQuery::new(view_query.timeline, AbsoluteTimeRange::EVERYTHING)
                 .keep_extra_timelines(true);
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            self.process_entity(ctx, &query, data_result);
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            self.process_visualizer_instruction(ctx, &query, data_result, instruction, &mut output);
         }
 
         {
@@ -63,24 +67,18 @@ impl VisualizerSystem for TextLogSystem {
             self.entries.sort_by_key(|e| e.time);
         }
 
-        Ok(Vec::new())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
+        Ok(output)
     }
 }
 
 impl TextLogSystem {
-    fn process_entity(
+    fn process_visualizer_instruction(
         &mut self,
         ctx: &ViewContext<'_>,
         query: &re_chunk_store::RangeQuery,
         data_result: &re_viewer_context::DataResult,
+        instruction: &re_viewer_context::VisualizerInstruction,
+        output: &mut VisualizerExecutionOutput,
     ) {
         re_tracing::profile_function!();
 
@@ -89,12 +87,16 @@ impl TextLogSystem {
             None,
             query,
             data_result,
-            TextLog::all_components().iter(),
+            TextLog::all_component_identifiers(),
+            instruction,
         );
 
-        let Some(all_text_chunks) = results.get_required_chunks(TextLog::descriptor_text()) else {
+        let all_text_chunks = results
+            .get_required_chunk(TextLog::descriptor_text().component)
+            .ensure_required(|err| output.report_error_for(instruction.id, err));
+        if all_text_chunks.is_empty() {
             return;
-        };
+        }
 
         // TODO(cmc): It would be more efficient (both space and compute) to do this lazily as
         // we're rendering the table by indexing back into the original chunk etc.
@@ -104,9 +106,21 @@ impl TextLogSystem {
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
         let timeline = *query.timeline();
-        let all_texts = results.iter_as(timeline, TextLog::descriptor_text());
-        let all_levels = results.iter_as(timeline, TextLog::descriptor_level());
-        let all_colors = results.iter_as(timeline, TextLog::descriptor_color());
+        let all_texts = results.iter_as(
+            |error| output.report_warning_for(instruction.id, error),
+            timeline,
+            TextLog::descriptor_text().component,
+        );
+        let all_levels = results.iter_as(
+            |error| output.report_warning_for(instruction.id, error),
+            timeline,
+            TextLog::descriptor_level().component,
+        );
+        let all_colors = results.iter_as(
+            |error| output.report_warning_for(instruction.id, error),
+            timeline,
+            TextLog::descriptor_color().component,
+        );
 
         let all_frames = range_zip_1x2(
             all_texts.slice::<String>(),
@@ -144,5 +158,3 @@ impl TextLogSystem {
         }
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);

@@ -18,6 +18,11 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = []
+
+# During testing, analytics are disabled.
+testing = []
 
 [dependencies]
 # Internal dependencies:
@@ -43,6 +48,3 @@ web-sys = { workspace = true, features = ["Storage"] }
 
 [dev-dependencies]
 regex-lite.workspace = true
-
-[build-dependencies]
-re_build_tools.workspace = true

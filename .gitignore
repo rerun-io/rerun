@@ -19,6 +19,9 @@ _deps
 **/rerun_cpp/docs/xml
 *.tgz
 
+# User-specific VSCode C++ extension config:
+.vscode/c_cpp_properties.json
+
 # Rust compile target directories.
 # These should only be found in the repository root, so prefix them all with slashes:
 /target
@@ -31,23 +34,33 @@ _deps
 **/venv*
 **/.venv*
 /env/
-.python-version
 
 # Python build artifacts:
 __pycache__
+.mypy_cache
 *.pyc
 *.pyd
 *.so
-**/.pytest_cache
 **/.ipynb_checkpoints/
+**/.pytest_cache
 
 # Pixi environment
 .pixi
+
+# Generated shims (created by ensure-rerun-env)
+scripts/pixi/uv
+scripts/pixi/uv.exe
+scripts/pixi/uvpy
+scripts/pixi/uvpy.exe
 
 .gdb_history
 perf.data*
 
 **/dataset/
+
+# insta snapshot temp file:
+*.pending-snap
+*.snap.new
 
 # Screenshots from samples etc.
 screenshot*.png
@@ -74,7 +87,8 @@ mesa.7z
 mesa.tar.xz
 icd.json
 
-*.rrd
+# Temporary RRD files. Don't blanket ignore them since we check in some for backwards compatibility tests.
+docs/snippets/**/*.rrd
 
 /meilisearch
 
@@ -83,9 +97,6 @@ justfile
 
 # heaptrack files
 *.zst
-
-# IDE stuff
-/.idea
 
 # Lychee link checker cache
 .lycheecache

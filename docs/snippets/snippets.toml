@@ -2,10 +2,13 @@
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]
+# Migration snippets rarely make sense as part of the snippet index.
+"migration/log_line" = ["cpp", "rust", "py"]
+"migration/transactional_transforms" = ["cpp", "rust", "py"]
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
-"DataframeQuery" = ["reference/dataframe_save_blueprint"]
+"DataframeQuery" = ["howto/visualization/save_blueprint"]
 
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
@@ -18,9 +21,24 @@
 [snippets_ref]
 features = [
   [
+    "Query Data Platform",
+    [
+      "howto/dataframe_operations",
+      "howto/dataframe_performance",
+      "howto/lerobot_export",
+      "howto/query_images",
+      "howto/query_videos",
+      "howto/query_video_keyframes",
+      "howto/time_alignment",
+      "howto/view_operations",
+    ],
+  ],
+  [
     "Setting recording properties",
     [
       "concepts/recording_properties",
+      "concepts/query-and-transform/segment_properties",
+      "howto/layers",
     ],
   ],
   [
@@ -39,7 +57,7 @@ features = [
       "archetypes/scalars_column_updates",
       "archetypes/points3d_column_updates",
       "archetypes/transform3d_column_updates",
-      "archetypes/image_column_updates",       # bonus!
+      "archetypes/image_column_updates", # bonus!
     ],
   ],
   [
@@ -75,7 +93,7 @@ features = [
   [
     "Query dataframes",
     [
-      "reference/dataframe_query",
+      "concepts/query-and-transform/dataframe_query_example",
       "reference/dataframe_view_query",
     ],
   ],
@@ -85,6 +103,13 @@ features = [
       "howto/serve_web_viewer",
     ],
   ],
+  [
+    "Experimental Viewer client",
+    [
+      "howto/screenshot",
+      "howto/send_table",
+    ],
+  ],
 ]
 
 # --------------------------------------------------------------------------------------------------
@@ -92,7 +117,19 @@ features = [
 [opt_out]
 backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
-  "concepts/explicit_recording",       # The file path differs locally and on CI
+  "concepts/explicit_recording", # The file path differs locally and on CI
+  # Dataplatform examples don't generate rrds
+  "concepts/query-and-transform/dataframe_query_example",
+  "concepts/query-and-transform/segment_properties",
+  "howto/dataframe_operations",
+  "howto/dataframe_performance",
+  "howto/layers",
+  "howto/lerobot_export",
+  "howto/query_images",
+  "howto/query_videos",
+  "howto/query_video_keyframes",
+  "howto/time_alignment",
+  "howto/view_operations",
 ]
 
 
@@ -121,8 +158,8 @@ backwards_check = [
   "rust",
 ]
 "concepts/send_recording" = [
-  "py",   # Requires context (an RRD file to be exported by the user)
-  "cpp",  # Not implemented for C++
+  "py", # Requires context (an RRD file to be exported by the user)
+  "cpp", # Not implemented for C++
   "rust", # Requires context (an RRD file to be exported by the user)
 ]
 "concepts/static/log_static" = [ # pseudo-code
@@ -146,64 +183,131 @@ backwards_check = [
   "rust",
 ]
 "concepts/viscomp-base" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-default" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"concepts/app-model" = [ # Uses a non-standard logging workflow
+"concepts/how-does-rerun-work" = [ # Uses a non-standard logging workflow
   "py",
   "cpp",
   "rust",
 ]
+"concepts/file_sink" = [ # these will create a file on disk and are only meant to illustrate usage
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/grpc_sink" = [ # these will fail to run without a server to connect to
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/query-and-transform/dataframe_query_example" = [ # Skips backwards compatibility check, to opt out of _RERUN_TEST_FORCE_SAVE
+  "cpp",
+  "rust",
+]
+"concepts/query-and-transform/segment_properties" = [ # Skips backwards compatibility check, to opt out of _RERUN_TEST_FORCE_SAVE
+  "cpp",
+  "rust",
+]
 "howto/check_connection_status" = [
-  "py",   # TODO(#2353): Doesn't exist
-  "cpp",  # TODO(#2353): Doesn't exist
+  "py", # TODO(#2353): Doesn't exist
+  "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
+]
+"howto/component_mapping" = [
+  "cpp", # Not implemented
+]
+"howto/dataframe_operations" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/dataframe_performance" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/layers" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/lerobot_export" = [
+  "py", # lerobot is not part of our environment as it causes dependency issues
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/load_urdf" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
 ]
+"howto/query_images" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_videos" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_video_keyframes" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/screenshot" = [
+  "py", # Requires a server to connect to
+  "cpp", # Doesn't exist
+  "rust", # Doesn't exist
+]
 "howto/send_table" = [
-  "py",   # Requires a server to connect to
-  "cpp",  # Doesn't exist
+  "py", # Requires a server to connect to
+  "cpp", # Doesn't exist
   "rust", # Doesn't exist
 ]
 "howto/serve_web_viewer" = [
-  "py",   # Runs indefinitely.
-  "cpp",  # TODO(#4638): Doesn't exist.
+  "py", # Runs indefinitely.
+  "cpp", # TODO(#4638): Doesn't exist.
   "rust", # Runs indefinitely.
 ]
 "howto/set_sinks" = [
-  "py",   # Requires a server to connect to
-  "cpp",  # Doesn't exist
+  "py", # Requires a server to connect to
+  "cpp", # Doesn't exist
   "rust", # Doesn't exist
 ]
+"howto/time_alignment" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "views" = [
-  "cpp",  # TODO(#5520): C++ views are not yet implemented
+  "cpp", # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented
 ]
 "archetypes/image_advanced" = [
-  "cpp",  # Missing examples
+  "cpp", # Missing examples
   "rust", # Missing examples
 ]
 "archetypes/entity_behavior" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"archetypes/pinhole_projections" = [
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "archetypes/video_stream_synthetic" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "archetypes/video_stream_query_and_mux" = [
-  "py",   # Doesn't produce an rrd file.
-  "cpp",  # Not implemented
+  "py", # Doesn't produce an rrd file.
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
@@ -211,12 +315,12 @@ backwards_check = [
   "rust",
   "py",
 ]
-"reference/dataframe_query" = [ # No output
+"migration/transactional_transforms" = [ # Not a complete example -- just a couple of log lines
   "cpp",
   "rust",
   "py",
 ]
-"reference/dataframe_save_blueprint" = [ # No output
+"howto/visualization/save_blueprint" = [ # No output
   "cpp",
   "rust",
   "py",
@@ -226,7 +330,7 @@ backwards_check = [
   "rust",
   "py",
 ]
-"reference/dataframe_view_query_external" = [ # No output
+"howto/visualization/load_blueprint" = [ # No output
   "cpp",
   "rust",
   "py",
@@ -257,22 +361,25 @@ backwards_check = [
   "py",
 ]
 "tutorials/fixed_window_plot" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
   "rust", # Not implemented
-  "py",   # Doesn't terminate
+  "py", # Doesn't terminate
 ]
 "tutorials/visualizer-overrides" = [
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "tutorials/data_out" = [
-  "py",   # Requires context (an RRD file to be exported by the user)
-  "cpp",  # Not implemented
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 "tutorials/visualization" = [
-  "py",   # Requires passing RRD as argument
-  "cpp",  # Not implemented
+  "py", # Requires passing RRD as argument
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/view_operations" = [
+  "cpp", # Not implemented
   "rust", # Not implemented
 ]
 
@@ -295,23 +402,23 @@ backwards_check = [
   "py",
 ]
 "concepts/viscomp-base" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-default" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-component-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-visualizer-override-multiple" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "concepts/viscomp-visualizer-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 quick_start = [ # These examples don't have exactly the same implementation.
@@ -355,6 +462,66 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"archetypes/video_stream_synthetic" = [ # No comparison because video is different on CI
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/query-and-transform/dataframe_query_example" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/query-and-transform/segment_properties" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataframe_operations" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataframe_performance" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/layers" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/lerobot_export" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_images" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_videos" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_video_keyframes" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/time_alignment" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/view_operations" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
 
 # -----------------------------------------------------------------------------
 
@@ -363,10 +530,9 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "concepts/send_recording" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
+"archetypes/encoded_depth_image" = ["$config_dir/../../tests/assets/encoded_depth_image.rvl"]
 "archetypes/video_auto_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
 ]
-"archetypes/video_manual_frames" = [
-  "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
-]
+"archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]

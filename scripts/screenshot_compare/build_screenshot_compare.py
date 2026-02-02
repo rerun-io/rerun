@@ -6,7 +6,7 @@ Generate comparison between examples and their related screenshots.
 This script builds/gather RRDs and corresponding screenshots and displays
 them side-by-side. It pulls from the following sources:
 
-- The screenshots listed in .fbs files (crates/store/re_types/definitions/rerun/**/*.fbs),
+- The screenshots listed in .fbs files (crates/store/re_sdk_types/definitions/rerun/**/*.fbs),
   and the corresponding snippets in the docs (docs/snippets/*.rs)
 - The `rerun.io/viewer` examples, as built by the `re_dev_tools`/`build_examples` script.
 
@@ -109,7 +109,7 @@ def build_python_sdk() -> None:
 
 
 def extract_snippet_urls_from_fbs() -> dict[str, str]:
-    fbs_path = SCRIPT_DIR_PATH.parent.parent / "crates" / "store" / "re_types" / "definitions" / "rerun"
+    fbs_path = SCRIPT_DIR_PATH.parent.parent / "crates" / "store" / "re_sdk_types" / "definitions" / "rerun"
 
     urls = {}
     for fbs in fbs_path.glob("**/*.fbs"):
@@ -140,7 +140,7 @@ def build_snippets() -> None:
     ]
 
     for name in SNIPPET_URLS.keys():
-        run(cmd + [name], cwd=RERUN_DIR)
+        run([*cmd, name], cwd=RERUN_DIR)
 
 
 def collect_snippets() -> Iterable[Example]:

@@ -5,10 +5,20 @@ Borrows heavily from wgpu's CI setup.
 See https://github.com/gfx-rs/wgpu/blob/a8a91737b2d2f378976e292074c75817593a0224/.github/workflows/ci.yml#L10
 In fact we're the exact same Mesa builds that wgpu produces,
 see https://github.com/gfx-rs/ci-build
+
+For macOS, we use SwiftShader instead of lavapipe. SwiftShader is Google's software Vulkan implementation
+that provides better compatibility with macOS.
+Using a software rasterizer avoids GPU-related flakiness on CI runners which we hit quite often when
+running many tests in parallel - we got spurious timeouts and failure to find graphics devices,
+the cause of these issues is unknown. See https://github.com/rerun-io/rerun/issues/11359.
+(Since SwiftShader is Apache 2.0 licensed, we can host the binaries ourselves, which speeds up the whole process.)
+
+TODO(#12450): Investigate whether we can run lavapipe instead.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import platform
 import shutil
@@ -23,6 +33,14 @@ MESA_VERSION = "24.2.3"
 
 # Corresponds to https://github.com/gfx-rs/ci-build/releases
 CI_BINARY_BUILD = "build19"
+
+# SwiftShader version for macOS software rasterization
+# This corresponds to the Chrome version from which the binaries were extracted
+SWIFTSHADER_VERSION = "144.0.7559.60"
+
+# GCloud bucket for SwiftShader binaries
+SWIFTSHADER_GCLOUD_BUCKET = "rerun-test-assets"
+SWIFTSHADER_GCLOUD_PATH = f"swiftshader/{SWIFTSHADER_VERSION}"
 
 CARGO_TARGET_DIR = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
 
@@ -168,9 +186,9 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
             print(f"Error listing Vulkan runtime directory: {e}")
 
     # On CI we run with elevated privileges, therefore VK_DRIVER_FILES is ignored.
-    # See: https://github.com/KhronosGroup/Vulkan-Loader/blob/sdk-1.3.261/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
+    # See: https://github.com/KhronosGroup/Vulkan-Loader/blob/vulkan-sdk-1.4.304/docs/LoaderInterfaceArchitecture.md#elevated-privilege-caveats
     # Therefore, we have to set one of the registry keys that is checked to find the driver.
-    # See: https://vulkan.lunarg.com/doc/view/1.3.243.0/windows/LoaderDriverInterface.html#user-content-driver-discovery-on-windows
+    # See: https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/LoaderDriverInterface.html#driver-discovery-on-windows
 
     # Write registry keys to configure Vulkan drivers
     import winreg
@@ -185,8 +203,180 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     return env_vars
 
 
+def extract_swiftshader_from_chrome() -> tuple[Path, str] | None:
+    """
+    Extract SwiftShader binaries from a local (!) Chrome installation.
+
+    Chrome bundles SwiftShader (Apache 2.0 license) as its software Vulkan implementation.
+
+    This is a helper function for maintainers to upload new SwiftShader versions.
+    Run this script with --upload-swiftshader to extract from Chrome and upload.
+
+    Returns:
+        Tuple of (Path to libvk_swiftshader.dylib, Chrome version string), or None if Chrome is not found.
+    """
+    chrome_paths = [
+        "/Applications/Google Chrome.app",
+        "/Applications/Chromium.app",
+    ]
+
+    for chrome_path in chrome_paths:
+        chrome_base = Path(chrome_path)
+        if not chrome_base.exists():
+            continue
+
+        # Find the latest version directory
+        framework_path = chrome_base / "Contents/Frameworks"
+        if "Chrome" in chrome_path:
+            framework_path = framework_path / "Google Chrome Framework.framework/Versions"
+        else:
+            framework_path = framework_path / "Chromium Framework.framework/Versions"
+
+        if not framework_path.exists():
+            continue
+
+        # Find the latest version (skip symlinks like "Current")
+        versions = [d for d in framework_path.iterdir() if d.is_dir() and not d.is_symlink()]
+        if not versions:
+            continue
+
+        latest_version = max(versions, key=lambda p: p.name)
+        swiftshader_lib = latest_version / "Libraries/libvk_swiftshader.dylib"
+
+        if swiftshader_lib.exists():
+            version_str = latest_version.name
+            print(f"Found SwiftShader in {chrome_path}, version {version_str}")
+            print(f"Library path: {swiftshader_lib}")
+            return swiftshader_lib, version_str
+
+    return None
+
+
+def upload_swiftshader_to_gcloud(lib_path: Path, version: str) -> None:
+    """
+    Upload SwiftShader binary to GCloud storage.
+
+    This is a helper function for maintainers to upload new SwiftShader versions.
+    Run this script with --upload-swiftshader to extract from Chrome and upload.
+
+    SwiftShader is Apache 2.0 licensed, so we can redistribute the binaries.
+    See: https://github.com/google/swiftshader/blob/HEAD/LICENSE.txt
+
+    Args:
+        lib_path: Path to the libvk_swiftshader.dylib file to upload
+        version: Chrome version string (e.g. "143.0.7499.193")
+    """
+    try:
+        from google.cloud import storage
+    except ImportError:
+        print("ERROR: google-cloud-storage is not installed.")
+        print("Install it with: pip install google-cloud-storage")
+        sys.exit(1)
+
+    blob_path = f"swiftshader/{version}/libvk_swiftshader.dylib"
+    gcloud_url = f"gs://{SWIFTSHADER_GCLOUD_BUCKET}/{blob_path}"
+
+    print(f"\nUploading {lib_path} to {gcloud_url}")
+    try:
+        client = storage.Client("rerun-open")
+        bucket = client.bucket(SWIFTSHADER_GCLOUD_BUCKET)
+        blob = bucket.blob(blob_path)
+
+        print(f"Uploading to bucket '{SWIFTSHADER_GCLOUD_BUCKET}' at path '{blob_path}'…")
+        blob.upload_from_filename(str(lib_path))
+
+        print(f"✓ Successfully uploaded to {gcloud_url}")
+
+        if version != SWIFTSHADER_VERSION:
+            print(f"\nNext step: Update SWIFTSHADER_VERSION = '{version}' in this script to use the new version in CI.")
+    except Exception as e:
+        print(f"✗ Upload failed: {e}")
+        print("Make sure you're authenticated with: gcloud auth application-default login")
+        sys.exit(1)
+
+
+def setup_swiftshader_for_macos() -> dict[str, str]:
+    """
+    Sets up SwiftShader software rasterizer for macOS.
+
+    SwiftShader is Google's software Vulkan implementation (Apache 2.0 licensed).
+    We use it for CI testing to avoid GPU-related flakiness on macOS runners.
+
+    This function:
+    1. Downloads libvk_swiftshader.dylib from GCloud storage
+    2. Creates a Vulkan ICD (Installable Client Driver) JSON file pointing to the library
+    3. Sets VK_DRIVER_FILES environment variable to use SwiftShader
+
+    Note: The Vulkan SDK must be installed separately (for the loader and vulkaninfo).
+
+    Returns:
+        Dictionary of environment variables to set.
+    """
+    print("Setting up SwiftShader for macOS…")
+
+    try:
+        from google.cloud import storage
+    except ImportError:
+        print("ERROR: google-cloud-storage is not installed.")
+        print("Install it with: pip install google-cloud-storage")
+        sys.exit(1)
+
+    # Create directory for SwiftShader
+    swiftshader_dir = Path.home() / "swiftshader"
+    swiftshader_dir.mkdir(exist_ok=True)
+
+    swiftshader_lib = swiftshader_dir / "libvk_swiftshader.dylib"
+
+    # Download from GCloud
+    blob_path = f"{SWIFTSHADER_GCLOUD_PATH}/libvk_swiftshader.dylib"
+    gcloud_url = f"gs://{SWIFTSHADER_GCLOUD_BUCKET}/{blob_path}"
+    print(f"Downloading SwiftShader from {gcloud_url}…")
+
+    try:
+        client = storage.Client("rerun-open")
+        bucket = client.bucket(SWIFTSHADER_GCLOUD_BUCKET)
+        blob = bucket.blob(blob_path)
+
+        if not blob.exists():
+            print(f"✗ SwiftShader binary not found at {gcloud_url}")
+            print("If you're a maintainer, upload it with:")
+            print(f"  python {__file__} --upload-swiftshader")
+            sys.exit(1)
+
+        blob.download_to_filename(str(swiftshader_lib))
+        print(f"✓ Downloaded SwiftShader to {swiftshader_lib}")
+
+    except Exception as e:
+        print(f"✗ GCloud download failed: {e}")
+        sys.exit(1)
+
+    # Create ICD JSON file
+    # The ICD file tells the Vulkan loader where to find the driver implementation.
+    icd_json = {
+        "file_format_version": "1.0.0",
+        "ICD": {"library_path": str(swiftshader_lib.resolve()), "api_version": "1.3.0"},
+    }
+
+    icd_json_path = swiftshader_dir / "vk_swiftshader_icd.json"
+
+    with open(icd_json_path, "w", encoding="utf-8") as f:
+        json.dump(icd_json, f, indent=2)
+
+    print(f"✓ Created ICD file at {icd_json_path}")
+
+    # Set environment variables
+    env_vars = {
+        "VK_DRIVER_FILES": str(icd_json_path.resolve()),
+    }
+    set_environment_variables(env_vars)
+
+    return env_vars
+
+
 def vulkan_info(extra_env_vars: dict[str, str]) -> None:
+    """Run vulkaninfo to verify the Vulkan setup."""
     vulkan_sdk_path = os.environ["VULKAN_SDK"]
+
     env = os.environ.copy()
     env["VK_LOADER_DEBUG"] = "all"  # Enable verbose logging of vulkan loader for debugging.
     for key, value in extra_env_vars.items():
@@ -196,7 +386,14 @@ def vulkan_info(extra_env_vars: dict[str, str]) -> None:
         vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfoSDK.exe"
     else:
         vulkaninfo_path = f"{vulkan_sdk_path}/bin/vulkaninfo"
-    print(run([vulkaninfo_path], env=env).stdout)
+
+    if not Path(vulkaninfo_path).exists():
+        print(f"ERROR: vulkaninfo not found at {vulkaninfo_path}")
+        print("The Vulkan SDK should be installed with vulkaninfo utility.")
+        sys.exit(1)
+
+    print(f"\nRunning vulkaninfo to verify setup (from {vulkaninfo_path})…\n")
+    print(run([vulkaninfo_path, "--summary"], env=env).stdout)
 
 
 def check_for_vulkan_sdk() -> None:
@@ -209,20 +406,39 @@ def check_for_vulkan_sdk() -> None:
 
 
 def main() -> None:
+    # Handle --upload-swiftshader flag for maintainers
+    if len(sys.argv) > 1 and sys.argv[1] == "--upload-swiftshader":
+        if sys.platform != "darwin":
+            print("ERROR: --upload-swiftshader is only supported on macOS")
+            sys.exit(1)
+
+        print("Extracting SwiftShader from local Chrome and uploading to GCloud…")
+        result = extract_swiftshader_from_chrome()
+        if result is None:
+            print("ERROR: Could not find SwiftShader in Chrome installation")
+            sys.exit(1)
+
+        lib_path, version = result
+        upload_swiftshader_to_gcloud(lib_path, version)
+        return
+
+    # We only use Vulkan software rasterizers right now.
+    check_for_vulkan_sdk()
+
+    # Normal setup
     if os.name == "nt" and platform.machine() == "AMD64":
         # Note that we could also use WARP, the DX12 software rasterizer.
         # (wgpu tests with both llvmpip and WARP)
         # But practically speaking we prefer Vulkan anyways on Windows today and as such this is
         # both less variation and closer to what Rerun uses when running on a "real" machine.
-        check_for_vulkan_sdk()
         env_vars = setup_lavapipe_for_windows()
         vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform != "darwin" and platform.machine() == "x86_64":
-        check_for_vulkan_sdk()
         env_vars = setup_lavapipe_for_linux()
         vulkan_info(env_vars)
     elif os.name == "posix" and sys.platform == "darwin":
-        print("Skipping software rasterizer setup for macOS - we have to rely on a real GPU here.")
+        env_vars = setup_swiftshader_for_macos()
+        vulkan_info(env_vars)
     else:
         raise ValueError(f"Unsupported OS / architecture: {os.name} / {platform.machine()}")
 

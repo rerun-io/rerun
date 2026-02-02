@@ -12,9 +12,11 @@ from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
 from .capsules3d import Capsules3D
 from .clear import Clear
+from .coordinate_frame import CoordinateFrame
 from .cylinders3d import Cylinders3D
 from .depth_image import DepthImage
 from .ellipsoids3d import Ellipsoids3D
+from .encoded_depth_image import EncodedDepthImage
 from .encoded_image import EncodedImage
 from .geo_line_strings import GeoLineStrings
 from .geo_points import GeoPoints
@@ -41,6 +43,7 @@ from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
 from .transform3d import Transform3D
+from .transform_axes3d import TransformAxes3D
 from .video_frame_reference import VideoFrameReference
 from .video_stream import VideoStream
 from .view_coordinates import ViewCoordinates
@@ -56,9 +59,11 @@ __all__ = [
     "Boxes3D",
     "Capsules3D",
     "Clear",
+    "CoordinateFrame",
     "Cylinders3D",
     "DepthImage",
     "Ellipsoids3D",
+    "EncodedDepthImage",
     "EncodedImage",
     "GeoLineStrings",
     "GeoPoints",
@@ -85,6 +90,7 @@ __all__ = [
     "TextDocument",
     "TextLog",
     "Transform3D",
+    "TransformAxes3D",
     "VideoFrameReference",
     "VideoStream",
     "ViewCoordinates",

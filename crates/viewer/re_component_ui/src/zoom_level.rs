@@ -1,4 +1,4 @@
-use re_types::blueprint::components::ZoomLevel;
+use re_sdk_types::blueprint::components::ZoomLevel;
 use re_viewer_context::MaybeMutRef;
 
 // TODO(#7876): move this to `re_view_map` when the crate is no longer behind a Cargo feature.
@@ -7,7 +7,7 @@ use re_viewer_context::MaybeMutRef;
 // provider). At that point, we will have to set some kind of "max ever" value here.
 const MAX_ZOOM_LEVEL: f64 = 19.0;
 
-/// Editor for a [`re_types::blueprint::components::ZoomLevel`].
+/// Editor for a [`re_sdk_types::blueprint::components::ZoomLevel`].
 pub fn edit_zoom_level(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,

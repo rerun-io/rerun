@@ -5,10 +5,8 @@
 //! - G: Toggle camera mode
 // TODO(#1426): unify camera logic between examples and add a free camera.
 
-use re_renderer::{
-    renderer::GpuMeshInstance,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
-};
+use re_renderer::renderer::GpuMeshInstance;
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use winit::event::ElementState;
 
 mod framework;
@@ -75,7 +73,7 @@ impl framework::Example for Outlines {
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,

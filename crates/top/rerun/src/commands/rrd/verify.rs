@@ -1,10 +1,9 @@
 use std::collections::HashSet;
 
 use arrow::array::AsArray as _;
-
 use itertools::Itertools as _;
 use re_log_types::LogMsg;
-use re_types::reflection::{ComponentDescriptorExt as _, Reflection};
+use re_sdk_types::reflection::{ComponentDescriptorExt as _, Reflection};
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -58,7 +57,7 @@ struct Verifier {
 impl Verifier {
     fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            reflection: re_types::reflection::generate_reflection()?,
+            reflection: re_sdk_types::reflection::generate_reflection()?,
             errors: HashSet::new(),
         })
     }

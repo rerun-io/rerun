@@ -1,17 +1,17 @@
 //! HTTP server for metrics collection and exposition
 
-use parking_lot::Mutex;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::{
-    Router,
-    extract::State,
-    http::{StatusCode, header},
-    response::IntoResponse,
-    routing::get,
-};
-use opentelemetry_sdk::metrics::{ManualReader, data::ResourceMetrics, reader::MetricReader as _};
+use axum::Router;
+use axum::extract::State;
+use axum::http::{StatusCode, header};
+use axum::response::IntoResponse;
+use axum::routing::get;
+use opentelemetry_sdk::metrics::ManualReader;
+use opentelemetry_sdk::metrics::data::ResourceMetrics;
+use opentelemetry_sdk::metrics::reader::MetricReader as _;
+use parking_lot::Mutex;
 use tokio::net::TcpListener;
 use tracing::error;
 
@@ -26,11 +26,7 @@ pub(crate) async fn start_metrics_server(
     reader: Arc<ManualReader>,
 ) -> anyhow::Result<SocketAddr> {
     let addr: SocketAddr = address.parse().map_err(|err| {
-        anyhow::anyhow!(
-            "Failed to parse metrics listen address '{}': {}",
-            address,
-            err
-        )
+        anyhow::anyhow!("Failed to parse metrics listen address '{address}': {err}")
     })?;
 
     let app = Router::new()
@@ -40,16 +36,16 @@ pub(crate) async fn start_metrics_server(
     // Bind synchronously to catch binding errors immediately
     let listener = TcpListener::bind(addr)
         .await
-        .map_err(|err| anyhow::anyhow!("Failed to bind to {}: {}", addr, err))?;
+        .map_err(|err| anyhow::anyhow!("Failed to bind to {addr}: {err}"))?;
 
     let bound_addr = listener
         .local_addr()
-        .map_err(|err| anyhow::anyhow!("Failed to get local address: {}", err))?;
+        .map_err(|err| anyhow::anyhow!("Failed to get local address: {err}"))?;
 
     // Spawn the server task to run asynchronously
     tokio::spawn(async move {
         if let Err(err) = axum::serve(listener, app).await {
-            error!("Metrics server error: {}", err);
+            error!("Metrics server error: {err}");
         }
     });
 
@@ -88,7 +84,7 @@ async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl
                     buffer,
                 ),
                 Err(err) => {
-                    error!("Failed to encode metrics: {}", err);
+                    error!("Failed to encode metrics: {err}");
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         [(header::CONTENT_TYPE, "text/plain")],
@@ -98,7 +94,7 @@ async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl
             }
         }
         Err(err) => {
-            error!("Failed to collect metrics from ManualReader: {}", err);
+            error!("Failed to collect metrics from ManualReader: {err}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 [(header::CONTENT_TYPE, "text/plain")],

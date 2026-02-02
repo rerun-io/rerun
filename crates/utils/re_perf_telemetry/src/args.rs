@@ -66,11 +66,19 @@ pub struct TelemetryArgs {
     /// feature flags instead: <https://docs.rs/tracing/0.1.41/tracing/level_filters/index.html>.
     #[cfg_attr(
         feature = "enabled",
-        clap(long, env = "TELEMETRY_ENABLED", default_value_t = true)
+        clap(
+            long = "telemetry-enabled",
+            env = "TELEMETRY_ENABLED",
+            default_value_t = true
+        )
     )]
     #[cfg_attr(
         not(feature = "enabled"),
-        clap(long, env = "TELEMETRY_ENABLED", default_value_t = false)
+        clap(
+            long = "telemetry-enabled",
+            env = "TELEMETRY_ENABLED",
+            default_value_t = false
+        )
     )]
     pub enabled: bool,
 
@@ -113,9 +121,12 @@ pub struct TelemetryArgs {
 
     /// The service name used for all things telemetry.
     ///
+    /// This is mandatory, but we leave it as optional to give users a chance to set it at initialization
+    /// time (as opposed to e.g. via env configuration) if needed.
+    ///
     /// Part of the `OpenTelemetry` spec.
     #[clap(long, env = "OTEL_SERVICE_NAME")]
-    pub service_name: String,
+    pub service_name: Option<String>,
 
     /// The service attributes used for all things telemetry.
     ///
@@ -223,6 +234,19 @@ pub struct TelemetryArgs {
     /// Part of the `OpenTelemetry` spec.
     #[clap(long, env = "OTEL_METRIC_EXPORT_INTERVAL", default_value = "10000")]
     pub metric_interval: String,
+
+    /// Additional key-value pairs to include in the `tracestate` for trace context propagation.
+    ///
+    /// Expects a comma-separated string of key=value pairs, e.g. `bench_id=my_bench,env=prod`.
+    /// These will be added to the W3C tracestate header for distributed tracing.
+    ///
+    /// This is useful for passing application-specific context that should propagate
+    /// across service boundaries.
+    ///
+    /// Keys must conform to the W3C tracestate spec: lowercase letters, digits,
+    /// underscores, dashes, asterisks, and forward slashes only.
+    #[clap(long, env = "OTEL_PROPAGATORS_TRACESTATE", default_value = "")]
+    pub tracestate: String,
 
     /// Listening address for dedicated HTTP /metrics endpoint for scraping.
     ///

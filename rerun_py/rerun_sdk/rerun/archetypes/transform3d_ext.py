@@ -10,6 +10,7 @@ from rerun.datatypes import (
     QuaternionLike,
     RotationAxisAngle,
     RotationAxisAngleLike,
+    Utf8Like,
     Vec3DLike,
 )
 
@@ -22,7 +23,6 @@ class Transform3DExt:
     def __init__(
         self: Any,
         *,
-        clear: bool = True,
         translation: Vec3DLike | None = None,
         rotation: QuaternionLike | RotationAxisAngleLike | None = None,
         rotation_axis_angle: RotationAxisAngleLike | None = None,
@@ -31,15 +31,14 @@ class Transform3DExt:
         mat3x3: Mat3x3Like | None = None,
         from_parent: bool | None = None,
         relation: TransformRelationLike | None = None,
-        axis_length: Float32Like | None = None,
+        child_frame: Utf8Like | None = None,
+        parent_frame: Utf8Like | None = None,
     ) -> None:
         """
         Create a new instance of the Transform3D archetype.
 
         Parameters
         ----------
-        clear:
-             If true (the default), all unspecified fields will be explicitly cleared.
         translation:
             3D translation vector.
         rotation:
@@ -70,11 +69,31 @@ class Transform3DExt:
             Otherwise, the transform maps from the space to its parent.
 
             Mutually exclusive with `from_parent`.
-        axis_length:
-            Visual length of the 3 axes.
+        child_frame:
+            The child frame this transform transforms from.
 
-            The length is interpreted in the local coordinate system of the transform.
-            If the transform is scaled, the axes will be scaled accordingly.
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+            An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
+            another one temporally.
+
+            ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+            ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+
+            If not specified, this is set to the implicit transform frame of the current entity path.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+        parent_frame:
+            The parent frame this transform transforms into.
+
+            ⚠ This currently also affects the parent frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+
+            If not specified, this is set to the implicit transform frame of the current entity path's parent.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
 
         """
 
@@ -97,8 +116,8 @@ class Transform3DExt:
                 if is_rotation_axis_angle:
                     rotation_axis_angle = rotation  # type: ignore[assignment]
                 else:
+                    is_quaternion = False
                     try:
-                        is_quaternion = False
                         if isinstance(rotation, Quaternion):
                             is_quaternion = True
                         elif isinstance(rotation[0], Quaternion):  # type: ignore[index]
@@ -128,25 +147,15 @@ class Transform3DExt:
                 if from_parent:
                     relation = TransformRelation.ChildFromParent
 
-            if clear:
-                self.__attrs_init__(
-                    translation=translation if translation is not None else [],
-                    rotation_axis_angle=rotation_axis_angle if rotation_axis_angle is not None else [],
-                    quaternion=quaternion if quaternion is not None else [],
-                    scale=scale if scale is not None else [],
-                    mat3x3=mat3x3 if mat3x3 is not None else [],
-                    relation=relation if relation is not None else [],
-                    axis_length=axis_length if axis_length is not None else [],
-                )
-            else:
-                self.__attrs_init__(
-                    translation=translation,
-                    rotation_axis_angle=rotation_axis_angle,
-                    quaternion=quaternion,
-                    scale=scale,
-                    mat3x3=mat3x3,
-                    relation=relation,
-                    axis_length=axis_length,
-                )
+            self.__attrs_init__(
+                translation=translation,
+                rotation_axis_angle=rotation_axis_angle,
+                quaternion=quaternion,
+                scale=scale,
+                mat3x3=mat3x3,
+                relation=relation,
+                child_frame=child_frame,
+                parent_frame=parent_frame,
+            )
             return
         self.__attrs_clear__()

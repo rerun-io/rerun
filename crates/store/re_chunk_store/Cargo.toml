@@ -48,6 +48,7 @@ indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot = { workspace = true, features = ["arc_lock"] }
+saturating_cast.workspace = true
 tap.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
@@ -55,9 +56,16 @@ web-time.workspace = true
 
 [dev-dependencies]
 re_format.workspace = true
-re_types = { workspace = true, features = ["testing"] }
+re_sdk_types = { workspace = true, features = ["testing"] }
 
 anyhow.workspace = true
+criterion.workspace = true
 insta = { workspace = true, features = ["filters"] }
+mimalloc.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
+
+
+[[bench]]
+name = "gc"
+harness = false

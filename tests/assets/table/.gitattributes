@@ -1,0 +1,4 @@
+*.lance filter=lfs diff=lfs merge=lfs -text
+*.txn filter=lfs diff=lfs merge=lfs -text
+*.manifest filter=lfs diff=lfs merge=lfs -text
+

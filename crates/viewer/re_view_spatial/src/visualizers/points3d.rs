@@ -1,28 +1,20 @@
 use itertools::Itertools as _;
-
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Points3D,
-    components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels},
-};
+use re_sdk_types::ArrowString;
+use re_sdk_types::archetypes::Points3D;
+use re_sdk_types::components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels};
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{load_keypoint_connections, process_radius_slice},
-};
-
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_3d_entities, process_labels_3d,
-    utilities::LabeledBatch,
-};
+use super::utilities::LabeledBatch;
+use super::{SpatialViewVisualizerData, process_labels_3d};
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
 // ---
 
@@ -62,7 +54,7 @@ impl Points3DVisualizer {
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Points3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
@@ -88,17 +80,29 @@ impl Points3DVisualizer {
 
             let positions = bytemuck::cast_slice(data.positions);
 
+            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
+
             // Has not custom fallback for radius, so we use the default.
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
-            let colors =
-                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
+            let colors = process_color_slice(
+                ctx,
+                Points3D::descriptor_colors().component,
+                num_instances,
+                &annotation_infos,
+                data.colors,
+            );
 
-            let world_from_obj = ent_context
+            // TODO(grtlr): The following is a quick fix to get multiple instance poses to work
+            // with point clouds: We sent the same point cloud multiple times to the GPU (bad
+            // for memory) and render them with multiple draw calls across different batches (bad
+            // for performance).
+            for world_from_obj in ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, Points3D::name());
-
+                .target_from_instances()
+                .iter()
+                .map(|transform| transform.as_affine3a())
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
@@ -125,33 +129,37 @@ impl Points3DVisualizer {
                         }
                     }
                 }
-            }
 
-            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+                self.data.add_bounding_box(
+                    entity_path.hash(),
+                    obj_space_bounding_box,
+                    world_from_obj,
+                );
 
-            load_keypoint_connections(
-                line_builder,
-                &ent_context.annotations,
-                world_from_obj,
-                entity_path,
-                &keypoints,
-            )?;
-
-            self.data.ui_labels.extend(process_labels_3d(
-                LabeledBatch {
+                load_keypoint_connections(
+                    line_builder,
+                    &ent_context.annotations,
+                    world_from_obj,
                     entity_path,
-                    num_instances,
-                    overall_position: obj_space_bounding_box.center(),
-                    instance_positions: positions.iter().copied(),
-                    labels: &data.labels,
-                    colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
-                    annotation_infos: &annotation_infos,
-                },
-                world_from_obj,
-            ));
+                    &keypoints,
+                )?;
+
+                self.data.ui_labels.extend(process_labels_3d(
+                    LabeledBatch {
+                        entity_path,
+                        num_instances,
+                        overall_position: obj_space_bounding_box.center(),
+                        instance_positions: positions.iter().copied(),
+                        labels: &data.labels,
+                        colors: &colors,
+                        show_labels: data.show_labels.unwrap_or_else(|| {
+                            typed_fallback_for(ctx, Points3D::descriptor_show_labels().component)
+                        }),
+                        annotation_infos: &annotation_infos,
+                    },
+                    world_from_obj,
+                ));
+            }
         }
 
         Ok(())
@@ -165,17 +173,11 @@ impl IdentifiedViewSystem for Points3DVisualizer {
 }
 
 impl VisualizerSystem for Points3DVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Points3D>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Points3D>()
     }
 
     fn execute(
@@ -183,7 +185,9 @@ impl VisualizerSystem for Points3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
         point_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -201,14 +205,17 @@ impl VisualizerSystem for Points3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_position_chunks) =
-                    results.get_required_chunks(Points3D::descriptor_positions())
-                else {
+                let all_position_chunks = results
+                    .get_required_chunk(Points3D::descriptor_positions().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
+                if all_position_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let num_positions = all_position_chunks
                     .iter()
@@ -224,17 +231,40 @@ impl VisualizerSystem for Points3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_positions_indexed = iter_slices::<[f32; 3]>(&all_position_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Points3D::descriptor_colors());
-                let all_radii = results.iter_as(timeline, Points3D::descriptor_radii());
-                let all_labels = results.iter_as(timeline, Points3D::descriptor_labels());
-                let all_class_ids = results.iter_as(timeline, Points3D::descriptor_class_ids());
-                let all_keypoint_ids =
-                    results.iter_as(timeline, Points3D::descriptor_keypoint_ids());
-                let all_show_labels = results.iter_as(timeline, Points3D::descriptor_show_labels());
+                let all_colors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Points3D::descriptor_colors().component,
+                );
+                let all_radii = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Points3D::descriptor_radii().component,
+                );
+                let all_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Points3D::descriptor_labels().component,
+                );
+                let all_class_ids = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Points3D::descriptor_class_ids().component,
+                );
+                let all_keypoint_ids = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Points3D::descriptor_keypoint_ids().component,
+                );
+                let all_show_labels = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Points3D::descriptor_show_labels().component,
+                );
 
                 let data = re_query::range_zip_1x6(
-                    all_positions_indexed,
-                    all_colors.slice::<u32>(),
+                    all_positions_indexed,     // RowId 5
+                    all_colors.slice::<u32>(), // RowId 7
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
                     all_class_ids.slice::<u16>(),
@@ -279,40 +309,13 @@ impl VisualizerSystem for Points3DVisualizer {
             },
         )?;
 
-        Ok(vec![
+        Ok(output.with_draw_data([
             point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
-        ])
+        ]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for Points3DVisualizer {
-    #[inline]
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<ShowLabels> for Points3DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback(
-            ctx,
-            &Points3D::descriptor_positions(),
-            &Points3D::descriptor_labels(),
-        )
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Points3DVisualizer => [Color, ShowLabels]);

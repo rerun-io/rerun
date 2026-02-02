@@ -19,5 +19,5 @@ rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
-rand.workspace = true
+rand = { workspace = true, features = ["std", "thread_rng"] }
 rand_distr.workspace = true

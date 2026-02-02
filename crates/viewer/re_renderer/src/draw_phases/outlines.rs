@@ -43,21 +43,18 @@
 //! More details can be found in the respective shader code.
 //!
 
-use crate::{
-    DebugLabel, RenderContext,
-    allocator::create_and_fill_uniform_buffer_batch,
-    device_caps::DeviceCapabilityTier,
-    include_shader_module,
-    renderer::screen_triangle_vertex_shader,
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
-        PoolError, RenderPipelineDesc, SamplerDesc,
-    },
-};
-
 use smallvec::smallvec;
+
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::device_caps::DeviceCapabilityTier;
+use crate::renderer::screen_triangle_vertex_shader;
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+    PoolError, RenderPipelineDesc, SamplerDesc,
+};
+use crate::{DebugLabel, RenderContext, include_shader_module};
 
 /// What outline (if any) should be drawn.
 ///
@@ -341,6 +338,7 @@ impl OutlineMaskProcessor {
             label: DebugLabel::from(format!("{} - mask pass", self.label)).get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.mask_texture.default_view,
+                depth_slice: None,
                 resolve_target: None, // We're going to do a manual resolve.
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -376,6 +374,7 @@ impl OutlineMaskProcessor {
                 label: DebugLabel::from(format!("{} - jumpflooding_init", self.label)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.voronoi_textures[0].default_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops,
                 })],
@@ -398,6 +397,7 @@ impl OutlineMaskProcessor {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     // Start with texture 1 since the init step wrote to texture 0
                     view: &self.voronoi_textures[(i + 1) % 2].default_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops,
                 })],

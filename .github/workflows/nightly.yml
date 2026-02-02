@@ -9,7 +9,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "write"
@@ -18,6 +18,7 @@ permissions:
   # This is needed since the web viewer build has this permission in order to write comments in PRs
   # (not needed for nightly, but the permission is still active).
   pull-requests: "write"
+  packages: "read"
 
 jobs:
   checks:
@@ -53,19 +54,20 @@ jobs:
 
   # Check that a CLEAN container with just `cargo` on it can build rerun:
   clean-build:
+    timeout-minutes: 60
     name: cargo build on clean container
     strategy:
       matrix:
         runs_on:
-          [ubuntu-latest-16-cores, macos-15-large, windows-latest-8-cores]
+          [ubuntu-latest-16-cores, macos-26-xlarge, windows-latest-8-cores]
     runs-on: ${{ matrix.runs_on }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.88.0
+          toolchain: 1.90.0
 
-      - run: cargo build -p rerun # Intentionally NOT using pixi, becasue we wanna check that we can build outside of pixi
+      - run: cargo build -p rerun # Intentionally NOT using pixi, because we wanna check that we can build outside of pixi
 
   build-web:
     name: "Build web viewer"
@@ -121,15 +123,6 @@ jobs:
       PLATFORM: linux-x64
     secrets: inherit
 
-  build-rerun_c-and-upload-macos-x64:
-    needs: [checks]
-    name: "Mac-Intel: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: nightly-macos-x64
-      PLATFORM: macos-x64
-    secrets: inherit
-
   build-rerun_c-and-upload-macos-arm64:
     needs: [checks]
     name: "Mac-Arm64: Build & Upload rerun_c"
@@ -167,15 +160,6 @@ jobs:
     with:
       CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
-    secrets: inherit
-
-  build-rerun-cli-and-upload-macos-x64:
-    needs: [checks]
-    name: "Mac-x64: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: nightly-macos-x64
-      PLATFORM: macos-x64
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-arm64:
@@ -232,17 +216,6 @@ jobs:
       MODE: "pypi"
     secrets: inherit
 
-  build-wheel-macos-x64:
-    needs: [checks, build-rerun-cli-and-upload-macos-x64]
-    name: "Macos-x64: Build & Upload Wheels"
-    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
-    with:
-      CONCURRENCY: nightly-macos-x64
-      PLATFORM: macos-x64
-      WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
-      MODE: "pypi"
-    secrets: inherit
-
   build-wheel-windows-x64:
     needs: [checks, build-rerun-cli-and-upload-windows-x64]
     name: "Windows-x64: Build & Upload Wheels"
@@ -286,17 +259,6 @@ jobs:
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
     secrets: inherit
-
-  # TODO(#9108): Test macos wheels
-  #  test-wheel-macos-x64:
-  #    needs: [checks, build-wheel-macos-x64]
-  #    name: "macos-x64: Test Wheels"
-  #    uses: ./.github/workflows/reusable_test_wheels.yml
-  #    with:
-  #      CONCURRENCY: nightly-macos-x64
-  #      PLATFORM: macos-x64
-  #      WHEEL_ARTIFACT_NAME: macos-x64-wheel
-  #    secrets: inherit
 
   test-wheel-windows-x64:
     needs: [checks, build-wheel-windows-x64]
@@ -359,7 +321,6 @@ jobs:
         build-wheel-linux-arm64,
         build-wheel-linux-x64,
         build-wheel-macos-arm64,
-        build-wheel-macos-x64,
         build-wheel-windows-x64,
       ]
     uses: ./.github/workflows/reusable_pip_index.yml
@@ -374,7 +335,6 @@ jobs:
         build-rerun_c-and-upload-linux-arm64,
         build-rerun_c-and-upload-linux-x64,
         build-rerun_c-and-upload-macos-arm64,
-        build-rerun_c-and-upload-macos-x64,
         build-rerun_c-and-upload-windows-x64,
       ]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
@@ -383,6 +343,7 @@ jobs:
     secrets: inherit
 
   pre-release:
+    timeout-minutes: 60
     name: Pre Release
     concurrency: nightly
     needs:
@@ -390,12 +351,10 @@ jobs:
         build-rerun-cli-and-upload-linux-arm64,
         build-rerun-cli-and-upload-linux-x64,
         build-rerun-cli-and-upload-macos-arm64,
-        build-rerun-cli-and-upload-macos-x64,
         build-rerun-cli-and-upload-windows-x64,
         build-rerun_c-and-upload-linux-arm64,
         build-rerun_c-and-upload-linux-x64,
         build-rerun_c-and-upload-macos-arm64,
-        build-rerun_c-and-upload-macos-x64,
         build-rerun_c-and-upload-windows-x64,
         bundle-and-upload-rerun_cpp,
         generate-pip-index,

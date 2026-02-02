@@ -5,19 +5,16 @@
 
 use std::sync::Arc;
 
-use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
-
-use re_chunk_store::{Chunk, RangeQuery};
-use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimelineName};
+use egui::epaint::Vertex;
+use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
+use re_chunk_store::{OnMissingChunk, RangeQuery};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, Timeline};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
-use crate::{
-    recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
-    time_panel::TimePanelItem,
-};
-
 use super::time_ranges_ui::TimeRangesUi;
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
+use crate::time_panel::TimePanelItem;
 
 // ----------------------------------------------------------------------------
 
@@ -85,10 +82,16 @@ impl DataDensityGraphPainter {
 
 // ----------------------------------------------------------------------------
 
+#[derive(Clone, Copy)]
+struct Bucket {
+    density: f32,
+    loaded: LoadState,
+}
+
 pub struct DensityGraph {
     /// Number of datapoints per bucket.
     /// `0 == min_x, n-1 == max_x`.
-    buckets: Vec<f32>,
+    buckets: Vec<Bucket>,
     min_x: f32,
     max_x: f32,
 }
@@ -99,7 +102,13 @@ impl DensityGraph {
         let max_x = x_range.max + MARGIN_X;
         let n = ((max_x - min_x) * DENSITIES_PER_UI_PIXEL).ceil() as usize;
         Self {
-            buckets: vec![0.0; n],
+            buckets: vec![
+                Bucket {
+                    density: 0.0,
+                    loaded: LoadState::Loaded,
+                };
+                n
+            ],
             min_x,
             max_x,
         }
@@ -122,7 +131,7 @@ impl DensityGraph {
         )
     }
 
-    pub fn add_point(&mut self, x: f32, count: f32) {
+    pub fn add_point(&mut self, x: f32, count: f32, loaded: LoadState) {
         debug_assert!(0.0 <= count);
 
         let i = self.bucket_index_from_x(x);
@@ -135,16 +144,20 @@ impl DensityGraph {
         if let Ok(i) = usize::try_from(i)
             && let Some(bucket) = self.buckets.get_mut(i)
         {
-            *bucket += (1.0 - fract) * count;
+            bucket.density += (1.0 - fract) * count;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
         if let Ok(i) = usize::try_from(i + 1)
             && let Some(bucket) = self.buckets.get_mut(i)
         {
-            *bucket += fract * count;
+            bucket.density += fract * count;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
     }
 
-    pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32) {
+    pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32, loaded: LoadState) {
+        #![expect(clippy::cast_possible_wrap)] // usize -> i64 is fine
+
         debug_assert!(min_x <= max_x);
 
         if max_x < self.min_x || self.max_x < min_x {
@@ -153,7 +166,7 @@ impl DensityGraph {
 
         if min_x == max_x {
             let center_x = lerp(min_x..=max_x, 0.5);
-            self.add_point(center_x, count);
+            self.add_point(center_x, count, loaded);
             return;
         }
 
@@ -183,7 +196,8 @@ impl DensityGraph {
         if let Ok(i) = usize::try_from(first_bucket as i64)
             && let Some(bucket) = self.buckets.get_mut(i)
         {
-            *bucket += first_bucket_factor * count_per_bucket;
+            bucket.density += first_bucket_factor * count_per_bucket;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
 
         // full buckets:
@@ -193,7 +207,8 @@ impl DensityGraph {
             let max_full_bucket_idx =
                 (max_full_bucket as i64).clamp(0, self.buckets.len() as i64 - 1) as usize;
             for bucket in &mut self.buckets[min_full_bucket_idx..=max_full_bucket_idx] {
-                *bucket += count_per_bucket;
+                bucket.density += count_per_bucket;
+                bucket.loaded = bucket.loaded.and(loaded);
             }
         }
 
@@ -201,7 +216,8 @@ impl DensityGraph {
         if let Ok(i) = usize::try_from(last_bucket as i64)
             && let Some(bucket) = self.buckets.get_mut(i)
         {
-            *bucket += last_bucket_factor * count_per_bucket;
+            bucket.density += last_bucket_factor * count_per_bucket;
+            bucket.loaded = bucket.loaded.and(loaded);
         }
     }
 
@@ -210,7 +226,8 @@ impl DensityGraph {
         data_density_graph_painter: &mut DataDensityGraphPainter,
         y_range: Rangef,
         painter: &egui::Painter,
-        full_color: Color32,
+        loaded_color: Color32,
+        unloaded_color: Color32,
     ) {
         re_tracing::profile_function!();
 
@@ -253,12 +270,12 @@ impl DensityGraph {
         let mut mesh = egui::Mesh::default();
         mesh.vertices.reserve(4 * self.buckets.len());
 
-        for (i, &density) in self.buckets.iter().enumerate() {
+        for (i, bucket) in self.buckets.iter().enumerate() {
             // TODO(emilk): early-out if density is 0 for long stretches
 
             let x = self.x_from_bucket_index(i);
 
-            let normalized_density = data_density_graph_painter.normalize_density(density);
+            let normalized_density = data_density_graph_painter.normalize_density(bucket.density);
 
             let (inner_radius, inner_color) = if normalized_density == 0.0 {
                 (0.0, Color32::TRANSPARENT)
@@ -269,7 +286,13 @@ impl DensityGraph {
                 let inner_radius =
                     (max_radius * normalized_density).at_least(MIN_RADIUS) - feather_radius;
 
-                let inner_color = full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
+                let color = match bucket.loaded {
+                    LoadState::Loaded => loaded_color,
+                    LoadState::Unloaded => unloaded_color,
+                };
+
+                // Color different if we're outside of a segment.
+                let inner_color = color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
 
                 (inner_radius, inner_color)
             };
@@ -348,7 +371,7 @@ fn fast_midpoint(min_y: f32, max_y: f32) -> f32 {
 // ----------------------------------------------------------------------------
 
 /// Blur the input slightly.
-fn smooth(density: &[f32]) -> Vec<f32> {
+fn smooth(buckets: &[Bucket]) -> Vec<Bucket> {
     re_tracing::profile_function!();
 
     fn kernel(x: f32) -> f32 {
@@ -368,24 +391,121 @@ fn smooth(density: &[f32]) -> Vec<f32> {
         debug_assert!(k.is_finite() && 0.0 < *k);
     }
 
-    (0..density.len())
+    (0..buckets.len())
         .map(|i| {
             let mut sum = 0.0;
+            let mut loaded = LoadState::Loaded;
             for (j, &k) in kernel.iter().enumerate() {
-                if let Some(&density) = density.get((i + j).saturating_sub(2)) {
-                    debug_assert!(density >= 0.0);
-                    sum += k * density;
+                if let Some(bucket) = buckets.get((i + j).saturating_sub(2)) {
+                    debug_assert!(bucket.density >= 0.0);
+                    sum += k * bucket.density;
+                    loaded = loaded.and(bucket.loaded);
                 }
             }
             debug_assert!(sum.is_finite() && 0.0 <= sum);
-            sum
+
+            Bucket {
+                density: sum,
+                loaded,
+            }
         })
         .collect()
 }
 
 // ----------------------------------------------------------------------------
 
-#[allow(clippy::too_many_arguments)]
+/// Paints a one point thick line in the given range, indicating which sections
+/// on the time panel have only loaded chunks.
+///
+/// If the time cursor is over unloaded chunks, this paints a dashed line as a
+/// loading indicator.
+///
+/// `paint_fully_loaded_ranges` indicates if fully loaded ranges from the rrd
+/// manifest should be filled in.
+pub fn paint_loaded_indicator_bar(
+    ui: &egui::Ui,
+    time_ranges_ui: &TimeRangesUi,
+    db: &re_entity_db::EntityDb,
+    time_ctrl: &TimeControl,
+    y: f32,
+    full_x_range: Rangef,
+    paint_fully_loaded_ranges: bool,
+) {
+    let Some(timeline) = time_ctrl.timeline() else {
+        return;
+    };
+    if !db.rrd_manifest_index().has_manifest() {
+        return;
+    }
+
+    re_tracing::profile_function!();
+
+    let full_time_range = db
+        .rrd_manifest_index()
+        .timeline_range(time_ctrl.timeline_name())
+        .unwrap_or(AbsoluteTimeRange::EMPTY);
+
+    let is_loading = db
+        .rrd_manifest_index()
+        .chunk_prioritizer()
+        .had_missing_chunks();
+    if is_loading
+        && let Some(start) = time_ranges_ui.x_from_time(full_time_range.min.into())
+        && let Some(end) = time_ranges_ui.x_from_time(full_time_range.max.into())
+    {
+        // How many points the gap is in the dashed line
+        let gap = 5.0;
+        // How many points each line is in the dashed line
+        let line = 3.0;
+        // Animation speed of the loading in points per second
+        let speed = 20.0;
+
+        let x_range = full_x_range.intersection(Rangef::new(start as f32, end as f32));
+
+        if x_range.span() > 0.0 {
+            let dashed_line = egui::Shape::dashed_line_with_offset(
+                &[egui::pos2(x_range.min, y), egui::pos2(x_range.max, y)],
+                ui.visuals().widgets.noninteractive.fg_stroke,
+                &[line],
+                &[gap],
+                ui.input(|i| (i.time * speed) % (gap as f64 + line as f64) - line as f64) as f32,
+            );
+
+            ui.painter()
+                // Need to clip because offsetting the dashed line may end up outside otherwise
+                .with_clip_rect(egui::Rect::from_x_y_ranges(x_range, Rangef::EVERYTHING))
+                .add(dashed_line);
+        }
+    }
+
+    if paint_fully_loaded_ranges {
+        let loaded_ranges_on_timeline = db
+            .rrd_manifest_index()
+            .loaded_ranges_on_timeline(timeline)
+            .collect::<Vec<_>>();
+
+        for range in loaded_ranges_on_timeline {
+            let Some(start) = time_ranges_ui.x_from_time(range.min.into()) else {
+                continue;
+            };
+            let Some(end) = time_ranges_ui.x_from_time(range.max.into()) else {
+                continue;
+            };
+            debug_assert!(start <= end, "Negative x-range");
+            let x = Rangef::new(start as f32, end as f32).intersection(full_x_range);
+
+            if x.span() <= 0.0 {
+                continue;
+            }
+
+            ui.painter()
+                .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
+        }
+    }
+}
+
+/// Returns the hovered time, if any.
+#[expect(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
     data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
@@ -396,11 +516,10 @@ pub fn data_density_graph_ui(
     time_ranges_ui: &TimeRangesUi,
     row_rect: Rect,
     item: &TimePanelItem,
-    tooltips_enabled: bool,
-) {
+) -> Option<TimeInt> {
     re_tracing::profile_function!();
 
-    let timeline = *time_ctrl.timeline();
+    let num_missing_chunk_ids_before = db.storage_engine().store().num_missing_chunk_ids();
 
     let mut data = build_density_graph(
         ui,
@@ -408,8 +527,14 @@ pub fn data_density_graph_ui(
         row_rect,
         db,
         item,
-        timeline.name(),
+        time_ctrl.timeline()?,
         DensityGraphBuilderConfig::default(),
+    );
+
+    debug_assert_eq!(
+        num_missing_chunk_ids_before,
+        db.storage_engine().store().num_missing_chunk_ids(),
+        "DEBUG ASSERT: The density graph should not request new chunks. (This assert assumes single-threaded access to the store)."
     );
 
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
@@ -419,25 +544,15 @@ pub fn data_density_graph_ui(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
+        ui.tokens().density_graph_outside_valid_ranges,
     );
 
-    if tooltips_enabled && let Some(hovered_time) = data.hovered_time {
-        ctx.selection_state().set_hovered(item.to_item());
-
-        if ui.ctx().dragged_id().is_none() {
-            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
-            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-            Tooltip::always_open(
-                ui.ctx().clone(),
-                ui.layer_id(),
-                egui::Id::new("data_tooltip"),
-                egui::PopupAnchor::Pointer,
-            )
-            .gap(12.0)
-            .show(|ui| {
-                show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-            });
-        }
+    if let Some(pointer) = data.hovered_pos {
+        time_ranges_ui
+            .snapped_time_from_x(ui, pointer.x)
+            .map(|t| t.round())
+    } else {
+        data.hovered_time.map(|t| t.round())
     }
 }
 
@@ -447,7 +562,7 @@ pub fn build_density_graph<'a>(
     row_rect: Rect,
     db: &re_entity_db::EntityDb,
     item: &TimePanelItem,
-    timeline: &TimelineName,
+    timeline: &Timeline,
     config: DensityGraphBuilderConfig,
 ) -> DensityGraphBuilder<'a> {
     re_tracing::profile_function!();
@@ -459,28 +574,50 @@ pub fn build_density_graph<'a>(
     let visible_time_range = time_ranges_ui
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
+    {
+        re_tracing::profile_scope!("unloaded chunks");
+        let entries = db.rrd_manifest_index().unloaded_temporal_entries_for(
+            timeline,
+            &item.entity_path,
+            item.component,
+        );
+
+        re_tracing::profile_scope!("add_chunk_range");
+        for entry in entries {
+            data.add_chunk_range(entry.time_range, entry.num_rows, LoadState::Unloaded);
+        }
+    }
+
     // NOTE: These chunks are guaranteed to have data on the current timeline
-    let (chunk_ranges, total_events): (Vec<(Arc<Chunk>, AbsoluteTimeRange, u64)>, u64) = {
+    let (chunk_ranges, total_events): (
+        Vec<(Arc<re_chunk_store::Chunk>, AbsoluteTimeRange, u64)>,
+        u64,
+    ) = {
         re_tracing::profile_scope!("collect chunks");
 
         let engine = db.storage_engine();
         let store = engine.store();
-        let query = RangeQuery::new(*timeline, visible_time_range);
+        let query = RangeQuery::new(*timeline.name(), visible_time_range);
 
-        if let Some(component_descr) = item.component_descr.as_ref() {
+        if let Some(component) = item.component {
             let mut total_num_events = 0;
             (
                 store
-                    .range_relevant_chunks(&query, &item.entity_path, component_descr)
-                    .into_iter()
+                    .range_relevant_chunks(
+                        // Don't cause chunks to be downloaded just to show the density graph
+                        OnMissingChunk::Ignore,
+                        &query,
+                        &item.entity_path,
+                        component,
+                    )
+                    // TODO(RR-3295): what should we do with virtual chunks here?
+                    .into_iter_verbose()
                     .filter_map(|chunk| {
-                        let time_range = chunk.timelines().get(timeline)?.time_range();
-                        chunk
-                            .num_events_for_component(component_descr)
-                            .map(|num_events| {
-                                total_num_events += num_events;
-                                (chunk, time_range, num_events)
-                            })
+                        let time_range = chunk.timelines().get(timeline.name())?.time_range();
+                        chunk.num_events_for_component(component).map(|num_events| {
+                            total_num_events += num_events;
+                            (chunk, time_range, num_events)
+                        })
                     })
                     .collect(),
                 total_num_events,
@@ -490,7 +627,10 @@ pub fn build_density_graph<'a>(
                 &store.id(),
                 |chunks_per_timeline| {
                     let Some(info) = chunks_per_timeline
-                        .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, timeline)
+                        .path_recursive_chunks_for_entity_and_timeline(
+                            &item.entity_path,
+                            timeline.name(),
+                        )
                     else {
                         return Default::default();
                     };
@@ -542,18 +682,20 @@ pub fn build_density_graph<'a>(
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
             let should_render_individual_events = can_render_individual_events
-                && if chunk.is_timeline_sorted(timeline) {
+                && if chunk.is_timeline_sorted(timeline.name()) {
                     num_events_in_chunk < config.max_events_in_sorted_chunk
                 } else {
                     num_events_in_chunk < config.max_events_in_unsorted_chunk
                 };
 
             if should_render_individual_events {
-                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
-                    data.add_chunk_point(time, num_events as usize);
+                for (time, num_events) in
+                    chunk.num_events_cumulative_per_unique_time(timeline.name())
+                {
+                    data.add_chunk_point(time, num_events as usize, LoadState::Loaded);
                 }
             } else {
-                data.add_chunk_range(time_range, num_events_in_chunk);
+                data.add_chunk_range(time_range, num_events_in_chunk, LoadState::Loaded);
             }
         }
     }
@@ -620,7 +762,7 @@ impl Default for DensityGraphBuilderConfig {
     }
 }
 
-fn show_row_ids_tooltip(
+pub fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     time_ctrl: &TimeControl,
@@ -631,19 +773,33 @@ fn show_row_ids_tooltip(
     use re_data_ui::DataUi as _;
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline().name(), at_time);
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline_name(), at_time);
 
     let TimePanelItem {
         entity_path,
-        component_descr,
+        component,
     } = item;
 
-    if let Some(component_descr) = component_descr.as_ref() {
-        ComponentPath::new(entity_path.clone(), component_descr.clone())
-            .data_ui(ctx, ui, ui_layout, &query, db);
+    if let Some(component) = *component {
+        ComponentPath::new(entity_path.clone(), component).data_ui(ctx, ui, ui_layout, &query, db);
     } else {
         re_entity_db::InstancePath::entity_all(entity_path.clone())
             .data_ui(ctx, ui, ui_layout, &query, db);
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum LoadState {
+    Loaded,
+    Unloaded,
+}
+
+impl LoadState {
+    fn and(&self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Loaded, Self::Loaded) => Self::Loaded,
+            _ => Self::Unloaded,
+        }
     }
 }
 
@@ -652,51 +808,59 @@ pub struct DensityGraphBuilder<'a> {
     row_rect: Rect,
 
     pointer_pos: Option<egui::Pos2>,
-    interact_radius: f32,
 
     pub density_graph: DensityGraph,
-    pub hovered_time: Option<TimeInt>,
+
+    closest_event_x_distance: f32,
+    pub hovered_time: Option<TimeReal>,
+    pub hovered_pos: Option<egui::Pos2>, // needed so we can do late-snapping
 }
 
 impl<'a> DensityGraphBuilder<'a> {
     fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
         let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-        let interact_radius = ui.style().interaction.resize_grab_radius_side;
+        let interact_radius = ui.style().interaction.interact_radius;
 
         Self {
             time_ranges_ui,
             row_rect,
 
             pointer_pos,
-            interact_radius,
 
             density_graph: DensityGraph::new(row_rect.x_range()),
+
+            closest_event_x_distance: interact_radius,
             hovered_time: None,
+            hovered_pos: None,
         }
     }
 
-    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize) {
+    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize, loaded: LoadState) {
         let Some(x) = self.time_ranges_ui.x_from_time_f32(time.into()) else {
             return;
         };
 
-        self.density_graph.add_point(x, num_events as _);
+        self.density_graph.add_point(x, num_events as _, loaded);
 
-        if let Some(pointer_pos) = self.pointer_pos {
-            let is_hovered = {
-                // Are we close enough to the point?
-                let distance_sq = pos2(x, self.row_rect.center().y).distance_sq(pointer_pos);
+        if let Some(pointer_pos) = self.pointer_pos
+            && self.row_rect.y_range().contains(pointer_pos.y)
+        {
+            let x_dist = (x - pointer_pos.x).abs();
 
-                distance_sq < self.interact_radius.powi(2)
-            };
-
-            if is_hovered {
-                self.hovered_time = Some(time);
+            if x_dist < self.closest_event_x_distance {
+                self.closest_event_x_distance = x_dist;
+                self.hovered_time = Some(time.into());
+                self.hovered_pos = None;
             }
         }
     }
 
-    fn add_chunk_range(&mut self, time_range: AbsoluteTimeRange, num_events: u64) {
+    fn add_chunk_range(
+        &mut self,
+        time_range: AbsoluteTimeRange,
+        num_events: u64,
+        loaded: LoadState,
+    ) {
         if num_events == 0 {
             return;
         }
@@ -709,28 +873,26 @@ impl<'a> DensityGraphBuilder<'a> {
         };
 
         self.density_graph
-            .add_range((min_x, max_x), num_events as _);
+            .add_range((min_x, max_x), num_events as _, loaded);
 
-        if let Some(pointer_pos) = self.pointer_pos {
-            let is_hovered = if (max_x - min_x).abs() < 1.0 {
+        if let Some(pointer_pos) = self.pointer_pos
+            && self.row_rect.y_range().contains(pointer_pos.y)
+        {
+            let very_thin_range = (max_x - min_x).abs() < 1.0;
+            if very_thin_range {
                 // Are we close enough to center?
                 let center_x = fast_midpoint(max_x, min_x);
-                let distance_sq = pos2(center_x, self.row_rect.center().y).distance_sq(pointer_pos);
+                let x_dist = (center_x - pointer_pos.x).abs();
 
-                distance_sq < self.interact_radius.powi(2)
-            } else {
-                // Are we within time range rect?
-                let time_range_rect = Rect {
-                    min: egui::pos2(min_x, self.row_rect.min.y),
-                    max: egui::pos2(max_x, self.row_rect.max.y),
-                };
-
-                time_range_rect.contains(pointer_pos)
-            };
-
-            if is_hovered && let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x)
-            {
-                self.hovered_time = Some(at_time.round());
+                if x_dist < self.closest_event_x_distance {
+                    self.closest_event_x_distance = x_dist;
+                    self.hovered_pos = Some(pointer_pos);
+                    self.hovered_time = None;
+                }
+            } else if (min_x..=max_x).contains(&pointer_pos.x) {
+                self.closest_event_x_distance = 0.0;
+                self.hovered_pos = Some(pointer_pos);
+                self.hovered_time = None;
             }
         }
     }

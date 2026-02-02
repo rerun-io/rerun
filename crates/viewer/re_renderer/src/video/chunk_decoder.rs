@@ -1,19 +1,14 @@
-#![allow(dead_code, unused_variables)]
+#![expect(unused_variables)]
 
 use std::collections::BTreeMap;
 
-use crossbeam::channel::{Receiver, Sender};
-use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
+use re_video::{Chunk, Frame, FrameContent, Receiver, Sender, Time, VideoDataDescription};
 
-use crate::{
-    RenderContext,
-    resource_managers::{GpuTexture2D, SourceImageDataFormat},
-    video::{
-        VideoPlayerError,
-        player::{TimedDecodingError, VideoTexture},
-    },
-    wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
-};
+use crate::RenderContext;
+use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
+use crate::video::player::{TimedDecodingError, VideoTexture};
+use crate::video::{InsufficientSampleDataError, VideoPlayerError};
+use crate::wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc};
 
 #[derive(Default)]
 struct DecoderOutput {
@@ -62,15 +57,19 @@ pub struct VideoSampleDecoder {
 
     frame_receiver: Receiver<re_video::FrameResult>,
     decoder_output: DecoderOutput,
+
+    /// The [`Chunk::sample_idx`] of the latest submitted sample.
+    latest_sample_idx: Option<usize>,
 }
 
 impl re_byte_size::SizeBytes for VideoSampleDecoder {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             debug_name,
-            decoder: _, // TODO(emilk): maybe we should count this
-            frame_receiver: _,
+            decoder: _,        // TODO(emilk): maybe we should count this
+            frame_receiver: _, // TODO(RR-3366): we should definitely count this
             decoder_output,
+            latest_sample_idx: _,
         } = self;
         debug_name.heap_size_bytes() + decoder_output.heap_size_bytes()
     }
@@ -85,7 +84,8 @@ impl VideoSampleDecoder {
     ) -> Result<Self, VideoPlayerError> {
         re_tracing::profile_function!();
 
-        let (decoder_output_sender, frame_receiver) = crossbeam::channel::unbounded();
+        let (decoder_output_sender, frame_receiver) =
+            re_video::channel(format!("{debug_name}-VideoSampleDecoder"));
         let decoder = make_decoder(decoder_output_sender)?;
 
         Ok(Self {
@@ -93,6 +93,7 @@ impl VideoSampleDecoder {
             decoder,
             decoder_output: DecoderOutput::default(),
             frame_receiver,
+            latest_sample_idx: None,
         })
     }
 
@@ -147,7 +148,25 @@ impl VideoSampleDecoder {
 
     /// Start decoding the given chunk.
     pub fn decode(&mut self, chunk: Chunk) -> Result<(), VideoPlayerError> {
+        let sample_idx = chunk.sample_idx;
+
+        if let Some(latest_sample_idx) = self.latest_sample_idx {
+            // Some sanity checks:
+            if latest_sample_idx + 1 == sample_idx {
+                // All good!
+            } else if latest_sample_idx < sample_idx {
+                return Err(InsufficientSampleDataError::MissingSamples.into());
+            } else if sample_idx == latest_sample_idx {
+                return Err(InsufficientSampleDataError::DuplicateSampleIdx.into());
+            } else {
+                return Err(InsufficientSampleDataError::OutOfOrderSampleIdx.into());
+            }
+        }
+
         self.decoder.submit_chunk(chunk)?;
+
+        self.latest_sample_idx = Some(sample_idx);
+
         Ok(())
     }
 
@@ -156,6 +175,7 @@ impl VideoSampleDecoder {
     /// Should flush all pending frames.
     pub fn end_of_video(&mut self) -> Result<(), VideoPlayerError> {
         self.decoder.end_of_video()?;
+        self.latest_sample_idx = None;
         Ok(())
     }
 
@@ -169,6 +189,14 @@ impl VideoSampleDecoder {
     /// This can be used as a workaround for decoders that are known to need additional samples to produce outputs.
     pub fn min_num_samples_to_enqueue_ahead(&self) -> usize {
         self.decoder.min_num_samples_to_enqueue_ahead()
+    }
+
+    pub fn max_num_samples_to_enqueue_ahead(&self) -> usize {
+        // To not fill memory up too much, only queue up a limited amount of samples.
+        //
+        // 25 here is arbitrary so far, but seems to work well with the encoder
+        // giving back frames and not waiting for a secondary keyframe.
+        self.min_num_samples_to_enqueue_ahead() + 25
     }
 
     /// Returns the latest decoded frame at the given PTS and drops all earlier frames than the given PTS.
@@ -205,6 +233,7 @@ impl VideoSampleDecoder {
         // Flush out any pending frames.
         self.process_decoder_output();
         self.decoder_output.clear();
+        self.latest_sample_idx = None;
 
         Ok(())
     }

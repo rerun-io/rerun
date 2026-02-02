@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import rerun as rr
-from rerun.components import HalfSize3DBatch, PoseRotationAxisAngleBatch, PoseRotationQuatBatch, PoseTranslation3DBatch
+from rerun.components import HalfSize3DBatch, RotationAxisAngleBatch, RotationQuatBatch, Translation3DBatch
 
 from .common_arrays import (
     class_ids_arrays,
@@ -75,11 +75,11 @@ def test_boxes3d() -> None:
         centers = cast("Vec3DArrayLike", centers)
         rotation_axis_angles = cast("RotationAxisAngleArrayLike", rotation_axis_angles)
         quaternions = cast("QuaternionArrayLike", quaternions)
-        radii = cast("Optional[Float32ArrayLike]", radii)
-        colors = cast("Optional[Rgba32ArrayLike]", colors)
-        labels = cast("Optional[Utf8ArrayLike]", labels)
-        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
-        fill_mode = cast("Optional[rr.components.FillMode]", fill_mode)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
+        fill_mode = cast("rr.components.FillMode | None", fill_mode)
 
         print(
             f"rr.Boxes3D(\n"
@@ -108,12 +108,12 @@ def test_boxes3d() -> None:
         print(f"{arch}\n")
 
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
-        assert arch.centers == centers_expected(centers, PoseTranslation3DBatch)
+        assert arch.centers == centers_expected(centers, Translation3DBatch)
         assert arch.rotation_axis_angles == expected_rotation_axis_angles(
             rotation_axis_angles,
-            PoseRotationAxisAngleBatch,
+            RotationAxisAngleBatch,
         )
-        assert arch.quaternions == quaternions_expected(quaternions, PoseRotationQuatBatch)
+        assert arch.quaternions == quaternions_expected(quaternions, RotationQuatBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
         assert arch.fill_mode == rr.components.FillModeBatch._converter(fill_mode)
@@ -148,7 +148,7 @@ def test_boxes3d_rotations_quat() -> None:
             print(f"{arch.quaternions.as_arrow_array()}\n")
 
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
-        assert arch.quaternions == quaternions_expected(quaternions, PoseRotationQuatBatch)
+        assert arch.quaternions == quaternions_expected(quaternions, RotationQuatBatch)
 
 
 # Test `rotations` parameter
@@ -183,12 +183,12 @@ def test_boxes3d_rotations_rotation_axis_angle() -> None:
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
 
         print(
-            f"{arch.rotation_axis_angles} == {expected_rotation_axis_angles(rotation_axis_angles, PoseRotationAxisAngleBatch)}",
+            f"{arch.rotation_axis_angles} == {expected_rotation_axis_angles(rotation_axis_angles, RotationAxisAngleBatch)}",
         )
 
         assert arch.rotation_axis_angles == expected_rotation_axis_angles(
             rotation_axis_angles,
-            PoseRotationAxisAngleBatch,
+            RotationAxisAngleBatch,
         )
 
 

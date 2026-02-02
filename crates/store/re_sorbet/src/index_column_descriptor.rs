@@ -1,5 +1,4 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
-
 use re_log_types::{Timeline, TimelineName};
 
 use crate::MetadataExt as _;
@@ -106,10 +105,13 @@ impl IndexColumnDescriptor {
 
         let mut metadata = std::collections::HashMap::from([
             (
-                "rerun:kind".to_owned(),
+                crate::metadata::RERUN_KIND.to_owned(),
                 crate::ColumnKind::Index.to_string(),
             ),
-            ("rerun:index_name".to_owned(), timeline.name().to_string()),
+            (
+                crate::metadata::SORBET_INDEX_NAME.to_owned(),
+                timeline.name().to_string(),
+            ),
         ]);
         if *is_sorted {
             metadata.insert("rerun:is_sorted".to_owned(), "true".to_owned());
@@ -134,7 +136,7 @@ impl TryFrom<&ArrowField> for IndexColumnDescriptor {
     type Error = UnsupportedTimeType;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        let name = if let Some(name) = field.metadata().get("rerun:index_name") {
+        let name = if let Some(name) = field.metadata().get(crate::metadata::SORBET_INDEX_NAME) {
             name.to_owned()
         } else {
             re_log::debug_once!(

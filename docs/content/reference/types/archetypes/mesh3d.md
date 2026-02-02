@@ -46,7 +46,7 @@ front faces are assumed to those with counter clockwise triangle winding order (
 
 snippet: archetypes/mesh3d_indexed
 
-<picture data-inline-viewer="snippets/mesh3d_indexed">
+<picture data-inline-viewer="snippets/archetypes/mesh3d_indexed">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1024w.png">
@@ -58,7 +58,7 @@ snippet: archetypes/mesh3d_indexed
 
 snippet: archetypes/mesh3d_instancing
 
-<picture data-inline-viewer="snippets/mesh3d_instancing">
+<picture data-inline-viewer="snippets/archetypes/mesh3d_instancing">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
@@ -70,7 +70,7 @@ snippet: archetypes/mesh3d_instancing
 
 snippet: archetypes/mesh3d_partial_updates
 
-<picture data-inline-viewer="snippets/mesh3d_partial_updates">
+<picture data-inline-viewer="snippets/archetypes/mesh3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1024w.png">

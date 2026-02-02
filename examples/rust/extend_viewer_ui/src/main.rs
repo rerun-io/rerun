@@ -2,7 +2,7 @@
 
 use rerun::external::{
     arrow, eframe, egui, re_chunk_store, re_crash_handler, re_entity_db, re_grpc_server, re_log,
-    re_log_types, re_memory, re_types, re_viewer, tokio,
+    re_log_types, re_memory, re_sdk_types, re_viewer, tokio,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -24,8 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
-    // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let (rx, _) = re_grpc_server::spawn_with_recv(
+    // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
+    let rx = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         Default::default(),
         re_grpc_server::shutdown::never(),
@@ -121,7 +121,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for entity_path in entity_db.entity_paths() {
+            for entity_path in entity_db.sorted_entity_paths() {
                 ui.collapsing(entity_path.to_string(), |ui| {
                     entity_ui(ui, entity_db, timeline, entity_path);
                 });
@@ -143,7 +143,7 @@ fn entity_ui(
     {
         for component in &components {
             ui.collapsing(component.to_string(), |ui| {
-                component_ui(ui, entity_db, timeline, entity_path, component);
+                component_ui(ui, entity_db, timeline, entity_path, *component);
             });
         }
     }
@@ -154,19 +154,18 @@ fn component_ui(
     entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
-    component_descriptor: &re_types::ComponentDescriptor,
+    component: re_sdk_types::ComponentIdentifier,
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
     let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results =
-        entity_db
-            .storage_engine()
-            .cache()
-            .latest_at(&query, entity_path, [component_descriptor]);
+    let results = entity_db
+        .storage_engine()
+        .cache()
+        .latest_at(&query, entity_path, [component]);
 
-    if let Some(data) = results.component_batch_raw(component_descriptor) {
+    if let Some(data) = results.component_batch_raw(component) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {

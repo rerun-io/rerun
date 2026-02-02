@@ -1,23 +1,24 @@
 use ahash::HashMap;
-use arrow::array::ArrayRef;
-use parking_lot::RwLock;
-
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_global_context::{DisplayMode, SystemCommand};
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
+use re_sdk_types::ViewClassIdentifier;
 use re_ui::ContextExt as _;
+use re_ui::list_item::ListItem;
 
+use crate::command_sender::{SelectionSource, SetSelection};
+use crate::component_fallbacks::FallbackProviderRegistry;
 use crate::drag_and_drop::DragAndDropPayload;
+use crate::query_context::DataQueryResult;
+use crate::time_control::TimeControlCommand;
 use crate::{
-    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
-    IndicatedEntities, ItemCollection, MaybeVisualizableEntities, PerVisualizer, StoreContext,
-    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
-    query_context::DataQueryResult,
+    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DisplayMode,
+    DragAndDropManager, GlobalContext, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
+    PerVisualizerTypeInViewClass, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
-use crate::{GlobalContext, Item, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -32,25 +33,27 @@ pub struct ViewerContext<'a> {
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
 
-    /// Mapping from class and system to entities for the store
-    ///
-    /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable entities etc.
-    pub maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
+    /// Defaults for components in various contexts.
+    pub component_fallback_registry: &'a FallbackProviderRegistry,
 
-    /// For each visualizer, the set of entities that have at least one matching indicator component.
+    /// For each visualizer, the set of entities that are known to have all its required components.
+    // TODO(andreas): This could have a generation id, allowing to update heuristics entities etc. more lazily.
+    pub visualizable_entities_per_visualizer: &'a PerVisualizerType<VisualizableEntities>,
+
+    /// For each visualizer, the set of entities with relevant archetypes.
     ///
     /// TODO(andreas): Should we always do the intersection with `maybe_visualizable_entities_per_visualizer`
-    ///                 or are we ever interested in a (definitely-)non-visualizable but indicator-matching entity?
-    pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
+    ///                 or are we ever interested in a (definitely-)non-visualizable but archetype-matching entity?
+    pub indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
 
     /// All the query results for this frame.
     pub query_results: &'a HashMap<ViewId, DataQueryResult>,
 
     /// UI config for the current recording (found in [`EntityDb`]).
-    pub rec_cfg: &'a RecordingConfig,
+    pub time_ctrl: &'a TimeControl,
 
     /// UI config for the current blueprint.
-    pub blueprint_cfg: &'a RecordingConfig,
+    pub blueprint_time_ctrl: &'a TimeControl,
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
@@ -68,7 +71,7 @@ pub struct ViewerContext<'a> {
     pub drag_and_drop_manager: &'a DragAndDropManager,
 
     /// Where we are getting our data from.
-    pub connected_receivers: &'a re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+    pub connected_receivers: &'a re_log_channel::LogReceiverSet,
 
     pub store_context: &'a StoreContext<'a>,
 }
@@ -86,12 +89,6 @@ impl ViewerContext<'_> {
     }
 
     /// Runtime info about components and archetypes.
-    ///
-    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
-    /// is not able to provide a value.
-    ///
-    /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
-    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
     pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
         self.global_context.reflection
     }
@@ -114,6 +111,16 @@ impl ViewerContext<'_> {
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub fn render_ctx(&self) -> &re_renderer::RenderContext {
         self.global_context.render_ctx
+    }
+
+    /// How to configure the renderer
+    #[inline]
+    pub fn render_mode(&self) -> re_renderer::RenderMode {
+        if self.global_context.is_test {
+            re_renderer::RenderMode::Deterministic
+        } else {
+            re_renderer::RenderMode::Beautiful
+        }
     }
 
     /// Interface for sending commands back to the app
@@ -163,6 +170,22 @@ impl ViewerContext<'_> {
         self.selection_state.selected_items()
     }
 
+    /// Returns if this item should be displayed as selected or not.
+    ///
+    /// This does not always line up with [`Self::selection`], if we
+    /// are currently loading something that will be prioritized here.
+    pub fn is_selected_or_loading(&self, item: &Item) -> bool {
+        if let DisplayMode::Loading(source) = self.display_mode() {
+            if let Item::DataSource(other_source) = item {
+                source.is_same_ignoring_uri_fragments(other_source)
+            } else {
+                false
+            }
+        } else {
+            self.selection().contains_item(item)
+        }
+    }
+
     /// Returns the currently hovered objects.
     pub fn hovered(&self) -> &ItemCollection {
         self.selection_state.hovered_items()
@@ -189,7 +212,21 @@ impl ViewerContext<'_> {
     }
 
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
-        self.rec_cfg.time_ctrl.read().current_query()
+        self.time_ctrl.current_query()
+    }
+
+    /// Helper function to send a [`SystemCommand::TimeControlCommands`] command
+    /// with the current store id.
+    pub fn send_time_commands(&self, commands: impl IntoIterator<Item = TimeControlCommand>) {
+        let commands: Vec<_> = commands.into_iter().collect();
+
+        if !commands.is_empty() {
+            self.command_sender()
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: self.store_id().clone(),
+                    time_commands: commands,
+                });
+        }
     }
 
     /// Consistently handle the selection, hover, drag start interactions for a given set of items.
@@ -211,6 +248,9 @@ impl ViewerContext<'_> {
     /// - …unless cmd/ctrl is held, in which case the item is added to the selection and the entire
     ///   selection is dragged.
     /// - When dragging a selected item, the entire selection is dragged as well.
+    ///
+    /// You might also want to call [`Self::handle_select_focus_sync`] to keep keyboard focus in
+    /// sync with selection.
     pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,
@@ -226,6 +266,13 @@ impl ViewerContext<'_> {
             selection_state.set_hovered(interacted_items.clone());
         }
 
+        let single_selected = self.selection().single_item() == interacted_items.single_item();
+
+        // If we were just selected, scroll into view
+        if single_selected && self.selection_state().selection_changed().is_some() {
+            response.scroll_to_me(None);
+        }
+
         if draggable && response.drag_started() {
             let mut selected_items = selection_state.selected_items().clone();
             let is_already_selected = interacted_items
@@ -238,7 +285,7 @@ impl ViewerContext<'_> {
             let dragged_items = if !is_already_selected && is_cmd_held {
                 selected_items.extend(interacted_items);
                 self.command_sender()
-                    .send_system(SystemCommand::SetSelection(selected_items.clone()));
+                    .send_system(SystemCommand::set_selection(selected_items.clone()));
                 selected_items
             } else if !is_already_selected {
                 interacted_items
@@ -329,51 +376,65 @@ impl ViewerContext<'_> {
                     );
 
                     self.command_sender()
-                        .send_system(SystemCommand::SetSelection(new_selection));
+                        .send_system(SystemCommand::set_selection(new_selection));
                 } else {
                     self.command_sender()
-                        .send_system(SystemCommand::SetSelection(interacted_items));
+                        .send_system(SystemCommand::set_selection(interacted_items));
                 }
             }
         }
     }
 
-    /// Returns a placeholder value for a given component, solely identified by its name.
+    /// Helper to synchronize item selection with egui focus.
     ///
-    /// A placeholder is an array of the component type with a single element which takes on some default value.
-    /// It can be set as part of the reflection information, see [`re_types_core::reflection::ComponentReflection::custom_placeholder`].
-    /// Note that automatically generated placeholders ignore any extension types.
-    ///
-    /// This requires the component type to be known by either datastore or blueprint store and
-    /// will return a placeholder for a nulltype otherwise, logging an error.
-    /// The rationale is that to get into this situation, we need to know of a component type for which
-    /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
-    // TODO(andreas): Are there cases where this is expected and how to handle this?
-    pub fn placeholder_for(&self, component: re_chunk::ComponentType) -> ArrayRef {
-        let datatype = if let Some(reflection) = self.reflection().components.get(&component) {
-            // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
-            if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
-                return placeholder.clone();
-            }
-            reflection.datatype.clone()
-        } else {
-            self.recording_engine()
-                .store()
-                .lookup_datatype(&component)
-                .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
-                .unwrap_or_else(|| {
-                         re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-                                    arrow::datatypes::DataType::Null})
-        };
+    /// Call if _this_ is where the user would expect keyboard focus to be
+    /// when the item is selected (e.g. blueprint tree for views, recording panel for recordings).
+    pub fn handle_select_focus_sync(
+        &self,
+        response: &egui::Response,
+        interacted_items: impl Into<ItemCollection>,
+    ) {
+        let interacted_items = interacted_items
+            .into()
+            .into_mono_instance_path_items(self.recording(), &self.current_query());
 
-        // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
-        // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-        re_types::reflection::generic_placeholder_for_datatype(&datatype)
+        // Focus -> Selection
+
+        // We want the item to be selected if it was selected with arrow keys (in list_item)
+        // but not when focused using e.g. the tab key.
+        if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
+            self.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    SetSelection::new(interacted_items.clone())
+                        .with_source(SelectionSource::ListItemNavigation),
+                ));
+        }
+
+        // Selection -> Focus
+
+        let single_selected = self.selection().single_item() == interacted_items.single_item();
+        if single_selected {
+            // If selection changes, and a single item is selected, the selected item should
+            // receive egui focus.
+            // We don't do this if selection happened due to list item navigation to avoid
+            // a feedback loop.
+            let selection_changed = self
+                .selection_state()
+                .selection_changed()
+                .is_some_and(|source| source != SelectionSource::ListItemNavigation);
+
+            // If there is a single selected item and nothing is focused, focus that item.
+            let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());
+
+            if selection_changed || nothing_focused {
+                response.request_focus();
+            }
+        }
     }
 
     /// Are we running inside the Safari browser?
     pub fn is_safari_browser(&self) -> bool {
-        #![allow(clippy::unused_self)]
+        #![expect(clippy::unused_self)]
 
         #[cfg(target_arch = "wasm32")]
         fn is_safari_browser_inner() -> Option<bool> {
@@ -402,14 +463,40 @@ impl ViewerContext<'_> {
         self.command_sender()
             .send_system(SystemCommand::ResetDisplayMode);
     }
-}
 
-// ----------------------------------------------------------------------------
+    /// Iterates over all entities that are visualizeable for a given view class.
+    ///
+    /// This is a subset of [`Self::visualizable_entities_per_visualizer`], filtered to only include entities
+    /// that are relevant for the visualizers used in the given view class.
+    pub fn iter_visualizable_entities_for_view_class(
+        &self,
+        class: ViewClassIdentifier,
+    ) -> impl Iterator<Item = (crate::ViewSystemIdentifier, &VisualizableEntities)> {
+        let Some(view_class_entry) = self.view_class_registry().class_entry(class) else {
+            return itertools::Either::Left(std::iter::empty());
+        };
 
-/// UI config for the current recording (found in [`EntityDb`]).
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct RecordingConfig {
-    /// The current time of the time panel, how fast it is moving, etc.
-    pub time_ctrl: RwLock<TimeControl>,
+        itertools::Either::Right(
+            self.visualizable_entities_per_visualizer
+                .iter()
+                .filter(|(viz_id, _entities)| {
+                    view_class_entry.visualizer_system_ids.contains(viz_id)
+                })
+                .map(|(viz_id, entities)| (*viz_id, entities)),
+        )
+    }
+
+    /// Like [`Self::iter_visualizable_entities_for_view_class`], but collects into a [`PerVisualizerTypeInViewClass`].
+    pub fn collect_visualizable_entities_for_view_class(
+        &self,
+        view_class_identifier: ViewClassIdentifier,
+    ) -> PerVisualizerTypeInViewClass<VisualizableEntities> {
+        PerVisualizerTypeInViewClass {
+            view_class_identifier,
+            per_visualizer: self
+                .iter_visualizable_entities_for_view_class(view_class_identifier)
+                .map(|(viz_id, entities)| (viz_id, entities.clone()))
+                .collect(),
+        }
+    }
 }

@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
+use re_log_channel::LogSender;
 use re_log_types::{FileSource, LogMsg};
-use re_smart_channel::Sender;
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
 
@@ -21,7 +21,7 @@ pub fn load_from_path(
     file_source: FileSource,
     path: &std::path::Path,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
-    tx: &Sender<LogMsg>,
+    tx: &LogSender,
 ) -> Result<(), DataLoaderError> {
     use re_log_types::ApplicationId;
 
@@ -71,7 +71,7 @@ pub fn load_from_file_contents(
     filepath: &std::path::Path,
     contents: std::borrow::Cow<'_, [u8]>,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
-    tx: &Sender<LogMsg>,
+    tx: &LogSender,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!(filepath.to_string_lossy());
 
@@ -99,12 +99,7 @@ pub(crate) fn prepare_store_info(
 
     LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: *re_chunk::RowId::new(),
-        info: re_log_types::StoreInfo {
-            store_id: store_id.clone(),
-            cloned_from: None,
-            store_source,
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
-        },
+        info: re_log_types::StoreInfo::new(store_id.clone(), store_source),
     })
 }
 
@@ -122,7 +117,7 @@ pub(crate) fn load(
     settings: &crate::DataLoaderSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
-) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
+) -> Result<crossbeam::channel::Receiver<LoadedData>, DataLoaderError> {
     re_tracing::profile_function!(path.display().to_string());
 
     // On native we run loaders in parallel so this needs to become static.
@@ -130,19 +125,21 @@ pub(crate) fn load(
         contents.map(|contents| std::sync::Arc::new(Cow::Owned(contents.into_owned())));
 
     let rx_loader = {
-        let (tx_loader, rx_loader) = std::sync::mpsc::channel();
+        let (tx_loader, rx_loader) = crossbeam::channel::bounded(1024);
 
         let any_compatible_loader = {
             #[derive(PartialEq, Eq)]
             struct CompatibleLoaderFound;
-            let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
+            let (tx_feedback, rx_feedback) =
+                crossbeam::channel::bounded::<CompatibleLoaderFound>(128);
 
             // When loading a file type with native support (.rrd, .mcap, .png, …)
             // then we don't need the overhead and noise of external data loaders:
             // See <https://github.com/rerun-io/rerun/issues/6530>.
             let loaders = {
-                use crate::DataLoader as _;
                 use rayon::iter::Either;
+
+                use crate::DataLoader as _;
 
                 let extension = crate::extension(path);
                 if crate::is_supported_file_extension(&extension) {
@@ -224,16 +221,16 @@ pub(crate) fn load(
 /// (whether it is builtin, custom or external) was capable of loading the data, in which case
 /// [`DataLoaderError::Incompatible`] will be returned.
 #[cfg(target_arch = "wasm32")]
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub(crate) fn load(
     settings: &crate::DataLoaderSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
-) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
+) -> Result<crossbeam::channel::Receiver<LoadedData>, DataLoaderError> {
     re_tracing::profile_function!(path.display().to_string());
 
     let rx_loader = {
-        let (tx_loader, rx_loader) = std::sync::mpsc::channel();
+        let (tx_loader, rx_loader) = crossbeam::channel::unbounded();
 
         let any_compatible_loader = crate::iter_loaders().map(|loader| {
             if let Some(contents) = contents.as_deref() {
@@ -275,8 +272,8 @@ pub(crate) fn load(
 pub(crate) fn send(
     settings: crate::DataLoaderSettings,
     file_source: FileSource,
-    rx_loader: std::sync::mpsc::Receiver<LoadedData>,
-    tx: &Sender<LogMsg>,
+    rx_loader: crossbeam::channel::Receiver<LoadedData>,
+    tx: &LogSender,
 ) {
     spawn({
         re_tracing::profile_function!();
@@ -324,7 +321,7 @@ pub(crate) fn send(
                         continue;
                     }
                 };
-                tx.send(msg).ok();
+                tx.send(msg.into()).ok();
             }
 
             for (store_id, tracked) in store_info_tracker {
@@ -340,7 +337,7 @@ pub(crate) fn send(
 
                 if should_send_new_store_info {
                     let store_info = prepare_store_info(&store_id, file_source.clone());
-                    tx.send(store_info).ok();
+                    tx.send(store_info.into()).ok();
                 }
             }
 

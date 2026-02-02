@@ -1,30 +1,25 @@
 use re_log_types::EntityPath;
-use re_types::{
-    ViewClassIdentifier,
-    blueprint::{
-        self,
-        archetypes::{
-            ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
-            VisualBounds2D,
-        },
-    },
+use re_sdk_types::blueprint::archetypes::{
+    ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition, GraphBackground,
+    VisualBounds2D,
 };
+use re_sdk_types::components::Color;
+use re_sdk_types::{ViewClassIdentifier, blueprint};
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
-use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
+use re_view::controls::DRAG_PAN2D_BUTTON;
+use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, RecommendedView, SystemCommand, SystemCommandSender as _,
-    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+    Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
+    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    graph::Graph,
-    layout::{ForceLayoutParams, LayoutRequest},
-    ui::{GraphViewState, LevelOfDetail, draw_graph, view_property_force_ui},
-    visualizers::{EdgesVisualizer, NodeVisualizer, merge},
-};
+use crate::graph::Graph;
+use crate::layout::{ForceLayoutParams, LayoutRequest};
+use crate::ui::{GraphViewState, LevelOfDetail, draw_graph, view_property_force_ui};
+use crate::visualizers::{EdgesVisualizer, NodeVisualizer, merge};
 
 #[derive(Default)]
 pub struct GraphView;
@@ -62,6 +57,60 @@ impl ViewClass for GraphView {
         &self,
         system_registry: &mut ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        fn valid_bound(rect: &egui::Rect) -> bool {
+            rect.is_finite() && rect.is_positive()
+        }
+
+        system_registry.register_fallback_provider(
+            VisualBounds2D::descriptor_range().component,
+            |ctx| {
+                let Ok(state) = ctx.view_state().downcast_ref::<GraphViewState>() else {
+                    return re_sdk_types::blueprint::components::VisualBounds2D::default();
+                };
+
+                match state.layout_state.bounding_rect() {
+                    Some(rect) if valid_bound(&rect) => rect.into(),
+                    _ => re_sdk_types::blueprint::components::VisualBounds2D::default(),
+                }
+            },
+        );
+
+        // ForceManyBody
+        system_registry.register_fallback_provider(
+            blueprint::archetypes::ForceManyBody::descriptor_strength().component,
+            |_| blueprint::components::ForceStrength::from(-60.),
+        );
+        system_registry.register_fallback_provider(
+            blueprint::archetypes::ForceManyBody::descriptor_enabled().component,
+            |_| blueprint::components::Enabled::from(true),
+        );
+
+        // ForcePosition
+        system_registry.register_fallback_provider(
+            blueprint::archetypes::ForcePosition::descriptor_strength().component,
+            |_| blueprint::components::ForceStrength::from(0.01),
+        );
+        system_registry.register_fallback_provider(
+            blueprint::archetypes::ForcePosition::descriptor_enabled().component,
+            |_| blueprint::components::Enabled::from(true),
+        );
+
+        // ForceLink
+        system_registry.register_fallback_provider(
+            blueprint::archetypes::ForceLink::descriptor_enabled().component,
+            |_| blueprint::components::Enabled::from(true),
+        );
+        system_registry.register_fallback_provider(
+            blueprint::archetypes::ForceLink::descriptor_iterations().component,
+            |_| blueprint::components::ForceIterations::from(3),
+        );
+
+        // ForceCollisionRadius
+        system_registry.register_fallback_provider(
+            blueprint::archetypes::ForceCollisionRadius::descriptor_iterations().component,
+            |_| blueprint::components::ForceIterations::from(1),
+        );
+
         system_registry.register_visualizer::<NodeVisualizer>()?;
         system_registry.register_visualizer::<EdgesVisualizer>()
     }
@@ -96,21 +145,7 @@ impl ViewClass for GraphView {
         ctx: &ViewerContext<'_>,
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
-        // TODO(grtlr): Consider using `suggest_view_for_each_entity` here too.
-        if let Some(maybe_visualizable) = ctx
-            .maybe_visualizable_entities_per_visualizer
-            .get(&NodeVisualizer::identifier())
-        {
-            ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
-                if include_entity(&entity) {
-                    Some(RecommendedView::new_single_entity(entity))
-                } else {
-                    None
-                }
-            }))
-        } else {
-            ViewSpawnHeuristics::empty()
-        }
+        suggest_view_for_each_entity::<NodeVisualizer>(ctx, include_entity)
     }
 
     /// Additional UI displayed when the view is selected.
@@ -121,7 +156,7 @@ impl ViewClass for GraphView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<GraphViewState>()?;
@@ -132,13 +167,14 @@ impl ViewClass for GraphView {
         });
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<VisualBounds2D>(&ctx, ui, self);
-            view_property_force_ui::<ForceLink>(&ctx, ui, self);
-            view_property_force_ui::<ForceManyBody>(&ctx, ui, self);
-            view_property_force_ui::<ForcePosition>(&ctx, ui, self);
-            view_property_force_ui::<ForceCenter>(&ctx, ui, self);
-            view_property_force_ui::<ForceCollisionRadius>(&ctx, ui, self);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<GraphBackground>(&ctx, ui);
+            view_property_ui::<VisualBounds2D>(&ctx, ui);
+            view_property_force_ui::<ForceLink>(&ctx, ui);
+            view_property_force_ui::<ForceManyBody>(&ctx, ui);
+            view_property_force_ui::<ForcePosition>(&ctx, ui);
+            view_property_force_ui::<ForceCenter>(&ctx, ui);
+            view_property_force_ui::<ForceCollisionRadius>(&ctx, ui);
         });
 
         Ok(())
@@ -166,8 +202,18 @@ impl ViewClass for GraphView {
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
-        let params = ForceLayoutParams::get(&view_ctx, self)?;
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let params = ForceLayoutParams::get(&view_ctx)?;
+
+        let background = ViewProperty::from_archetype::<GraphBackground>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
+        let background_color = background.component_or_fallback::<Color>(
+            &view_ctx,
+            GraphBackground::descriptor_color().component,
+        )?;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
@@ -175,7 +221,7 @@ impl ViewClass for GraphView {
             query.view_id,
         );
         let rect_in_scene: blueprint::components::VisualBounds2D = bounds_property
-            .component_or_fallback(&view_ctx, self, &VisualBounds2D::descriptor_range())?;
+            .component_or_fallback(&view_ctx, VisualBounds2D::descriptor_range().component)?;
 
         // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());
@@ -192,6 +238,8 @@ impl ViewClass for GraphView {
         let level_of_detail = LevelOfDetail::from_scaling(scale.min_elem());
 
         let mut hover_click_item: Option<(Item, egui::Response)> = None;
+
+        ui.painter().rect_filled(rect_in_ui, 0.0, background_color);
 
         let resp = egui::Scene::new()
             .show(ui, &mut scene_rect, |ui| {
@@ -218,9 +266,7 @@ impl ViewClass for GraphView {
         if resp.clicked() {
             // clicked elsewhere, select the view
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::View(query.view_id).into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
         // Update blueprint if changed

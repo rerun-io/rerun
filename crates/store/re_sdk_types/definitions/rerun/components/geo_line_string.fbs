@@ -1,0 +1,15 @@
+
+namespace rerun.components;
+
+// ---
+
+/// A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
+table GeoLineString (
+  "attr.python.aliases": "datatypes.DVec2DArrayLike | npt.NDArray[np.float64]",
+  "attr.python.array_aliases": "npt.NDArray[np.float64]",
+  "attr.rust.derive": "Default, PartialEq",
+  "attr.rust.repr": "transparent",
+  "attr.cpp.no_field_ctors"
+) {
+  lat_lon: [rerun.datatypes.DVec2D] (order: 100);
+}

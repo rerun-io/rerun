@@ -1,14 +1,12 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use crossbeam::channel::{Receiver, Sender, unbounded};
+use super::{AsyncDecoder, Chunk, Result};
 
 #[cfg(with_dav1d)]
 use crate::{VideoDataDescription, decode::FrameResult};
 
-use super::{AsyncDecoder, Chunk, Result};
+use crate::{Receiver, Sender};
 
 enum Command {
     Chunk(Chunk),
@@ -17,6 +15,16 @@ enum Command {
     Reset(Box<VideoDataDescription>),
 
     Stop,
+}
+
+impl re_byte_size::SizeBytes for Command {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Chunk(chunk) => chunk.heap_size_bytes(),
+            Self::Reset(video_data_description) => video_data_description.heap_size_bytes(),
+            Self::Stop => 0,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -75,7 +83,7 @@ impl AsyncDecoderWrapper {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let (command_tx, command_rx) = unbounded();
+        let (command_tx, command_rx) = crate::channel(format!("{debug_name}-channel"));
         let comms = Comms::default();
 
         let thread = std::thread::Builder::new()
@@ -149,8 +157,6 @@ fn decoder_thread(
     command_rx: &Receiver<Command>,
     output_sender: &Sender<FrameResult>,
 ) {
-    #![allow(clippy::debug_assert_with_mut_call)]
-
     while let Ok(command) = command_rx.recv() {
         if comms.should_stop.load(Ordering::Acquire) {
             re_log::debug!("Should stop");

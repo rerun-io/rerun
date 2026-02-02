@@ -1,7 +1,5 @@
-use std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    str::FromStr as _,
-};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::str::FromStr as _;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -9,33 +7,25 @@ use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
+use super::arrow::quote_fqname_as_type_path;
+use super::blueprint_validation::generate_blueprint_validation;
+use super::reflection::generate_reflection;
+use super::util::{append_tokens, doc_as_lines, quote_doc_lines};
+use crate::codegen::rust::arrow::ArrowDataTypeTokenizer;
+use crate::codegen::rust::deserializer::{
+    quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
+    should_optimize_buffer_slice_deserialize,
+};
+use crate::codegen::rust::serializer::quote_arrow_serializer;
+use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_doc_line};
+use crate::codegen::{Target, autogen_warning};
+use crate::objects::{EnumIntegerType, ObjectClass};
 use crate::{
     ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RERUN_VISUALIZER,
     ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
     ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    Type, TypeRegistry,
-    codegen::{
-        Target, autogen_warning,
-        rust::{
-            arrow::ArrowDataTypeTokenizer,
-            deserializer::{
-                quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
-                should_optimize_buffer_slice_deserialize,
-            },
-            serializer::quote_arrow_serializer,
-            util::{is_tuple_struct_from_obj, quote_doc_line},
-        },
-    },
-    format_path,
-    objects::{EnumIntegerType, ObjectClass},
-};
-
-use super::{
-    arrow::quote_fqname_as_type_path,
-    blueprint_validation::generate_blueprint_validation,
-    reflection::generate_reflection,
-    util::{append_tokens, doc_as_lines, quote_doc_lines},
+    Type, TypeRegistry, format_path,
 };
 
 // ---
@@ -165,6 +155,7 @@ fn generate_object_file(
     code.push_str("#![allow(unused_braces)]\n");
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
+    code.push_str("#![allow(clippy::allow_attributes)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
     code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
     code.push_str("#![allow(clippy::map_flatten)]\n");
@@ -173,6 +164,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::redundant_closure)]\n");
     code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
     code.push_str("#![allow(clippy::too_many_lines)]\n");
+    code.push_str("#![allow(clippy::wildcard_imports)]\n");
     if obj.is_deprecated() {
         code.push_str("#![expect(deprecated)]\n");
     }
@@ -892,185 +884,164 @@ fn quote_trait_impls_for_datatype_or_component(
     let forwarded_type =
         is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
 
-    let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
-        quote! {
-            #[inline]
-            fn arrow_datatype() -> arrow::datatypes::DataType {
-                #forwarded_type::arrow_datatype()
-            }
-        }
-    } else {
-        let datatype = ArrowDataTypeTokenizer {
-            datatype: &datatype,
-            recursive: false,
-        };
-        quote! {
-            #[inline]
-            fn arrow_datatype() -> arrow::datatypes::DataType {
-                #![allow(clippy::wildcard_imports)]
-                use arrow::datatypes::*;
-                #datatype
-            }
-        }
-    };
+    let quoted_impl_component = (obj.kind == ObjectKind::Component).then(|| {
+        if let Some(forwarded_type) = forwarded_type.as_ref() {
+            quote! {
+                impl ::re_types_core::WrapperComponent for #name {
+                    type Datatype = #forwarded_type;
 
-    let quoted_from_arrow = if optimize_for_buffer_slice {
-        let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
-            let is_pod = obj
-                .try_get_attr::<String>(ATTR_RUST_DERIVE)
-                .is_some_and(|d| d.contains("bytemuck::Pod"))
-                || obj
-                    .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-                    .is_some_and(|d| d.contains("bytemuck::Pod"));
-            if is_pod {
-                quote! {
-                    #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)
-                }
-            } else {
-                quote! {
-                    #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+                    #[inline]
+                    fn name() -> ComponentType {
+                        #fqname.into()
+                    }
+
+                    #[inline]
+                    fn into_inner(self) -> Self::Datatype {
+                        self.0
+                    }
                 }
             }
         } else {
-            let quoted_deserializer =
-                quote_arrow_deserializer_buffer_slice(type_registry, objects, obj);
+            quote! {
+                impl ::re_types_core::Component for #name {
+                    #[inline]
+                    fn name() -> ComponentType {
+                        #fqname.into()
+                    }
+                }
+            }
+        }
+    });
 
+    let quoted_impl_loggable = if forwarded_type.is_some() {
+        quote! {}
+    } else {
+        let quoted_arrow_datatype = {
+            let datatype = ArrowDataTypeTokenizer {
+                datatype: &datatype,
+                recursive: false,
+            };
+            quote! {
+                #[inline]
+                fn arrow_datatype() -> arrow::datatypes::DataType {
+                    use arrow::datatypes::*;
+                    #datatype
+                }
+            }
+        };
+
+        let quoted_from_arrow = if optimize_for_buffer_slice {
+            let from_arrow_body = {
+                let quoted_deserializer =
+                    quote_arrow_deserializer_buffer_slice(type_registry, objects, obj);
+
+                quote! {
+                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                    // re_tracing::profile_function!();
+
+                    use arrow::{array::*, buffer::*, datatypes::*};
+                    use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+
+                    // This code-path cannot have null fields.
+                    // If it does have a nulls-array, all bits must indicate valid data.
+                    if let Some(nulls) = arrow_data.nulls() && nulls.null_count() != 0 {
+                        return Err(DeserializationError::missing_data());
+                    }
+
+                    Ok(#quoted_deserializer)
+                }
+            };
+
+            quote! {
+                #[inline]
+                fn from_arrow(
+                    arrow_data: &dyn arrow::array::Array,
+                ) -> DeserializationResult<Vec<Self>>
+                where
+                    Self: Sized
+                {
+                    #from_arrow_body
+                }
+            }
+        } else {
+            quote!()
+        };
+
+        // Forward deserialization to existing datatype if it's transparent.
+        let quoted_deserializer = {
+            let quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
             quote! {
                 // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                 // re_tracing::profile_function!();
 
-                #![allow(clippy::wildcard_imports)]
                 use arrow::{array::*, buffer::*, datatypes::*};
                 use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
-
-                // This code-path cannot have null fields.
-                // If it does have a nulls-array, all bits must indicate valid data.
-                if let Some(nulls) = arrow_data.nulls() {
-                    if nulls.null_count() != 0 {
-                        return Err(DeserializationError::missing_data());
-                    }
-                }
 
                 Ok(#quoted_deserializer)
             }
         };
 
-        quote! {
-            #[inline]
-            fn from_arrow(
-                arrow_data: &dyn arrow::array::Array,
-            ) -> DeserializationResult<Vec<Self>>
-            where
-                Self: Sized
-            {
-                #from_arrow_body
-            }
-        }
-    } else {
-        quote!()
-    };
+        let quoted_serializer = {
+            let quoted_serializer =
+                quote_arrow_serializer(type_registry, objects, obj, &format_ident!("data"));
 
-    // Forward deserialization to existing datatype if it's transparent.
-    let quoted_deserializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
-        quote! {
-            #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-        }
-    } else {
-        let quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
-        quote! {
-            // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-            // re_tracing::profile_function!();
+            quote! {
+                // NOTE: Don't inline this, this gets _huge_.
+                fn to_arrow_opt<'a>(
+                    data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+                ) -> SerializationResult<arrow::array::ArrayRef>
+                where
+                    Self: Clone + 'a
+                {
+                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                    // re_tracing::profile_function!();
 
-            #![allow(clippy::wildcard_imports)]
-            use arrow::{array::*, buffer::*, datatypes::*};
-            use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+                    #![allow(clippy::manual_is_variant_and)]
+                    use arrow::{array::*, buffer::*, datatypes::*};
+                    use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
 
-            Ok(#quoted_deserializer)
-        }
-    };
-
-    let quoted_serializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
-        quote! {
-            fn to_arrow_opt<'a>(
-                data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-            ) -> SerializationResult<arrow::array::ArrayRef>
-            where
-                Self: Clone + 'a,
-            {
-                #forwarded_type::to_arrow_opt(data.into_iter().map(|datum| {
-                    datum.map(|datum| match datum.into() {
-                        ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                        ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-                    })
-                }))
-            }
-        }
-    } else {
-        let quoted_serializer =
-            quote_arrow_serializer(type_registry, objects, obj, &format_ident!("data"));
-
-        quote! {
-            // NOTE: Don't inline this, this gets _huge_.
-            fn to_arrow_opt<'a>(
-                data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-            ) -> SerializationResult<arrow::array::ArrayRef>
-            where
-                Self: Clone + 'a
-            {
-                // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                // re_tracing::profile_function!();
-
-                #![allow(clippy::wildcard_imports)]
-                #![allow(clippy::manual_is_variant_and)]
-                use arrow::{array::*, buffer::*, datatypes::*};
-                use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
-
-                Ok(#quoted_serializer)
-            }
-        }
-    };
-
-    let quoted_impl_component = (obj.kind == ObjectKind::Component).then(|| {
-        quote! {
-            impl ::re_types_core::Component for #name {
-                #[inline]
-                fn name() -> ComponentType {
-                    #fqname.into()
+                    Ok(#quoted_serializer)
                 }
             }
+        };
+
+        quote! {
+            impl ::re_types_core::Loggable for #name {
+                #quoted_arrow_datatype
+
+                #quoted_serializer
+
+                // NOTE: Don't inline this, this gets _huge_.
+                fn from_arrow_opt(
+                    arrow_data: &dyn arrow::array::Array,
+                ) -> DeserializationResult<Vec<Option<Self>>>
+                where
+                    Self: Sized
+                {
+                    #quoted_deserializer
+                }
+
+                #quoted_from_arrow
+            }
         }
-    });
+    };
 
     quote! {
         #quoted_impl_component
 
         ::re_types_core::macros::impl_into_cow!(#name);
 
-        impl ::re_types_core::Loggable for #name {
-            #quoted_arrow_datatype
-
-            #quoted_serializer
-
-            // NOTE: Don't inline this, this gets _huge_.
-            fn from_arrow_opt(
-                arrow_data: &dyn arrow::array::Array,
-            ) -> DeserializationResult<Vec<Option<Self>>>
-            where
-                Self: Sized
-            {
-                #quoted_deserializer
-            }
-
-            #quoted_from_arrow
-        }
+        #quoted_impl_loggable
     }
 }
 
 fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenStream {
-    #![allow(clippy::collapsible_else_if)]
-
     let Object {
-        fqname, name, kind, ..
+        fqname,
+        name,
+        kind,
+        attrs,
+        ..
     } = obj;
 
     assert_eq!(kind, &ObjectKind::Archetype);
@@ -1148,6 +1119,17 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             }
         })
         .collect_vec();
+
+    let visualizer_trait_impl = attrs.get_string(ATTR_RERUN_VISUALIZER).map(|visualizer| {
+        quote! {
+            impl crate::VisualizableArchetype for #name {
+                #[inline]
+                fn visualizer(&self) -> crate::Visualizer {
+                    crate::Visualizer::new(#visualizer).with_overrides(self)
+                }
+            }
+        }
+    });
 
     let (num_required_descriptors, required_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
@@ -1286,6 +1268,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         }
 
         impl ::re_types_core::ArchetypeReflectionMarker for #name { }
+
+        #visualizer_trait_impl
     }
 }
 
@@ -1501,20 +1485,15 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(pub)
         };
 
-        if required.is_empty() && obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
-            // Skip the `new` method.
-            quote!()
-        } else {
-            let docstring = quote_doc_line(&format!("Create a new `{name}`."));
+        let docstring = quote_doc_line(&format!("Create a new `{name}`."));
 
-            quote! {
-                #docstring
-                #[inline]
-                #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
-                    Self {
-                        #(#quoted_required,)*
-                        #(#quoted_optional,)*
-                    }
+        quote! {
+            #docstring
+            #[inline]
+            #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
+                Self {
+                    #(#quoted_required,)*
+                    #(#quoted_optional,)*
                 }
             }
         }

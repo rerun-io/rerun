@@ -3,7 +3,7 @@ import {
   type Panel,
   type PanelState,
   WebViewer,
-  type WebViewerOptions,
+  type AppOptions,
 } from "@rerun-io/web-viewer";
 
 import type { AnyModel, Render } from "@anywidget/types";
@@ -53,7 +53,8 @@ class ViewerWidget {
   viewer: WebViewer = new WebViewer();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
-  options: WebViewerOptions = {
+  options: AppOptions = {
+    notebook: true,
     hide_welcome_screen: true,
     width: "100%",
     height: "100%",
@@ -134,6 +135,10 @@ class ViewerWidget {
       }
       case "close_url": {
         this.viewer.close(msg.url)
+        break;
+      }
+      case "set_credentials": {
+        this.viewer.set_credentials(msg.access_token, msg.email)
         break;
       }
       default: {

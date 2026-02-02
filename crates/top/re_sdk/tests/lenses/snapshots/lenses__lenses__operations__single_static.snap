@@ -1,0 +1,23 @@
+---
+source: crates/top/re_sdk/tests/lenses/operations.rs
+expression: "format!(\"{chunk:-240}\")"
+---
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                                                   │
+│ * entity_path: /nullability/static                                                                                          │
+│ * heap_size_bytes: [**REDACTED**]                                                                                           │
+│ * id: [**REDACTED**]                                                                                                        │
+│ * version: [**REDACTED**]                                                                                                   │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌───────────────────────────────────────────────┬────────────────────────────────────┬────────────────────────────────────┐ │
+│ │ RowId                                         ┆ static_metadata_a                  ┆ static_metadata_b                  │ │
+│ │ ---                                           ┆ ---                                ┆ ---                                │ │
+│ │ type: FixedSizeBinary[16]                     ┆ type: nullable List[nullable Utf8] ┆ type: nullable List[nullable Utf8] │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ component: static_metadata_a       ┆ component: static_metadata_b       │ │
+│ │ ARROW:extension:name: TUID                    ┆ kind: data                         ┆ kind: data                         │ │
+│ │ is_sorted: true                               ┆                                    ┆                                    │ │
+│ │ kind: control                                 ┆                                    ┆                                    │ │
+│ ╞═══════════════════════════════════════════════╪════════════════════════════════════╪════════════════════════════════════╡ │
+│ │ row_[**REDACTED**]                            ┆ [static_metadata_a]                ┆ [static_metadata_b]                │ │
+│ └───────────────────────────────────────────────┴────────────────────────────────────┴────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

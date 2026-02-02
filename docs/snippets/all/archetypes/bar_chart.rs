@@ -12,6 +12,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4].as_slice())
             .with_abscissa([0_i64, 1, 3, 4, 7, 11].as_slice()),
     )?;
+    rec.log(
+        "bar_chart_custom_abscissa_and_widths",
+        &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4].as_slice())
+            .with_abscissa([0_i64, 1, 3, 4, 7, 11].as_slice())
+            .with_widths([1_f32, 2.0, 1.0, 3.0, 4.0, 1.0]),
+    )?;
 
     Ok(())
 }

@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: test_send_dataframe_roundtrip
+  '''
+  pyarrow.Table
+  my_index: int64
+  log_tick: int64
+  /points:Points3D:colors: list<item: uint32>
+    child 0, item: uint32
+  /points:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
+    child 0, item: fixed_size_list<item: float not null>[3]
+        child 0, item: float not null
+  /points:Points3D:radii: list<item: float>
+    child 0, item: float
+  ----
+  my_index: [[1,7]]
+  log_tick: [[0,1]]
+  /points:Points3D:colors: [[null,[4278190335]]]
+  /points:Points3D:positions: [[[[1,2,3],[4,5,6],[7,8,9]],[[10,11,12]]]]
+  /points:Points3D:radii: [[[0.5],null]]
+  '''
+# ---

@@ -1,6 +1,7 @@
-use egui::NumExt as _;
+use egui::{InnerResponse, NumExt as _};
 
 use crate::UiExt as _;
+use crate::list_item::navigation::ListItemNavigation;
 
 /// Layout statistics accumulated during the frame that are used for next frame's layout.
 ///
@@ -262,7 +263,7 @@ pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
     id_salt: impl std::hash::Hash,
     content: impl FnOnce(&mut egui::Ui) -> R,
-) -> R {
+) -> InnerResponse<R> {
     ui.sanity_check();
 
     let id_salt = egui::Id::new(id_salt); // So we can use it twice
@@ -277,7 +278,9 @@ pub fn list_item_scope<R>(
         if let Some(max_desired_left_column_width) = layout_stats.max_desired_left_column_width {
             // TODO(ab): this heuristics can certainly be improved, to be done with more hindsight
             // from real-world usage.
-            let available_width = layout_stats.max_item_width.unwrap_or(ui.available_width());
+            let available_width = layout_stats
+                .max_item_width
+                .unwrap_or_else(|| ui.available_width());
             Some(max_desired_left_column_width.at_most(0.7 * available_width))
         } else {
             None
@@ -289,17 +292,21 @@ pub fn list_item_scope<R>(
         property_content_max_width: layout_stats.property_content_max_width,
     };
 
+    let is_root = ListItemNavigation::init_if_root(ui.ctx());
+
     // push, run, pop
     LayoutInfoStack::push(ui.ctx(), state.clone());
-    let result = ui
-        .push_id(id_salt, |ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
-            content(ui)
-        })
-        .inner;
+    let response = ui.push_id(id_salt, |ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        content(ui)
+    });
     LayoutInfoStack::pop(ui.ctx());
+
+    if is_root {
+        ListItemNavigation::end_if_root(ui.ctx());
+    }
 
     ui.sanity_check();
 
-    result
+    response
 }

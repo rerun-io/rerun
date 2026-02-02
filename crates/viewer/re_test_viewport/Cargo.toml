@@ -16,9 +16,8 @@ workspace = true
 
 [dependencies]
 re_log_types.workspace = true
-re_renderer.workspace = true
 re_test_context.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport.workspace = true

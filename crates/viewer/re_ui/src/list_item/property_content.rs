@@ -1,13 +1,14 @@
-use std::{fmt::Display, sync::Arc};
+use std::fmt::Display;
+use std::sync::Arc;
 
-use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
-
-use crate::{Icon, UiExt as _};
+use egui::text::TextWrapping;
+use egui::{Align, Align2, NumExt as _, Ui};
 
 use super::{
     ContentContext, DesiredWidth, ItemButtons, LayoutInfoStack, ListItemContent,
     ListItemContentButtonsExt, ListVisuals,
 };
+use crate::{Icon, UiExt as _};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
@@ -251,7 +252,7 @@ impl ListItemContent for PropertyContent<'_> {
             egui::FontSelection::Default,
             Align::LEFT,
         ));
-        let desired_galley = ui.fonts(|fonts| fonts.layout_job(layout_job.clone()));
+        let desired_galley = ui.fonts_mut(|fonts| fonts.layout_job(layout_job.clone()));
         let desired_width =
             (content_indent + icon_extra + desired_galley.size().x + Self::COLUMN_SPACING / 2.0)
                 .ceil();
@@ -264,7 +265,7 @@ impl ListItemContent for PropertyContent<'_> {
             desired_galley
         } else {
             layout_job.wrap = TextWrapping::truncate_at_width(label_rect.width());
-            ui.fonts(|fonts| fonts.layout_job(layout_job))
+            ui.fonts_mut(|fonts| fonts.layout_job(layout_job))
         };
 
         // this happens here to avoid cloning the text

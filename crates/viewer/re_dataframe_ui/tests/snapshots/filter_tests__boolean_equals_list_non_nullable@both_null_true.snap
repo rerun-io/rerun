@@ -3,16 +3,14 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: Boolean(
-        NonNullable(
-            true,
-        ),
+    filter: NonNullableBoolean(
+        IsTrue,
     ),
     field: Field {
         name: "column",
         data_type: List(
             Field {
-                name: "item",
+                name: "column",
                 data_type: Boolean,
                 nullable: true,
                 dict_id: 0,

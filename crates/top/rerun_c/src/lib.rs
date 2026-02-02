@@ -3,7 +3,7 @@
 //! The functions here must match `rerun_cpp/src/rerun/c/rerun.h`.
 
 #![crate_type = "staticlib"]
-#![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
+#![expect(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
 mod arrow_utils;
 mod component_type_registry;
@@ -12,27 +12,22 @@ mod ptr;
 mod recording_streams;
 mod video;
 
-use std::{
-    ffi::{CString, c_char, c_float, c_uchar},
-    time::Duration,
-};
+use std::ffi::{CString, c_char, c_float, c_uchar};
+use std::time::Duration;
 
-use arrow::{
-    array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
-    ffi::{FFI_ArrowArray, FFI_ArrowSchema},
-};
+use arrow::array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray};
+use arrow::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
 use arrow_utils::arrow_array_from_c_ffi;
-
+use component_type_registry::COMPONENT_TYPES;
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_sdk::external::nohash_hasher::IntMap;
+use re_sdk::external::re_log_types::TimelineName;
+use re_sdk::log::{Chunk, ChunkId, PendingRow, TimeColumn};
+use re_sdk::time::TimeType;
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
     TimePoint, Timeline,
-    external::{nohash_hasher::IntMap, re_log_types::TimelineName},
-    log::{Chunk, ChunkId, PendingRow, TimeColumn},
-    time::TimeType,
 };
-
-use component_type_registry::COMPONENT_TYPES;
 use recording_streams::{RECORDING_STREAMS, recording_stream};
 
 // ----------------------------------------------------------------------------
@@ -537,9 +532,21 @@ fn rr_recording_stream_new_impl(
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             re_log::setup_logging();
-            re_crash_handler::install_crash_handlers(re_build_info::build_info!());
             if cfg!(debug_assertions) {
-                re_log::info!("Using a DEBUG BUILD of the Rerun SDK!");
+                re_crash_handler::install_crash_handlers(re_build_info::build_info!());
+
+                // Log a clear warning to inform users that (accidentally) use a debug build of the SDK.
+                // This should however _never_ cause a panic if RERUN_PANIC_ON_WARN is set, e.g. in test environments.
+                const DEBUG_BUILD_WARNING: &str =
+                    "Using a DEBUG BUILD of the Rerun SDK with Rerun crash handlers!";
+                let can_log_warning = std::env::var("RERUN_PANIC_ON_WARN")
+                    .map(|value| value == "0")
+                    .unwrap_or(true);
+                if can_log_warning {
+                    re_log::warn!(DEBUG_BUILD_WARNING);
+                } else {
+                    re_log::info!(DEBUG_BUILD_WARNING);
+                }
             }
         });
     }
@@ -1027,7 +1034,9 @@ fn rr_recording_stream_log_impl(
             let datatype = component_type.datatype.clone();
             let array = unsafe { FFI_ArrowArray::from_raw(array) }; // Move out from `batches`
             let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
-            components.insert(component_type.descriptor.clone(), values);
+            let batch =
+                re_sdk::SerializedComponentBatch::new(values, component_type.descriptor.clone());
+            components.insert(batch.descriptor.component, batch);
         }
     }
 

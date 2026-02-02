@@ -1,17 +1,19 @@
+use std::process::Command;
+
+use indicatif::MultiProgress;
+
 use super::Channel;
 use crate::build_examples::wait_for_output::wait_for_output;
-use indicatif::MultiProgress;
-use std::process::Command;
 
 /// Install the selected examples in the current environment.
 #[derive(argh::FromArgs)]
 #[argh(subcommand, name = "install")]
 pub struct Install {
     #[argh(option, description = "include only examples in this channel")]
-    channel: Channel,
+    pub(crate) channel: Channel,
 
     #[argh(option, description = "run only these examples")]
-    examples: Vec<String>,
+    pub(crate) examples: Vec<String>,
 }
 
 impl Install {
@@ -28,11 +30,14 @@ impl Install {
         };
         examples.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let mut cmd = Command::new("python3");
-        cmd.arg("-m").arg("pip").arg("install");
+        let mut cmd = Command::new("uv");
+        cmd.arg("sync")
+            .arg("--inexact")
+            .arg("--no-install-package")
+            .arg("rerun-sdk");
 
         for example in &examples {
-            cmd.arg("-e").arg(&example.dir);
+            cmd.arg("--package").arg(&example.name);
         }
 
         let progress = MultiProgress::new();

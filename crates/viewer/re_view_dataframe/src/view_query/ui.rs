@@ -1,16 +1,18 @@
-use crate::view_query::Query;
+use std::collections::{BTreeSet, HashSet};
+
 use egui::PopupCloseBehavior;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
+use re_sdk_types::blueprint::components;
 use re_sorbet::ColumnSelector;
-use re_types::blueprint::components;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
-use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
-use std::collections::{BTreeSet, HashSet};
+use re_viewer_context::{TimeControlCommand, ViewId, ViewSystemExecutionError, ViewerContext};
+
+use crate::view_query::Query;
 
 // UI implementation
 impl Query {
@@ -43,8 +45,8 @@ impl Query {
     ) -> Result<(), ViewSystemExecutionError> {
         let time_drag_value_and_type = timeline.map(|timeline| {
             let time_drag_value =
-                if let Some(times) = ctx.recording().time_histogram(timeline.name()) {
-                    TimeDragValue::from_time_histogram(times)
+                if let Some(range) = ctx.recording().time_range_for(timeline.name()) {
+                    TimeDragValue::from_abs_time_range(range)
                 } else {
                     debug_assert!(
                         false,
@@ -150,11 +152,12 @@ impl Query {
             self.save_filter_by_range(ctx, AbsoluteTimeRange::new(start, end));
         }
 
-        if should_display_time_range {
-            let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-            if Some(time_ctrl.timeline()) == timeline {
-                time_ctrl.highlighted_range = Some(AbsoluteTimeRange::new(start, end));
-            }
+        if should_display_time_range
+            && timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name())
+        {
+            ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
+                start, end,
+            ))]);
         }
 
         Ok(())
@@ -248,10 +251,11 @@ impl Query {
             .and_then(|component_sel| {
                 all_components
                     .iter()
-                    .any(|descr| descr.component.as_str() == component_sel.component)
+                    .copied()
+                    .any(|component| component.as_str() == component_sel.component)
                     .then_some(component_sel.component.into())
             })
-            .or_else(|| all_components.iter().map(|descr| descr.component).next());
+            .or_else(|| all_components.iter().next().copied());
 
         //
         // UI for filter entity and component
@@ -280,11 +284,11 @@ impl Query {
                     egui::ComboBox::new("pov_component", "")
                         .selected_text(filter_component.map_or("-", |c| c.as_str()))
                         .show_ui(ui, |ui| {
-                            for descr in all_components {
+                            for component in all_components {
                                 ui.selectable_value(
                                     &mut filter_component,
-                                    Some(descr.component),
-                                    descr.component.as_str(),
+                                    Some(component),
+                                    component.as_str(),
                                 );
                             }
                         });

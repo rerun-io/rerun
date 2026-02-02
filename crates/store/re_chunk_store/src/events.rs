@@ -1,9 +1,10 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use re_chunk::Chunk;
+use re_log_encoding::RrdManifest;
 use re_log_types::StoreId;
 
-use crate::ChunkStoreGeneration;
+use crate::{ChunkDirectLineageReport, ChunkStoreGeneration};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
@@ -22,7 +23,7 @@ use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
 ///
 /// Refer to field-level documentation for more details and check out [`ChunkStoreDiff`] for a precise
 /// definition of what an event involves.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ChunkStoreEvent {
     /// Which [`ChunkStore`] sent this event?
     pub store_id: StoreId,
@@ -53,7 +54,248 @@ impl std::ops::Deref for ChunkStoreEvent {
     }
 }
 
-/// Is it an addition or a deletion?
+/// Describes an atomic change in the Rerun [`ChunkStore`]:
+/// * a physical chunk has been added or deleted.
+/// * a virtual manifest has been added.
+///
+/// From a query model standpoint, the [`ChunkStore`] _always_ operates one chunk at a time:
+/// - The contents of a chunk (i.e. its columns) are immutable past insertion, by virtue of
+///   [`ChunkId`]s being unique and non-reusable.
+/// - Similarly, garbage collection always removes _all the data_ associated with a chunk in one go:
+///   there cannot be orphaned columns. When a chunk is gone, all data associated with it is gone too.
+///
+/// Refer to field-level documentation for more information.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChunkStoreDiff {
+    Addition(ChunkStoreDiffAddition),
+    VirtualAddition(ChunkStoreDiffVirtualAddition),
+    Deletion(ChunkStoreDiffDeletion),
+}
+
+impl From<ChunkStoreDiffAddition> for ChunkStoreDiff {
+    fn from(value: ChunkStoreDiffAddition) -> Self {
+        Self::Addition(value)
+    }
+}
+
+impl From<ChunkStoreDiffVirtualAddition> for ChunkStoreDiff {
+    fn from(value: ChunkStoreDiffVirtualAddition) -> Self {
+        Self::VirtualAddition(value)
+    }
+}
+
+impl From<ChunkStoreDiffDeletion> for ChunkStoreDiff {
+    fn from(value: ChunkStoreDiffDeletion) -> Self {
+        Self::Deletion(value)
+    }
+}
+
+impl ChunkStoreDiff {
+    pub fn addition(
+        chunk_before_processing: Arc<Chunk>,
+        chunk_after_processing: Arc<Chunk>,
+        direct_lineage: ChunkDirectLineageReport,
+    ) -> Self {
+        Self::Addition(ChunkStoreDiffAddition {
+            chunk_before_processing,
+            chunk_after_processing,
+            direct_lineage,
+        })
+    }
+
+    pub fn virtual_addition(rrd_manifest: Arc<RrdManifest>) -> Self {
+        Self::VirtualAddition(ChunkStoreDiffVirtualAddition { rrd_manifest })
+    }
+
+    pub fn deletion(chunk: Arc<Chunk>) -> Self {
+        Self::Deletion(ChunkStoreDiffDeletion { chunk })
+    }
+
+    pub fn is_addition(&self) -> bool {
+        matches!(self, Self::Addition(_))
+    }
+
+    pub fn is_virtual_addition(&self) -> bool {
+        matches!(self, Self::VirtualAddition(_))
+    }
+
+    pub fn is_deletion(&self) -> bool {
+        matches!(self, Self::Deletion(_))
+    }
+
+    pub fn into_addition(self) -> Option<ChunkStoreDiffAddition> {
+        match self {
+            Self::Addition(addition) => Some(addition),
+            _ => None,
+        }
+    }
+
+    pub fn into_virtual_addition(self) -> Option<ChunkStoreDiffVirtualAddition> {
+        match self {
+            Self::VirtualAddition(addition) => Some(addition),
+            _ => None,
+        }
+    }
+
+    pub fn into_deletion(self) -> Option<ChunkStoreDiffDeletion> {
+        match self {
+            Self::Deletion(deletion) => Some(deletion),
+            _ => None,
+        }
+    }
+
+    pub fn to_addition(&self) -> Option<&ChunkStoreDiffAddition> {
+        match self {
+            Self::Addition(addition) => Some(addition),
+            _ => None,
+        }
+    }
+
+    pub fn to_virtual_addition(&self) -> Option<&ChunkStoreDiffVirtualAddition> {
+        match self {
+            Self::VirtualAddition(addition) => Some(addition),
+            _ => None,
+        }
+    }
+
+    pub fn to_deletion(&self) -> Option<&ChunkStoreDiffDeletion> {
+        match self {
+            Self::Deletion(deletion) => Some(deletion),
+            _ => None,
+        }
+    }
+
+    /// `-1` for physical deletions, `+1` for physical additions. 0 otherwise.
+    #[inline]
+    pub fn delta(&self) -> i64 {
+        match self {
+            Self::Addition(_) => 1,
+            Self::VirtualAddition(_) => 0,
+            Self::Deletion(_) => -1,
+        }
+    }
+
+    /// This always returns a chunk that only contains never-seen-before data.
+    ///
+    /// For a physical addition:
+    /// * In case of a compaction event, this corresponds to the original chunk before compaction, which
+    ///   only contains the newly added data.
+    /// * In case of a split event, this corresponds to the individual splits, so the original data does not
+    ///   get accounted for more than once.
+    ///
+    /// For a physical deletion, it returns the deleted chunk as-is.
+    /// For a virtual addition, it returns `None`.
+    pub fn delta_chunk(&self) -> Option<&Arc<Chunk>> {
+        match self {
+            Self::Addition(addition) => Some(addition.delta_chunk()),
+            Self::VirtualAddition(_) => None,
+            Self::Deletion(deletion) => Some(&deletion.chunk),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ChunkStoreDiffAddition {
+    /// The chunk that was added, *unaltered*.
+    ///
+    /// This is the chunk exactly as it was passed to the insertion method, before any kind of processing
+    /// happened to it (compaction, splitting, etc).
+    /// To access the compacted/split data, refer to [`ChunkStoreDiffAddition::chunk_after_processing`] instead.
+    ///
+    /// ## Relationship to [`ChunkStoreDiffAddition::direct_lineage`]
+    ///
+    /// If the lineage is…:
+    /// * `SplitFrom`: then this is the original chunk, before splitting.
+    /// * `CompactedFrom`: then this is the original chunk, before compaction.
+    /// * anything else: then is the original chunk.
+    ///
+    /// When trying to count things, use [`ChunkStoreDiffAddition::delta_chunk`], which always returns
+    /// just the chunk that contains unique data.
+    //
+    // NOTE: We purposefully use an `Arc` instead of a `ChunkId` here because we want to make sure that all
+    // downstream subscribers get a chance to inspect the data in the chunk before it gets permanently
+    // deallocated.
+    pub chunk_before_processing: Arc<Chunk>,
+
+    /// The chunk that was added, post-processing (splitting, compaction, etc).
+    ///
+    /// This is the chunk exactly as it was when it was finally indexed by the store, after all kinds
+    /// of processing happened to it (compaction, splitting, etc).
+    /// To access the unprocessed data, refer to [`ChunkStoreDiffAddition::chunk_before_processing`] instead.
+    ///
+    /// ## Relationship to [`ChunkStoreDiffAddition::direct_lineage`]
+    ///
+    /// If the lineage is…:
+    /// * `SplitFrom`: then this is one of split siblings.
+    /// * `CompactedFrom`: then this is the compacted chunk.
+    /// * anything else: then this is the original chunk, same as [`ChunkStoreDiffAddition::chunk_before_processing`].
+    ///
+    /// When trying to count things, use [`ChunkStoreDiffAddition::delta_chunk`], which always returns
+    /// just the chunk that contains unique data.
+    //
+    // NOTE: We purposefully use an `Arc` instead of a `ChunkId` here because we want to make sure that all
+    // downstream subscribers get a chance to inspect the data in the chunk before it gets permanently
+    // deallocated.
+    pub chunk_after_processing: Arc<Chunk>,
+
+    /// The direct lineage of [`ChunkStoreDiffAddition::chunk_after_processing`].
+    ///
+    /// This can be used to keep track of compactions and split-offs.
+    ///
+    /// This is not necessarily a compaction or split-off: the original root-level chunk might have
+    /// been inserted as-is.
+    pub direct_lineage: ChunkDirectLineageReport,
+}
+
+impl PartialEq for ChunkStoreDiffAddition {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            chunk_before_processing,
+            chunk_after_processing,
+            direct_lineage,
+        } = self;
+        chunk_before_processing.id() == other.chunk_before_processing.id()
+            && chunk_after_processing.id() == other.chunk_after_processing.id()
+            && *direct_lineage == other.direct_lineage
+    }
+}
+
+impl ChunkStoreDiffAddition {
+    /// This always returns a chunk that only contains never-seen-before data.
+    ///
+    /// For a compaction event, this corresponds to the original chunk before compaction, which
+    /// only contains the newly added data.
+    /// For a split event, this corresponds to the individual splits, so the original data does not
+    /// get accounted for more than once.
+    pub fn delta_chunk(&self) -> &Arc<Chunk> {
+        #[expect(clippy::match_same_arms)] // the explicitness is important
+        match self.direct_lineage {
+            ChunkDirectLineageReport::CompactedFrom(_) => &self.chunk_before_processing,
+            ChunkDirectLineageReport::SplitFrom(_, _) => &self.chunk_after_processing,
+            _ => &self.chunk_before_processing,
+        }
+    }
+
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.chunk_before_processing.is_static()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChunkStoreDiffVirtualAddition {
+    /// The [`RrdManifest`] that was passed to [`ChunkStore::insert_rrd_manifest`].
+    ///
+    /// This is very different from the usual chunk-related events as this is purely virtual.
+    /// Still, even though no physical data was ingested yet, it might be important for downstream
+    /// consumers to know what kind of virtual data is being referenced from now on.
+    /// For example, query caches must know about pending tombstones as soon as they start being referenced.
+    ///
+    /// If this is set, all fields below are irrelevant (set to their default/empty values).
+    pub rrd_manifest: Arc<RrdManifest>,
+}
+
+/// An atomic deletion event.
 ///
 /// Reminder: ⚠ Do not confuse _a deletion_ and _a clear_ ⚠.
 ///
@@ -63,137 +305,27 @@ impl std::ops::Deref for ChunkStoreEvent {
 /// A clear, on the other hand, is the act of logging an empty [`re_types_core::ComponentBatch`],
 /// either directly using the logging APIs, or indirectly through the use of a
 /// [`re_types_core::archetypes::Clear`] archetype.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChunkStoreDiffKind {
-    Addition,
-    Deletion,
-}
-
-impl ChunkStoreDiffKind {
-    #[inline]
-    pub fn delta(&self) -> i64 {
-        match self {
-            Self::Addition => 1,
-            Self::Deletion => -1,
-        }
-    }
-}
-
-/// Reports which [`Chunk`]s were merged into a new [`Chunk`] during a compaction.
 #[derive(Debug, Clone)]
-pub struct ChunkCompactionReport {
-    /// The chunks that were merged into a new chunk.
-    pub srcs: BTreeMap<ChunkId, Arc<Chunk>>,
-
-    /// The new chunk that was created as the result of the compaction.
-    pub new_chunk: Arc<Chunk>,
-}
-
-impl PartialEq for ChunkCompactionReport {
-    #[inline]
-    fn eq(&self, rhs: &Self) -> bool {
-        self.srcs.keys().eq(rhs.srcs.keys()) && self.new_chunk.id() == rhs.new_chunk.id()
-    }
-}
-
-/// Describes an atomic change in the Rerun [`ChunkStore`]: a chunk has been added or deleted.
-///
-/// From a query model standpoint, the [`ChunkStore`] _always_ operates one chunk at a time:
-/// - The contents of a chunk (i.e. its columns) are immutable past insertion, by virtue of
-///   [`ChunkId`]s being unique and non-reusable.
-/// - Similarly, garbage collection always removes _all the data_ associated with a chunk in one go:
-///   there cannot be orphaned columns. When a chunk is gone, all data associated with it is gone too.
-///
-/// Refer to field-level documentation for more information.
-#[derive(Debug, Clone)]
-pub struct ChunkStoreDiff {
-    /// Addition or deletion?
-    ///
-    /// The store's internals are opaque and don't necessarily reflect the query model (e.g. there
-    /// might be data in the store that cannot by reached by any query).
-    ///
-    /// A [`ChunkStoreDiff`] answers a logical question: "does there exist a query path which can return
-    /// data from that chunk?".
-    ///
-    /// An event of kind deletion only tells you that, from this point on, no query can return data from that chunk.
-    /// That doesn't necessarily mean that the data is actually gone, i.e. don't make assumptions of e.g. the size
-    /// in bytes of the store based on these events.
-    /// They are in "query-model space" and are not an accurate representation of what happens in storage space.
-    pub kind: ChunkStoreDiffKind,
-
-    /// The chunk that was added or removed.
-    ///
-    /// If the addition of a chunk to the store triggered a compaction, that chunk _pre-compaction_ is
-    /// what will be exposed here.
-    /// This allows subscribers to only process data that is new, as opposed to having to reprocess
-    /// old rows that appear to have been removed and then reinserted due to compaction.
-    ///
-    /// To keep track of what chunks were merged with what chunks, use the [`ChunkStoreDiff::compacted`]
-    /// field below.
+pub struct ChunkStoreDiffDeletion {
+    /// The chunk that was removed.
     //
     // NOTE: We purposefully use an `Arc` instead of a `ChunkId` here because we want to make sure that all
     // downstream subscribers get a chance to inspect the data in the chunk before it gets permanently
     // deallocated.
     pub chunk: Arc<Chunk>,
-
-    /// Reports which [`Chunk`]s were merged into a new [`Chunk`] during a compaction.
-    ///
-    /// This is only specified if an addition to the store triggered a compaction.
-    /// When that happens, it is guaranteed that [`ChunkStoreDiff::chunk`] will be present in the
-    /// set of source chunks below, since it was compacted on arrival.
-    ///
-    /// A corollary to that is that the destination [`Chunk`] must have never been seen before,
-    /// i.e. it's [`ChunkId`] must have never been seen before.
-    pub compacted: Option<ChunkCompactionReport>,
 }
 
-impl PartialEq for ChunkStoreDiff {
-    #[inline]
-    fn eq(&self, rhs: &Self) -> bool {
-        let Self {
-            kind,
-            chunk,
-            compacted,
-        } = self;
-        *kind == rhs.kind && chunk.id() == rhs.chunk.id() && compacted == &rhs.compacted
+impl PartialEq for ChunkStoreDiffDeletion {
+    fn eq(&self, other: &Self) -> bool {
+        let Self { chunk } = self;
+        chunk.id() == other.chunk.id()
     }
 }
 
-impl Eq for ChunkStoreDiff {}
-
-impl ChunkStoreDiff {
-    #[inline]
-    pub fn addition(chunk: Arc<Chunk>, compacted: Option<ChunkCompactionReport>) -> Self {
-        Self {
-            kind: ChunkStoreDiffKind::Addition,
-            chunk,
-            compacted,
-        }
-    }
-
-    #[inline]
-    pub fn deletion(chunk: Arc<Chunk>) -> Self {
-        Self {
-            kind: ChunkStoreDiffKind::Deletion,
-            chunk,
-            compacted: None,
-        }
-    }
-
+impl ChunkStoreDiffDeletion {
     #[inline]
     pub fn is_static(&self) -> bool {
         self.chunk.is_static()
-    }
-
-    /// `-1` for deletions, `+1` for additions.
-    #[inline]
-    pub fn delta(&self) -> i64 {
-        self.kind.delta()
-    }
-
-    #[inline]
-    pub fn num_components(&self) -> usize {
-        self.chunk.num_components()
     }
 }
 
@@ -204,15 +336,12 @@ mod tests {
     use std::collections::BTreeMap;
 
     use re_chunk::{RowId, TimelineName};
-    use re_log_types::{
-        EntityPath, TimeInt, TimePoint, Timeline,
-        example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-    };
-    use re_types::ComponentDescriptor;
-
-    use crate::{ChunkStore, GarbageCollectionOptions};
+    use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+    use re_sdk_types::ComponentDescriptor;
 
     use super::*;
+    use crate::{ChunkStore, GarbageCollectionOptions};
 
     /// A simple store subscriber for test purposes that keeps track of the quantity of data available
     /// in the store at the lowest level of detail.
@@ -250,33 +379,36 @@ mod tests {
 
     impl GlobalCounts {
         fn on_events(&mut self, events: &[ChunkStoreEvent]) {
-            for event in events {
-                let delta_chunks = event.delta();
-                let delta_rows = delta_chunks * event.chunk.num_rows() as i64;
+            #![expect(clippy::cast_possible_wrap)] // as i64 won't overflow
 
-                for row_id in event.chunk.row_ids() {
-                    *self.row_ids.entry(row_id).or_default() += delta_chunks;
+            for event in events {
+                let delta = event.delta();
+                let delta_chunk = event.delta_chunk().unwrap();
+                let delta_rows = delta * delta_chunk.num_rows() as i64;
+
+                for row_id in delta_chunk.row_ids() {
+                    *self.row_ids.entry(row_id).or_default() += delta;
                 }
                 *self
                     .entity_paths
-                    .entry(event.chunk.entity_path().clone())
-                    .or_default() += delta_chunks;
+                    .entry(delta_chunk.entity_path().clone())
+                    .or_default() += delta;
 
-                for (component_desc, list_array) in event.chunk.components().iter() {
-                    let delta = event.delta() * list_array.iter().flatten().count() as i64;
+                for column in delta_chunk.components().values() {
+                    let delta = event.delta() * column.list_array.iter().flatten().count() as i64;
                     *self
                         .component_descrs
-                        .entry(component_desc.clone())
+                        .entry(column.descriptor.clone())
                         .or_default() += delta;
                 }
 
-                if event.is_static() {
+                if delta_chunk.is_static() {
                     self.num_static += delta_rows;
                 } else {
-                    for (&timeline, time_column) in event.chunk.timelines() {
+                    for (&timeline, time_column) in delta_chunk.timelines() {
                         *self.timelines.entry(timeline).or_default() += delta_rows;
                         for time in time_column.times() {
-                            *self.times.entry(time).or_default() += delta_chunks;
+                            *self.times.entry(time).or_default() += delta;
                         }
                     }
                 }

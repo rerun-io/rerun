@@ -1,7 +1,5 @@
-#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
-
-use pyo3::{Bound, PyAny, PyResult, exceptions::PyRuntimeError, pyfunction};
-
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::{Bound, PyAny, PyResult, pyfunction};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_video::VideoLoadError;
 
@@ -26,7 +24,7 @@ pub fn asset_video_read_frame_timestamps_nanos(
         .and_then(|arr| arr.values().downcast_array_ref::<arrow::array::UInt8Array>())
         .ok_or_else(|| {
             PyRuntimeError::new_err(format!(
-                "Expected arrow array to be a list with a single uint8 array, instead it has the datatype {:?}",
+                "Expected arrow array to be a list with a single uint8 array, instead it has the datatype {}",
                 video_bytes_arrow_array.data_type()
             ))
         })?;
@@ -41,11 +39,14 @@ pub fn asset_video_read_frame_timestamps_nanos(
         ));
     };
 
-    Ok(
-        re_video::VideoDataDescription::load_from_bytes(video_bytes, media_type, "AssetVideo")
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .frame_timestamps_nanos()
-            .ok_or_else(|| PyRuntimeError::new_err(VideoLoadError::NoTimescale.to_string()))?
-            .collect(),
+    Ok(re_video::VideoDataDescription::load_from_bytes(
+        video_bytes,
+        media_type,
+        "AssetVideo",
+        re_tuid::Tuid::new(),
     )
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+    .frame_timestamps_nanos()
+    .ok_or_else(|| PyRuntimeError::new_err(VideoLoadError::NoTimescale.to_string()))?
+    .collect())
 }

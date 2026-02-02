@@ -1,0 +1,12 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+image_from_camera: [[100.0, 0.0, 0.0, 0.0, 100.0, 0.0, 100.0, 100.0, 1.0]]
+resolution: [[0.0, 0.0]]
+camera_xyz: [[3, 2, 5]]
+child_frame: [tf#/stockholm/södermalm/slussen]
+parent_frame: [tf#/stockholm/södermalm]
+image_plane_distance: [1.0]
+color: [2392761855]
+line_width: [-1.0]

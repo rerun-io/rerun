@@ -83,10 +83,20 @@ Libraries should ideally not log `ERROR`, but instead return `Err` in a `Result`
 
 Application can "handle" `Err`ors by logging them as `ERROR` (perhaps in addition to showing a popup, if this is a GUI app).
 
+Use this log level whenever some data is lost, even if you continue processing other data.
+
+Examples: failing to write a file, failing to read parts of a file.
+
 #### `WARNING`
 This is for _recoverable_ problems. The operation completed, but couldn't do exactly what it was instructed to do.
 
 Sometimes an `Err` is handled by logging it as `WARNING` and then running some fallback code.
+
+Warnings are also used for thing that _may_ be an error, but it could be intended (e.g. dropping a sink before flushing it).
+
+Examples: usage of deprecated functions, slow paths, misuse of our APIs, lossy data conversion.
+
+If data is lost, it is an error and NOT a warning.
 
 #### `INFO`
 This is the default verbosity level. This should mostly be used _only by application code_ to write interesting and rare things to the application user. For instance, you may perhaps log that a file was saved to specific path, or where the default configuration was read from. These things lets application users understand what the application is doing, and debug their use of the application.
@@ -120,6 +130,12 @@ When importing a `trait` to use its trait methods, do this: `use Trait as _;`. T
 
 When intentionally ignoring a `Result`, prefer `foo().ok();` over `let _ = foo();`. The former shows what is happening, and will fail to compile if `foo`:s return type ever changes.
 
+We group and order imports (`use` statements) by `std`, other crates, and lastly own `crate` and `super`. This corresponds to [`StdExternalCrate`](https://rust-lang.github.io/rustfmt/?version=v1.8.0&search=group#StdExternalCrate%5C%3A).
+
+We group our `use` statements by module, e.g. `crate_name::module::{a, b, c}`. This is a compromise, being rather terse while still avoiding excessive merge conflicts. See [the cargofmt docs](https://rust-lang.github.io/rustfmt/?version=v1.8.0&search=group#Module%5C%3A) for details.
+
+Use the destructor syntax (`let Self { a, b, c} = self;`) whenever you're accessing most of (or all) of the fields of a struct.
+
 ### `TODO`:s
 When you must remember to do something before merging a PR, write `TODO` or `FIXME` in any file. The CI will not be green until you either remove them or rewrite them as `TODO(yourname)`.
 
@@ -129,8 +145,32 @@ You can also use the `todo()!` macro during development, but again it won't pass
 ### Misc
 Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `re_log::warn!("Unknown key: {key:?}");`.
 
-Use `re_error::format(err)` when displaying an error.
+Use `{:#}` or `re_error::format(err)` when displaying an error - NOT `Debug`/`{:?}`.
 
+We make extensive use of snapshot testing. To work around non-deterministic values, such as TUIDs (time-prefixed unique IDs), many types (should) offer `std::fmt::Display` implementations with redactions that can be access via an overloaded `-` formatting option:
+
+```rs
+println!("{:-}, value"); // The `-` option stands for redaction.
+```
+
+Look for `f.sign_minus()` in the code for where we handle this.
+
+## Python
+Prefer kw-args (key-word arguments) for non-obvious parameters, especially when there are many of them.
+
+* Bad: `def serve(ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Better: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Best: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+
+This forces the use of kw-args for everything following the `*`.
+
+kw-args have two big benefits:
+
+First, they make future API changes a lot easier. We can add or remove arguments without breaking the API (just log deprecation notices).
+
+Secondly, named arguments makes the caller code a lot more readable.
+
+Usually, we do NOT use kw-args for single-parameter functions, nor for functions where the first (or all) parameters are obvious from the caller. For instance, `def load_file(path: str) -> bytes`
 
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
@@ -228,6 +268,18 @@ Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg
 Avoid negations in names. A lot of people struggle with double negations, so things like `non_blocking = false` and `if !non_blocking { … }` can become a source of confusion and will slow down most readers. So prefer `connected` over `disconnected`, `initialized` over `uninitialized` etc.
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
+
+### Be over-explicit in stringly typed situations
+In weak/stringly typed situations, be extra careful. This includes Python, Bash, and CLI args.
+
+Avoid vague names like "address". Prefer one of:
+
+* `ip`
+* `ip_port`
+* `url`
+* `email`
+* …
+
 
 ### Units
 * When in doubt, be explicit (`duration_secs: f32` is better than `duration: f32`)

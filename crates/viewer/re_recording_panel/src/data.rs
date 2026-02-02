@@ -1,25 +1,28 @@
 //! Data structures describing the contents of the recording panel.
 
 use std::collections::BTreeMap;
+use std::iter;
 use std::sync::Arc;
 use std::task::Poll;
 
 use ahash::HashMap;
-use itertools::Itertools as _;
-
+use itertools::{Either, Itertools as _};
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
+use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
-use re_smart_channel::SmartChannelSource;
-use re_types::archetypes::RecordingInfo;
-use re_types::components::{Name, Timestamp};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::{Name, Timestamp};
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
 
 /// Short-lived structure containing all the data that will be displayed in the recording panel.
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct RecordingPanelData<'a> {
+    /// All the configured servers.
+    pub servers: Vec<ServerData<'a>>,
+
     /// All the locally loaded application IDs and the corresponding recordings.
     pub local_apps: Vec<AppIdData<'a>>,
 
@@ -32,12 +35,9 @@ pub struct RecordingPanelData<'a> {
     /// Should the example section be displayed at all?
     pub show_example_section: bool,
 
-    /// All the configured servers.
-    pub servers: Vec<ServerData<'a>>,
-
     /// Recordings that are currently being loaded that we cannot attribute yet to a specific
     /// section.
-    pub loading_receivers: Vec<Arc<SmartChannelSource>>,
+    pub loading_receivers: Vec<Arc<LogSource>>,
 }
 
 impl<'a> RecordingPanelData<'a> {
@@ -49,12 +49,10 @@ impl<'a> RecordingPanelData<'a> {
         //
 
         let mut loading_receivers = vec![];
-        let mut loading_partitions: HashMap<
-            re_uri::Origin,
-            HashMap<EntryId, Vec<Arc<SmartChannelSource>>>,
-        > = HashMap::default();
+        let mut loading_segments: HashMap<re_uri::Origin, HashMap<EntryId, Vec<Arc<LogSource>>>> =
+            HashMap::default();
 
-        let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
+        let sources_with_stores: ahash::HashSet<LogSource> = ctx
             .storage_context
             .bundle
             .recordings()
@@ -67,12 +65,12 @@ impl<'a> RecordingPanelData<'a> {
             }
 
             match source.as_ref() {
-                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                LogSource::File(_) | LogSource::RrdHttpStream { .. } => {
                     loading_receivers.push(source);
                 }
 
-                SmartChannelSource::RedapGrpcStream { uri, .. } => {
-                    loading_partitions
+                LogSource::RedapGrpcStream { uri, .. } => {
+                    loading_segments
                         .entry(uri.origin.clone())
                         .or_default()
                         .entry(EntryId::from(uri.dataset_id))
@@ -81,11 +79,11 @@ impl<'a> RecordingPanelData<'a> {
                 }
 
                 // We only show things we know are very-soon-to-be recordings, which these are not.
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::JsChannel { .. }
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::Stdin
-                | SmartChannelSource::MessageProxy(_) => {}
+                LogSource::RrdWebEvent
+                | LogSource::JsChannel { .. }
+                | LogSource::Sdk
+                | LogSource::Stdin
+                | LogSource::MessageProxy(_) => {}
             }
         }
 
@@ -95,7 +93,7 @@ impl<'a> RecordingPanelData<'a> {
 
         let servers = servers
             .iter_servers()
-            .map(|server| ServerData::new(ctx, server, loading_partitions.get(server.origin())))
+            .map(|server| ServerData::new(ctx, server, loading_segments.get(server.origin())))
             .collect();
 
         let mut local_apps: BTreeMap<ApplicationId, Vec<&EntityDb>> = Default::default();
@@ -115,7 +113,7 @@ impl<'a> RecordingPanelData<'a> {
                     .push(entity_db),
 
                 // these are either handled elsewhere or ignored
-                EntityDbClass::DatasetPartition(_) | EntityDbClass::Blueprint => {}
+                EntityDbClass::DatasetSegment(_) | EntityDbClass::Blueprint => {}
             }
         }
 
@@ -148,11 +146,11 @@ impl<'a> RecordingPanelData<'a> {
             .collect();
 
         Self {
+            servers,
             local_apps,
             local_tables,
             example_apps,
             show_example_section,
-            servers,
             loading_receivers,
         }
     }
@@ -162,6 +160,33 @@ impl<'a> RecordingPanelData<'a> {
             && self.local_tables.is_empty()
             && self.example_apps.is_empty()
             && self.servers.is_empty()
+    }
+
+    /// Search for the relevant store id and, if found, return its sibling entity dbs and its index
+    /// within them.
+    pub fn collection_from_recording(
+        &'a self,
+        store_id: &re_log_types::StoreId,
+    ) -> Option<(usize, Vec<&'a EntityDb>)> {
+        for server in &self.servers {
+            for dataset in server.entries_data.iter_datasets() {
+                let store_iter = dataset.iter_loaded_stores();
+
+                if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {
+                    return Some((pos, store_iter.collect()));
+                }
+            }
+        }
+
+        for local_app in self.local_apps.iter().chain(self.example_apps.iter()) {
+            let store_iter = local_app.iter_loaded_stores();
+
+            if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {
+                return Some((pos, store_iter.collect()));
+            }
+        }
+
+        None
     }
 }
 
@@ -186,15 +211,16 @@ impl<'a> AppIdData<'a> {
         entity_dbs.sort_by_cached_key(|entity_db| {
             (
                 entity_db
-                    .recording_info_property::<Name>(&RecordingInfo::descriptor_name())
+                    .recording_info_property::<Name>(RecordingInfo::descriptor_name().component)
                     .map(|s| natural_ordering::OrderedString(s.to_string())),
-                entity_db
-                    .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time()),
+                entity_db.recording_info_property::<Timestamp>(
+                    RecordingInfo::descriptor_start_time().component,
+                ),
             )
         });
 
         let is_active = false;
-        let is_selected = ctx.selection().contains_item(&Item::AppId(app_id.clone()));
+        let is_selected = ctx.is_selected_or_loading(&Item::AppId(app_id.clone()));
 
         let loaded_recordings = entity_dbs
             .into_iter()
@@ -219,6 +245,10 @@ impl<'a> AppIdData<'a> {
 
     pub fn item(&self) -> Item {
         Item::AppId(self.app_id.clone())
+    }
+
+    pub fn iter_loaded_stores(&'a self) -> impl Iterator<Item = &'a EntityDb> + Clone {
+        self.loaded_recordings.iter().map(|rec| rec.entity_db)
     }
 }
 
@@ -247,20 +277,19 @@ impl<'a> ServerData<'a> {
     fn new(
         ctx: &'a ViewerContext<'_>,
         server: &re_redap_browser::Server,
-        loading_partitions: Option<&HashMap<EntryId, Vec<Arc<SmartChannelSource>>>>,
+        loading_segments: Option<&HashMap<EntryId, Vec<Arc<LogSource>>>>,
     ) -> Self {
         let origin = server.origin();
         let item = Item::RedapServer(origin.clone());
 
-        let is_selected = ctx.selection().contains_item(&item);
+        let is_selected = ctx.is_selected_or_loading(&item);
         let is_active = matches!(
             ctx.display_mode(),
             DisplayMode::RedapServer(current_origin)
             if current_origin == origin
         );
 
-        let entries_data =
-            ServerEntriesData::new(ctx, server.entries(), origin, loading_partitions);
+        let entries_data = ServerEntriesData::new(ctx, server.entries(), origin, loading_segments);
 
         Self {
             origin: origin.clone(),
@@ -296,7 +325,7 @@ impl<'a> ServerEntriesData<'a> {
         ctx: &'a ViewerContext<'a>,
         entries: &Entries,
         origin: &re_uri::Origin,
-        loading_partitions: Option<&HashMap<EntryId, Vec<Arc<SmartChannelSource>>>>,
+        loading_segments: Option<&HashMap<EntryId, Vec<Arc<LogSource>>>>,
     ) -> Self {
         match entries.state() {
             Poll::Ready(Ok(entries)) => {
@@ -310,7 +339,7 @@ impl<'a> ServerEntriesData<'a> {
                         entry_id: entry.id(),
                         name: entry.name().to_owned(),
                         icon: entry.icon(),
-                        is_selected: ctx.selection().contains_item(&Item::RedapEntry(
+                        is_selected: ctx.is_selected_or_loading(&Item::RedapEntry(
                             re_uri::EntryUri {
                                 origin: origin.clone(),
                                 entry_id: entry.id(),
@@ -321,18 +350,18 @@ impl<'a> ServerEntriesData<'a> {
 
                     match entry.inner() {
                         Ok(EntryInner::Dataset(_dataset)) => {
-                            let mut displayed_partitions: Vec<PartitionData<'_>> = ctx
+                            let mut displayed_segments: Vec<SegmentData<'_>> = ctx
                                 .storage_context
                                 .bundle
                                 .entity_dbs()
                                 .filter_map(|entity_db| {
-                                    if let EntityDbClass::DatasetPartition(uri) =
+                                    if let EntityDbClass::DatasetSegment(uri) =
                                         entity_db.store_class()
                                     {
                                         if &uri.origin == origin
                                             && EntryId::from(uri.dataset_id) == entry.id()
                                         {
-                                            Some(PartitionData::Loaded { entity_db })
+                                            Some(SegmentData::Loaded { entity_db })
                                         } else {
                                             None
                                         }
@@ -342,19 +371,32 @@ impl<'a> ServerEntriesData<'a> {
                                 })
                                 .collect();
 
-                            if let Some(loading_partitions) = loading_partitions
-                                && let Some(smart_channels) = loading_partitions.get(&entry.id())
+                            if let Some(loading_segments) = loading_segments
+                                && let Some(smart_channels) = loading_segments.get(&entry.id())
                             {
-                                displayed_partitions.extend(smart_channels.iter().map(|source| {
-                                    PartitionData::Loading {
+                                displayed_segments.extend(smart_channels.iter().map(|source| {
+                                    SegmentData::Loading {
                                         receiver: source.clone(),
                                     }
                                 }));
                             }
 
+                            displayed_segments.sort_by_key(|segment| match segment {
+                                SegmentData::Loading { receiver } => {
+                                    ctx.storage_context.hub.data_source_order(receiver)
+                                }
+                                SegmentData::Loaded { entity_db } => {
+                                    if let Some(data_source) = &entity_db.data_source {
+                                        ctx.storage_context.hub.data_source_order(data_source)
+                                    } else {
+                                        u64::MAX
+                                    }
+                                }
+                            });
+
                             dataset_entries.push(DatasetData {
                                 entry_data,
-                                displayed_partitions,
+                                displayed_segments,
                             });
                         }
 
@@ -381,6 +423,16 @@ impl<'a> ServerEntriesData<'a> {
             Poll::Pending => Self::Loading,
         }
     }
+
+    pub fn iter_datasets(&'a self) -> impl Iterator<Item = &'a DatasetData<'a>> {
+        match self {
+            Self::Loaded {
+                dataset_entries, ..
+            } => Either::Left(dataset_entries.iter()),
+
+            Self::Error(..) | Self::Loading => Either::Right(iter::empty()),
+        }
+    }
 }
 
 // ---
@@ -389,7 +441,18 @@ impl<'a> ServerEntriesData<'a> {
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct DatasetData<'a> {
     pub entry_data: EntryData,
-    pub displayed_partitions: Vec<PartitionData<'a>>,
+    pub displayed_segments: Vec<SegmentData<'a>>,
+}
+
+impl<'a> DatasetData<'a> {
+    pub fn iter_loaded_stores(&'a self) -> impl Iterator<Item = &'a EntityDb> + Clone {
+        self.displayed_segments
+            .iter()
+            .filter_map(|segment| match segment {
+                SegmentData::Loaded { entity_db } => Some(*entity_db),
+                SegmentData::Loading { .. } => None,
+            })
+    }
 }
 
 // ---
@@ -449,9 +512,9 @@ impl EntryData {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
-pub enum PartitionData<'a> {
+pub enum SegmentData<'a> {
     Loading {
-        receiver: Arc<SmartChannelSource>,
+        receiver: Arc<LogSource>,
     },
     Loaded {
         #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_entity_db"))]
@@ -459,11 +522,11 @@ pub enum PartitionData<'a> {
     },
 }
 
-impl PartitionData<'_> {
+impl SegmentData<'_> {
     pub fn entity_db(&self) -> Option<&EntityDb> {
         match self {
-            PartitionData::Loaded { entity_db, .. } => Some(entity_db),
-            PartitionData::Loading { .. } => None,
+            SegmentData::Loaded { entity_db, .. } => Some(entity_db),
+            SegmentData::Loading { .. } => None,
         }
     }
 }

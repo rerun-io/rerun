@@ -2,8 +2,7 @@
 //!
 //! Current this is mainly the add view or container modal.
 
-use parking_lot::Mutex;
-
+use re_mutex::Mutex;
 use re_viewer_context::{ContainerId, ViewerContext};
 
 use crate::ViewportBlueprint;

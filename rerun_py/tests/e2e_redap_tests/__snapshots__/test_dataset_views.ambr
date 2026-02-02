@@ -1,0 +1,127 @@
+# serializer version: 1
+# name: test_dataset_view_filter_contents
+  '''
+  /obj1:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj1'
+      b'rerun:kind': b'data'
+  /obj2:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj2'
+      b'rerun:kind': b'data'
+  /obj3:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj3'
+      b'rerun:kind': b'data'
+  /text1:TextDocument:text:
+      b'rerun:archetype': b'rerun.archetypes.TextDocument'
+      b'rerun:component': b'TextDocument:text'
+      b'rerun:component_type': b'rerun.components.Text'
+      b'rerun:entity_path': b'/text1'
+      b'rerun:is_static': b'true'
+      b'rerun:kind': b'data'
+  /text2:TextDocument:text:
+      b'rerun:archetype': b'rerun.archetypes.TextDocument'
+      b'rerun:component': b'TextDocument:text'
+      b'rerun:component_type': b'rerun.components.Text'
+      b'rerun:entity_path': b'/text2'
+      b'rerun:is_static': b'true'
+      b'rerun:kind': b'data'
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun.controls.RowId:
+      b'ARROW:extension:metadata': b'{"namespace":"row"}'
+      b'ARROW:extension:name': b'rerun.datatypes.TUID'
+      b'rerun:kind': b'control'
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
+# name: test_dataset_view_filter_contents.1
+  '''
+  /obj1:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj1'
+      b'rerun:kind': b'data'
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun.controls.RowId:
+      b'ARROW:extension:metadata': b'{"namespace":"row"}'
+      b'ARROW:extension:name': b'rerun.datatypes.TUID'
+      b'rerun:kind': b'control'
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
+# name: test_dataset_view_reader
+  '''
+  ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ METADATA:                                                                                                                                                                                                                           │
+  │ * version: 0.1.2                                                                                                                                                                                                                    │
+  ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+  │ ┌─────────────────────────────────────────────────────┬──────────────────────┬──────────────────────────────┬──────────────────────────────────┬───────────────────────────────┬─────────────────────────────┬────────────────────┐ │
+  │ │ /obj1:Points3D:positions                            ┆ log_tick             ┆ log_time                     ┆ rerun_segment_id                 ┆ time_1                        ┆ time_2                      ┆ time_3             │ │
+  │ │ ---                                                 ┆ ---                  ┆ ---                          ┆ ---                              ┆ ---                           ┆ ---                         ┆ ---                │ │
+  │ │ type: nullable List[nullable FixedSizeList[f32; 3]] ┆ type: nullable i64   ┆ type: nullable Timestamp(ns) ┆ type: Utf8                       ┆ type: nullable Timestamp(ns)  ┆ type: nullable Duration(ns) ┆ type: nullable i64 │ │
+  │ │ archetype: Points3D                                 ┆ index_name: log_tick ┆ index_name: log_time         ┆                                  ┆ index_name: time_1            ┆ index_name: time_2          ┆ index_name: time_3 │ │
+  │ │ component: Points3D:positions                       ┆ kind: index          ┆ kind: index                  ┆                                  ┆ kind: index                   ┆ kind: index                 ┆ kind: index        │ │
+  │ │ component_type: Position3D                          ┆                      ┆                              ┆                                  ┆                               ┆                             ┆                    │ │
+  │ │ entity_path: /obj1                                  ┆                      ┆                              ┆                                  ┆                               ┆                             ┆                    │ │
+  │ │ kind: data                                          ┆                      ┆                              ┆                                  ┆                               ┆                             ┆                    │ │
+  │ ╞═════════════════════════════════════════════════════╪══════════════════════╪══════════════════════════════╪══════════════════════════════════╪═══════════════════════════════╪═════════════════════════════╪════════════════════╡ │
+  │ │ [[1.0, 0.0, 0.0]]                                   ┆ 25                   ┆ 2025-11-03T20:35:21.079952   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:30:45.123456789 ┆ PT12900S                    ┆ 46                 │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[2.0, 0.0, 0.0]]                                   ┆ 34                   ┆ 2025-11-03T20:35:21.080080   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:32:45.123456789 ┆ PT12000S                    ┆ 6                  │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[3.0, 0.0, 0.0]]                                   ┆ 96                   ┆ 2025-11-03T20:35:21.080980   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:34:45.123456789 ┆ PT9900S                     ┆ 30                 │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[4.0, 0.0, 0.0]]                                   ┆ 86                   ┆ 2025-11-03T20:35:21.080836   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:36:45.123456789 ┆ PT1800S                     ┆ 50                 │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[5.0, 0.0, 0.0]]                                   ┆ 41                   ┆ 2025-11-03T20:35:21.080180   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:38:45.123456789 ┆ PT4200S                     ┆ 15                 │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[6.0, 0.0, 0.0]]                                   ┆ 97                   ┆ 2025-11-03T20:35:21.080997   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:40:45.123456789 ┆ PT13500S                    ┆ 9                  │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[7.0, 0.0, 0.0]]                                   ┆ 31                   ┆ 2025-11-03T20:35:21.080037   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:42:45.123456789 ┆ PT11400S                    ┆ 47                 │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[8.0, 0.0, 0.0]]                                   ┆ 54                   ┆ 2025-11-03T20:35:21.080362   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:44:45.123456789 ┆ PT9000S                     ┆ null               │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[10.0, 0.0, 0.0]]                                  ┆ 82                   ┆ 2025-11-03T20:35:21.080779   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:48:45.123456789 ┆ null                        ┆ 27                 │ │
+  │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+  │ │ [[12.0, 0.0, 0.0]]                                  ┆ 72                   ┆ 2025-11-03T20:35:21.080635   ┆ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:52:45.123456789 ┆ PT3300S                     ┆ 10                 │ │
+  │ └─────────────────────────────────────────────────────┴──────────────────────┴──────────────────────────────┴──────────────────────────────────┴───────────────────────────────┴─────────────────────────────┴────────────────────┘ │
+  └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  Data truncated due to size.
+  '''
+# ---

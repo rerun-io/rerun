@@ -28,21 +28,24 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [package.metadata.cargo-shear]
 ignored = [
-  "profiling",    # Needed to hook up wgpu, see below at dependency setup.
-  "js-sys",       # Needed for wasm builds
+  "profiling", # Needed to hook up wgpu, see below at dependency setup.
+  "js-sys", # Needed for wasm builds
   "getrandom",
   "wasm-bindgen",
 ]
 
 
 [features]
-default = ["import-obj", "import-gltf", "import-stl"]
+default = ["import-dae", "import-gltf", "import-obj", "import-stl"]
 
-## Support importing .obj files
-import-obj = ["dep:tobj"]
+## Support importing .dae files
+import-dae = ["dep:dae-parser"]
 
 ## Support importing .gltf and .glb files
 import-gltf = ["dep:gltf"]
+
+## Support importing .obj files
+import-obj = ["dep:tobj"]
 
 ## Support importing binary & ascii .stl files
 import-stl = ["dep:stl_io"]
@@ -54,7 +57,9 @@ serde = ["dep:serde"]
 re_byte_size.workspace = true
 re_error.workspace = true
 re_log.workspace = true
+re_mutex.workspace = true
 re_tracing.workspace = true
+re_tuid.workspace = true
 re_video = { workspace = true, default-features = true }
 
 ahash.workspace = true
@@ -63,6 +68,7 @@ bitflags.workspace = true
 bytemuck.workspace = true
 clean-path.workspace = true
 crossbeam.workspace = true
+dae-parser = { workspace = true, optional = true }
 document-features.workspace = true
 ecolor = { workspace = true, features = ["bytemuck"] }
 enumset.workspace = true
@@ -76,6 +82,7 @@ parking_lot.workspace = true
 # wgpu uses the `profiling` crate for its profiling scopes.
 # This will hook them up to the puffin profiler as backend:
 profiling = { workspace = true, features = ["profile-with-puffin"] }
+regex-lite.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true

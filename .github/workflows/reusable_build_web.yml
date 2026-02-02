@@ -35,7 +35,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "write"
@@ -45,6 +45,7 @@ permissions:
 jobs:
   rs-build-web-viewer:
     name: Build web viewer
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +72,8 @@ jobs:
             | ------ | ------- | ----- | -------- |
             | ⏳ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
 
+            View image diff on [kitdiff](https://rerun-io.github.io/kitdiff/?url=${{github.event.pull_request.html_url}}).
+
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Set up Rust
@@ -82,9 +85,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Build web-viewer (release)
         run: |
@@ -124,5 +127,7 @@ jobs:
             | Result | Commit  | Link  | Manifest |
             | ------ | ------- | ----- | -------- |
             | ❌ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
+
+            View image diff on [kitdiff](https://rerun-io.github.io/kitdiff/?url=${{github.event.pull_request.html_url}}).
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>

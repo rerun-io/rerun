@@ -1,11 +1,9 @@
 use nohash_hasher::IntSet;
-
 use re_byte_size::SizeBytes;
-
-use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Archetype, ComponentBatch};
+use crate::{ComponentIdentifier, DeserializationResult, SerializationResult};
 
 // ---
 
@@ -93,10 +91,9 @@ pub trait Component: Loggable {
 
 // ---
 
-pub type UnorderedComponentDescriptorSet = IntSet<ComponentDescriptor>;
+pub type UnorderedComponentSet = IntSet<ComponentIdentifier>;
 
-// TODO(#10460): Can we replace this with `BTreeSet<ComponentIdentifier>` here?
-pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor>;
+pub type ComponentSet = std::collections::BTreeSet<ComponentIdentifier>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
@@ -173,16 +170,26 @@ impl ComponentType {
             || self.full_name().to_lowercase() == other.to_lowercase()
             || self.short_name().to_lowercase() == other.to_lowercase()
     }
+
+    /// Returns `true` if this is a known Rerun component type (e.g., `rerun.components.*`, `rerun.blueprint.components.*`).
+    ///
+    /// Returns `false` for custom user-defined components.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use re_types_core::ComponentType;
+    /// assert!(ComponentType::from("rerun.components.Position2D").is_rerun_type());
+    /// assert!(ComponentType::from("rerun.blueprint.components.Active").is_rerun_type());
+    /// assert!(!ComponentType::from("my_custom.MyComponent").is_rerun_type());
+    /// ```
+    #[inline]
+    pub fn is_rerun_type(&self) -> bool {
+        self.0.as_str().starts_with("rerun.")
+    }
 }
 
 // ---
-
-impl re_byte_size::SizeBytes for ComponentType {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
@@ -217,12 +224,5 @@ impl DatatypeName {
         } else {
             full_name
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for DatatypeName {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
     }
 }

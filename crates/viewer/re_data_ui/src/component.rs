@@ -1,5 +1,4 @@
 use egui::NumExt as _;
-
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, Instance, TimeInt, TimePoint};
@@ -24,7 +23,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_path.component_descriptor.display_name());
+        re_tracing::profile_function!(self.component_path.component);
 
         ui.sanity_check();
 
@@ -32,12 +31,25 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
         let ComponentPath {
             entity_path,
-            component_descriptor,
+            component,
         } = &self.component_path;
+
+        let engine = db.storage_engine();
+
+        let component = *component;
+        let Some(component_descriptor) = engine
+            .store()
+            .entity_component_descriptor(entity_path, component)
+        else {
+            ui.label(format!(
+                "Entity {entity_path:?} has no component {component:?}"
+            ));
+            return;
+        };
 
         let Some(num_instances) = self
             .unit
-            .component_batch_raw(component_descriptor)
+            .component_batch_raw(component)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -64,7 +76,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             if time.is_static() {
                 let static_message_count = engine
                     .store()
-                    .num_static_events_for_component(entity_path, component_descriptor);
+                    .num_static_events_for_component(entity_path, component);
                 if static_message_count > 1 {
                     ui.warning_label(format!(
                         "Static component value was overridden {} times.",
@@ -79,10 +91,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
                 let temporal_message_count = engine
                     .store()
-                    .num_temporal_events_for_component_on_all_timelines(
-                        entity_path,
-                        component_descriptor,
-                    );
+                    .num_temporal_events_for_component_on_all_timelines(entity_path, component);
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
                         "Static component has {} event{} logged on timelines.",
@@ -132,7 +141,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         if num_instances <= 1 {
             // Allow editing recording properties:
             if entity_path.starts_with(&EntityPath::properties())
-                && let Some(array) = self.unit.component_batch_raw(component_descriptor)
+                && let Some(array) = self.unit.component_batch_raw(component)
                 && ctx.component_ui_registry().try_show_edit_ui(
                     ctx,
                     ui,
@@ -156,7 +165,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                 query,
                 db,
                 entity_path,
-                component_descriptor,
+                &component_descriptor,
                 self.unit,
                 &Instance::from(0),
             );
@@ -185,17 +194,24 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     body.rows(row_height, num_displayed_rows, |mut row| {
                         let instance = Instance::from(row.index() as u64);
                         row.col(|ui| {
-                            let instance_path =
-                                InstancePath::instance(entity_path.clone(), instance);
-                            item_ui::instance_path_button_to(
-                                ctx,
-                                query,
-                                db,
-                                ui,
-                                None,
-                                &instance_path,
-                                instance.syntax_highlighted(ui.style()),
-                            );
+                            let instance_text = instance.syntax_highlighted(ui.style());
+                            if ui.is_tooltip() {
+                                // Avoids interactive tooltips,
+                                // because that means they stick around when you move your mouse
+                                ui.label(instance_text);
+                            } else {
+                                let instance_path =
+                                    InstancePath::instance(entity_path.clone(), instance);
+                                item_ui::instance_path_button_to(
+                                    ctx,
+                                    query,
+                                    db,
+                                    ui,
+                                    None,
+                                    &instance_path,
+                                    instance_text,
+                                );
+                            }
                         });
                         row.col(|ui| {
                             ctx.component_ui_registry().component_ui(
@@ -205,7 +221,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                                 query,
                                 db,
                                 entity_path,
-                                component_descriptor,
+                                &component_descriptor,
                                 self.unit,
                                 &instance,
                             );

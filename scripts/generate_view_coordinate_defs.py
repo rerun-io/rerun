@@ -108,7 +108,7 @@ def generate_up_handed_permutations() -> Iterable[ViewCoordinates]:
 
 ################################################################################
 # Rust Archetype
-RUST_ARCHETYPE_EXTENSION_FILE = "crates/store/re_types/src/archetypes/view_coordinates_ext.rs"
+RUST_ARCHETYPE_EXTENSION_FILE = "crates/store/re_sdk_types/src/archetypes/view_coordinates_ext.rs"
 
 
 def rust_arch_decl(coords: ViewCoordinates) -> str:
@@ -129,7 +129,7 @@ def gen_rust_arch_decl() -> list[str]:
 
 ################################################################################
 # Rust Component
-RUST_COMPONENT_EXTENSION_FILE = "crates/store/re_types/src/components/view_coordinates_ext.rs"
+RUST_COMPONENT_EXTENSION_FILE = "crates/store/re_sdk_types/src/components/view_coordinates_ext.rs"
 
 
 def rust_cmp_decl(coords: ViewCoordinates) -> str:

@@ -3,32 +3,33 @@
 //! Uses instancing to render instances of the same mesh in a single draw call.
 //! Instance data is kept in an instance-stepped vertex data.
 
-use std::{collections::BTreeMap, ops::Range, sync::Arc};
+use std::collections::BTreeMap;
+use std::ops::Range;
+use std::sync::Arc;
 
 use enumset::EnumSet;
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
+use crate::mesh::gpu_data::MaterialUniformBuffer;
+use crate::mesh::{GpuMesh, mesh_vertices};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer, GpuRenderPipelineHandle,
+    GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
 use crate::{
     Color32, CpuWriteGpuReadError, DrawableCollector, OutlineMaskPreference, PickingLayerId,
-    PickingLayerProcessor,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_shader_module,
-    mesh::{GpuMesh, gpu_data::MaterialUniformBuffer, mesh_vertices},
-    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
+    PickingLayerProcessor, include_shader_module,
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 mod gpu_data {
     use ecolor::Color32;
 
-    use crate::{mesh::mesh_vertices, wgpu_resources::VertexBufferLayout};
+    use crate::mesh::mesh_vertices;
+    use crate::wgpu_resources::VertexBufferLayout;
 
     /// Element in the gpu residing instance buffer.
     ///
@@ -590,6 +591,7 @@ impl Renderer for MeshRenderer {
 
                     pass.set_bind_group(1, &material.bind_group, &[]);
 
+                    #[expect(clippy::branches_sharing_code)]
                     if phase == DrawPhase::Transparent {
                         // First draw without front faces.
                         pass.set_pipeline(
@@ -626,6 +628,7 @@ impl Renderer for MeshRenderer {
 }
 
 /// Determines which draw phases an mesh instance participates in.
+#[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
 fn instance_draw_phases(
     instance: &GpuMeshInstance,
     any_material_transparent: bool,
@@ -657,10 +660,8 @@ mod tests {
     use smallvec::SmallVec;
 
     use super::*;
-    use crate::{
-        Color32, DrawPhaseManager, PickingLayerId, RenderContext, Rgba32Unmul,
-        mesh::{CpuMesh, GpuMesh, Material},
-    };
+    use crate::mesh::{CpuMesh, GpuMesh, Material};
+    use crate::{Color32, DrawPhaseManager, PickingLayerId, RenderContext, Rgba32Unmul};
 
     fn test_view_info() -> DrawableCollectionViewInfo {
         DrawableCollectionViewInfo {

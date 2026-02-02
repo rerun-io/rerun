@@ -1,36 +1,28 @@
 //! Send video data to `ffmpeg` over CLI to decode it.
 
-use std::{
-    collections::BTreeMap,
-    process::ChildStdin,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicI32, Ordering},
-    },
-};
+use std::collections::BTreeMap;
+use std::process::ChildStdin;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
-use crossbeam::channel::{Receiver, SendError, Sender};
-use ffmpeg_sidecar::{
-    child::FfmpegChild,
-    command::FfmpegCommand,
-    event::{FfmpegEvent, LogLevel},
-};
+use ffmpeg_sidecar::child::FfmpegChild;
+use ffmpeg_sidecar::command::FfmpegCommand;
+use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use h264_reader::nal::UnitType;
-use parking_lot::Mutex;
-
-use crate::{
-    PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
-    decode::{
-        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult,
-        ffmpeg_cli::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
-    },
-    demux::ChromaSubsamplingModes,
-    h264::write_avc_chunk_to_nalu_stream,
-    h265::write_hevc_chunk_to_nalu_stream,
-    nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError},
-};
+use re_quota_channel::{Receiver, SendError, Sender};
 
 use super::version::FFmpegVersionParseError;
+use crate::decode::ffmpeg_cli::{
+    FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
+};
+use crate::decode::{
+    AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult,
+};
+use crate::demux::ChromaSubsamplingModes;
+use crate::h264::write_avc_chunk_to_nalu_stream;
+use crate::h265::write_hevc_chunk_to_nalu_stream;
+use crate::nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError};
+use crate::{PixelFormat, Time, VideoDataDescription, VideoEncodingDetails};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -119,7 +111,7 @@ impl From<AnnexBStreamWriteError> for Error {
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone, Debug)]
 struct FFmpegFrameInfo {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
@@ -146,9 +138,24 @@ struct FFmpegFrameInfo {
     decode_timestamp: Time,
 }
 
+impl re_byte_size::SizeBytes for FFmpegFrameInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 enum FFmpegFrameData {
     Chunk(Chunk),
     Quit,
+}
+
+impl re_byte_size::SizeBytes for FFmpegFrameData {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Chunk(chunk) => chunk.heap_size_bytes(),
+            Self::Quit => 0,
+        }
+    }
 }
 
 /// Wraps an stdin with a shared shutdown boolean.
@@ -181,17 +188,23 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
-/// Output sender is mutex protected `Option` so that we can stop sending output frames on ffmpeg shutdown by setting it to `None`.
-type OutputSender = Mutex<Option<Sender<FrameResult>>>;
+/// A sender with a signal to know if it should stop.
+struct OutputSender {
+    sender: Sender<FrameResult>,
+
+    /// After this is true the sender won't try to send additional
+    /// [`FrameResult`]s. The sender might still be blocked because of
+    /// backpressure, and send one last frame after this has been set to true.
+    stop_signal: AtomicBool,
+}
 
 /// Send a result to the output sender.
 fn send_output(
     output_sender: &OutputSender,
     result: FrameResult,
 ) -> Result<(), SendError<FrameResult>> {
-    let output_sender_guard = output_sender.lock();
-    if let Some(output_sender) = output_sender_guard.as_ref() {
-        output_sender.send(result)
+    if !output_sender.stop_signal.load(Ordering::Acquire) {
+        output_sender.sender.send(result)
     } else {
         Err(SendError(result))
     }
@@ -321,15 +334,20 @@ impl FFmpegProcessAndListener {
             .iter()
             .map_err(|err| Error::NoIterator(err.to_string()))?;
 
-        let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
-        let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
+        let (frame_info_tx, frame_info_rx) =
+            crate::channel(format!("{debug_name}-ffmpeg_frame_info"));
+        let (frame_data_tx, frame_data_rx) =
+            crate::channel(format!("{debug_name}-ffmpeg_frame_data"));
 
         let num_outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));
 
         // Mutex protect `output_sender` so that we can shut down the threads at a defined point in time at which we
         // no longer receive any new frames or errors from this process.
-        let output_sender = Arc::new(Mutex::new(Some(output_sender)));
+        let output_sender = Arc::new(OutputSender {
+            sender: output_sender,
+            stop_signal: AtomicBool::new(false),
+        });
 
         // Reads the output from the ffmpeg process:
         let listen_thread = std::thread::Builder::new()
@@ -431,12 +449,15 @@ impl Drop for FFmpegProcessAndListener {
     fn drop(&mut self) {
         re_tracing::profile_function!();
 
-        // Stop all outputs from being written to - any attempt from here on out will fail and cause thread shutdown.
-        // This way, we ensure all ongoing writes are finished and won't get any more on_output callbacks from this process
+        // Stop all outputs from being written to - any new attempt from here on out will fail and cause thread shutdown.
+        // This way, we ensure there won't be any new writes and won't get any more on_output callbacks from this process
         // before we take any other action on the shutdown sequence.
-        {
-            self.output_sender.lock().take();
-        }
+        //
+        // This does mean the encoder can send one final message if it's blocked, which is fine since either it will be
+        // cleaned up the next time we receive decode outputs. Or it will be overridden when said sample is decoded again.
+        self.output_sender
+            .stop_signal
+            .store(true, Ordering::Release);
 
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
         self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
@@ -804,7 +825,7 @@ fn read_ffmpeg_output(
 
             FfmpegEvent::Done => {
                 // This happens on `pkill ffmpeg`, for instance.
-                re_log::debug!("{debug_name}'s ffmpeg is Done");
+                re_log::trace!("{debug_name}'s ffmpeg is Done");
                 return None;
             }
 

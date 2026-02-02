@@ -1,11 +1,12 @@
-use std::{collections::hash_map::Entry, sync::LazyLock};
+use std::collections::hash_map::Entry;
+use std::sync::LazyLock;
 
 use ahash::HashMap;
-use crossbeam::channel::Sender;
 use js_sys::{Function, Uint8Array};
 use re_mp4::StsdBoxContent;
 use smallvec::SmallVec;
-use wasm_bindgen::{JsCast as _, closure::Closure};
+use wasm_bindgen::JsCast as _;
+use wasm_bindgen::closure::Closure;
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,
@@ -13,8 +14,8 @@ use web_sys::{
 
 use super::{AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, Result};
 use crate::{
-    DecodeError, FrameResult, Time, Timescale, VideoCodec, VideoDataDescription,
-    VideoEncodingDetails,
+    DecodeError, FrameResult, Sender, Time, Timescale, TryRecvError, VideoCodec,
+    VideoDataDescription, VideoEncodingDetails,
 };
 
 #[derive(Clone)]
@@ -51,6 +52,12 @@ enum OutputCallbackMessage {
     },
 }
 
+impl re_byte_size::SizeBytes for OutputCallbackMessage {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 pub struct WebVideoDecoder {
     codec: VideoCodec,
 
@@ -59,7 +66,7 @@ pub struct WebVideoDecoder {
 
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
-    output_sender: crossbeam::channel::Sender<FrameResult>,
+    output_sender: Sender<FrameResult>,
 
     output_callback_tx: Sender<OutputCallbackMessage>,
 }
@@ -96,21 +103,20 @@ pub enum WebError {
 // SAFETY: There is no way to access the same JS object from different OS threads
 //         in a way that could result in a data race.
 
-#[allow(unsafe_code)]
-// Clippy did not recognize a safety comment on these impls no matter what I tried:
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)] // false positive
 unsafe impl Send for WebVideoDecoder {}
 
-#[allow(unsafe_code)]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoDecoder {}
 
-#[allow(unsafe_code)]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Send for WebVideoFrame {}
 
-#[allow(unsafe_code)]
-#[allow(clippy::undocumented_unsafe_blocks)]
+#[expect(unsafe_code)]
+#[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoFrame {}
 
 static IS_SAFARI: LazyLock<bool> = LazyLock::new(|| {
@@ -134,12 +140,12 @@ impl Drop for WebVideoDecoder {
         }
 
         if let Err(err) = self.decoder.close() {
-            if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>() {
-                if dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR {
-                    // Invalid state error after a decode error may happen, ignore it!
-                    // TODO(andreas): we used to do so only if there was a non-flushed error. Are we ignoring this too eagerly?
-                    return;
-                }
+            if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
+                && dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR
+            {
+                // Invalid state error after a decode error may happen, ignore it!
+                // TODO(andreas): we used to do so only if there was a non-flushed error. Are we ignoring this too eagerly?
+                return;
             }
 
             re_log::warn!(
@@ -154,7 +160,7 @@ impl WebVideoDecoder {
     pub fn new(
         video_descr: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
-        output_sender: crossbeam::channel::Sender<FrameResult>,
+        output_sender: Sender<FrameResult>,
     ) -> Result<Self, WebError> {
         // Web APIs insist on microsecond timestamps throughout.
         // If we don't have a timescale, assume a 30fps video where time units are frames.
@@ -166,7 +172,8 @@ impl WebVideoDecoder {
 
         let first_frame_pts = video_descr
             .samples
-            .front()
+            .iter()
+            .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         Ok(Self {
@@ -281,7 +288,8 @@ impl AsyncDecoder for WebVideoDecoder {
         // For all we know, the first frame timestamp may have changed.
         self.first_frame_pts = video_descr
             .samples
-            .front()
+            .iter()
+            .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
         let encoding_details = video_descr
@@ -323,11 +331,11 @@ impl AsyncDecoder for WebVideoDecoder {
         wasm_bindgen_futures::spawn_local(async move {
             let flush_result = wasm_bindgen_futures::JsFuture::from(flush_promise).await;
             if let Err(flush_error) = flush_result {
-                if let Some(dom_exception) = flush_error.dyn_ref::<web_sys::DomException>() {
-                    if dom_exception.code() == web_sys::DomException::ABORT_ERR {
-                        // Video decoder got closed, that's fine.
-                        return;
-                    }
+                if let Some(dom_exception) = flush_error.dyn_ref::<web_sys::DomException>()
+                    && dom_exception.code() == web_sys::DomException::ABORT_ERR
+                {
+                    // Video decoder got closed, that's fine.
+                    return;
                 }
 
                 re_log::debug!(
@@ -354,9 +362,10 @@ impl AsyncDecoder for WebVideoDecoder {
 }
 
 fn init_video_decoder(
-    output_sender: crossbeam::channel::Sender<FrameResult>,
+    output_sender: Sender<FrameResult>,
 ) -> Result<(web_sys::VideoDecoder, Sender<OutputCallbackMessage>), WebError> {
-    let (output_callback_tx, output_callback_rx) = crossbeam::channel::unbounded();
+    let (output_callback_tx, output_callback_rx) =
+        re_quota_channel::channel("web_callbacks", 1024 * 1024);
 
     let on_output = {
         let output_sender = output_sender.clone();
@@ -392,12 +401,12 @@ fn init_video_decoder(
                         pending_frame_infos.clear();
                     }
 
-                    Err(crossbeam::channel::TryRecvError::Empty) => {
+                    Err(TryRecvError::Empty) => {
                         // Done, received all messages.
                         break;
                     }
 
-                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
+                    Err(TryRecvError::Disconnected) => {
                         // We're probably shutting down.
                         return;
                     }
@@ -535,7 +544,7 @@ fn js_error_to_string(v: &wasm_bindgen::JsValue) -> String {
         let error = std::string::ToString::to_string(&v.to_string());
         return error
             .strip_prefix("EncodingError: ")
-            .map_or(error.clone(), |s| s.to_owned());
+            .map_or_else(|| error.clone(), |s| s.to_owned());
     }
 
     format!("{v:#?}")

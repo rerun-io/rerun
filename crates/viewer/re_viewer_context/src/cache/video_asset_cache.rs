@@ -1,21 +1,21 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
+use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{ComponentDescriptor, components::MediaType};
+use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::video::Video;
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::components::MediaType;
 use re_video::DecodeSettings;
 
-use crate::{
-    Cache, CacheMemoryReport, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey,
-};
+use crate::Cache;
+use crate::cache::filter_blob_removed_events;
+use crate::image_info::StoredBlobCacheKey;
 
 // ----------------------------------------------------------------------------
 
@@ -24,6 +24,9 @@ struct Entry {
 
     /// Keeps failed loads around, so we can don't try again and again.
     video: Arc<Result<Video, VideoLoadError>>,
+
+    /// Debug name for this video entry (typically the entity path).
+    debug_name: String,
 }
 
 impl re_byte_size::SizeBytes for Entry {
@@ -31,11 +34,9 @@ impl re_byte_size::SizeBytes for Entry {
         let Self {
             used_this_frame: _,
             video,
+            debug_name,
         } = self;
-        match video.as_ref() {
-            Ok(video) => video.heap_size_bytes(),
-            Err(_) => 100, // close enough
-        }
+        debug_name.heap_size_bytes() + video.heap_size_bytes()
     }
 }
 
@@ -53,16 +54,16 @@ impl VideoAssetCache {
         &mut self,
         debug_name: String,
         blob_row_id: RowId,
-        blob_component_descriptor: &ComponentDescriptor,
-        video_buffer: &re_types::datatypes::Blob,
+        blob_component: ComponentIdentifier,
+        video_buffer: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!(&debug_name);
 
-        // The descriptor should always be the one in the video asset archetype, but in the future
+        // The component should always be the one in the video asset archetype, but in the future
         // we may allow overrides such that it is sourced from somewhere else.
-        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor);
+        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component);
 
         // In order to avoid loading the same video multiple times with
         // known and unknown media type, we have to resolve the media type before
@@ -86,11 +87,14 @@ impl VideoAssetCache {
                     video_buffer,
                     &media_type,
                     &debug_name,
+                    // For video assets we use the row-id as the source identifier.
+                    blob_row_id.as_tuid(),
                 )
-                .map(|data| Video::load(debug_name, data, decode_settings));
+                .map(|data| Video::load(debug_name.clone(), data, decode_settings));
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),
+                    debug_name,
                 }
             });
 
@@ -102,7 +106,16 @@ impl VideoAssetCache {
     }
 }
 
-impl Cache for VideoAssetCache {
+impl Cache for VideoAssetCache
+where
+    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
+    Video: Send + Sync,
+    VideoLoadError: Send + Sync,
+{
+    fn name(&self) -> &'static str {
+        "VideoAssetCache"
+    }
+
     fn begin_frame(&mut self) {
         re_tracing::profile_function!();
 
@@ -124,14 +137,6 @@ impl Cache for VideoAssetCache {
         }
     }
 
-    fn memory_report(&self) -> CacheMemoryReport {
-        CacheMemoryReport {
-            bytes_cpu: self.0.total_size_bytes(),
-            bytes_gpu: None,
-            per_cache_item_info: Vec::new(),
-        }
-    }
-
     fn purge_memory(&mut self) {
         // We aggressively purge all unused video data every frame.
         // The expectation here is that parsing video data is fairly fast,
@@ -142,19 +147,35 @@ impl Cache for VideoAssetCache {
         // but it's almost entirely due to the decoder trying to retrieve a frame.
     }
 
-    fn name(&self) -> &'static str {
-        "Video Assets"
-    }
-
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         let cache_key_removed = filter_blob_removed_events(events);
         self.0
             .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
+}
 
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+impl re_byte_size::MemUsageTreeCapture for VideoAssetCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        // Collect all entries with their debug names and sizes
+        let mut items: Vec<_> = self
+            .0
+            .values()
+            .flat_map(|per_key| per_key.values())
+            .map(|entry| {
+                let size = entry.heap_size_bytes();
+                (entry.debug_name.as_str(), size)
+            })
+            .collect();
+        items.sort_by(|a, b| a.0.cmp(b.0));
+
+        for (debug_name, size) in items {
+            node.add(debug_name, re_byte_size::MemUsageTree::Bytes(size));
+        }
+
+        node.with_total_size_bytes(self.0.total_size_bytes())
     }
 }

@@ -1,22 +1,27 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Self
+from typing import TYPE_CHECKING, Any
 
 import datafusion as dfn
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
-from rerun.catalog import CatalogClient
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
-    AnyColumn,
-    AnyComponentColumn,
-    IndexValuesLike,
-    ViewContentsLike,
+    IndexValuesLike as IndexValuesLike,
+    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
+
+if TYPE_CHECKING:
+    from rerun.catalog import Schema
+
+# NOTE
+#
+# The pure Python wrapper/internal pyo3 object is documented in `rerun_py/ARCHITECTURE.md`.
 
 class IndexColumnDescriptor:
     """
@@ -26,8 +31,8 @@ class IndexColumnDescriptor:
     generally correspond to Rerun timelines.
 
     Column descriptors are used to describe the columns in a
-    [`Schema`][rerun.dataframe.Schema]. They are read-only. To select an index
-    column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
+    [`Schema`][rerun.catalog.Schema]. They are read-only. To select an index
+    column, use [`IndexColumnSelector`][rerun.catalog.IndexColumnSelector].
     """
 
     @property
@@ -56,7 +61,7 @@ class IndexColumnSelector:
 
         Parameters
         ----------
-        index : str
+        index:
             The name of the index to select. Usually the name of a timeline.
 
         """
@@ -76,8 +81,8 @@ class ComponentColumnDescriptor:
     Component columns contain the data for a specific component of an entity.
 
     Column descriptors are used to describe the columns in a
-    [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
-    column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
+    [`Schema`][rerun.catalog.Schema]. They are read-only. To select a component
+    column, use [`ComponentColumnSelector`][rerun.catalog.ComponentColumnSelector].
     """
 
     @property
@@ -120,6 +125,14 @@ class ComponentColumnDescriptor:
         This property is read-only.
         """
 
+    @property
+    def name(self) -> str:
+        """
+        The name of this column.
+
+        This property is read-only.
+        """
+
 class ComponentColumnSelector:
     """
     A selector for a component column.
@@ -133,9 +146,9 @@ class ComponentColumnSelector:
 
         Parameters
         ----------
-        entity_path : str
+        entity_path:
             The entity path to select.
-        component : str
+        component:
             The component to select. Example: `Points3D:positions`.
 
         """
@@ -163,391 +176,30 @@ class VectorDistanceMetric(Enum):  # type: ignore[misc]
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
 
-class Schema:
-    """
-    The schema representing a set of available columns.
-
-    Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
-    [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
-    """
-
-    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
-        """Iterate over all the column descriptors in the schema."""
-
-    def index_columns(self) -> list[IndexColumnDescriptor]:
-        """Return a list of all the index columns in the schema."""
-
-    def component_columns(self) -> list[ComponentColumnDescriptor]:
-        """Return a list of all the component columns in the schema."""
-
-    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
-        """
-        Look up the column descriptor for a specific entity path and component.
-
-        Parameters
-        ----------
-        entity_path : str
-            The entity path to look up.
-        component : str
-            The component to look up. Example: `Points3D:positions`.
-
-        Returns
-        -------
-        Optional[ComponentColumnDescriptor]
-            The column descriptor, if it exists.
-
-        """
-
+class SchemaInternal:
+    def index_columns(self) -> list[IndexColumnDescriptor]: ...
+    def component_columns(self) -> list[ComponentColumnDescriptor]: ...
+    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None: ...
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
-    ) -> ComponentColumnDescriptor:
-        """
-        Look up the column descriptor for a specific selector.
-
-        Parameters
-        ----------
-        selector: str | ComponentColumnDescriptor | ComponentColumnSelector
-            The selector to look up.
-
-            String arguments are expected to follow the following format:
-            `"<entity_path>:<component_type>"`
-
-        Returns
-        -------
-        ComponentColumnDescriptor
-            The column descriptor, if it exists. Raise an exception otherwise.
-
-        """
-
-class RecordingView:
-    """
-    A view of a recording restricted to a given index, containing a specific set of entities and components.
-
-    See [`Recording.view(…)`][rerun.dataframe.Recording.view] for details on how to create a `RecordingView`.
-
-    Note: `RecordingView` APIs never mutate the underlying view. Instead, they
-    always return new views with the requested modifications applied.
-
-    The view will only contain a single row for each unique value of the index
-    that is associated with a component column that was included in the view.
-    Component columns that are not included via the view contents will not
-    impact the rows that make up the view. If the same entity / component pair
-    was logged to a given index multiple times, only the most recent row will be
-    included in the view, as determined by the `row_id` column. This will
-    generally be the last value logged, as row_ids are guaranteed to be
-    monotonically increasing when data is sent from a single process.
-    """
-
-    def schema(self) -> Schema:
-        """
-        The schema describing all the columns available in the view.
-
-        This schema will only contain the columns that are included in the view via
-        the view contents.
-        """
-
-    def filter_range_sequence(self, start: int, end: int) -> RecordingView:
-        """
-        Filter the view to only include data between the given index sequence numbers.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a sequential index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_range_secs(self, start: float, end: float) -> RecordingView:
-        """
-        Filter the view to only include data between the given index values expressed as seconds.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a temporal index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_range_nanos(self, start: int, end: int) -> RecordingView:
-        """
-        Filter the view to only include data between the given index values expressed as nanoseconds.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a temporal index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_index_values(self, values: IndexValuesLike) -> RecordingView:
-        """
-        Filter the view to only include data at the provided index values.
-
-        The index values returned will be the intersection between the provided values and the
-        original index values.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
-
-        Parameters
-        ----------
-        values : IndexValuesLike
-            The index values to filter by.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data at the specified index values.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_is_not_null(self, column: AnyComponentColumn) -> RecordingView:
-        """
-        Filter the view to only include rows where the given component column is not null.
-
-        This corresponds to rows for index values where this component was provided to Rerun explicitly
-        via `.log()` or `.send_columns()`.
-
-        Parameters
-        ----------
-        column : AnyComponentColumn
-            The component column to filter by.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data where the specified component column is not null.
-
-            The original view will not be modified.
-
-        """
-
-    def using_index_values(self, values: IndexValuesLike) -> RecordingView:
-        """
-        Replace the index in the view with the provided values.
-
-        The output view will always have the same number of rows as the provided values, even if
-        those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
-        to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
-
-        Parameters
-        ----------
-        values : IndexValuesLike
-            The index values to use.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing the provided index values.
-
-            The original view will not be modified.
-
-        """
-
-    def fill_latest_at(self) -> RecordingView:
-        """
-        Populate any null values in a row with the latest valid data according to the index.
-
-        Returns
-        -------
-        RecordingView
-            A new view with the null values filled in.
-
-            The original view will not be modified.
-
-        """
-
-    def select(self, *args: AnyColumn, columns: Sequence[AnyColumn] | None = None) -> pa.RecordBatchReader:
-        """
-        Select the columns from the view.
-
-        If no columns are provided, all available columns will be included in
-        the output.
-
-        The selected columns do not change the rows that are included in the
-        view. The rows are determined by the index values and the components
-        that were included in the view contents, or can be overridden with
-        [`.using_index_values()`][rerun.dataframe.RecordingView.using_index_values].
-
-        If a column was not provided with data for a given row, it will be
-        `null` in the output.
-
-        The output is a [`pyarrow.RecordBatchReader`][] that can be used to read
-        out the data.
-
-        Parameters
-        ----------
-        *args : AnyColumn
-            The columns to select.
-        columns : Optional[Sequence[AnyColumn]], optional
-            Alternatively the columns to select can be provided as a sequence.
-
-        Returns
-        -------
-        pa.RecordBatchReader
-            A reader that can be used to read out the selected data.
-
-        """
-
-    @deprecated(
-        """Use `view(index=None)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
-    )
-    def select_static(self, *args: AnyColumn, columns: Sequence[AnyColumn] | None = None) -> pa.RecordBatchReader:
-        """
-        Select only the static columns from the view.
-
-        Because static data has no associated index values it does not cause a
-        row to be generated in the output. If your view only contains static data
-        this method allows you to select it without needing to provide index values.
-
-        This method will always return a single row.
-
-        Any non-static columns that are included in the selection will generate a warning
-        and produce empty columns.
-
-
-        Parameters
-        ----------
-        *args : AnyColumn
-            The columns to select.
-        columns : Optional[Sequence[AnyColumn]], optional
-            Alternatively the columns to select can be provided as a sequence.
-
-        Returns
-        -------
-        pa.RecordBatchReader
-            A reader that can be used to read out the selected data.
-
-        """
+    ) -> ComponentColumnDescriptor: ...
+    def __arrow_c_schema__(self) -> Any: ...
 
 class Recording:
     """
     A single Rerun recording.
 
-    This can be loaded from an RRD file using [`load_recording()`][rerun.dataframe.load_recording].
+    This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
 
     A recording is a collection of data that was logged to Rerun. This data is organized
     as a column for each index (timeline) and each entity/component pair that was logged.
 
-    You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
-    what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
-    to retrieve the data.
+    You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
+    what data is available.
     """
 
     def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
-
-    def view(
-        self,
-        *,
-        index: str | None,
-        contents: ViewContentsLike,
-        include_semantically_empty_columns: bool = False,
-        include_tombstone_columns: bool = False,
-    ) -> RecordingView:
-        """
-        Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
-
-        The only type of index currently supported is the name of a timeline, or `None` (see below
-        for details).
-
-        The view will only contain a single row for each unique value of the index
-        that is associated with a component column that was included in the view.
-        Component columns that are not included via the view contents will not
-        impact the rows that make up the view. If the same entity / component pair
-        was logged to a given index multiple times, only the most recent row will be
-        included in the view, as determined by the `row_id` column. This will
-        generally be the last value logged, as row_ids are guaranteed to be
-        monotonically increasing when data is sent from a single process.
-
-        If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per partition.
-
-        Parameters
-        ----------
-        index : str | None
-            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
-        contents : ViewContentsLike
-            The content specification for the view.
-
-            This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
-            specifying multiple content-expressions and a respective list of components to select within
-            that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
-        include_semantically_empty_columns : bool, optional
-            Whether to include columns that are semantically empty, by default `False`.
-
-            Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-        include_tombstone_columns : bool, optional
-            Whether to include tombstone columns, by default `False`.
-
-            Tombstone columns are components used to represent clears. However, even without the clear
-            tombstone columns, the view will still apply the clear semantics when resolving row contents.
-
-        Returns
-        -------
-        RecordingView
-            The view of the recording.
-
-        Examples
-        --------
-        All the data in the recording on the timeline "my_index":
-        ```python
-        recording.view(index="my_index", contents="/**")
-        ```
-
-        Just the Position3D components in the "points" entity:
-        ```python
-        recording.view(index="my_index", contents={"points": "Position3D"})
-        ```
-
-        """
 
     def recording_id(self) -> str:
         """The recording ID of the recording."""
@@ -575,7 +227,7 @@ def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike[str]
+    path_to_rrd:
         The path to the file to load.
 
     Returns
@@ -591,7 +243,7 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
 
     Parameters
     ----------
-    path_to_rrd : str | os.PathLike[str]
+    path_to_rrd:
         The path to the file to load.
 
     Returns
@@ -885,6 +537,22 @@ def set_thread_local_blueprint_recording(
     Replaces the currently active recording in the thread-local scope with the specified one.
 
     Returns the previous one, if any.
+
+    """
+
+def check_for_rrd_footer(file_path: str | os.PathLike[str]) -> bool:
+    """
+    Check if the RRD has a valid RRD footer.
+
+    This is useful for unit-tests to verify that data has been fully flushed to disk.
+    """
+
+def disconnect_orphaned_recordings() -> None:
+    """
+    Disconnect any orphaned recordings.
+
+    This can be used to make sure that recordings get closed/finalized
+    properly when all references have been dropped.
     """
 
 #
@@ -1083,7 +751,7 @@ def disconnect(recording: PyRecordingStream | None = None) -> None:
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
-def flush(blocking: bool, recording: PyRecordingStream | None = None) -> None:
+def flush(*, timeout_sec: float = 1e38, recording: PyRecordingStream | None = None) -> None:
     """Block until outstanding data has been flushed to the sink."""
 
 #
@@ -1256,6 +924,7 @@ class EntryKind:
     DATASET_VIEW: EntryKind
     TABLE: EntryKind
     TABLE_VIEW: EntryKind
+    BLUEPRINT_DATASET: EntryKind
 
     def __str__(self, /) -> str:
         """Return str(self)."""
@@ -1263,257 +932,101 @@ class EntryKind:
     def __int__(self) -> int:
         """int(self)"""  # noqa: D400
 
-class Entry:
-    """An entry in the catalog."""
+class EntryDetailsInternal:
+    @property
+    def id(self) -> EntryId: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def kind(self) -> EntryKind: ...
+    @property
+    def created_at(self) -> datetime: ...
+    @property
+    def updated_at(self) -> datetime: ...
+
+class DatasetEntryInternal:
+    def catalog(self) -> CatalogClientInternal: ...
+    def delete(self) -> None: ...
+    def set_name(self, name: str) -> None: ...
+    def entry_details(self) -> EntryDetailsInternal: ...
+
+    # ---
 
     @property
-    def id(self) -> EntryId:
-        """The entry's id."""
+    def manifest_url(self) -> str: ...
+    def schema(self) -> SchemaInternal: ...
+    def arrow_schema(self) -> pa.Schema: ...
 
-    @property
-    def name(self) -> str:
-        """The entry's name."""
+    # ---
 
-    @property
-    def catalog(self) -> CatalogClient:
-        """The catalog client that this entry belongs to."""
+    def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
+    def default_blueprint_segment_id(self) -> str | None: ...
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
-    @property
-    def kind(self) -> EntryKind:
-        """The entry's kind."""
+    # ---
 
-    @property
-    def created_at(self) -> datetime:
-        """The entry's creation date and time."""
-
-    @property
-    def updated_at(self) -> datetime:
-        """The entry's last updated date and time."""
-
-    def delete(self) -> None:
-        """Delete this entry from the catalog."""
-
-    def update(self, *, name: str | None = None) -> None:
-        """
-        Update this entry's properties.
-
-        Parameters
-        ----------
-        name : str | None
-            New name for the entry
-
-        """
-
-class DatasetEntry(Entry):
-    @property
-    def manifest_url(self) -> str:
-        """Return the dataset manifest URL."""
-
-    def arrow_schema(self) -> pa.Schema:
-        """Return the Arrow schema of the data contained in the dataset."""
-
-    def blueprint_dataset_id(self) -> EntryId | None:
-        """The ID of the associated blueprint dataset, if any."""
-
-    def blueprint_dataset(self) -> DatasetEntry | None:
-        """The associated blueprint dataset, if any."""
-
-    def default_blueprint_partition_id(self) -> str | None:
-        """The default blueprint partition ID for this dataset, if any."""
-
-    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
-        """
-        Set the default blueprint partition ID for this dataset.
-
-        Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
-        """
-
-    def partition_ids(self) -> list[str]:
-        """Returns a list of partitions IDs for the dataset."""
-
-    def partition_table(self) -> DataFusionTable:
-        """Return the partition table as a Datafusion table provider."""
-
-    def partition_url(
+    def segment_ids(self) -> list[str]: ...
+    def segment_table(self) -> dfn.DataFrame: ...
+    def manifest(self) -> dfn.DataFrame: ...
+    def segment_url(
         self,
-        partition_id: str,
+        segment_id: str,
         timeline: str | None = None,
         start: datetime | int | None = None,
         end: datetime | int | None = None,
-    ) -> str:
-        """
-        Return the URL for the given partition.
+    ) -> str: ...
 
-        Parameters
-        ----------
-        partition_id: str
-            The ID of the partition to get the URL for.
+    # ---
 
-        timeline: str | None
-            The name of the timeline to display.
+    def filter_segments(self, segment_ids: list[str]) -> DatasetViewInternal: ...
+    def filter_contents(self, exprs: list[str]) -> DatasetViewInternal: ...
 
-        start: int | datetime | None
-            The start time for the partition.
-            Integer for ticks, or datetime/nanoseconds for timestamps.
+    # ---
 
-        end: int | datetime | None
-            The end time for the partition.
-            Integer for ticks, or datetime/nanoseconds for timestamps.
+    def register(self, recording_uris: list[str], *, recording_layers: list[str]) -> RegistrationHandleInternal: ...
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandleInternal: ...
 
-        Examples
-        --------
-        # With ticks
-        >>> start_tick, end_time = 0, 10
-        >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+    # ---
 
-        # With timestamps
-        >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
-        >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+    def download_segment(self, segment_id: str) -> Recording: ...
 
-        Returns
-        -------
-        str
-            The URL for the given partition.
+    # ---
 
-        """
-
-    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
-        """
-        Register a RRD URI to the dataset and wait for completion.
-
-        This method registers a single recording to the dataset and blocks until the registration is
-        complete, or after a timeout (in which case, a `TimeoutError` is raised).
-
-        Parameters
-        ----------
-        recording_uri: str
-            The URI of the RRD to register.
-
-        recording_layer: str
-            The layer to which the recording will be registered to.
-
-        timeout_secs: int
-            The timeout after which this method raises a `TimeoutError` if the task is not completed.
-
-        Returns
-        -------
-        partition_id: str
-            The partition ID of the registered RRD.
-
-        """
-
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] = []) -> Tasks:
-        """
-        Register a batch of RRD URIs to the dataset and return a handle to the tasks.
-
-        This method initiates the registration of multiple recordings to the dataset, and returns
-        the corresponding task ids in a [`Tasks`] object.
-
-        Parameters
-        ----------
-        recording_uris: list[str]
-            The URIs of the RRDs to register.
-
-        recording_layers: list[str]
-            The layers to which the recordings will be registered to:
-            * When empty, this defaults to `["base"]`.
-            * If longer than `recording_uris`, `recording_layers` will be truncated.
-            * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
-              I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
-
-        """
-
-    def download_partition(self, partition_id: str) -> Recording:
-        """Download a partition from the dataset."""
-
-    def dataframe_query_view(
-        self,
-        *,
-        index: str | None,
-        contents: Any,
-        include_semantically_empty_columns: bool = False,
-        include_tombstone_columns: bool = False,
-    ) -> DataframeQueryView:
-        """
-        Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
-
-        The only type of index currently supported is the name of a timeline, or `None` (see below
-        for details).
-
-        The view will only contain a single row for each unique value of the index
-        that is associated with a component column that was included in the view.
-        Component columns that are not included via the view contents will not
-        impact the rows that make up the view. If the same entity / component pair
-        was logged to a given index multiple times, only the most recent row will be
-        included in the view, as determined by the `row_id` column. This will
-        generally be the last value logged, as row_ids are guaranteed to be
-        monotonically increasing when data is sent from a single process.
-
-        If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per partition.
-
-        Parameters
-        ----------
-        index : str | None
-            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
-        contents : ViewContentsLike
-            The content specification for the view.
-
-            This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
-            specifying multiple content-expressions and a respective list of components to select within
-            that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
-        include_semantically_empty_columns : bool, optional
-            Whether to include columns that are semantically empty, by default `False`.
-
-            Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-        include_tombstone_columns : bool, optional
-            Whether to include tombstone columns, by default `False`.
-
-            Tombstone columns are components used to represent clears. However, even without the clear
-            tombstone columns, the view will still apply the clear semantics when resolving row contents.
-
-        Returns
-        -------
-        DataframeQueryView
-            The view of the dataset.
-
-        """
-
-    def create_fts_index(
+    def create_fts_search_index(
         self,
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
         store_position: bool = False,
         base_tokenizer: str = "simple",
-    ) -> None:
-        """Create a full-text search index on the given column."""
-
-    def create_vector_index(
+    ) -> None: ...
+    def create_vector_search_index(
         self,
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
-        num_partitions: int = 5,
+        target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
-    ) -> None:
-        """Create a vector index on the given column."""
-
+    ) -> IndexingResult: ...
+    def list_search_indexes(self) -> list[IndexingResult]: ...
+    def delete_search_indexes(
+        self,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
+    ) -> list[IndexConfig]: ...
     def search_fts(
         self,
         query: str,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> DataFusionTable:
-        """Search the dataset using a full-text search query."""
-
+    ) -> dfn.DataFrame: ...
     def search_vector(
         self,
         query: Any,  # VectorLike
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         top_k: int,
-    ) -> DataFusionTable:
-        """Search the dataset using a vector search query."""
+    ) -> dfn.DataFrame: ...
+
+    # ---
 
     def do_maintenance(
         self,
@@ -1522,195 +1035,172 @@ class DatasetEntry(Entry):
         compact_fragments: bool = False,
         cleanup_before: datetime | None = None,
         unsafe_allow_recent_cleanup: bool = False,
-    ) -> None:
-        """Perform maintenance tasks on the datasets."""
+    ) -> None: ...
 
-class TableEntry(Entry):
+class DatasetViewInternal:
+    """Internal Rust implementation of DatasetView."""
+
+    # Properties
+    @property
+    def dataset(self) -> DatasetEntryInternal: ...
+    @property
+    def filtered_segment_ids(self) -> set[str] | None: ...
+    @property
+    def content_filters(self) -> list[str]: ...
+
+    # Methods
+    def schema(self) -> SchemaInternal: ...
+    def arrow_schema(self) -> pa.Schema: ...
+    def segment_ids(self) -> list[str]: ...
+    def reader(
+        self,
+        *,
+        index: str | None,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        fill_latest_at: bool = False,
+        using_index_values: IndexValuesLike | None = None,
+    ) -> dfn.DataFrame: ...
+    def filter_segments(self, segment_ids: list[str]) -> DatasetViewInternal: ...
+    def filter_contents(self, exprs: list[str]) -> DatasetViewInternal: ...
+
+class TableEntryInternal:
+    def catalog(self) -> CatalogClientInternal: ...
+    def delete(self) -> None: ...
+    def set_name(self, name: str) -> None: ...
+    def entry_details(self) -> EntryDetailsInternal: ...
+
+    # ---
+
+    def __datafusion_table_provider__(self) -> Any: ...
+    def reader(self) -> dfn.DataFrame: ...
+    def to_arrow_reader(self) -> pa.RecordBatchReader: ...
+
+    # ---
+
+    @property
+    def storage_url(self) -> str: ...
+    def write_batches(
+        self,
+        batches: pa.RecordBatchReader,
+        insert_mode: TableInsertModeInternal,
+    ) -> None: ...
+
+class TableInsertModeInternal:
+    """The modes of operation when writing tables."""
+
+    APPEND: TableInsertModeInternal
+    OVERWRITE: TableInsertModeInternal
+    REPLACE: TableInsertModeInternal
+
+class _UrdfTreeInternal:
+    """Internal Rust implementation of a parsed URDF tree."""
+
+    @staticmethod
+    def from_file_path(path: str | os.PathLike[str], entity_path_prefix: str | None = None) -> _UrdfTreeInternal: ...
+    @property
+    def name(self) -> str: ...
+    def root_link(self) -> _UrdfLinkInternal: ...
+    def joints(self) -> list[_UrdfJointInternal]: ...
+    def get_joint_by_name(self, joint_name: str) -> _UrdfJointInternal | None: ...
+    def get_joint_child(self, joint: _UrdfJointInternal) -> _UrdfLinkInternal: ...
+    def get_link_by_name(self, link_name: str) -> _UrdfLinkInternal | None: ...
+    def get_collision_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
+    def get_visual_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
+
+class _UrdfJointInternal:
+    """Internal Rust representation of a URDF joint."""
+
+    @property
+    def name(self) -> str: ...
+    @property
+    def joint_type(self) -> str: ...
+    @property
+    def parent_link(self) -> str: ...
+    @property
+    def child_link(self) -> str: ...
+    @property
+    def axis(self) -> tuple[float, float, float]: ...
+    @property
+    def origin_xyz(self) -> tuple[float, float, float]: ...
+    @property
+    def origin_rpy(self) -> tuple[float, float, float]: ...
+    @property
+    def limit_lower(self) -> float: ...
+    @property
+    def limit_upper(self) -> float: ...
+    @property
+    def limit_effort(self) -> float: ...
+    @property
+    def limit_velocity(self) -> float: ...
+
+class _UrdfLinkInternal:
+    """Internal Rust representation of a URDF link."""
+
+    @property
+    def name(self) -> str: ...
+
+class _IndexValuesLikeInternal:
     """
-    A table entry in the catalog.
+    A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
 
-    Note: this object acts as a table provider for DataFusion.
+    This wrapper allows testing the `extract_bound` functionality by providing
+    a Python-accessible interface to create and convert index values.
     """
 
-    def __datafusion_table_provider__(self) -> Any:
-        """Returns a DataFusion table provider capsule."""
+    def __init__(self, values: IndexValuesLike) -> None: ...
+    def to_index_values(self) -> npt.NDArray[np.int64]: ...
+    def len(self) -> int: ...
 
-    def df(self) -> dfn.DataFrame:
-        """Registers the table with the DataFusion context and return a DataFrame."""
+class IndexProperties:
+    """The properties and configuration of a user-defined index."""
 
-    def to_arrow_reader(self) -> pa.RecordBatchReader:
-        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
+class IndexConfig:
+    """The complete description of a user-defined index."""
 
-class DataframeQueryView:
-    def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
-        """Filter by one or more partition ids. All partition ids are included if not specified."""
+    @property
+    def time_column(self) -> IndexColumnSelector:
+        """Returns the time column that this index applies to."""
 
-    def filter_range_sequence(self, start: int, end: int) -> Self:
+    @property
+    def component_column(self) -> ComponentColumnSelector:
+        """Returns the component column that this index applies to."""
+
+    @property
+    def properties(self) -> IndexProperties:
+        """Returns the properties/configuration of the index."""
+
+class IndexingResult:
+    """Indexing operation status result."""
+
+    @property
+    def properties(self) -> IndexConfig:
+        """Returns configuration information and properties about the newly created index."""
+
+    @property
+    def column(self) -> ComponentColumnSelector:
+        """Returns the component column that this index was created on."""
+
+    @property
+    def statistics(self) -> str:
+        """Returns best-effort backend-specific statistics about the newly created index."""
+
+    def debug_info(self) -> dict[str, Any] | None:
         """
-        Filter the view to only include data between the given index sequence numbers.
+        Get debug information about the indexing operation.
 
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a sequential index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
+        The exact contents of debug information may vary depending on the indexing operation performed
+        and the server implementation.
 
         Returns
         -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
+        Optional[dict]
+            A dictionary containing debug information, or `None` if no debug information is available
 
         """
 
-    def filter_range_secs(self, start: float, end: float) -> Self:
-        """
-        Filter the view to only include data between the given index values expressed as seconds.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a temporal index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_range_nanos(self, start: int, end: int) -> Self:
-        """
-        Filter the view to only include data between the given index values expressed as nanoseconds.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a temporal index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_index_values(self, values: IndexValuesLike) -> Self:
-        """
-        Filter the view to only include data at the provided index values.
-
-        The index values returned will be the intersection between the provided values and the
-        original index values.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
-
-        Parameters
-        ----------
-        values : IndexValuesLike
-            The index values to filter by.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data at the specified index values.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_is_not_null(self, column: AnyComponentColumn) -> Self:
-        """
-        Filter the view to only include rows where the given component column is not null.
-
-        This corresponds to rows for index values where this component was provided to Rerun explicitly
-        via `.log()` or `.send_columns()`.
-
-        Parameters
-        ----------
-        column : AnyComponentColumn
-            The component column to filter by.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data where the specified component column is not null.
-
-            The original view will not be modified.
-
-        """
-
-    def using_index_values(self, values: IndexValuesLike) -> Self:
-        """
-        Replace the index in the view with the provided values.
-
-        The output view will always have the same number of rows as the provided values, even if
-        those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
-        to populate these rows with the most recent data.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
-
-        Parameters
-        ----------
-        values : IndexValuesLike
-            The index values to use.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing the provided index values.
-
-            The original view will not be modified.
-
-        """
-
-    def fill_latest_at(self) -> Self:
-        """
-        Populate any null values in a row with the latest valid data according to the index.
-
-        Returns
-        -------
-        RecordingView
-            A new view with the null values filled in.
-
-            The original view will not be modified.
-
-        """
-
-    def df(self) -> dfn.DataFrame:
-        """Register this view to the global DataFusion context and return a DataFrame."""
-
-    def to_arrow_reader(self) -> pa.RecordBatchReader:
-        """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
-
-# TODO(ab): internal object, we need auto-gen stubs for these.
 class CatalogClientInternal:
-    def __init__(self, addr: str, token: str | None = None) -> None: ...
+    def __init__(self, url: str, token: str | None = None) -> None: ...
 
     # ---
 
@@ -1719,25 +1209,24 @@ class CatalogClientInternal:
 
     # ---
 
-    def all_entries(self) -> list[Entry]: ...
-    def dataset_entries(self) -> list[DatasetEntry]: ...
-    def table_entries(self) -> list[TableEntry]: ...
+    @property
+    def url(self) -> str: ...
 
     # ---
 
-    def entry_names(self) -> list[str]: ...
-    def dataset_names(self) -> list[str]: ...
-    def table_names(self) -> list[str]: ...
+    def datasets(self, include_hidden: bool) -> list[DatasetEntryInternal]: ...
+    def tables(self, include_hidden: bool) -> list[TableEntryInternal]: ...
 
     # ---
 
-    def get_dataset_entry(self, id: EntryId) -> DatasetEntry: ...
-    def get_table_entry(self, id: EntryId) -> TableEntry: ...
+    def get_dataset(self, id: EntryId) -> DatasetEntryInternal: ...
+    def get_table(self, id: EntryId) -> TableEntryInternal: ...
 
     # ---
 
-    def create_dataset(self, name: str) -> DatasetEntry: ...
-    def register_table(self, name: str, url: str) -> TableEntry: ...
+    def create_dataset(self, name: str) -> DatasetEntryInternal: ...
+    def register_table(self, name: str, url: str) -> TableEntryInternal: ...
+    def create_table(self, name: str, schema: pa.Schema, url: str | None) -> TableEntryInternal: ...
     def ctx(self) -> dfn.SessionContext: ...
 
     # ---
@@ -1748,74 +1237,113 @@ class CatalogClientInternal:
 
     def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
 
-class DataFusionTable:
-    def __datafusion_table_provider__(self) -> Any:
-        """Returns a DataFusion table provider capsule."""
-
-    def df(self) -> dfn.DataFrame:
-        """Register this view to the global DataFusion context and return a DataFrame."""
-
-    def to_arrow_reader(self) -> pa.RecordBatchReader:
-        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
-
-    @property
-    def name(self) -> str:
-        """Name of this table."""
-
-class Task:
-    """A handle on a remote task."""
-
-    @property
-    def id(self) -> str:
-        """The task id."""
-
-    def wait(self, timeout_secs: int) -> None:
-        """
-        Block until the task is completed or the timeout is reached.
-
-        A `TimeoutError` is raised if the timeout is reached.
-        """
-
-class Tasks:
-    """A collection of [`Task`]."""
-
-    def wait(self, timeout_secs: int) -> None:
-        """
-        Block until all tasks are completed or the timeout is reached.
-
-        A `TimeoutError` is raised if the timeout is reached.
-        """
-
-    def status_table(self) -> DataFusionTable:
-        """Return a table with the status of all tasks."""
-
-    def __len__(self) -> int:
-        """Return the number of tasks."""
-
-    def __getitem__(self, index: int) -> Task:
-        """Return the task at the given index."""
+class RegistrationHandleInternal:
+    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]: ...
+    def wait(self, timeout_secs: int | None = None) -> list[str]: ...
 
 #####################################################################################################################
-## SEND_TABLE                                                                                                      ##
+## VIEWER_CLIENT                                                                                                   ##
 #####################################################################################################################
 
-class ViewerClient:
-    """A connection to an instance of a Rerun viewer."""
+class ViewerClientInternal:
+    """Internal implementation. Use ViewerClient from rerun.experimental instead."""
 
-    def __init__(self, addr: str) -> None:
+    def __init__(self, addr: str) -> None: ...
+    def send_table(self, id: str, table: pa.RecordBatch) -> None: ...
+    def save_screenshot(self, file_path: str, view_id: str | None) -> None: ...
+
+class NotFoundError(Exception):
+    """Raised when the requested resource is not found."""
+
+class AlreadyExistsError(Exception):
+    """Raised when trying to create a resource that already exists."""
+
+class _ServerInternal:
+    def __init__(
+        self,
+        *,
+        host: str,
+        port: int,
+        datasets: dict[str, list[str]],
+        dataset_prefixes: dict[str, str],
+        tables: dict[str, str],
+    ) -> None:
         """
-        Create a new viewer client object.
+        Create and start a Rerun server.
 
         Parameters
         ----------
-        addr : str
-            The address of the viewer.
+        host:
+            The IP address to bind the server to.
+        port:
+            The port to bind the server to.
+        datasets:
+            Optional dictionary mapping dataset names to lists of RRD file paths.
+        dataset_prefixes:
+            Optional dictionary mapping dataset names to directories containing RRDs.
+        tables:
+            Optional dictionary mapping table names to lance file paths,
+            which will be loaded and made available when the server starts.
 
         """
 
-    def send_table(self, id: str, table: pa.RecordBatch) -> None:
-        """
-        Sends a table to the viewer.
+    def url(self) -> str: ...
+    def host(self) -> str: ...
+    def shutdown(self) -> None: ...
+    def is_running(self) -> bool: ...
 
-        A table is represented as a dataframe defined by an Arrow record batch.
+#####################################################################################################################
+## AUTH                                                                                                            ##
+#####################################################################################################################
+
+class DeviceCodeFlow:
+    """
+    OAuth login flow implementation.
+
+    The auth flow is browser-based, and the user will be redirected to the OAuth provider.
+    """
+
+    def login_url(self) -> str:
+        """Get the URL for the OAuth login flow."""
+
+    def user_code(self) -> str:
+        """Get the user code."""
+
+    def finish_login_flow(self) -> Credentials:
         """
+        Finish the OAuth login flow.
+
+        Returns
+        -------
+        Credentials
+            The credentials of the logged in user.
+
+        """
+
+def init_login_flow() -> DeviceCodeFlow | None:
+    """
+    Initialize an OAuth login flow.
+
+    Returns
+    -------
+    DeviceCodeFlow | None
+        The login flow, or `None` if the user is already logged in.
+
+    """
+
+class Credentials:
+    """The credentials for the OAuth login flow."""
+
+    @property
+    def access_token(self) -> str:
+        """The access token."""
+
+    @property
+    def user_email(self) -> str:
+        """The user email."""
+
+def get_credentials() -> Credentials | None:
+    """Returns the credentials for the current user."""
+
+def rerun_trace_context() -> Any:
+    """Get the trace context ContextVar for distributed tracing propagation."""

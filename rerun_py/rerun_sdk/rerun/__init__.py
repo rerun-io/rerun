@@ -4,22 +4,16 @@ import functools
 import random
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.26.0-alpha.1+dev"
-__version_info__ = (0, 26, 0, "alpha.1")
+__version__ = "0.30.0-alpha.1+dev"
+__version_info__ = (0, 30, 0, "alpha.1")
 
-if sys.version_info < (3, 10):
-    warnings.warn(
-        "Python 3.9 is past EOL (https://devguide.python.org/versions/). Rerun version 0.26 will drop support/testing of Python 3.9.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-if sys.version_info < (3, 9):  # noqa: UP036
-    raise RuntimeError("Rerun SDK requires Python 3.9 or later.")
+if sys.version_info < (3, 10):  # noqa: UP036
+    raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
 
 
 # =====================================
@@ -32,8 +26,10 @@ import rerun_bindings as bindings
 from . import (
     blueprint as blueprint,
     catalog as catalog,
-    dataframe as dataframe,
     experimental as experimental,
+    recording as recording,
+    server as server,
+    urdf as urdf,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
@@ -41,11 +37,11 @@ from ._baseclasses import (
     ComponentColumn as ComponentColumn,
     ComponentColumnList as ComponentColumnList,
     ComponentDescriptor as ComponentDescriptor,
+    ComponentMixin as ComponentMixin,
     DescribedComponentBatch as DescribedComponentBatch,
 )
-from ._image_encoded import (
-    ImageEncoded as ImageEncoded,
-    ImageFormat as ImageFormat,
+from ._legacy_notebook import (
+    legacy_notebook_show as legacy_notebook_show,
 )
 from ._log import (
     AsComponents as AsComponents,
@@ -55,18 +51,41 @@ from ._log import (
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
 )
+from ._logging_handler import (
+    LoggingHandler as LoggingHandler,
+)
+from ._memory import (
+    MemoryRecording as MemoryRecording,
+    memory_recording as memory_recording,
+)
 from ._numpy_compatibility import asarray as asarray
 from ._properties import (
     send_property as send_property,
     send_recording_name as send_recording_name,
     send_recording_start_time_nanos as send_recording_start_time_nanos,
 )
+from ._script_helpers import (
+    script_add_args as script_add_args,
+    script_setup as script_setup,
+    script_teardown as script_teardown,
+)
 from ._send_columns import (
     TimeColumn as TimeColumn,
-    TimeNanosColumn as TimeNanosColumn,
-    TimeSecondsColumn as TimeSecondsColumn,
-    TimeSequenceColumn as TimeSequenceColumn,
+    TimeColumnLike as TimeColumnLike,
     send_columns as send_columns,
+)
+from ._send_dataframe import (
+    RERUN_KIND as RERUN_KIND,
+    RERUN_KIND_CONTROL as RERUN_KIND_CONTROL,
+    RERUN_KIND_INDEX as RERUN_KIND_INDEX,
+    SORBET_ARCHETYPE_NAME as SORBET_ARCHETYPE_NAME,
+    SORBET_COMPONENT as SORBET_COMPONENT,
+    SORBET_COMPONENT_TYPE as SORBET_COMPONENT_TYPE,
+    SORBET_ENTITY_PATH as SORBET_ENTITY_PATH,
+    SORBET_INDEX_NAME as SORBET_INDEX_NAME,
+    SORBET_IS_TABLE_INDEX as SORBET_IS_TABLE_INDEX,
+    send_dataframe as send_dataframe,
+    send_record_batch as send_record_batch,
 )
 from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
@@ -85,9 +104,11 @@ from .archetypes import (
     Boxes3D as Boxes3D,
     Capsules3D as Capsules3D,
     Clear as Clear,
+    CoordinateFrame as CoordinateFrame,
     Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
     Ellipsoids3D as Ellipsoids3D,
+    EncodedDepthImage as EncodedDepthImage,
     EncodedImage as EncodedImage,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
@@ -113,12 +134,16 @@ from .archetypes import (
     TextDocument as TextDocument,
     TextLog as TextLog,
     Transform3D as Transform3D,
+    TransformAxes3D as TransformAxes3D,
     VideoFrameReference as VideoFrameReference,
     VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
+)
+from .auth import (
+    login as login,
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
@@ -153,21 +178,12 @@ from .dynamic_archetype import (
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
-)
-from .legacy_notebook import (
-    legacy_notebook_show as legacy_notebook_show,
-)
-from .logging_handler import (
-    LoggingHandler as LoggingHandler,
-)
-from .memory import (
-    MemoryRecording as MemoryRecording,
-    memory_recording as memory_recording,
+    strict_mode as strict_mode,
 )
 from .recording_stream import (
     BinaryStream as BinaryStream,
     ChunkBatcherConfig as ChunkBatcherConfig,
-    RecordingStream as RecordingStream,
+    RecordingStream as RecordingStream,  # noqa: TC001
     binary_stream as binary_stream,
     get_application_id as get_application_id,
     get_data_recording as get_data_recording,
@@ -175,16 +191,10 @@ from .recording_stream import (
     get_recording_id as get_recording_id,
     get_thread_local_data_recording as get_thread_local_data_recording,
     is_enabled as is_enabled,
-    new_recording as new_recording,
     recording_stream_generator_ctx as recording_stream_generator_ctx,
     set_global_data_recording as set_global_data_recording,
     set_thread_local_data_recording as set_thread_local_data_recording,
     thread_local_stream as thread_local_stream,
-)
-from .script_helpers import (
-    script_add_args as script_add_args,
-    script_setup as script_setup,
-    script_teardown as script_teardown,
 )
 from .sinks import (
     FileSink as FileSink,
@@ -195,7 +205,6 @@ from .sinks import (
     send_blueprint as send_blueprint,
     send_recording as send_recording,
     serve_grpc as serve_grpc,
-    serve_web as serve_web,
     set_sinks as set_sinks,
     spawn as spawn,
     stdout as stdout,
@@ -204,9 +213,6 @@ from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,
     set_time as set_time,
-    set_time_nanos as set_time_nanos,
-    set_time_seconds as set_time_seconds,
-    set_time_sequence as set_time_sequence,
 )
 from .web import serve_web_viewer as serve_web_viewer
 
@@ -344,13 +350,15 @@ def init(
         recording_id = str(recording_id)
 
     if init_logging:
-        RecordingStream(
+        # Note: don't use `RecordingStream` here, because it overrides the default recording id behavior
+        bindings.new_recording(
             application_id=application_id,
             recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
             default_enabled=default_enabled,
             send_properties=send_properties,
+            batcher_config=None,
         )
 
     if spawn:
@@ -364,7 +372,7 @@ def version() -> str:
     Returns a verbose version string of the Rerun SDK.
 
     Example: `rerun_py 0.6.0-alpha.0 [rustc 1.69.0 (84c898d65 2023-04-16), LLVM 15.0.7] aarch64-apple-darwin main bd8a072, built 2023-05-11T08:25:17Z`
-    """  # noqa: E501 line too long
+    """
     return bindings.version()  # type: ignore[no-any-return]
 
 
@@ -458,7 +466,7 @@ def notebook_show(
     width: int | None = None,
     height: int | None = None,
     blueprint: BlueprintLike | None = None,  # noqa: F811
-    recording: RecordingStream | None = None,
+    recording: RecordingStream | None = None,  # noqa: F811
 ) -> None:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].

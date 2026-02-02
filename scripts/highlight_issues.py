@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 import multiprocessing
 import sys
-from typing import Any, NoReturn
+from typing import Any
 
 import requests
 from tqdm import tqdm
@@ -51,7 +51,7 @@ def get_github_token() -> str:
     sys.exit(1)
 
 
-def fetch_issue(issue_json: dict[str, Any]) -> dict[str, Any] | NoReturn:
+def fetch_issue(issue_json: dict[str, Any]) -> dict[str, Any]:
     url = issue_json["url"]
     gh_access_token = get_github_token()
     headers = {"Authorization": f"Token {gh_access_token}"}

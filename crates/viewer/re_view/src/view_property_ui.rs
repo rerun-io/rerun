@@ -1,9 +1,10 @@
-use re_types::ComponentDescriptor;
-use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier};
+use re_types_core::reflection::ArchetypeFieldReflection;
+use re_types_core::{Archetype, ArchetypeReflectionMarker};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
-    ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewContext, ViewerContext,
+    BlueprintContext as _, ComponentUiTypes, QueryContext, ViewContext, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -13,18 +14,58 @@ use re_viewport_blueprint::ViewProperty;
 pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let view_property =
         ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
-    view_property_ui_impl(ctx, ui, &view_property, fallback_provider);
+    view_property_ui_impl(ctx, ui, &view_property, None);
+}
+
+/// See [`view_property_ui`].
+///
+/// This will also redirect the given component to instead use the given view id as the
+/// data source.
+pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    redirect_component: ComponentIdentifier,
+    redirect_with_view_id: re_viewer_context::ViewId,
+) {
+    let view_property =
+        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
+    view_property_ui_impl(
+        ctx,
+        ui,
+        &view_property,
+        Some(&RedirectComponentView {
+            component: redirect_component,
+            ctx: ViewContext {
+                viewer_ctx: ctx.viewer_ctx,
+                view_id: redirect_with_view_id,
+                view_class_identifier: ctx.view_class_identifier,
+                space_origin: ctx.space_origin,
+                view_state: ctx.view_state,
+                query_result: &re_viewer_context::DataQueryResult::default(),
+            },
+            view_property: ViewProperty::from_archetype::<A>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query(),
+                redirect_with_view_id,
+            ),
+        }),
+    );
+}
+
+struct RedirectComponentView<'a> {
+    component: ComponentIdentifier,
+    ctx: ViewContext<'a>,
+    view_property: ViewProperty,
 }
 
 fn view_property_ui_impl(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
-    fallback_provider: &dyn ComponentFallbackProvider,
+    override_component_view: Option<&RedirectComponentView<'_>>,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
@@ -51,19 +92,29 @@ fn view_property_ui_impl(
             property,
             archetype_display_name,
             &archetype.fields[0],
-            fallback_provider,
         );
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
             for field in &archetype.fields {
-                view_property_component_ui(
-                    &query_ctx,
-                    ui,
-                    property,
-                    field.display_name,
-                    field,
-                    fallback_provider,
-                );
+                let component = field
+                    .component_descriptor(property.archetype_name)
+                    .component;
+
+                let (query_ctx, property) = if let Some(override_component_view) =
+                    &override_component_view
+                    && component == override_component_view.component
+                {
+                    (
+                        &override_component_view
+                            .view_property
+                            .query_context(&override_component_view.ctx),
+                        &override_component_view.view_property,
+                    )
+                } else {
+                    (&query_ctx, property)
+                };
+
+                view_property_component_ui(query_ctx, ui, property, field.display_name, field);
             }
         };
 
@@ -89,12 +140,12 @@ pub fn view_property_component_ui(
     property: &ViewProperty,
     display_name: &str,
     field: &ArchetypeFieldReflection,
-    fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let component_descr = field.component_descriptor(property.archetype_name);
+    let component = component_descr.component;
 
-    let component_array = property.component_raw(&component_descr);
-    let row_id = property.component_row_id(&component_descr);
+    let component_array = property.component_raw(component);
+    let row_id = property.component_row_id(component);
 
     let viewer_ctx = ctx.viewer_ctx();
     let ui_types = viewer_ctx
@@ -110,7 +161,6 @@ pub fn view_property_component_ui(
             &component_descr,
             row_id,
             component_array.as_deref(),
-            fallback_provider,
         );
     };
 
@@ -123,7 +173,6 @@ pub fn view_property_component_ui(
             &component_descr,
             row_id,
             component_array.as_deref(),
-            fallback_provider,
         );
     };
     // Do this as a separate step to avoid borrowing issues.
@@ -200,10 +249,11 @@ fn menu_more(
     property: &ViewProperty,
     component_descr: &ComponentDescriptor,
 ) {
-    let component_array = property.component_raw(component_descr);
+    let component = component_descr.component;
+    let component_array = property.component_raw(component);
 
     let property_differs_from_default = component_array
-        != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component_descr);
+        != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component);
 
     let response = ui
         .add_enabled(

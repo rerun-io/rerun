@@ -20,27 +20,44 @@ for t in range(int(math.pi * 4 * 100.0)):
 
 # Create a TimeSeries View
 blueprint = rrb.Blueprint(
-    rrb.TimeSeriesView(
-        origin="/trig",
-        # Set a custom Y axis.
-        axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), zoom_lock=True),
-        # Configure the legend.
-        plot_legend=rrb.PlotLegend(visible=False),
-        # Set time different time ranges for different timelines.
-        time_ranges=[
-            # Sliding window depending on the time cursor for the first timeline.
-            rrb.VisibleTimeRange(
-                "timeline0",
-                start=rrb.TimeRangeBoundary.cursor_relative(seq=-100),
-                end=rrb.TimeRangeBoundary.cursor_relative(),
+    rrb.Vertical(
+        contents=[
+            rrb.TimeSeriesView(
+                origin="/trig",
+                # Set a custom Y axis.
+                axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), zoom_lock=True),
+                # Configure the legend.
+                plot_legend=rrb.PlotLegend(visible=False),
+                # Set time different time ranges for different timelines.
+                time_ranges=[
+                    # Sliding window depending on the time cursor for the first timeline.
+                    rrb.VisibleTimeRange(
+                        "timeline0",
+                        start=rrb.TimeRangeBoundary.cursor_relative(seq=-100),
+                        end=rrb.TimeRangeBoundary.cursor_relative(),
+                    ),
+                    # Time range from some point to the end of the timeline for the second timeline.
+                    rrb.VisibleTimeRange(
+                        "timeline1",
+                        start=rrb.TimeRangeBoundary.absolute(seconds=300.0),
+                        end=rrb.TimeRangeBoundary.infinite(),
+                    ),
+                ],
             ),
-            # Time range from some point to the end of the timeline for the second timeline.
-            rrb.VisibleTimeRange(
-                "timeline1",
-                start=rrb.TimeRangeBoundary.absolute(seconds=300.0),
-                end=rrb.TimeRangeBoundary.infinite(),
+            rrb.TimeSeriesView(
+                origin="/trig",
+                axis_x=rrb.TimeAxis(
+                    view_range=rr.TimeRange(
+                        start=rrb.TimeRangeBoundary.cursor_relative(seconds=-100),
+                        end=rrb.TimeRangeBoundary.cursor_relative(seconds=100),
+                    ),
+                    zoom_lock=True,
+                ),
+                # Configure the legend.
+                plot_legend=rrb.PlotLegend(visible=True),
+                background=rrb.archetypes.PlotBackground(color=[128, 128, 128], show_grid=False),
             ),
-        ],
+        ]
     ),
     collapse_panels=True,
 )

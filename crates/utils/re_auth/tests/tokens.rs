@@ -1,6 +1,6 @@
-use rand::rngs::ThreadRng;
 use std::time::Duration;
 
+use rand::rngs::ThreadRng;
 use re_auth::{Error, RedapProvider, SecretKey, VerificationOptions};
 
 const KEY: &str = "CKxq6b4Hy3xdjDOWwaShOJab+eu6jcsFso4rbLjJuZ8=";

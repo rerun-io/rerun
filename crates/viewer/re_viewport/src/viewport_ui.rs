@@ -5,10 +5,13 @@
 use ahash::HashMap;
 use egui::remap_clamp;
 use egui_tiles::{Behavior as _, EditAction};
-
+use itertools::{Either, Itertools as _};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, Help, Icon, IconText, UiExt as _, design_tokens_of_visuals};
+use re_ui::{
+    ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
+    design_tokens_of_visuals, icons,
+};
 use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo, SystemCommand,
@@ -80,8 +83,17 @@ impl ViewportUi {
             blueprint.tree.clone()
         };
 
+        // Reset all error states.
+        view_states.reset_visualizer_errors();
+
         let executed_systems_per_view =
             execute_systems_for_all_views(ctx, &tree, &blueprint.views, view_states);
+
+        // Memorize new error states.
+        #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
+        for (view_id, (_, system_output)) in &executed_systems_per_view {
+            view_states.report_visualizer_errors(*view_id, system_output);
+        }
 
         let contents_per_tile_id = blueprint
             .contents_iter()
@@ -117,6 +129,10 @@ impl ViewportUi {
                 }
             });
 
+            let mut hover_rects = Vec::new();
+            let mut selection_rects = Vec::new();
+            let mut drop_target_rects = Vec::new();
+
             // Outline hovered & selected tiles:
             for contents in blueprint.contents_iter() {
                 let tile_id = contents.as_tile_id();
@@ -125,8 +141,9 @@ impl ViewportUi {
 
                     let mut hovered = ctx.hovered().contains_item(&item);
                     let selected = ctx.selection().contains_item(&item);
+                    let pointer_in_rect = ui.rect_contains_pointer(rect);
 
-                    if hovered && ui.rect_contains_pointer(rect) {
+                    if pointer_in_rect {
                         // Showing a hover-outline when hovering the same thing somewhere else
                         // (e.g. in the blueprint panel) is really helpful,
                         // but showing a hover-outline when just dragging around the camera is
@@ -135,34 +152,14 @@ impl ViewportUi {
                     }
 
                     // Handle drag-and-drop if this is a view.
-                    //TODO(#8428): simplify with let-chains
-                    let should_display_drop_destination_frame = 'scope: {
-                        if !ui.rect_contains_pointer(rect) {
-                            break 'scope false;
-                        }
-
-                        let Some(view_blueprint) = contents
-                            .as_view_id()
-                            .and_then(|view_id| self.blueprint.view(&view_id))
-                        else {
-                            break 'scope false;
-                        };
-
-                        let Some(dragged_payload) = dragged_payload else {
-                            break 'scope false;
-                        };
-
+                    let should_display_drop_destination_frame = if pointer_in_rect
+                        && let Some(view_id) = contents.as_view_id()
+                        && let Some(view_blueprint) = self.blueprint.view(&view_id)
+                        && let Some(dragged_payload) = dragged_payload
+                    {
                         Self::handle_drop_entities_to_view(ctx, view_blueprint, dragged_payload)
-                    };
-
-                    let stroke = if should_display_drop_destination_frame {
-                        tokens.drop_target_container_stroke
-                    } else if hovered {
-                        ui.ctx().hover_stroke()
-                    } else if selected {
-                        ui.ctx().selection_stroke()
                     } else {
-                        continue;
+                        false
                     };
 
                     if matches!(contents, Contents::View(_))
@@ -172,24 +169,43 @@ impl ViewportUi {
                         continue;
                     }
 
-                    // We want the rectangle to be on top of everything in the viewport,
-                    // including stuff in "zoom-pan areas", like we use in the graph view.
-                    let top_layer_id =
-                        egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
-                    ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
-
-                    // We paint the stroke on the inside so the panel-resize lines don't cover the highlight rectangle.
-                    let painter = ui.painter().clone().with_layer_id(top_layer_id);
-                    painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
-
                     if should_display_drop_destination_frame {
-                        painter.rect_filled(
-                            rect.shrink(stroke.width),
-                            0.0,
-                            stroke.color.gamma_multiply(0.1),
-                        );
+                        drop_target_rects.push(rect);
+                    } else if hovered {
+                        hover_rects.push(rect);
+                    } else if selected {
+                        selection_rects.push(rect);
                     }
                 }
+            }
+
+            // We want the rectangle to be on top of everything in the viewport,
+            // including stuff in "zoom-pan areas", like we use in the graph view.
+            let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
+            ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
+            let painter = ui.painter().clone().with_layer_id(top_layer_id);
+
+            // Draw selection outlines
+            let selection_stroke = ui.ctx().selection_stroke();
+            for rect in selection_rects {
+                painter.rect_stroke(rect, 0.0, selection_stroke, egui::StrokeKind::Inside);
+            }
+
+            // Draw hover outlines
+            let hover_stroke = ui.ctx().hover_stroke();
+            for rect in hover_rects {
+                painter.rect_stroke(rect, 0.0, hover_stroke, egui::StrokeKind::Inside);
+            }
+
+            // Draw drop target outlines
+            let drop_target_stroke = tokens.drop_target_container_stroke;
+            for rect in drop_target_rects {
+                painter.rect_stroke(rect, 0.0, drop_target_stroke, egui::StrokeKind::Inside);
+                painter.rect_filled(
+                    rect.shrink(drop_target_stroke.width),
+                    0.0,
+                    drop_target_stroke.color.gamma_multiply(0.1),
+                );
             }
 
             if blueprint.maximized.is_none() {
@@ -227,7 +243,6 @@ impl ViewportUi {
                 }
             }
         });
-
         self.blueprint.set_maximized(maximized, ctx);
     }
 
@@ -290,9 +305,7 @@ impl ViewportUi {
                 });
 
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::View(view_blueprint.id).into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::View(view_blueprint.id)));
 
             // drop is completed, no need for highlighting anymore
             false
@@ -381,9 +394,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 re_tracing::profile_scope!("per_system_data_results");
 
                 query_result.tree.visit(&mut |node| {
-                    for system in &node.data_result.visualizers {
+                    for instruction in &node.data_result.visualizer_instructions {
                         per_visualizer_data_results
-                            .entry(*system)
+                            .entry(instruction.visualizer_type)
                             .or_default()
                             .push(&node.data_result);
                     }
@@ -391,14 +404,19 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 });
             }
 
-            let class = view_blueprint.class(self.ctx.view_class_registry());
-            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class))
+            let class_registry = self.ctx.view_class_registry();
+            let class = view_blueprint.class(class_registry);
+            let context_system_once_per_frame_results = class_registry.run_once_per_frame_context_systems(
+                ctx,
+                std::iter::once(view.class_identifier())
+            );
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class), &context_system_once_per_frame_results)
         });
 
         let class = view_blueprint.class(self.ctx.view_class_registry());
         let view_state = self.view_states.get_mut_or_create(*view_id, class);
 
-        ui.scope(|ui| {
+        let response = ui.scope(|ui| {
             class
                 .ui(self.ctx, ui, view_state, &query, system_output)
                 .unwrap_or_else(|err| {
@@ -421,6 +439,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     );
             });
         });
+        response.response.widget_info(|| {
+            let mut info = egui::WidgetInfo::new(egui::WidgetType::Panel);
+            info.label = Some(view_blueprint.display_name_or_default().as_ref().to_owned());
+            info
+        });
 
         Default::default()
     }
@@ -436,7 +459,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         }
     }
 
-    #[allow(clippy::fn_params_excessive_bools)]
     fn tab_ui(
         &mut self,
         tiles: &mut egui_tiles::Tiles<ViewId>,
@@ -445,11 +467,18 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         tile_id: egui_tiles::TileId,
         tab_state: &egui_tiles::TabState,
     ) -> egui::Response {
-        let tab_widget = TabWidget::new(self, ui, tiles, tile_id, tab_state, 1.0);
+        let mut tab_widget = TabWidget::new(self, ui, tiles, tile_id, tab_state, 1.0);
 
         let response = ui
             .interact(tab_widget.rect, id, egui::Sense::click_and_drag())
             .on_hover_cursor(egui::CursorIcon::Grab);
+
+        let label = tab_widget.label.take();
+        response.widget_info(|| {
+            let mut info = egui::WidgetInfo::new(egui::WidgetType::Label);
+            info.label = label.clone();
+            info
+        });
 
         // Show a gap when dragged
         if ui.is_rect_visible(tab_widget.rect) && !tab_state.is_being_dragged {
@@ -628,6 +657,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         ui.help_button(|ui| {
             view_class.help(ui.ctx().os()).ui(ui);
         });
+
+        self.visualizer_errors_button(ui, view_id);
     }
 
     // Styling:
@@ -688,6 +719,111 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
     }
 }
 
+impl TilesDelegate<'_, '_> {
+    fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
+        let Some(visualizer_errors) = self.view_states.visualizer_errors(view_id) else {
+            return;
+        };
+
+        let data_result_tree = &self.ctx.lookup_query_result(view_id).tree;
+
+        let errors = visualizer_errors
+            .values()
+            .flat_map(|err| match err {
+                re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
+                    Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
+                }
+                re_viewer_context::VisualizerExecutionErrorState::PerInstruction(errors) => {
+                    Either::Right(errors.iter().filter_map(|(visualizer_instruction, err)| {
+                        let data_result = data_result_tree
+                            .lookup_result_by_visualizer_instruction(*visualizer_instruction)?;
+
+                        Some((
+                            Item::DataResult(view_id, data_result.entity_path.clone().into()),
+                            err.clone(),
+                        ))
+                    }))
+                }
+            })
+            .sorted()
+            .collect::<Vec<_>>();
+
+        if visualizer_errors.is_empty() {
+            return;
+        }
+
+        let error_count = visualizer_errors.len();
+
+        ui.scope(|ui| {
+            let response = ui
+                .add(egui::Button::image(
+                    icons::ERROR
+                        .as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .alt_text("View errors")
+                        .tint(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(format!(
+                    "Show {error_count} visualizer error{}",
+                    re_format::format_plural_s(error_count)
+                ));
+
+            egui::Popup::menu(&response)
+                .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                .show(|ui| {
+                    egui::ScrollArea::vertical()
+                        .min_scrolled_height(600.0)
+                        .max_height(600.0)
+                        .show(ui, |ui| {
+                            for (item, err) in errors {
+                                self.show_item_error(ui, item, &err);
+                            }
+                        });
+                });
+        });
+    }
+
+    fn show_item_error(&self, ui: &mut egui::Ui, item: Item, err: &str) {
+        let item_entity = match &item {
+            Item::View(blueprint_id) => blueprint_id.as_entity_path().to_string(),
+            _ => item
+                .to_data_path()
+                .map(|item| item.to_string())
+                .unwrap_or_default(),
+        };
+        egui::Frame::window(ui.style())
+            .corner_radius(4)
+            .inner_margin(10.0)
+            .fill(ui.tokens().notification_panel_background_color)
+            .shadow(egui::Shadow::NONE)
+            .show(ui, |ui| {
+                ui.horizontal_top(|ui| {
+                    ui.add(icons::ERROR.as_image().tint(ui.visuals().error_fg_color));
+
+                    ui.vertical(|ui| {
+                        if ui
+                            .selectable_label(
+                                self.ctx.selection().contains_item(&item),
+                                item_entity,
+                            )
+                            .clicked()
+                        {
+                            self.ctx
+                                .command_sender()
+                                .send_system(SystemCommand::set_selection(item));
+                            self.ctx
+                                .command_sender()
+                                .send_ui(re_ui::UICommand::ExpandSelectionPanel);
+                        }
+                        ui.separator();
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                        ui.label(err);
+                    })
+                })
+            });
+    }
+}
+
 /// A tab button for a tab in the viewport.
 ///
 /// The tab can contain any `egui_tiles::Tile`,
@@ -703,6 +839,7 @@ struct TabWidget {
     bg_color: egui::Color32,
     text_color: egui::Color32,
     unnamed_style: bool,
+    label: Option<String>,
 }
 
 impl TabWidget {
@@ -717,29 +854,32 @@ impl TabWidget {
         let tokens = ui.tokens();
 
         struct TabDesc {
-            label: egui::WidgetText,
+            widget_text: egui::WidgetText,
             user_named: bool,
             icon: &'static re_ui::Icon,
             item: Option<Item>,
+            label: Option<String>,
         }
 
         let tab_desc = match tiles.get(tile_id) {
             Some(egui_tiles::Tile::Pane(view_id)) => {
                 if let Some(view) = tab_viewer.viewport_blueprint.view(view_id) {
                     TabDesc {
-                        label: tab_viewer.tab_title_for_pane(view_id),
+                        widget_text: tab_viewer.tab_title_for_pane(view_id),
                         user_named: view.display_name.is_some(),
                         icon: view.class(tab_viewer.ctx.view_class_registry()).icon(),
                         item: Some(Item::View(*view_id)),
+                        label: Some(view.display_name_or_default().into()),
                     }
                 } else {
                     re_log::warn_once!("View {view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
+                        widget_text: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,
                         item: None,
+                        label: None,
                     }
                 }
             }
@@ -770,10 +910,11 @@ impl TabWidget {
                     };
 
                     TabDesc {
-                        label,
+                        widget_text: label,
                         user_named,
                         icon: icon_for_container_kind(&container.kind()),
                         item: Some(Item::Container(*container_id)),
+                        label: None,
                     }
                 } else {
                     // If the container is a tab with a single child, we can display the child's name instead. This
@@ -788,7 +929,7 @@ impl TabWidget {
                     re_log::warn_once!("Container for tile ID {tile_id:?} not found");
 
                     TabDesc {
-                        label: tab_viewer
+                        widget_text: tab_viewer
                             .ctx
                             .egui_ctx()
                             .error_text("Unknown container")
@@ -796,6 +937,7 @@ impl TabWidget {
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,
                         item: None,
+                        label: None,
                     }
                 }
             }
@@ -803,7 +945,7 @@ impl TabWidget {
                 re_log::warn_once!("Tile {tile_id:?} not found");
 
                 TabDesc {
-                    label: tab_viewer
+                    widget_text: tab_viewer
                         .ctx
                         .egui_ctx()
                         .error_text("Internal error")
@@ -811,6 +953,7 @@ impl TabWidget {
                     icon: &re_ui::icons::VIEW_UNKNOWN,
                     user_named: false,
                     item: None,
+                    label: None,
                 }
             }
         };
@@ -830,9 +973,9 @@ impl TabWidget {
 
         // tab title
         let text = if tab_desc.user_named {
-            tab_desc.label
+            tab_desc.widget_text
         } else {
-            tab_desc.label.italics() // TODO(ab): use design tokens
+            tab_desc.widget_text.italics() // TODO(ab): use design tokens
         };
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
@@ -885,6 +1028,7 @@ impl TabWidget {
             bg_color,
             text_color,
             unnamed_style: !tab_desc.user_named,
+            label: tab_desc.label,
         }
     }
 

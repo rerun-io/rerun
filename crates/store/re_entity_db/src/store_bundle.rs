@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_log_types::{StoreId, StoreKind};
 
 use crate::EntityDb;
@@ -7,7 +5,7 @@ use crate::EntityDb;
 #[derive(thiserror::Error, Debug)]
 pub enum StoreLoadError {
     #[error(transparent)]
-    Decode(#[from] re_log_encoding::decoder::DecodeError),
+    Decode(#[from] re_log_encoding::DecodeError),
 
     #[error(transparent)]
     ChunkStore(#[from] crate::Error),
@@ -16,46 +14,46 @@ pub enum StoreLoadError {
 // ---
 
 /// Stores many [`EntityDb`]s of recordings and blueprints.
+///
+/// The stores are kept and iterated in insertion order to allow the UI to display them by default
+/// in opening order.
 #[derive(Default)]
 pub struct StoreBundle {
-    recording_store: ahash::HashMap<StoreId, EntityDb>,
+    // `indexmap` is used to keep track of the insertion order.
+    recording_store: indexmap::IndexMap<StoreId, EntityDb>,
 }
 
 impl StoreBundle {
     /// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
-    pub fn from_rrd(read: impl std::io::Read) -> Result<Self, StoreLoadError> {
+    pub fn from_rrd<R: std::io::Read>(
+        reader: std::io::BufReader<R>,
+    ) -> Result<Self, StoreLoadError> {
         re_tracing::profile_function!();
 
-        let decoder = re_log_encoding::decoder::Decoder::new(read)?;
+        let decoder = re_log_encoding::DecoderApp::decode_eager(reader)?;
 
         let mut slf = Self::default();
 
         for msg in decoder {
             let msg = msg?;
-            slf.entry(msg.store_id()).add(&msg)?;
+            slf.entry(msg.store_id()).add_log_msg(&msg)?;
         }
         Ok(slf)
     }
 
-    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
+    /// All loaded [`EntityDb`], both recordings and blueprints, in insertion order.
     pub fn entity_dbs(&self) -> impl Iterator<Item = &EntityDb> {
         self.recording_store.values()
     }
 
-    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
+    /// All loaded [`EntityDb`], both recordings and blueprints, in insertion order.
     pub fn entity_dbs_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
         self.recording_store.values_mut()
     }
 
-    pub fn append(&mut self, mut other: Self) {
-        for (id, entity_db) in other.recording_store.drain() {
-            self.recording_store.insert(id, entity_db);
-        }
-    }
-
     pub fn remove(&mut self, id: &StoreId) -> Option<EntityDb> {
-        self.recording_store.remove(id)
+        self.recording_store.shift_remove(id)
     }
 
     // --
@@ -98,12 +96,10 @@ impl StoreBundle {
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: *re_chunk::RowId::new(),
-                info: re_log_types::StoreInfo {
-                    store_id: id.clone(),
-                    cloned_from: None,
-                    store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
-                    store_version: Some(re_build_info::CrateVersion::LOCAL),
-                },
+                info: re_log_types::StoreInfo::new(
+                    id.clone(),
+                    re_log_types::StoreSource::Other("viewer".to_owned()),
+                ),
             });
 
             blueprint_db
@@ -115,18 +111,18 @@ impl StoreBundle {
             .insert(entity_db.store_id().clone(), entity_db);
     }
 
-    /// In no particular order.
+    /// In insertion order.
     pub fn recordings(&self) -> impl Iterator<Item = &EntityDb> {
         self.recording_store
             .values()
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 
-    /// In no particular order.
-    pub fn blueprints(&self) -> impl Iterator<Item = &EntityDb> {
+    /// In insertion order.
+    pub fn recordings_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
         self.recording_store
-            .values()
-            .filter(|log| log.store_kind() == StoreKind::Blueprint)
+            .values_mut()
+            .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 
     // --
@@ -135,23 +131,8 @@ impl StoreBundle {
         self.recording_store.retain(|_, db| f(db));
     }
 
-    /// In no particular order.
+    /// In insertion order.
     pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
-        self.recording_store.drain().map(|(_, store)| store)
-    }
-
-    // --
-
-    /// Returns the [`StoreId`] of the oldest modified recording, according to [`EntityDb::last_modified_at`].
-    pub fn find_oldest_modified_recording(&self) -> Option<StoreId> {
-        let mut entity_dbs = self
-            .recording_store
-            .values()
-            .filter(|db| db.store_kind() == StoreKind::Recording)
-            .collect_vec();
-
-        entity_dbs.sort_by_key(|db| db.last_modified_at());
-
-        entity_dbs.first().map(|db| db.store_id().clone())
+        self.recording_store.drain(..).map(|(_, store)| store)
     }
 }

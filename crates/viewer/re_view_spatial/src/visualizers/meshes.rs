@@ -1,21 +1,20 @@
 use re_chunk_store::RowId;
-use re_log_types::{Instance, TimeInt, hash::Hash64};
-use re_renderer::{RenderContext, renderer::GpuMeshInstance};
-use re_types::{Archetype as _, archetypes::Mesh3D, components::ImageFormat};
+use re_log_types::hash::Hash64;
+use re_log_types::{Instance, TimeInt};
+use re_renderer::RenderContext;
+use re_renderer::renderer::GpuMeshInstance;
+use re_sdk_types::archetypes::Mesh3D;
+use re_sdk_types::components::ImageFormat;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
-
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
-    mesh_loader::NativeMesh3D,
-    view_kind::SpatialViewKind,
-};
+use super::SpatialViewVisualizerData;
+use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::mesh_loader::NativeMesh3D;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 
@@ -43,7 +42,7 @@ impl Mesh3DVisualizer {
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<GpuMeshInstance>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -81,10 +80,8 @@ impl Mesh3DVisualizer {
             if let Some(mesh) = mesh {
                 // Let's draw the mesh once for every instance transform.
                 // TODO(#7026): We should formalize this kind of hybrid joining better.
-                for &world_from_instance in ent_context
-                    .transform_info
-                    .reference_from_instances(Mesh3D::name())
-                {
+                for &world_from_instance in ent_context.transform_info.target_from_instances() {
+                    let world_from_instance = world_from_instance.as_affine3a();
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let entity_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_instance * entity_from_mesh;
@@ -115,17 +112,11 @@ impl IdentifiedViewSystem for Mesh3DVisualizer {
 }
 
 impl VisualizerSystem for Mesh3DVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Mesh3D>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Mesh3D>()
     }
 
     fn execute(
@@ -133,7 +124,10 @@ impl VisualizerSystem for Mesh3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
+        let mut output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -141,32 +135,56 @@ impl VisualizerSystem for Mesh3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.0.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_vertex_position_chunks) =
-                    results.get_required_chunks(Mesh3D::descriptor_vertex_positions())
-                else {
+                let all_vertex_position_chunks = results
+                    .get_required_chunk(Mesh3D::descriptor_vertex_positions().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
+                if all_vertex_position_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let timeline = ctx.query.timeline();
                 let all_vertex_positions_indexed =
                     iter_slices::<[f32; 3]>(&all_vertex_position_chunks, timeline);
-                let all_vertex_normals =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_normals());
-                let all_vertex_colors =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_colors());
-                let all_vertex_texcoords =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_texcoords());
-                let all_triangle_indices =
-                    results.iter_as(timeline, Mesh3D::descriptor_triangle_indices());
-                let all_albedo_factors =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_factor());
-                let all_albedo_buffers =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_buffer());
-                let all_albedo_formats =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_format());
+                let all_vertex_normals = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_vertex_normals().component,
+                );
+                let all_vertex_colors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_vertex_colors().component,
+                );
+                let all_vertex_texcoords = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_vertex_texcoords().component,
+                );
+                let all_triangle_indices = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_triangle_indices().component,
+                );
+                let all_albedo_factors = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_albedo_factor().component,
+                );
+                let all_albedo_buffers = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_albedo_texture_buffer().component,
+                );
+                let all_albedo_formats = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    Mesh3D::descriptor_albedo_texture_format().component,
+                );
 
                 let query_result_hash = results.query_result_hash();
 
@@ -228,26 +246,16 @@ impl VisualizerSystem for Mesh3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
-            Ok(draw_data) => Ok(vec![draw_data.into()]),
-            Err(err) => {
-                re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
-                Ok(Vec::new()) // TODO(andreas): Pass error on?
-            }
-        }
+        Ok(
+            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+                ctx.viewer_ctx.render_ctx(),
+                &instances,
+            )?
+            .into()]),
+        )
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.0.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-re_viewer_context::impl_component_fallback_provider!(Mesh3DVisualizer => []);

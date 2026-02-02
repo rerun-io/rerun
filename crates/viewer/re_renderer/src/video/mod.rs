@@ -1,20 +1,48 @@
 mod chunk_decoder;
 mod player;
 
-pub use player::PlayerConfiguration;
-
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
-use parking_lot::Mutex;
-
+pub use chunk_decoder::VideoSampleDecoder;
+pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
-use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
+use re_mutex::Mutex;
+use re_video::{DecodeSettings, VideoDataDescription};
 
-use crate::{
-    RenderContext,
-    resource_managers::{GpuTexture2D, SourceImageDataFormat},
-};
+use crate::RenderContext;
+use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
+
+/// Detailed error for lack of sample data.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum InsufficientSampleDataError {
+    #[error("Video doesn't have any key frames.")]
+    NoKeyFrames,
+
+    #[error("Video doesn't have any samples.")]
+    NoSamples,
+
+    #[error("Video doesn't have any loaded samples.")]
+    NoLoadedSamples,
+
+    #[error("No key frames prior to current time.")]
+    NoKeyFramesPriorToRequestedTimestamp,
+
+    #[error("No frames prior to current time.")]
+    NoSamplesPriorToRequestedTimestamp,
+
+    #[error("The requested frame data is not, or no longer, available.")]
+    ExpectedSampleNotLoaded,
+
+    #[error("Missing samples between last decoded sample and requested sample.")]
+    MissingSamples,
+
+    #[error("Duplicate sample index encountered.")]
+    DuplicateSampleIdx,
+
+    #[error("Out of order sample index encountered.")]
+    OutOfOrderSampleIdx,
+}
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -22,8 +50,8 @@ pub enum VideoPlayerError {
     #[error("The decoder is lagging behind")]
     EmptyBuffer,
 
-    #[error("Video is empty.")]
-    EmptyVideo,
+    #[error(transparent)]
+    InsufficientSampleData(#[from] InsufficientSampleDataError),
 
     /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
@@ -39,9 +67,6 @@ pub enum VideoPlayerError {
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
-
-    #[error("The requested frame data is not, or no longer, available.")]
-    MissingSample,
 
     /// e.g. bad mp4, or bug in mp4 parse
     #[error("Bad data.")]
@@ -277,12 +302,15 @@ impl Video {
     /// empty.
     ///
     /// The time is specified in seconds since the start of the video.
-    pub fn frame_at(
+    ///
+    /// `get_video_buffer` is used both to read data for frames internally, and as a way to request
+    /// what data should be loaded.
+    pub fn frame_at<'a>(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
-        video_buffers: &StableIndexDeque<&[u8]>,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -309,10 +337,12 @@ impl Video {
 
         decoder_entry.used_last_frame = true;
         decoder_entry.player.frame_at(
-            render_context,
             video_time,
             &self.video_description,
-            video_buffers,
+            &mut |texture, frame| {
+                chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
+            },
+            get_video_buffer,
         )
     }
 

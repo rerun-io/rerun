@@ -89,13 +89,8 @@ class OPFProject:
             Whether to log the cameras as individual frames, by default True
 
         """
-        import os
-
         self.path = path
-        # TODO(Pix4D/pyopf#6): https://github.com/Pix4D/pyopf/issues/6
-        # pyopf doesn't seem to work with regular windows paths, but a "UNC dos path" works
-        path_as_str = "\\\\.\\" + str(path.absolute()) if os.name == "nt" else str(path)
-        self.project = resolve(load(path_as_str))
+        self.project = resolve(load(str(self.path)))
         self.log_as_frames = log_as_frames
 
     @classmethod
@@ -138,6 +133,7 @@ class OPFProject:
             zip(
                 self.project.camera_list.cameras,
                 self.project.calibration.calibrated_cameras.cameras,
+                strict=False,
             ),
         ):
             if not str(camera.uri).endswith(".jpg"):

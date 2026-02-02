@@ -10,7 +10,6 @@
 
 pub mod external {
     pub use nohash_hasher;
-
     #[cfg(feature = "serde")]
     pub use serde;
 }
@@ -157,7 +156,7 @@ struct StringInterner {
 }
 
 impl StringInterner {
-    #[allow(dead_code)] // used in tests
+    #[cfg_attr(not(test), expect(dead_code))] // only used in tests
     pub fn len(&self) -> usize {
         self.map.len()
     }
@@ -295,6 +294,18 @@ macro_rules! declare_new_type {
                 *self == other.as_str()
             }
         }
+
+        impl re_byte_size::SizeBytes for $StructName {
+            #[inline]
+            fn heap_size_bytes(&self) -> u64 {
+                0
+            }
+
+            #[inline]
+            fn is_pod() -> bool {
+                true
+            }
+        }
     };
 }
 
@@ -337,8 +348,6 @@ fn test_interner() {
 
 #[test]
 fn test_newtype_macro() {
-    #![allow(dead_code)]
-
     declare_new_type!(
         /// My typesafe string
         pub struct MyString;

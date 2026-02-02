@@ -33,7 +33,7 @@ def run(
 
 def detect_target() -> str:
     arch = platform.machine()
-    if arch == "x86_64" or arch == "aarch64":
+    if arch in {"x86_64", "aarch64"}:
         pass  # leave it as is
     elif arch == "arm64":
         arch = "aarch64"
@@ -80,12 +80,10 @@ def build_and_upload(
 
     compatibility = f"--compatibility {compatibility}" if compatibility is not None else ""
 
-    # Build into `dist`
     run(
         "maturin build "
         f"{compatibility} "
         "--manifest-path rerun_py/Cargo.toml "
-        "--quiet "
         "--release "
         f"--target {target} "
         f"{maturin_feature_flags} "

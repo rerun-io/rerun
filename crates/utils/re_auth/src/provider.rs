@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use base64::{Engine as _, engine::general_purpose};
+use base64::Engine as _;
+use base64::engine::general_purpose;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 
 use crate::{Error, Jwt};
@@ -19,15 +20,14 @@ const AUDIENCE: &str = "redap";
 pub struct RedapProvider {
     secret_key: SecretKey,
 
-    #[cfg(feature = "workos")]
-    external: Option<ExternalProvider>,
+    #[cfg(feature = "oauth")]
+    oauth: Option<RerunCloudProvider>,
 }
 
-#[cfg(feature = "workos")]
+#[cfg(feature = "oauth")]
 #[derive(Debug, Clone)]
-struct ExternalProvider {
-    /// Public keys provided to us by external authn/z provider
-    // Currently, this comes from WorkOS
+struct RerunCloudProvider {
+    /// Public keys
     keys: jsonwebtoken::jwk::JwkSet,
 
     /// Expected organization ID
@@ -87,7 +87,12 @@ pub struct RedapClaims {
     /// The audience of the token, i.e. who should consume it.
     ///
     /// Most of the time this will be the storage node.
-    pub aud: String,
+    /// Per RFC 7519, this can be either a single string or an array of strings.
+    #[serde(
+        deserialize_with = "deser_string_or_vec",
+        serialize_with = "ser_string_or_vec"
+    )]
+    pub aud: Vec<String>,
 
     /// Expiry time of the token.
     pub exp: u64,
@@ -99,8 +104,8 @@ pub struct RedapClaims {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum Claims {
-    #[cfg(feature = "workos")]
-    WorkOs(crate::workos::Claims),
+    #[cfg(feature = "oauth")]
+    RerunCloud(crate::oauth::RerunCloudClaims),
 
     Redap(RedapClaims),
 }
@@ -109,8 +114,8 @@ impl Claims {
     /// Subject, usually the user ID.
     pub fn sub(&self) -> &str {
         match self {
-            #[cfg(feature = "workos")]
-            Self::WorkOs(claims) => claims.sub.as_str(),
+            #[cfg(feature = "oauth")]
+            Self::RerunCloud(claims) => claims.sub.as_str(),
             Self::Redap(claims) => claims.sub.as_str(),
         }
     }
@@ -118,20 +123,16 @@ impl Claims {
     /// Issuer
     pub fn iss(&self) -> &str {
         match self {
-            #[cfg(feature = "workos")]
-            Self::WorkOs(claims) => claims.iss.as_str(),
+            #[cfg(feature = "oauth")]
+            Self::RerunCloud(claims) => claims.iss.as_str(),
             Self::Redap(claims) => claims.iss.as_str(),
         }
     }
 
-    #[cfg(feature = "workos")]
-    pub fn permissions(&self) -> &[crate::workos::Permission] {
+    #[cfg(feature = "oauth")]
+    pub fn permissions(&self) -> &[crate::oauth::Permission] {
         match self {
-            Self::WorkOs(claims) => claims
-                .permissions
-                .as_ref()
-                .map(|v| &v[..])
-                .unwrap_or_default(),
+            Self::RerunCloud(claims) => &claims.permissions[..],
             Self::Redap(_) => &[],
         }
     }
@@ -167,18 +168,24 @@ impl Default for VerificationOptions {
 
 #[derive(Clone, Copy)]
 enum KeyProvider {
-    #[cfg(feature = "workos")]
-    WorkOs,
+    #[cfg(feature = "oauth")]
+    RerunCloud,
     Redap,
 }
 
 impl VerificationOptions {
     fn for_provider(self, provider: KeyProvider) -> Validation {
         match provider {
-            #[cfg(feature = "workos")]
-            KeyProvider::WorkOs => {
+            #[cfg(feature = "oauth")]
+            KeyProvider::RerunCloud => {
                 let mut validation = Validation::new(Algorithm::RS256);
-                validation.set_issuer(&[crate::workos::DEFAULT_ISSUER]);
+                validation.set_issuer(&[&*crate::oauth::OAUTH_ISSUER_URL]);
+                validation.required_spec_claims.extend(
+                    crate::oauth::RerunCloudClaims::REQUIRED
+                        .iter()
+                        .copied()
+                        .map(String::from),
+                );
                 validation.validate_exp = true;
                 validation.leeway = self.leeway.map_or(0, |leeway| leeway.as_secs());
                 validation
@@ -196,7 +203,7 @@ impl VerificationOptions {
 
 // Generate a random secret key of specified length
 fn generate_secret_key(mut rng: impl rand::Rng, length: usize) -> Vec<u8> {
-    (0..length).map(|_| rng.r#gen::<u8>()).collect()
+    (0..length).map(|_| rng.random::<u8>()).collect()
 }
 
 impl RedapProvider {
@@ -204,8 +211,8 @@ impl RedapProvider {
     pub fn from_secret_key(secret_key: SecretKey) -> Self {
         Self {
             secret_key,
-            #[cfg(feature = "workos")]
-            external: None,
+            #[cfg(feature = "oauth")]
+            oauth: None,
         }
     }
 
@@ -213,29 +220,29 @@ impl RedapProvider {
     pub fn from_secret_key_base64(secret_key: &str) -> Result<Self, Error> {
         Ok(Self {
             secret_key: SecretKey::from_base64(secret_key)?,
-            #[cfg(feature = "workos")]
-            external: None,
+            #[cfg(feature = "oauth")]
+            oauth: None,
         })
     }
 
-    /// Add external keys to the key set.
-    ///
-    /// These must be fetched from a remote host.
-    #[cfg(feature = "workos")]
-    pub async fn with_external_provider(self, org_id: impl Into<String>) -> Result<Self, Error> {
-        // TODO(jan): fetch these less often
-        let ctx = crate::workos::AuthContext::load().await.map_err(|err| {
+    /// Allow users from the given organization to authenticate via
+    /// their Rerun Cloud credentials.
+    #[cfg(feature = "oauth")]
+    pub async fn with_rerun_cloud_provider(self, org_id: impl Into<String>) -> Result<Self, Error> {
+        use crate::oauth::api;
+
+        // TODO(jan): fetch these less often? cache somehow?
+        let keys = api::jwks().await.map_err(|err| {
             re_log::debug!("failed to fetch external keys: {err}");
-            Error::ContextLoad(err)
+            Error::JwksFetch(err)
         })?;
-        let keys = std::sync::Arc::unwrap_or_clone(ctx.jwks);
         let org_id = org_id.into();
 
-        let external = ExternalProvider { keys, org_id };
+        let provider = RerunCloudProvider { keys, org_id };
 
         Ok(Self {
             secret_key: self.secret_key,
-            external: Some(external),
+            oauth: Some(provider),
         })
     }
 
@@ -258,7 +265,7 @@ impl RedapProvider {
         let claims = Claims::Redap(RedapClaims {
             iss: issuer.into(),
             sub: subject.into(),
-            aud: AUDIENCE.to_owned(),
+            aud: vec![AUDIENCE.to_owned()],
             exp: (now + duration).as_secs(),
             iat: now.as_secs(),
         });
@@ -274,20 +281,20 @@ impl RedapProvider {
 
     /// Checks if a provided `token` is valid for a given `scope`.
     pub fn verify(&self, token: &Jwt, options: VerificationOptions) -> Result<Claims, Error> {
-        #[cfg(feature = "workos")]
+        #[cfg(feature = "oauth")]
         let (key, validation) = if let Some(kid) = jsonwebtoken::decode_header(token.as_str())?.kid
         {
             // we don't supply key ID, so assume this comes from external provider
-            let Some(external) = &self.external else {
+            let Some(provider) = &self.oauth else {
                 return Err(Error::NoExternalProvider);
             };
 
-            let Some(key) = external.keys.find(&kid) else {
+            let Some(key) = provider.keys.find(&kid) else {
                 re_log::debug!("no key with id {kid} found");
                 return Err(Error::InvalidToken);
             };
             let key = DecodingKey::from_jwk(key)?;
-            let validation = options.for_provider(KeyProvider::WorkOs);
+            let validation = options.for_provider(KeyProvider::RerunCloud);
             (key, validation)
         } else {
             let key = DecodingKey::from_secret(self.secret_key.reveal());
@@ -295,7 +302,7 @@ impl RedapProvider {
             (key, validation)
         };
 
-        #[cfg(not(feature = "workos"))]
+        #[cfg(not(feature = "oauth"))]
         let (key, validation) = {
             let key = DecodingKey::from_secret(self.secret_key.reveal());
             let validation = options.for_provider(KeyProvider::Redap);
@@ -305,16 +312,16 @@ impl RedapProvider {
         let token_data = decode::<Claims>(&token.0, &key, &validation)?;
 
         match &token_data.claims {
-            #[cfg(feature = "workos")]
-            Claims::WorkOs(claims) => {
-                let external = self
-                    .external
+            #[cfg(feature = "oauth")]
+            Claims::RerunCloud(claims) => {
+                let provider = self
+                    .oauth
                     .as_ref()
                     .expect("bug: verified external key without external provider configured");
-                if claims.org_id.as_ref() != Some(&external.org_id) {
+                if claims.org_id != provider.org_id {
                     re_log::debug!(
                         "verification failed: organization ID was not {}",
-                        external.org_id
+                        provider.org_id
                     );
                     return Err(Error::InvalidToken);
                 }
@@ -325,5 +332,118 @@ impl RedapProvider {
         }
 
         Ok(token_data.claims)
+    }
+}
+
+// ---
+
+/// Deserializes either a string of an array of strings into an array of strings.
+fn deser_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        One(String),
+        Many(Vec<String>),
+    }
+
+    use serde::Deserialize as _;
+    match StringOrVec::deserialize(deserializer)? {
+        StringOrVec::One(s) => Ok(vec![s]),
+        StringOrVec::Many(v) => Ok(v),
+    }
+}
+
+/// Serializes an array of strings into either a single string if unary, or into an array of strings otherwise.
+fn ser_string_or_vec<S>(value: &Vec<String>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize as _;
+    if value.len() == 1 {
+        serializer.serialize_str(&value[0])
+    } else {
+        value.serialize(serializer)
+    }
+}
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_audience_deserialize_single_string() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": "redap",
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, vec!["redap"]);
+    }
+
+    #[test]
+    fn test_audience_deserialize_array() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": ["redap", "other-service"],
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, vec!["redap", "other-service"]);
+    }
+
+    #[test]
+    fn test_audience_deserialize_empty_array() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": [],
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_audience_serialize_single() {
+        let claims = RedapClaims {
+            iss: "test".to_owned(),
+            sub: "user123".to_owned(),
+            aud: vec!["redap".to_owned()],
+            exp: 1234567890,
+            iat: 1234567890,
+        };
+
+        let json = serde_json::to_value(&claims).unwrap();
+        // When there's exactly one audience, it should serialize as a string
+        assert_eq!(json["aud"], serde_json::json!("redap"));
+    }
+
+    #[test]
+    fn test_audience_serialize_multiple() {
+        let claims = RedapClaims {
+            iss: "test".to_owned(),
+            sub: "user123".to_owned(),
+            aud: vec!["redap".to_owned(), "other".to_owned()],
+            exp: 1234567890,
+            iat: 1234567890,
+        };
+
+        let json = serde_json::to_value(&claims).unwrap();
+        // When there are multiple audiences, it should serialize as an array
+        assert_eq!(json["aud"], serde_json::json!(["redap", "other"]));
     }
 }

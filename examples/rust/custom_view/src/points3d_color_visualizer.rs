@@ -1,12 +1,10 @@
-use rerun::external::re_view::{DataResultQuery, RangeResultsExt};
-use rerun::external::{
-    egui,
-    re_log_types::{EntityPath, Instance},
-    re_renderer,
-    re_viewer_context::{
-        self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
-        ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
-    },
+use rerun::external::egui;
+use rerun::external::re_log_types::{EntityPath, Instance};
+use rerun::external::re_view::DataResultQuery;
+use rerun::external::re_viewer_context::{
+    AppOptions, IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.
@@ -27,7 +25,7 @@ impl IdentifiedViewSystem for Points3DColorVisualizer {
 }
 
 impl VisualizerSystem for Points3DColorVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(&self, _app_options: &AppOptions) -> VisualizerQueryInfo {
         // Usually, visualizers are closely tied to archetypes.
         // However, here we're adding a visualizer that queries only parts of an existing archetype.
         if false {
@@ -36,8 +34,10 @@ impl VisualizerSystem for Points3DColorVisualizer {
         } else {
             // Instead, our custom query here is solely interested in Points3D's colors.
             VisualizerQueryInfo {
-                relevant_archetypes: Default::default(),
-                required: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
+                relevant_archetype: Default::default(),
+                required: RequiredComponents::AllComponents(
+                    std::iter::once(rerun::Points3D::descriptor_colors().component).collect(),
+                ),
                 queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
             }
         }
@@ -49,22 +49,29 @@ impl VisualizerSystem for Points3DColorVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             // Query components while taking into account blueprint overrides
             // and visible history if enabled.
             let results = data_result.query_components_with_history(
                 ctx,
                 query,
-                [&rerun::Points3D::descriptor_colors()],
+                [rerun::Points3D::descriptor_colors().component],
+                instruction,
             );
 
             // From the query result, get all the color arrays as `[u32]` slices.
             // For latest-at queries should be only a single slice`,
             // but if visible history is enabled, there might be several!
-            let colors_per_time =
-                results.iter_as(query.timeline, rerun::Points3D::descriptor_colors());
+            let colors_per_time = results.iter_as(
+                |err| output.report_error_for(instruction.id, err),
+                query.timeline,
+                rerun::Points3D::descriptor_colors().component,
+            );
             let color_slices_per_time = colors_per_time.slice::<u32>();
 
             // Collect all different kinds of colors that are returned from the cache.
@@ -89,19 +96,6 @@ impl VisualizerSystem for Points3DColorVisualizer {
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly,
         // but your custom view's `ui` implementation has to set up an re_renderer output for this.
-        Ok(Vec::new())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
+        Ok(output)
     }
 }
-
-// Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
-// It is left empty here but could be used to provides fallback values for optional components in case they're missing.
-use rerun::external::re_types;
-re_viewer_context::impl_component_fallback_provider!(Points3DColorVisualizer => []);

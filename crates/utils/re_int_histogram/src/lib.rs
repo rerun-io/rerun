@@ -27,15 +27,15 @@ pub(crate) fn i64_key_from_u64_key(key: u64) -> i64 {
 #[test]
 fn test_u64_i64_key_conversions() {
     assert_eq!(u64_key_from_i64_key(i64::MIN), u64::MIN);
-    assert_eq!(u64_key_from_i64_key(i64::MIN + 1), u64::MIN + 1);
-    assert_eq!(u64_key_from_i64_key(i64::MIN + 2), u64::MIN + 2);
+    assert_eq!(u64_key_from_i64_key(i64::MIN + 1), 1);
+    assert_eq!(u64_key_from_i64_key(i64::MIN + 2), 2);
     assert_eq!(u64_key_from_i64_key(i64::MAX - 2), u64::MAX - 2);
     assert_eq!(u64_key_from_i64_key(i64::MAX - 1), u64::MAX - 1);
     assert_eq!(u64_key_from_i64_key(i64::MAX), u64::MAX);
 
     assert_eq!(i64_key_from_u64_key(u64::MIN), i64::MIN);
-    assert_eq!(i64_key_from_u64_key(u64::MIN + 1), i64::MIN + 1);
-    assert_eq!(i64_key_from_u64_key(u64::MIN + 2), i64::MIN + 2);
+    assert_eq!(i64_key_from_u64_key(1), i64::MIN + 1);
+    assert_eq!(i64_key_from_u64_key(2), i64::MIN + 2);
     assert_eq!(i64_key_from_u64_key(u64::MAX - 2), i64::MAX - 2);
     assert_eq!(i64_key_from_u64_key(u64::MAX - 1), i64::MAX - 1);
     assert_eq!(i64_key_from_u64_key(u64::MAX), i64::MAX);

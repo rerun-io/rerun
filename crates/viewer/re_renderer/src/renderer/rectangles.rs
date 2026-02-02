@@ -13,23 +13,21 @@
 use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::depth_offset::DepthOffset;
+use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::resource_managers::GpuTexture2D;
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
 use crate::{
     Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerProcessor, Rgba,
-    allocator::create_and_fill_uniform_buffer_batch,
-    depth_offset::DepthOffset,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    resource_managers::GpuTexture2D,
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 /// Texture filter setting for magnification (a texel covers several pixels).
 #[derive(Debug, Clone, Copy)]
@@ -206,6 +204,11 @@ pub struct RectangleOptions {
     /// Tint that is multiplied to the rect, supports pre-multiplied alpha.
     pub multiplicative_tint: Rgba,
 
+    /// Force drawing the rectangle with alpha blending enabled even if `multiplicative_tint` is opaque.
+    /// (Note that we'll draw without pre-multiplied alpha here, assuming all alpha is unmultiplied)
+    /// TODO(#12223): This is only really needed if you know you have a texture that you know has a meaningful alpha channel.
+    pub force_draw_with_transparency: bool,
+
     pub depth_offset: DepthOffset,
 
     /// Optional outline mask.
@@ -218,6 +221,7 @@ impl Default for RectangleOptions {
             texture_filter_magnification: TextureFilterMag::Nearest,
             texture_filter_minification: TextureFilterMin::Linear,
             multiplicative_tint: Rgba::WHITE,
+            force_draw_with_transparency: false,
             depth_offset: 0,
             outline_mask: OutlineMaskPreference::NONE,
         }
@@ -251,9 +255,8 @@ pub enum RectangleError {
 }
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
-
     use super::{ColorMapper, RectangleError, TexturedRect};
+    use crate::wgpu_buffer_types;
 
     // Keep in sync with mirror in rectangle.wgsl
 
@@ -335,6 +338,7 @@ mod gpu_data {
                 multiplicative_tint,
                 depth_offset,
                 outline_mask,
+                force_draw_with_transparency: _,
             } = options;
 
             let sample_type = match texture_format.sample_type(None, None) {
@@ -408,6 +412,7 @@ struct RectangleInstance {
     center_position: glam::Vec3A,
     bind_group: GpuBindGroup,
     draw_outline_mask: bool,
+    has_transparency: bool,
 }
 
 #[derive(Clone)]
@@ -423,12 +428,17 @@ impl DrawData for RectangleDrawData {
         view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        // TODO(#1025, #4787, #11156): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
-        // This is extra hacky here since we actually have transparent objects, but putting them on the transparency layer messes with the
-        // 2D setup we have so far.
+        // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
+        // For 2D draw order based sorting, we should never enable depth write and always perform back to front sorting.
 
         for (index, instance) in self.instances.iter().enumerate() {
-            let mut phases = DrawPhase::Opaque | DrawPhase::PickingLayer;
+            let mut phases = enumset::EnumSet::new();
+            phases.insert(if instance.has_transparency {
+                DrawPhase::Transparent
+            } else {
+                DrawPhase::Opaque
+            });
+            phases.insert(DrawPhase::PickingLayer);
             if instance.draw_outline_mask {
                 phases.insert(DrawPhase::OutlineMask);
             }
@@ -532,6 +542,8 @@ impl RectangleDrawData {
                     },
                 ),
                 draw_outline_mask: rectangle.options.outline_mask.is_some(),
+                has_transparency: rectangle.options.multiplicative_tint.a() < 1.0
+                    || rectangle.options.force_draw_with_transparency, // TODO(#12223): what about textures with alpha?
             });
         }
 
@@ -540,7 +552,8 @@ impl RectangleDrawData {
 }
 
 pub struct RectangleRenderer {
-    render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_color_opaque: GpuRenderPipelineHandle,
+    render_pipeline_color_transparent: GpuRenderPipelineHandle,
     render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
@@ -639,20 +652,15 @@ impl Renderer for RectangleRenderer {
             &include_shader_module!("../../shader/rectangle_fs.wgsl"),
         );
 
-        let render_pipeline_desc_color = RenderPipelineDesc {
-            label: "RectangleRenderer::render_pipeline_color".into(),
+        let render_pipeline_desc_color_opaque = RenderPipelineDesc {
+            label: "RectangleRenderer::render_pipeline_color_opaque".into(),
             pipeline_layout,
             vertex_entrypoint: "vs_main".into(),
             vertex_handle: shader_module_vs,
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module_fs,
             vertex_buffers: smallvec![],
-            render_targets: smallvec![Some(wgpu::ColorTargetState {
-                format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
-                // TODO(andreas): have two render pipelines, an opaque one and a transparent one. Transparent shouldn't write depth!
-                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
                 cull_mode: None,
@@ -661,8 +669,26 @@ impl Renderer for RectangleRenderer {
             depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), false),
         };
-        let render_pipeline_color =
-            render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);
+        let render_pipeline_color_opaque =
+            render_pipelines.get_or_create(ctx, &render_pipeline_desc_color_opaque);
+
+        let render_pipeline_desc_color_transparent = RenderPipelineDesc {
+            label: "RectangleRenderer::render_pipeline_color_transparent".into(),
+            render_targets: smallvec![Some(wgpu::ColorTargetState {
+                format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
+                cull_mode: None,
+                ..Default::default()
+            },
+            ..render_pipeline_desc_color_opaque.clone()
+        };
+        let render_pipeline_color_transparent =
+            render_pipelines.get_or_create(ctx, &render_pipeline_desc_color_transparent);
+
         let render_pipeline_picking_layer = render_pipelines.get_or_create(
             ctx,
             &(RenderPipelineDesc {
@@ -671,7 +697,7 @@ impl Renderer for RectangleRenderer {
                 render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
                 depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
-                ..render_pipeline_desc_color.clone()
+                ..render_pipeline_desc_color_opaque.clone()
             }),
         );
         let render_pipeline_outline_mask = render_pipelines.get_or_create(
@@ -682,12 +708,13 @@ impl Renderer for RectangleRenderer {
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
-                ..render_pipeline_desc_color
+                ..render_pipeline_desc_color_opaque.clone()
             }),
         );
 
         Self {
-            render_pipeline_color,
+            render_pipeline_color_opaque,
+            render_pipeline_color_transparent,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,
             bind_group_layout,
@@ -704,7 +731,8 @@ impl Renderer for RectangleRenderer {
         re_tracing::profile_function!();
 
         let pipeline_handle = match phase {
-            DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::Transparent => self.render_pipeline_color_transparent,
+            DrawPhase::Opaque => self.render_pipeline_color_opaque,
             DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),

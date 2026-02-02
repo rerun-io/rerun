@@ -4,7 +4,7 @@
 // Copyright (c) 2020 Lucien Greathouse | MIT or Apache 2
 
 // We need unsafety in order to hijack `NonZeroI64` for our purposes.
-#![allow(
+#![expect(
     unsafe_code,
     clippy::undocumented_unsafe_blocks,
     unsafe_op_in_unsafe_fn
@@ -102,6 +102,14 @@ impl NonMinI64 {
     pub const fn get(&self) -> i64 {
         self.0.get() ^ i64::MIN
     }
+
+    /// Calculates the midpoint (average) between `self` and `rhs`.
+    #[inline]
+    pub fn midpoint(&self, rhs: Self) -> Self {
+        // if neither lhs or rhs is the minimum value, the midpoint can't be either
+        #[expect(clippy::unwrap_used)]
+        Self::new(self.get().midpoint(rhs.get())).unwrap()
+    }
 }
 
 impl Default for NonMinI64 {
@@ -124,6 +132,15 @@ impl core::convert::TryFrom<i64> for NonMinI64 {
     #[inline]
     fn try_from(value: i64) -> Result<Self, Self::Error> {
         Self::new(value).ok_or(TryFromIntError)
+    }
+}
+
+impl std::ops::Neg for NonMinI64 {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        Self(-self.0)
     }
 }
 

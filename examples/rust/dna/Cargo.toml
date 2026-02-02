@@ -1,13 +1,13 @@
 [package]
 name = "dna"
-version = "0.26.0-alpha.1+dev"
+version = "0.30.0-alpha.1+dev"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
 rerun = { path = "../../../crates/top/rerun" }
 
-itertools = "0.14"
-rand = "0.8"
+itertools.workspace = true
+rand = { workspace = true, features = ["std", "thread_rng"] }

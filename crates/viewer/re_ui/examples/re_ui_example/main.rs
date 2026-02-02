@@ -4,18 +4,18 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
+use crossbeam::channel::Receiver;
 use egui::{Modifiers, os};
+use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::notifications::NotificationUi;
 use re_ui::{
     CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
-    IconText, UICommand, UICommandSender, UiExt as _,
-    filter_widget::{FilterState, format_matching_text},
-    icons, list_item,
-    notifications::NotificationUi,
+    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
-pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
+pub struct CommandSender(crossbeam::channel::Sender<UICommand>);
 
 impl UICommandSender for CommandSender {
     /// Send a command to be executed.
@@ -26,7 +26,7 @@ impl UICommandSender for CommandSender {
 }
 
 /// Receiver for the [`CommandSender`]
-pub struct CommandReceiver(std::sync::mpsc::Receiver<UICommand>);
+pub struct CommandReceiver(crossbeam::channel::Receiver<UICommand>);
 
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
@@ -39,7 +39,7 @@ impl CommandReceiver {
 
 /// Creates a new command channel.
 fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (sender, receiver) = std::sync::mpsc::channel();
+    let (sender, receiver) = crossbeam::channel::bounded(256);
     (CommandSender(sender), CommandReceiver(receiver))
 }
 
@@ -75,7 +75,7 @@ pub struct ExampleApp {
     notifications: NotificationUi,
 
     /// Listens to the local text log stream
-    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+    text_log_rx: Receiver<re_log::LogMsg>,
 
     tree: egui_tiles::Tree<Tab>,
 
@@ -253,13 +253,12 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .with_button(list_item::ItemMenuButton::new(
-                    &re_ui::icons::ADD,
-                    "Add",
-                    |ui| {
-                        ui.weak("empty");
-                    },
-                ))
+                .with_button(
+                    ui.small_icon_button_widget(&re_ui::icons::ADD, "Add")
+                        .on_menu(|ui| {
+                            ui.weak("empty");
+                        }),
+                )
                 .show(ui, |ui| {
                     ui.label("Some data here");
                 });
@@ -323,6 +322,12 @@ impl eframe::App for ExampleApp {
                             ..Default::default()
                         })
                         .show_inside(ui, left_panel_top_section_ui);
+                    ui.selectable_label_with_icon(
+                        &icons::ADD,
+                        "foo/bar/baz",
+                        false,
+                        re_ui::LabelStyle::Normal,
+                    );
 
                     egui::ScrollArea::both()
                         .auto_shrink([false; 2])
@@ -385,7 +390,6 @@ impl eframe::App for ExampleApp {
         while let Some(cmd) = self.command_receiver.recv() {
             self.latest_cmd = cmd.text().to_owned();
 
-            #[allow(clippy::single_match)]
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {

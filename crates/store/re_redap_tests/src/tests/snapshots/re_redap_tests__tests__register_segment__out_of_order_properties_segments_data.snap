@@ -1,0 +1,9 @@
+---
+source: crates/store/re_redap_tests/src/tests/register_segment.rs
+expression: filtered_batch.format_snapshot(false)
+---
+┌──────────────────┬───────────────────┬──────────────────┬──────────────────────────────────────────┐
+│ rerun_segment_id ┆ rerun_layer_names ┆ rerun_num_chunks ┆ property:text_log:TextLog:text           │
+╞══════════════════╪═══════════════════╪══════════════════╪══════════════════════════════════════════╡
+│ my_segment_id1   ┆ [prop2, prop1]    ┆ 2                ┆ [I was logged first, registered last, s… │
+└──────────────────┴───────────────────┴──────────────────┴──────────────────────────────────────────┘

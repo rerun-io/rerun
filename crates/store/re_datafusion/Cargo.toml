@@ -30,30 +30,31 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_arrow_util.workspace = true
 re_dataframe.workspace = true
 re_redap_client.workspace = true
-re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
-re_tuid.workspace = true
 re_uri.workspace = true
 
 # External dependencies:
 ahash.workspace = true
-anyhow.workspace = true
 arrow.workspace = true
 async-stream.workspace = true
 async-trait.workspace = true
 datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true
-itertools.workspace = true
 log.workspace = true
+parking_lot.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
 tracing.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_perf_telemetry.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 futures.workspace = true
@@ -65,5 +66,4 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 
 
 [dev-dependencies]
-re_tuid.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

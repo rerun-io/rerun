@@ -4,11 +4,9 @@ use std::collections::HashMap;
 
 use anyhow::Context as _;
 
-use crate::{
-    ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type,
-    data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode},
-    objects::EnumIntegerType,
-};
+use crate::data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode};
+use crate::objects::EnumIntegerType;
+use crate::{ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type};
 
 // --- Registry ---
 

@@ -8,7 +8,8 @@
 
 use std::cmp::Ordering;
 
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use arrow::array::RecordBatch;
+use arrow::datatypes::SchemaRef;
 
 use crate::{BatchType, SorbetSchema};
 
@@ -22,6 +23,7 @@ mod make_list_arrays;
 mod v0_0_1__to__v0_0_2;
 mod v0_0_2__to__v0_1_0;
 mod v0_1_0__to__v0_1_1;
+mod v0_1_1__to__v0_1_2;
 
 /// This trait needs to be implemented by any new migrations. It ensures that
 /// all migrations adhere to the same contract.
@@ -78,7 +80,6 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             // Rerun cloud schemas currently come without metadata,
             // so we need to run the full migration just in case.
             // TODO(rerun-io/dataplatform#1605): Always include version
-            re_log::debug!("No version found - assuming very old");
             Ok(semver::Version::new(0, 0, 1))
         }
     }
@@ -97,10 +98,8 @@ fn maybe_apply<M: Migration>(
         batch
             .schema_metadata_mut()
             .insert("sorbet:version".to_owned(), M::TARGET_VERSION.to_string());
-        batch
-    } else {
-        batch
     }
+    batch
 }
 
 /// Migrate a sorbet record batch of unknown version to the latest version.
@@ -130,14 +129,14 @@ fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {
                     re_log::warn_once!(
                         "Sorbet version 'v{batch_version}' is to old. Only versions '>={first_supported}' are supported."
                     );
-                    batch
                 } else {
                     re_log::debug_once!("Performing migrations from {batch_version}…");
                     batch = maybe_apply::<v0_0_1__to__v0_0_2::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_0__to__v0_1_1::Migration>(&batch_version, batch);
-                    batch
+                    batch = maybe_apply::<v0_1_1__to__v0_1_2::Migration>(&batch_version, batch);
                 }
+                batch
             }
             Ordering::Greater => {
                 re_log::warn_once!(

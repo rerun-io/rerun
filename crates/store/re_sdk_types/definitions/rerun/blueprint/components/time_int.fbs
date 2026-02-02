@@ -1,0 +1,15 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A reference to a time.
+struct TimeInt (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "long",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  time: rerun.datatypes.TimeInt (order: 100);
+}

@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[allow(clippy::unwrap_used)]
+#[expect(clippy::unwrap_used)]
 fn check_tags(rec: &rerun::RecordingStream) {
     // When this snippet runs through the snippet comparison machinery, this environment variable
     // will point to the output RRD.
@@ -81,12 +81,16 @@ fn check_tags(rec: &rerun::RecordingStream) {
 
         let store = stores.into_values().next().unwrap();
         // Skip the first chunk, as it represent the `RecordingInfo`.
-        let chunks = store.iter_chunks().skip(1).collect::<Vec<_>>();
+        let chunks = store.iter_physical_chunks().skip(1).collect::<Vec<_>>();
         assert_eq!(1, chunks.len());
 
         let chunk = chunks.into_iter().next().unwrap();
 
-        let mut descriptors = chunk.components().keys().cloned().collect::<Vec<_>>();
+        let mut descriptors = chunk
+            .components()
+            .component_descriptors()
+            .cloned()
+            .collect::<Vec<_>>();
         descriptors.sort();
 
         let expected = vec![

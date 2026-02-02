@@ -1,23 +1,21 @@
-use std::ops::ControlFlow;
-
-use egui::{Response, Ui};
-use smallvec::SmallVec;
-
+use egui::{Response, Ui, WidgetInfo, WidgetType};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
-use re_log_types::{ApplicationId, EntityPath};
+use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
+use re_ui::drag_and_drop::DropTarget;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget, list_item,
-};
+use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, SystemCommand, SystemCommandSender as _, ViewId,
-    ViewerContext, VisitorControlFlow, contents_name_style, icon_for_container_kind,
+    Item, ItemCollection, ItemContext, PerVisualizerType, SystemCommand, SystemCommandSender as _,
+    ViewId, ViewStates, ViewerContext, VisitorControlFlow, VisualizerExecutionErrorState,
+    contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
+use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::ui::show_add_view_or_container_modal;
+use smallvec::SmallVec;
 
 use crate::data::{
     BlueprintTreeData, ContainerData, ContentsData, DataResultData, DataResultKind, ViewData,
@@ -78,6 +76,7 @@ impl BlueprintTree {
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
+        view_states: &ViewStates,
     ) {
         re_tracing::profile_function!();
 
@@ -117,7 +116,7 @@ impl BlueprintTree {
 
         // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
         // inset. Instead, it calls panel_content itself inside the ScrollArea.
-        self.tree_ui(ctx, viewport_blueprint, ui);
+        self.tree_ui(ctx, viewport_blueprint, ui, view_states);
     }
 
     /// Show the blueprint panel tree view.
@@ -126,6 +125,7 @@ impl BlueprintTree {
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
+        view_states: &ViewStates,
     ) {
         re_tracing::profile_function!();
 
@@ -157,8 +157,13 @@ impl BlueprintTree {
                                 &blueprint_tree_data,
                                 ui,
                                 root_container,
+                                view_states,
                             );
                         }
+                    })
+                    .response
+                    .widget_info(|| {
+                        WidgetInfo::labeled(WidgetType::Panel, true, "_blueprint_tree")
                     });
 
                     let empty_space_response =
@@ -192,6 +197,7 @@ impl BlueprintTree {
         blueprint_tree_data: &BlueprintTreeData,
         ui: &mut egui::Ui,
         container_data: &ContainerData,
+        view_states: &ViewStates,
     ) {
         let item = Item::Container(container_data.id);
 
@@ -216,7 +222,23 @@ impl BlueprintTree {
                     container_data.name.as_ref()
                 ))
                 .label_style(contents_name_style(&container_data.name))
-                .with_icon(icon_for_container_kind(&container_data.kind)),
+                .with_icon(icon_for_container_kind(&container_data.kind))
+                .subdued(!container_data.visible)
+                .with_buttons(|ui| {
+                    // If this has been hidden in a blueprint we want to be
+                    // able to make it visible again in the viewer.
+                    if !container_data.visible {
+                        let mut visible_after = container_data.visible;
+                        visibility_button_ui(ui, true, &mut visible_after);
+                        if visible_after != container_data.visible {
+                            viewport_blueprint.set_content_visibility(
+                                ctx,
+                                &Contents::Container(viewport_blueprint.root_container),
+                                visible_after,
+                            );
+                        }
+                    }
+                }),
             );
 
         for child in &container_data.children {
@@ -226,7 +248,8 @@ impl BlueprintTree {
                 blueprint_tree_data,
                 ui,
                 child,
-                true,
+                container_data.visible,
+                view_states,
             );
         }
 
@@ -248,6 +271,7 @@ impl BlueprintTree {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn contents_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -256,6 +280,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         contents_data: &ContentsData,
         parent_visible: bool,
+        view_states: &ViewStates,
     ) {
         match contents_data {
             ContentsData::Container(container_data) => {
@@ -266,6 +291,7 @@ impl BlueprintTree {
                     ui,
                     container_data,
                     parent_visible,
+                    view_states,
                 );
             }
             ContentsData::View(view_data) => {
@@ -276,11 +302,13 @@ impl BlueprintTree {
                     ui,
                     view_data,
                     parent_visible,
+                    view_states.visualizer_errors(view_data.id),
                 );
             }
         }
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -289,6 +317,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         container_data: &ContainerData,
         parent_visible: bool,
+        view_states: &ViewStates,
     ) {
         let item = Item::Container(container_data.id);
         let content = Contents::Container(container_data.id);
@@ -337,6 +366,7 @@ impl BlueprintTree {
                             ui,
                             child,
                             container_visible,
+                            view_states,
                         );
                     }
                 },
@@ -364,6 +394,7 @@ impl BlueprintTree {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn view_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -372,6 +403,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         view_data: &ViewData,
         container_visible: bool,
+        errors: Option<&PerVisualizerType<VisualizerExecutionErrorState>>,
     ) {
         let mut visible = view_data.visible;
         let view_visible = visible && container_visible;
@@ -384,7 +416,18 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let item_content = list_item::LabelContent::new(view_data.name.as_ref())
+        let has_error =
+            errors.is_some_and(|errors| errors.values().any(|error| error.is_overall()));
+
+        let item_content = if has_error {
+            list_item::LabelContent::new(
+                egui::RichText::new(view_data.name.as_ref()).color(ui.visuals().error_fg_color),
+            )
+        } else {
+            list_item::LabelContent::new(view_data.name.as_ref())
+        };
+
+        let item_content = item_content
             .label_style(contents_name_style(&view_data.name))
             .with_icon(class.icon())
             .subdued(!view_visible)
@@ -420,6 +463,7 @@ impl BlueprintTree {
                         ui,
                         data_result_data,
                         view_visible,
+                        errors,
                     );
                 }
 
@@ -440,6 +484,7 @@ impl BlueprintTree {
                             ui,
                             projection,
                             view_visible,
+                            errors,
                         );
                     }
                 }
@@ -473,7 +518,7 @@ impl BlueprintTree {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn data_result_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -482,6 +527,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         data_result_data: &DataResultData,
         view_visible: bool,
+        errors: Option<&PerVisualizerType<VisualizerExecutionErrorState>>,
     ) {
         let item = Item::DataResult(
             data_result_data.view_id,
@@ -495,11 +541,24 @@ impl BlueprintTree {
                     DataResultKind::EmptyOriginPlaceholder
                 );
 
+                let has_error = errors.is_some_and(|errors| {
+                    data_result_data
+                        .visualizer_instruction_ids
+                        .iter()
+                        .any(|instruction_id| {
+                            errors
+                                .values()
+                                .any(|err| err.error_string_for(instruction_id).is_some())
+                        })
+                });
+
                 let item_content = list_item::LabelContent::new(format_matching_text(
                     ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
-                    is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
+                    has_error.then(|| ui.visuals().error_fg_color).or_else(|| {
+                        is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color)
+                    }),
                 ))
                 .with_icon(guess_instance_path_icon(
                     ctx,
@@ -549,7 +608,7 @@ impl BlueprintTree {
                     .clicked()
                 {
                     ctx.command_sender()
-                        .send_system(SystemCommand::SetSelection(item.into()));
+                        .send_system(SystemCommand::set_selection(item));
                 }
 
                 return;
@@ -592,6 +651,7 @@ impl BlueprintTree {
                                 ui,
                                 child,
                                 view_visible,
+                                errors,
                             );
                         }
                     },
@@ -658,103 +718,9 @@ impl BlueprintTree {
         );
         self.scroll_to_me_if_needed(ui, item, response);
         ctx.handle_select_hover_drag_interactions(response, item.clone(), true);
+        ctx.handle_select_focus_sync(response, item.clone());
 
         self.handle_range_selection(ctx, blueprint_tree_data, item.clone(), response);
-
-        self.handle_key_navigation(ctx, blueprint_tree_data, item);
-    }
-
-    fn handle_key_navigation(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        blueprint_tree_data: &BlueprintTreeData,
-        item: &Item,
-    ) {
-        if ctx.selection_state().selected_items().single_item() != Some(item) {
-            return;
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), true);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
-            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
-        {
-            collapse_id.set_open(ctx.egui_ctx(), false);
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
-        {
-            let mut found_current = false;
-
-            let result = blueprint_tree_data.visit(|tree_item| {
-                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item.item() == item {
-                    found_current = true;
-
-                    return if is_item_collapsed {
-                        VisitorControlFlow::SkipBranch
-                    } else {
-                        VisitorControlFlow::Continue
-                    };
-                }
-
-                if found_current {
-                    VisitorControlFlow::Break(Some(tree_item.item()))
-                } else if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
-        }
-
-        if ctx
-            .egui_ctx()
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
-        {
-            let mut last_item = None;
-
-            let result = blueprint_tree_data.visit(|tree_item| {
-                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
-
-                if &tree_item.item() == item {
-                    return VisitorControlFlow::Break(last_item.clone());
-                }
-
-                last_item = Some(tree_item.item());
-
-                if is_item_collapsed {
-                    VisitorControlFlow::SkipBranch
-                } else {
-                    VisitorControlFlow::Continue
-                }
-            });
-
-            if let ControlFlow::Break(Some(item)) = result {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(item.clone().into()));
-                self.scroll_to_me_item = Some(item.clone());
-                self.range_selection_anchor_item = Some(item);
-            }
-        }
     }
 
     /// Handle setting/extending the selection based on shift-clicking.
@@ -803,10 +769,10 @@ impl BlueprintTree {
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(selection));
+                            .send_system(SystemCommand::set_selection(selection));
                     } else {
                         ctx.command_sender()
-                            .send_system(SystemCommand::SetSelection(items));
+                            .send_system(SystemCommand::set_selection(items));
                     }
                 }
             }
@@ -1170,7 +1136,8 @@ impl BlueprintTree {
                 ctx.focused_item.clone()
             }
             Item::InstancePath(instance_path) => {
-                let view_ids = list_views_with_entity(ctx, viewport, &instance_path.entity_path);
+                let view_ids =
+                    list_views_with_entity(ctx, viewport, instance_path.entity_path.hash());
 
                 // focus on the first matching data result
                 let res = view_ids
@@ -1233,7 +1200,9 @@ impl BlueprintTree {
         entity_path: &EntityPath,
     ) {
         let result_tree = &ctx.lookup_query_result(*view_id).tree;
-        if result_tree.lookup_node_by_path(entity_path).is_some()
+        if result_tree
+            .lookup_node_by_path(entity_path.hash())
+            .is_some()
             && let Some(root_node) = result_tree.root_node()
         {
             EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
@@ -1343,7 +1312,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
 fn list_views_with_entity(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
-    entity_path: &EntityPath,
+    entity_path: EntityPathHash,
 ) -> SmallVec<[ViewId; 4]> {
     let mut view_ids = SmallVec::new();
     let _ignored = viewport.visit_contents::<()>(&mut |contents, _| {

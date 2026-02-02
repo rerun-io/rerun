@@ -2,18 +2,17 @@ use std::collections::BTreeMap;
 
 use arrow::array::ArrayRef;
 use itertools::Itertools as _;
-
 use re_chunk::{ArchetypeName, Chunk, ComponentIdentifier, ComponentType, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_data_ui::{DataUi as _, archetype_label_list_item_ui};
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt as _;
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
+use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizerCollection, blueprint_timeline,
+    VisualizerCollection, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -22,9 +21,6 @@ use re_viewport_blueprint::ViewBlueprint;
 struct DefaultOverrideEntry {
     component_type: ComponentType,
     component: ComponentIdentifier,
-
-    /// Visualizer identifier that provides the fallback value for this component.
-    visualizer_identifier: ViewSystemIdentifier,
 }
 
 impl DefaultOverrideEntry {
@@ -49,7 +45,8 @@ pub fn view_components_defaults_section_ui(
     // Right now, they're just sorted by descriptor, which is not the same.
     let active_defaults = active_defaults(ctx, view, db, query);
     let visualizers = ctx.new_visualizer_collection();
-    let visualized_components_by_archetype = visualized_components_by_archetype(&visualizers);
+    let visualized_components_by_archetype =
+        visualized_components_by_archetype(&visualizers, ctx.viewer_ctx.app_options());
 
     // If there is nothing set by the user and nothing to be possibly added, we skip the section
     // entirely.
@@ -62,8 +59,9 @@ pub fn view_components_defaults_section_ui(
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
     let mut add_button_is_open = false;
-    let mut add_button =
-        re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add overrides…", |ui| {
+    let mut add_button = ui
+        .small_icon_button_widget(&re_ui::icons::ADD, "Add overrides…")
+        .on_menu(|ui| {
             add_button_is_open = true;
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             add_popup_ui(
@@ -72,13 +70,12 @@ pub fn view_components_defaults_section_ui(
                 &view.defaults_path,
                 query,
                 components_to_show_in_add_menu.unwrap_or_default(),
-                &visualizers,
             );
         })
-        .hover_text("Add more component defaults");
+        .on_hover_text("Add more component defaults");
 
     if let Some(reason) = reason_we_cannot_add_more {
-        add_button = add_button.enabled(false).disabled_hover_text(reason);
+        add_button = add_button.enabled(false).on_disabled_hover_text(reason);
     }
 
     let markdown = "# Component defaults\n
@@ -99,7 +96,7 @@ Click on the `+` button to add a new default value.";
 fn active_default_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    active_defaults: &BTreeMap<ComponentDescriptor, ArrayRef>,
+    active_defaults: &BTreeMap<ComponentIdentifier, ArrayRef>,
     view: &ViewBlueprint,
     query: &LatestAtQuery,
     db: &re_entity_db::EntityDb,
@@ -120,7 +117,16 @@ fn active_default_ui(
 
         let mut previous_archetype_name = None;
 
-        for (component_descr, default_value) in active_defaults {
+        for (component, default_value) in active_defaults {
+            let Some(component_descr) = db
+                .storage_engine()
+                .store()
+                .entity_component_descriptor(&view.defaults_path, *component)
+            else {
+                // Must mean the default wasn't active after all.
+                continue;
+            };
+
             if previous_archetype_name != component_descr.archetype {
                 // `active_defaults` is sorted by descriptor which in turn sorts by archetype name,
                 // so we can just check if the previous archetype name is different from the current one.
@@ -137,7 +143,7 @@ fn active_default_ui(
                     ui,
                     db,
                     view.defaults_path.clone(),
-                    component_descr,
+                    &component_descr,
                     None, // No cache key.
                     default_value,
                     allow_multiline,
@@ -171,6 +177,7 @@ fn active_default_ui(
 
 fn visualized_components_by_archetype(
     visualizers: &VisualizerCollection,
+    app_options: &re_viewer_context::AppOptions,
 ) -> BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>> {
     let mut visualized_components_by_visualizer: BTreeMap<
         ArchetypeName,
@@ -181,7 +188,7 @@ fn visualized_components_by_archetype(
     // Accumulate the components across all visualizers and track which visualizer
     // each component came from so we can use it for fallbacks later.
     for (id, vis) in visualizers.iter_with_identifiers() {
-        for descr in vis.visualizer_query_info().queried.iter() {
+        for descr in vis.visualizer_query_info(app_options).queried.iter() {
             let (Some(archetype_name), Some(component_type)) =
                 (descr.archetype, descr.component_type)
             else {
@@ -201,7 +208,6 @@ fn visualized_components_by_archetype(
                 .push(DefaultOverrideEntry {
                     component_type,
                     component: descr.component,
-                    visualizer_identifier: id,
                 });
         }
     }
@@ -214,7 +220,7 @@ fn active_defaults(
     view: &ViewBlueprint,
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
-) -> BTreeMap<ComponentDescriptor, ArrayRef> {
+) -> BTreeMap<ComponentIdentifier, ArrayRef> {
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
@@ -223,13 +229,13 @@ fn active_defaults(
         .all_components_on_timeline(&blueprint_timeline(), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
-        .filter_map(|component_descr| {
+        .filter_map(|component| {
             let data = db
                 .storage_engine()
                 .cache()
-                .latest_at(query, &view.defaults_path, [&component_descr])
-                .component_batch_raw(&component_descr)?;
-            (!data.is_empty()).then_some((component_descr, data))
+                .latest_at(query, &view.defaults_path, [component])
+                .component_batch_raw(component)?;
+            (!data.is_empty()).then_some((component, data))
         })
         .collect()
 }
@@ -237,7 +243,7 @@ fn active_defaults(
 fn components_to_show_in_add_menu(
     ctx: &ViewContext<'_>,
     visualized_components_by_archetype: &BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>,
-    active_defaults: &BTreeMap<ComponentDescriptor, ArrayRef>,
+    active_defaults: &BTreeMap<ComponentIdentifier, ArrayRef>,
 ) -> Result<BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>, String> {
     if visualized_components_by_archetype.is_empty() {
         return Err("No components to visualize".to_owned());
@@ -247,9 +253,8 @@ fn components_to_show_in_add_menu(
 
     {
         // Filter out all components that already have an active default.
-        for (archetype_name, components) in &mut components_to_show_in_add_menu {
-            components
-                .retain(|entry| !active_defaults.contains_key(&entry.descriptor(*archetype_name)));
+        for components in components_to_show_in_add_menu.values_mut() {
+            components.retain(|entry| !active_defaults.contains_key(&entry.component));
         }
         components_to_show_in_add_menu.retain(|_, components| !components.is_empty());
 
@@ -297,7 +302,6 @@ fn add_popup_ui(
     defaults_path: &EntityPath,
     query: &LatestAtQuery,
     components_to_show_in_add_menu: BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>,
-    visualizers: &VisualizerCollection,
 ) {
     let query_context = QueryContext {
         view_ctx: ctx,
@@ -323,14 +327,7 @@ fn add_popup_ui(
                     })
                     .clicked()
                 {
-                    add_new_default(
-                        ctx,
-                        defaults_path,
-                        &query_context,
-                        descriptor,
-                        entry.visualizer_identifier,
-                        visualizers,
-                    );
+                    add_new_default(ctx, defaults_path, &query_context, descriptor);
                     ui.close();
                 }
             }
@@ -343,21 +340,19 @@ fn add_new_default(
     defaults_path: &EntityPath,
     query_context: &QueryContext<'_>,
     component_descr: ComponentDescriptor,
-    visualizer: ViewSystemIdentifier,
-    visualizers: &VisualizerCollection,
 ) {
     // We are creating a new override. We need to decide what initial value to give it.
     // - First see if there's an existing splat in the recording.
     // - Next see if visualizer system wants to provide a value.
     // - Finally, fall back on the default value from the component registry.
-    let Ok(visualizer) = visualizers.get_by_identifier(visualizer) else {
-        re_log::warn!("Could not find visualizer for: {}", visualizer);
-        return;
-    };
-
-    let initial_data = visualizer
-        .fallback_provider()
-        .fallback_for(query_context, &component_descr);
+    let initial_data = query_context
+        .viewer_ctx()
+        .component_fallback_registry
+        .fallback_for(
+            component_descr.component,
+            component_descr.component_type,
+            query_context,
+        );
 
     match Chunk::builder(defaults_path.clone())
         .with_row(
@@ -376,7 +371,7 @@ fn add_new_default(
                 ));
         }
         Err(err) => {
-            re_log::warn!("Failed to create Chunk for blueprint component: {}", err);
+            re_log::warn!("Failed to create Chunk for blueprint component: {err}");
         }
     }
 }

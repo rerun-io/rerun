@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::{NonMinI64, TimeInt, TimeReal};
+use crate::{TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
@@ -85,8 +85,7 @@ impl AbsoluteTimeRange {
 
     #[inline]
     pub fn center(&self) -> TimeInt {
-        let center = NonMinI64::new((self.abs_length() / 2) as i64).unwrap_or(NonMinI64::MIN);
-        self.min + TimeInt::from(center)
+        self.min.midpoint(self.max)
     }
 
     #[inline]
@@ -143,6 +142,17 @@ impl re_byte_size::SizeBytes for AbsoluteTimeRange {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
+impl From<AbsoluteTimeRange> for RangeInclusive<TimeInt> {
+    fn from(range: AbsoluteTimeRange) -> Self {
+        range.min..=range.max
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -176,6 +186,11 @@ impl AbsoluteTimeRangeF {
     /// Inclusive
     pub fn contains(&self, value: TimeReal) -> bool {
         self.min <= value && value <= self.max
+    }
+
+    /// Returns the point in the center of the range.
+    pub fn center(&self) -> TimeReal {
+        self.min.midpoint(self.max)
     }
 
     /// Where in the range is this value? Returns 0-1 if within the range.

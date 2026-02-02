@@ -1,0 +1,10 @@
+---
+source: crates/viewer/re_view_spatial/tests/topology_errors.rs
+expression: snapshot_content
+---
+"Image": /misplaced_image_entity: The origin of the 3D view ("pinhole") is under pinhole projection which is not supported by most 3D visualizations.
+"Ellipsoids3D": /disconnected_entity: No transform path from "disconnected" to the view's origin frame ("pinhole").
+"Boxes3D": /misplaced_boxes3d_entity: The origin of the 3D view ("pinhole") is under pinhole projection which is not supported by most 3D visualizations.
+"Points3D": /points3d_entity: The origin of the 3D view ("pinhole") is under pinhole projection which is not supported by most 3D visualizations.
+"Points2D": /points2d_entity: The origin of the 3D view ("pinhole") is under pinhole projection which is not supported by most 3D visualizations.
+"DepthImage": /misplaced_depth_image_entity: The origin of the 3D view ("pinhole") is under pinhole projection which is not supported by most 3D visualizations.

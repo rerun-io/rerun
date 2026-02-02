@@ -23,24 +23,33 @@ pub use highlights::{
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
-pub use system_execution_output::SystemExecutionOutput;
+pub use system_execution_output::{SystemExecutionOutput, VisualizerExecutionErrorState};
 pub use view_class::{
-    ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState, ViewStateExt,
-    VisualizableFilterContext,
+    RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
+    ViewStateExt,
 };
+pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
 pub use view_context::ViewContext;
-pub use view_context_system::{ViewContextCollection, ViewContextSystem};
+pub use view_context_system::{
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+};
 pub use view_query::{
-    DataResult, OverridePath, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet,
-    ViewQuery,
+    DataResult, PerSystemDataResults, ViewQuery, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerInstruction,
 };
 pub use view_states::ViewStates;
-pub use visualizer_entity_subscriber::DataBasedVisualizabilityFilter;
-pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, VisualizerSystem};
+pub use visualizer_system::{
+    AnyPhysicalDatatypeRequirement, RequiredComponents, VisualizerCollection,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+};
 
 // ---------------------------------------------------------------------------
 
+/// A "catastrophic" view system execution error, making it impossible to produce any results at all.
+///
+/// Whenever possible, prefer [`VisualizerExecutionOutput::errors_per_instruction`] to report failures with
+/// individual entities rather than stopping visualization entirely.
 #[derive(Debug, thiserror::Error)]
 pub enum ViewSystemExecutionError {
     #[error("View context system {0} not found")]
@@ -53,10 +62,10 @@ pub enum ViewSystemExecutionError {
     QueryError(Box<re_query::QueryError>),
 
     #[error(transparent)]
-    DeserializationError(Box<re_types::DeserializationError>),
+    DeserializationError(Box<re_sdk_types::DeserializationError>),
 
     #[error("Failed to create draw data: {0}")]
-    DrawDataCreationError(Box<dyn std::error::Error>),
+    DrawDataCreationError(Box<dyn std::error::Error + Send + Sync>),
 
     #[error("Error accessing map view tiles.")]
     MapTilesError,
@@ -93,8 +102,8 @@ impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutio
     }
 }
 
-impl From<re_types::DeserializationError> for ViewSystemExecutionError {
-    fn from(val: re_types::DeserializationError) -> Self {
+impl From<re_sdk_types::DeserializationError> for ViewSystemExecutionError {
+    fn from(val: re_sdk_types::DeserializationError) -> Self {
         Self::DeserializationError(Box::new(val))
     }
 }

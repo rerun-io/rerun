@@ -15,7 +15,7 @@ import sys
 import textwrap
 from inspect import Parameter, Signature
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import parso
 from colorama import Fore, Style, init as colorama_init
@@ -83,7 +83,7 @@ class APIDef:
             return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 
 
-TotalSignature = dict[str, Union[APIDef, dict[str, APIDef]]]
+TotalSignature = dict[str, APIDef | dict[str, APIDef]]
 
 
 def parse_function_signature(node: Any) -> APIDef:
@@ -116,13 +116,12 @@ def parse_function_signature(node: Any) -> APIDef:
                 found_star = True
             elif param.star_count == 2:
                 kind = Parameter.VAR_KEYWORD  # **kwargs
+            elif param_name == "self":
+                kind = Parameter.POSITIONAL_ONLY
+            elif found_star:
+                kind = Parameter.KEYWORD_ONLY
             else:
-                if param_name == "self":
-                    kind = Parameter.POSITIONAL_ONLY
-                elif found_star:
-                    kind = Parameter.KEYWORD_ONLY
-                else:
-                    kind = Parameter.POSITIONAL_OR_KEYWORD
+                kind = Parameter.POSITIONAL_OR_KEYWORD
 
             params.append(Parameter(name=param_name, kind=kind, default=default))
         except Exception as e:

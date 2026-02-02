@@ -1,5 +1,6 @@
-use re_log_types::{EntityPath, EntityPathFilter, hash::Hash64};
-use re_types::ViewClassIdentifier;
+use re_log_types::hash::Hash64;
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs};
+use re_sdk_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
 #[derive(Debug, Clone)]
@@ -48,17 +49,17 @@ impl ViewSpawnHeuristics {
 
 impl RecommendedView {
     #[inline]
-    pub fn new_subtree(origin: EntityPath) -> Self {
+    pub fn new_subtree(origin: impl Into<EntityPath>) -> Self {
         Self {
-            origin,
+            origin: origin.into(),
             query_filter: EntityPathFilter::subtree_filter("$origin"),
         }
     }
 
     #[inline]
-    pub fn new_single_entity(origin: EntityPath) -> Self {
+    pub fn new_single_entity(origin: impl Into<EntityPath>) -> Self {
         Self {
-            origin,
+            origin: origin.into(),
             query_filter: EntityPathFilter::single_filter("$origin"),
         }
     }
@@ -75,7 +76,7 @@ impl RecommendedView {
     pub fn recommendation_hash(
         &self,
         class_id: ViewClassIdentifier,
-    ) -> re_types::blueprint::components::ViewerRecommendationHash {
+    ) -> re_sdk_types::blueprint::components::ViewerRecommendationHash {
         let Self {
             origin,
             query_filter,
@@ -84,5 +85,21 @@ impl RecommendedView {
         Hash64::hash((origin, query_filter, class_id))
             .hash64()
             .into()
+    }
+
+    /// Crates new query filter rules for all given entities that would fit the current rule.
+    pub fn exclude_entities(&mut self, excluded: &[EntityPath]) {
+        let filter = self
+            .query_filter
+            .resolve_forgiving(&EntityPathSubs::new_with_origin(&self.origin));
+
+        for e in excluded {
+            if filter.matches(e) {
+                self.query_filter.insert_rule(
+                    re_log_types::RuleEffect::Exclude,
+                    EntityPathRule::including_entity_subtree(e),
+                );
+            }
+        }
     }
 }

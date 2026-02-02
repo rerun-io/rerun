@@ -1,0 +1,8 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+buffer: [[0]]
+format: [{width: 0, height: 0, pixel_format: null, color_model: null, channel_datatype: null}]
+opacity: [1.0]
+draw_order: [0.0]

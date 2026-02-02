@@ -1,7 +1,8 @@
-use eframe::emath::NumExt as _;
+use eframe::emath::{NumExt as _, Vec2};
 use egui::{Frame, ModalResponse};
 
-use crate::{DesignTokens, UiExt as _, context_ext::ContextExt as _};
+use crate::context_ext::ContextExt as _;
+use crate::{DesignTokens, UiExt as _};
 
 /// Helper object to handle a [`ModalWrapper`] window.
 ///
@@ -24,16 +25,39 @@ use crate::{DesignTokens, UiExt as _, context_ext::ContextExt as _};
 /// });
 /// # });
 /// ```
-#[derive(Default)]
 pub struct ModalHandler {
     modal: Option<ModalWrapper>,
+    allow_escape: bool,
     should_open: bool,
+    should_close: bool,
+}
+
+impl Default for ModalHandler {
+    fn default() -> Self {
+        Self {
+            modal: None,
+            allow_escape: true,
+            should_open: false,
+            should_close: false,
+        }
+    }
 }
 
 impl ModalHandler {
-    /// Open the model the next time the [`ModalHandler::ui`] method is called.
+    /// Allow the user to close the modal by interacting with the backdrop and/or pressing escape.
+    pub fn allow_escape(mut self, v: bool) -> Self {
+        self.allow_escape = v;
+        self
+    }
+
+    /// Open the modal the next time the [`ModalHandler::ui`] method is called.
     pub fn open(&mut self) {
         self.should_open = true;
+    }
+
+    /// Close the modal the next time the [`ModalHandler::ui`] method is called.
+    pub fn close(&mut self) {
+        self.should_close = true;
     }
 
     /// Draw the modal window, creating/destroying it as required.
@@ -51,7 +75,7 @@ impl ModalHandler {
         if let Some(modal) = &mut self.modal {
             let response = modal.ui(ctx, content_ui);
 
-            if response.should_close() {
+            if self.should_close || (self.allow_escape && response.should_close()) {
                 self.modal = None;
             }
 
@@ -271,8 +295,8 @@ impl ModalWrapper {
 
                     if self.scrollable.any() {
                         // Make the modal size less jumpy and work around https://github.com/emilk/egui/issues/5138
-                        let max_height = 0.85 * ui.ctx().screen_rect().height();
-                        let min_height = 0.3 * ui.ctx().screen_rect().height().at_most(max_height);
+                        let max_height = 0.85 * ui.ctx().content_rect().height();
+                        let min_height = 0.3 * ui.ctx().content_rect().height().at_most(max_height);
 
                         egui::ScrollArea::new(self.scrollable)
                             .min_scrolled_height(max_height)
@@ -358,7 +382,15 @@ pub fn prevent_shrinking(ui: &mut egui::Ui) {
     // The Uis response at this point will conveniently contain last frame's rect
     let last_rect = ui.response().rect;
 
-    let screen_size = ui.ctx().screen_rect().size();
+    #[expect(clippy::useless_let_if_seq)]
+    let mut screen_size = ui.ctx().content_rect().size();
+    if ui.is_sizing_pass() {
+        // On the very first frame, there will be a sizing pass and the max_rect that frame might
+        // be bigger than necessary. We don't want to lock to that size, so we need to ignore it.
+        // To ignore, we can't just return here, but we need to skip the next frame as well.
+        // The easiest way to do this is force a reset next frame, by changing the screen size:
+        screen_size = Vec2::ZERO;
+    }
 
     let id = ui.id().with("prevent_shrinking");
     let screen_size_changed = ui.data_mut(|d| {

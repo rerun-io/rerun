@@ -40,16 +40,12 @@ def main() -> None:
             rrb.TimeSeriesView(
                 origin="gyroscope",
                 name="Gyroscope",
-                overrides={
-                    "/gyroscope": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
-                },
+                overrides={"/gyroscope": rr.SeriesLines(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS)},
             ),
             rrb.TimeSeriesView(
                 origin="accelerometer",
                 name="Accelerometer",
-                overrides={
-                    "/accelerometer": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
-                },
+                overrides={"/accelerometer": rr.SeriesLines(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS)},
             ),
         ),
         rrb.Spatial3DView(origin="/", name="World position"),
@@ -77,7 +73,7 @@ def _download_dataset(root: Path, dataset_url: str = DATASET_URL) -> None:
                 pb.update(len(data))
                 file.write(data)
 
-    if total_size != 0 and pb.n != total_size:
+    if total_size not in (0, pb.n):
         raise RuntimeError("Failed to download complete dataset!")
 
     print("Extracting dataset…")

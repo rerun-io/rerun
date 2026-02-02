@@ -12,7 +12,7 @@ from ._turbo import turbo_colormap_data
 ColorGrid = namedtuple("ColorGrid", ["positions", "colors"])
 
 
-def build_color_grid(x_count: int = 10, y_count: int = 10, z_count: int = 10, twist: float = 0) -> ColorGrid:
+def build_color_grid(x_count: int = 10, y_count: int = 10, z_count: int = 10, *, twist: float = 0) -> ColorGrid:
     """
     Create a cube of points with colors.
 
@@ -63,6 +63,7 @@ ColorSpiral = namedtuple("ColorSpiral", ["positions", "colors"])
 
 def build_color_spiral(
     num_points: int = 100,
+    *,
     radius: float = 2,
     angular_step: float = 0.02,
     angular_offset: float = 0,

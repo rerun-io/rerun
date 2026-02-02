@@ -14,12 +14,13 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "write"
   id-token: "write"
   deployments: "write"
+  packages: "read"
 
 jobs:
   # -----------------------------------------------------------------------------------
@@ -39,14 +40,6 @@ jobs:
     with:
       CONCURRENCY: adhoc-wheels-linux-x64
       PLATFORM: linux-x64
-    secrets: inherit
-
-  build-rerun-cli-and-upload-macos-x64:
-    name: "Mac-x64: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: adhoc-wheels-macos-x64
-      PLATFORM: macos-x64
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-arm64:
@@ -101,17 +94,6 @@ jobs:
       MODE: ${{ inputs.MODE }}
     secrets: inherit
 
-  build-wheel-macos-x64:
-    needs: [build-rerun-cli-and-upload-macos-x64]
-    name: "Macos-x64: Build & Upload Wheels"
-    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
-    with:
-      CONCURRENCY: adhoc-wheels-macos-x64
-      PLATFORM: macos-x64
-      WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
-      MODE: ${{ inputs.MODE }}
-    secrets: inherit
-
   build-wheel-windows-x64:
     needs: [build-rerun-cli-and-upload-windows-x64]
     name: "Windows-x64: Build & Upload Wheels"
@@ -132,7 +114,6 @@ jobs:
         build-wheel-linux-arm64,
         build-wheel-linux-x64,
         build-wheel-macos-arm64,
-        build-wheel-macos-x64,
         build-wheel-windows-x64,
       ]
     uses: ./.github/workflows/reusable_pip_index.yml

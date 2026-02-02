@@ -9,6 +9,8 @@ const COLORMAP_PLASMA:         u32 = 4u;
 const COLORMAP_TURBO:          u32 = 5u;
 const COLORMAP_VIRIDIS:        u32 = 6u;
 const COLORMAP_CYAN_TO_YELLOW: u32 = 7u;
+const COLORMAP_SPECTRAL:       u32 = 8u;
+const COLORMAP_TWILIGHT:       u32 = 9u;
 
 /// Returns a gamma-space sRGB in 0-1 range.
 ///
@@ -31,6 +33,10 @@ fn colormap_srgb(which: u32, t_unsaturated: f32) -> vec3f {
         return colormap_viridis_srgb(t);
     } else if which == COLORMAP_CYAN_TO_YELLOW {
         return colormap_cyan_to_yellow_srgb(t);
+    } else if which == COLORMAP_SPECTRAL {
+        return colormap_spectral_srgb(t);
+    } else if which == COLORMAP_TWILIGHT {
+        return colormap_twilight_srgb(t);
     } else {
         return ERROR_RGBA.rgb;
     }
@@ -161,4 +167,37 @@ fn colormap_inferno_srgb(t: f32) -> vec3f {
 fn colormap_cyan_to_yellow_srgb(t: f32) -> vec3f {
     let u = t * 2. - 1.;
     return saturate(vec3f(1. + 3. * u, (1. + 3. * u * u) , 1. - 3. * u) / 4.);
+}
+
+/// Returns a gamma-space sRGB in 0-1 range.
+/// The input (`t`) must be in the 0-1 range.
+/// This is a polynomial approximation from Spectral color map.
+fn colormap_spectral_srgb(t: f32) -> vec3f {
+    let c0 = vec3f(0.584384543712538, 0.006424432561482, 0.231061410304836);
+    let c1 = vec3f(3.768572852617221, 2.487082885717158, 2.821174312084977);
+    let c2 = vec3f(-16.262574054760623, -6.243215992229093, -37.292187460541960);
+    let c3 = vec3f(39.821464952234010, 39.932449794574126, 186.340471613899751);
+    let c4 = vec3f(-46.140976850412727, -99.423798167148249, -388.532539629914481);
+    let c5 = vec3f(12.716626092708825, 96.954180217298671, 360.627239851094203);
+    let c6 = vec3f(5.942343111972585, -33.440386037285862, -123.635206049211334);
+    return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
+}
+
+/// Returns a gamma-space sRGB in 0-1 range.
+/// The input (`t`) must be in the 0-1 range.
+/// This is a polynomial approximation from Twilight color map.
+/// This is a perceptually uniform cyclic colormap from Matplotlib.
+/// It is useful for visualizing periodic or cyclic data such as phase angles or time of day.
+/// It interpolates from light purple through blue to black, then through red back to light purple.
+/// Data from https://github.com/matplotlib/matplotlib (matplotlib's twilight colormap).
+fn colormap_twilight_srgb(t: f32) -> vec3f {
+    let c0 = vec3f(0.99435322698120177, 0.85170793387210064, 0.93942033498486266);
+    let c1 = vec3f(-6.61774273956635106, -0.23133259259568750, -3.96704343424284378);
+    let c2 = vec3f(41.78124131041812461, -7.61851602599826982, 38.98566990464263426);
+    let c3 = vec3f(-158.29764239605322018, 3.73408709288658525, -170.02538195370874519);
+    let c4 = vec3f(301.70954078396789555, 25.04157831823896174, 319.73628266524258379);
+    let c5 = vec3f(-265.16454480601146315, -30.83148395246298179, -271.62226902484138691);
+    // Adjusted c6 to ensure f(0) = f(1) for true cyclicity
+    let c6 = vec3f(86.58914784721200531, 9.90660484718943267, 86.89294583380010456);
+    return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }

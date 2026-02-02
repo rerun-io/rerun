@@ -48,7 +48,12 @@ impl RenderContext {
 
         // Wait for all GPU work to finish.
         self.device
-            .poll(wgpu::PollType::Wait)
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                // Native Windows driver will reset driver at 2 seconds.
+                // But lavapipe sometimes takes a bit longer.
+                timeout: Some(std::time::Duration::from_secs(10)),
+            })
             .expect("Failed to wait for GPU work to finish");
 
         // Start a new frame in order to handle the previous' frame errors.

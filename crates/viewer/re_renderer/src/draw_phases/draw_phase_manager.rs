@@ -1,15 +1,12 @@
-use super::DrawPhase;
-
 use enumset::__internal::EnumSetTypePrivate as _;
 use enumset::EnumSet;
 
-use crate::{
-    GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext, RendererTypeId,
-    context::Renderers,
-    renderer::{
-        DrawDataDrawable, DrawDataDrawablePayload, DrawInstruction, DrawableCollectionViewInfo,
-    },
+use super::DrawPhase;
+use crate::context::Renderers;
+use crate::renderer::{
+    DrawDataDrawable, DrawDataDrawablePayload, DrawInstruction, DrawableCollectionViewInfo,
 };
+use crate::{GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext, RendererTypeId};
 
 /// Draw data id within the [`DrawPhaseManager`].
 type DrawDataIndex = u32;

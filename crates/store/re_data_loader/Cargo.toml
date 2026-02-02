@@ -28,13 +28,15 @@ re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_error.workspace = true
+re_lenses.workspace = true
 re_log.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_mcap.workspace = true
-re_smart_channel.workspace = true
+re_log_channel.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_video.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
@@ -44,7 +46,7 @@ crossbeam.workspace = true
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
-notify.workspace = true
+notify = { workspace = true, features = ["crossbeam-channel"] }
 mcap.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
@@ -59,5 +61,7 @@ parquet = { workspace = true, features = ["arrow", "snap"] }
 re_crash_handler.workspace = true
 
 [dev-dependencies]
+re_chunk_store.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+
 insta = { workspace = true, features = ["glob"] }

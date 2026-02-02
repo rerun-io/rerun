@@ -33,6 +33,8 @@ service RerunCloudService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
 
+  rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {}
+
   // Fetch metadata about a specific dataset.
   //
   // This endpoint requires the standard dataset headers.
@@ -46,47 +48,87 @@ service RerunCloudService {
 
   /* Write data */
 
-  // Register new partitions with the Dataset
+  // Register new segments with the Dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  // Write chunks to one or more partitions.
+  // Write chunks to one or more segments.
   //
-  // The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
+  // The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
   //
   // This endpoint requires the standard dataset headers.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   /* Query schemas */
 
-  // Returns the schema of the partition table.
+  // Returns the schema of the segment table.
   //
   // This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
   //
-  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
-  // this endpoint, check out `ScanPartitionTable`.
+  // To inspect the data of the segment table, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanSegmentTable`.
   //
   // This endpoint requires the standard dataset headers.
-  rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
+  rpc GetSegmentTableSchema(GetSegmentTableSchemaRequest) returns (GetSegmentTableSchemaResponse) {}
 
-  // Inspect the contents of the partition table.
+  // Inspect the contents of the segment table.
   //
-  // The data will follow the schema returned by `GetPartitionTableSchema`.
-  rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
+  // The data will follow the schema returned by `GetSegmentTableSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ScanSegmentTable(ScanSegmentTableRequest) returns (stream ScanSegmentTableResponse) {}
+
+  // Returns the schema of the dataset manifest.
+  //
+  // To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanDatasetManifest`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetDatasetManifestSchema(GetDatasetManifestSchemaRequest) returns (GetDatasetManifestSchemaResponse) {}
+
+  // Inspect the contents of the dataset manifest.
+  //
+  // The data will follow the schema returned by `GetDatasetManifestSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ScanDatasetManifest(ScanDatasetManifestRequest) returns (stream ScanDatasetManifestResponse) {}
 
   // Returns the schema of the dataset.
   //
-  // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+  // This is the union of all the schemas from all the underlying segments. It will contain all the indexes,
   // entities and components present in the dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
+
+  // Get the RRD Footer manifest.
+  //
+  // This includes details about what chunks there are, and what kind of data they contain.
+  rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
 
   /* Indexing */
 
   // Creates a custom index for a specific column (vector search, full-text search, etc).
+  //
+  // This endpoint requires the standard dataset headers.
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
+
+  // List all user-defined indexes in this dataset.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
+
+  // Delete a custom index for a specific column.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc DeleteIndexes(DeleteIndexesRequest) returns (DeleteIndexesResponse) {}
 
   /* Queries */
 
   // Search a previously created index.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
@@ -96,24 +138,16 @@ service RerunCloudService {
   // those chunks (the actual data).
   //
   // These Rerun-native queries include:
-  // * Filtering by specific partition and chunk IDs.
+  // * Filtering by specific segment and chunk IDs.
   // * Latest-at, range and dataframe queries.
   // * Arbitrary Lance filters.
   //
-  // To fetch the actual chunks themselves, see `GetChunks`.
+  // To fetch the actual chunks themselves, see `FetchChunks`.
   //
   // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
-
-  // Perform Rerun-native queries on a dataset, returning the underlying chunks.
-  //
-  // These Rerun-native queries include:
-  // * Filtering by specific partition and chunk IDs.
-  // * Latest-at, range and dataframe queries.
-  // * Arbitrary Lance filters.
-  //
-  // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
-  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
   // Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
   // that is, the result of `QueryDataset` should include all the necessary information to send
@@ -132,13 +166,18 @@ service RerunCloudService {
 
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 
+  // Write record batches to a table.
+  //
+  // This endpoint requires the standard dataset headers.
+  //
+  // TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
+  // A non-streaming shim will need to be added if/when the viewer uses this endpoint.
+  rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {}
+
   // --- Tasks ---
 
   // Query the status of submitted tasks
   rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse) {}
-
-  // Fetch the output of a completed task
-  rpc FetchTaskOutput(FetchTaskOutputRequest) returns (FetchTaskOutputResponse) {}
 
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {}
@@ -146,6 +185,8 @@ service RerunCloudService {
   // --- Utilities ---
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 
   // Run global maintenance operations on the platform: this includes optimization
@@ -159,6 +200,9 @@ message VersionRequest {}
 
 message VersionResponse {
   rerun.common.v1alpha1.BuildInfo build_info = 1;
+
+  // A single version string representing the version of the whole stack.
+  string version = 2;
 }
 
 // Application level error - used as `details` in the `google.rpc.Status` message
@@ -194,10 +238,15 @@ message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
   optional string storage_url = 1;
 
-  /// Which Partition Layer should this data source be registered to?
+  /// Which segment layer should this data source be registered to?
   ///
   /// Defaults to `base` if unspecified.
   optional string layer = 3;
+
+  /// Is this a prefix URL (a directory)?
+  /// If true, all files of `typ` under this prefix will be
+  /// considered part of this data source.
+  bool prefix = 4;
 
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
@@ -228,30 +277,51 @@ message WriteChunksResponse {}
 
 /* Query schemas */
 
-message GetPartitionTableSchemaRequest {
-  reserved 1;
-  reserved "dataset_id";
-}
+message GetSegmentTableSchemaRequest {}
 
-message GetPartitionTableSchemaResponse {
+message GetSegmentTableSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
 }
 
-message ScanPartitionTableRequest {
+message ScanSegmentTableRequest {
   // A list of column names to be projected server-side.
   //
-  // All of them if left empty.
-  repeated string columns = 3;
-
-  reserved 1;
-  reserved "dataset_id";
-
-  reserved 2;
-  reserved "scan_parameters";
+  // If empty, all columns are returned.
+  //
+  // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+  // requested.
+  //
+  // If a projected column does not exist, or is projected more than once, the `ScanSegmentTable` call will fail with
+  // an `InvalidArgument` error.
+  repeated string columns = 1;
 }
 
-message ScanPartitionTableResponse {
-  // Partitions metadata as arrow RecordBatch
+message ScanSegmentTableResponse {
+  // Segments metadata as Arrow RecordBatch.
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message GetDatasetManifestSchemaRequest {}
+
+message GetDatasetManifestSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
+}
+
+message ScanDatasetManifestRequest {
+  // A list of column names to be projected server-side.
+  //
+  // If empty, all columns are returned.
+  //
+  // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+  // requested.
+  //
+  // If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
+  // an `InvalidArgument` error.
+  repeated string columns = 3;
+}
+
+message ScanDatasetManifestResponse {
+  // The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch.
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -264,28 +334,72 @@ message GetDatasetSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
 }
 
+message GetRrdManifestRequest {
+  rerun.common.v1alpha1.SegmentId segment_id = 1;
+}
+
+message GetRrdManifestResponse {
+  rerun.log_msg.v1alpha1.RrdManifest rrd_manifest = 1;
+}
+
 /* Indexing */
 
 message CreateIndexRequest {
-  // List of specific partitions that will be indexed (all if left empty).
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // List of specific partition layers that will be indexed (all if left empty).
-  //
-  // If non-empty, this must match the length of `partition_ids`.
-  repeated string partition_layers = 5;
-
   IndexConfig config = 3;
-
-  // Specify behavior when index for a partition was already created.
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
 
   reserved 1;
   reserved "dataset_id";
+
+  reserved 2;
+  reserved "partition_ids";
+
+  reserved 4;
+  reserved "on_duplicate";
+
+  reserved 5;
+  reserved "partition_layers";
 }
 
 message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  reserved 1;
+  reserved "data";
+
+  // The properties/configuration of the newly created index.
+  IndexConfig index = 3;
+
+  // Backend-specific statistics about the index.
+  //
+  // This is guaranteed to be valid JSON.
+  bytes statistics_json = 4;
+
+  // Optional debug information about the index-creation task
+  DebugInfo debug_info = 2;
+}
+
+message ListIndexesRequest {}
+
+message ListIndexesResponse {
+  // The respective properties/configuration of the indexes.
+  repeated IndexConfig indexes = 1;
+
+  // Backend-specific statistics about the indexes.
+  //
+  // This is guaranteed to be valid JSON.
+  //
+  // If non-empty, this is the same length as `indexes`, and in the same order.
+  repeated bytes statistics_json = 2;
+}
+
+message DeleteIndexesRequest {
+  // Which column to delete the indexes for.
+  IndexColumn column = 1;
+}
+
+message DeleteIndexesResponse {
+  // Which indexes were actually deleted.
+  //
+  // Can be empty if no matching indexes were found.
+  repeated IndexConfig indexes = 1;
 }
 
 message IndexConfig {
@@ -325,9 +439,41 @@ message InvertedIndex {
 }
 
 message VectorIvfPqIndex {
-  optional uint32 num_partitions = 1;
   optional uint32 num_sub_vectors = 2;
+
   VectorDistanceMetric distance_metrics = 3;
+
+  // Target size of the IVF partition in rows.
+  // NOTE: "partition" here refers to Lance's IVF (Inverted File Index) partitions,
+  // not Rerun segments.
+  //
+  // This maps to lance's underlying `target_partition_size` property
+  // and it indirectly determines how many inverted indices (partitions)
+  // to build (the larger this value, the fewer partitions will be built):
+  // num_partitions = total_vectors / target_partition_num_rows
+  //
+  // A smaller number here will lead to more partitions, which can improve
+  // search recall at the cost of higher training time and memory usage.
+  //
+  // If missing, we let Lance will pick a default value, which, today, is
+  // 8192 rows per partition.
+  //
+  // Note that Lance will cap the maximum `num_partitions` to 4096:
+  // `num_partitions = min(4096, total_vectors / target_partition_num_rows)`
+  // So this means that setting this value too low will have no effect for
+  // large enough datasets.
+  //
+  // References:
+  // - [https://github.com/rerun-io/lance/blob/547bf3e288ff0bc13e96f29c7af46155fbd9f5c2/rust/lance/src/index/vector.rs#L336]
+  // - [https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/vector/ivf/builder.rs#L123]
+  // - [https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/lib.rs#L280]
+  optional uint32 target_partition_num_rows = 4;
+
+  // num_partitions is deprecated starting from rerun-cloud v0.7.0
+  // Use target_partition_num_rows instead
+  // See: RR-2798
+  reserved 1;
+  reserved "num_partitions";
 }
 
 enum VectorDistanceMetric {
@@ -391,9 +537,9 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  // Client can specify what partitions are queried. If left unspecified (empty list),
-  // all partitions will be queried.
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+  // Client can specify what segments are queried. If left unspecified (empty list),
+  // all segments will be queried.
+  repeated rerun.common.v1alpha1.SegmentId segment_ids = 11;
 
   // Client can specify specific chunk ids to include. If left unspecified (empty list),
   // all chunks that match other query parameters will be included.
@@ -441,6 +587,8 @@ message QueryDatasetRequest {
 
   reserved 1;
   reserved "dataset_id";
+  reserved 2;
+  reserved "partition_ids";
 }
 
 message QueryDatasetResponse {
@@ -463,9 +611,6 @@ message Query {
   // If true, `columns` will contain the entire schema.
   bool columns_always_include_everything = 3;
 
-  // If true, `columns` always includes `chunk_id`,
-  bool columns_always_include_chunk_ids = 4;
-
   // If true, `columns` always includes `byte_offset` and `byte_size`.
   bool columns_always_include_byte_offsets = 5;
 
@@ -480,6 +625,9 @@ message Query {
 
   // If true, `columns` always includes all component-level indexes.
   bool columns_always_include_component_indexes = 9;
+
+  reserved 4;
+  reserved "columns_always_include_chunk_ids";
 }
 
 // A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
@@ -514,67 +662,11 @@ message QueryRange {
   reserved "fuzzy_descriptors";
 }
 
-message GetChunksRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
-  // Client can specify from which partitions to get chunks. If left unspecified (empty list),
-  // data from all partition (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // Client can specify chunk ids to include. If left unspecified (empty list),
-  // all chunks (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
-
-  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
-  // in order to query all of them.
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
-
-  // If set, the query will cover all existing entity paths.
-  //
-  // `entity_paths` must be empty, otherwise an error will be raised.
-  //
-  // Truth table:
-  // ```text
-  // select_all_entity_paths | entity_paths   | result
-  // ------------------------+----------------+--------
-  // false                   | []             | valid query, empty results (no entity paths selected)
-  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
-  // true                    | []             | valid query, all entity paths selected
-  // true                    | ['foo', 'bar'] | invalid query, error
-  // ```
-  bool select_all_entity_paths = 6;
-
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLines:width` index, all of the following
-  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
-  repeated string fuzzy_descriptors = 9;
-
-  // If set, static data will be excluded from the results.
-  bool exclude_static_data = 7;
-
-  // If set, temporal data will be excluded from the results.
-  bool exclude_temporal_data = 8;
-
-  // Query details
-  Query query = 5;
-}
-
-message GetChunksResponse {
-  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
-  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
-  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
-}
-
 message FetchChunksRequest {
   // Information about the chunks to fetch. These dataframes have to include the following columns:
   // * `chunk_id` - Chunk unique identifier
-  // * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
-  // * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+  // * `segment_id` - segment this chunk belongs to. Currently needed as we pass this metadata back and forth
+  // * `segment_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
   // * `chunk_key` - chunk location details
   repeated rerun.common.v1alpha1.DataframePart chunk_infos = 1;
 }
@@ -606,11 +698,30 @@ message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
 
+enum TableInsertMode {
+  // Always reserve unspecified as default value
+  TABLE_INSERT_MODE_UNSPECIFIED = 0;
+
+  // Appends new rows to the existing table without modifying any existing rows.
+  TABLE_INSERT_MODE_APPEND = 1;
+
+  // Overwrites all existing rows in the table with the new rows.
+  TABLE_INSERT_MODE_OVERWRITE = 2;
+
+  // Overwrite rows based on the rerun_table_index fields.
+  TABLE_INSERT_MODE_REPLACE = 3;
+}
+
+message WriteTableRequest {
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+  TableInsertMode insert_mode = 2;
+}
+
+message WriteTableResponse {}
+
 // --- Maintenance ---
 
 message DoMaintenanceRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Optimize all builtin and user-defined indexes on this dataset.
   //
   // This merges all individual index deltas back in the main index, improving runtime performance
@@ -645,6 +756,9 @@ message DoMaintenanceRequest {
   //
   // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
   bool unsafe_allow_recent_cleanup = 5;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message DoMaintenanceResponse {
@@ -657,27 +771,6 @@ message DoGlobalMaintenanceRequest {}
 message DoGlobalMaintenanceResponse {}
 
 // --- Tasks ---
-
-// A task is a unit of work that can be submitted to the system
-message Task {
-  // Unique identifier for the task
-  rerun.common.v1alpha1.TaskId id = 1;
-  // Type of the task
-  string task_type = 2;
-  // Task-type dependant data necessary to de-serialize the task
-  bytes task_data = 3;
-}
-
-// `SubmitTasksRequest` is the request message for submitting tasks
-message SubmitTasksRequest {
-  repeated Task tasks = 1;
-}
-
-// `SubmitTaskResponse` contains, for each submitted task
-// its submission outcome, encoded as a `RecordBatch`
-message SubmitTasksResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
 
 // `QueryTasksRequest` is the request message for querying tasks status
 message QueryTasksRequest {
@@ -704,18 +797,6 @@ message QueryTasksOnCompletionRequest {
 // `QueryTaskOnCompletionResponse` is the response message for querying tasks status
 // encoded as a record batch. This is a copy of `QueryTasksResponse`.
 message QueryTasksOnCompletionResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-// `FetchTaskOutputRequest` is the request message for fetching task output
-message FetchTaskOutputRequest {
-  // Unique identifier for the task
-  rerun.common.v1alpha1.TaskId id = 1;
-}
-
-/// `FetchTaskOutputResponse` is the response message for fetching task output
-message FetchTaskOutputResponse {
-  // The output of the task, encoded as a record batch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -760,7 +841,7 @@ message CreateDatasetEntryRequest {
   // Name of the dataset entry to create.
   //
   // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-  // with the same name already exists, the request will fail.
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
   optional string name = 1;
 
   // If specified, create the entry using this specific ID. Use at your own risk.
@@ -771,6 +852,29 @@ message CreateDatasetEntryRequest {
 
 message CreateDatasetEntryResponse {
   DatasetEntry dataset = 1;
+}
+
+// CreateTableEntry
+
+message CreateTableEntryRequest {
+  // Name of the dataset entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
+  string name = 1;
+
+  // Information about the table to register.
+  //
+  // This must be encoded message of one of the following supported types:
+  // - LanceTable
+  optional google.protobuf.Any provider_details = 2;
+
+  // Schema of the table to create
+  rerun.common.v1alpha1.Schema schema = 3;
+}
+
+message CreateTableEntryResponse {
+  TableEntry table = 1;
 }
 
 // ReadDatasetEntry
@@ -805,7 +909,7 @@ message RegisterTableRequest {
   // Name of the table entry to create.
   //
   // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
-  // with the same name already exists, the request will fail.
+  // with the same name already exists, the request will fail. Entry names ending with `__manifest` are reserved.
   string name = 1;
 
   // Information about the table to register.
@@ -880,8 +984,11 @@ message DatasetDetails {
   // The blueprint dataset associated with this dataset (if any).
   optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
 
-  // The partition of the blueprint dataset corresponding to the default blueprint (if any).
-  optional rerun.common.v1alpha1.PartitionId default_blueprint = 4;
+  // The segment of the blueprint dataset corresponding to the default blueprint (if any).
+  optional rerun.common.v1alpha1.SegmentId default_blueprint_segment = 5;
+
+  reserved 4;
+  reserved "default_blueprint";
 }
 
 message DatasetEntry {
@@ -924,4 +1031,10 @@ message SystemTable {
 message LanceTable {
   // The URL of the Lance table.
   string table_url = 1;
+}
+
+// Optional debug info
+message DebugInfo {
+  // The amount of memory used by the task or service call in bytes
+  optional uint64 memory_used = 1;
 }

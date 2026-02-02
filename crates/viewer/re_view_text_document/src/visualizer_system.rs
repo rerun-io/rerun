@@ -1,12 +1,10 @@
 use re_chunk_store::LatestAtQuery;
-use re_types::{
-    archetypes::TextDocument,
-    components::{self},
-};
+use re_sdk_types::archetypes::TextDocument;
+use re_sdk_types::components;
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, TypedComponentFallbackProvider, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -30,7 +28,10 @@ impl IdentifiedViewSystem for TextDocumentSystem {
 }
 
 impl VisualizerSystem for TextDocumentSystem {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<TextDocument>()
     }
 
@@ -39,41 +40,30 @@ impl VisualizerSystem for TextDocumentSystem {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            let results = data_result
-                .latest_at_with_blueprint_resolved_data::<TextDocument>(ctx, &timeline_query);
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let results = data_result.latest_at_with_blueprint_resolved_data::<TextDocument>(
+                ctx,
+                &timeline_query,
+                Some(instruction),
+            );
 
-            let Some(text) =
-                results.get_required_mono::<components::Text>(&TextDocument::descriptor_text())
+            let Some(text) = results
+                .get_required_mono::<components::Text>(TextDocument::descriptor_text().component)
             else {
                 continue;
             };
             self.text_entries.push(TextDocumentEntry {
                 body: text.clone(),
                 media_type: results
-                    .get_mono_with_fallback(&TextDocument::descriptor_media_type(), self),
+                    .get_mono_with_fallback(TextDocument::descriptor_media_type().component),
             });
         }
 
-        Ok(Vec::new())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
+        Ok(VisualizerExecutionOutput::default())
     }
 }
-
-impl TypedComponentFallbackProvider<components::MediaType> for TextDocumentSystem {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::MediaType {
-        components::MediaType::plain_text()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(TextDocumentSystem => [components::MediaType]);

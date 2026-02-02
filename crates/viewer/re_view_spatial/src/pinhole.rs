@@ -1,16 +1,10 @@
-use re_types::{archetypes, components};
-
-use crate::resolution_of_image_at;
-
 /// A pinhole camera model.
 ///
-/// Corresponds roughly to the [`re_types::archetypes::Pinhole`] archetype, but uses render-friendly types.
+/// Corresponds roughly to the [`re_sdk_types::archetypes::Pinhole`] archetype, but uses render-friendly types.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pinhole {
     pub image_from_camera: glam::Mat3,
     pub resolution: glam::Vec2,
-    pub color: Option<egui::Color32>,
-    pub line_width: Option<re_renderer::Size>,
 }
 
 impl Pinhole {
@@ -76,66 +70,4 @@ impl Pinhole {
         ((pixel.truncate() - self.principal_point()) * pixel.z / self.focal_length_in_pixels())
             .extend(pixel.z)
     }
-}
-
-/// Utility for querying the pinhole from the store.
-///
-/// Fallback provider will be used for everything but the projection itself.
-/// Does NOT take into account blueprint overrides, defaults and fallbacks.
-/// However, it will use the resolution of the image at the entity path if available.
-///
-/// If the projection isn't present, returns `None`.
-// TODO(andreas): Give this another pass and think about how we can remove this.
-// Being disconnected from the blueprint & fallbacks makes this a weird snowflake with unexpected behavior.
-// Also, figure out how this might actually relate to the transform cache.
-pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
-    ctx: &re_viewer_context::ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-) -> Option<(Pinhole, components::ViewCoordinates)> {
-    let entity_db = ctx.recording();
-
-    let query_results = entity_db.latest_at(
-        query,
-        entity_path,
-        [
-            &archetypes::Pinhole::descriptor_image_from_camera(),
-            &archetypes::Pinhole::descriptor_resolution(),
-            // Note that `components::ViewCoordinates` is somewhat special, in that for convenience it can
-            // be specified in multiple places (i.e. `archetypes`). This used to be fine, but got quite a
-            // bit more cumbersome with fully-qualified component descriptors. Because of this, we now have
-            // to query using descriptors from a "secondary" archetype.
-            &archetypes::Pinhole::descriptor_camera_xyz(),
-            &archetypes::ViewCoordinates::descriptor_xyz(),
-        ],
-    );
-
-    let pinhole_projection = query_results.component_mono_quiet::<components::PinholeProjection>(
-        &archetypes::Pinhole::descriptor_image_from_camera(),
-    )?;
-
-    let resolution = query_results
-        .component_mono_quiet::<components::Resolution>(
-            &archetypes::Pinhole::descriptor_resolution(),
-        )
-        .unwrap_or_else(|| {
-            resolution_of_image_at(ctx, query, entity_path).unwrap_or([100.0, 100.0].into())
-        });
-    let camera_xyz: components::ViewCoordinates = query_results
-        .component_mono_quiet(&archetypes::Pinhole::descriptor_camera_xyz())
-        // This is the "secondary" descriptor (mentioned above) that we are interested in.
-        .or_else(|| {
-            query_results.component_mono_quiet(&archetypes::ViewCoordinates::descriptor_xyz())
-        })
-        .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ);
-
-    Some((
-        Pinhole {
-            image_from_camera: pinhole_projection.0.into(),
-            resolution: resolution.into(),
-            color: None,
-            line_width: None,
-        },
-        camera_xyz,
-    ))
 }

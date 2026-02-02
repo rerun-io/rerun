@@ -1,11 +1,11 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId};
-use re_viewport_blueprint::{ViewBlueprint, ViewContents};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewport_blueprint::ViewBlueprint;
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(400.0, 180.0);
 
@@ -16,12 +16,14 @@ pub fn test_blueprint_no_overrides_or_defaults_with_spatial_2d() {
     log_arrows(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, None, None);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        "blueprint_no_overrides_or_defaults_with_spatial_2d",
-        SNAPSHOT_SIZE,
-    );
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "blueprint_no_overrides_or_defaults_with_spatial_2d",
+            SNAPSHOT_SIZE,
+            None,
+        )
+        .unwrap();
 }
 
 #[test]
@@ -31,12 +33,14 @@ pub fn test_blueprint_overrides_with_spatial_2d() {
     log_arrows(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, Some(&arrow_overrides()), None);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        "blueprint_overrides_with_spatial_2d",
-        SNAPSHOT_SIZE,
-    );
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "blueprint_overrides_with_spatial_2d",
+            SNAPSHOT_SIZE,
+            None,
+        )
+        .unwrap();
 }
 
 #[test]
@@ -46,12 +50,14 @@ pub fn test_blueprint_defaults_with_spatial_2d() {
     log_arrows(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, None, Some(&arrow_defaults()));
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        "blueprint_defaults_with_spatial_2d",
-        SNAPSHOT_SIZE,
-    );
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "blueprint_defaults_with_spatial_2d",
+            SNAPSHOT_SIZE,
+            None,
+        )
+        .unwrap();
 }
 
 fn log_arrows(test_context: &mut TestContext) {
@@ -91,20 +97,20 @@ fn setup_blueprint(
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view.id,
             ctx.store_context.blueprint.tree(),
-            re_types::blueprint::archetypes::VisualBounds2D::name(),
+            re_sdk_types::blueprint::archetypes::VisualBounds2D::name(),
         );
         ctx.save_blueprint_archetype(
             property_path.clone(),
-            &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
-                x_range: [-4.0, 4.0].into(),
-                y_range: [-1.1, 2.6].into(),
-            }),
+            &re_sdk_types::blueprint::archetypes::VisualBounds2D::new(
+                re_sdk_types::datatypes::Range2D {
+                    x_range: [-4.0, 4.0].into(),
+                    y_range: [-1.1, 2.6].into(),
+                },
+            ),
         );
 
         if let Some(arrow_overrides) = arrow_overrides {
-            let override_path =
-                ViewContents::override_path_for_entity(view.id, &EntityPath::from("arrows"));
-            ctx.save_blueprint_archetype(override_path.clone(), arrow_overrides);
+            ctx.save_visualizers(&EntityPath::from("arrows"), view.id, [arrow_overrides]);
         }
 
         if let Some(arrow_defaults) = arrow_defaults {
@@ -113,20 +119,4 @@ fn setup_blueprint(
 
         blueprint.add_view_at_root(view)
     })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-    harness.run();
-    harness.snapshot(name);
 }

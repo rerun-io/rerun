@@ -1,12 +1,18 @@
-use re_protos::cloud::v1alpha1::EntryFilter;
+use std::error::Error;
+use std::str::FromStr as _;
+use std::time::Duration;
+
 use re_protos::cloud::v1alpha1::ext::DataSource;
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
+use re_protos::common::v1alpha1::SegmentId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::ConnectionClient;
+use re_sdk::external::re_tuid;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};
-use std::{error::Error, time::Duration};
+use re_viewer::external::re_sdk_types::archetypes;
 
-pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn Error>> {
+pub async fn load_test_data(mut client: ConnectionClient) -> Result<SegmentId, Box<dyn Error>> {
     let path = {
         let path = tempfile::NamedTempFile::new()?;
         let stream = RecordingStreamBuilder::new("rerun_example_integration_test")
@@ -15,6 +21,12 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn 
 
         for x in 0..20 {
             stream.set_time("test_time", TimeCell::new(TimeType::Sequence, x));
+            stream
+                .log(
+                    "test_entity",
+                    &archetypes::Points3D::new([(x as f32, 0.0, 0.0)]),
+                )
+                .expect("Failed to log points 3D");
         }
 
         stream.flush_with_timeout(Duration::from_secs(60))?;
@@ -22,20 +34,20 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn 
         path
     };
 
-    assert!(
-        client
-            .find_entries(EntryFilter::default())
-            .await?
-            .is_empty()
-    );
+    let entries_table = client.find_entries(EntryFilter::default()).await?;
+    assert_eq!(entries_table.len(), 1);
+    assert_eq!(entries_table[0].name, "__entries");
+    assert_eq!(entries_table[0].kind, EntryKind::Table);
 
     let dataset_name = "my_dataset";
+    let dataset_id =
+        re_tuid::Tuid::from_str("187b552b95a5c2f73f37894708825ba5").expect("Failed to parse TUID");
 
     let entry = client
-        .create_dataset_entry(dataset_name.to_owned(), None)
+        .create_dataset_entry(dataset_name.to_owned(), Some(dataset_id.into()))
         .await?;
 
-    client
+    let item = client
         .register_with_dataset(
             entry.details.id,
             vec![DataSource::new_rrd(format!(
@@ -46,7 +58,10 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn 
             ))?],
             IfDuplicateBehavior::Error,
         )
-        .await?;
+        .await?
+        .into_iter()
+        .next()
+        .expect("We created this with one segment");
 
-    Ok(())
+    Ok(item.segment_id.into())
 }

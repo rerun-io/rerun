@@ -1,19 +1,15 @@
 use std::sync::Arc;
 
 use arrow::array::{StringArray, UInt32Array};
-
 use re_chunk::{Chunk, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, QueryExpression, StaticColumnSelection, TimeInt,
     ViewContentsSelector,
 };
-use re_log_types::{
-    EntityPath, build_frame_nr,
-    example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-};
+use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+use re_log_types::{EntityPath, build_frame_nr};
+use re_sdk_types::{AnyValues, AsComponents as _};
 use re_sorbet::ChunkColumnDescriptors;
-use re_types::AnyValues;
-use re_types::AsComponents as _;
 
 #[test]
 /// Tests whether the store has the expected schema after populating it with a chunk.
@@ -195,7 +191,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
         let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
         let both_static_and_non_static = components
             .iter()
-            .map(|column| (column.component_descriptor().component))
+            .map(|column| column.component_descriptor().component)
             .collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(both_static_and_non_static);
@@ -211,7 +207,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
         let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
         let static_only = components
             .iter()
-            .map(|column| (column.component_descriptor().component))
+            .map(|column| column.component_descriptor().component)
             .collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(static_only);
@@ -227,7 +223,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
         let ChunkColumnDescriptors { components, .. } = store.schema_for_query(&query);
         let non_static_only = components
             .iter()
-            .map(|column| (column.component_descriptor().component))
+            .map(|column| column.component_descriptor().component)
             .collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(non_static_only);

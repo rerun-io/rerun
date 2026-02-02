@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import numpy as np
+import pyarrow as pa
 import pytest
 from rerun.time import to_nanos, to_nanos_since_epoch
 
@@ -47,6 +48,18 @@ def test_to_nanos_invalid(duration: Any) -> None:
         to_nanos(duration)
 
 
+class MockPandasTimestamp(datetime):
+    nanoseconds: int = 0
+
+    def __new__(cls, *args: Any, nanoseconds: int = 0, **kwargs: dict[str, Any]) -> MockPandasTimestamp:
+        instance = super().__new__(cls, *args, **kwargs)  # type: ignore[arg-type]
+        object.__setattr__(instance, "nanoseconds", nanoseconds)
+        return instance
+
+    def to_datetime64(self) -> np.datetime64:
+        return np.datetime64(self.replace(microsecond=0).isoformat() + f".{self.nanoseconds:09d}", "ns")
+
+
 VALID_TO_NANOS_SINCE_EPOCH_CASES = [
     (0, 0),
     (10, 10_000_000_000),
@@ -66,6 +79,8 @@ VALID_TO_NANOS_SINCE_EPOCH_CASES = [
     (datetime(2050, 1, 1, 0, 0, 0, tzinfo=timezone.utc), 2524608000000000000),
     (np.datetime64("2050-01-01T00:00:00"), 2524608000000000000),
     (np.datetime64("2000-01-01T00:00:00.123456789"), 946684800123456789),
+    (MockPandasTimestamp(2000, 1, 1, 0, 0, 0, 123456, nanoseconds=123456789), 946684800123456789),
+    (pa.scalar(np.datetime64("2000-01-01T00:00:00.123456789"), type=pa.timestamp("ns")), 946684800123456789),
 ]
 
 

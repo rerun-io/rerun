@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 const IMAGE_CHANNELS: u64 = 4;
 
 #[derive(Debug, Clone, clap::Parser)]

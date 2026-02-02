@@ -32,7 +32,6 @@ on:
           - linux-x64
           - windows-x64
           - macos-arm64
-          - macos-x64
         description: "Platform to build for"
         required: true
       CONCURRENCY:
@@ -46,7 +45,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -64,10 +63,11 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
+  packages: "read"
   id-token: "write"
 
 jobs:
@@ -85,15 +85,15 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="buildjet-16vcpu-ubuntu-2204-arm"
+              runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.17.0'"
               bin_name="rerun"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.17.0'"
               bin_name="rerun"
               ;;
             windows-x64)
@@ -103,14 +103,8 @@ jobs:
               bin_name="rerun.exe"
               ;;
             macos-arm64)
-              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-26-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
-              container="null"
-              bin_name="rerun"
-              ;;
-            macos-x64)
-              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
-              target="x86_64-apple-darwin"
               container="null"
               bin_name="rerun"
               ;;
@@ -123,6 +117,7 @@ jobs:
 
   build-rerun-cli:
     name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
+    timeout-minutes: 60
 
     needs: [set-config]
 
@@ -130,8 +125,8 @@ jobs:
     container:
       image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
       credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Show context
@@ -159,9 +154,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release
@@ -181,9 +176,8 @@ jobs:
       # Now that we already have a CLI binary, we can use it to check whether our man page is up to date.
       - name: Compare man page to CLI docs
         if: runner.os == 'Linux'
-        shell: bash
         run: |
-          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
 
       - name: Get sha
         id: get-sha
@@ -194,7 +188,7 @@ jobs:
       - name: "Upload rerun-cli (commit)"
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
@@ -203,7 +197,7 @@ jobs:
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false

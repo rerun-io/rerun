@@ -1,20 +1,18 @@
-use crate::find_and_deserialize_archetype_mono_component;
 use egui::{NumExt as _, Rangef, Vec2};
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components;
-use re_types::components::MediaType;
-use re_types::datatypes::{ChannelDatatype, ColorModel};
-use re_types::image::ImageKind;
+use re_sdk_types::components;
+use re_sdk_types::components::MediaType;
+use re_sdk_types::datatypes::{ChannelDatatype, ColorModel};
+use re_sdk_types::image::ImageKind;
 use re_types_core::{Component as _, ComponentDescriptor, RowId};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
-use re_viewer_context::gpu_bridge::image_data_range_heuristic;
-use re_viewer_context::{
-    ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
-    gpu_bridge::{self, image_to_gpu},
-};
+use re_viewer_context::gpu_bridge::{self, image_data_range_heuristic, image_to_gpu};
+use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext};
+
+use crate::find_and_deserialize_archetype_mono_component;
 
 /// Show the given image with an appropriate size.
 ///
@@ -43,8 +41,46 @@ pub fn image_preview_ui(
         colormap_with_range,
     )
     .ok()?;
-    texture_preview_ui(ctx.render_ctx(), ui, ui_layout, &debug_name, texture);
+
+    let [w, h] = texture.width_height();
+    let preview_size = texture_preview_size(ui, ui_layout, [w, h]);
+
+    texture_preview_ui(
+        ctx.render_ctx(),
+        ui,
+        ui_layout,
+        &debug_name,
+        texture,
+        preview_size,
+    );
+
     Some(())
+}
+
+pub fn texture_preview_size(ui: &egui::Ui, ui_layout: UiLayout, texture_size: [u32; 2]) -> Vec2 {
+    let [texture_width, texture_height] = texture_size;
+    let max_size = if ui_layout.is_single_line() {
+        let height = ui.available_height();
+        let width =
+            (height * texture_width as f32 / texture_height as f32).at_most(ui.available_width());
+        Vec2::new(width, height)
+    } else {
+        // TODO(emilk): we should limit the HEIGHT primarily,
+        // since if the image uses up too much vertical space,
+        // it is really annoying in the selection panel.
+        let size_range = if ui_layout == UiLayout::Tooltip {
+            egui::Rangef::new(64.0, 128.0)
+        } else {
+            egui::Rangef::new(240.0, 320.0)
+        };
+        Vec2::splat(
+            size_range
+                .clamp(ui.available_width())
+                .at_most(16.0 * texture_width.max(texture_height) as f32),
+        )
+    };
+
+    largest_size_that_fits_in(texture_width as f32 / texture_height as f32, max_size)
 }
 
 /// Show the given texture with an appropriate size.
@@ -54,13 +90,9 @@ pub fn texture_preview_ui(
     ui_layout: UiLayout,
     debug_name: &str,
     texture: ColormappedTexture,
+    preview_size: Vec2,
 ) -> egui::Response {
     if ui_layout.is_single_line() {
-        let height = ui.available_height();
-        let [texture_width, texture_height] = texture.width_height();
-        let width =
-            (height * texture_width as f32 / texture_height as f32).at_most(ui.available_width());
-        let preview_size = Vec2::new(width, height);
         ui.allocate_ui_with_layout(
             preview_size,
             egui::Layout::centered_and_justified(egui::Direction::TopDown),
@@ -80,19 +112,6 @@ pub fn texture_preview_ui(
         )
         .inner
     } else {
-        // TODO(emilk): we should limit the HEIGHT primarily,
-        // since if the image uses up too much vertical space,
-        // it is really annoying in the selection panel.
-        let size_range = if ui_layout == UiLayout::Tooltip {
-            egui::Rangef::new(64.0, 128.0)
-        } else {
-            egui::Rangef::new(240.0, 320.0)
-        };
-        let preview_size = Vec2::splat(
-            size_range
-                .clamp(ui.available_width())
-                .at_most(16.0 * texture.texture.width().max(texture.texture.height()) as f32),
-        );
         show_image_preview(render_ctx, ui, texture, debug_name, preview_size).unwrap_or_else(
             |(response, err)| {
                 re_log::warn_once!("Failed to show texture {debug_name}: {err}");
@@ -256,13 +275,18 @@ impl ImageUi {
         ctx: &ViewerContext<'_>,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
-        blob: &re_types::datatypes::Blob,
+        blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
     ) -> Option<Self> {
         ctx.store_context
             .caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(blob_row_id, blob_component_descriptor, blob, media_type)
+                c.entry_encoded_color(
+                    blob_row_id,
+                    blob_component_descriptor.component,
+                    blob,
+                    media_type,
+                )
             })
             .ok()
             .map(|image| Self::new(ctx, image))
@@ -280,7 +304,7 @@ impl ImageUi {
 
         let blob_row_id = image_buffer_chunk.row_id()?;
         let image_buffer = image_buffer_chunk
-            .component_mono::<components::ImageBuffer>(image_buffer_descr)?
+            .component_mono::<components::ImageBuffer>(image_buffer_descr.component)?
             .ok()?;
 
         let (image_format_descr, image_format_chunk) =
@@ -289,13 +313,13 @@ impl ImageUi {
                     && descr.archetype == image_buffer_descr.archetype
             })?;
         let image_format = image_format_chunk
-            .component_mono::<components::ImageFormat>(image_format_descr)?
+            .component_mono::<components::ImageFormat>(image_format_descr.component)?
             .ok()?;
 
         let kind = ImageKind::from_archetype_name(image_format_descr.archetype);
         let image = ImageInfo::from_stored_blob(
             blob_row_id,
-            image_buffer_descr,
+            image_buffer_descr.component,
             image_buffer.0,
             image_format.0,
             kind,

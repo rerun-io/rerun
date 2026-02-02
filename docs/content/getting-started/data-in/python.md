@@ -18,7 +18,7 @@ At any time, you can checkout the complete code listing for this tutorial [here]
 
 ## Prerequisites
 
-We assume you have working Python and `rerun-sdk` installations. If not, check out the [setup page](../quick-start/python.md).
+We assume you have working Python and `rerun-sdk` installations. If not, check out [installing python](../../overview/installing-rerun/python.md).
 
 ## Initializing the SDK
 
@@ -40,9 +40,9 @@ from rerun.utilities import bounce_lerp
 rr.init("rerun_example_dna_abacus")
 ```
 
-Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
+A stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
-Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/apps-and-recordings.md).
+Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/logging-and-ingestion/recordings.md).
 
 ## Starting the Viewer
 
@@ -90,7 +90,7 @@ rr.log("dna/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
 ```
 
 Run your script once again and you should now see this scene in the viewer.
-Note that if the Viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../../concepts/apps-and-recordings.md).
+Note that if the Viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../../concepts/logging-and-ingestion/recordings.md).
 
 <picture>
   <img src="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/full.png" alt="">
@@ -101,7 +101,7 @@ Note that if the Viewer was still running, Rerun will simply connect to this exi
 </picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_Checkout the [Viewer Walkthrough](../navigating-the-viewer.md) and [viewer reference](../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
+_Checkout the [Viewer Walkthrough](../configure-the-viewer/navigating-the-viewer.md) and [viewer reference](../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
 ## Under the hood
 
@@ -109,7 +109,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 ### Archetypes
 
-The easiest way to log geometric primitives is the use the [`rr.log`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function with one of the built-in archetype class, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). Archetypes take care of building batches
+The easiest way to log geometric primitives is the use the [`rr.log`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function with one of the built-in archetype classes, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
@@ -119,22 +119,22 @@ and radii. Archetypes are just one high-level, convenient way of building such c
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
 
-For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/entity-component.md).
+For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).
 
-Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.build_color_spiral) in this example are vanilla `numpy` arrays.
+Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.build_color_spiral?speculative-link) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D) in this case).
 
 ### Entities & hierarchies
 
 Note the two strings we're passing in: `"dna/structure/left"` & `"dna/structure/right"`.
 
-These are [_entity paths_](../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
-[Entity paths typically form a hierarchy](../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
+These are [_entity paths_](../../concepts/logging-and-ingestion/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
+[Entity paths typically form a hierarchy](../../concepts/logging-and-ingestion/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
 ### Component batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
-[Component batches](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+[Component batches](../../concepts/logging-and-ingestion/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
 You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
@@ -165,7 +165,7 @@ rr.log(
 )
 ```
 
-Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.util.bounce_lerp),
+Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.util.bounce_lerp?speculative-link),
 there is nothing new here: it's all about building out `numpy` arrays and feeding them to the Rerun API.
 
 <picture>
@@ -180,7 +180,7 @@ there is nothing new here: it's all about building out `numpy` arrays and feedin
 
 ### Introducing time
 
-Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../concepts/timelines.md).
+Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../concepts/logging-and-ingestion/timelines.md).
 
 Even so, if you look at your [Timeline View](../../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
 
@@ -312,6 +312,6 @@ For more details and potential limitations, please refer to [our blog post](http
 
 ## Closing
 
-This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
+This closes our whirlwind tour of logging with Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes, or dig deeper into [querying your logged data](../data-out.md).

@@ -1,54 +1,101 @@
 use std::sync::Arc;
 
 use egui::{RichText, Widget as _};
-
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
+use re_log_channel::LogSource;
 use re_log_types::TableId;
-use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
-use re_smart_channel::SmartChannelSource;
-use re_ui::list_item::{ItemMenuButton, LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{UiExt as _, UiLayout, icons, list_item};
+use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
+use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
+    DisplayMode, EditRedapServerModalCommand, Item, RecordingOrTable, SystemCommand,
+    SystemCommandSender as _, ViewerContext,
 };
 
+use crate::RecordingPanelCommand;
 use crate::data::{
-    AppIdData, DatasetData, EntryData, FailedEntryData, PartitionData, RecordingPanelData,
-    RemoteTableData, ServerData, ServerEntriesData,
+    AppIdData, DatasetData, EntryData, FailedEntryData, RecordingPanelData, RemoteTableData,
+    SegmentData, ServerData, ServerEntriesData,
 };
 
-pub fn recordings_panel_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    servers: &RedapServers,
-    hide_examples: bool,
-) {
-    let recording_panel_data = RecordingPanelData::new(ctx, servers, hide_examples);
+#[derive(Debug, Clone, Default)]
+pub struct RecordingPanel {
+    commands: Vec<RecordingPanelCommand>,
+}
 
-    ui.panel_content(|ui| {
-        ui.panel_title_bar_with_buttons(
-            "Recordings",
-            Some(
-                "These are the Recordings currently loaded in the Viewer, organized by application",
-            ),
-            |ui| {
-                add_button_ui(ctx, ui, &recording_panel_data);
-            },
-        );
-    });
+impl RecordingPanel {
+    pub fn send_command(&mut self, command: RecordingPanelCommand) {
+        self.commands.push(command);
+    }
 
-    egui::ScrollArea::both()
-        .id_salt("recordings_scroll_area")
-        .auto_shrink([false, true])
-        .show(ui, |ui| {
-            ui.panel_content(|ui| {
-                re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                    all_sections_ui(ctx, ui, servers, &recording_panel_data);
+    pub fn show_panel(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        servers: &RedapServers,
+        hide_examples: bool,
+    ) {
+        re_tracing::profile_function!();
+        let recording_panel_data = RecordingPanelData::new(ctx, servers, hide_examples);
+
+        for command in self.commands.drain(..) {
+            match command {
+                RecordingPanelCommand::SelectNextRecording => {
+                    shift_through_recordings(ctx, &recording_panel_data, 1);
+                }
+                RecordingPanelCommand::SelectPreviousRecording => {
+                    shift_through_recordings(ctx, &recording_panel_data, -1);
+                }
+            }
+        }
+
+        ui.panel_content(|ui| {
+            ui.panel_title_bar_with_buttons(
+                "Sources",
+                Some("Your connected servers, opened recordings and tables."),
+                |ui| {
+                    add_button_ui(ctx, ui, &recording_panel_data);
+                },
+            );
+        });
+
+        egui::ScrollArea::both()
+            .id_salt("recordings_scroll_area")
+            .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
+            .show(ui, |ui| {
+                ui.panel_content(|ui| {
+                    re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
+                        all_sections_ui(ctx, ui, servers, &recording_panel_data);
+                    });
                 });
             });
-        });
+    }
+}
+
+fn shift_through_recordings(
+    ctx: &ViewerContext<'_>,
+    recording_panel_data: &RecordingPanelData<'_>,
+    direction: isize,
+) {
+    let current_store_id = ctx.store_context.recording.store_id();
+
+    #[expect(clippy::cast_possible_wrap)]
+    if let Some((idx, store_collection)) =
+        recording_panel_data.collection_from_recording(current_store_id)
+    {
+        let len = store_collection.len() as isize;
+        let new_idx = ((idx as isize + direction + len) % len) as usize;
+
+        // TODO(#11792): this whole feature would be massively more useful if we left the selection
+        // alone and tried to maintain viewer state when switching recording (including current
+        // timeline, time point, selection, etc.)
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(
+                Item::StoreId(store_collection[new_idx].store_id().clone()).into(),
+            ));
+    }
 }
 
 fn add_button_ui(
@@ -56,47 +103,48 @@ fn add_button_ui(
     ui: &mut egui::Ui,
     _recording_panel_data: &RecordingPanelData<'_>,
 ) {
-    use re_ui::list_item::ItemButton as _;
-    Box::new(ItemMenuButton::new(&re_ui::icons::ADD, "Add…", |ui| {
-        if re_ui::UICommand::Open
-            .menu_button_ui(ui, ctx.command_sender())
-            .clicked()
-        {
-            ui.close();
-        }
-        if re_ui::UICommand::AddRedapServer
-            .menu_button_ui(ui, ctx.command_sender())
-            .clicked()
-        {
-            ui.close();
-        }
+    ui.add(
+        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add…")
+            .on_hover_text("Open a file or connect to a server")
+            .on_menu(|ui| {
+                if re_ui::UICommand::Open
+                    .menu_button_ui(ui, ctx.command_sender())
+                    .clicked()
+                {
+                    ui.close();
+                }
+                if re_ui::UICommand::AddRedapServer
+                    .menu_button_ui(ui, ctx.command_sender())
+                    .clicked()
+                {
+                    ui.close();
+                }
 
-        // Show some nice debugging tools in debug builds.
-        #[cfg(debug_assertions)]
-        {
-            ui.separator();
-            ui.add_enabled(
-                false,
-                egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
-            );
+                // Show some nice debugging tools in debug builds.
+                #[cfg(debug_assertions)]
+                {
+                    ui.separator();
+                    ui.add_enabled(
+                        false,
+                        egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
+                    );
 
-            if ui.button("Print recording entity DBs").clicked() {
-                let recording_entity_dbs = ctx
-                    .storage_context
-                    .bundle
-                    .entity_dbs()
-                    .filter(|entity_db| entity_db.store_id().is_recording())
-                    .collect::<Vec<_>>();
-                println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
-            }
+                    if ui.button("Print recording entity DBs").clicked() {
+                        let recording_entity_dbs = ctx
+                            .storage_context
+                            .bundle
+                            .entity_dbs()
+                            .filter(|entity_db| entity_db.store_id().is_recording())
+                            .collect::<Vec<_>>();
+                        println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
+                    }
 
-            if ui.button("Print recording panel data").clicked() {
-                println!("Recording panel data:\n{_recording_panel_data:#?}\n");
-            }
-        }
-    }))
-    .ui(ui)
-    .on_hover_text("Open a file or connect to a server");
+                    if ui.button("Print recording panel data").clicked() {
+                        println!("Recording panel data:\n{_recording_panel_data:#?}\n");
+                    }
+                }
+            }),
+    );
 }
 
 fn all_sections_ui(
@@ -106,16 +154,20 @@ fn all_sections_ui(
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
     //
+    // Welcome and examples
+    //
+
+    if recording_panel_data.show_example_section {
+        welcome_item_ui(ctx, ui, recording_panel_data);
+    }
+
+    //
     // Empty placeholder
     //
 
     if recording_panel_data.is_empty() {
-        ui.list_item().interactive(false).show_flat(
-            ui,
-            re_ui::list_item::LabelContent::new("No recordings loaded")
-                .weak(true)
-                .italics(true),
-        );
+        ui.add_space(ui.tokens().panel_margin().left as f32);
+        ui.weak("Click + to add a recording, connect to a server or drag and drop a file directly to the viewer");
     }
 
     //
@@ -130,15 +182,15 @@ fn all_sections_ui(
     // Local recordings and tables
     //
 
-    #[expect(clippy::collapsible_if)]
     if !recording_panel_data.local_apps.is_empty() || !recording_panel_data.local_tables.is_empty()
     {
+        let id = egui::Id::new("local items");
         if ui
             .list_item()
             .header()
             .show_hierarchical_with_children(
                 ui,
-                egui::Id::new("local items"),
+                id,
                 true,
                 list_item::LabelContent::header("Local"),
                 |ui| {
@@ -154,46 +206,13 @@ fn all_sections_ui(
             .item_response
             .clicked()
         {
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    LOCAL_ORIGIN.clone(),
-                )));
-        }
-    }
-
-    //
-    // Examples
-    //
-
-    if recording_panel_data.show_example_section {
-        let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.selection().contains_item(&item);
-        let active = matches!(
-            ctx.display_mode(),
-            DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
-        );
-        let list_item = ui.list_item().header().selected(selected).active(active);
-        let title = list_item::LabelContent::header("Rerun examples");
-        let response = if recording_panel_data.example_apps.is_empty() {
-            list_item.show_flat(ui, title)
-        } else {
-            list_item
-                .show_hierarchical_with_children(
-                    ui,
-                    egui::Id::new("example items"),
-                    true,
-                    title,
-                    |ui| {
-                        for app_id_data in &recording_panel_data.example_apps {
-                            app_id_section_ui(ctx, ui, app_id_data);
-                        }
-                    },
-                )
-                .item_response
-        };
-
-        if response.clicked() {
-            re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
+            let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                id,
+                true,
+            );
+            state.toggle(ui);
+            state.store(ui.ctx());
         }
     }
 
@@ -202,6 +221,51 @@ fn all_sections_ui(
     //
 
     loading_receivers_ui(ctx, ui, &recording_panel_data.loading_receivers);
+
+    // Add space at the end of the recordings panel
+    ui.add_space(8.0);
+}
+
+fn welcome_item_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    recording_panel_data: &RecordingPanelData<'_>,
+) {
+    let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
+    let selected = ctx.is_selected_or_loading(&item);
+    let active = matches!(
+        ctx.display_mode(),
+        DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
+    );
+
+    let title = list_item::LabelContent::header("Welcome to rerun").with_icon(&icons::HOME);
+
+    let list_item = ui.list_item().header().selected(selected).active(active);
+
+    let response = if recording_panel_data.example_apps.is_empty() {
+        list_item.show_flat(ui, title)
+    } else {
+        list_item
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new("example items"),
+                true,
+                title,
+                |ui| {
+                    for app_id_data in &recording_panel_data.example_apps {
+                        app_id_section_ui(ctx, ui, app_id_data);
+                    }
+                },
+            )
+            .item_response
+    };
+
+    ctx.handle_select_hover_drag_interactions(&response, item.clone(), false);
+    ctx.handle_select_focus_sync(&response, item);
+
+    if response.clicked() {
+        re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
+    }
 }
 
 // ---
@@ -221,32 +285,34 @@ fn server_section_ui(
 
     let content = list_item::LabelContent::header(origin.host.to_string())
         .with_always_show_buttons(true)
-        .with_buttons(|ui| {
-            ItemMenuButton::new(&icons::MORE, "Actions", move |ui| {
-                if icons::RESET
-                    .as_button_with_label(ui.tokens(), "Refresh")
-                    .ui(ui)
-                    .clicked()
-                {
-                    servers.send_command(Command::RefreshCollection(origin.clone()));
-                }
-                if icons::SETTINGS
-                    .as_button_with_label(ui.tokens(), "Edit")
-                    .ui(ui)
-                    .clicked()
-                {
-                    servers.send_command(Command::OpenEditServerModal(origin.clone()));
-                }
-                if icons::TRASH
-                    .as_button_with_label(ui.tokens(), "Remove")
-                    .ui(ui)
-                    .clicked()
-                {
-                    servers.send_command(Command::RemoveServer(origin.clone()));
-                }
-            })
-            .ui(ui);
-        });
+        .with_button(
+            ui.small_icon_button_widget(&icons::MORE, "Actions")
+                .on_menu(move |ui| {
+                    if icons::RESET
+                        .as_button_with_label(ui.tokens(), "Refresh")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        servers.send_command(Command::RefreshCollection(origin.clone()));
+                    }
+                    if icons::SETTINGS
+                        .as_button_with_label(ui.tokens(), "Edit")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        servers.send_command(Command::OpenEditServerModal(
+                            EditRedapServerModalCommand::new(origin.clone()),
+                        ));
+                    }
+                    if icons::TRASH
+                        .as_button_with_label(ui.tokens(), "Remove")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        servers.send_command(Command::RemoveServer(origin.clone()));
+                    }
+                }),
+        );
 
     let item_response = ui
         .list_item()
@@ -266,6 +332,7 @@ fn server_section_ui(
         .on_hover_text(origin.to_string());
 
     ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false);
+    ctx.handle_select_focus_sync(&item_response, server_data.item());
 
     if item_response.clicked() {
         ctx.command_sender()
@@ -329,7 +396,7 @@ fn dataset_entry_ui(
                 is_selected,
                 is_active,
             },
-        displayed_partitions,
+        displayed_segments,
     } = dataset_entry_data;
 
     let item = dataset_entry_data.entry_data.item();
@@ -339,7 +406,7 @@ fn dataset_entry_ui(
 
     let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
 
-    if !displayed_partitions.is_empty() {
+    if !displayed_segments.is_empty() {
         list_item_content = list_item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
@@ -347,10 +414,7 @@ fn dataset_entry_ui(
                 .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
 
             if resp.clicked() {
-                for db in displayed_partitions
-                    .iter()
-                    .filter_map(PartitionData::entity_db)
-                {
+                for db in displayed_segments.iter().filter_map(SegmentData::entity_db) {
                     ctx.command_sender()
                         .send_system(SystemCommand::CloseRecordingOrTable(
                             RecordingOrTable::Recording {
@@ -362,21 +426,25 @@ fn dataset_entry_ui(
         });
     }
 
-    let item_response = if !displayed_partitions.is_empty() {
+    let item_response = if !displayed_segments.is_empty() {
         list_item
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
-                for partition in displayed_partitions {
-                    match partition {
-                        PartitionData::Loading { receiver } => receiver_ui(ctx, ui, receiver, true),
+                for segment in displayed_segments {
+                    match segment {
+                        SegmentData::Loading { receiver } => receiver_ui(ctx, ui, receiver, true),
 
-                        PartitionData::Loaded { entity_db } => {
+                        SegmentData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
-                            entity_db_button_ui(
+                            let response = entity_db_button_ui(
                                 ctx,
                                 ui,
                                 entity_db,
                                 UiLayout::SelectionPanel,
                                 include_app_id,
+                            );
+                            ctx.handle_select_focus_sync(
+                                &response,
+                                Item::StoreId(entity_db.store_id().clone()),
                             );
                         }
                     }
@@ -386,6 +454,10 @@ fn dataset_entry_ui(
     } else {
         list_item.show_hierarchical(ui, list_item_content)
     };
+
+    let item_response = item_response.on_hover_ui(|ui| {
+        ui.label(format!("Dataset: {name:?}"));
+    });
 
     let new_display_mode =
         DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
@@ -402,11 +474,25 @@ fn dataset_entry_ui(
             ctx.command_sender()
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
+
+        if ui.button("Copy dataset name").clicked() {
+            re_log::info!("Copied {name:?} to clipboard");
+            ui.ctx().copy_text(name.clone());
+        }
+
+        if ui.button("Copy dataset id").clicked() {
+            let id = entry_id.id.to_string();
+            re_log::info!("Copied {id:?} to clipboard");
+            ui.ctx().copy_text(id);
+        }
     });
+
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item.into()));
+            .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(new_display_mode));
     }
@@ -436,9 +522,12 @@ fn remote_table_entry_ui(
     let list_item_content = LabelContent::new(text).with_icon(icon);
     let item_response = list_item.show_hierarchical(ui, list_item_content);
 
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item.clone());
+
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item.into()));
+            .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -473,7 +562,7 @@ fn failed_entry_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item.into()));
+            .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -520,12 +609,16 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for recording_data in loaded_recordings {
                     let include_app_id = false; // we already show it in the parent item
-                    entity_db_button_ui(
+                    let response = entity_db_button_ui(
                         ctx,
                         ui,
                         recording_data.entity_db,
                         UiLayout::SelectionPanel,
                         include_app_id,
+                    );
+                    ctx.handle_select_focus_sync(
+                        &response,
+                        Item::StoreId(recording_data.entity_db.store_id().clone()),
                     );
                 }
             })
@@ -538,7 +631,13 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
         app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
     });
 
-    ctx.handle_select_hover_drag_interactions(&item_response, item, false);
+    ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+    ctx.handle_select_focus_sync(&item_response, item);
+    if list_item::ListItem::gained_focus_via_arrow_key(ui.ctx(), item_response.id) {
+        ctx.command_sender()
+            .send_system(SystemCommand::ActivateApp(app_id.clone()));
+    }
+
     if item_response.clicked() {
         //TODO(ab): shouldn't this be done by handle_select_hover_drag_interactions?
         ctx.command_sender()
@@ -553,7 +652,7 @@ fn table_item_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table_id: &TableId)
 fn loading_receivers_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    loading_receivers: &Vec<Arc<SmartChannelSource>>,
+    loading_receivers: &Vec<Arc<LogSource>>,
 ) {
     for receiver in loading_receivers {
         receiver_ui(ctx, ui, receiver, false);
@@ -563,26 +662,58 @@ fn loading_receivers_ui(
 fn receiver_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    receiver: &SmartChannelSource,
+    receiver: &LogSource,
     show_hierarchal: bool,
 ) {
-    let Some(string) = receiver.loading_string() else {
+    let Some(name) = receiver.loading_name() else {
         return;
     };
 
-    let label_content = re_ui::list_item::LabelContent::new(string).with_buttons(|ui| {
-        let resp = ui
-            .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
-            .on_hover_text("Disconnect from this source");
+    let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
 
-        if resp.clicked() {
-            ctx.connected_receivers.remove(receiver);
+    let label_content = re_ui::list_item::LabelContent::new(&name)
+        .with_icon_fn(|ui, rect, _| {
+            ui.put(rect, egui::Spinner::new());
+        })
+        .with_buttons(|ui| {
+            let resp = ui
+                .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
+                .on_hover_text("Disconnect from this source");
+
+            if resp.clicked() {
+                ctx.connected_receivers.remove(receiver);
+            }
+        });
+
+    let response = if show_hierarchal {
+        ui.list_item()
+            .selected(selected)
+            .show_hierarchical(ui, label_content)
+    } else {
+        ui.list_item()
+            .selected(selected)
+            .show_flat(ui, label_content)
+    };
+
+    response.context_menu(|ui| {
+        let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
+            .on_disabled_hover_text(if let Err(err) = url.as_ref() {
+                format!("Can't copy a link to this segment: {err}")
+            } else {
+                "Can't copy a link to this segment".to_owned()
+            })
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+
+        if ui.button("Copy segment name").clicked() {
+            re_log::info!("Copied {name:?} to clipboard");
+            ui.ctx().copy_text(name);
         }
     });
-
-    if show_hierarchal {
-        ui.list_item().show_hierarchical(ui, label_content);
-    } else {
-        ui.list_item().show_flat(ui, label_content);
-    }
 }

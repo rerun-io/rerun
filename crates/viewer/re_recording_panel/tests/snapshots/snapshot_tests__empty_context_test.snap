@@ -2,6 +2,7 @@
 source: crates/viewer/re_recording_panel/tests/snapshot_tests.rs
 expression: data
 ---
+servers: []
 local_apps:
   - app_id: test_app
     is_active: false
@@ -10,9 +11,8 @@ local_apps:
       - entity_db:
           kind: Recording
           application_id: test_app
-          recording_id: "00000000000000000000000000000000"
+          recording_id: test_recording
 local_tables: []
 example_apps: []
 show_example_section: true
-servers: []
 loading_receivers: []

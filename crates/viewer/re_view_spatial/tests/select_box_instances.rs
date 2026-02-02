@@ -3,9 +3,11 @@
 use re_entity_db::InstancePath;
 use re_log_types::TimePoint;
 use re_renderer::Color32;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_sdk_types::components::FillMode;
+use re_sdk_types::{RowId, archetypes};
+use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
-use re_types::{RowId, archetypes, components::FillMode};
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{Item, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
@@ -44,6 +46,7 @@ fn test_select_box_instances() {
         view_id
     });
 
+    let mut snapshot_results = SnapshotResults::new();
     for selected_instance_path in [
         InstancePath::instance("shapes", 0),
         InstancePath::instance("shapes", 1),
@@ -52,16 +55,18 @@ fn test_select_box_instances() {
         // This exaggerates the outlines, making it easier to see & get caught by the snapshot test.
         let ui_scale = 4.0;
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(egui::vec2(300.0, 300.0) / ui_scale)
-            .with_pixels_per_point(ui_scale)
-            .build_ui(|ui| {
-                test_context.edit_selection(|selection_state| {
-                    selection_state
-                        .set_selection(Item::InstancePath(selected_instance_path.clone()));
-                });
-                test_context.run_with_single_view(ui, view_id);
+            .setup_kittest_for_rendering_3d(egui::vec2(300.0, 300.0) / ui_scale)
+            .with_pixels_per_point(ui_scale);
+        // Have to set options explicitly here, since `setup_kittest_for_rendering_3d` isn't aware of the ui scaling.§
+        harness.with_options(re_ui::testing::default_snapshot_options_for_3d(egui::vec2(
+            300.0, 300.0,
+        )));
+        let mut harness = harness.build_ui(|ui| {
+            test_context.edit_selection(|selection_state| {
+                selection_state.set_selection(Item::InstancePath(selected_instance_path.clone()));
             });
+            test_context.run_with_single_view(ui, view_id);
+        });
 
         let name = if selected_instance_path.instance.is_specific() {
             format!(
@@ -71,9 +76,7 @@ fn test_select_box_instances() {
         } else {
             "select_box_instances_all".to_owned()
         };
-        harness.snapshot_options(
-            name,
-            &SnapshotOptions::default().failed_pixel_count_threshold(80),
-        );
+        harness.snapshot(name);
+        snapshot_results.extend_harness(&mut harness);
     }
 }

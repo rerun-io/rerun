@@ -215,12 +215,16 @@ fn last_part_of_item_heading(
         Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,
     };
 
-    let button = if with_icon {
-        egui::Button::image_and_text(icon.as_image(), label).image_tint_follows_text_color(true)
+    let mut response = if with_icon {
+        ui.selectable_label_with_icon(
+            icon,
+            label,
+            ctx.is_selected_or_loading(item),
+            re_ui::LabelStyle::Normal,
+        )
     } else {
-        egui::Button::new(label)
+        ui.add(egui::Button::new(label).truncate())
     };
-    let mut response = ui.add(button);
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }

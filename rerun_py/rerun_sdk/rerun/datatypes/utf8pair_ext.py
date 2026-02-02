@@ -18,12 +18,11 @@ def _utf8_pair_converter(data: Utf8PairLike) -> Utf8Pair:
 
     if isinstance(data, Utf8Pair):
         return data
+    # Assume it's a tuple-like (key, value) or dict entry
+    elif hasattr(data, "__len__") and len(data) == 2:
+        return Utf8Pair(first=data[0], second=data[1])
     else:
-        # Assume it's a tuple-like (key, value) or dict entry
-        if hasattr(data, "__len__") and len(data) == 2:
-            return Utf8Pair(first=data[0], second=data[1])
-        else:
-            raise ValueError(f"Cannot convert {type(data)} to Utf8Pair")
+        raise ValueError(f"Cannot convert {type(data)} to Utf8Pair")
 
 
 class Utf8PairExt:

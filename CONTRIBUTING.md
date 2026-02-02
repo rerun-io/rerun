@@ -12,10 +12,24 @@ This is written for anyone who wants to contribute to the Rerun repository.
 
 ## What to contribute
 * **Examples**: We welcome any examples you would like to add. Follow the pattern of the existing examples in the [`examples/`](examples) folder.
+* Report bugs and features requests at <https://github.com/rerun-io/rerun/issues>.
+* You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
+* We track things we would like implemented in 3rd party crates [here](https://github.com/rerun-io/opensource/issues/1).
 
-* **Bug reports and issues**: Open them at <https://github.com/rerun-io/rerun/issues>.
+Note that maintainers do not have infinite time, and reviews take a lot of it.
+When choosing what to work on, please ensure that it is either:
 
-You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
+* A small change (+100-100 at most), or
+* A larger change that has been discussed with one or more maintainers.
+
+You can discuss these changes by:
+
+* Commenting on an existing issue,
+* Creating a new issue, or
+* Pinging one of the Rerun maintainers on our [Discord](https://discord.gg/PXtCgFBSmH)
+
+> [!NOTE]
+> PRs containing large changes which were not discussed previously may be closed without comment.
 
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
@@ -200,9 +214,13 @@ For best practices & unexpected sources of image differences refer to the [egui_
 Just like for drawing the viewer itself, drawing for comparison tests requires a `wgpu` compatible driver.
 As of writing comparison tests are only run via Vulkan & Metal.
 For CI / headless environments we a recent version `llvmpipe` for software rendering on Linux & Windows.
-On MacOS we currently always use hardware rendering.
-For details on how to set this up refer to the [CI setup](./.github/workflows/reusable_checks_rust.yml).
+On MacOS we use [`SwiftShader`](https://github.com/google/swiftshader/).
 
+⚠️ Unfortunately, `SwiftShader`'s MSAA & texture filtering differs drastically from `llvmpipe` and
+other native renderers which is why we use a lot higher comparison thresholds on Mac.
+-> **DO NOT** use images generated on MacOS CI as reference image, prefer those produced by our Linux runner.
+
+For details on how to set this up refer to the [CI setup](./.github/workflows/reusable_checks_rust.yml).
 
 
 ### Python tests
@@ -227,7 +245,7 @@ Tests are located in the [./rerun_cpp/tests/](./rerun_cpp/tests/) folder.
 ### Snippet comparison tests
 
 ```sh
-pixi run -e py docs/snippets/compare_snippet_output.py
+pixi run uvpy docs/snippets/compare_snippet_output.py
 ```
 
 More details in the [README.md](./docs/snippets/README.md).
@@ -237,7 +255,7 @@ Makes sure all of the snippets in the [snippets/](./docs/snippets/) folder are w
 ### Release checklists
 
 ```sh
-pixi run -e examples python tests/python/release_checklist/main.py
+pixi run uv run tests/python/release_checklist/main.py
 ```
 
 More details in the [README.md](./tests/python/release_checklist/README.md).
@@ -254,7 +272,7 @@ See respective readme files for more details.
 
 ## Tools
 
-We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
+We use the [`pixi`](https://pixi.sh/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
 
 We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
@@ -264,10 +282,6 @@ For details see [the test section above](#tests).
 
 It is not strictly required, but we recommend [`cargo nextest`](https://nexte.st/) for running Rust tests as it is significantly faster than `cargo test` and yields much more readable output.
 Note however, that as of writing `cargo nextest` does not yet support doc tests, those need to be run with `cargo test`.
-
-<!-- TODO(#9849): remove this paragraph when this issue is fixed -->
-
-To build the Wasm target on macOS, you will need to install LLVM/clang 18 or later (e.g. using MacPorts or Homebrew), because the Apple-provided toolchain fails compilation ("LLVM error: section too large"). See [this issue](https://github.com/rerun-io/rerun/issues/9849)
 
 ### Linting
 Prior to pushing changes to a PR, at a minimum, you should always run `pixi run fast-lint`. This is designed to run

@@ -1,41 +1,36 @@
-use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
+use egui::epaint::TextShape;
+use egui::{Align2, NumExt as _, Vec2};
 use ndarray::Axis;
-
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_log_types::hash::Hash64;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{self, TensorScalarMapping, TensorViewFit},
-        components::ViewFit,
-    },
-    components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
-    datatypes::TensorData,
+use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
+use re_sdk_types::blueprint::components::ViewFit;
+use re_sdk_types::components::{
+    Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
+use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, SystemCommand, SystemCommandSender as _,
-    TensorStatsCache, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
-    suggest_view_for_each_entity,
+    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
+    PerVisualizerTypeInViewClass, RecommendedVisualizers, SystemCommand, SystemCommandSender as _,
+    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    TensorDimension,
-    dimension_mapping::TensorSliceSelection,
-    tensor_dimension_mapper::dimension_mapping_ui,
-    visualizer_system::{TensorSystem, TensorVisualization},
-};
+use crate::TensorDimension;
+use crate::dimension_mapping::TensorSliceSelection;
+use crate::tensor_dimension_mapper::dimension_mapping_ui;
+use crate::visualizer_system::{TensorSystem, TensorVisualization};
 
 #[derive(Default)]
 pub struct TensorView;
 
-type ViewType = re_types::blueprint::views::TensorView;
+type ViewType = re_sdk_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
@@ -81,6 +76,11 @@ Set the displayed dimensions in a selection panel.",
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            TensorScalarMapping::descriptor_colormap().component,
+            |_| Colormap::Viridis,
+        );
+
         system_registry.register_visualizer::<TensorSystem>()
     }
 
@@ -96,13 +96,12 @@ Set the displayed dimensions in a selection panel.",
         Box::<ViewTensorState>::default()
     }
 
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> re_viewer_context::SmallVisualizerSet {
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+    ) -> RecommendedVisualizers {
         // Default implementation would not suggest the Tensor visualizer for images,
         // since they're not indicated with a Tensor indicator.
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
@@ -110,11 +109,11 @@ Set the displayed dimensions in a selection panel.",
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&TensorSystem::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
-            std::iter::once(TensorSystem::identifier()).collect()
+            RecommendedVisualizers::default(TensorSystem::identifier())
         } else {
-            Default::default()
+            RecommendedVisualizers::empty()
         }
     }
 
@@ -123,7 +122,7 @@ Set the displayed dimensions in a selection panel.",
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
@@ -145,15 +144,15 @@ Set the displayed dimensions in a selection panel.",
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<TensorScalarMapping>(&ctx, ui, self);
-            view_property_ui::<TensorViewFit>(&ctx, ui, self);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<TensorScalarMapping>(&ctx, ui);
+            view_property_ui::<TensorViewFit>(&ctx, ui);
         });
 
         // TODO(#6075): Listitemify
         if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
             let slice_property = ViewProperty::from_archetype::<
-                re_types::blueprint::archetypes::TensorSliceSelection,
+                re_sdk_types::blueprint::archetypes::TensorSliceSelection,
             >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
             let slice_selection = TensorSliceSelection::load_and_make_valid(
                 &slice_property,
@@ -202,7 +201,7 @@ Set the displayed dimensions in a selection panel.",
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, include_entity)
     }
 
     fn ui(
@@ -239,7 +238,14 @@ Set the displayed dimensions in a selection panel.",
                     });
             } else if let Some(tensor_view) = tensors.first() {
                 state.tensor = Some(tensor_view.clone());
-                self.view_tensor(ctx, &mut ui, state, query.view_id, &tensor_view.tensor)?;
+                self.view_tensor(
+                    ctx,
+                    &mut ui,
+                    state,
+                    query.view_id,
+                    query.space_origin,
+                    &tensor_view.tensor,
+                )?;
             } else {
                 ui.centered_and_justified(|ui| ui.label("(empty)"));
             }
@@ -253,9 +259,7 @@ Set the displayed dimensions in a selection panel.",
 
         if response.clicked() {
             ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    Item::View(query.view_id).into(),
-                ));
+                .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
         Ok(())
@@ -269,12 +273,13 @@ impl TensorView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: ViewId,
+        space_origin: &EntityPath,
         tensor: &TensorData,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let slice_property = ViewProperty::from_archetype::<
-            re_types::blueprint::archetypes::TensorSliceSelection,
+            re_sdk_types::blueprint::archetypes::TensorSliceSelection,
         >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
         let slice_selection = TensorSliceSelection::load_and_make_valid(
             &slice_property,
@@ -321,9 +326,9 @@ impl TensorView {
         ];
 
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             if let Err(err) =
-                self.tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
+                Self::tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
             {
                 ui.error_label(err.to_string());
             }
@@ -333,14 +338,13 @@ impl TensorView {
     }
 
     fn tensor_slice_ui(
-        &self,
         ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, image_rect) = self.paint_tensor_slice(ctx, ui, state, slice_selection)?;
+        let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, state, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
@@ -351,7 +355,6 @@ impl TensorView {
     }
 
     fn paint_tensor_slice(
-        &self,
         ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
@@ -373,21 +376,12 @@ impl TensorView {
             ctx.blueprint_query(),
             ctx.view_id,
         );
-        let colormap: Colormap = scalar_mapping.component_or_fallback(
-            ctx,
-            self,
-            &TensorScalarMapping::descriptor_colormap(),
-        )?;
-        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(
-            ctx,
-            self,
-            &TensorScalarMapping::descriptor_gamma(),
-        )?;
-        let mag_filter: MagnificationFilter = scalar_mapping.component_or_fallback(
-            ctx,
-            self,
-            &TensorScalarMapping::descriptor_mag_filter(),
-        )?;
+        let colormap: Colormap = scalar_mapping
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
+        let gamma: GammaCorrection = scalar_mapping
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_gamma().component)?;
+        let mag_filter: MagnificationFilter = scalar_mapping
+            .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
 
         let colormap = ColormapWithRange {
             colormap,
@@ -408,7 +402,7 @@ impl TensorView {
             ctx.blueprint_query(),
             ctx.view_id,
         )
-        .component_or_fallback(ctx, self, &TensorViewFit::descriptor_scaling())?;
+        .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
@@ -484,7 +478,6 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         tensor.view()
     };
 
-    #[allow(clippy::tuple_array_conversions)]
     let axis = [dheight as usize, dwidth as usize]
         .into_iter()
         .chain(indices.iter().map(|s| s.dimension as usize))
@@ -532,7 +525,7 @@ fn paint_axis_names(
     let text_color = ui.visuals().text_color();
 
     let rounding = tokens.normal_corner_radius();
-    let inner_margin = rounding;
+    let inner_margin = rounding as f32;
     let outer_margin = 8.0;
 
     let rect = rect.shrink(outer_margin + inner_margin);
@@ -727,16 +720,6 @@ fn selectors_ui(
         );
     }
 }
-
-impl TypedComponentFallbackProvider<Colormap> for TensorView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
-        // Viridis is a better fallback than Turbo for arbitrary tensors.
-        Colormap::Viridis
-    }
-}
-
-// Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
-re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);
 
 #[test]
 fn test_help_view() {

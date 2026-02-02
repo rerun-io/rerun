@@ -36,7 +36,7 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 
 snippet: archetypes/series_lines_style
 
-<picture data-inline-viewer="snippets/series_lines_style">
+<picture data-inline-viewer="snippets/archetypes/series_lines_style">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1024w.png">

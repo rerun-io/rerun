@@ -32,12 +32,16 @@ default = []
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
+## Enable helpers for testing
+testing = ["dep:egui_kittest", "re_analytics/testing"]
+
 [dependencies]
 re_analytics = { workspace = true, optional = true }
-re_entity_db.workspace = true                        # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
+re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_format.workspace = true
 re_log.workspace = true
-re_log_types.workspace = true                        # syntax-highlighting for EntityPath
+re_log_types.workspace = true # syntax-highlighting for EntityPath
+re_mutex.workspace = true
 re_tracing.workspace = true
 
 ahash.workspace = true
@@ -59,6 +63,10 @@ strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
 url.workspace = true
+web-time.workspace = true
+
+
+egui_kittest = { workspace = true, optional = true }
 
 # Native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -71,8 +79,9 @@ raw-window-handle.workspace = true
 
 
 [dev-dependencies]
+crossbeam.workspace = true
 egui_kittest.workspace = true
-rand = { workspace = true, features = ["std"] }
+rand = { workspace = true, features = ["std", "thread_rng"] }
 
 
 [build-dependencies]

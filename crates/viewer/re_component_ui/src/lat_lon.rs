@@ -1,5 +1,5 @@
 use re_format::format_lat_lon;
-use re_types::components::LatLon;
+use re_sdk_types::components::LatLon;
 use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 

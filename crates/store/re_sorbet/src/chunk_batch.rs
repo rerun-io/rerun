@@ -1,15 +1,12 @@
-use arrow::{
-    array::{
-        ArrayRef as ArrowArrayRef, AsArray as _, FixedSizeBinaryArray,
-        RecordBatch as ArrowRecordBatch,
-    },
-    datatypes::Fields as ArrowFields,
+use arrow::array::{
+    ArrayRef as ArrowArrayRef, AsArray as _, FixedSizeBinaryArray, RecordBatch as ArrowRecordBatch,
 };
-
+use arrow::datatypes::Fields as ArrowFields;
+use re_arrow_util::WrongDatatypeError;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{ChunkSchema, RowIdColumnDescriptor, SorbetBatch, SorbetError, WrongDatatypeError};
+use crate::{ChunkSchema, RowIdColumnDescriptor, SorbetBatch, SorbetError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum MismatchedChunkSchemaError {
@@ -114,7 +111,7 @@ impl ChunkBatch {
 impl std::fmt::Display for ChunkBatch {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        re_format_arrow::format_record_batch_with_width(self, f.width()).fmt(f)
+        re_arrow_util::format_record_batch_with_width(self, f.width(), f.sign_minus()).fmt(f)
     }
 }
 

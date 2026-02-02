@@ -7,21 +7,17 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
 
-use std::{
-    fmt::Display,
-    str::FromStr,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicU64, Ordering},
-    },
-};
+use std::fmt::Display;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
 // See `Cargo.toml` for docs about the `disable_web_viewer_server` cfg:
 #[cfg(not(disable_web_viewer_server))]
 mod data {
-    #![allow(clippy::large_include_file)]
+    #![expect(clippy::large_include_file)]
 
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
     pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index.html");
@@ -29,11 +25,11 @@ mod data {
     pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
     pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
     pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
+    pub const SIGNED_IN_HTML: &[u8] = include_bytes!("./signed-in.html");
 }
 
 /// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
-#[allow(clippy::enum_variant_names)]
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
@@ -91,11 +87,6 @@ struct WebViewerServerInner {
     server: tiny_http::Server,
     shutdown: AtomicBool,
     num_wasm_served: AtomicU64,
-
-    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
-    // while at the same time opting-out of analytics at run-time.
-    #[cfg(feature = "analytics")]
-    analytics: Option<&'static re_analytics::Analytics>,
 }
 
 impl WebViewerServer {
@@ -115,7 +106,7 @@ impl WebViewerServer {
     /// # Ok(()) }
     /// ```
     pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
-        let bind_addr: std::net::SocketAddr = format!("{bind_ip}:{port}").parse()?;
+        let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 
         let server = tiny_http::Server::http(bind_addr)
             .map_err(|err| WebViewerServerError::CreateServerFailed(bind_addr.to_string(), err))?;
@@ -125,9 +116,6 @@ impl WebViewerServer {
             server,
             shutdown,
             num_wasm_served: Default::default(),
-
-            #[cfg(feature = "analytics")]
-            analytics: re_analytics::Analytics::global_or_init(),
         });
 
         let inner_copy = inner.clone();
@@ -151,7 +139,7 @@ impl WebViewerServer {
         if let Some(local_addr) = local_addr.clone().to_ip()
             && local_addr.ip().is_unspecified()
         {
-            return format!("http://localhost:{}", local_addr.port());
+            return format!("http://127.0.0.1:{}", local_addr.port());
         }
         format!("http://{local_addr}")
     }
@@ -215,13 +203,10 @@ impl WebViewerServerInner {
         self.num_wasm_served.fetch_add(1, Ordering::Relaxed);
 
         #[cfg(feature = "analytics")]
-        if let Some(analytics) = &self.analytics {
-            analytics.record(re_analytics::event::ServeWasm);
-        }
+        re_analytics::record(|| re_analytics::event::ServeWasm);
     }
 
     #[cfg(disable_web_viewer_server)]
-    #[allow(clippy::needless_pass_by_value)]
     fn send_response(&self, _request: tiny_http::Request) -> Result<(), std::io::Error> {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
@@ -247,6 +232,7 @@ impl WebViewerServerInner {
                 self.on_serve_wasm();
                 ("application/wasm", data::VIEWER_WASM)
             }
+            "/signed-in" => ("text/html", data::SIGNED_IN_HTML),
             _ => {
                 re_log::warn!("404 path: {}", path);
                 return request.respond(tiny_http::Response::empty(404));

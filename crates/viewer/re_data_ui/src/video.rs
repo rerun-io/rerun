@@ -1,22 +1,23 @@
+use std::sync::Arc;
+
 use egui::NumExt as _;
 use egui_extras::Column;
-use re_renderer::{
-    external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
-    video::VideoFrameTexture,
-};
-use re_types::components::{MediaType, VideoTimestamp};
-use re_types::{Archetype as _, archetypes};
+use re_format::time::format_relative_timestamp_secs;
+use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::resource_managers::SourceImageDataFormat;
+use re_renderer::video::VideoFrameTexture;
+use re_sdk_types::components::{MediaType, VideoTimestamp};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_types_core::{ComponentDescriptor, RowId};
-use re_ui::{
-    UiExt as _,
-    list_item::{self, PropertyContent},
-};
-use re_video::{FrameInfo, StableIndexDeque, VideoDataDescription};
+use re_ui::UiExt as _;
+use re_ui::list_item::{self, PropertyContent};
+use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
     SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
     ViewerContext, video_stream_time_from_query,
 };
-use std::sync::Arc;
+
+use crate::image::texture_preview_size;
 
 pub fn video_asset_result_ui(
     ui: &mut egui::Ui,
@@ -25,10 +26,9 @@ pub fn video_asset_result_ui(
 ) {
     re_tracing::profile_function!();
 
-    #[allow(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
-            if !ui_layout.is_single_line() {
+            if ui_layout == UiLayout::SelectionPanel {
                 let default_open = true;
                 // Extra scope needed to ensure right spacing.
                 ui.list_item_scope("video_asset", |ui| {
@@ -60,10 +60,9 @@ pub fn video_stream_result_ui(
 ) {
     re_tracing::profile_function!();
 
-    #[allow(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
-            if !ui_layout.is_single_line() {
+            if ui_layout == UiLayout::SelectionPanel {
                 let default_open = true;
                 // Extra scope needed to ensure right spacing.
                 ui.list_item_scope("video_stream", |ui| {
@@ -166,10 +165,10 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
 
     ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
-                PropertyContent::new("Number of GOPs")
-                    .value_uint(video_descr.gops.num_elements()),
+                PropertyContent::new("Number of keyframes")
+                    .value_uint(video_descr.keyframe_indices.len()),
             )
-            .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
+            .on_hover_text("The total number of keyframes in the video.");
 
             let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_descr.samples_statistics;
 
@@ -230,19 +229,24 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
         .body(|mut body| {
             tokens.setup_table_body(&mut body, table_style);
 
+            let loaded_samples: Vec<_> = video_descr
+                .samples
+                .iter_indexed()
+                .filter_map(|(idx, s)| Some((idx, s.sample()?)))
+                .collect();
+
             body.rows(
                 tokens.table_row_height(table_style),
-                video_descr.samples.num_elements(),
+                loaded_samples.len(),
                 |mut row| {
-                    let sample_idx = row.index() + video_descr.samples.min_index();
-                    let sample = &video_descr.samples[sample_idx];
+                    let (sample_idx, sample) = loaded_samples[row.index()];
                     let re_video::SampleMetadata {
                         is_sync,
                         frame_nr,
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
-                        buffer_index: _,
+                        source_id: _,
                         byte_span,
                     } = *sample;
 
@@ -253,10 +257,10 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                         ui.monospace(re_format::format_uint(frame_nr));
                     });
                     row.col(|ui| {
-                        if let Some(gop_index) = video_descr
-                            .gop_index_containing_presentation_timestamp(presentation_timestamp)
+                        if let Some(keyframe_index) =
+                            video_descr.presentation_time_keyframe_index(presentation_timestamp)
                         {
-                            ui.monospace(re_format::format_uint(gop_index));
+                            ui.monospace(re_format::format_uint(keyframe_index));
                         }
                     });
                     row.col(|ui| {
@@ -298,20 +302,20 @@ fn timestamp_ui(
     let response = ui.monospace(re_format::format_int(timestamp.0));
     if let Some(timescale) = timescale {
         response.on_hover_ui(|ui| {
-            ui.monospace(re_format::format_timestamp_secs(
+            ui.monospace(format_relative_timestamp_secs(
                 timestamp.into_secs(timescale),
             ));
         });
     }
 }
 
-pub fn show_decoded_frame_info(
+fn decoded_frame_ui<'a>(
     ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_time: re_video::Time,
-    video_buffers: &StableIndexDeque<&[u8]>,
+    get_video_buffer: &dyn Fn(re_log_types::external::re_tuid::Tuid) -> &'a [u8],
 ) {
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
@@ -320,7 +324,7 @@ pub fn show_decoded_frame_info(
         ctx.render_ctx(),
         player_stream_id,
         video_time,
-        video_buffers,
+        get_video_buffer,
     ) {
         Ok(VideoFrameTexture {
             texture,
@@ -329,7 +333,9 @@ pub fn show_decoded_frame_info(
             frame_info,
             source_pixel_format,
         }) => {
-            if let Some(frame_info) = frame_info {
+            if let Some(frame_info) = frame_info
+                && ui_layout == UiLayout::SelectionPanel
+            {
                 re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
                     let id = ui.id().with("decoded_frame_collapsible");
                     let default_open = false;
@@ -355,6 +361,15 @@ pub fn show_decoded_frame_info(
                 });
             }
 
+            let preview_size = if let Some(texture) = &texture {
+                let [w, h] = texture.width_height();
+                texture_preview_size(ui, ui_layout, [w, h])
+            } else if let Some([w, h]) = video.dimensions() {
+                texture_preview_size(ui, ui_layout, [w as _, h as _])
+            } else {
+                egui::Vec2::splat(ui.available_width().at_most(64.0))
+            };
+
             let response = if let Some(texture) = texture {
                 crate::image::texture_preview_ui(
                     ctx.render_ctx(),
@@ -362,12 +377,10 @@ pub fn show_decoded_frame_info(
                     ui_layout,
                     "video_preview",
                     re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+                    preview_size,
                 )
             } else {
-                ui.allocate_response(
-                    egui::Vec2::splat(ui.available_width().at_most(128.0)),
-                    egui::Sense::hover(),
-                )
+                ui.allocate_response(preview_size, egui::Sense::hover())
             };
 
             if decoder_delay_state.should_request_more_frames() {
@@ -435,8 +448,8 @@ fn frame_info_ui(
     if let Some(timescale) = video_descr.timescale {
         ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
             "{} - {}",
-            re_format::format_timestamp_secs(presentation_time_range.start.into_secs(timescale)),
-            re_format::format_timestamp_secs(presentation_time_range.end.into_secs(timescale)),
+            format_relative_timestamp_secs(presentation_time_range.start.into_secs(timescale)),
+            format_relative_timestamp_secs(presentation_time_range.end.into_secs(timescale)),
         )))
     } else {
         ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
@@ -503,21 +516,21 @@ fn frame_info_ui(
 
     // Information about the current group of pictures this frame is part of.
     // Lookup via decode timestamp is faster, but it may not always be available.
-    if let Some(gop_index) =
-        video_descr.gop_index_containing_presentation_timestamp(presentation_timestamp)
+    if let Some(keyframe_idx) = video_descr.presentation_time_keyframe_index(presentation_timestamp)
     {
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("GOP index").value_text(gop_index.to_string()),
+            PropertyContent::new("keyframe index").value_text(keyframe_idx.to_string()),
         )
-        .on_hover_text("The index of the group of picture (GOP) that this sample belongs to.");
+        .on_hover_text("The index of the keyframe that this sample belongs to.");
 
-        if let Some(gop) = video_descr.gops.get(gop_index) {
-            let first_sample = video_descr.samples.get(gop.sample_range.start);
-            let last_sample = video_descr
-                .samples
-                .get(gop.sample_range.end.saturating_sub(1));
+        if let Some(sample_range) = video_descr.gop_sample_range_for_keyframe(keyframe_idx) {
+            let first_sample = video_descr.samples.get(sample_range.start);
+            let last_sample = video_descr.samples.get(sample_range.end.saturating_sub(1));
 
-            if let (Some(first_sample), Some(last_sample)) = (first_sample, last_sample) {
+            if let Some((first_sample, last_sample)) = first_sample
+                .and_then(|s| s.sample())
+                .zip(last_sample.and_then(|s| s.sample()))
+            {
                 ui.list_item_flat_noninteractive(PropertyContent::new("GOP DTS range").value_text(
                     format!("{} - {}", re_format::format_int(first_sample.decode_timestamp.0), re_format::format_int(last_sample.decode_timestamp.0))
                 ))
@@ -575,7 +588,7 @@ pub enum VideoUi {
     Asset(
         Arc<Result<re_renderer::video::Video, VideoLoadError>>,
         Option<VideoTimestamp>,
-        re_types::datatypes::Blob,
+        re_sdk_types::datatypes::Blob,
     ),
 }
 
@@ -585,7 +598,7 @@ impl VideoUi {
         entity_path: &re_log_types::EntityPath,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
-        blob: &re_types::datatypes::Blob,
+        blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {
@@ -597,7 +610,7 @@ impl VideoUi {
                     c.entry(
                         debug_name,
                         blob_row_id,
-                        blob_component_descriptor,
+                        blob_component_descriptor.component,
                         blob,
                         media_type,
                         ctx.app_options().video_decoder_settings(),
@@ -653,27 +666,37 @@ impl VideoUi {
         match self {
             Self::Stream(video_stream_result) => {
                 video_stream_result_ui(ui, ui_layout, video_stream_result);
+
+                let storage_engine = ctx.store_context.recording.storage_engine();
+                let get_chunk_array = |id| {
+                    let chunk = storage_engine
+                        .store()
+                        .use_physical_chunk_or_report_missing(&id)?;
+
+                    let sample_component = archetypes::VideoStream::descriptor_sample().component;
+
+                    let (_, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
+                        chunk.raw_component_array(sample_component)?,
+                    )?;
+
+                    Some(buffer)
+                };
+
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
                     let time = video_stream_time_from_query(query);
-                    let buffers = video.sample_buffers();
-                    show_decoded_frame_info(
-                        ctx,
-                        ui,
-                        ui_layout,
-                        &video.video_renderer,
-                        time,
-                        &buffers,
-                    );
+                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time, &|id| {
+                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
+
+                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                    });
                 }
             }
             Self::Asset(video_result, timestamp, blob) => {
                 video_asset_result_ui(ui, ui_layout, video_result);
+
                 // Show a mini video player for video blobs:
-                if !ui_layout.is_single_line()
-                    && ui_layout != UiLayout::Tooltip
-                    && let Ok(video) = video_result.as_ref()
-                {
+                if let Ok(video) = video_result.as_ref() {
                     let video_timestamp = timestamp.unwrap_or_else(|| {
                         // TODO(emilk): Some time controls would be nice,
                         // but the point here is not to have a nice viewer,
@@ -693,9 +716,8 @@ impl VideoUi {
                         video_timestamp,
                         video.data_descr().timescale,
                     );
-                    let video_buffers = std::iter::once(blob.as_ref()).collect();
 
-                    show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
+                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time, &|_| blob);
                 }
             }
         }

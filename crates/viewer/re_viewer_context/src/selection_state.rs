@@ -1,7 +1,8 @@
-use parking_lot::Mutex;
-use re_global_context::{ItemCollection, ItemContext};
+use re_mutex::Mutex;
 
 use super::Item;
+use crate::command_sender::{SelectionSource, SetSelection};
+use crate::{ItemCollection, ItemContext};
 
 /// Selection highlight, sorted from weakest to strongest.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -58,11 +59,13 @@ impl InteractionHighlight {
 /// Changes from one frame are only visible in the next frame.
 #[derive(Default)]
 pub struct ApplicationSelectionState {
-    /// The selected items. Write to this with [`re_global_context::SystemCommand::SetSelection`].
+    /// The selected items. Write to this with [`crate::SystemCommand::set_selection`].
     selection: ItemCollection,
 
     /// Has selection changed since the previous frame?
-    selection_changed: bool,
+    ///
+    /// Some if the selection was changed this frame.
+    selection_changed: Option<SelectionSource>,
 
     /// What objects are hovered? Read from this.
     hovered_previous_frame: ItemCollection,
@@ -90,7 +93,9 @@ impl ApplicationSelectionState {
         // Purge selection of invalid items.
         self.selection.retain(|item, _| item_retain_condition(item));
 
-        self.selection_changed |= start_len != self.selection.len();
+        if start_len != self.selection.len() {
+            self.selection_changed = Some(SelectionSource::Other);
+        }
 
         // Set to fallback if empty.
         if self.selection.is_empty()
@@ -102,22 +107,25 @@ impl ApplicationSelectionState {
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!
         self.hovered_previous_frame = std::mem::take(self.hovered_this_frame.get_mut());
 
-        if self.selection_changed {
-            self.selection_changed = false;
+        if self.selection_changed.is_some() {
             SelectionChange::SelectionChanged(&self.selection)
         } else {
             SelectionChange::NoChange
         }
     }
 
+    pub fn on_frame_end(&mut self) {
+        self.selection_changed = None;
+    }
+
     /// Sets several objects to be selected, updating history as needed.
     ///
     /// Clears the selected item context if none was specified.
-    pub fn set_selection(&mut self, items: impl Into<ItemCollection>) {
-        let items = items.into();
-        if items != self.selection {
-            self.selection_changed = true;
-            self.selection = items;
+    pub fn set_selection(&mut self, items: impl Into<SetSelection>) {
+        let SetSelection { selection, source } = items.into();
+        if selection != self.selection {
+            self.selection_changed = Some(source);
+            self.selection = selection;
         }
     }
 
@@ -142,6 +150,11 @@ impl ApplicationSelectionState {
 
     pub fn hovered_item_context(&self) -> Option<&ItemContext> {
         self.hovered_previous_frame.iter_item_context().next()
+    }
+
+    /// Returns Some if the selection changed this frame.
+    pub fn selection_changed(&self) -> Option<SelectionSource> {
+        self.selection_changed
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {

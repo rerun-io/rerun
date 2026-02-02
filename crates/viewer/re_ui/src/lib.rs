@@ -17,36 +17,44 @@ mod icon_text;
 pub mod icons;
 pub mod list_item;
 mod markdown_utils;
+pub mod menu;
 pub mod modal;
 pub mod notifications;
+mod relative_time_range;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+pub mod text_edit;
+pub mod time;
 mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
+mod button;
+#[cfg(feature = "testing")]
+pub mod testing;
+
 use egui::NumExt as _;
 
-pub use self::{
-    command::{UICommand, UICommandSender},
-    command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
-    context_ext::ContextExt,
-    design_tokens::{DesignTokens, TableStyle},
-    help::*,
-    hot_reload_design_tokens::design_tokens_of,
-    icon_text::*,
-    icons::Icon,
-    markdown_utils::*,
-    notifications::Link,
-    section_collapsing_header::SectionCollapsingHeader,
-    syntax_highlighting::SyntaxHighlighting,
-    time_drag_value::TimeDragValue,
-    ui_ext::UiExt,
-    ui_layout::UiLayout,
+pub use self::button::*;
+pub use self::command::{UICommand, UICommandSender};
+pub use self::command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl};
+pub use self::context_ext::ContextExt;
+pub use self::design_tokens::{DesignTokens, TableStyle};
+pub use self::egui_ext::widget_ext::*;
+pub use self::help::*;
+pub use self::hot_reload_design_tokens::design_tokens_of;
+pub use self::icon_text::*;
+pub use self::icons::Icon;
+pub use self::markdown_utils::*;
+pub use self::notifications::Link;
+pub use self::relative_time_range::{
+    RelativeTimeRange, relative_time_range_boundary_label_text, relative_time_range_label_text,
 };
-
-pub mod menu;
-pub mod time;
+pub use self::section_collapsing_header::SectionCollapsingHeader;
+pub use self::syntax_highlighting::SyntaxHighlighting;
+pub use self::time_drag_value::TimeDragValue;
+pub use self::ui_ext::UiExt;
+pub use self::ui_layout::UiLayout;
 
 // ---------------------------------------------------------------------------
 

@@ -1,24 +1,17 @@
-use re_types::{
-    Archetype as _,
-    archetypes::SegmentationImage,
-    components::{DrawOrder, ImageFormat, Opacity},
-    image::ImageKind,
-};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::SegmentationImage;
+use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
-};
-
-use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    IdentifiedViewSystem, ImageInfo, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::textured_rect_from_image;
+use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -44,17 +37,11 @@ impl IdentifiedViewSystem for SegmentationImageVisualizer {
 }
 
 impl VisualizerSystem for SegmentationImageVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<SegmentationImage>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<SegmentationImage>()
     }
 
     fn execute(
@@ -62,34 +49,43 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         use super::entity_iterator::{iter_component, iter_slices, process_archetype};
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
                 let entity_path = ctx.target_entity_path;
 
-                let Some(all_buffer_chunks) =
-                    results.get_required_chunks(SegmentationImage::descriptor_buffer())
-                else {
+                let all_buffer_chunks = results
+                    .get_required_chunk(SegmentationImage::descriptor_buffer().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
+                if all_buffer_chunks.is_empty() {
                     return Ok(());
-                };
-                let Some(all_formats_chunks) =
-                    results.get_required_chunks(SegmentationImage::descriptor_format())
-                else {
+                }
+                let all_formats_chunks = results
+                    .get_required_chunk(SegmentationImage::descriptor_format().component)
+                    .ensure_required(|err| spatial_ctx.report_error(err));
+                if all_formats_chunks.is_empty() {
                     return Ok(());
-                };
+                }
 
                 let timeline = ctx.query.timeline();
                 let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
                 let all_formats_indexed =
                     iter_component::<ImageFormat>(&all_formats_chunks, timeline);
-                let all_opacities =
-                    results.iter_as(timeline, SegmentationImage::descriptor_opacity());
+                let all_opacities = results.iter_as(
+                    |err| spatial_ctx.report_warning(err),
+                    timeline,
+                    SegmentationImage::descriptor_opacity().component,
+                );
 
                 let data = re_query::range_zip_1x2(
                     all_buffers_indexed,
@@ -101,7 +97,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     Some(SegmentationImageComponentData {
                         image: ImageInfo::from_stored_blob(
                             row_id,
-                            &SegmentationImage::descriptor_buffer(),
+                            SegmentationImage::descriptor_buffer().component,
                             buffer.clone().into(),
                             first_copied(formats.as_deref())?.0,
                             ImageKind::Segmentation,
@@ -113,13 +109,15 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 for data in data {
                     let SegmentationImageComponentData { image, opacity } = data;
 
-                    let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
+                    let opacity = opacity.unwrap_or_else(|| {
+                        typed_fallback_for(ctx, SegmentationImage::descriptor_opacity().component)
+                    });
                     #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
                     let multiplicative_tint =
                         re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
                     let colormap = None;
 
-                    if let Some(textured_rect) = textured_rect_from_image(
+                    match textured_rect_from_image(
                         ctx.viewer_ctx(),
                         entity_path,
                         spatial_ctx,
@@ -128,83 +126,38 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         multiplicative_tint,
                         SegmentationImage::name(),
                     ) {
-                        self.data.add_pickable_rect(
-                            PickableTexturedRect {
-                                ent_path: entity_path.clone(),
-                                textured_rect,
-                                source_data: PickableRectSourceData::Image {
-                                    image,
-                                    depth_meter: None,
+                        Ok(textured_rect) => {
+                            self.data.add_pickable_rect(
+                                PickableTexturedRect {
+                                    ent_path: entity_path.clone(),
+                                    textured_rect,
+                                    source_data: PickableRectSourceData::Image {
+                                        image,
+                                        depth_meter: None,
+                                    },
                                 },
-                            },
-                            spatial_ctx.view_class_identifier,
-                        );
+                                spatial_ctx.view_class_identifier,
+                            );
+                        }
+                        Err(err) => {
+                            spatial_ctx.report_error(re_error::format(err));
+                        }
                     }
                 }
-
                 Ok(())
             },
         )?;
 
-        // TODO(#1025): draw order is translated to depth offset, which works fine for opaque images,
-        // but for everything with transparency, actual drawing order is still important.
-        // We mitigate this a bit by at least sorting the segmentation images within each other.
-        // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
-        // visualizers are executed in the order of their identifiers.
-        // -> The draw order is always DepthImage then Image then SegmentationImage,
-        //    which happens to be exactly what we want 🙈
-        self.data.pickable_rects.sort_by_key(|image| {
-            (
-                image.textured_rect.options.depth_offset,
-                egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
-            )
-        });
-
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Opacity> for SegmentationImageVisualizer {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        // Segmentation images should be transparent whenever they're on top of other images,
-        // But fully opaque if there are no other images in the scene.
-        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
-            return 1.0.into();
-        };
-
-        // Known cosmetic issues with this approach:
-        // * The first frame we have more than one image, the segmentation image will be opaque.
-        //      It's too complex to do a full view query just for this here.
-        //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
-        // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
-        view_state
-            .fallback_opacity_for_image_kind(ImageKind::Segmentation)
-            .into()
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for SegmentationImageVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_SEGMENTATION_IMAGE
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(SegmentationImageVisualizer => [DrawOrder, Opacity]);
 
 fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
     slice.and_then(|element| element.first()).copied()

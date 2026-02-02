@@ -1,20 +1,18 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{ArrayRef, AsArray as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder},
-    datatypes::DataType,
-};
-
+use arrow::array::{ArrayRef, AsArray as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
+use arrow::datatypes::DataType;
 use re_tuid::Tuid;
 
 use crate::{DeserializationError, Loggable};
 
 // ---
 
+#[expect(clippy::cast_possible_wrap)]
 const BYTE_WIDTH: i32 = std::mem::size_of::<Tuid>() as i32;
 
 pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {
-    #[allow(clippy::unwrap_used)] // Can't fail
+    #[expect(clippy::unwrap_used)] // Can't fail
     <Tuid as Loggable>::to_arrow(tuids.iter())
         .unwrap()
         .as_fixed_size_binary()
@@ -50,7 +48,7 @@ impl Loggable for Tuid {
 
         let mut builder = FixedSizeBinaryBuilder::with_capacity(iter.size_hint().0, BYTE_WIDTH);
         for tuid in iter {
-            #[allow(clippy::unwrap_used)] // Can't fail because `BYTE_WIDTH` is correct.
+            #[expect(clippy::unwrap_used)] // Can't fail because `BYTE_WIDTH` is correct.
             builder.append_value(tuid.into().as_bytes()).unwrap();
         }
 
@@ -67,7 +65,7 @@ impl Loggable for Tuid {
 
         // NOTE: We don't even look at the validity, our datatype says we don't care.
 
-        let uuids: &[Self] = bytemuck::try_cast_slice(array.value_data()).map_err(|err| {
+        let uuids: &[Self] = Self::slice_from_bytes(array.value_data()).map_err(|err| {
             DeserializationError::ValidationError(format!("Bad length of Tuid array: {err}"))
         })?;
 

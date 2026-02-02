@@ -8,7 +8,7 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
     {
         // If the schemas don't match, we definitely have a problem
         re_log::debug!(
-            "Unexpected datatype for component {:?}.\nFound: {:#?}\nExpected: {:#?}",
+            "Unexpected datatype for component {:?}.\nFound: {}\nExpected: {}",
             C::name(),
             data_type,
             C::arrow_datatype()

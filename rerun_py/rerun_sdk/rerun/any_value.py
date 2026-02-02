@@ -1,11 +1,6 @@
 from __future__ import annotations
 
-import warnings
 from typing import Any
-
-from typing_extensions import deprecated
-
-from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
@@ -71,7 +66,7 @@ class AnyValues(AsComponents):
         Parameters
         ----------
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         kwargs:
             The components to be logged.
@@ -80,41 +75,13 @@ class AnyValues(AsComponents):
         self._builder = DynamicArchetype._default_without_archetype(drop_untyped_nones, **kwargs)
         self._builder._with_name(self.__class__.__name__)
 
-    @deprecated(
-        "`rr.AnyValues.with_field` is deprecated, use `rr.AnyValues.with_component_from_data` instead.",
-    )
-    def with_field(
-        self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
-    ) -> AnyValues:
-        return self.with_component_from_data(descriptor, value, drop_untyped_nones)
-
-    def with_component_from_data(
-        self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
-    ) -> AnyValues:
+    def with_component_from_data(self, descriptor: str, value: Any, *, drop_untyped_nones: bool = True) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
-        # TODO(#10908): Prune this type in 0.26
-        if isinstance(descriptor, ComponentDescriptor):
-            warnings.warn(
-                "`rr.AnyValues.with_field` using a component descriptor is deprecated, "
-                "use DynamicArchetype if trying to specify archetype grouping of values.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            self._builder._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
-        else:
-            self._builder.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
-        return self
-
-    @deprecated(
-        "`rr.AnyValues.with_component` is deprecated, use `rr.AnyValues.with_component_override` instead.",
-    )
-    def with_component(self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
-        """Adds an `AnyValueBatch` to this `AnyValues` bundle with name and component type."""
-        self._builder.with_component_override(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
+        self._builder.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     def with_component_override(
-        self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True
+        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
     ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle with name and component type."""
         self._builder.with_component_override(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
@@ -168,7 +135,7 @@ class AnyValues(AsComponents):
         Parameters
         ----------
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         kwargs:
             The components to be logged.
@@ -181,4 +148,4 @@ class AnyValues(AsComponents):
 
     @property
     def component_batches(self) -> list[DescribedComponentBatch]:
-        return self._builder.component_batches
+        return self._builder.as_component_batches()

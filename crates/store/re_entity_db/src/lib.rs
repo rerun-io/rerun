@@ -4,32 +4,33 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod chunk_promise;
 pub mod entity_db;
 pub mod entity_tree;
 mod ingestion_statistics;
 mod instance_path;
+mod rrd_manifest_index;
+mod sorted_range_map;
 mod store_bundle;
 mod time_histogram_per_timeline;
-mod times_per_timeline;
 mod versioned_instance_path;
-
-pub use self::{
-    entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb},
-    entity_tree::EntityTree,
-    ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats},
-    instance_path::{InstancePath, InstancePathHash},
-    store_bundle::{StoreBundle, StoreLoadError},
-    time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},
-    times_per_timeline::{TimeCounts, TimelineStats, TimesPerTimeline},
-    versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
-};
 
 #[doc(no_inline)]
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
+pub use self::entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb};
+pub use self::entity_tree::EntityTree;
+pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats};
+pub use self::instance_path::{InstancePath, InstancePathHash};
+pub use self::rrd_manifest_index::{
+    BatchInfo, ChunkPrefetchOptions, ChunkPromise, ChunkPromises, RrdManifestIndex,
+};
+pub use self::store_bundle::{StoreBundle, StoreLoadError};
+pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline};
+pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
+
 pub mod external {
-    pub use re_chunk_store;
-    pub use re_query;
+    pub use {re_chunk_store, re_query};
 }
 
 // ----------------------------------------------------------------------------

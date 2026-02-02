@@ -75,36 +75,35 @@
 //!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
 //!
 
-use std::{num::NonZeroU64, ops::Range};
+use std::num::NonZeroU64;
+use std::ops::Range;
 
 use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
 use re_tracing::profile_function;
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
+    RenderPipelineDesc,
+};
 use crate::{
     DebugLabel, DepthOffset, DrawableCollector, LineDrawableBuilder, OutlineMaskPreference,
-    PickingLayerObjectId, PickingLayerProcessor,
-    allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_shader_module,
-    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc,
-    },
+    PickingLayerObjectId, PickingLayerProcessor, include_shader_module,
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use crate::{Color32, PickingLayerObjectId, size::SizeHalf, wgpu_buffer_types};
-
     use super::LineStripFlags;
+    use crate::size::SizeHalf;
+    use crate::{Color32, PickingLayerObjectId, UnalignedColor32, wgpu_buffer_types};
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -131,7 +130,8 @@ pub mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripInfo {
-        pub color: Color32, // alpha unused right now
+        /// [`ecolor::Color32`] is `repr(align(4))` so we can't use it in `repr(packed)`.
+        pub color: UnalignedColor32, // alpha unused right now
         pub stippling: u8,
         pub flags: LineStripFlags,
         pub radius: SizeHalf,
@@ -142,7 +142,7 @@ pub mod gpu_data {
         fn default() -> Self {
             Self {
                 radius: crate::Size::new_ui_points(1.5).into(),
-                color: Color32::WHITE,
+                color: Color32::WHITE.into(),
                 stippling: 0,
                 flags: LineStripFlags::empty(),
             }
@@ -780,9 +780,9 @@ impl Renderer for LineRenderer {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Rgba, view_builder::TargetConfiguration};
-
     use super::*;
+    use crate::Rgba;
+    use crate::view_builder::TargetConfiguration;
 
     // Regression test for https://github.com/rerun-io/rerun/issues/8639
     #[test]

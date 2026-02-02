@@ -1,19 +1,16 @@
 #![expect(clippy::unwrap_used)] // It's a test!
 
-use std::cell::Cell;
-
 use re_chunk_store::RowId;
-use re_log_types::{NonMinI64, TimeInt, TimePoint};
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_log_types::TimePoint;
+use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference, VideoStream};
+use re_sdk_types::components::{self, MediaType, VideoTimestamp};
+use re_sdk_types::datatypes;
+use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
-use re_types::{
-    archetypes::{AssetVideo, VideoFrameReference, VideoStream},
-    components::{self, MediaType, VideoTimestamp},
-    datatypes,
-};
 use re_video::{VideoCodec, VideoDataDescription};
-use re_viewer_context::ViewClass as _;
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewer_context::{TimeControlCommand, ViewClass as _};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn workspace_dir() -> std::path::PathBuf {
     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -110,27 +107,20 @@ impl std::fmt::Display for VideoType {
     }
 }
 
-fn image_diff_threshold(codec: VideoCodec) -> f32 {
+fn snapshot_options_for_codec(codec: VideoCodec, viewport_size: egui::Vec2) -> SnapshotOptions {
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
-        VideoCodec::H264 | VideoCodec::H265 => 2.2,
+        VideoCodec::H264 | VideoCodec::H265 => SnapshotOptions::new()
+            .threshold(2.2)
+            .failed_pixel_count_threshold(300),
+
         // AV1 has this problem as well but to a lesser extent.
-        VideoCodec::AV1 => 1.2,
+        VideoCodec::AV1 => SnapshotOptions::new()
+            .threshold(1.2)
+            .failed_pixel_count_threshold(100),
 
-        _ => SnapshotOptions::default().threshold,
-    }
-}
-
-fn image_failed_pixel_count_threshold(codec: VideoCodec) -> usize {
-    match codec {
-        // Despite version pinning, ffmpeg's results are quite different depending on the platform
-        // and seemingly even between runs!
-        VideoCodec::H264 | VideoCodec::H265 => 300,
-        // AV1 has this problem as well but to a lesser extent.
-        VideoCodec::AV1 => 100,
-
-        _ => SnapshotOptions::default().failed_pixel_count_threshold,
+        _ => re_ui::testing::default_snapshot_options_for_3d(viewport_size),
     }
 }
 
@@ -140,8 +130,8 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
     // Use pixi ffmpeg install if available.
     let pixi_ffmpeg_path = pixi_ffmpeg_path();
     if pixi_ffmpeg_path.exists() {
-        test_context.app_options.video_decoder_ffmpeg_path =
-            pixi_ffmpeg_path.to_str().unwrap().to_owned();
+        test_context.app_options.video.override_ffmpeg_path = true;
+        test_context.app_options.video.ffmpeg_path = pixi_ffmpeg_path.to_str().unwrap().to_owned();
 
         re_log::info!("Using pixi ffmpeg at {pixi_ffmpeg_path:?}");
     } else {
@@ -154,7 +144,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
 
     let video_asset = AssetVideo::from_file_path(&video_path).unwrap();
     let frame_timestamps_nanos = video_asset.read_frame_timestamps_nanos().unwrap();
-    let timeline = test_context.active_timeline();
+    let timeline = test_context
+        .active_timeline()
+        .expect("should have an active timeline");
 
     match video_type {
         VideoType::AssetVideo => {
@@ -179,10 +171,12 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
             let blob_bytes =
                 datatypes::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
                     .unwrap();
+            let tuid = re_log_types::external::re_tuid::Tuid::new();
             let video_data_description = VideoDataDescription::load_from_bytes(
                 blob_bytes,
                 MediaType::mp4().as_str(),
                 video_path.to_str().unwrap(),
+                tuid,
             )
             .unwrap();
 
@@ -194,7 +188,6 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
             );
 
             let mut annexb_stream_state = re_video::AnnexBStreamState::default();
-            let samples_buffers = std::iter::once(blob_bytes).collect();
 
             for (sample_idx, sample) in video_data_description.samples.iter().enumerate() {
                 let (codec, sample_bytes) = match video_data_description.codec {
@@ -213,7 +206,11 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                         re_video::write_avc_chunk_to_nalu_stream(
                             avcc,
                             &mut sample_bytes,
-                            &sample.get(&samples_buffers, sample_idx).unwrap(),
+                            &sample
+                                .sample()
+                                .unwrap()
+                                .get(&|_| blob_bytes, sample_idx)
+                                .unwrap(),
                             &mut annexb_stream_state,
                         )
                         .unwrap();
@@ -236,19 +233,34 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                         re_video::write_hevc_chunk_to_nalu_stream(
                             hvcc,
                             &mut sample_bytes,
-                            &sample.get(&samples_buffers, sample_idx).unwrap(),
+                            &sample
+                                .sample()
+                                .unwrap()
+                                .get(&|_| blob_bytes, sample_idx)
+                                .unwrap(),
                             &mut annexb_stream_state,
                         )
                         .unwrap();
 
                         (components::VideoCodec::H265, sample_bytes)
                     }
+                    VideoCodec::AV1 => {
+                        // Extract raw sample bytes, under av1 they're OBUs already!
+                        let sample_bytes = sample
+                            .sample()
+                            .unwrap()
+                            .get(&|_| blob_bytes, sample_idx)
+                            .unwrap()
+                            .data;
+                        (components::VideoCodec::AV1, sample_bytes)
+                    }
                     VideoCodec::VP9 => panic!("VP9 is not supported for video streams"),
                     VideoCodec::VP8 => panic!("VP8 is not supported for video streams"),
-                    VideoCodec::AV1 => panic!("AV1 is not supported for video streams"),
                 };
 
                 let time_ns = sample
+                    .sample()
+                    .unwrap()
                     .presentation_timestamp
                     .into_nanos(video_data_description.timescale.unwrap());
 
@@ -263,48 +275,62 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
         }
     }
 
-    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
             re_view_spatial::SpatialView2D::identifier(),
-        ))
+        ));
+
+        // Set a background color other than black so we can see the effect of transparency on errors & lack thereof on the video.
+        let property = ViewProperty::from_archetype::<
+            re_sdk_types::blueprint::archetypes::Background,
+        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        property.save_blueprint_component(
+            ctx,
+            &re_sdk_types::blueprint::archetypes::Background::descriptor_kind(),
+            &re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
+        );
+        property.save_blueprint_component(
+            ctx,
+            &re_sdk_types::blueprint::archetypes::Background::descriptor_color(),
+            &re_sdk_types::components::Color::from_rgb(200, 100, 200),
+        );
+
+        view_id
     });
 
     // Decoding videos can take quite a while!
     let step_dt_seconds = 1.0 / 4.0; // This is also the current egui_kittest default, but let's be explicit since we use `try_run_realtime`.
     let max_total_time_seconds = 60.0;
 
-    // Using a single harness for all frames - we want to make sure that we use the same decoder,
-    // not tearing down the video player!
-    let desired_seek_ns = Cell::new(0);
+    let viewport_size = [300.0, 200.0].into();
     let mut harness = test_context
-        .setup_kittest_for_rendering()
+        .setup_kittest_for_rendering_3d(viewport_size)
         .with_step_dt(step_dt_seconds)
         .with_max_steps((max_total_time_seconds / step_dt_seconds) as u64)
-        .with_size(egui::vec2(300.0, 200.0))
         .build_ui(|ui| {
-            // Since we can't access `test_context` after creating `harness`, we have to do the seeking in here.
-            {
-                let mut time_ctrl = test_context.recording_config.time_ctrl.write();
-                time_ctrl.set_time(TimeInt::from_nanos(
-                    NonMinI64::new(desired_seek_ns.get()).unwrap(),
-                ));
-            }
             test_context.run_with_single_view(ui, view_id);
 
             std::thread::sleep(std::time::Duration::from_millis(20));
         });
 
     for seek_location in VideoTestSeekLocation::ALL {
-        desired_seek_ns.set(seek_location.get_time_ns(&frame_timestamps_nanos));
+        // Using a single harness for all frames - we want to make sure that we use the same decoder,
+        // not tearing down the video player!
+        let desired_seek_ns = seek_location.get_time_ns(&frame_timestamps_nanos);
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [
+                TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                TimeControlCommand::SetTime(desired_seek_ns.into()),
+            ],
+        );
 
         // Video decoding happens in a different thread, so it's important that we give it time
         // and don't busy loop.
         harness.try_run_realtime().unwrap();
         harness.snapshot_options(
             format!("video_{video_type}_{codec:?}_{}", seek_location.get_label()),
-            &SnapshotOptions::new()
-                .threshold(image_diff_threshold(codec))
-                .failed_pixel_count_threshold(image_failed_pixel_count_threshold(codec)),
+            &snapshot_options_for_codec(codec, viewport_size),
         );
     }
 }
@@ -346,8 +372,8 @@ fn test_video_stream_codec_h265() {
 //     test_video(VideoType::VideoStream, VideoCodec::VP9);
 // }
 
-// TODO(#10184): Unsupported codec for VideoStream
-// #[test]
-// fn test_video_stream_codec_av1() {
-//     test_video(VideoType::VideoStream, VideoCodec::AV1);
-// }
+#[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms otherwise we error.
+#[test]
+fn test_video_stream_codec_av1() {
+    test_video(VideoType::VideoStream, VideoCodec::AV1);
+}

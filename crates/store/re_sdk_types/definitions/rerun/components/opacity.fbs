@@ -1,0 +1,17 @@
+
+namespace rerun.components;
+
+// ---
+
+/// Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
+///
+/// The final opacity value may be a result of multiplication with alpha values as specified by other color sources.
+/// Unless otherwise specified, the default value is 1.
+struct Opacity (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float | npt.ArrayLike",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  opacity: rerun.datatypes.Float32 (order: 100);
+}

@@ -1,17 +1,17 @@
 use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
 use re_log_types::EntityPath;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{archetypes::PlotLegend, components::Corner2D},
-    components::Visible,
-    datatypes::TensorBuffer,
-};
-use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
-use re_view::{controls::SELECTION_RECT_ZOOM_BUTTON, view_property_ui};
+use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend};
+use re_sdk_types::blueprint::components::{Corner2D, Enabled};
+use re_sdk_types::components::{Color, Visible};
+use re_sdk_types::datatypes::TensorBuffer;
+use re_sdk_types::{View as _, ViewClassIdentifier};
+use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
+use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
+use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass,
+    RecommendedVisualizers, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
     ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
     VisualizableEntities, suggest_view_for_each_entity,
 };
@@ -22,7 +22,7 @@ use super::visualizer_system::{BarChartData, BarChartVisualizerSystem};
 #[derive(Default)]
 pub struct BarChartView;
 
-type ViewType = re_types::blueprint::views::BarChartView;
+type ViewType = re_sdk_types::blueprint::views::BarChartView;
 
 impl ViewClass for BarChartView {
     fn identifier() -> ViewClassIdentifier {
@@ -87,20 +87,26 @@ impl ViewClass for BarChartView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<BarChartVisualizerSystem>()
+        system_registry.register_visualizer::<BarChartVisualizerSystem>()?;
+
+        system_registry.register_fallback_provider::<Corner2D>(
+            PlotLegend::descriptor_corner().component,
+            |_| Corner2D::RightTop,
+        );
+
+        Ok(())
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
     }
 
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> re_viewer_context::SmallVisualizerSet {
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+    ) -> RecommendedVisualizers {
         // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
         // since they're not indicated with a BarChart indicator.
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
@@ -108,11 +114,11 @@ impl ViewClass for BarChartView {
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&BarChartVisualizerSystem::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
-            std::iter::once(BarChartVisualizerSystem::identifier()).collect()
+            RecommendedVisualizers::default(BarChartVisualizerSystem::identifier())
         } else {
-            Default::default()
+            RecommendedVisualizers::empty()
         }
     }
 
@@ -122,7 +128,7 @@ impl ViewClass for BarChartView {
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
-        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, include_entity)
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
@@ -134,12 +140,13 @@ impl ViewClass for BarChartView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<PlotLegend>(&ctx, ui, self);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<PlotBackground>(&ctx, ui);
+            view_property_ui::<PlotLegend>(&ctx, ui);
         });
 
         Ok(())
@@ -166,19 +173,35 @@ impl ViewClass for BarChartView {
             .get::<BarChartVisualizerSystem>()?
             .charts;
 
-        let ctx = self.view_context(ctx, view_id, state);
+        let ctx = self.view_context(ctx, view_id, state, query.space_origin);
+        let background = ViewProperty::from_archetype::<PlotBackground>(
+            blueprint_db,
+            ctx.blueprint_query(),
+            view_id,
+        );
+        let background_color = background
+            .component_or_fallback::<Color>(&ctx, PlotBackground::descriptor_color().component)?;
+        let show_grid = background.component_or_fallback::<Enabled>(
+            &ctx,
+            PlotBackground::descriptor_show_grid().component,
+        )?;
+
         let plot_legend = ViewProperty::from_archetype::<PlotLegend>(
             blueprint_db,
             ctx.blueprint_query(),
             view_id,
         );
         let legend_visible: Visible =
-            plot_legend.component_or_fallback(&ctx, self, &PlotLegend::descriptor_visible())?;
+            plot_legend.component_or_fallback(&ctx, PlotLegend::descriptor_visible().component)?;
         let legend_corner: Corner2D =
-            plot_legend.component_or_fallback(&ctx, self, &PlotLegend::descriptor_corner())?;
+            plot_legend.component_or_fallback(&ctx, PlotLegend::descriptor_corner().component)?;
 
         ui.scope(|ui| {
-            let mut plot = Plot::new("bar_chart_plot").clamp_grid(true);
+            let background_color = background_color.into();
+            ui.style_mut().visuals.extreme_bg_color = background_color;
+            let mut plot = Plot::new("bar_chart_plot")
+                .show_grid(**show_grid)
+                .clamp_grid(true);
 
             if *legend_visible.0 {
                 plot = plot.legend(
@@ -189,7 +212,6 @@ impl ViewClass for BarChartView {
             }
 
             let mut plot_item_id_to_entity_path = HashMap::default();
-            let theme = ui.theme();
 
             let egui_plot::PlotResponse {
                 response,
@@ -199,13 +221,14 @@ impl ViewClass for BarChartView {
                 fn create_bar_chart<N: Into<f64>>(
                     ent_path: &EntityPath,
                     indexes: impl Iterator<Item = f64>,
+                    widths: impl Iterator<Item = f32>,
                     values: impl Iterator<Item = N>,
-                    color: &re_types::components::Color,
-                    theme: egui::Theme,
+                    color: &re_sdk_types::components::Color,
+                    background_color: egui::Color32,
                 ) -> BarChart {
                     let color: egui::Color32 = color.0.into();
-                    let fill = if theme == egui::Theme::Dark {
-                        color.gamma_multiply(0.75).additive() // make sure overlapping bars are obvious for dark mode
+                    let fill = if background_color.intensity() < 0.5 {
+                        color.gamma_multiply(0.75).additive() // make sure overlapping bars are obvious for darker background colors.
                     } else {
                         color.gamma_multiply(0.75)
                     };
@@ -214,10 +237,11 @@ impl ViewClass for BarChartView {
                         "bar_chart",
                         values
                             .zip(indexes)
+                            .zip(widths)
                             .enumerate()
-                            .map(|(i, (value, index))| {
-                                Bar::new(index + 0.5, value.into())
-                                    .width(1.0) // No gaps
+                            .map(|(i, ((value, index), width))| {
+                                Bar::new(index + (0.5 * width as f64), value.into())
+                                    .width(width as f64)
                                     .name(format!("{ent_path} #{i}"))
                                     .fill(fill)
                                     .stroke((1.0, stroke_color))
@@ -234,6 +258,7 @@ impl ViewClass for BarChartView {
                         abscissa,
                         values: tensor,
                         color,
+                        widths,
                     },
                 ) in charts
                 {
@@ -251,85 +276,27 @@ impl ViewClass for BarChartView {
                         TensorBuffer::F64(data) => data.iter().copied().collect(),
                     };
 
-                    let chart = match &tensor.buffer {
-                        TensorBuffer::U8(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::U16(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::U32(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::U64(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied().map(|v| v as f64),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::I8(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::I16(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::I32(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::I64(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied().map(|v| v as f64),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::F16(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().map(|f| f.to_f32()),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::F32(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
-                        TensorBuffer::F64(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            theme,
-                        ),
+                    let data: ::arrow::buffer::ScalarBuffer<f64> = match &tensor.buffer {
+                        TensorBuffer::U8(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::U16(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::U32(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::U64(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I8(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I16(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I32(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I64(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::F16(data) => data.iter().map(|v| f64::from(*v)).collect(),
+                        TensorBuffer::F32(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::F64(data) => data.iter().copied().collect(),
                     };
+                    let chart = create_bar_chart(
+                        ent_path,
+                        arg.iter().copied(),
+                        widths.iter().copied(),
+                        data.iter().copied(),
+                        color,
+                        background_color,
+                    );
 
                     let id = egui::Id::new(ent_path.hash());
                     plot_item_id_to_entity_path.insert(id, ent_path.clone());
@@ -361,16 +328,6 @@ impl ViewClass for BarChartView {
         Ok(())
     }
 }
-
-impl TypedComponentFallbackProvider<Corner2D> for BarChartView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
-        // Explicitly pick RightCorner2D::RightTop, we don't want to make this dependent on the (arbitrary)
-        // default of Corner2D
-        Corner2D::RightTop
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(BarChartView => [Corner2D]);
 
 #[test]
 fn test_help_view() {
