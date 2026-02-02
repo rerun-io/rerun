@@ -25,26 +25,24 @@ pub async fn test_time_series_max_views_spawned() {
     for frame in 0..10 {
         // Native Scalars (entities 0-5)
         for i in 0..6 {
-            for frame in 0..10 {
-                harness.log_entity(format!("native_{i}"), |builder| {
-                    builder.with_archetype_auto_row(
-                        [(timeline, frame)],
-                        &re_sdk_types::archetypes::Scalars::single(frame as f64 * i as f64),
-                    )
-                });
-            }
-            // Custom Float64 components (entities 6-11)
-            for i in 6..12 {
-                harness.log_entity(format!("custom_{i}"), |builder| {
-                    builder.with_archetype_auto_row(
-                        [(timeline, frame)],
-                        &re_sdk_types::DynamicArchetype::new("custom").with_component_from_data(
-                            "custom_scalar",
-                            Arc::new(Float64Array::from(vec![frame as f64 * i as f64])),
-                        ),
-                    )
-                });
-            }
+            harness.log_entity(format!("native_{i}"), |builder| {
+                builder.with_archetype_auto_row(
+                    [(timeline, frame)],
+                    &re_sdk_types::archetypes::Scalars::single(frame as f64 * i as f64),
+                )
+            });
+        }
+        // Custom Float64 components (entities 6-11)
+        for i in 6..12 {
+            harness.log_entity(format!("custom_{i}"), |builder| {
+                builder.with_archetype_auto_row(
+                    [(timeline, frame)],
+                    &re_sdk_types::DynamicArchetype::new("custom").with_component_from_data(
+                        "custom_scalar",
+                        Arc::new(Float64Array::from(vec![frame as f64 * i as f64])),
+                    ),
+                )
+            });
         }
     }
 
