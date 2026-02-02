@@ -620,7 +620,7 @@ where
     // We don't want the runtime to run on the main thread, as we need that one for our UI.
     // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
     // and synchronize the result using some other means instead.
-    let tokio_runtime = Runtime::new()?;
+    let tokio_runtime = initialize_tokio_runtime(args.threads)?;
     let _tokio_guard = tokio_runtime.enter();
 
     let res = if let Some(command) = args.command {
@@ -1345,6 +1345,32 @@ fn initialize_thread_pool(threads_args: i32) {
     if let Err(err) = builder.build_global() {
         re_log::warn!("Failed to initialize rayon thread pool: {err}");
     }
+}
+
+fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    // Name the tokio threads for the benefit of debuggers and profilers:
+    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    builder.thread_name_fn(|| {
+        static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+        let nr = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
+        format!("tokio-#{nr}")
+    });
+    builder.enable_all();
+
+    if threads_args < 0 {
+        if let Ok(cores) = std::thread::available_parallelism() {
+            let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
+            builder.worker_threads(threads);
+        }
+    } else if 0 < threads_args {
+        builder.worker_threads(threads_args as usize);
+    } else {
+        // 0 means "use default" (typically num CPUs)
+    }
+
+    builder.build()
 }
 
 #[cfg(feature = "native_viewer")]
