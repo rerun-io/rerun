@@ -52,6 +52,7 @@ dev = [
   "rich>=13.0",
   # Testing packages (typed, needed for linting tests)
   "pytest>=8.0",
+  "pytest-benchmark",
   "inline-snapshot>=0.31",
   "syrupy>=4.0",
   # Notebook dependencies (needed for linting rerun_notebook)

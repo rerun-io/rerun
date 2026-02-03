@@ -26,15 +26,15 @@ class Mat3x3Ext:
                 flat_columns = rows.flat_columns
             else:
                 arr = np.asarray(rows, dtype=np.float32).reshape(3, 3)
-                flat_columns = arr.flatten("F")
+                flat_columns = arr.ravel("F")
         elif columns is not None:
             # Equalize the format of the columns to a 3x3 matrix.
             # Numpy expects rows _and_ stores row-major. Therefore the flattened list will have flat columns.
             arr = np.asarray(columns, dtype=np.float32).reshape(3, 3)
-            flat_columns = arr.flatten("C")
+            flat_columns = arr.ravel("C")
         else:
             _send_warning_or_raise("Need to specify either columns or columns of matrix.", 1, recording=None)
-            flat_columns = np.identity(3, dtype=np.float32).flatten()
+            flat_columns = np.identity(3, dtype=np.float32).ravel()
         self.__attrs_init__(
             flat_columns=flat_columns,
         )
@@ -44,14 +44,14 @@ class Mat3x3Ext:
         from . import Mat3x3
 
         if isinstance(data, Mat3x3):
-            matrices = [data]
+            float_arrays = data.flat_columns
         elif len(data) == 0:  # type: ignore[arg-type]
-            matrices = []
+            float_arrays = np.empty((0,), dtype=np.float32)
         else:
             try:
                 # Try to convert it to a single Mat3x3
                 # Will raise ValueError if the wrong shape
-                matrices = [Mat3x3(data)]  # type: ignore[arg-type]
+                float_arrays = Mat3x3(data).flat_columns  # type: ignore[arg-type]
             except ValueError:
                 # If the data can't be possibly more than one Mat3x3, raise the original ValueError.
                 if isinstance(data[0], numbers.Number):  # type: ignore[arg-type, index]
@@ -59,7 +59,8 @@ class Mat3x3Ext:
 
                 # Otherwise try to convert it to a sequence of Mat3x3s
                 # Let this value error propagate as the fallback
-                matrices = [Mat3x3(d) for d in data]  # type: ignore[arg-type, union-attr]
+                result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[arg-type, union-attr, call-overload]
+                float_arrays = np.hstack(result).ravel()
 
-        float_arrays = np.asarray([matrix.flat_columns for matrix in matrices], dtype=np.float32).reshape(-1)
+        float_arrays = np.ascontiguousarray(float_arrays)
         return pa.FixedSizeListArray.from_arrays(float_arrays, type=data_type)
