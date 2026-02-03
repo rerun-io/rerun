@@ -12,14 +12,14 @@ use re_viewer_context::{
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
-use re_viewport_blueprint::ViewPropertyQueryError;
 
 use crate::series_query::{
     all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
     collect_series_name, collect_series_visibility, determine_num_series,
 };
 use crate::{
-    LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util,
+    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, ViewPropertyQueryError,
+    util,
 };
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.
@@ -63,19 +63,6 @@ impl VisualizerSystem for SeriesPointsSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.load_scalars(ctx, query)?;
-        Ok(VisualizerExecutionOutput::default())
-    }
-}
-
-impl SeriesPointsSystem {
-    fn load_scalars(
-        &mut self,
-        ctx: &ViewContext<'_>,
-        query: &ViewQuery<'_>,
-    ) -> Result<(), ViewPropertyQueryError> {
-        re_tracing::profile_function!();
-
         use rayon::prelude::*;
 
         let mut output = VisualizerExecutionOutput::default();
@@ -86,41 +73,47 @@ impl SeriesPointsSystem {
 
         let data_results = query.iter_visualizer_instruction_for(Self::identifier());
 
-        for result in data_results
+        for (result, (_data_result, instruction)) in data_results
             .collect_vec()
             .par_iter()
             .map(|(data_result, instruction)| {
-                Self::load_series(ctx, query, time_per_pixel, data_result, instruction)
+                (
+                    Self::load_series(ctx, query, time_per_pixel, data_result, instruction),
+                    (data_result, instruction),
+                )
             })
             .collect::<Vec<_>>()
         {
             match result {
-                Err(LoadSeriesError::ViewPropertyQuery(err)) => {
-                    return Err(err);
+                Err(err) => {
+                    return Err(err.into());
                 }
-                Err(LoadSeriesError::InstructionSpecificVisualizerError {
-                    instruction_id,
-                    err,
-                }) => {
-                    output.report_error_for(instruction_id, err);
-                }
-                Ok(one_series) => {
-                    self.all_series.extend(one_series);
+                Ok(load_result) => {
+                    // TODO(andreas): We get duplicate warnings because of the bootstrapping queries.
+                    // TODO(RR-3506): at least with more meta information about the errors origin this de-duplication would be much less concerning.
+                    for report in load_result.reports.into_iter().unique() {
+                        output.report(instruction.id, report);
+                    }
+                    self.all_series.extend(load_result.series);
                 }
             }
         }
 
-        Ok(())
+        Ok(output)
     }
+}
 
+impl SeriesPointsSystem {
     fn load_series(
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> Result<Vec<PlotSeries>, LoadSeriesError> {
+    ) -> Result<crate::LoadSeriesResult, ViewPropertyQueryError> {
         re_tracing::profile_function!();
+
+        let mut reports = Vec::new();
 
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
@@ -148,20 +141,22 @@ impl SeriesPointsSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let all_scalar_chunks: ChunksWithComponent<'_> = results
-                .get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
-                .try_into()
-                .map_err(|err| LoadSeriesError::InstructionSpecificVisualizerError {
-                    instruction_id: instruction.id,
-                    err,
-                })?;
-
-            if all_scalar_chunks.is_empty() {
-                return Err(LoadSeriesError::InstructionSpecificVisualizerError {
-                    instruction_id: instruction.id,
-                    err: "No valid scalar data found".to_owned(),
-                });
-            }
+            let all_scalar_chunks: ChunksWithComponent<'_> = match ChunksWithComponent::try_from(
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component),
+            ) {
+                Ok(chunks) => {
+                    if chunks.is_empty() {
+                        reports.push(re_viewer_context::VisualizerInstructionReport::error(
+                            "No valid scalar data found",
+                        ));
+                    }
+                    chunks
+                }
+                Err(err) => {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::error(err));
+                    ChunksWithComponent::empty(archetypes::Scalars::descriptor_scalars().component)
+                }
+            };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
             let fallback_color: Color = typed_fallback_for(
@@ -201,6 +196,7 @@ impl SeriesPointsSystem {
             // * For the secondary components (colors, radii, names, etc), this is a problem
             //   though: you don't want your plot to change color depending on what the currently
             //   visible time range is! Secondary components have to be bootstrapped.
+            // TODO(andreas): We need to simplify this: find a way to combine a latest-at result into a range result, then we can use the `VisualizerInstructionQueryResults`
             let bootstrapped_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
@@ -218,6 +214,11 @@ impl SeriesPointsSystem {
                 &all_scalar_chunks,
                 &mut points_per_series,
                 &archetypes::SeriesPoints::descriptor_colors(),
+                |err| {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                        err.to_string(),
+                    ));
+                },
             );
             collect_radius_ui(
                 &query,
@@ -228,6 +229,11 @@ impl SeriesPointsSystem {
                 &archetypes::SeriesPoints::descriptor_marker_sizes(),
                 // `marker_size` is a radius, see NOTE above
                 1.0,
+                |err| {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                        err.to_string(),
+                    ));
+                },
             );
 
             // Fill in marker shapes
@@ -242,18 +248,19 @@ impl SeriesPointsSystem {
                     let results_marker_shapes_chunks = results.get_optional_chunks(
                         archetypes::SeriesPoints::descriptor_markers().component,
                     );
-                    let all_marker_shapes_chunks = bootstrapped_marker_shapes_chunks
-                        .iter(|err| {
-                            // TODO(RR-3506): This should be a visualizer warning instead!
-                            re_log::warn_once!(
-                                "could not retrieve bootstrapped marker shapes: {err}"
-                            );
-                        })
-                        .chain(results_marker_shapes_chunks.iter(|err| {
-                            // TODO(RR-3506): This should be a visualizer warning instead!
-                            re_log::warn_once!("could not retrieve result marker shapes: {err}");
-                        }))
-                        .collect_vec();
+                    let mut all_marker_shapes_chunks = Vec::new();
+                    all_marker_shapes_chunks.extend(bootstrapped_marker_shapes_chunks.iter(
+                        |err| {
+                            reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                                err.to_string(),
+                            ));
+                        },
+                    ));
+                    all_marker_shapes_chunks.extend(results_marker_shapes_chunks.iter(|err| {
+                        reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                            err.to_string(),
+                        ));
+                    }));
 
                     if all_marker_shapes_chunks.len() == 1
                         && all_marker_shapes_chunks[0].chunk.is_static()
@@ -342,6 +349,11 @@ impl SeriesPointsSystem {
                 &results,
                 num_series,
                 &archetypes::SeriesPoints::descriptor_names(),
+                |err| {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                        err.to_string(),
+                    ));
+                },
             );
 
             let mut series = Vec::with_capacity(num_series);
@@ -360,7 +372,7 @@ impl SeriesPointsSystem {
                     InstancePath::instance(data_result.entity_path.clone(), instance as u64)
                 };
 
-                util::points_to_series(
+                if let Err(err) = util::points_to_series(
                     instance_path,
                     time_per_pixel,
                     visible,
@@ -372,16 +384,14 @@ impl SeriesPointsSystem {
                     re_sdk_types::components::AggregationPolicy::Off,
                     &mut series,
                     instruction.id,
-                )
-                .map_err(|err| {
-                    LoadSeriesError::InstructionSpecificVisualizerError {
-                        instruction_id: instruction.id,
-                        err,
-                    }
-                })?;
+                ) {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::error(
+                        format!("Failed to create series: {err}"),
+                    ));
+                }
             }
 
-            Ok(series)
+            Ok(crate::LoadSeriesResult { series, reports })
         }
     }
 }

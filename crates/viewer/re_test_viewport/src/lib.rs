@@ -137,7 +137,7 @@ impl TestContextExt for TestContext {
         let view_class = class_registry.get_class_or_log_error(class_identifier);
 
         let mut view_states = self.view_states.lock();
-        view_states.reset_visualizer_errors();
+        view_states.reset_visualizer_reports();
         let view_state = view_states.get_mut_or_create(view_id, view_class);
 
         let context_system_once_per_frame_results = class_registry
@@ -148,7 +148,7 @@ impl TestContextExt for TestContext {
             view_state,
             &context_system_once_per_frame_results,
         );
-        view_states.report_visualizer_errors(view_id, &system_execution_output);
+        view_states.add_visualizer_reports_from_output(view_id, &system_execution_output);
 
         let view_state = view_states.get_mut_or_create(view_id, view_class);
         view_class

@@ -683,7 +683,7 @@ fn entity_selection_ui(
 
         let empty_errors = PerVisualizerType::default();
         let visualizer_errors = view_states
-            .visualizer_errors(*view_id)
+            .per_visualizer_type_reports(*view_id)
             .unwrap_or(&empty_errors);
 
         visualizer_ui(&view_ctx, view, visualizer_errors, entity_path, ui);

@@ -48,6 +48,7 @@ pub mod external {
     pub use re_entity_db::external::*;
 }
 
+// TODO(RR-3506): Make this a proper error type from which we can derive context information.
 pub type ComponentMappingError = String;
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.

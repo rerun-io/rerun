@@ -135,6 +135,8 @@ pub fn range_with_blueprint_resolved_data<'a>(
                     }
                     results.components.insert(*target, chunks);
                 }
+            } else {
+                component_sources.insert(*target, Err(format!("component '{source}' not found")));
             }
         }
 
@@ -284,6 +286,8 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                         .insert(*target, Err(format!("failed to execute selector: {err}")));
                 }
             }
+        } else {
+            component_sources.insert(*target, Err(format!("component '{source}' not found")));
         }
     }
 

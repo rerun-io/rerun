@@ -16,14 +16,14 @@ use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, PerVisualizerType, UiLayout,
     ViewContext, ViewSystemIdentifier, VisualizerCollection, VisualizerComponentSource,
-    VisualizerExecutionErrorState, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem, VisualizerTypeReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
     view: &ViewBlueprint,
-    visualizer_errors: &PerVisualizerType<VisualizerExecutionErrorState>,
+    visualizer_errors: &PerVisualizerType<VisualizerTypeReport>,
     entity_path: &EntityPath,
     ui: &mut egui::Ui,
 ) {
@@ -99,7 +99,7 @@ pub fn visualizer_ui_impl(
     data_result: &DataResult,
     active_visualizers: &[VisualizerInstruction],
     all_visualizers: &VisualizerCollection,
-    visualizer_errors: &PerVisualizerType<VisualizerExecutionErrorState>,
+    per_type_visualizer_reports: &PerVisualizerType<VisualizerTypeReport>,
 ) {
     let override_base_path = data_result.override_base_path();
 
@@ -138,14 +138,6 @@ pub fn visualizer_ui_impl(
             ui.push_id(index, |ui| {
                 // List all components that the visualizer may consume.
                 if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
-                    // Report whether this visualizer failed running.
-                    let error_string =
-                        visualizer_errors
-                            .get(&visualizer_type)
-                            .and_then(|error_state| {
-                                error_state.error_string_for(&visualizer_instruction.id)
-                            });
-
                     ui.list_item()
                         .with_y_offset(1.0)
                         .with_height(20.0)
@@ -167,8 +159,25 @@ pub fn visualizer_ui_impl(
                             .with_always_show_buttons(true),
                         );
 
-                    if let Some(error_string) = error_string {
-                        ui.error_label(error_string);
+                    // Show whether this visualizer has any reports (errors/warnings).
+                    if let Some(reports) = per_type_visualizer_reports.get(&visualizer_type) {
+                        // TODO(RR-3506): Better display when errors are associated with concrete components.
+                        for report in reports.reports_for(&visualizer_instruction.id) {
+                            match report.severity {
+                                re_viewer_context::VisualizerReportSeverity::OverallVisualizerError | re_viewer_context::VisualizerReportSeverity::Error => {
+                                    let label = ui.error_label(&report.summary);
+                                    if let Some(details) = &report.details {
+                                        label.on_hover_text(details);
+                                    }
+                                }
+                                re_viewer_context::VisualizerReportSeverity::Warning => {
+                                    let label = ui.warning_label(&report.summary);
+                                    if let Some(details) = &report.details {
+                                        label.on_hover_text(details);
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     visualizer_components(ctx, ui, data_result, visualizer, visualizer_instruction);

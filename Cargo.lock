@@ -8479,6 +8479,7 @@ dependencies = [
  "insta",
  "parking_lot",
  "smallvec",
+ "vec1",
 ]
 
 [[package]]
@@ -10529,7 +10530,6 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "itertools 0.14.0",
  "nohash-hasher",
  "rayon",
  "re_context_menu",

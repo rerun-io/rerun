@@ -43,7 +43,6 @@ re_viewport_blueprint.workspace = true
 ahash.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
-itertools.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
 web-time.workspace = true

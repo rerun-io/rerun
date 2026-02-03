@@ -2,10 +2,11 @@
 //!
 //! Contains all views.
 
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
 use egui::remap_clamp;
 use egui_tiles::{Behavior as _, EditAction};
-use itertools::{Either, Itertools as _};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{
@@ -84,7 +85,7 @@ impl ViewportUi {
         };
 
         // Reset all error states.
-        view_states.reset_visualizer_errors();
+        view_states.reset_visualizer_reports();
 
         let executed_systems_per_view =
             execute_systems_for_all_views(ctx, &tree, &blueprint.views, view_states);
@@ -92,7 +93,7 @@ impl ViewportUi {
         // Memorize new error states.
         #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
         for (view_id, (_, system_output)) in &executed_systems_per_view {
-            view_states.report_visualizer_errors(*view_id, system_output);
+            view_states.add_visualizer_reports_from_output(*view_id, system_output);
         }
 
         let contents_per_tile_id = blueprint
@@ -721,51 +722,76 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
 impl TilesDelegate<'_, '_> {
     fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
-        let Some(visualizer_errors) = self.view_states.visualizer_errors(view_id) else {
+        let Some(per_visualizer_type_reports) =
+            self.view_states.per_visualizer_type_reports(view_id)
+        else {
             return;
         };
 
         let data_result_tree = &self.ctx.lookup_query_result(view_id).tree;
 
-        let errors = visualizer_errors
-            .values()
-            .flat_map(|err| match err {
-                re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
-                    Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
-                }
-                re_viewer_context::VisualizerExecutionErrorState::PerInstruction(errors) => {
-                    Either::Right(errors.iter().filter_map(|(visualizer_instruction, err)| {
-                        let data_result = data_result_tree
-                            .lookup_result_by_visualizer_instruction(*visualizer_instruction)?;
+        let mut grouped_reports: BTreeMap<Item, Vec<_>> = BTreeMap::new();
 
-                        Some((
-                            Item::DataResult(view_id, data_result.entity_path.clone().into()),
-                            err.clone(),
-                        ))
-                    }))
+        #[expect(clippy::iter_over_hash_type)] // It's building up a btreemap map so that's fine.
+        for report in per_visualizer_type_reports.values() {
+            match report {
+                re_viewer_context::VisualizerTypeReport::OverallError(error) => {
+                    grouped_reports
+                        .entry(Item::View(view_id))
+                        .or_default()
+                        .push(error.clone());
                 }
-            })
-            .sorted()
-            .collect::<Vec<_>>();
+                re_viewer_context::VisualizerTypeReport::PerInstructionReport(reports_map) => {
+                    for instruction_id in reports_map.keys() {
+                        if let Some(data_result) = data_result_tree
+                            .lookup_result_by_visualizer_instruction(*instruction_id)
+                        {
+                            let item =
+                                Item::DataResult(view_id, data_result.entity_path.clone().into());
+                            for instruction_report in report.reports_for(instruction_id) {
+                                grouped_reports
+                                    .entry(item.clone())
+                                    .or_default()
+                                    .push(instruction_report.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-        if visualizer_errors.is_empty() {
+        if grouped_reports.is_empty() {
             return;
         }
 
-        let error_count = visualizer_errors.len();
+        let max_severity = grouped_reports
+            .values()
+            .flatten()
+            .map(|report| report.severity)
+            .max();
+        let report_count: usize = grouped_reports.values().map(|reports| reports.len()).sum();
 
         ui.scope(|ui| {
-            let response = ui
-                .add(egui::Button::image(
+            let report_image =
+                if max_severity == Some(re_viewer_context::VisualizerReportSeverity::Warning) {
+                    icons::WARNING
+                        .as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .alt_text("View warnings")
+                        .tint(ui.visuals().warn_fg_color)
+                } else {
                     icons::ERROR
                         .as_image()
                         .fit_to_exact_size(ui.tokens().small_icon_size)
                         .alt_text("View errors")
-                        .tint(ui.visuals().error_fg_color),
-                ))
+                        .tint(ui.visuals().error_fg_color)
+                };
+
+            let response = ui
+                .add(egui::Button::image(report_image))
                 .on_hover_text(format!(
-                    "Show {}",
-                    re_format::format_plural_s(error_count, "visualizer error")
+                    "Show {report_count} {}",
+                    re_format::format_plural_s(report_count, "visualizer report")
                 ));
 
             egui::Popup::menu(&response)
@@ -775,15 +801,20 @@ impl TilesDelegate<'_, '_> {
                         .min_scrolled_height(600.0)
                         .max_height(600.0)
                         .show(ui, |ui| {
-                            for (item, err) in errors {
-                                self.show_item_error(ui, item, &err);
+                            for (item, item_reports) in &grouped_reports {
+                                self.show_item_reports(ui, item.clone(), item_reports);
                             }
                         });
                 });
         });
     }
 
-    fn show_item_error(&self, ui: &mut egui::Ui, item: Item, err: &str) {
+    fn show_item_reports(
+        &self,
+        ui: &mut egui::Ui,
+        item: Item,
+        reports: &[re_viewer_context::VisualizerInstructionReport],
+    ) {
         let item_entity = match &item {
             Item::View(blueprint_id) => blueprint_id.as_entity_path().to_string(),
             _ => item
@@ -791,34 +822,55 @@ impl TilesDelegate<'_, '_> {
                 .map(|item| item.to_string())
                 .unwrap_or_default(),
         };
+
         egui::Frame::window(ui.style())
             .corner_radius(4)
             .inner_margin(10.0)
             .fill(ui.tokens().notification_panel_background_color)
             .shadow(egui::Shadow::NONE)
             .show(ui, |ui| {
-                ui.horizontal_top(|ui| {
-                    ui.add(icons::ERROR.as_image().tint(ui.visuals().error_fg_color));
+                ui.vertical(|ui| {
+                    // Show item name once at the top
+                    if ui
+                        .selectable_label(self.ctx.selection().contains_item(&item), item_entity)
+                        .clicked()
+                    {
+                        self.ctx
+                            .command_sender()
+                            .send_system(SystemCommand::set_selection(item));
+                        self.ctx
+                            .command_sender()
+                            .send_ui(re_ui::UICommand::ExpandSelectionPanel);
+                    }
+                    ui.separator();
 
-                    ui.vertical(|ui| {
-                        if ui
-                            .selectable_label(
-                                self.ctx.selection().contains_item(&item),
-                                item_entity,
-                            )
-                            .clicked()
-                        {
-                            self.ctx
-                                .command_sender()
-                                .send_system(SystemCommand::set_selection(item));
-                            self.ctx
-                                .command_sender()
-                                .send_ui(re_ui::UICommand::ExpandSelectionPanel);
-                        }
-                        ui.separator();
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.label(err);
-                    })
+                    // Show all reports for this item
+                    for report in reports {
+                        let (icon, color) = match report.severity {
+                            re_viewer_context::VisualizerReportSeverity::Error
+                            | re_viewer_context::VisualizerReportSeverity::OverallVisualizerError => {
+                                (&icons::ERROR, ui.visuals().error_fg_color)
+                            }
+                            re_viewer_context::VisualizerReportSeverity::Warning => {
+                                (&icons::WARNING, ui.visuals().warn_fg_color)
+                            }
+                        };
+
+                        ui.horizontal_top(|ui| {
+                            ui.add(icon.as_image().tint(color));
+
+                            ui.vertical(|ui| {
+                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                                ui.label(&report.summary);
+
+                                if let Some(details) = &report.details {
+                                    ui.collapsing("Details", |ui| {
+                                        ui.label(details);
+                                    });
+                                }
+                            });
+                        });
+                    }
                 })
             });
     }

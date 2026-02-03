@@ -23,7 +23,7 @@ pub use highlights::{
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
-pub use system_execution_output::{SystemExecutionOutput, VisualizerExecutionErrorState};
+pub use system_execution_output::{SystemExecutionOutput, VisualizerTypeReport};
 pub use view_class::{
     RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
     ViewStateExt,
@@ -41,14 +41,15 @@ pub use view_query::{
 pub use view_states::ViewStates;
 pub use visualizer_system::{
     AnyPhysicalDatatypeRequirement, RequiredComponents, VisualizerCollection,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerInstructionReport, VisualizerQueryInfo,
+    VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
 };
 
 // ---------------------------------------------------------------------------
 
 /// A "catastrophic" view system execution error, making it impossible to produce any results at all.
 ///
-/// Whenever possible, prefer [`VisualizerExecutionOutput::errors_per_instruction`] to report failures with
+/// Whenever possible, prefer [`VisualizerExecutionOutput::reports_per_instruction`] to report failures with
 /// individual entities rather than stopping visualization entirely.
 #[derive(Debug, thiserror::Error)]
 pub enum ViewSystemExecutionError {

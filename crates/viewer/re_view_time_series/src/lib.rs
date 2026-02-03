@@ -122,17 +122,8 @@ impl PlotSeries {
     }
 }
 
-/// Error that can occur when loading a single series.
-enum LoadSeriesError {
-    ViewPropertyQuery(ViewPropertyQueryError),
-    InstructionSpecificVisualizerError {
-        instruction_id: VisualizerInstructionId,
-        err: String,
-    },
-}
-
-impl From<ViewPropertyQueryError> for LoadSeriesError {
-    fn from(err: ViewPropertyQueryError) -> Self {
-        Self::ViewPropertyQuery(err)
-    }
+/// Result from loading series, including any reports that occurred.
+struct LoadSeriesResult {
+    series: Vec<PlotSeries>,
+    reports: Vec<re_viewer_context::VisualizerInstructionReport>,
 }

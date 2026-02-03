@@ -123,8 +123,9 @@ pub use self::view::{
     ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
     ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
     ViewSystemRegistrator, VisualizerCollection, VisualizerComponentMappings,
-    VisualizerComponentSource, VisualizerExecutionErrorState, VisualizerExecutionOutput,
-    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
+    VisualizerInstructionReport, VisualizerQueryInfo, VisualizerReportContext,
+    VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

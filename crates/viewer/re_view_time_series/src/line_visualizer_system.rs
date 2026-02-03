@@ -18,7 +18,7 @@ use crate::series_query::{
     allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
     collect_series_visibility, determine_num_series,
 };
-use crate::{LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ViewPropertyQueryError, util};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
@@ -62,18 +62,6 @@ impl VisualizerSystem for SeriesLinesSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.load_scalars(ctx, query)
-    }
-}
-
-impl SeriesLinesSystem {
-    fn load_scalars(
-        &mut self,
-        ctx: &ViewContext<'_>,
-        query: &ViewQuery<'_>,
-    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        re_tracing::profile_function!();
-
         use rayon::prelude::*;
 
         let mut output = VisualizerExecutionOutput::default();
@@ -84,41 +72,47 @@ impl SeriesLinesSystem {
 
         let data_results = query.iter_visualizer_instruction_for(Self::identifier());
 
-        for result in data_results
+        for (result, (_data_result, instruction)) in data_results
             .collect_vec()
             .par_iter()
             .map(|(data_result, instruction)| {
-                Self::load_series(ctx, query, time_per_pixel, data_result, instruction)
+                (
+                    Self::load_series(ctx, query, time_per_pixel, data_result, instruction),
+                    (data_result, instruction),
+                )
             })
             .collect::<Vec<_>>()
         {
             match result {
-                Err(LoadSeriesError::ViewPropertyQuery(err)) => {
+                Err(err) => {
                     return Err(err.into());
                 }
-                Err(LoadSeriesError::InstructionSpecificVisualizerError {
-                    instruction_id,
-                    err,
-                }) => {
-                    output.report_error_for(instruction_id, err);
-                }
-                Ok(series) => {
-                    self.all_series.extend(series);
+                Ok(load_result) => {
+                    // TODO(andreas): We get duplicate warnings because of the bootstrapping queries.
+                    // TODO(RR-3506): at least with more meta information about the errors origin this de-duplication would be much less concerning.
+                    for report in load_result.reports.into_iter().unique() {
+                        output.report(instruction.id, report);
+                    }
+                    self.all_series.extend(load_result.series);
                 }
             }
         }
 
         Ok(output)
     }
+}
 
+impl SeriesLinesSystem {
     fn load_series(
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> Result<Vec<PlotSeries>, LoadSeriesError> {
+    ) -> Result<crate::LoadSeriesResult, ViewPropertyQueryError> {
         re_tracing::profile_function!();
+
+        let mut reports = Vec::new();
 
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
@@ -147,20 +141,22 @@ impl SeriesLinesSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let all_scalar_chunks: ChunksWithComponent<'_> = results
-                .get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
-                .try_into()
-                .map_err(|err| LoadSeriesError::InstructionSpecificVisualizerError {
-                    instruction_id: instruction.id,
-                    err,
-                })?;
-
-            if all_scalar_chunks.is_empty() {
-                return Err(LoadSeriesError::InstructionSpecificVisualizerError {
-                    instruction_id: instruction.id,
-                    err: "No valid scalar data found".to_owned(),
-                });
-            }
+            let all_scalar_chunks: ChunksWithComponent<'_> = match ChunksWithComponent::try_from(
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component),
+            ) {
+                Ok(chunks) => {
+                    if chunks.is_empty() {
+                        reports.push(re_viewer_context::VisualizerInstructionReport::error(
+                            "No valid scalar data found",
+                        ));
+                    }
+                    chunks
+                }
+                Err(err) => {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::error(err));
+                    ChunksWithComponent::empty(archetypes::Scalars::descriptor_scalars().component)
+                }
+            };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
             // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
@@ -196,6 +192,7 @@ impl SeriesLinesSystem {
             // * For the secondary components (colors, radii, names, etc), this is a problem
             //   though: you don't want your plot to change color depending on what the currently
             //   visible time range is! Secondary components have to be bootstrapped.
+            // TODO(andreas): We need to simplify this: find a way to combine a latest-at result into a range result, then we can use the `VisualizerInstructionQueryResults`
             let bootstrapped_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
@@ -213,6 +210,11 @@ impl SeriesLinesSystem {
                 &all_scalar_chunks,
                 &mut points_per_series,
                 &archetypes::SeriesLines::descriptor_colors(),
+                |err| {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                        err.to_string(),
+                    ));
+                },
             );
             collect_radius_ui(
                 &query,
@@ -222,24 +224,32 @@ impl SeriesLinesSystem {
                 &mut points_per_series,
                 &archetypes::SeriesLines::descriptor_widths(),
                 0.5,
+                |err| {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                        err.to_string(),
+                    ));
+                },
             );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-            let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
-            let aggregator = bootstrapped_results
-                .get_optional_chunks(aggregation_policy_descr.component)
-                .iter(|err| {
-                    // TODO(RR-3506): This should be a visualizer warning instead!
-                    re_log::warn_once!("could not retrieve aggregation policy: {err}");
-                })
-                .chain(
-                    results
-                        .get_optional_chunks(aggregation_policy_descr.component)
-                        .iter(|err| {
-                            // TODO(RR-3506): This should be a visualizer warning instead!
-                            re_log::warn_once!("could not retrieve aggregation policy: {err}");
-                        }),
-                )
+            let aggregation_policy =
+                archetypes::SeriesLines::descriptor_aggregation_policy().component;
+            let bootstrapped_aggregation_chunks =
+                bootstrapped_results.get_optional_chunks(aggregation_policy);
+            let results_aggregation_chunks = results.get_optional_chunks(aggregation_policy);
+            let mut aggregation_policy_chunks = Vec::new();
+            aggregation_policy_chunks.extend(bootstrapped_aggregation_chunks.iter(|err| {
+                reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                    err.to_string(),
+                ));
+            }));
+            aggregation_policy_chunks.extend(results_aggregation_chunks.iter(|err| {
+                reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                    err.to_string(),
+                ));
+            }));
+            let aggregator = aggregation_policy_chunks
+                .iter()
                 .find(|chunk| !chunk.chunk.is_empty())
                 .and_then(|chunk| {
                     chunk
@@ -314,6 +324,11 @@ impl SeriesLinesSystem {
                 &results,
                 num_series,
                 &archetypes::SeriesLines::descriptor_names(),
+                |err| {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
+                        err.to_string(),
+                    ));
+                },
             );
 
             let mut series = Vec::with_capacity(num_series);
@@ -332,7 +347,7 @@ impl SeriesLinesSystem {
                     InstancePath::instance(data_result.entity_path.clone(), instance as u64)
                 };
 
-                util::points_to_series(
+                if let Err(err) = util::points_to_series(
                     instance_path,
                     time_per_pixel,
                     visible,
@@ -343,16 +358,14 @@ impl SeriesLinesSystem {
                     aggregator,
                     &mut series,
                     instruction.id,
-                )
-                .map_err(|err| {
-                    LoadSeriesError::InstructionSpecificVisualizerError {
-                        instruction_id: instruction.id,
-                        err,
-                    }
-                })?;
+                ) {
+                    reports.push(re_viewer_context::VisualizerInstructionReport::error(
+                        format!("Failed to create series: {err}"),
+                    ));
+                }
             }
 
-            Ok(series)
+            Ok(crate::LoadSeriesResult { series, reports })
         }
     }
 }
