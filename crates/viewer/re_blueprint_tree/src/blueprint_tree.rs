@@ -143,6 +143,7 @@ impl BlueprintTree {
             .id_salt("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
+                re_tracing::profile_scope!("blueprint_tree_scroll_area");
                 ui.panel_content(|ui| {
                     self.blueprint_tree_scroll_to_item =
                         ctx.focused_item.as_ref().and_then(|item| {
@@ -199,6 +200,8 @@ impl BlueprintTree {
         container_data: &ContainerData,
         view_states: &ViewStates,
     ) {
+        re_tracing::profile_function!();
+
         let item = Item::Container(container_data.id);
 
         // It's possible that the root becomes technically collapsed (e.g. context menu or arrow
@@ -319,6 +322,8 @@ impl BlueprintTree {
         parent_visible: bool,
         view_states: &ViewStates,
     ) {
+        re_tracing::profile_function!();
+
         let item = Item::Container(container_data.id);
         let content = Contents::Container(container_data.id);
 
@@ -405,6 +410,8 @@ impl BlueprintTree {
         container_visible: bool,
         errors: Option<&PerVisualizerType<VisualizerExecutionErrorState>>,
     ) {
+        re_tracing::profile_function!();
+
         let mut visible = view_data.visible;
         let view_visible = visible && container_visible;
         let item = Item::View(view_data.id);

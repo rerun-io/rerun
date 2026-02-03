@@ -5,7 +5,7 @@ use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, TimeInt, Timeline};
-use re_chunk_store::ChunkStore;
+use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_log_encoding::RrdManifest;
 
 use crate::{
@@ -350,10 +350,10 @@ impl ChunkPrioritizer {
         &mut self.chunk_promises
     }
 
-    /// Take a hashset of chunks that should be protected from being
+    /// The hashset of chunks that should be protected from being
     /// evicted by gc now.
-    pub fn take_protected_chunks(&mut self) -> HashSet<ChunkId> {
-        std::mem::take(&mut self.in_limit_chunks)
+    pub fn protected_chunks(&self) -> &HashSet<ChunkId> {
+        &self.in_limit_chunks
     }
 
     /// An iterator over chunks in priority order.
@@ -363,23 +363,25 @@ impl ChunkPrioritizer {
         static_chunk_ids: &'a HashSet<ChunkId>,
         high_priority_chunks: &'a [ChunkId],
         store: &'a ChunkStore,
+        used_and_missing: QueriedChunkIdTracker,
         start_time: TimeInt,
         chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
-        had_missing_chunks: &mut bool,
     ) -> impl Iterator<Item = ChunkId> + use<'a> {
-        let store_tracked = store.take_tracked_chunk_ids();
-        let used = store_tracked.used_physical.into_iter();
+        let QueriedChunkIdTracker {
+            used_physical,
+            missing,
+        } = used_and_missing;
+
+        let used = used_physical.into_iter();
 
         let mut missing_roots = Vec::new();
 
         // Reuse a vec for less allocations in the loop.
         let mut scratch = Vec::new();
-        for missing in store_tracked.missing {
+        for missing in missing {
             store.collect_root_rrd_manifests(&missing, &mut scratch);
             missing_roots.extend(scratch.drain(..).map(|(id, _)| id));
         }
-
-        *had_missing_chunks = !missing_roots.is_empty();
 
         let chunks_ids_after_time_cursor = move || {
             chunks
@@ -419,6 +421,7 @@ impl ChunkPrioritizer {
     pub fn prioritize_and_prefetch(
         &mut self,
         store: &ChunkStore,
+        used_and_missing: QueriedChunkIdTracker,
         options: &ChunkPrefetchOptions,
         load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
         manifest: &RrdManifest,
@@ -428,18 +431,30 @@ impl ChunkPrioritizer {
             return Err(PrefetchError::UnknownTimeline(options.timeline));
         };
 
+        self.had_missing_chunks = !used_and_missing.missing.is_empty();
+
         let mut remaining_byte_budget = options.total_uncompressed_byte_budget;
 
         let mut chunk_batcher =
             ChunkRequestBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options);
 
+        if chunk_batcher.remaining_bytes_in_transit_budget == 0 {
+            // Early-out: too many bytes already in-transit.
+            // But, make sure we don't GC the chunks that were used this frame:
+            for chunk_id in used_and_missing.used_physical {
+                self.in_limit_chunks.insert(chunk_id);
+            }
+
+            return Ok(());
+        }
+
         let chunk_ids_in_priority_order = Self::chunks_in_priority(
             &self.static_chunk_ids,
             &self.high_priority_chunks,
             store,
+            used_and_missing,
             options.start_time,
             chunks,
-            &mut self.had_missing_chunks,
         );
 
         let entity_paths = manifest.col_chunk_entity_path_raw();

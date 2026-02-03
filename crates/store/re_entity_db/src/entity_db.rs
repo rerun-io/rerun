@@ -780,8 +780,10 @@ impl EntityDb {
 
         let protected_chunks = self
             .rrd_manifest_index
-            .chunk_prioritizer_mut()
-            .take_protected_chunks();
+            .chunk_prioritizer()
+            .protected_chunks()
+            .clone();
+
         let store_events = self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             time_budget: DEFAULT_GC_TIME_BUDGET,

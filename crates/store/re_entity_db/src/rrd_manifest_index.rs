@@ -350,10 +350,6 @@ impl RrdManifestIndex {
         &self.chunk_prioritizer
     }
 
-    pub fn chunk_prioritizer_mut(&mut self) -> &mut ChunkPrioritizer {
-        &mut self.chunk_prioritizer
-    }
-
     pub fn chunk_promises(&self) -> &ChunkPromises {
         self.chunk_prioritizer.chunk_promises()
     }
@@ -363,6 +359,8 @@ impl RrdManifestIndex {
     }
 
     /// Find the next candidates for prefetching.
+    ///
+    /// This will also clear the tracked missing/used chunks ids in the store.
     pub fn prefetch_chunks(
         &mut self,
         store: &ChunkStore,
@@ -371,9 +369,12 @@ impl RrdManifestIndex {
     ) -> Result<(), PrefetchError> {
         re_tracing::profile_function!();
 
+        let used_and_missing = store.take_tracked_chunk_ids(); // Note: this mutates the store (kind of).
+
         if let Some(manifest) = &self.manifest {
             self.chunk_prioritizer.prioritize_and_prefetch(
                 store,
+                used_and_missing,
                 options,
                 load_chunks,
                 manifest,

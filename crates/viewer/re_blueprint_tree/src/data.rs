@@ -261,6 +261,7 @@ impl ViewData {
         let projection_trees = projections
             .into_iter()
             .filter_map(|node| {
+                re_tracing::profile_scope!("from_data_result_and_filter");
                 let projection_tree = DataResultData::from_data_result_and_filter(
                     view_blueprint,
                     query_result,
@@ -376,7 +377,7 @@ impl DataResultData {
         hierarchy_highlights: &mut PathRanges,
         filter_matcher: &FilterMatcher,
     ) -> Option<Self> {
-        re_tracing::profile_function!();
+        // No profile scope on this recursive function
 
         let entity_path = data_result_or_path.path().clone();
         let data_result_node = data_result_or_path.data_result_node();
@@ -496,6 +497,7 @@ impl DataResultData {
                                 "DataResultNode {data_result_node:?} has an invalid child"
                             );
 
+                            re_tracing::profile_scope!("from_data_result_and_filter");
                             Self::from_data_result_and_filter(
                                 view_blueprint,
                                 query_result,
