@@ -464,7 +464,7 @@ impl EntityDb {
             .latest_at(query, entity_path, [component]);
         results
             .component_mono(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -490,7 +490,7 @@ impl EntityDb {
 
         results
             .component_mono_quiet(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     #[inline]

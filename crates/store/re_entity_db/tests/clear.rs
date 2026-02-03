@@ -27,7 +27,7 @@ fn query_latest_component<C: re_types_core::Component>(
         .cache()
         .latest_at(query, entity_path, [component]);
 
-    let (data_time, row_id) = results.index();
+    let (data_time, row_id) = results.max_index();
     let data = results.component_mono::<C>(component)?;
 
     Some((data_time, row_id, data))
@@ -46,7 +46,7 @@ fn query_latest_component_clear(
         [Clear::descriptor_is_recursive().component],
     );
 
-    let (data_time, row_id) = results.index();
+    let (data_time, row_id) = results.max_index();
     let data =
         results.component_mono::<ClearIsRecursive>(Clear::descriptor_is_recursive().component)?;
 

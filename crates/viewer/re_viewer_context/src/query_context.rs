@@ -95,13 +95,10 @@ impl Default for DataQueryResult {
             tree: Default::default(),
             num_matching_entities: 0,
             num_visualized_entities: 0,
-            view_defaults: re_query::LatestAtResults {
-                entity_path: "<defaults>".into(),
-                query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
-                missing: Default::default(),
-                compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
-                components: Default::default(),
-            },
+            view_defaults: re_query::LatestAtResults::empty(
+                "<defaults>".into(),
+                re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
+            ),
         }
     }
 }

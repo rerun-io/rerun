@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 
 use egui::RichText;
 use itertools::Itertools as _;
+use nohash_hasher::IntSet;
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
-use re_entity_db::InstancePath;
+use re_entity_db::{InstancePath, external::re_query::LatestAtResults};
 use re_format::format_plural_s;
 use re_log_types::ComponentPath;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
@@ -71,33 +72,14 @@ impl DataUi for InstancePath {
             )
         };
 
-        let mut query_results = db.storage_engine().cache().latest_at(
+        let query_results = db.storage_engine().cache().latest_at(
             query,
             entity_path,
             unordered_components.iter().copied(),
         );
 
-        // Keep previously established order.
-        let mut components_by_archetype: BTreeMap<
-            Option<ArchetypeName>,
-            Vec<(ComponentDescriptor, UnitChunkShared)>,
-        > = components_by_archetype
-            .into_iter()
-            .map(|(archetype, components)| {
-                (
-                    archetype,
-                    components
-                        .into_iter()
-                        .filter_map(|c| {
-                            query_results
-                                .components
-                                .remove(&c.component)
-                                .map(|chunk| (c, chunk))
-                        })
-                        .collect(),
-                )
-            })
-            .collect();
+        let components_by_archetype =
+            group_components_by_archetype(query_results, components_by_archetype);
 
         if components_by_archetype.is_empty() {
             let typ = db.timeline_type(&query.timeline());
@@ -112,127 +94,18 @@ impl DataUi for InstancePath {
             return;
         }
 
-        // Showing more than this takes up too much space
-        const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
-
-        if ui_layout.is_single_line() {
-            ui_layout.label(
-                ui,
-                format!(
-                    "{} with {}",
-                    format_plural_s(components_by_archetype.len(), "archetype"),
-                    format_plural_s(unordered_components.len(), "total component")
-                ),
-            );
-        } else if ui_layout == UiLayout::Tooltip
-            && MAX_COMPONENTS_IN_TOOLTIP < unordered_components.len()
-        {
-            // Too many to show all in a tooltip.
-
-            let mut show_only_instanced = false;
-
-            if !self.is_all() {
-                // Focus on the components that have different values per instance (non-splatted components):
-                let instanced_components_by_archetype: BTreeMap<
-                    Option<ArchetypeName>,
-                    Vec<(ComponentDescriptor, UnitChunkShared)>,
-                > = components_by_archetype
-                    .iter()
-                    .filter_map(|(archetype_name, archetype_components)| {
-                        let instanced_archetype_components = archetype_components
-                            .iter()
-                            .filter(|(descr, unit)| unit.num_instances(descr.component) > 1)
-                            .cloned()
-                            .collect_vec();
-                        if instanced_archetype_components.is_empty() {
-                            None
-                        } else {
-                            Some((*archetype_name, instanced_archetype_components))
-                        }
-                    })
-                    .collect();
-
-                let num_instanced_components = instanced_components_by_archetype
-                    .values()
-                    .map(|v| v.len())
-                    .sum::<usize>();
-
-                show_only_instanced = num_instanced_components <= MAX_COMPONENTS_IN_TOOLTIP;
-
-                if show_only_instanced {
-                    component_list_ui(
-                        ctx,
-                        ui,
-                        ui_layout,
-                        query,
-                        db,
-                        entity_path,
-                        instance,
-                        &instanced_components_by_archetype,
-                    );
-
-                    let num_skipped = unordered_components.len() - num_instanced_components;
-                    ui.label(format!(
-                        "…plus {num_skipped} more {}",
-                        if num_skipped == 1 {
-                            "component"
-                        } else {
-                            "components"
-                        }
-                    ));
-                }
-            }
-
-            if !show_only_instanced {
-                // Show just a rough summary:
-
-                ui.list_item_label(format_plural_s(unordered_components.len(), "component"));
-
-                let archetype_count = components_by_archetype.len();
-                ui.list_item_label(format!(
-                    "{}: {}",
-                    format_plural_s(archetype_count, "archetype"),
-                    components_by_archetype
-                        .keys()
-                        .map(|archetype| {
-                            if let Some(archetype) = archetype {
-                                archetype.short_name()
-                            } else {
-                                "<Without archetype>"
-                            }
-                        })
-                        .join(", ")
-                ));
-            }
-        } else {
-            // TODO(#7026): Instances today are too poorly defined:
-            // For many archetypes it makes sense to slice through all their component arrays with the same index.
-            // However, there are cases when there are multiple dimensions of slicing that make sense.
-            // This is most obvious for meshes & graph nodes where there are different dimensions for vertices/edges/etc.
-            //
-            // For graph nodes this is particularly glaring since our indicices imply nodes today and
-            // unlike with meshes it's very easy to hover & select individual nodes.
-            // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
-            // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
-            if !self.is_all() {
-                for components in components_by_archetype.values_mut() {
-                    components.retain(|(component, _chunk)| {
-                        component.component_type != Some(components::GraphEdge::name())
-                    });
-                }
-            }
-
-            component_list_ui(
-                ctx,
-                ui,
-                ui_layout,
-                query,
-                db,
-                entity_path,
-                instance,
-                &components_by_archetype,
-            );
-        }
+        instance_path_ui(
+            self,
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            db,
+            entity_path,
+            instance,
+            &unordered_components,
+            components_by_archetype.clone(),
+        );
 
         if instance.is_all() {
             // There are some examples where we need to combine several archetypes for a single preview.
@@ -257,6 +130,169 @@ impl DataUi for InstancePath {
             }
         }
     }
+}
+
+#[expect(clippy::too_many_arguments)]
+fn instance_path_ui(
+    instance_path: &InstancePath,
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    db: &re_entity_db::EntityDb,
+    entity_path: &re_log_types::EntityPath,
+    instance: &re_log_types::Instance,
+    unordered_components: &IntSet<re_sdk_types::ComponentIdentifier>,
+    mut components_by_archetype: BTreeMap<
+        Option<ArchetypeName>,
+        Vec<(ComponentDescriptor, UnitChunkShared)>,
+    >,
+) {
+    // Showing more than this takes up too much space
+    const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
+
+    if ui_layout.is_single_line() {
+        ui_layout.label(
+            ui,
+            format!(
+                "{} with {}",
+                format_plural_s(components_by_archetype.len(), "archetype"),
+                format_plural_s(unordered_components.len(), "total component")
+            ),
+        );
+    } else if ui_layout == UiLayout::Tooltip
+        && MAX_COMPONENTS_IN_TOOLTIP < unordered_components.len()
+    {
+        // Too many to show all in a tooltip.
+
+        let mut show_only_instanced = false;
+
+        if !instance_path.is_all() {
+            // Focus on the components that have different values per instance (non-splatted components):
+            let instanced_components_by_archetype: BTreeMap<
+                Option<ArchetypeName>,
+                Vec<(ComponentDescriptor, UnitChunkShared)>,
+            > = components_by_archetype
+                .iter()
+                .filter_map(|(archetype_name, archetype_components)| {
+                    let instanced_archetype_components = archetype_components
+                        .iter()
+                        .filter(|(descr, unit)| unit.num_instances(descr.component) > 1)
+                        .cloned()
+                        .collect_vec();
+                    if instanced_archetype_components.is_empty() {
+                        None
+                    } else {
+                        Some((*archetype_name, instanced_archetype_components))
+                    }
+                })
+                .collect();
+
+            let num_instanced_components = instanced_components_by_archetype
+                .values()
+                .map(|v| v.len())
+                .sum::<usize>();
+
+            show_only_instanced = num_instanced_components <= MAX_COMPONENTS_IN_TOOLTIP;
+
+            if show_only_instanced {
+                component_list_ui(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    query,
+                    db,
+                    entity_path,
+                    instance,
+                    &instanced_components_by_archetype,
+                );
+
+                let num_skipped = unordered_components.len() - num_instanced_components;
+                ui.label(format!(
+                    "…plus {num_skipped} more {}",
+                    if num_skipped == 1 {
+                        "component"
+                    } else {
+                        "components"
+                    }
+                ));
+            }
+        }
+
+        if !show_only_instanced {
+            // Show just a rough summary:
+
+            ui.list_item_label(format_plural_s(unordered_components.len(), "component"));
+
+            let archetype_count = components_by_archetype.len();
+            ui.list_item_label(format!(
+                "{}: {}",
+                format_plural_s(archetype_count, "archetype"),
+                components_by_archetype
+                    .keys()
+                    .map(|archetype| {
+                        if let Some(archetype) = archetype {
+                            archetype.short_name()
+                        } else {
+                            "<Without archetype>"
+                        }
+                    })
+                    .join(", ")
+            ));
+        }
+    } else {
+        // TODO(#7026): Instances today are too poorly defined:
+        // For many archetypes it makes sense to slice through all their component arrays with the same index.
+        // However, there are cases when there are multiple dimensions of slicing that make sense.
+        // This is most obvious for meshes & graph nodes where there are different dimensions for vertices/edges/etc.
+        //
+        // For graph nodes this is particularly glaring since our indicices imply nodes today and
+        // unlike with meshes it's very easy to hover & select individual nodes.
+        // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
+        // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
+        if !instance_path.is_all() {
+            for components in components_by_archetype.values_mut() {
+                components.retain(|(component, _chunk)| {
+                    component.component_type != Some(components::GraphEdge::name())
+                });
+            }
+        }
+
+        component_list_ui(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            db,
+            entity_path,
+            instance,
+            &components_by_archetype,
+        );
+    }
+}
+
+fn group_components_by_archetype(
+    mut query_results: LatestAtResults,
+    components_by_archetype: BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>,
+) -> BTreeMap<Option<ArchetypeName>, Vec<(ComponentDescriptor, UnitChunkShared)>> {
+    // Keep previously established order.
+    components_by_archetype
+        .into_iter()
+        .map(|(archetype, components)| {
+            (
+                archetype,
+                components
+                    .into_iter()
+                    .filter_map(|c| {
+                        query_results
+                            .components
+                            .remove(&c.component)
+                            .map(|chunk| (c, chunk))
+                    })
+                    .collect(),
+            )
+        })
+        .collect()
 }
 
 #[expect(clippy::too_many_arguments)]
