@@ -15,6 +15,22 @@ pub struct TimeRange {
     pub loaded: bool,
 }
 
+impl re_byte_size::SizeBytes for TimeRange {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            range: _,
+            loaded: _,
+        } = self;
+
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl Deref for TimeRange {
     type Target = AbsoluteTimeRange;
 
@@ -205,13 +221,14 @@ impl Ranges {
 /// Utility to merge multiple ranges of loaded/unloaded ranges into a list of
 /// sorted ranges with no gaps or overlaps while also prioritizing unloaded
 /// ranges over loaded ones.
-pub fn merge_ranges(ranges: &[TimeRange]) -> Vec<TimeRange> {
-    re_tracing::profile_function!(format!("{} ranges", ranges.len()));
+pub fn merge_ranges(ranges: impl Iterator<Item = TimeRange>) -> Vec<TimeRange> {
+    re_tracing::profile_function!();
 
     let mut ranges = Ranges {
         new: Vec::new(),
-        incoming: ranges.iter().map(|t| IncomingRange(*t)).collect(),
+        incoming: ranges.map(IncomingRange).collect(),
     };
+    re_tracing::profile_scope!(format!("{} ranges", ranges.incoming.len()));
 
     while let Some(r) = ranges.incoming.pop() {
         ranges.push(r.0);

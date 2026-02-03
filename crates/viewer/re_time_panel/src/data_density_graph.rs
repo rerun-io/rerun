@@ -8,7 +8,7 @@ use std::sync::Arc;
 use egui::epaint::Vertex;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
 use re_chunk_store::{OnMissingChunk, RangeQuery};
-use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, Timeline};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
@@ -453,6 +453,7 @@ pub fn paint_loaded_indicator_bar(
         && let Some(start) = time_ranges_ui.x_from_time(full_time_range.min.into())
         && let Some(end) = time_ranges_ui.x_from_time(full_time_range.max.into())
     {
+        re_tracing::profile_scope!("draw loading");
         // How many points the gap is in the dashed line
         let gap = 5.0;
         // How many points each line is in the dashed line
@@ -481,8 +482,7 @@ pub fn paint_loaded_indicator_bar(
     if paint_fully_loaded_ranges {
         let loaded_ranges_on_timeline = db
             .rrd_manifest_index()
-            .loaded_ranges_on_timeline(timeline)
-            .collect::<Vec<_>>();
+            .loaded_ranges_on_timeline(timeline.name());
 
         for range in loaded_ranges_on_timeline {
             let Some(start) = time_ranges_ui.x_from_time(range.min.into()) else {
@@ -527,7 +527,7 @@ pub fn data_density_graph_ui(
         row_rect,
         db,
         item,
-        time_ctrl.timeline()?,
+        time_ctrl.timeline()?.name(),
         DensityGraphBuilderConfig::default(),
     );
 
@@ -562,7 +562,7 @@ pub fn build_density_graph<'a>(
     row_rect: Rect,
     db: &re_entity_db::EntityDb,
     item: &TimePanelItem,
-    timeline: &Timeline,
+    timeline: &TimelineName,
     config: DensityGraphBuilderConfig,
 ) -> DensityGraphBuilder<'a> {
     re_tracing::profile_function!();
@@ -597,7 +597,7 @@ pub fn build_density_graph<'a>(
 
         let engine = db.storage_engine();
         let store = engine.store();
-        let query = RangeQuery::new(*timeline.name(), visible_time_range);
+        let query = RangeQuery::new(*timeline, visible_time_range);
 
         if let Some(component) = item.component {
             let mut total_num_events = 0;
@@ -613,7 +613,7 @@ pub fn build_density_graph<'a>(
                     // TODO(RR-3295): what should we do with virtual chunks here?
                     .into_iter_verbose()
                     .filter_map(|chunk| {
-                        let time_range = chunk.timelines().get(timeline.name())?.time_range();
+                        let time_range = chunk.timelines().get(timeline)?.time_range();
                         chunk.num_events_for_component(component).map(|num_events| {
                             total_num_events += num_events;
                             (chunk, time_range, num_events)
@@ -627,10 +627,7 @@ pub fn build_density_graph<'a>(
                 &store.id(),
                 |chunks_per_timeline| {
                     let Some(info) = chunks_per_timeline
-                        .path_recursive_chunks_for_entity_and_timeline(
-                            &item.entity_path,
-                            timeline.name(),
-                        )
+                        .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, timeline)
                     else {
                         return Default::default();
                     };
@@ -682,16 +679,14 @@ pub fn build_density_graph<'a>(
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
             let should_render_individual_events = can_render_individual_events
-                && if chunk.is_timeline_sorted(timeline.name()) {
+                && if chunk.is_timeline_sorted(timeline) {
                     num_events_in_chunk < config.max_events_in_sorted_chunk
                 } else {
                     num_events_in_chunk < config.max_events_in_unsorted_chunk
                 };
 
             if should_render_individual_events {
-                for (time, num_events) in
-                    chunk.num_events_cumulative_per_unique_time(timeline.name())
-                {
+                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
                     data.add_chunk_point(time, num_events as usize, LoadState::Loaded);
                 }
             } else {

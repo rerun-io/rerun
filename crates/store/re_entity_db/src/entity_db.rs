@@ -520,12 +520,9 @@ impl EntityDb {
         component: ComponentIdentifier,
         query: &LatestAtQuery,
     ) -> bool {
-        let timeline = Timeline::new(query.timeline(), self.timeline_type(&query.timeline()));
-
         !self
             .rrd_manifest_index()
-            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
-            .iter()
+            .unloaded_temporal_entries_for(&query.timeline(), entity_path, Some(component))
             .any(|chunk| chunk.time_range.contains(query.at()))
     }
 
