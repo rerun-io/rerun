@@ -109,7 +109,9 @@ pub fn range_with_blueprint_resolved_data<'a>(
         } in &active_remappings
         {
             // TODO(RR-3498): Move the casting in here too!
-            if let Some(mut chunks) = results.components.remove(source) {
+            // NOTE: We clone the chunks instead of removing them, because multiple mappings may
+            // reference the same source component.
+            if let Some(mut chunks) = results.components.get(source).cloned() {
                 'ctx: {
                     for chunk in &mut chunks {
                         let result = if let Some(sel) = selector {
@@ -268,7 +270,9 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         selector,
     } in &active_remappings
     {
-        if let Some(chunk) = store_results.components.remove(source) {
+        // NOTE: We clone the chunk instead of removing it, because multiple mappings may
+        // reference the same source component.
+        if let Some(chunk) = store_results.components.get(source) {
             let result = if let Some(sel) = selector {
                 chunk.with_mapped_component(*source, *target, move |arr| sel.execute_per_row(&arr))
             } else {

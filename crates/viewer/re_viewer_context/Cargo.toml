@@ -20,6 +20,7 @@ default = []
 testing = []
 
 [dependencies]
+re_arrow_combinators.workspace = true
 re_arrow_ui.workspace = true
 re_arrow_util.workspace = true
 re_byte_size.workspace = true

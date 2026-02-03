@@ -3,14 +3,14 @@ use std::collections::hash_map::Entry;
 use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::IntMap;
+use re_arrow_combinators::extract_nested_fields;
 use re_chunk::{ArchetypeName, ArrowArray as _, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
 use re_sdk_types::ComponentSet;
 use re_types_core::SerializedComponentColumn;
 
-use crate::DatatypeMatchKind;
-use crate::typed_entity_collections::DatatypeMatchInfo;
+use crate::typed_entity_collections::DatatypeMatch;
 use crate::view::visualizer_system::AnyPhysicalDatatypeRequirement;
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, RequiredComponents, ViewSystemIdentifier,
@@ -348,10 +348,34 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         let is_physical_match = physical_types.contains(&arrow_datatype);
                         let is_semantic_match = component_type == Some(*semantic_type);
 
-                        let match_kind = match (is_physical_match, is_semantic_match) {
-                            (false, false) => None,
-                            (true, false) => Some(DatatypeMatchKind::PhysicalDatatypeOnly),
-                            (true, true) => Some(DatatypeMatchKind::NativeSemantics),
+                        let match_info: Option<DatatypeMatch> = match (
+                            is_physical_match,
+                            is_semantic_match,
+                        ) {
+                            (false, false) => {
+                                // No direct match - try nested field access
+                                extract_nested_fields(&list_array.value_type(), |dt| {
+                                    physical_types.contains(dt)
+                                })
+                                .map(|selectors| {
+                                    DatatypeMatch::PhysicalDatatypeOnly {
+                                        arrow_datatype,
+                                        component_type,
+                                        selectors: selectors.into(),
+                                    }
+                                })
+                            }
+
+                            (true, false) => Some(DatatypeMatch::PhysicalDatatypeOnly {
+                                arrow_datatype,
+                                component_type,
+                                selectors: Vec::new(),
+                            }),
+
+                            (true, true) => Some(DatatypeMatch::NativeSemantics {
+                                arrow_datatype,
+                                component_type,
+                            }),
 
                             (false, true) => {
                                 re_log::warn_once!(
@@ -362,7 +386,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                             }
                         };
 
-                        if let Some(kind) = match_kind {
+                        if let Some(match_info) = match_info {
                             // The component might be present, but logged completely empty.
                             if !list_array.values().is_empty() {
                                 has_any_datatype = true;
@@ -377,14 +401,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                                         if let VisualizableReason::DatatypeMatchAny { matches } =
                                             occupied_entry.get_mut()
                                         {
-                                            matches.insert(
-                                                descriptor.component,
-                                                DatatypeMatchInfo {
-                                                    kind,
-                                                    arrow_datatype,
-                                                    component_type,
-                                                },
-                                            );
+                                            matches.insert(descriptor.component, match_info);
                                         } else {
                                             // We already had a different kind of match? Shouldn't happen.
                                             debug_assert!(
@@ -399,11 +416,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                                         vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
                                             matches: std::iter::once((
                                                 descriptor.component,
-                                                DatatypeMatchInfo {
-                                                    kind,
-                                                    arrow_datatype,
-                                                    component_type,
-                                                },
+                                                match_info,
                                             ))
                                             .collect(),
                                         });

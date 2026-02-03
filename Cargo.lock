@@ -8349,6 +8349,7 @@ dependencies = [
  "insta",
  "re_arrow_util",
  "thiserror 2.0.17",
+ "vec1",
 ]
 
 [[package]]
@@ -9681,6 +9682,7 @@ dependencies = [
  "egui_tiles",
  "itertools 0.14.0",
  "nohash-hasher",
+ "re_arrow_combinators",
  "re_case",
  "re_chunk",
  "re_chunk_store",
@@ -10481,6 +10483,7 @@ dependencies = [
  "parking_lot",
  "rand 0.9.2",
  "rayon",
+ "re_arrow_combinators",
  "re_arrow_ui",
  "re_arrow_util",
  "re_byte_size",

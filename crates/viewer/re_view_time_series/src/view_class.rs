@@ -1,7 +1,6 @@
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
-use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
@@ -19,7 +18,7 @@ use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, DatatypeMatchInfo, IdentifiedViewSystem as _, IndicatedEntities,
+    BlueprintContext as _, DatatypeMatch, IdentifiedViewSystem as _, IndicatedEntities,
     PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, RecommendedView,
     RecommendedVisualizers, SystemExecutionOutput, TimeControlCommand, ViewClass,
     ViewClassExt as _, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
@@ -266,11 +265,11 @@ impl ViewClass for TimeSeriesView {
                             .filter(|(_, match_info)| {
                                 // Skip Rerun types without native semantics (like Color, LinearSpeed etc.) so we
                                 // don't spawn views for those.
-                                match match_info.kind {
-                                    re_viewer_context::DatatypeMatchKind::NativeSemantics => true,
-                                    re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => {
-                                        match_info.component_type.is_none_or(|t| !t.is_rerun_type())
-                                    }
+                                match match_info {
+                                    DatatypeMatch::NativeSemantics { .. } => true,
+                                    DatatypeMatch::PhysicalDatatypeOnly {
+                                        component_type, ..
+                                    } => component_type.is_none_or(|t| !t.is_rerun_type()),
                                 }
                             })
                             .map(|(source_component, match_info)| {
@@ -808,7 +807,7 @@ type ScalarMatchPriorityKey = (u32, bool, u32, ComponentIdentifier);
 /// Lower values mean that a mapping is preferred.
 fn scalar_match_priority(
     source_component: ComponentIdentifier,
-    match_info: &DatatypeMatchInfo,
+    match_info: &DatatypeMatch,
 ) -> ScalarMatchPriorityKey {
     // Sorting priorities:
     // 1. Match kind: Full native (identity) > Native semantics > Physical datatype only
@@ -816,24 +815,45 @@ fn scalar_match_priority(
     //    - Rationale: When expecting Scalars, prefer raw numeric data over components with
     //      different known semantics (e.g., Color, LinearSpeed)
     // 3. Datatype preference: f64 > f32 > int64 > int32 > ... (see `scalar_datatype_priority`)
+    //    - For nested types, use the best selector's datatype
     // 4. Alphabetical order as final tiebreaker
 
     let target_component = Scalars::descriptor_scalars().component;
+    let is_rerun_native_type = match_info
+        .component_type()
+        .is_some_and(|t| t.is_rerun_type());
 
-    let primary_match_order = if source_component == target_component {
-        // Full native match - exact component identifier
-        0
-    } else {
-        match match_info.kind {
-            // Native semantic match - same semantic type but different component identifier
-            re_viewer_context::DatatypeMatchKind::NativeSemantics => 1,
-            // Physical datatype match - compatible datatype but different semantics
-            re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => 2,
+    let (primary_match_order, best_datatype) = match match_info {
+        DatatypeMatch::NativeSemantics { arrow_datatype, .. } => {
+            let order = u32::from(source_component != target_component);
+            (order, arrow_datatype)
+        }
+        DatatypeMatch::PhysicalDatatypeOnly {
+            arrow_datatype,
+            selectors,
+            ..
+        } => {
+            let order = if source_component == target_component {
+                0
+            } else {
+                2
+            };
+
+            let best_datatype = if selectors.is_empty() {
+                arrow_datatype
+            } else {
+                selectors
+                    .iter()
+                    .map(|(_, dt)| dt)
+                    .min_by_key(|dt| scalar_datatype_priority(dt))
+                    .unwrap_or(arrow_datatype)
+            };
+
+            (order, best_datatype)
         }
     };
 
-    let is_rerun_native_type = match_info.component_type.is_some_and(|t| t.is_rerun_type());
-    let datatype_order = scalar_datatype_priority(&match_info.arrow_datatype);
+    let datatype_order = scalar_datatype_priority(best_datatype);
 
     (
         primary_match_order,
@@ -843,6 +863,8 @@ fn scalar_match_priority(
     )
 }
 
+// TODO(RR-3565): We should unify this code with `scalar_match_priority`. One is used for `spawn_heuristics`,
+// the other is used for `recommended_visualizers_for_entity`.
 fn scalar_mapping_selector(
     reason_opt: Option<&VisualizableReason>,
 ) -> Option<VisualizerComponentSource> {
@@ -851,18 +873,96 @@ fn scalar_mapping_selector(
         return None;
     };
 
-    matches
-        .iter()
-        .sorted_by_key(|(source_component, match_info)| {
-            scalar_match_priority(**source_component, match_info)
-        })
-        .next()
-        .map(
-            |(source_component, _)| VisualizerComponentSource::SourceComponent {
-                source_component: *source_component,
-                selector: String::new(),
+    let target_component = Scalars::descriptor_scalars().component;
+
+    // Flatten all (component, selector) pairs into a single comparable list
+    // to find the globally best match across all components.
+    let candidates = matches.iter().flat_map(|(source_component, match_info)| {
+        let is_rerun_native_type = match_info
+            .component_type()
+            .is_some_and(|t| t.is_rerun_type());
+        let primary_match_order = match match_info {
+            DatatypeMatch::NativeSemantics { .. } => {
+                i32::from(*source_component != target_component)
+            }
+            DatatypeMatch::PhysicalDatatypeOnly { .. } => {
+                if *source_component == target_component {
+                    0
+                } else {
+                    2
+                }
+            }
+        };
+
+        match match_info {
+            DatatypeMatch::NativeSemantics { arrow_datatype, .. } => {
+                itertools::Either::Left(std::iter::once((
+                    primary_match_order,
+                    is_rerun_native_type,
+                    scalar_datatype_priority(arrow_datatype),
+                    *source_component,
+                    0usize,
+                    String::new(),
+                )))
+            }
+            DatatypeMatch::PhysicalDatatypeOnly {
+                arrow_datatype,
+                selectors,
+                ..
+            } => {
+                if selectors.is_empty() {
+                    itertools::Either::Left(std::iter::once((
+                        primary_match_order,
+                        is_rerun_native_type,
+                        scalar_datatype_priority(arrow_datatype),
+                        *source_component,
+                        0usize,
+                        String::new(),
+                    )))
+                } else {
+                    // Nested field access: selector_index preserves field definition order.
+                    itertools::Either::Right(selectors.iter().enumerate().map(
+                        move |(selector_index, (selector, datatype))| {
+                            (
+                                primary_match_order,
+                                is_rerun_native_type,
+                                scalar_datatype_priority(datatype),
+                                *source_component,
+                                selector_index,
+                                selector.to_string(),
+                            )
+                        },
+                    ))
+                }
+            }
+        }
+    });
+
+    // Priority key (lower = better):
+    // 1. primary_match_order (0=exact match, 1=semantic match, 2=physical only)
+    // 2. is_rerun_native_type (false < true, prefer custom types)
+    // 3. scalar_datatype_priority (Float64=0, Float32=1, etc.)
+    // 4. source_component (deterministic component selection)
+    // 5. selector_index (field definition order within component)
+    candidates
+        .into_iter()
+        .min_by_key(
+            |(match_order, is_rerun, dt_priority, component, field_order, _)| {
+                (
+                    *match_order,
+                    *is_rerun,
+                    *dt_priority,
+                    *component,
+                    *field_order,
+                )
             },
         )
+        .map(|(_, _, _, source_component, _, selector)| {
+            VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            }
+        })
 }
 
 fn draw_time_cursor(
@@ -974,6 +1074,10 @@ fn update_series_visibility_overrides_from_plot(
 
         let visible_new = !hidden_items.contains(&series.id());
 
+        // TODO(RR-3551): Figure out interaction between selectors and series visibility.
+        // When selectors are used to access nested fields, we need to determine how visibility
+        // should work - should each selector create a separately hideable series, or should they
+        // share visibility state? How should instance indexing work with selectors?
         let instance = series.instance_path.instance;
         let index = instance.specific_index().map_or(0, |i| i.get() as usize);
         if entity_visibility_flags.len() <= index {

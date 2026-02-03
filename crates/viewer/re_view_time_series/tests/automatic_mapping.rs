@@ -5,7 +5,8 @@
 
 use std::sync::Arc;
 
-use re_log_types::external::arrow::array::{Float64Array, Int16Array, Int32Array};
+use re_log_types::external::arrow::array::{Float64Array, Int16Array, Int32Array, StructArray};
+use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::components;
 use re_sdk_types::{DynamicArchetype, archetypes};
@@ -172,6 +173,109 @@ fn setup_store(test_context: &mut TestContext) {
                     )
                     // Known Rerun Scalars component (NativeSemantics - the exact type we're expecting!)
                     .with_component::<components::Scalar>("scalars", [i as f64 * 30.0]),
+            )
+        });
+    }
+
+    // Scenario 10: Entity with nested struct containing Float64 and Int32 fields
+    // Expected: Should be visualizable via nested field access
+    for i in 0..10 {
+        use re_log_types::external::arrow;
+
+        let struct_array = StructArray::from(vec![
+            (
+                Arc::new(Field::new("x", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![i as f64 * 11.0])) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new("y", DataType::Int32, false)),
+                Arc::new(Int32Array::from(vec![i as i32 * 12])) as Arc<dyn arrow::array::Array>,
+            ),
+        ]);
+
+        test_context.log_entity("entity_nested_struct", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component_from_data("nested_data", Arc::new(struct_array)),
+            )
+        });
+    }
+
+    // Scenario 11: Complex nested structure with mixed types
+    // Structure: { a: { b: Int32, c: Float64 }, x: Float32 }
+    // Expected: Should pick .a.c (Float64) over .x (Float32) due to datatype priority
+    for i in 0..10 {
+        use re_log_types::external::arrow;
+
+        let inner_struct = StructArray::from(vec![
+            (
+                Arc::new(Field::new("b", DataType::Int32, false)),
+                Arc::new(Int32Array::from(vec![i as i32 * 13])) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new("c", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![i as f64 * 14.0])) as Arc<dyn arrow::array::Array>,
+            ),
+        ]);
+
+        let outer_struct = StructArray::from(vec![
+            (
+                Arc::new(Field::new(
+                    "a",
+                    DataType::Struct(inner_struct.fields().clone()),
+                    false,
+                )),
+                Arc::new(inner_struct) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new("x", DataType::Float32, false)),
+                Arc::new(re_log_types::external::arrow::array::Float32Array::from(
+                    vec![i as f32 * 15.0],
+                )) as Arc<dyn arrow::array::Array>,
+            ),
+        ]);
+
+        test_context.log_entity("entity_nested_datatype_priority", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component_from_data("complex_data", Arc::new(outer_struct)),
+            )
+        });
+    }
+
+    // Scenario 12: All Float64 fields but different path lengths
+    // Structure: { z: Float64, a: { b: Float64 } }
+    // Expected: Should pick .z (shorter) over .a.b (longer), even though "z" comes after "a.b" alphabetically
+    for i in 0..10 {
+        use re_log_types::external::arrow;
+
+        let inner_struct = StructArray::from(vec![(
+            Arc::new(Field::new("b", DataType::Float64, false)),
+            Arc::new(Float64Array::from(vec![i as f64 * 16.0])) as Arc<dyn arrow::array::Array>,
+        )]);
+
+        let outer_struct = StructArray::from(vec![
+            (
+                Arc::new(Field::new(
+                    "a",
+                    DataType::Struct(inner_struct.fields().clone()),
+                    false,
+                )),
+                Arc::new(inner_struct) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new("z", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![i as f64 * 17.0])) as Arc<dyn arrow::array::Array>,
+            ),
+        ]);
+
+        test_context.log_entity("entity_nested_path_length", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component_from_data("path_data", Arc::new(outer_struct)),
             )
         });
     }
@@ -409,6 +513,86 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
                 );
             }
             _ => panic!("Expected SourceComponent mapping for Scalars component"),
+        }
+    }
+
+    // Scenario 10: Entity with nested struct containing Float64 and Int32 fields
+    {
+        let instruction = single_visualizer_for(data_result_tree, "entity_nested_struct");
+        let mapping = scalar_mapping_for(instruction);
+
+        match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                assert_eq!(
+                    source_component.as_str(),
+                    "custom:nested_data",
+                    "Should map to nested struct component"
+                );
+                assert_eq!(
+                    selector.as_str(),
+                    ".x",
+                    "Expected selector `.x` (Float64 field, higher priority than Int32)"
+                );
+            }
+            _ => panic!("Expected SourceComponent mapping for nested struct"),
+        }
+    }
+
+    // Scenario 11: Complex nested structure with mixed types
+    // Structure: { a: { b: Int32, c: Float64 }, x: Float32 }
+    // Expected: Should pick .a.c (Float64) over .x (Float32) due to datatype priority
+    {
+        let instruction =
+            single_visualizer_for(data_result_tree, "entity_nested_datatype_priority");
+        let mapping = scalar_mapping_for(instruction);
+
+        match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                assert_eq!(
+                    source_component.as_str(),
+                    "custom:complex_data",
+                    "Should map to nested struct component"
+                );
+                assert_eq!(
+                    selector.as_str(),
+                    ".a.c",
+                    "Expected selector `.a.c` (Float64 field, higher priority than Float32 `x`)"
+                );
+            }
+            _ => panic!("Expected SourceComponent mapping for complex nested struct"),
+        }
+    }
+
+    // Scenario 12: All Float64 fields but different path lengths
+    // Structure: { z: Float64, a: { b: Float64 } }
+    // Expected: Should pick .z (shorter path) over .a.b (longer path)
+    {
+        let instruction = single_visualizer_for(data_result_tree, "entity_nested_path_length");
+        let mapping = scalar_mapping_for(instruction);
+
+        match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                assert_eq!(
+                    source_component.as_str(),
+                    "custom:path_data",
+                    "Should map to nested struct component"
+                );
+                assert_eq!(
+                    selector.as_str(),
+                    ".z",
+                    "Expected selector `.z` (shorter path than `.a.b`)"
+                );
+            }
+            _ => panic!("Expected SourceComponent mapping for path length preference"),
         }
     }
 }

@@ -498,15 +498,36 @@ fn collect_source_component_options(
         std::iter::once(target_component_reflection.datatype.clone()).collect()
     };
 
+    // TODO(RR-3554): Provide a better structure/ordering that help user navigate the list.
     entity_components_with_datatype
         .iter()
-        .filter(|(_, datatype)| allowed_physical_types.contains(datatype))
-        .map(
-            |(component_id, _)| VisualizerComponentSource::SourceComponent {
-                source_component: *component_id,
-                selector: String::new(),
-            },
-        )
+        .flat_map(|(component, datatype)| {
+            use itertools::Either;
+
+            // Nested struct
+            if is_required_component
+                && let Some(selectors) =
+                    re_arrow_combinators::extract_nested_fields(datatype, |dt| {
+                        allowed_physical_types.contains(dt)
+                    })
+            {
+                Either::Left(selectors.into_iter().map(move |(sel, _)| {
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: *component,
+                        selector: sel.to_string(),
+                    }
+                }))
+            } else if allowed_physical_types.contains(datatype) {
+                Either::Right(itertools::Either::Left(std::iter::once(
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: *component,
+                        selector: String::new(),
+                    },
+                )))
+            } else {
+                Either::Right(Either::Right(std::iter::empty()))
+            }
+        })
         .collect()
 }
 
@@ -610,14 +631,20 @@ fn current_component_source<'a>(
     VisualizerComponentSource::Default
 }
 
-fn component_source_string(source: &VisualizerComponentSource) -> &'static str {
+fn component_source_string(source: &VisualizerComponentSource) -> String {
     match source {
         VisualizerComponentSource::SourceComponent {
             source_component,
-            selector: _,
-        } => source_component.as_str(),
-        VisualizerComponentSource::Override => "Override",
-        VisualizerComponentSource::Default => "View Default",
+            selector,
+        } => {
+            if selector.is_empty() {
+                source_component.as_str().to_owned()
+            } else {
+                format!("{}{}", source_component.as_str(), selector)
+            }
+        }
+        VisualizerComponentSource::Override => "Override".to_owned(),
+        VisualizerComponentSource::Default => "View default".to_owned(),
     }
 }
 

@@ -10,9 +10,10 @@ mod parser;
 mod runtime;
 
 use arrow::{
-    array::{ListArray, StructArray},
+    array::ListArray,
     datatypes::{DataType, Fields},
 };
+use vec1::Vec1;
 
 use parser::{Expr, Segment};
 
@@ -86,33 +87,48 @@ pub enum Error {
     Runtime(#[from] crate::Error),
 }
 
-pub fn extract_nested_fields<P>(array: &ListArray, predicate: P) -> Vec<Selector>
+/// Extract nested fields from a struct array that match a predicate.
+///
+/// Returns `None` if no fields match the predicate, or if `datatype` is not a `DataType::Struct`.
+pub fn extract_nested_fields<P>(
+    datatype: &DataType,
+    predicate: P,
+) -> Option<Vec1<(Selector, DataType)>>
 where
     P: Fn(&DataType) -> bool,
 {
-    fn rec<P>(acc: &mut Vec<Selector>, curr: &[Segment], fields: &Fields, predicate: &P)
+    fn rec<P>(acc: &mut Vec<(Selector, DataType)>, curr: &[Segment], fields: &Fields, predicate: &P)
     where
         P: Fn(&DataType) -> bool,
     {
+        // First pass: collect all matching fields at the current level (breadth-first)
         for field in fields {
             let mut path = curr.to_vec();
             path.push(Segment::Field(field.name().clone()));
 
             if predicate(field.data_type()) {
-                acc.push(Selector(Expr::Path(path.clone())));
+                acc.push((
+                    Selector(Expr::Path(path.clone())),
+                    field.data_type().clone(),
+                ));
             }
+        }
 
+        // Second pass: recurse into nested structs
+        for field in fields {
             if let DataType::Struct(nested_fields) = field.data_type() {
+                let mut path = curr.to_vec();
+                path.push(Segment::Field(field.name().clone()));
                 rec(acc, &path, nested_fields, predicate);
             }
         }
     }
 
-    let Some(struct_array) = array.values().as_any().downcast_ref::<StructArray>() else {
-        return Vec::new();
+    let DataType::Struct(fields) = datatype else {
+        return None;
     };
 
     let mut result = Vec::new();
-    rec(&mut result, &[], struct_array.fields(), &predicate);
-    result
+    rec(&mut result, &[], fields, &predicate);
+    Vec1::try_from_vec(result).ok()
 }

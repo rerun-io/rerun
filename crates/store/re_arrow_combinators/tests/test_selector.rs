@@ -295,10 +295,13 @@ fn execute_index_on_fixed_size_list() -> Result<(), Error> {
 fn extract_scalar_fields_from_nested_struct() {
     let list_array = fixtures::nested_struct_column();
 
-    let selectors = re_arrow_combinators::extract_nested_fields(&list_array, |dt| {
+    let selectors = re_arrow_combinators::extract_nested_fields(&list_array.value_type(), |dt| {
         matches!(dt, DataType::Float64)
-    });
+    })
+    .expect("Should find nested fields");
 
-    assert_eq!(selectors[0].to_string(), ".location.x");
-    assert_eq!(selectors[1].to_string(), ".location.y");
+    assert_eq!(selectors[0].0.to_string(), ".location.x");
+    assert_eq!(selectors[0].1, DataType::Float64);
+    assert_eq!(selectors[1].0.to_string(), ".location.y");
+    assert_eq!(selectors[1].1, DataType::Float64);
 }
