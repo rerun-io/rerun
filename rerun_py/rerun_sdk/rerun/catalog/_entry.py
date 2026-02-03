@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
 import pyarrow as pa
@@ -42,6 +43,23 @@ if TYPE_CHECKING:
         Schema,
         VectorDistanceMetric,
     )
+
+
+# TODO(#12612): switch to `StrEnum` when we drop Python 3.10
+class OnDuplicateSegmentLayer(str, Enum):
+    """
+    How to handle duplicate segment layers when registering recordings to a dataset.
+
+    Attributes:
+        ERROR: Raise an error if a segment layer with the same name already exists.
+        SKIP: Skip the duplicate segment layer.
+        REPLACE: Replace the existing segment layer with the new one.
+
+    """
+
+    ERROR = "error"
+    SKIP = "skip"
+    REPLACE = "replace"
 
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
@@ -330,6 +348,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         recording_uri: str | Sequence[str],
         *,
         layer_name: str | Sequence[str] = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
     ) -> RegistrationHandle:
         """
         Register RRD URIs to the dataset and return a handle to track progress.
@@ -339,14 +358,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        recording_uri
+        recording_uri:
             The URI(s) of the RRD(s) to register. Can be a single URI string or a sequence of URIs.
 
-        layer_name
+        layer_name:
             The layer(s) to which the recordings will be registered to.
             Can be a single layer name (applied to all recordings) or a sequence of layer names
             (must match the length of `recording_uri`).
             Defaults to `"base"`.
+
+        on_duplicate:
+            How to handle the cases where the segment id and layer name already exist in the dataset?
+            Defaults to `OnDuplicateSegmentLayer.ERROR`.
 
         Returns
         -------
@@ -368,9 +391,16 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             if len(layer_names) != len(recording_uris):
                 raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
-        return RegistrationHandle(self._internal.register(recording_uris, recording_layers=layer_names))
+        return RegistrationHandle(
+            self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
+        )
 
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandle:
+    def register_prefix(
+        self,
+        recordings_prefix: str,
+        layer_name: str | None = None,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> RegistrationHandle:
         """
         Register all RRDs under a given prefix to the dataset and return a handle to track progress.
 
@@ -389,6 +419,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The layer to which the recordings will be registered to.
             If `None`, this defaults to `"base"`.
 
+        on_duplicate:
+            How to handle the cases where the segment id and layer name already exist in the dataset?
+            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+
         Returns
         -------
         A handle to track and wait on the registration tasks.
@@ -396,7 +430,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """
         from ._registration_handle import RegistrationHandle
 
-        return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name=layer_name))
+        if layer_name is None:
+            layer_name = "base"
+
+        return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name, on_duplicate))
 
     def download_segment(self, segment_id: str) -> Recording:
         """Download a segment from the dataset."""

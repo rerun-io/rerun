@@ -20,7 +20,13 @@ from rerun_bindings.types import (
 )
 
 from ._catalog_client import CatalogClient as CatalogClient
-from ._entry import DatasetEntry as DatasetEntry, DatasetView as DatasetView, Entry as Entry, TableEntry as TableEntry
+from ._entry import (
+    DatasetEntry as DatasetEntry,
+    DatasetView as DatasetView,
+    Entry as Entry,
+    OnDuplicateSegmentLayer as OnDuplicateSegmentLayer,
+    TableEntry as TableEntry,
+)
 from ._registration_handle import (
     RegistrationHandle as RegistrationHandle,
     RegistrationResult as RegistrationResult,

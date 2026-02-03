@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
-from rerun.catalog import SegmentRegistrationResult
+from rerun.catalog import AlreadyExistsError, OnDuplicateSegmentLayer, SegmentRegistrationResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
     from pathlib import Path
 
-    from rerun.catalog import CatalogClient
+    from rerun.catalog import CatalogClient, DatasetEntry
 
     from e2e_redap_tests.conftest import EntryFactory
 
@@ -303,3 +303,120 @@ def test_register_conflicting_property_schema(entry_factory: EntryFactory, tmp_p
 
     with pytest.raises(ValueError, match="schema"):
         dataset.register([seg_1_path.as_uri(), seg_2_path.as_uri()]).wait()
+
+
+@pytest.mark.local_only
+def test_register_duplicate_error_behavior(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Test that registering duplicate segments with on_duplicate='error' (default) raises an error."""
+    recording_id = "88888888-8888-8888-8888-888888888888"
+    uris = recording_factory([recording_id])
+
+    ds = entry_factory.create_dataset("test_dup_error")
+
+    # First registration should succeed
+    handle = ds.register(uris[0], on_duplicate=OnDuplicateSegmentLayer.ERROR)
+    result = handle.wait()
+    assert len(result.segment_ids) == 1
+    assert result.segment_ids[0] == recording_id
+
+    # Second registration of the same segment should fail
+    with pytest.raises(AlreadyExistsError, match="already exists"):
+        ds.register(uris[0], on_duplicate=OnDuplicateSegmentLayer.ERROR).wait()
+
+
+@pytest.mark.local_only
+def test_register_duplicate_ignore_behavior(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Test that registering duplicate segments with on_duplicate='ignore' keeps the original data."""
+    recording_id = "99999999-9999-9999-9999-999999999999"
+    # Create two recordings with the same ID but different data
+    # uris[0] has points [[0, 0]], uris[1] has points [[1, 1]]
+    uris = recording_factory([recording_id, recording_id])
+
+    ds = entry_factory.create_dataset("test_dup_ignore")
+
+    # First registration
+    handle = ds.register(uris[0], on_duplicate=OnDuplicateSegmentLayer.SKIP)
+    result = handle.wait()
+    assert len(result.segment_ids) == 1
+    assert result.segment_ids[0] == recording_id
+
+    # Verify the first recording's data is present (points [[0, 0]])
+    points = _get_points_data(ds)
+    assert points == [[0.0, 0.0]], f"Expected [[0.0, 0.0]] but got {points}"
+
+    # Second registration should succeed but not replace the data
+    handle = ds.register(uris[1], on_duplicate=OnDuplicateSegmentLayer.SKIP)
+    result = handle.wait()
+    # The result still contains the segment_id even though it was skipped
+    assert len(result.segment_ids) == 1
+
+    # Verify only one segment exists
+    segment_ids = ds.segment_ids()
+    assert len(segment_ids) == 1
+    assert segment_ids[0] == recording_id
+
+    # Verify the data is still from the first registration (points [[0, 0]])
+    points = _get_points_data(ds)
+    assert points == [[0.0, 0.0]], f"Expected [[0.0, 0.0]] (original data) but got {points}"
+
+
+@pytest.mark.local_only
+def test_register_duplicate_replace_behavior(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Test that registering duplicate segments with on_duplicate='replace' replaces the original data."""
+    recording_id = "aaaabbbb-aaaa-bbbb-aaaa-bbbbaaaabbbb"
+    # Create two recordings with the same ID but different data
+    # uris[0] has points [[0, 0]], uris[1] has points [[1, 1]]
+    uris = recording_factory([recording_id, recording_id])
+
+    ds = entry_factory.create_dataset("test_dup_replace")
+
+    # First registration
+    handle = ds.register(uris[0], on_duplicate=OnDuplicateSegmentLayer.REPLACE)
+    result = handle.wait()
+    assert len(result.segment_ids) == 1
+    assert result.segment_ids[0] == recording_id
+
+    # Verify the first recording's data is present (points [[0, 0]])
+    points = _get_points_data(ds)
+    assert points == [[0.0, 0.0]], f"Expected [[0.0, 0.0]] but got {points}"
+
+    # Second registration should succeed and replace the data
+    handle = ds.register(uris[1], on_duplicate=OnDuplicateSegmentLayer.REPLACE)
+    result = handle.wait()
+    assert len(result.segment_ids) == 1
+
+    # Verify only one segment exists (not duplicated)
+    segment_ids = ds.segment_ids()
+    assert len(segment_ids) == 1
+    assert segment_ids[0] == recording_id
+
+    # Verify the data is now from the second registration (points [[1, 1]])
+    points = _get_points_data(ds)
+    assert points == [[1.0, 1.0]], f"Expected [[1.0, 1.0]] (replaced data) but got {points}"
+
+
+def _get_points_data(ds: DatasetEntry) -> list[list[float]]:
+    """Helper to extract points data from a dataset."""
+    import pyarrow as pa
+
+    batches = ds.reader(index="log_time").select("/points:Points2D:positions").collect()
+    table = pa.Table.from_batches(batches)
+    positions_column = table.column("/points:Points2D:positions")
+    # Extract all point coordinates from the nested list structure
+    # The structure is: list of rows, each row is a list of points, each point is [x, y]
+    points = []
+    for chunk in positions_column.chunks:
+        for row in chunk:
+            if row is not None:
+                for point in row.as_py():
+                    points.append(point)
+    return points

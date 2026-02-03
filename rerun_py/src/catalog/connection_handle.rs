@@ -306,6 +306,7 @@ impl ConnectionHandle {
         dataset_id: EntryId,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
+        on_duplicate: IfDuplicateBehavior,
     ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
         let last_layer = recording_layers
             .last()
@@ -328,8 +329,7 @@ impl ConnectionHandle {
             async {
                 self.client()
                     .await?
-                    //TODO(ab): expose `on_duplicate` as a method argument
-                    .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
+                    .register_with_dataset(dataset_id, data_sources, on_duplicate)
                     .await
                     .map_err(to_py_err)
             }
@@ -348,12 +348,11 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recordings_prefix: String,
-        recordings_layer: Option<String>,
+        recordings_layer: String,
+        on_duplicate: IfDuplicateBehavior,
     ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
-        let layer = recordings_layer.unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
-
-        let data_source =
-            DataSource::new_rrd_layer_prefix(layer, recordings_prefix).map_err(to_py_err)?;
+        let data_source = DataSource::new_rrd_layer_prefix(recordings_layer, recordings_prefix)
+            .map_err(to_py_err)?;
         let data_sources = vec![data_source];
 
         wait_for_future(
@@ -361,8 +360,7 @@ impl ConnectionHandle {
             async {
                 self.client()
                     .await?
-                    //TODO(ab): expose `on_duplicate` as a method argument
-                    .register_with_dataset(dataset_id, data_sources, IfDuplicateBehavior::Error)
+                    .register_with_dataset(dataset_id, data_sources, on_duplicate)
                     .await
                     .map_err(to_py_err)
             }

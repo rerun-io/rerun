@@ -17,7 +17,7 @@ use re_protos::cloud::v1alpha1::{
     InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
     index_query_properties,
 };
-use re_protos::common::v1alpha1::ext::DatasetHandle;
+use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::fetch_chunks_response_to_chunk_and_segment_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
@@ -320,20 +320,26 @@ impl PyDatasetEntryInternal {
     /// recording_layers: list[str]
     ///     The layers to which the recordings will be registered to.
     ///     Must be the same length as `recording_uris`.
-    #[pyo3(signature = (recording_uris, *, recording_layers))]
-    #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers)")]
+    ///
+    /// on_duplicate: str
+    ///     How to handle duplicate segment layers. One of "error", "ignore", or "replace".
+    #[pyo3(signature = (recording_uris, recording_layers, on_duplicate))]
+    #[pyo3(text_signature = "(self, /, recording_uris, recording_layers, on_duplicate)")]
     fn register(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
+        on_duplicate: &str,
     ) -> PyResult<PyRegistrationHandleInternal> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
         let results = connection.register_with_dataset(
             self_.py(),
             self_.entry_details.id,
             recording_uris,
             recording_layers,
+            on_duplicate,
         )?;
 
         Ok(PyRegistrationHandleInternal::new(
@@ -355,23 +361,28 @@ impl PyDatasetEntryInternal {
     /// recordings_prefix: str
     ///     The prefix under which to register all RRDs.
     ///
-    /// layer_name: Optional[str]
+    /// layer_name: str
     ///     The layer to which the recordings will be registered to.
-    ///     If `None`, this defaults to `"base"`.
-    #[pyo3(signature = (recordings_prefix, layer_name = None))]
-    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
+    ///
+    /// on_duplicate: str
+    ///     How to handle duplicate segment layers. One of "error", "ignore", or "replace".
+    #[pyo3(signature = (recordings_prefix, layer_name, on_duplicate))]
+    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name, on_duplicate)")]
     fn register_prefix(
         self_: PyRef<'_, Self>,
         recordings_prefix: String,
-        layer_name: Option<String>,
+        layer_name: String,
+        on_duplicate: &str,
     ) -> PyResult<PyRegistrationHandleInternal> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
 
         let results = connection.register_with_dataset_prefix(
             self_.py(),
             self_.entry_details.id,
             recordings_prefix,
             layer_name,
+            on_duplicate,
         )?;
 
         Ok(PyRegistrationHandleInternal::new(
@@ -879,6 +890,18 @@ impl PyDatasetEntryInternal {
             columns,
             metadata: arrow_schema.metadata,
         })
+    }
+}
+
+/// Parse the Python `on_duplicate` string into the corresponding `IfDuplicateBehavior` enum.
+fn parse_on_duplicate(on_duplicate: &str) -> PyResult<IfDuplicateBehavior> {
+    match on_duplicate {
+        "error" => Ok(IfDuplicateBehavior::Error),
+        "skip" => Ok(IfDuplicateBehavior::Skip),
+        "replace" => Ok(IfDuplicateBehavior::Overwrite),
+        _ => Err(PyValueError::new_err(format!(
+            "invalid on_duplicate value: '{on_duplicate}'. Expected 'error', 'skip', or 'replace'"
+        ))),
     }
 }
 
