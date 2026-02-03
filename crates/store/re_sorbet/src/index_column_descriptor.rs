@@ -117,8 +117,7 @@ impl IndexColumnDescriptor {
             metadata.insert("rerun:is_sorted".to_owned(), "true".to_owned());
         }
 
-        ArrowField::new(timeline.name().to_string(), datatype.clone(), nullable)
-            .with_metadata(metadata)
+        ArrowField::new(self.column_name(), datatype.clone(), nullable).with_metadata(metadata)
     }
 }
 

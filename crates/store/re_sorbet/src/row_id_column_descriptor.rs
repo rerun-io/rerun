@@ -19,6 +19,12 @@ impl RowIdColumnDescriptor {
         Self { is_sorted }
     }
 
+    /// Column name, used in Arrow record batches and schemas.
+    #[expect(clippy::unused_self)]
+    pub fn column_name(&self) -> String {
+        RowId::partial_descriptor().to_string()
+    }
+
     /// Short field/column name
     #[inline]
     #[expect(clippy::unused_self)]
@@ -57,12 +63,8 @@ impl RowIdColumnDescriptor {
         }
 
         let nullable = false; // All rows has an id
-        ArrowField::new(
-            RowId::partial_descriptor().to_string(),
-            RowId::arrow_datatype(),
-            nullable,
-        )
-        .with_metadata(metadata)
+        ArrowField::new(self.column_name(), RowId::arrow_datatype(), nullable)
+            .with_metadata(metadata)
     }
 
     #[expect(clippy::unused_self)]
