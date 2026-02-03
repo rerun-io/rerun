@@ -3,12 +3,14 @@ use re_chunk_store::LatestAtQuery;
 use re_sdk_types::components::{self, Color, MarkerShape, MarkerSize};
 use re_sdk_types::{Archetype as _, Component as _, archetypes};
 use re_view::{
-    clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+    ChunksWithComponent, clamped_or_nothing, latest_at_with_blueprint_resolved_data,
+    range_with_blueprint_resolved_data,
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 use re_viewport_blueprint::ViewPropertyQueryError;
 
@@ -35,30 +37,21 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
 impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(
         &self,
-        app_options: &re_viewer_context::AppOptions,
+        _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        if app_options.experimental.component_mapping {
-            VisualizerQueryInfo {
-                relevant_archetype: archetypes::SeriesPoints::name().into(),
-                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
-                    semantic_type: components::Scalar::name(),
-                    physical_types: util::series_supported_datatypes().into_iter().collect(),
-                },
-                queried: archetypes::Scalars::all_components()
-                    .iter()
-                    .chain(archetypes::SeriesPoints::all_components().iter())
-                    .cloned()
-                    .collect(),
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesPoints::name().into(),
+            required: AnyPhysicalDatatypeRequirement {
+                semantic_type: components::Scalar::name(),
+                physical_types: util::series_supported_datatypes().into_iter().collect(),
+                allow_static_data: false,
             }
-        } else {
-            let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-            query_info
-                .queried
-                .extend(archetypes::SeriesPoints::all_components().iter().cloned());
-
-            query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
-
-            query_info
+            .into(),
+            queried: archetypes::Scalars::all_components()
+                .iter()
+                .chain(archetypes::SeriesPoints::all_components().iter())
+                .cloned()
+                .collect(),
         }
     }
 
@@ -105,8 +98,11 @@ impl SeriesPointsSystem {
                 Err(LoadSeriesError::ViewPropertyQuery(err)) => {
                     return Err(err);
                 }
-                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, err }) => {
-                    output.report_error_for(entity_path, err);
+                Err(LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id,
+                    err,
+                }) => {
+                    output.report_error_for(instruction_id, err);
                 }
                 Ok(one_series) => {
                     self.all_series.extend(one_series);
@@ -134,7 +130,7 @@ impl SeriesPointsSystem {
         let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
-            use re_view::RangeResultsExt as _;
+            use re_view::BlueprintResolvedResultsExt as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
@@ -152,11 +148,17 @@ impl SeriesPointsSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let all_scalar_chunks =
-                results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
+            let all_scalar_chunks: ChunksWithComponent<'_> = results
+                .get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
+                .try_into()
+                .map_err(|err| LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id: instruction.id,
+                    err,
+                })?;
+
             if all_scalar_chunks.is_empty() {
-                return Err(LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
+                return Err(LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id: instruction.id,
                     err: "No valid scalar data found".to_owned(),
                 });
             }
@@ -233,33 +235,33 @@ impl SeriesPointsSystem {
                 re_tracing::profile_scope!("fill marker shapes");
 
                 {
-                    let all_marker_shapes_chunks = bootstrapped_results
+                    let bootstrapped_marker_shapes_chunks = bootstrapped_results
                         .get_optional_chunks(
                             archetypes::SeriesPoints::descriptor_markers().component,
-                        )
-                        .chunks
-                        .iter()
-                        .cloned()
-                        .chain(
-                            results
-                                .get_optional_chunks(
-                                    archetypes::SeriesPoints::descriptor_markers().component,
-                                )
-                                .chunks
-                                .iter()
-                                .cloned(),
-                        )
+                        );
+                    let results_marker_shapes_chunks = results.get_optional_chunks(
+                        archetypes::SeriesPoints::descriptor_markers().component,
+                    );
+                    let all_marker_shapes_chunks = bootstrapped_marker_shapes_chunks
+                        .iter(|err| {
+                            // TODO(RR-3506): This should be a visualizer warning instead!
+                            re_log::warn_once!(
+                                "could not retrieve bootstrapped marker shapes: {err}"
+                            );
+                        })
+                        .chain(results_marker_shapes_chunks.iter(|err| {
+                            // TODO(RR-3506): This should be a visualizer warning instead!
+                            re_log::warn_once!("could not retrieve result marker shapes: {err}");
+                        }))
                         .collect_vec();
 
                     if all_marker_shapes_chunks.len() == 1
-                        && all_marker_shapes_chunks[0].is_static()
+                        && all_marker_shapes_chunks[0].chunk.is_static()
                     {
                         re_tracing::profile_scope!("override/default fast path");
 
                         if let Some(marker_shapes) = all_marker_shapes_chunks[0]
-                            .iter_component::<MarkerShape>(
-                                archetypes::SeriesPoints::descriptor_markers().component,
-                            )
+                            .iter_component::<MarkerShape>()
                             .next()
                         {
                             for (points, marker_shape) in points_per_series
@@ -278,23 +280,15 @@ impl SeriesPointsSystem {
 
                         let mut all_marker_shapes_iters = all_marker_shapes_chunks
                             .iter()
-                            .map(|chunk| {
-                                chunk.iter_component::<MarkerShape>(
-                                    archetypes::SeriesPoints::descriptor_markers().component,
-                                )
-                            })
+                            .map(|chunk| chunk.iter_component::<MarkerShape>())
                             .collect_vec();
                         let all_marker_shapes_indexed = {
                             let all_marker_shapes = all_marker_shapes_iters
                                 .iter_mut()
                                 .flat_map(|it| it.into_iter());
-                            let all_marker_shapes_indices =
-                                all_marker_shapes_chunks.iter().flat_map(|chunk| {
-                                    chunk.iter_component_indices(
-                                        *query.timeline(),
-                                        archetypes::SeriesPoints::descriptor_markers().component,
-                                    )
-                                });
+                            let all_marker_shapes_indices = all_marker_shapes_chunks
+                                .iter()
+                                .flat_map(|chunk| chunk.iter_component_indices(*query.timeline()));
                             itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
                         };
 
@@ -335,6 +329,7 @@ impl SeriesPointsSystem {
             }
 
             let series_visibility = collect_series_visibility(
+                &query_ctx,
                 &query,
                 &bootstrapped_results,
                 &results,
@@ -376,11 +371,13 @@ impl SeriesPointsSystem {
                     // Aggregation for points is not supported.
                     re_sdk_types::components::AggregationPolicy::Off,
                     &mut series,
-                    instruction.id.clone(),
+                    instruction.id,
                 )
-                .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
-                    err,
+                .map_err(|err| {
+                    LoadSeriesError::InstructionSpecificVisualizerError {
+                        instruction_id: instruction.id,
+                        err,
+                    }
                 })?;
             }
 

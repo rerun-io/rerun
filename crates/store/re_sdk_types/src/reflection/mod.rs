@@ -522,7 +522,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VisualizerInstructionId as Component>::name(),
             ComponentReflection {
-                docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.ActiveVisualizers.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "ID for a visualizer instruction.\n\nIDs are only guaranteed to be unique in the scope of a view.\nFor details see archetypes.ActiveVisualizers.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisualizerInstructionId::default().to_arrow()?),
                 datatype: VisualizerInstructionId::arrow_datatype(),

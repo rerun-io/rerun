@@ -45,14 +45,14 @@ impl ChunkStore {
             temporal_physical_chunks_stats: _, // stats are for physical data only
             static_chunk_ids_per_entity,
             static_chunks_stats: _, // stats are for physical data only
-            missing_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
         } = self;
 
         let sorbet_schema = re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::new(
-            rrd_manifest.sorbet_schema.clone(),
+            rrd_manifest.sorbet_schema().clone(),
         ))?;
 
         time_type_registry.extend(
@@ -1025,7 +1025,7 @@ impl ChunkStore {
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity,
             static_chunks_stats,
-            missing_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id,

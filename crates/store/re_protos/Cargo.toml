@@ -27,6 +27,7 @@ re_byte_size.workspace = true
 re_chunk.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_sorbet.workspace = true
+re_tracing.workspace = true
 re_types_core = { workspace = true, features = ["serde"] }
 re_tuid.workspace = true
 
@@ -34,6 +35,7 @@ re_tuid.workspace = true
 arrow.workspace = true
 http.workspace = true
 jiff.workspace = true
+lz4_flex.workspace = true
 pin-project-lite.workspace = true
 prost-types.workspace = true
 prost.workspace = true

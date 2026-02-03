@@ -388,6 +388,8 @@ impl ViewBlueprint {
         view_class_registry: &ViewClassRegistry,
         view_state: &dyn ViewState,
     ) -> QueryRange {
+        re_tracing::profile_function!();
+
         // Visual time range works with regular overrides for the most part but it's a bit special:
         // * we need it for all entities unconditionally
         // * default does not vary per visualizer
@@ -459,8 +461,8 @@ mod tests {
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder, VisualizableEntities,
-        VisualizableReason,
+        PerVisualizerType, PerVisualizerTypeInViewClass, ViewClassPlaceholder,
+        VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -468,7 +470,7 @@ mod tests {
     #[test]
     fn test_visible_interactive_overrides() {
         let mut test_ctx = TestContext::new();
-        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
+        let mut visualizable_entities = PerVisualizerType::<VisualizableEntities>::default();
 
         // Set up a store DB with some entities.
         {
@@ -504,7 +506,7 @@ mod tests {
                 });
         }
 
-        let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
+        let visualizable_entities = PerVisualizerTypeInViewClass::<VisualizableEntities> {
             view_class_identifier: ViewClassPlaceholder::identifier(),
             per_visualizer: visualizable_entities.0.clone(),
         };
@@ -619,8 +621,7 @@ mod tests {
             // Reset blueprint store for each scenario.
             {
                 let blueprint_entities = blueprint_store
-                    .entity_paths()
-                    .iter()
+                    .sorted_entity_paths()
                     .map(|path| (*path).clone())
                     .collect::<Vec<_>>();
                 for entity_path in blueprint_entities {
@@ -671,7 +672,7 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizerInViewClass<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerTypeInViewClass<VisualizableEntities>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 

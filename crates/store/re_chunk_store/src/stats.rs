@@ -376,7 +376,7 @@ impl SizeBytes for ChunkStore {
             leaky_compactions,
             temporal_physical_chunks_stats,
             static_chunks_stats,
-            missing_chunk_ids,
+            queried_chunk_id_tracker,
             insert_id,
             gc_id,
             event_id: _, // no heap data
@@ -395,18 +395,28 @@ impl SizeBytes for ChunkStore {
 
         use re_tracing::profile_scope;
 
+        let include_slow_things = false; // TODO(emilk): speed up the measurement of the slow things
+
         chunks_size
             + {
                 profile_scope!("static_chunk_ids_per_entity");
                 static_chunk_ids_per_entity.heap_size_bytes()
             }
             + {
-                profile_scope!("temporal_chunk_ids_per_entity");
-                temporal_chunk_ids_per_entity.heap_size_bytes()
+                if include_slow_things {
+                    profile_scope!("temporal_chunk_ids_per_entity");
+                    temporal_chunk_ids_per_entity.heap_size_bytes()
+                } else {
+                    0
+                }
             }
             + {
-                profile_scope!("temporal_chunk_ids_per_entity_per_component");
-                temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
+                if include_slow_things {
+                    profile_scope!("temporal_chunk_ids_per_entity_per_component");
+                    temporal_chunk_ids_per_entity_per_component.heap_size_bytes()
+                } else {
+                    0
+                }
             }
             + id.heap_size_bytes()
             + config.heap_size_bytes()
@@ -447,8 +457,8 @@ impl SizeBytes for ChunkStore {
                 static_chunks_stats.heap_size_bytes()
             }
             + {
-                profile_scope!("missing_chunk_ids");
-                missing_chunk_ids.heap_size_bytes()
+                profile_scope!("queried_chunk_id_tracker");
+                queried_chunk_id_tracker.heap_size_bytes()
             }
             + insert_id.heap_size_bytes()
             + gc_id.heap_size_bytes()

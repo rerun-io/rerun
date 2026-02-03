@@ -54,7 +54,7 @@ impl Layer {
     }
 
     pub fn schema_sha256(&self) -> Result<[u8; 32], ArrowError> {
-        re_log_encoding::RrdManifest::compute_sorbet_schema_sha256(&self.schema())
+        re_log_encoding::RawRrdManifest::compute_sorbet_schema_sha256(&self.schema())
     }
 
     pub fn compute_properties(

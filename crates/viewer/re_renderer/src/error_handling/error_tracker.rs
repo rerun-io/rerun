@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
 use super::handle_async_error;
 use super::wgpu_core_error::WgpuCoreWrappedContextError;

@@ -5,13 +5,13 @@ use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_sdk_types::{Component as _, components};
 use re_view::{
-    RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
-    range_with_blueprint_resolved_data,
+    ChunksWithComponent, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::series_query::{
@@ -35,30 +35,22 @@ impl IdentifiedViewSystem for SeriesLinesSystem {
 impl VisualizerSystem for SeriesLinesSystem {
     fn visualizer_query_info(
         &self,
-        app_options: &re_viewer_context::AppOptions,
+        _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        if app_options.experimental.component_mapping {
-            VisualizerQueryInfo {
-                relevant_archetype: archetypes::SeriesLines::name().into(),
-                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
-                    semantic_type: components::Scalar::name(),
-                    physical_types: util::series_supported_datatypes().into_iter().collect(),
-                },
-                queried: archetypes::Scalars::all_components()
-                    .iter()
-                    .chain(archetypes::SeriesLines::all_components().iter())
-                    .cloned()
-                    .collect(),
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesLines::name().into(),
+            required: AnyPhysicalDatatypeRequirement {
+                semantic_type: components::Scalar::name(),
+                physical_types: util::series_supported_datatypes().into_iter().collect(),
+                allow_static_data: false,
             }
-        } else {
-            let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-            query_info
-                .queried
-                .extend(archetypes::SeriesLines::all_components().iter().cloned());
+            .into(),
 
-            query_info.relevant_archetype = archetypes::SeriesLines::name().into();
-
-            query_info
+            queried: archetypes::Scalars::all_components()
+                .iter()
+                .chain(archetypes::SeriesLines::all_components().iter())
+                .cloned()
+                .collect(),
         }
     }
 
@@ -104,8 +96,11 @@ impl SeriesLinesSystem {
                 Err(LoadSeriesError::ViewPropertyQuery(err)) => {
                     return Err(err.into());
                 }
-                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, err }) => {
-                    output.report_error_for(entity_path, err);
+                Err(LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id,
+                    err,
+                }) => {
+                    output.report_error_for(instruction_id, err);
                 }
                 Ok(series) => {
                     self.all_series.extend(series);
@@ -131,7 +126,7 @@ impl SeriesLinesSystem {
         let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
-            use re_view::RangeResultsExt as _;
+            use re_view::BlueprintResolvedResultsExt as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
@@ -152,11 +147,17 @@ impl SeriesLinesSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let all_scalar_chunks =
-                results.get_required_chunk(archetypes::Scalars::descriptor_scalars().component);
+            let all_scalar_chunks: ChunksWithComponent<'_> = results
+                .get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
+                .try_into()
+                .map_err(|err| LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id: instruction.id,
+                    err,
+                })?;
+
             if all_scalar_chunks.is_empty() {
-                return Err(LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
+                return Err(LoadSeriesError::InstructionSpecificVisualizerError {
+                    instruction_id: instruction.id,
                     err: "No valid scalar data found".to_owned(),
                 });
             }
@@ -227,18 +228,23 @@ impl SeriesLinesSystem {
             let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = bootstrapped_results
                 .get_optional_chunks(aggregation_policy_descr.component)
-                .chunks
-                .iter()
+                .iter(|err| {
+                    // TODO(RR-3506): This should be a visualizer warning instead!
+                    re_log::warn_once!("could not retrieve aggregation policy: {err}");
+                })
                 .chain(
                     results
                         .get_optional_chunks(aggregation_policy_descr.component)
-                        .chunks
-                        .iter(),
+                        .iter(|err| {
+                            // TODO(RR-3506): This should be a visualizer warning instead!
+                            re_log::warn_once!("could not retrieve aggregation policy: {err}");
+                        }),
                 )
-                .find(|chunk| !chunk.is_empty())
+                .find(|chunk| !chunk.chunk.is_empty())
                 .and_then(|chunk| {
                     chunk
-                        .component_mono::<AggregationPolicy>(aggregation_policy_descr.component, 0)?
+                        .chunk
+                        .component_mono::<AggregationPolicy>(chunk.component, 0)?
                         .ok()
                 })
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
@@ -295,6 +301,7 @@ impl SeriesLinesSystem {
             }
 
             let series_visibility = collect_series_visibility(
+                &query_ctx,
                 &query,
                 &bootstrapped_results,
                 &results,
@@ -335,11 +342,13 @@ impl SeriesLinesSystem {
                     label,
                     aggregator,
                     &mut series,
-                    instruction.id.clone(),
+                    instruction.id,
                 )
-                .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
-                    err,
+                .map_err(|err| {
+                    LoadSeriesError::InstructionSpecificVisualizerError {
+                        instruction_id: instruction.id,
+                        err,
+                    }
                 })?;
             }
 
@@ -370,8 +379,14 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.component)
-                .slice::<bool>()
+                .get(clear_descriptor.component)
+                .iter()
+                .flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
+                        chunk.iter_slices::<bool>(clear_descriptor.component)
+                    )
+                })
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
                         !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
@@ -389,8 +404,15 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.component)
-                .slice::<bool>()
+                .get(clear_descriptor.component)
+                .unwrap_or_default()
+                .iter()
+                .flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
+                        chunk.iter_slices::<bool>(clear_descriptor.component)
+                    )
+                })
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
                         !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);

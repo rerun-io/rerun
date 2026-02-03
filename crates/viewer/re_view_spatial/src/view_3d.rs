@@ -16,7 +16,7 @@ use re_tf::query_view_coordinates;
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass,
     QueryContext, RecommendedView, RecommendedVisualizers, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
@@ -129,11 +129,15 @@ impl ViewClass for SpatialView3D {
                     return 1.0.into();
                 };
 
+                // Minimum speed to ensure the camera is always usable, even for zero-sized
+                // scenes (e.g., a single point). See: https://github.com/rerun-io/rerun/issues/9433
+                const MIN_SPEED: f64 = 0.01;
+
                 let speed = match kind {
                     Eye3DKind::FirstPerson => {
                         let l = view_state.bounding_boxes.current.size().length() as f64;
                         if l.is_finite() {
-                            0.1 * l
+                            (0.1 * l).max(MIN_SPEED)
                         } else {
                             1.0
                         }
@@ -316,12 +320,12 @@ impl ViewClass for SpatialView3D {
         .flatten()
     }
 
-    /// Choose the default visualizers to enable for this entity.
-    fn choose_default_visualizers(
+    /// Auto picked visualizers for an entity if there was not explicit selection.
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();

@@ -4,9 +4,10 @@ use re_sdk_types::ViewClassIdentifier;
 
 use super::{ViewContext, VisualizerComponentMappings};
 use crate::{
-    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, SystemExecutionOutput,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
+    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
+    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
+    VisualizableEntities,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -119,7 +120,7 @@ pub trait ViewClass: Send + Sync {
         Some(EntityPath::common_ancestor_of(entities.iter()))
     }
 
-    /// Choose the default visualizers to enable for this entity.
+    /// Auto picked visualizers for an entity if there was not explicit selection.
     ///
     /// Helpful for customizing fallback behavior for types that are insufficient
     /// to determine indicated on their own.
@@ -129,11 +130,11 @@ pub trait ViewClass: Send + Sync {
     ///
     /// This interface provides a default implementation which will return all visualizers
     /// which are both visualizable and indicated for the given entity.
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let available_visualizers =
             visualizable_entities_per_visualizer

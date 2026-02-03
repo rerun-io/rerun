@@ -134,3 +134,20 @@ impl<T: MemUsageTreeCapture> MemUsageTreeCapture for Option<T> {
         }
     }
 }
+
+impl<K, V, S> MemUsageTreeCapture for std::collections::HashMap<K, V, S>
+where
+    K: std::fmt::Display,
+    V: MemUsageTreeCapture,
+{
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let mut node = MemUsageNode::new();
+
+        for (key, value) in self {
+            // Assumes the keys are small enough
+            node.add(key.to_string(), value.capture_mem_usage_tree());
+        }
+
+        node.into_tree()
+    }
+}

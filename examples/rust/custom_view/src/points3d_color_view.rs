@@ -7,10 +7,10 @@ use rerun::external::re_log_types::EntityPath;
 use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
 use rerun::external::re_viewer_context::{
-    HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
-    PerVisualizerInViewClass, RecommendedVisualizers, SelectionHighlight, SystemExecutionOutput,
-    UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
+    PerVisualizerTypeInViewClass, RecommendedVisualizers, SelectionHighlight,
+    SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
 
@@ -129,11 +129,11 @@ impl ViewClass for ColorCoordinatesView {
     /// The default implementation of `choose_default_visualizers` activates visualizers only
     /// if the respective indicator is present.
     /// We want to enable the visualizer here though for any visualizable entity instead!
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         if visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())

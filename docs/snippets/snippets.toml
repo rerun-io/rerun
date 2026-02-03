@@ -24,6 +24,8 @@ features = [
     "Query Data Platform",
     [
       "howto/dataframe_operations",
+      "howto/dataframe_performance",
+      "howto/lerobot_export",
       "howto/query_images",
       "howto/query_videos",
       "howto/query_video_keyframes",
@@ -108,6 +110,12 @@ features = [
       "howto/send_table",
     ],
   ],
+  [
+    "Convert custom MCAP Protobuf",
+    [
+      "howto/convert_mcap_protobuf",
+    ],
+  ],
 ]
 
 # --------------------------------------------------------------------------------------------------
@@ -116,11 +124,14 @@ features = [
 backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/explicit_recording", # The file path differs locally and on CI
+  "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
   # Dataplatform examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
+  "howto/dataframe_performance",
   "howto/layers",
+  "howto/lerobot_export",
   "howto/query_images",
   "howto/query_videos",
   "howto/query_video_keyframes",
@@ -218,11 +229,27 @@ backwards_check = [
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
+"howto/convert_mcap_protobuf" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/component_mapping" = [
+  "cpp", # Not implemented
+]
 "howto/dataframe_operations" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/dataframe_performance" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/layers" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/lerobot_export" = [
+  "py", # lerobot is not part of our environment as it causes dependency issues
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -466,7 +493,22 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"howto/convert_mcap_protobuf" = [ # Uses external MCAP file, depends on mcap_protobuf package
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataframe_performance" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
 "howto/layers" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/lerobot_export" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
@@ -510,3 +552,4 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
+"howto/convert_mcap_protobuf" = ["$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap"]

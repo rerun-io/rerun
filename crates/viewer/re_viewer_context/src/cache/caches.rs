@@ -1,18 +1,49 @@
 use std::any::TypeId;
+use std::sync::Arc;
 
 use ahash::HashMap;
-use parking_lot::Mutex;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
+use re_mutex::Mutex;
+
+/// A wrapper around a cache that allows for shared access with its own lock.
+///
+/// This reduces lock contention by having one lock per cache type
+/// instead of a single lock for all caches.
+struct SharedCache {
+    name: &'static str,
+    cache: Mutex<Box<dyn Cache>>,
+}
+
+impl SharedCache {
+    fn new<C: Cache + Default>() -> Self {
+        let cache = Box::<C>::default();
+        Self {
+            name: cache.name(),
+            cache: Mutex::new(cache),
+        }
+    }
+
+    fn lock(&self) -> re_mutex::MutexGuard<'_, Box<dyn Cache>> {
+        self.cache.lock()
+    }
+}
 
 /// Does memoization of different objects for the immediate mode UI.
 pub struct Caches {
-    caches: Mutex<HashMap<TypeId, Box<dyn Cache>>>,
+    /// Master map from cache type to the cache itself.
+    ///
+    /// The master mutex is only held briefly to look up or insert a cache.
+    /// Each cache has its own mutex for actual access.
+    caches: Mutex<HashMap<TypeId, Arc<SharedCache>>>,
 
     /// The store for which these caches are caching data.
     pub store_id: StoreId,
+
+    /// How much memory we used after the last call to [`Self::purge_memory`].
+    memory_use_after_last_purge: u64,
 }
 
 impl Caches {
@@ -21,24 +52,29 @@ impl Caches {
         Self {
             caches: Mutex::new(HashMap::default()),
             store_id,
+            memory_use_after_last_purge: 0,
         }
-    }
-
-    /// Call a function with a reference to the caches map.
-    pub fn with_caches<R>(&self, f: impl FnOnce(&HashMap<TypeId, Box<dyn Cache>>) -> R) -> R {
-        let guard = self.caches.lock();
-
-        f(&guard)
     }
 
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&self) {
         re_tracing::profile_function!();
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.begin_frame();
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
+            cache.lock().begin_frame();
         }
+    }
+
+    /// How much memory we used after the last call to [`Self::purge_memory`].
+    ///
+    /// This is the lower bound on how much memory we need.
+    ///
+    /// Some caches just cannot shrink below a certain size,
+    /// and we need to take that into account when budgeting for other things.
+    pub fn memory_use_after_last_purge(&self) -> u64 {
+        self.memory_use_after_last_purge
     }
 
     /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
@@ -51,8 +87,9 @@ impl Caches {
             .caches
             .lock()
             .values()
-            .map(|cache| (cache.name(), cache.vram_usage()))
+            .map(|cache| (cache.name, cache.lock().vram_usage()))
             .collect();
+
         cache_vram.sort_by_key(|(cache_name, _)| *cache_name);
 
         for (cache_name, vram_tree) in cache_vram {
@@ -63,13 +100,16 @@ impl Caches {
     }
 
     /// Attempt to free up memory.
-    pub fn purge_memory(&self) {
+    pub fn purge_memory(&mut self) {
         re_tracing::profile_function!();
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.purge_memory();
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
+            cache.lock().purge_memory();
         }
+
+        self.memory_use_after_last_purge = self.capture_mem_usage_tree().size_bytes();
     }
 
     /// React to the chunk store's changelog, if needed.
@@ -82,9 +122,10 @@ impl Caches {
             return;
         }
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.on_rrd_manifest(entity_db);
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
+            cache.lock().on_rrd_manifest(entity_db);
         }
     }
 
@@ -102,9 +143,10 @@ impl Caches {
             return;
         }
 
-        #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches.lock().values_mut() {
-            cache.on_store_events(&relevant_events, entity_db);
+        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
+        for cache in self.caches.lock().values() {
+            re_tracing::profile_scope!(cache.name);
+            cache.lock().on_store_events(&relevant_events, entity_db);
         }
     }
 
@@ -112,11 +154,22 @@ impl Caches {
     ///
     /// Adds the cache lazily if it wasn't already there.
     pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
-        let mut guard = self.caches.lock();
-        let cache = guard
-            .entry(TypeId::of::<C>())
-            .or_insert_with(|| Box::<C>::default())
-            .as_mut();
+        let shared_cache = {
+            re_tracing::profile_wait!("master-cache-lock");
+            // Only hold master lock briefly to get or create the cache entry
+            let mut guard = self.caches.lock();
+            guard
+                .entry(TypeId::of::<C>())
+                .or_insert_with(|| Arc::new(SharedCache::new::<C>()))
+                .clone()
+        };
+
+        // Now lock only this specific cache
+        let mut cache_guard = {
+            re_tracing::profile_wait!("cache-lock", shared_cache.name);
+            shared_cache.lock()
+        };
+        let cache = cache_guard.as_mut();
         f((cache as &mut dyn std::any::Any)
             .downcast_mut::<C>()
             .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
@@ -133,6 +186,8 @@ pub trait Cache: std::any::Any + Send + Sync + re_byte_size::MemUsageTreeCapture
     fn begin_frame(&mut self) {}
 
     /// Attempt to free up memory.
+    ///
+    /// Called BEFORE `begin_frame` (if at all).
     fn purge_memory(&mut self);
 
     /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
@@ -170,7 +225,7 @@ impl MemUsageTreeCapture for Caches {
             .caches
             .lock()
             .values()
-            .map(|cache| (cache.name(), cache.capture_mem_usage_tree()))
+            .map(|cache| (cache.name, cache.lock().capture_mem_usage_tree()))
             .collect();
         cache_trees.sort_by_key(|(cache_name, _)| *cache_name);
 

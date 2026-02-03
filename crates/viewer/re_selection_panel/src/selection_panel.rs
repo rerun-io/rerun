@@ -12,7 +12,7 @@ use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizerType,
     SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
     ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
@@ -173,6 +173,8 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
+        re_tracing::profile_function!();
+
         match item {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
@@ -561,13 +563,12 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
             let suggestions = {
                 let caches = ctx.viewer_ctx.store_context.caches;
-                let transform_cache =
+                let frame_id_registry =
                     caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        c.read_lock_transform_cache(ctx.viewer_ctx.recording())
+                        c.frame_id_registry(ctx.viewer_ctx.recording())
                     });
 
-                transform_cache
-                    .frame_id_registry()
+                frame_id_registry
                     .iter_frame_ids()
                     .filter(|(_, id)| !id.is_entity_path_derived())
                     .map(|(_, id)| id.to_string())
@@ -576,7 +577,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
-            crate::visualizer_ui::remove_and_reset_override_buttons(
+            crate::visualizer_ui::reset_override_button(
                 ctx,
                 ui,
                 component_descr.clone(),
@@ -622,9 +623,10 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
+    re_tracing::profile_function!();
+
     let mut property_entities = db
-        .entity_paths()
-        .into_iter()
+        .sorted_entity_paths()
         .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
     property_entities.sort();
@@ -679,7 +681,7 @@ fn entity_selection_ui(
             .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
         let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
-        let empty_errors = PerVisualizer::default();
+        let empty_errors = PerVisualizerType::default();
         let visualizer_errors = view_states
             .visualizer_errors(*view_id)
             .unwrap_or(&empty_errors);
@@ -1293,6 +1295,18 @@ mod tests {
             });
 
         harness.run();
+
+        {
+            // Redact size estimation, since small changes to our code can change it slightly:
+            let mut recording_size_label = harness
+                .get_all_by_label_contains(" KiB")
+                .next()
+                .unwrap()
+                .rect();
+            recording_size_label.set_width(80.0); // Compensate for different number of digits
+            harness.mask(recording_size_label);
+        }
+
         harness.snapshot("selection_panel_recording");
     }
 

@@ -52,7 +52,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let mut output = VisualizerExecutionOutput::default();
 
-        use super::entity_iterator::{iter_component, iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
@@ -60,31 +60,24 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             &mut output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
                 let entity_path = ctx.target_entity_path;
 
-                let all_buffer_chunks =
-                    results.get_required_chunk(SegmentationImage::descriptor_buffer().component);
-                if all_buffer_chunks.is_empty() {
+                let all_buffers =
+                    results.iter_required(SegmentationImage::descriptor_buffer().component);
+                if all_buffers.is_empty() {
                     return Ok(());
                 }
-                let all_formats_chunks =
-                    results.get_required_chunk(SegmentationImage::descriptor_format().component);
-                if all_formats_chunks.is_empty() {
+                let all_formats =
+                    results.iter_required(SegmentationImage::descriptor_format().component);
+                if all_formats.is_empty() {
                     return Ok(());
                 }
-
-                let timeline = ctx.query.timeline();
-                let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
-                let all_formats_indexed =
-                    iter_component::<ImageFormat>(&all_formats_chunks, timeline);
                 let all_opacities =
-                    results.iter_as(timeline, SegmentationImage::descriptor_opacity().component);
+                    results.iter_optional(SegmentationImage::descriptor_opacity().component);
 
                 let data = re_query::range_zip_1x2(
-                    all_buffers_indexed,
-                    all_formats_indexed,
+                    all_buffers.slice::<&[u8]>(),
+                    all_formats.component_slow::<ImageFormat>(),
                     all_opacities.slice::<f32>(),
                 )
                 .filter_map(|((_time, row_id), buffers, formats, opacity)| {
@@ -135,9 +128,9 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             );
                         }
                         Err(err) => {
-                            spatial_ctx
+                            results
                                 .output
-                                .report_error_for(entity_path.clone(), re_error::format(err));
+                                .report_error_for(results.instruction_id, re_error::format(err));
                         }
                     }
                 }

@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, ComponentType, EntityPath};
+use ahash::HashMap;
+use re_chunk::{ArchetypeName, ComponentType};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
@@ -38,6 +39,30 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
 
 pub type DatatypeSet = std::collections::BTreeSet<arrow::datatypes::DataType>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnyPhysicalDatatypeRequirement {
+    /// The semantic type the visualizer is working with.
+    ///
+    /// Matches with the semantic type are generally preferred.
+    pub semantic_type: ComponentType,
+
+    /// All supported physical Arrow data types.
+    ///
+    /// Has to contain the physical data type that is covered by the Rerun semantic type.
+    pub physical_types: DatatypeSet,
+
+    /// If false, ignores all static components.
+    ///
+    /// This is useful if you rely on ranges queries as done by the time series view.
+    pub allow_static_data: bool,
+}
+
+impl From<AnyPhysicalDatatypeRequirement> for RequiredComponents {
+    fn from(req: AnyPhysicalDatatypeRequirement) -> Self {
+        Self::AnyPhysicalDatatype(req)
+    }
+}
+
 /// Specifies how component requirements should be evaluated for visualizer entity matching.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum RequiredComponents {
@@ -54,10 +79,7 @@ pub enum RequiredComponents {
     /// Entity must have _any one_ of these physical Arrow data types.
     ///
     /// For instance, we may not put views into the "recommended" section or visualizer entities proactively unless they support the native type.
-    AnyPhysicalDatatype {
-        semantic_type: ComponentType,
-        physical_types: DatatypeSet,
-    },
+    AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement),
 }
 
 // TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.
@@ -114,12 +136,12 @@ pub struct VisualizerExecutionOutput {
     /// It's the view's responsibility to queue this data for rendering.
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 
-    /// Errors encountered during execution, mapped to the entity paths they relate to.
+    /// Errors encountered during execution, mapped to the visualizer instructions that caused them.
     ///
-    /// Errors from last frame will be shown in the UI for the respective entities.
+    /// Errors from last frame will be shown in the UI for the respective visualizer instruction.
     /// For errors that prevent any visualization at all, return a
     /// [`ViewSystemExecutionError`] instead.
-    pub errors_per_entity: IntMap<EntityPath, String>,
+    pub errors_per_instruction: HashMap<VisualizerInstructionId, String>,
     //
     // TODO(andreas): We should put other output here as well instead of passing around visualizer
     // structs themselves which is rather surprising.
@@ -128,9 +150,24 @@ pub struct VisualizerExecutionOutput {
 }
 
 impl VisualizerExecutionOutput {
-    /// Marks the given entity as having encountered an error during visualization.
-    pub fn report_error_for(&mut self, entity_path: EntityPath, error: impl Into<String>) {
-        self.errors_per_entity.insert(entity_path, error.into());
+    /// Marks the given visualizer instruction as having encountered an error during visualization.
+    pub fn report_error_for(
+        &mut self,
+        instruction_id: VisualizerInstructionId,
+        error: impl Into<String>,
+    ) {
+        self.errors_per_instruction
+            .insert(instruction_id, error.into());
+    }
+
+    /// Marks the given visualizer instruction as having encountered a warning during visualization.
+    pub fn report_warning_for(
+        &mut self,
+        instruction_id: VisualizerInstructionId,
+        error: impl Into<String>,
+    ) {
+        // TODO(RR-3506): We should differentiate between errors and warnings from visualizers.
+        self.report_error_for(instruction_id, error);
     }
 
     pub fn with_draw_data(

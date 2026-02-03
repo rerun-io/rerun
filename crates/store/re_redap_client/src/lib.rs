@@ -19,20 +19,6 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 /// Responses from the Data Platform can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
 
-/// Controls how to load chunks from the remote server.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum StreamMode {
-    /// Load all data into memory.
-    #[default]
-    FullLoad,
-
-    /// Larger-than-RAM support.
-    ///
-    /// Load chunks as needed.
-    /// Will start by loading the RRD manifest.
-    OnDemand,
-}
-
 /// Wrapper with a nicer error message
 #[derive(Debug)]
 pub struct TonicStatusError(Box<tonic::Status>);

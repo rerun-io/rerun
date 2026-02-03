@@ -177,7 +177,7 @@ impl FooterState {
     }
 
     fn finish(self) -> Result<crate::RrdFooter, EncodeError> {
-        let manifests: Result<HashMap<StoreId, crate::RrdManifest>, _> = self
+        let manifests: Result<HashMap<StoreId, crate::RawRrdManifest>, _> = self
             .manifests
             .into_iter()
             .map(|(store_id, state)| {

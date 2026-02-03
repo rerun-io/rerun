@@ -9,7 +9,7 @@ use crate::{Error, Fragment, Origin, RedapUri};
 ///
 /// `segment_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DatasetSegmentUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,

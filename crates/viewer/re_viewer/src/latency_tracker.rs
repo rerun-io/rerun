@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 use re_redap_client::ConnectionRegistryHandle;
 
 pub const MIN_QUERY_INTERVAL: web_time::Duration = web_time::Duration::from_secs(1);

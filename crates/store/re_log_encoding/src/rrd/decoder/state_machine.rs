@@ -7,7 +7,7 @@ use re_build_info::CrateVersion;
 use crate::rrd::MessageHeader;
 use crate::{
     CachingApplicationIdInjector, CodecError, Decodable as _, DecodeError, DecoderEntrypoint,
-    EncodingOptions, RrdManifest, Serializer, StreamFooter, StreamFooterEntry, StreamHeader,
+    EncodingOptions, RawRrdManifest, Serializer, StreamFooter, StreamFooterEntry, StreamHeader,
     ToApplication as _,
 };
 
@@ -140,7 +140,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     /// case of concatenated streams.
     ///
     /// This is not cheap: it automatically performs the transport to app level conversion.
-    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+    pub fn rrd_manifests(&self) -> Result<Vec<RawRrdManifest>, DecodeError> {
         re_tracing::profile_function!();
         self.rrd_manifests
             .iter()

@@ -5,9 +5,9 @@ use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
 pub use chunk_decoder::VideoSampleDecoder;
-use parking_lot::Mutex;
 pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
+use re_mutex::Mutex;
 use re_video::{DecodeSettings, VideoDataDescription};
 
 use crate::RenderContext;
@@ -22,6 +22,9 @@ pub enum InsufficientSampleDataError {
     #[error("Video doesn't have any samples.")]
     NoSamples,
 
+    #[error("Video doesn't have any loaded samples.")]
+    NoLoadedSamples,
+
     #[error("No key frames prior to current time.")]
     NoKeyFramesPriorToRequestedTimestamp,
 
@@ -29,7 +32,7 @@ pub enum InsufficientSampleDataError {
     NoSamplesPriorToRequestedTimestamp,
 
     #[error("The requested frame data is not, or no longer, available.")]
-    ExpectedSampleNotAvailable,
+    ExpectedSampleNotLoaded,
 
     #[error("Missing samples between last decoded sample and requested sample.")]
     MissingSamples,
@@ -299,6 +302,9 @@ impl Video {
     /// empty.
     ///
     /// The time is specified in seconds since the start of the video.
+    ///
+    /// `get_video_buffer` is used both to read data for frames internally, and as a way to request
+    /// what data should be loaded.
     pub fn frame_at<'a>(
         &self,
         render_context: &RenderContext,

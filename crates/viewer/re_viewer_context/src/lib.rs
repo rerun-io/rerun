@@ -106,8 +106,8 @@ pub use self::time_control::{
     time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    DatatypeMatchKind, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
-    VisualizableEntities, VisualizableReason,
+    DatatypeMatchInfo, DatatypeMatchKind, IndicatedEntities, PerVisualizerInstruction,
+    PerVisualizerType, PerVisualizerTypeInViewClass, VisualizableEntities, VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{
@@ -115,15 +115,16 @@ pub use self::utils::{
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, PerSystemDataResults,
-    PerSystemEntities, RecommendedView, RecommendedVisualizers, RequiredComponents,
-    SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder,
-    ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
-    ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
-    ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
-    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionErrorState,
-    VisualizerExecutionOutput, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    AnyPhysicalDatatypeRequirement, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
+    PerSystemDataResults, PerSystemEntities, RecommendedView, RecommendedVisualizers,
+    RequiredComponents, SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority,
+    ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError, ViewContext,
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
+    ViewSystemRegistrator, VisualizerCollection, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerExecutionErrorState, VisualizerExecutionOutput,
+    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

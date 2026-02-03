@@ -60,6 +60,27 @@ impl VisualizerComponentSource {
             Self::Default => ComponentSourceKind::Default,
         }
     }
+
+    pub fn component_source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
+        }
+    }
+
+    /// True if the mapping have no effect on the target.
+    ///
+    /// I.e. it maps directly from the target back to the target.
+    pub fn is_identity_mapping(&self, target: ComponentIdentifier) -> bool {
+        match self {
+            Self::SourceComponent {
+                source_component,
+                selector,
+            } => source_component == &target && selector.is_empty(),
+            Self::Override | Self::Default => false,
+        }
+    }
 }
 
 /// Component mappings for a visualizer instruction.

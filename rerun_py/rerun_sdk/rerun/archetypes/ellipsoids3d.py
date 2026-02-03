@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -17,6 +19,9 @@ from .._baseclasses import (
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .ellipsoids3d_ext import Ellipsoids3DExt
+
+if TYPE_CHECKING:
+    from ..blueprint.datatypes import VisualizerComponentMappingLike
 
 __all__ = ["Ellipsoids3D"]
 
@@ -413,6 +418,17 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype, VisualizableArchetype):
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
-    def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype, using all currently set values as overrides."""
-        return Visualizer("Ellipsoids3D", overrides=self.as_component_batches(), mappings=None)
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("Ellipsoids3D", overrides=self.as_component_batches(), mappings=mappings)

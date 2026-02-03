@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use parking_lot::RwLock;
+use re_mutex::RwLock;
 
 use crate::allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer};
 use crate::context::RenderContext;

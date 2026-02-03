@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
+use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+use re_mutex::Mutex;
 use type_map::concurrent::TypeMap;
 
 use crate::allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt};

@@ -244,12 +244,15 @@ pub struct LatestAtResults {
     // their own tracking. And document it so.
     pub missing: Vec<ChunkId>,
 
+    /// The first index of all the results.
+    pub min_index: (TimeInt, RowId),
+
     /// The compound index of this query result.
     ///
     /// A latest-at query is a compound operation that gathers data from many different rows.
     /// The index of that compound result corresponds to the index of most the recent row in all the
     /// sub-results, as defined by time and row-id order.
-    pub compound_index: (TimeInt, RowId),
+    pub max_index: (TimeInt, RowId),
 
     /// Results for each individual component.
     ///
@@ -264,7 +267,8 @@ impl LatestAtResults {
             entity_path,
             query,
             missing: Default::default(),
-            compound_index: (TimeInt::STATIC, RowId::ZERO),
+            min_index: (TimeInt::MAX, RowId::MAX),
+            max_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
         }
     }
@@ -291,7 +295,8 @@ impl LatestAtResults {
             entity_path: _,
             query: _,
             missing,
-            compound_index: _,
+            min_index: _,
+            max_index: _,
             components,
         } = self;
         missing.is_empty() && components.values().all(|chunks| chunks.is_empty())
@@ -314,10 +319,16 @@ impl LatestAtResults {
         }
     }
 
-    /// Returns the compound index (`(TimeInt, RowId)` pair) of the results.
+    /// Returns the minimum index (`(TimeInt, RowId)` pair) of all the results.
     #[inline]
-    pub fn index(&self) -> (TimeInt, RowId) {
-        self.compound_index
+    pub fn min_index(&self) -> (TimeInt, RowId) {
+        self.min_index
+    }
+
+    /// Returns the maximum index (`(TimeInt, RowId)` pair) of all the results.
+    #[inline]
+    pub fn max_index(&self) -> (TimeInt, RowId) {
+        self.max_index
     }
 }
 
@@ -332,12 +343,8 @@ impl LatestAtResults {
     ) {
         debug_assert!(chunk.num_rows() == 1);
 
-        // NOTE: Since this is a compound API that actually emits multiple queries, the index of the
-        // final result is the most recent index among all of its components, as defined by time
-        // and row-id order.
-        if index > self.compound_index {
-            self.compound_index = index;
-        }
+        self.min_index = self.min_index.min(index);
+        self.max_index = self.max_index.max(index);
 
         self.components.insert(component, chunk);
     }
@@ -567,7 +574,7 @@ impl LatestAtResults {
 
             Err(err) => {
                 let entity_path = &self.entity_path;
-                let index = self.compound_index;
+                let index = self.max_index;
                 let err = re_error::format_ref(&err);
                 re_log::log_once!(
                     log_level,

@@ -2,8 +2,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::entrypoint::NamedPath;
-use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 use ahash::HashMap;
 use arrow::array::BinaryArray;
 use arrow::record_batch::RecordBatch;
@@ -11,6 +9,9 @@ use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
+use tokio_stream::StreamExt as _;
+use tonic::{Code, Request, Response, Status};
+
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{
     Chunk, ChunkStore, ChunkStoreHandle, LatestAtQuery, OnMissingChunk, RangeQuery,
@@ -38,11 +39,11 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::missing_field;
-use tokio_stream::StreamExt as _;
-use tonic::{Code, Request, Response, Status};
+use re_tuid::Tuid;
 
 use crate::OnError;
-use re_tuid::Tuid;
+use crate::entrypoint::NamedPath;
+use crate::store::{ChunkKey, Dataset, Error, InMemoryStore, TASK_ID_SUCCESS, Table, TaskResult};
 
 #[derive(Debug)]
 pub struct RerunCloudHandlerSettings {
@@ -132,8 +133,6 @@ impl RerunCloudHandlerBuilder {
 }
 
 // ---
-
-const DUMMY_TASK_ID: &str = "task_00000000DEADBEEF";
 
 pub struct RerunCloudHandler {
     settings: RerunCloudHandlerSettings,
@@ -406,6 +405,7 @@ impl RerunCloudService for RerunCloudHandler {
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::VersionResponse {
                 build_info: Some(build_info.into()),
+                version: re_build_info::exposed_version!().to_owned(),
             },
         ))
     }
@@ -611,18 +611,11 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let mut store = self.store.write().await;
         let dataset_id = get_entry_id_from_headers(&store, &request)?;
-        let dataset = store.dataset_mut(dataset_id)?;
 
-        let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
+        let ext::RegisterWithDatasetRequest {
             data_sources,
             on_duplicate,
         } = request.into_inner().try_into()?;
-
-        let mut segment_ids: Vec<String> = vec![];
-        let mut segment_layers: Vec<String> = vec![];
-        let mut segment_types: Vec<String> = vec![];
-        let mut storage_urls: Vec<String> = vec![];
-        let mut task_ids: Vec<String> = vec![];
 
         let data_sources = Self::resolve_data_sources(&data_sources)?;
         if data_sources.is_empty() {
@@ -630,6 +623,30 @@ impl RerunCloudService for RerunCloudHandler {
                 "no data sources to register",
             ));
         }
+
+        // Phase 1: Load all RRDs and check for intra-request duplicates (early-out on duplicate)
+        //
+        // We load each RRD and collect (segment_id, layer) pairs. If any duplicate is found,
+        // we fail immediately without loading the remaining files.
+        // The `on_duplicate` flag only affects cross-request duplicates (conflicts with
+        // already-registered segments), not intra-request duplicates.
+        //
+        // Note: we load the full RRD to obtain its recording ID. This is fine for the happy path
+        // because we use the loaded chunk stores anyways. However, it makes the unhappy path slower
+        // since we discard the loaded chunk stores. If this proves to be an issue, we can resort to
+        // just loading the RRD's store info (e.g. as in `RrdMapper::load_store_info`).
+        struct PendingRegistration {
+            segment_id: SegmentId,
+            layer: String,
+            storage_url: url::Url,
+            chunk_store: ChunkStoreHandle,
+        }
+
+        let mut seen: std::collections::HashSet<(String, String)> =
+            std::collections::HashSet::new();
+        let mut pending: Vec<PendingRegistration> = Vec::new();
+
+        let store_kind = store.dataset(dataset_id)?.store_kind();
 
         for source in data_sources {
             let ext::DataSource {
@@ -639,6 +656,8 @@ impl RerunCloudService for RerunCloudHandler {
                 kind,
             } = source;
 
+            // TODO(ab): Should some or all of these errors be returned as task error instead?
+            // (No point in doing so unless this is tested in re_redap_tests.)
             if is_prefix {
                 return Err(tonic::Status::internal(
                     "register_with_dataset: prefix data sources should have been resolved already",
@@ -651,32 +670,7 @@ impl RerunCloudService for RerunCloudHandler {
                 ));
             }
 
-            if let Ok(rrd_path) = storage_url.to_file_path() {
-                if !rrd_path.exists() {
-                    return Err(tonic::Status::not_found(format!(
-                        "RRD file not found, file does not exists: {rrd_path:?}"
-                    )));
-                }
-
-                if !rrd_path.is_file() {
-                    return Err(tonic::Status::not_found(format!(
-                        "RRD file not found, path is not a file: {rrd_path:?}"
-                    )));
-                }
-
-                let new_segment_ids = dataset
-                    .load_rrd(&rrd_path, Some(&layer), on_duplicate, dataset.store_kind())
-                    .await?;
-
-                for segment_id in new_segment_ids {
-                    segment_ids.push(segment_id.to_string());
-                    segment_layers.push(layer.clone());
-                    segment_types.push("rrd".to_owned());
-                    // TODO(RR-2289): this should probably be a memory address
-                    storage_urls.push(storage_url.to_string());
-                    task_ids.push(DUMMY_TASK_ID.to_owned());
-                }
-            } else {
+            let Ok(rrd_path) = storage_url.to_file_path() else {
                 return if storage_url.scheme() == "file" && storage_url.host().is_some() {
                     Err(tonic::Status::not_found(format!(
                         "RRD file not found, file URI should not have a host: {storage_url} (this may be caused by invalid relative-path URI)"
@@ -686,7 +680,110 @@ impl RerunCloudService for RerunCloudHandler {
                         "RRD file not found, could not load URI: {storage_url}"
                     )))
                 };
+            };
+
+            if !rrd_path.exists() {
+                return Err(tonic::Status::not_found(format!(
+                    "RRD file not found, file does not exists: {rrd_path:?}"
+                )));
             }
+
+            if !rrd_path.is_file() {
+                return Err(tonic::Status::not_found(format!(
+                    "RRD file not found, path is not a file: {rrd_path:?}"
+                )));
+            }
+
+            // Load the RRD
+            re_log::info!("Loading RRD: {}", rrd_path.display());
+            let contents = ChunkStore::handle_from_rrd_filepath(
+                &InMemoryStore::chunk_store_config(),
+                &rrd_path,
+            )
+            .map_err(|err| tonic::Status::internal(format!("Failed to load RRD: {err:#}")))?;
+
+            let layer = if layer.is_empty() {
+                DataSource::DEFAULT_LAYER.to_owned()
+            } else {
+                layer
+            };
+
+            for (store_id, chunk_store) in contents {
+                if store_id.kind() != store_kind {
+                    continue;
+                }
+
+                let segment_id_str = store_id.recording_id().to_string();
+                let key = (segment_id_str.clone(), layer.clone());
+
+                // Early out on duplicate
+                if !seen.insert(key) {
+                    return Err(tonic::Status::invalid_argument(format!(
+                        "duplicate segment in request: ({segment_id_str}, {layer})"
+                    )));
+                }
+
+                pending.push(PendingRegistration {
+                    segment_id: SegmentId::new(segment_id_str),
+                    layer: layer.clone(),
+                    storage_url: storage_url.clone(),
+                    chunk_store,
+                });
+            }
+        }
+
+        // Phase 2: Register all loaded RRDs (no intra-request duplicates)
+        let mut segment_ids: Vec<String> = vec![];
+        let mut segment_layers: Vec<String> = vec![];
+        let mut segment_types: Vec<String> = vec![];
+        let mut storage_urls: Vec<String> = vec![];
+        let mut task_ids: Vec<String> = vec![];
+        let mut failed_task_results: Vec<(TaskId, TaskResult)> = vec![];
+
+        {
+            let dataset = store.dataset_mut(dataset_id)?;
+
+            for reg in pending {
+                let add_result = dataset
+                    .add_layer(
+                        reg.segment_id.clone(),
+                        reg.layer.clone(),
+                        reg.chunk_store,
+                        on_duplicate,
+                    )
+                    .await;
+
+                match add_result {
+                    Ok(()) => {
+                        segment_ids.push(reg.segment_id.to_string());
+                        segment_layers.push(reg.layer);
+                        segment_types.push("rrd".to_owned());
+                        storage_urls.push(reg.storage_url.to_string());
+                        task_ids.push(TASK_ID_SUCCESS.to_owned());
+                    }
+
+                    Err(Error::SchemaConflict(msg)) => {
+                        // Capture the failure in the returned tasks, but do not fail the rpc call.
+                        segment_ids.push(String::new());
+                        segment_layers.push(reg.layer);
+                        segment_types.push("rrd".to_owned());
+                        storage_urls.push(reg.storage_url.to_string());
+
+                        let task_id = TaskId::new();
+                        task_ids.push(task_id.id.clone());
+                        failed_task_results.push((task_id, TaskResult::failed(&msg)));
+                    }
+
+                    Err(other_err) => {
+                        return Err(other_err.into());
+                    }
+                }
+            }
+        }
+
+        // Register all task results now that the mutable borrow of dataset is done
+        for (task_id, result) in failed_task_results {
+            store.task_registry().register_failure(task_id, result);
         }
 
         let record_batch = RegisterWithDatasetResponse::create_dataframe(
@@ -1469,35 +1566,45 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<QueryTasksRequest>,
     ) -> tonic::Result<tonic::Response<QueryTasksResponse>> {
-        let tasks_id = request.into_inner().ids;
+        let task_ids = request.into_inner().ids;
+        let store = self.store.read().await;
 
-        let dummy_task_id = TaskId {
-            id: DUMMY_TASK_ID.to_owned(),
-        };
+        let mut ids = Vec::with_capacity(task_ids.len());
+        let mut exec_statuses = Vec::with_capacity(task_ids.len());
+        let mut msgs = Vec::with_capacity(task_ids.len());
 
-        for task_id in &tasks_id {
-            if task_id != &dummy_task_id {
-                return Err(tonic::Status::not_found(format!(
-                    "task {} not found",
-                    task_id.id
-                )));
-            }
+        for task_id in task_ids {
+            // Look up the task in the registry, falling back to success for unknown IDs
+            // (including legacy dummy IDs and stale task IDs)
+            let result = store
+                .task_registry()
+                .get(&task_id)
+                .unwrap_or_else(TaskResult::success);
+
+            ids.push(task_id.id);
+            exec_statuses.push(result.exec_status);
+            msgs.push(if result.msgs.is_empty() {
+                None
+            } else {
+                Some(result.msgs)
+            });
         }
 
+        let num_tasks = ids.len();
         let rb = QueryTasksResponse::create_dataframe(
-            vec![DUMMY_TASK_ID.to_owned()],
-            vec![None],
-            vec![None],
-            vec!["success".to_owned()],
-            vec![None],
-            vec![None],
-            vec![None],
-            vec![None],
-            vec![1],
-            vec![None],
-            vec![None],
+            ids,
+            vec![None; num_tasks], // kind
+            vec![None; num_tasks], // data
+            exec_statuses,
+            msgs,
+            vec![None; num_tasks], // blob_len
+            vec![None; num_tasks], // lease_owner
+            vec![None; num_tasks], // lease_expiration
+            vec![1; num_tasks],    // attempts
+            vec![None; num_tasks], // creation_time
+            vec![None; num_tasks], // last_update_time
         )
-        .expect("constant content that should always succeed");
+        .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
 
         // All tasks finish immediately in the OSS server
         Ok(tonic::Response::new(QueryTasksResponse {

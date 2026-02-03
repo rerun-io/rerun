@@ -219,8 +219,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .lock()
                 .active_recording()
                 .expect("expected an active recording")
-                .entity_paths()
-                .into_iter()
+                .sorted_entity_paths()
                 .cloned()
                 .collect::<Vec<_>>();
             for path in entity_paths {

@@ -1,7 +1,9 @@
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
-use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
+use re_viewer_context::{
+    IdentifiedViewSystem as _, QueryContext, ViewClass as _, ViewStateExt as _,
+};
 
 use crate::{SpatialViewState, visualizers};
 
@@ -145,8 +147,9 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             let query = ctx.view_ctx.current_query();
 
             let query_result = ctx.view_ctx.query_result;
-
             let space_origin = ctx.view_ctx.space_origin;
+            let is_3d_view =
+                ctx.view_ctx.view_class_identifier == crate::SpatialView3D::identifier();
 
             if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
             {
@@ -166,12 +169,9 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
             'scope: {
                 let caches = ctx.store_ctx().caches;
-                let (transforms, transform_forest) =
+                let (frame_id_registry, transform_forest) =
                     caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        (
-                            c.read_lock_transform_cache(ctx.recording()),
-                            c.get_transform_forest(),
-                        )
+                        (c.frame_id_registry(ctx.recording()), c.transform_forest())
                     });
 
                 let Some(transform_forest) = transform_forest else {
@@ -179,7 +179,6 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 };
 
                 let mut found_root = None;
-
                 let mut multiple_roots = false;
 
                 query_result.tree.visit(&mut |node| {
@@ -190,7 +189,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         return true;
                     }
 
-                    let Some(node_root_frame) = node
+                    let Some(root_from_frame) = node
                         .data_result
                         .latest_at_with_blueprint_resolved_data_for_component(
                             ctx.view_ctx,
@@ -209,13 +208,23 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         return true;
                     };
 
+                    // If we're in a 3D view, resolve all camera roots to the 3D root they're embedded in.
+                    let root_frame_id = if is_3d_view
+                        && let Some(pinhole_tree_info) =
+                            transform_forest.pinhole_tree_root_info(root_from_frame.root)
+                    {
+                        pinhole_tree_info.parent_tree_root
+                    } else {
+                        root_from_frame.root
+                    };
+
                     if let Some(root) = found_root
-                        && root != node_root_frame.root
+                        && root != root_frame_id
                     {
                         found_root = None;
                         multiple_roots = true;
                     } else {
-                        found_root = Some(node_root_frame.root);
+                        found_root = Some(root_frame_id);
                     }
 
                     true
@@ -224,7 +233,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 // Pick the first (alphabetical order) non-entity path root if
                 // we can find one.
                 if let Some(frame) = found_root
-                    && let Some(frame) = transforms.frame_id_registry().lookup_frame_id(frame)
+                    && let Some(frame) = frame_id_registry.lookup_frame_id(frame)
                 {
                     return frame.clone();
                 }

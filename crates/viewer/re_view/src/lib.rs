@@ -8,12 +8,13 @@ pub mod controls;
 
 mod annotation_context_utils;
 mod annotation_scene_context;
+mod blueprint_resolved_results;
 mod chunks_with_component;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
-mod results_ext;
 mod view_property_ui;
+mod visualizer_query;
 
 use std::borrow::Cow;
 
@@ -21,7 +22,13 @@ pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
-pub use chunks_with_component::{ChunkWithComponent, ChunksWithComponent};
+pub use blueprint_resolved_results::{
+    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, BlueprintResolvedResults,
+    BlueprintResolvedResultsExt, HybridResultsChunkIter,
+};
+pub use chunks_with_component::{
+    ChunkWithComponent, ChunksWithComponent, MaybeChunksWithComponent,
+};
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
@@ -31,18 +38,17 @@ pub use outlines::{
 pub use query::{
     DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
-pub use results_ext::{
-    HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,
-    RangeResultsExt,
-};
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
     view_property_ui_with_redirect,
 };
+pub use visualizer_query::VisualizerInstructionQueryResults;
 
 pub mod external {
     pub use re_entity_db::external::*;
 }
+
+pub type ComponentMappingError = String;
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///

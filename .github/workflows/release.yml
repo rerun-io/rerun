@@ -225,7 +225,7 @@ jobs:
                 - Once published, the release assets will sync to it automatically.
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
               - [ ] Release a new version of gradio (@oxkitsune, @jprochazk)
-              - [ ] Merge the Release PR
+              - [ ] Create a new branch from the prepare-release branch, rebase that one on main and sync it to reality so it can be merged.
               - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine, Nick and/or Jeremy in necessary)
 
           - [ ] Tests

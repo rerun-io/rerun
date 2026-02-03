@@ -1481,11 +1481,9 @@ impl App {
         }
 
         let sender = self.command_sender.clone();
-        let stream = data_source.clone().stream(
-            Self::auth_error_handler(sender),
-            &self.connection_registry,
-            self.app_options().experimental.stream_mode,
-        );
+        let stream = data_source
+            .clone()
+            .stream(Self::auth_error_handler(sender), &self.connection_registry);
 
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
@@ -2458,7 +2456,7 @@ impl App {
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_mut(&store_id);
-                    entity_db.add_rrd_manifest_message(*rrd_manifest);
+                    entity_db.add_rrd_manifest_message(rrd_manifest);
 
                     // TODO(RR-3329): Should this run for all caches?
                     if let Some(caches) = store_hub.active_caches() {
@@ -2617,6 +2615,8 @@ impl App {
         store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
+        re_tracing::profile_function!();
+
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
         if let Some(entity_db) = store_hub.entity_db(store_id)
@@ -2839,14 +2839,6 @@ impl App {
     fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
-        fn format_limit(limit: Option<u64>) -> String {
-            if let Some(bytes) = limit {
-                format_bytes(bytes as _)
-            } else {
-                "∞".to_owned()
-            }
-        }
-
         use re_format::format_bytes;
         use re_memory::MemoryUse;
 
@@ -2854,14 +2846,11 @@ impl App {
         let mem_use_before = MemoryUse::capture();
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
-            re_log::info_once!(
-                "Reached memory limit of {}. Freeing up data…",
-                format_limit(limit.max_bytes)
-            );
+            re_log::info_once!("Reached memory limit of {limit}. Freeing up data…");
 
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::trace!("RAM limit: {}", format_limit(limit.max_bytes));
+            re_log::trace!("RAM limit: {limit}");
             if let Some(resident) = mem_use_before.resident {
                 re_log::trace!("Resident: {}", format_bytes(resident as _),);
             }
@@ -2894,7 +2883,7 @@ impl App {
                 && 0 < counted_diff
             {
                 re_log::debug!(
-                    "Freed up {} ({:.1}%)",
+                    "GC result: -{} (-{:.1}%).",
                     format_bytes(counted_diff as _),
                     100.0 * counted_diff as f32 / counted_before as f32
                 );
@@ -3220,11 +3209,8 @@ impl App {
         })
     }
 
-    /// Prefetch chunks for the open recording (stream from server)
-    ///
-    /// There is logic duplicated between this and [`Self::receive_log_msg`].
-    /// Make sure they are kept in sync!
-    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+    /// Receive in-transit chunks (previously prefetched):
+    fn receive_fetched_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
         let store_ids: Vec<_> = store_hub
@@ -3232,15 +3218,18 @@ impl App {
             .recordings()
             .map(|db| db.store_id().clone())
             .collect();
-        // Receive in-transit chunks (previously prefetched):
+
         for store_id in store_ids {
             let db = store_hub.entity_db_mut(&store_id);
 
             if db.rrd_manifest_index.has_manifest() {
+                re_tracing::profile_scope!("recording");
+
                 let mut store_events = Vec::new();
                 for chunk in db
                     .rrd_manifest_index
-                    .resolve_pending_promises(self.egui_ctx.time())
+                    .chunk_promises_mut()
+                    .resolve_pending(self.egui_ctx.time())
                 {
                     match db.add_chunk(&std::sync::Arc::new(chunk)) {
                         Ok(events) => {
@@ -3262,19 +3251,61 @@ impl App {
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!
 
-                if db.rrd_manifest_index.has_pending_promises() {
+                if db.rrd_manifest_index.chunk_promises().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more
                 }
             }
         }
+    }
+
+    /// Prefetch chunks for the open recording (stream from server)
+    ///
+    /// There is logic duplicated between this and [`Self::receive_log_msg`].
+    /// Make sure they are kept in sync!
+    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+        re_tracing::profile_function!();
+
+        // Even if we wanted, we cannot get rid of this overhead
+        let unpurgable_cache_size = store_hub
+            .active_caches()
+            .map_or(0, |caches| caches.memory_use_after_last_purge());
 
         // Prefetch new chunks for the active recording (if any):
         if let Some(recording) = store_hub.active_recording_mut()
             && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
         {
+            // What is our memory budget for this recording?
+            // If need be, we can evict all other recordings and their caches.
+
+            // There is some fixed overhead in the process that we cannot purge.
+            // This includes things like fonts, icons, etc.
+            // We also want some headroom for spikes.
+            let fixed_memory_overhead = 300_000_000;
+
+            // Leave some extra headroom (beyond the fixed overhead) for
+            // * secondary indices
+            // * failures in our accounting
+            let fixed_fraction_overhead = 0.20;
+
+            let memory_budget = self
+                .startup_options
+                .memory_limit
+                .saturating_sub(fixed_memory_overhead + unpurgable_cache_size);
+
+            let memory_budget = memory_budget.split(fixed_fraction_overhead).1;
+
+            if memory_budget == re_memory::MemoryLimit::ZERO {
+                re_log::warn_once!("Very little memory budget left for active recording.");
+            }
+
+            // If we can't afford at least this much for the active recording, then what is even the point?
+            let memory_budget = memory_budget.at_least(100_000_000);
+
+            // eprintln!("Memory budget for active recording: {memory_budget}");
+
             crate::prefetch_chunks::prefetch_chunks_for_active_recording(
                 &self.egui_ctx,
-                &self.startup_options,
+                memory_budget,
                 recording,
                 time_ctrl,
                 self.connection_registry(),
@@ -3505,7 +3536,7 @@ impl eframe::App for App {
 
         self.check_keyboard_shortcuts(egui_ctx);
 
-        self.purge_memory_if_needed(&mut store_hub);
+        self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
 
         // In some (rare) circumstances we run two egui passes in a single frame.
         // This happens on call to `egui::Context::request_discard`.
@@ -3513,7 +3544,7 @@ impl eframe::App for App {
         if is_start_of_new_frame {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
-            store_hub.begin_frame_caches();
+            store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
         }
 
         self.receive_messages(&mut store_hub, egui_ctx);
@@ -3564,6 +3595,7 @@ impl eframe::App for App {
             }
         }
 
+        self.receive_fetched_chunks(&mut store_hub);
         self.prefetch_chunks(&mut store_hub);
 
         {

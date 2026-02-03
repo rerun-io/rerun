@@ -5,11 +5,9 @@ use re_entity_db::EntityDb;
 use re_redap_client::{ApiResult, ConnectionClient};
 use re_viewer_context::TimeControl;
 
-use crate::StartupOptions;
-
 pub fn prefetch_chunks_for_active_recording(
     egui_ctx: &egui::Context,
-    startup_options: &StartupOptions,
+    memory_budget: re_memory::MemoryLimit,
     recording: &mut EntityDb,
     time_ctrl: &TimeControl,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
@@ -21,9 +19,6 @@ pub fn prefetch_chunks_for_active_recording(
 
     let redap_uri = recording.redap_uri()?.clone();
     let origin = redap_uri.origin.clone();
-
-    let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(u64::MAX);
-    let total_byte_budget = (0.8 * (memory_limit as f64)) as u64; // Don't completely fill it - we want some headroom for caches etc.
 
     // Load data from slightly before the current time to give some room for latest-at.
     // This is a bit hacky, but works for now.
@@ -37,24 +32,10 @@ pub fn prefetch_chunks_for_active_recording(
         return None;
     }
 
-    let missing_chunk_ids = recording.storage_engine().store().take_missing_chunk_ids();
-    let missing_remote_chunk_ids = missing_chunk_ids
-        .into_iter()
-        .flat_map(|chunk_id| {
-            recording
-                .storage_engine()
-                .store()
-                .find_root_rrd_manifests(&chunk_id)
-                .into_iter()
-                .map(|(chunk_id, _)| chunk_id)
-        })
-        .collect();
-
     let options = re_entity_db::ChunkPrefetchOptions {
         timeline,
-        missing_remote_chunk_ids,
         start_time,
-        total_uncompressed_byte_budget: total_byte_budget,
+        total_uncompressed_byte_budget: memory_budget.as_bytes(),
 
         // Batch small chunks together.
         max_uncompressed_bytes_per_batch: 1_000_000,
@@ -64,9 +45,9 @@ pub fn prefetch_chunks_for_active_recording(
         max_uncompressed_bytes_in_transit: 10_000_000,
     };
 
-    let rrd_manifest = &mut recording.rrd_manifest_index;
+    let (rrd_manifest, storage_engine) = recording.rrd_manifest_index_mut_and_storage_engine();
 
-    if let Err(err) = rrd_manifest.prefetch_chunks(options, &|rb| {
+    if let Err(err) = rrd_manifest.prefetch_chunks(storage_engine.store(), &options, &|rb| {
         egui_ctx.request_repaint();
         let connection_registry = connection_registry.clone();
         let origin = origin.clone();

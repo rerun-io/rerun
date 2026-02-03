@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use crate::DataframeClientAPI;
-use crate::dataframe_query_common::group_chunk_infos_by_segment_id;
+use crate::dataframe_query_common::{IndexValuesMap, group_chunk_infos_by_segment_id};
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
@@ -173,6 +173,7 @@ fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
 
 impl<T: DataframeClientAPI> SegmentStreamExec<T> {
     #[tracing::instrument(level = "info", skip_all)]
+    #[expect(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
@@ -180,6 +181,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         num_partitions: usize,
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         query_expression: QueryExpression,
+        _index_values: IndexValuesMap,
         client: T,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {

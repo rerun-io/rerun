@@ -8,6 +8,7 @@ mod fetch_chunks;
 mod indexes;
 mod query_dataset;
 mod query_filter;
+mod query_index_values;
 mod register_segment;
 mod rrd_manifest;
 mod update_entry;
@@ -71,6 +72,7 @@ define_redap_tests! {
     query_dataset::query_simple_dataset_with_layers,
     query_dataset::query_dataset_with_various_queries,
     query_filter::query_dataset_simple_filter,
+    query_index_values::query_dataset_index_values,
     register_segment::register_and_scan_blueprint_dataset,
     register_segment::register_and_scan_empty_dataset,
     register_segment::register_and_scan_simple_dataset,
@@ -79,8 +81,16 @@ define_redap_tests! {
     register_segment::register_and_scan_simple_dataset_with_properties_out_of_order,
     register_segment::register_and_scan_simple_dataset_multiple_timelines,
     register_segment::register_bad_file_uri_should_error,
+    register_segment::register_conflicting_property_schema,
+    register_segment::register_conflicting_schema,
     register_segment::register_segment_bumps_timestamp,
     register_segment::register_with_prefix,
+    register_segment::register_with_dataset_if_duplicate_behavior_error,
+    register_segment::register_with_dataset_if_duplicate_behavior_skip,
+    register_segment::register_with_dataset_if_duplicate_behavior_overwrite,
+    register_segment::register_intra_request_duplicates,
+    register_segment::register_empty_request,
+    register_segment::register_fully_skipped,
     rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     update_entry::update_entry_bumps_timestamp,

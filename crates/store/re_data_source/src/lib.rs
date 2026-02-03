@@ -13,7 +13,6 @@ mod stream_rrd_from_http;
 mod load_stdin;
 
 pub use self::data_source::{AuthErrorHandler, LogDataSource, LogDataSourceAnalytics};
-pub use re_redap_client::StreamMode;
 
 // ----------------------------------------------------------------------------
 

@@ -41,7 +41,8 @@ impl eframe::App for DemoApp {
             ui.label("Controls:");
             ui.label("• Ctrl+Scroll to zoom");
             ui.label("• Scroll horizontally to pan");
-            ui.label("• Double-click anywhere to reset view");
+            ui.label("• Double-click scope to zoom to it");
+            ui.label("• Double-click background to reset view");
             ui.separator();
 
             re_memory_view::memory_flamegraph_ui(ui, &self.tree);

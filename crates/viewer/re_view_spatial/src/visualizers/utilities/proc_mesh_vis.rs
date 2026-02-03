@@ -11,7 +11,7 @@ use re_viewer_context::VisualizerSystem;
 use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
 use vec1::smallvec_v1::SmallVec1;
 
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh::{self, ProcMeshKey};
 use crate::visualizers::utilities::LabeledBatch;
 use crate::visualizers::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
@@ -146,7 +146,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     pub fn add_batch(
         &mut self,
         query_context: &QueryContext<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         color_component: ComponentIdentifier,
         show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,

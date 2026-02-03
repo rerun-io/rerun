@@ -160,6 +160,26 @@ pub struct QueryCache {
     pub(crate) range_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<RangeCache>>>>,
 }
 
+impl re_byte_size::SizeBytes for QueryCache {
+    fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
+        let Self {
+            store: _,
+            store_id: _,
+            might_require_clearing,
+
+            // TODO(RR-3366): this seems to be over-estimating a lot?
+            // Maybe double-counting chunks or other arrow data?
+            latest_at_per_cache_key: _,
+
+            range_per_cache_key,
+        } = self;
+
+        might_require_clearing.heap_size_bytes() + range_per_cache_key.heap_size_bytes()
+    }
+}
+
 impl MemUsageTreeCapture for QueryCache {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         re_tracing::profile_function!();

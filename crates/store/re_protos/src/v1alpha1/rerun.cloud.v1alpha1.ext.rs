@@ -57,7 +57,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateIndexRequest> for CreateIndexRequest 
 
 // --- RegisterWithDatasetRequest ---
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RegisterWithDatasetRequest {
     pub data_sources: Vec<DataSource>,
     pub on_duplicate: IfDuplicateBehavior,

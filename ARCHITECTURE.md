@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/1925d7851a8dacdb28b8f185b960d934af821513/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/1925d7851a8dacdb28b8f185b960d934af821513/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/1925d7851a8dacdb28b8f185b960d934af821513/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/1925d7851a8dacdb28b8f185b960d934af821513/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/1925d7851a8dacdb28b8f185b960d934af821513/1200w.png">
+  <img src="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -237,6 +237,7 @@ Update instructions:
 | re_log_channel       | An in-memory channel of Rerun data messages                                          |
 | re_mcap              | Convert MCAP into Rerun-compatible data.                                             |
 | re_memory            | Run-time memory tracking and profiling.                                              |
+| re_mutex             | A wrapper around `parking_lot::Mutex` useful for debugging deadlocks.                |
 | re_perf_telemetry    | In and out of process performance profiling utilities for Rerun & Redap              |
 | re_quota_channel     | A mpsc channel that applies backpressure based on byte size                          |
 | re_ros_msg           | Parsing and deserializing ROS   messages                                             |

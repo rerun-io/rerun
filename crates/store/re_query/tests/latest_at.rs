@@ -673,7 +673,7 @@ fn query_and_compare(
         eprintln!("{query:?}");
         // eprintln!("{}", store.to_data_table().unwrap());
 
-        similar_asserts::assert_eq!(expected_compound_index, cached.compound_index);
+        similar_asserts::assert_eq!(expected_compound_index, cached.max_index);
         similar_asserts::assert_eq!(expected_points, cached_points);
         similar_asserts::assert_eq!(expected_colors, cached_colors);
     }

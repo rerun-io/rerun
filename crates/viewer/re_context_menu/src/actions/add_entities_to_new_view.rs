@@ -102,20 +102,8 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
                         .0
                         .iter()
                         .any(|(visualizable_entity, reason)| {
-                            let has_reason_for_recommendation = match reason {
-                                re_viewer_context::VisualizableReason::DatatypeMatchAny {
-                                    components,
-                                } => components.iter().any(|(_, match_kind)| {
-                                    *match_kind
-                                        == re_viewer_context::DatatypeMatchKind::NativeSemantics
-                                }),
-                                re_viewer_context::VisualizableReason::Always
-                                | re_viewer_context::VisualizableReason::ExactMatchAll
-                                | re_viewer_context::VisualizableReason::ExactMatchAny => true,
-                            };
-
                             visualizable_entity.starts_with(candidate_entity)
-                                && has_reason_for_recommendation
+                                && reason.any_match_with_native_semantics()
                         })
                 })
         });

@@ -460,8 +460,9 @@ impl MemoryPanel {
             .include_y(0.0)
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
-                if let Some(max_bytes) = limit.max_bytes {
-                    plot_ui.hline(egui_plot::HLine::new("Limit", max_bytes as f64).width(2.0));
+                if limit.is_limited() {
+                    plot_ui
+                        .hline(egui_plot::HLine::new("Limit", limit.as_bytes() as f64).width(2.0));
                 }
 
                 for &time in &self.memory_purge_times {
@@ -515,20 +516,14 @@ fn summarize_callstack(callstack: &str) -> String {
         ("epaint::text::text_layout", "text_layout"),
         ("egui_wgpu", "egui_wgpu"),
         ("decode_arrow", "decode_arrow"),
+        ("transform_resolution_cache", "transform_resolution_cache"),
         ("wgpu_hal", "wgpu_hal"),
         ("prepare_staging_buffer", "prepare_staging_buffer"),
         // -----
         // Very general:
         ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),
         ("epaint::texture_atlas", "egui font texture"),
-        (
-            "alloc::collections::btree::map::BTreeSet<K,V,A>",
-            "BTreeSet",
-        ),
-        (
-            "alloc::collections::btree::map::BTreeMap<K,V,A>",
-            "BTreeMap",
-        ),
+        ("alloc::collections::btree", "BTree"),
         ("std::collections::hash::map::HashMap<K,V,S>", "HashMap"),
     ];
 

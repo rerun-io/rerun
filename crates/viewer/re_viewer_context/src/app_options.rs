@@ -1,4 +1,3 @@
-use re_data_source::StreamMode;
 use re_log_types::TimestampFormat;
 use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
@@ -151,29 +150,8 @@ pub struct VideoOptions {
     pub ffmpeg_path: String,
 }
 
-#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
-    /// Larger-than-RAM streaming using RRD manifest.
-    ///
-    /// If false, we load the entire recording into memory.
-    /// We skip loading the RRD manifest.
-    ///
-    /// If `true`, we stream in only the chunks we need, as we need it.
-    /// And we load the RRD manifest.
-    pub stream_mode: StreamMode,
-
-    /// Enables experimental component mapping ui.
-    ///
-    /// TODO(RR-3338, RR-3382): Enable component mappings UI
-    pub component_mapping: bool,
-}
-
-impl Default for ExperimentalAppOptions {
-    fn default() -> Self {
-        Self {
-            stream_mode: StreamMode::FullLoad,
-            component_mapping: false,
-        }
-    }
+    // None currently
 }

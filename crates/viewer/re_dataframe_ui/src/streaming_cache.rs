@@ -20,7 +20,7 @@ use datafusion::physical_plan::{
 use datafusion::prelude::Expr;
 use datafusion::{catalog::TableProvider, datasource::MemTable};
 use futures::{Stream, StreamExt as _};
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 use re_viewer_context::AsyncRuntimeHandle;
 
 /// State of the streaming cache.

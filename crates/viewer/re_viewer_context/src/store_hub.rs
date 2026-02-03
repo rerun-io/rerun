@@ -5,7 +5,7 @@ use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -809,6 +809,15 @@ impl StoreHub {
         self.retain_recordings(|entity_db| !entity_db.is_empty());
     }
 
+    pub fn total_memory_used_by_recordings(&self) -> u64 {
+        re_tracing::profile_function!();
+
+        self.store_bundle
+            .recordings()
+            .map(|db| db.total_size_bytes())
+            .sum()
+    }
+
     /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
     ///
     /// `time_cursor_for` can be used for more intelligent targeting of what is to be removed.
@@ -983,6 +992,7 @@ impl StoreHub {
                     protect_latest: 1, // keep the latest instance of everything, or we will forget things that haven't changed in a while
                     time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
                     protected_time_ranges,
+                    protected_chunks: HashSet::default(),
                     furthest_from: None,
                     // There is no point in keeping old virtual indices for blueprint data.
                     perform_deep_deletions: true,

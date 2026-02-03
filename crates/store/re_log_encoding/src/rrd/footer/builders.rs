@@ -9,11 +9,11 @@ use re_log_types::{
 };
 use re_types_core::{ComponentBatch as _, ComponentDescriptor};
 
-use crate::{CodecError, CodecResult, RrdManifest};
+use crate::{CodecError, CodecResult, RawRrdManifest};
 
 // ---
 
-/// Helper to build an [`RrdManifest`] from Rerun chunks.
+/// Helper to build an [`RawRrdManifest`] from Rerun chunks.
 #[derive(Default, Debug)]
 pub struct RrdManifestBuilder {
     /// The Sorbet schema of the recording.
@@ -212,17 +212,17 @@ impl RrdManifestBuilder {
         Ok(())
     }
 
-    pub fn build(self, store_id: StoreId) -> CodecResult<RrdManifest> {
+    pub fn build(self, store_id: StoreId) -> CodecResult<RawRrdManifest> {
         let sorbet_schema = arrow::datatypes::Schema::new_with_metadata(
             self.sorbet_schema.clone().build(),
             Default::default(),
         );
-        let sorbet_schema_sha256 = RrdManifest::compute_sorbet_schema_sha256(&sorbet_schema)
+        let sorbet_schema_sha256 = RawRrdManifest::compute_sorbet_schema_sha256(&sorbet_schema)
             .map_err(CodecError::ArrowSerialization)?;
 
         let data = self.into_record_batch()?;
 
-        Ok(RrdManifest {
+        Ok(RawRrdManifest {
             store_id,
             sorbet_schema,
             sorbet_schema_sha256,
@@ -273,15 +273,15 @@ impl RrdManifestBuilder {
     pub fn fields(&self) -> Vec<Field> {
         itertools::chain!(
             [
-                RrdManifest::field_chunk_entity_path(),
-                RrdManifest::field_chunk_id(),
-                RrdManifest::field_chunk_is_static(),
-                RrdManifest::field_chunk_num_rows(),
+                RawRrdManifest::field_chunk_entity_path(),
+                RawRrdManifest::field_chunk_id(),
+                RawRrdManifest::field_chunk_is_static(),
+                RawRrdManifest::field_chunk_num_rows(),
             ],
             [
-                RrdManifest::field_chunk_byte_offset(), //
-                RrdManifest::field_chunk_byte_size(),
-                RrdManifest::field_chunk_byte_size_uncompressed(),
+                RawRrdManifest::field_chunk_byte_offset(), //
+                RawRrdManifest::field_chunk_byte_size(),
+                RawRrdManifest::field_chunk_byte_size_uncompressed(),
             ],
             self.index_fields(),
         )
@@ -401,7 +401,7 @@ impl RrdManifestBuilder {
     fn static_index_fields(&self) -> Vec<Field> {
         self.columns_static
             .keys()
-            .flat_map(|desc| [RrdManifest::field_has_static_data(desc)])
+            .flat_map(|desc| [RawRrdManifest::field_has_static_data(desc)])
             .collect()
     }
 
@@ -410,8 +410,8 @@ impl RrdManifestBuilder {
             .values()
             .flat_map(|col| {
                 [
-                    RrdManifest::field_index_start(&col.timeline, None),
-                    RrdManifest::field_index_end(&col.timeline, None),
+                    RawRrdManifest::field_index_start(&col.timeline, None),
+                    RawRrdManifest::field_index_end(&col.timeline, None),
                 ]
             })
             .collect()
@@ -423,9 +423,9 @@ impl RrdManifestBuilder {
             self.temporal_index_fields(),
             self.columns.iter().flat_map(|((_, desc), col)| {
                 [
-                    RrdManifest::field_index_start(&col.timeline, Some(desc)),
-                    RrdManifest::field_index_end(&col.timeline, Some(desc)),
-                    RrdManifest::field_index_num_rows(&col.timeline, Some(desc)),
+                    RawRrdManifest::field_index_start(&col.timeline, Some(desc)),
+                    RawRrdManifest::field_index_end(&col.timeline, Some(desc)),
+                    RawRrdManifest::field_index_num_rows(&col.timeline, Some(desc)),
                 ]
             })
         )

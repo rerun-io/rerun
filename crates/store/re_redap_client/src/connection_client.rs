@@ -2,7 +2,7 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_encoding::{RrdManifest, ToApplication as _};
+use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
@@ -407,12 +407,12 @@ where
             })
     }
 
-    /// Get the full [`RrdManifest`] of a recording.
+    /// Get the full [`RawRrdManifest`] of a recording.
     pub async fn get_rrd_manifest(
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-    ) -> ApiResult<RrdManifest> {
+    ) -> ApiResult<RawRrdManifest> {
         // TODO(cmc): at some point we should probably continue the stream all the way down, but
         // for now we simplify downstream's life by concatenating everything in here.
         let mut rrd_manifest_parts = Vec::new();

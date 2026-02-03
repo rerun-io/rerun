@@ -74,7 +74,7 @@ pub struct ArrowMsg {
     #[prost(message, optional, tag = "6")]
     pub chunk_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
     /// Compression algorithm used.
-    #[prost(enumeration = "Compression", tag = "2")]
+    #[prost(enumeration = "super::super::common::v1alpha1::Compression", tag = "2")]
     pub compression: i32,
     #[prost(uint64, tag = "3")]
     pub uncompressed_size: u64,
@@ -348,38 +348,6 @@ impl ::prost::Name for RrdManifest {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.log_msg.v1alpha1.RrdManifest".into()
-    }
-}
-/// The type of compression used on the payload.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum Compression {
-    Unspecified = 0,
-    /// No compression.
-    None = 1,
-    /// LZ4 block compression.
-    Lz4 = 2,
-}
-impl Compression {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "COMPRESSION_UNSPECIFIED",
-            Self::None => "COMPRESSION_NONE",
-            Self::Lz4 => "COMPRESSION_LZ4",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "COMPRESSION_UNSPECIFIED" => Some(Self::Unspecified),
-            "COMPRESSION_NONE" => Some(Self::None),
-            "COMPRESSION_LZ4" => Some(Self::Lz4),
-            _ => None,
-        }
     }
 }
 /// The encoding of the message payload.

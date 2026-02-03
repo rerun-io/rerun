@@ -170,8 +170,17 @@ impl StorageEngineLike for StorageEngineReadGuard<'_> {
     }
 }
 
+impl re_byte_size::SizeBytes for StorageEngineReadGuard<'_> {
+    fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+        let Self { store, cache } = self;
+        store.heap_size_bytes() + cache.heap_size_bytes()
+    }
+}
+
 impl re_byte_size::MemUsageTreeCapture for StorageEngineReadGuard<'_> {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
         let Self { store, cache } = self;
         re_byte_size::MemUsageNode::new()
             .with_child("ChunkStore", store.capture_mem_usage_tree())

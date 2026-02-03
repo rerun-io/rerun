@@ -10,7 +10,7 @@ use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass,
     RecommendedVisualizers, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
     ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
     VisualizableEntities, suggest_view_for_each_entity,
@@ -101,11 +101,11 @@ impl ViewClass for BarChartView {
         None
     }
 
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
         // since they're not indicated with a BarChart indicator.

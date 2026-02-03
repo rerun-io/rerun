@@ -2,7 +2,16 @@ syntax = "proto3";
 
 package rerun.common.v1alpha1;
 
-// TODO(cmc): aren't most of the definitions in here dead code?
+// The type of compression used on the payload.
+enum Compression {
+  COMPRESSION_UNSPECIFIED = 0;
+
+  // No compression.
+  COMPRESSION_NONE = 1;
+
+  // LZ4 block compression.
+  COMPRESSION_LZ4 = 2;
+}
 
 // supported encoder versions for encoding data
 // See `RerunData` and `RerunChunkData` for its usage
@@ -114,6 +123,22 @@ message DataframePart {
 
   // Data payload is Arrow IPC encoded RecordBatch
   optional bytes payload = 2;
+
+  // Compression used.
+  //
+  // This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
+  // in many real world recordings out there.
+  // Unspecified is synonymous with uncompressed in this case.
+  Compression compression = 3;
+
+  // How large is the uncompressed data?
+  //
+  // The value is undefined if `self.compression == Off`.
+  //
+  // This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
+  // in many real world recordings out there (which is fine, because they are all implicitly
+  // using `Compression::Off`).
+  uint64 uncompressed_size = 4;
 }
 
 // Generic parameters that will influence the behavior of the Lance scanner.

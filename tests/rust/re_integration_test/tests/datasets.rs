@@ -148,7 +148,7 @@ pub async fn start_with_segment_url_with_fragment() {
 
     harness.set_selection_panel_opened(false);
 
-    // Mask timeline data because we have no way to consistently wait for it to arrive
+    // Redact timeline data because we have no way to consistently wait for it to arrive
     harness.mask(egui::Rect::from_x_y_ranges(
         egui::Rangef::new(190.0, 1024.0),
         egui::Rangef::new(650.0, 690.0),

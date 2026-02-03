@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -17,6 +19,9 @@ from .._baseclasses import (
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .arrows2d_ext import Arrows2DExt
+
+if TYPE_CHECKING:
+    from ..blueprint.datatypes import VisualizerComponentMappingLike
 
 __all__ = ["Arrows2D"]
 
@@ -364,6 +369,17 @@ class Arrows2D(Arrows2DExt, Archetype, VisualizableArchetype):
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
-    def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype, using all currently set values as overrides."""
-        return Visualizer("Arrows2D", overrides=self.as_component_batches(), mappings=None)
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("Arrows2D", overrides=self.as_component_batches(), mappings=mappings)

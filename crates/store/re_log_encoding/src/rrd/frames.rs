@@ -1,6 +1,6 @@
 // --- FileHeader ---
 pub use re_build_info::CrateVersion; // convenience
-pub use re_protos::log_msg::v1alpha1::ext::Compression;
+pub use re_protos::common::v1alpha1::ext::Compression;
 
 use crate::rrd::{Decodable, Encodable, OptionsError}; // convenience
 

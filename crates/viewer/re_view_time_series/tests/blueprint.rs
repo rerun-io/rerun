@@ -252,7 +252,6 @@ fn setup_blueprint(
 #[test]
 pub fn test_explicit_component_mapping() {
     let mut test_context = TestContext::new();
-    test_context.app_options.experimental.component_mapping = true; // Have to do this before registering the view class.
     test_context.register_view_class::<TimeSeriesView>();
 
     let timeline = test_context.active_timeline().unwrap();

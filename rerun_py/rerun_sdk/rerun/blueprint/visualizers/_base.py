@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from ..._baseclasses import DescribedComponentBatch
+    from ...blueprint.datatypes import VisualizerComponentMappingLike
 
 
 class Visualizer:
@@ -18,7 +19,11 @@ class Visualizer:
     """
 
     def __init__(
-        self, visualizer_type: str, *, overrides: list[DescribedComponentBatch] | None = None, mappings: Any = None
+        self,
+        visualizer_type: str,
+        *,
+        overrides: list[DescribedComponentBatch] | None = None,
+        mappings: list[VisualizerComponentMappingLike] | None = None,
     ) -> None:
         """
         Create a visualizer from an archetype instance.
@@ -30,14 +35,15 @@ class Visualizer:
         overrides:
             Any component overrides to apply to fields of the visualizer.
         mappings:
-            Optional component name mappings.
-            TODO(RR-3254): Currently unused - implement mapping functionality
+            Optional component name mappings to determine how components are sourced.
+
+            ⚠️TODO(#12600): The API for component mappings is still evolving, so this may change in the future.
 
         """
         self.id = uuid.uuid4()
         self.visualizer_type = visualizer_type
         self.overrides = overrides
-        self.mappings = mappings or []
+        self.mappings = mappings
 
 
 @runtime_checkable

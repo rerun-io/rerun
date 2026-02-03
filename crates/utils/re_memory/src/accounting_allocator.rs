@@ -248,7 +248,7 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
                 .collect();
 
             #[expect(clippy::cast_possible_wrap)]
-            top_callstacks.sort_by_key(|c| -(c.extant.size as i64));
+            top_callstacks.sort_by_key(|c| -(c.estimated().size as i64));
 
             TrackingStatistics {
                 track_size_threshold: GLOBAL.small_size.load(Relaxed),

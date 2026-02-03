@@ -2,7 +2,6 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Image;
 use re_sdk_types::components::{ImageFormat, Opacity};
 use re_sdk_types::image::ImageKind;
-use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -11,7 +10,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{first_copied, textured_rect_from_image};
 use crate::{PickableRectSourceData, PickableTexturedRect};
@@ -53,6 +52,8 @@ impl VisualizerSystem for ImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let mut output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, Image, _>(
@@ -82,32 +83,26 @@ impl ImageVisualizer {
     fn process_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults<'_>,
-        spatial_ctx: &mut SpatialSceneEntityContext<'_>,
+        results: &mut re_view::VisualizerInstructionQueryResults<'_>,
+        spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
     ) {
-        use re_view::RangeResultsExt as _;
-
-        use super::entity_iterator::{iter_component, iter_slices};
+        re_tracing::profile_function!();
 
         let entity_path = ctx.target_entity_path;
 
-        let all_buffer_chunks = results.get_required_chunk(Image::descriptor_buffer().component);
-        if all_buffer_chunks.is_empty() {
+        let all_buffers = results.iter_required(Image::descriptor_buffer().component);
+        if all_buffers.is_empty() {
             return;
         }
-        let all_formats_chunks = results.get_required_chunk(Image::descriptor_format().component);
-        if all_formats_chunks.is_empty() {
+        let all_formats = results.iter_required(Image::descriptor_format().component);
+        if all_formats.is_empty() {
             return;
         }
-
-        let timeline = ctx.query.timeline();
-        let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
-        let all_formats_indexed = iter_component::<ImageFormat>(&all_formats_chunks, timeline);
-        let all_opacities = results.iter_as(timeline, Image::descriptor_opacity().component);
+        let all_opacities = results.iter_optional(Image::descriptor_opacity().component);
 
         let data = re_query::range_zip_1x2(
-            all_buffers_indexed,
-            all_formats_indexed,
+            all_buffers.slice::<&[u8]>(),
+            all_formats.component_slow::<ImageFormat>(),
             all_opacities.slice::<f32>(),
         )
         .filter_map(|((_time, row_id), buffers, formats, opacities)| {
@@ -156,9 +151,9 @@ impl ImageVisualizer {
                     );
                 }
                 Err(err) => {
-                    spatial_ctx
+                    results
                         .output
-                        .report_error_for(entity_path.clone(), re_error::format(err));
+                        .report_error_for(results.instruction_id, re_error::format(err));
                 }
             }
         }

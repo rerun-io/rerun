@@ -5,13 +5,13 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import datafusion
 from rerun import catalog as _catalog
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
 
+    import datafusion
     import pyarrow as pa
     from rerun.catalog import RegistrationHandle
 
@@ -393,57 +393,6 @@ class DatasetView:
             Whether to fill null values with the latest valid data.
 
         """
-        import logging
-
-        # Convert DataFrame to dict form first
-        if isinstance(using_index_values, datafusion.DataFrame):
-            using_index_values = self._dataframe_to_index_values_dict(using_index_values, index)
-
-        # Handle dict-based using_index_values (per-segment semantics)
-        if isinstance(using_index_values, dict):
-            # Get available segment IDs in this view
-            available_segments = set(self._inner.segment_ids())
-
-            # Check for segments in dict that don't exist or are filtered out
-            requested_segments = set(using_index_values.keys())
-            missing_segments = requested_segments - available_segments
-            if missing_segments:
-                logging.warning(
-                    f"Index values for the following inexistent or filtered segments were ignored: {', '.join(sorted(missing_segments))}"
-                )
-
-            # Call reader per segment and union the results
-            dfs = []
-            for segment_id, segment_index_values in using_index_values.items():
-                if segment_id not in available_segments:
-                    continue
-                view = self._inner.filter_segments([segment_id])
-                df = view.reader(
-                    index=index,
-                    include_semantically_empty_columns=include_semantically_empty_columns,
-                    include_tombstone_columns=include_tombstone_columns,
-                    fill_latest_at=fill_latest_at,
-                    using_index_values=segment_index_values,
-                )
-                dfs.append(df)
-
-            if not dfs:
-                # Return empty result with schema from view
-                return self._inner.reader(
-                    index=index,
-                    include_semantically_empty_columns=include_semantically_empty_columns,
-                    include_tombstone_columns=include_tombstone_columns,
-                    fill_latest_at=fill_latest_at,
-                    using_index_values=None,
-                ).limit(0)
-
-            # Union all DataFrames
-            result = dfs[0]
-            for df in dfs[1:]:
-                result = result.union(df)
-            return result
-
-        # Simple case: None
         return self._inner.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
@@ -468,39 +417,6 @@ class DatasetView:
     def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
         """Returns a new DatasetView filtered to the given entity paths."""
         return DatasetView(self._inner.filter_contents(list(exprs)))
-
-    def _dataframe_to_index_values_dict(
-        self, df: datafusion.DataFrame, index: str | None
-    ) -> dict[str, IndexValuesLike]:
-        """Convert a DataFrame with segment_id + index columns to a dict."""
-        import numpy as np
-
-        table = df.to_arrow_table()
-
-        if "rerun_segment_id" not in table.schema.names:
-            raise ValueError("using_index_values DataFrame must have a 'rerun_segment_id' column")
-
-        if index is None:
-            raise ValueError("index must be provided when using_index_values is a DataFrame")
-
-        if index not in table.schema.names:
-            raise ValueError(f"using_index_values DataFrame must have an '{index}' column")
-
-        # Group by segment_id
-        segment_id_col = table.column("rerun_segment_id")
-        index_col = table.column(index)
-
-        # Build dict of segment_id -> index values
-        index_values_by_segment: dict[str, list] = {}
-        for i in range(table.num_rows):
-            seg_id = segment_id_col[i].as_py()
-            idx_val = index_col[i].as_py()
-            if seg_id not in index_values_by_segment:
-                index_values_by_segment[seg_id] = []
-            index_values_by_segment[seg_id].append(idx_val)
-
-        # Convert to numpy arrays
-        return {seg_id: np.array(vals, dtype="datetime64[ns]") for seg_id, vals in index_values_by_segment.items()}
 
 
 class TableEntry(Entry):

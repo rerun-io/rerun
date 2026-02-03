@@ -1,5 +1,187 @@
 # Rerun changelog
 
+## [0.29.0](https://github.com/rerun-io/rerun/compare/0.28.2...0.29.0) - 2026-01-28 - URDF improvements, improved ROS 2 docs, and memory panel
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-29
+
+### ✨ Overview & highlights
+
+
+#### URDF loader improvements
+
+In the previous 0.28 release, we overhauled Rerun's [built-in URDF loader](https://rerun.io/docs/howto/logging-and-ingestion/urdf) to work with TF-style transforms with `parent` and `child` frames.
+Now, taking advantage of these entity-path-independent transforms, we simplified the hierarchy in which URDF assets are stored.
+Collision and visual meshes are now below separate entity path roots, making it easy to toggle one or the other.
+Additionally, the paths are now more compact to make it easier to scroll through them.
+
+
+https://github.com/user-attachments/assets/7a3f6112-e87f-4249-977b-ed9944e2c356
+
+
+
+#### `UrdfTree` utility in Python
+
+We added a [`UrdfTree` Python utility](https://rerun.io/docs/howto/logging-and-ingestion/urdf#urdf-utilities-python) that can be used to simplify operations with URDF models, e.g.:
+* accessing links and joints
+* computing transforms from joint states
+* retrieving geometry entity paths for links
+
+We also updated our [`animated_urdf.py` demo](https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf) to use this utility, showing for example how you can dynamically change the color of a gripper link based on its angle.
+
+
+https://github.com/user-attachments/assets/e0b6882f-b5dd-47d9-9afc-3ea30bc38e28
+
+
+#### Experimental screenshots from Python
+
+There's now an experimental screenshot API which allows to take screenshots of the Viewer or individual views:
+```py
+# Connect to a local viewer.
+viewer = ViewerClient()
+# Screenshot the entire viewer.
+viewer.save_screenshot("entire_viewer.jpg")
+# Screenshot only the view we created earlier.
+viewer.save_screenshot("my_view.png", view_id=view.id)
+```
+For a full snippet check [here](https://github.com/rerun-io/rerun/blob/0.29.0/docs/snippets/all/howto/screenshot.py).
+
+⚠️ There's still a lot of [rough edges](https://github.com/rerun-io/rerun/issues/12482) and this API may change in the future.
+
+
+#### Improved target frame selection UI
+
+The target frame selection UI now shows matching suggestions, making it easier to select a frame name from the transforms in your data.
+
+
+https://github.com/user-attachments/assets/4ba25a41-de6a-4209-bd06-c31a33d8d993
+
+
+
+#### Updated ROS 2 example & documentation
+
+We refreshed the documentation showing examples of how some ROS concepts and messages can be mapped to Rerun, together with an updated Python node example. The documentation page can be found [here](https://rerun.io/docs/howto/integrations/ros2-nav-turtlebot).
+
+<picture>
+  <img src="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1200w.png">
+</picture>
+
+#### Improved memory panel
+
+You can now get some insight on which parts of your recording use how much memory in the viewer using the improved memory panel:
+
+<img width="2352" height="724" alt="image" src="https://github.com/user-attachments/assets/580a9e8a-641c-4c4c-a71c-bd65e20ef117" />
+
+
+### ⚠️ Breaking changes
+- **Python**: New API for visualizer overrides - `VisualizerOverrides` removed, now pass visualizer objects directly (e.g., `rr.SeriesLines()`)
+- **Python**: `Entry.update()` deprecated in favor of `Entry.set_name()`
+- **Python**: `CatalogClient` and `Server` constructor parameters renamed (`addr` → `url`/`host`)
+- **Python**: Removed deprecated `rerun.dataframe` module (use `rerun.server.Server` and `rerun.catalog` instead)
+- **Python**: Removed deprecated `rerun.catalog` APIs from 0.28
+- **Python**: Internal submodules moved to underscore-prefixed names (e.g., `rr.color_conversion` → `rr._color_conversion`)
+- **CLI**: `rerun server --addr` renamed to `rerun server --host`
+- **Blueprint**: Component overrides from `.rbl` files created in previous versions cannot be loaded in 0.29
+- **Data Platform**: Datasets need re-registration to populate `name` and `start_time` in segment table
+
+🧳 Check the migration guide for details: https://rerun.io/docs/reference/migration/migration-0-29
+
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Fix dropping of entities when using `rerun rrd filter` [#12584](https://github.com/rerun-io/rerun/pull/12584)
+- Apply backpressure in gRPC proxy server [cac538e](https://github.com/rerun-io/rerun/commit/cac538e05e122ad7363aa99248d14a9c4a411581)
+- Enforce `Selector` usage in `re_sdk::lenses` [521c796](https://github.com/rerun-io/rerun/commit/521c7967355c4a0cf06d9fcf4e2b52001e79bc87)
+
+#### 🐍 Python API
+- Allow tables to be created without providing a URL [#12132](https://github.com/rerun-io/rerun/pull/12132)
+- Remove deprecated dataframe API (`rerun.dataframe`) [#12320](https://github.com/rerun-io/rerun/pull/12320)
+- Remove deprecated APIs in `rerun.catalog` [#12321](https://github.com/rerun-io/rerun/pull/12321)
+- Deprecate `Entry.update` in favor of `Entry.set_name` [#12370](https://github.com/rerun-io/rerun/pull/12370)
+- Fix missing `child_frame`/`parent_frame` arguments from pinhole constructor [#12360](https://github.com/rerun-io/rerun/pull/12360)
+- Use visualizer objects in blueprint override API [#12345](https://github.com/rerun-io/rerun/pull/12345)
+- Rename `address` to `url` or `host` depending on context [#12402](https://github.com/rerun-io/rerun/pull/12402)
+- Check for unset attr from extension class init [#12376](https://github.com/rerun-io/rerun/pull/12376)
+- Add time axis in snippet in time series view snippet [#12506](https://github.com/rerun-io/rerun/pull/12506)
+- Fix `RecordingStream` so it has a unique recording id when none is provided [eb14e16](https://github.com/rerun-io/rerun/commit/eb14e163c0d58df77244b69281b160cd6f47416f)
+- Do not assume top-level bindings in `RecordingStream.__del__` [201e7c3](https://github.com/rerun-io/rerun/commit/201e7c31680fcd69e8ab4d7625340a32e7133c94)
+- Fix rare deadlock in Python send/log API [7f72b23](https://github.com/rerun-io/rerun/commit/7f72b23203ce842dbfb3dd334c7cde6bfd70378e)
+- Catch keyboard interrupt in `rerun-sdk` CLI and return exit codes [#12496](https://github.com/rerun-io/rerun/pull/12496)
+- Make `rr.experimental.ViewerClient.send_table` more flexible [ba733ad](https://github.com/rerun-io/rerun/commit/ba733ad9b1ec1677028fbd21a00634276a991871)
+
+#### 🦀 Rust API
+- Allow tables to be created without providing a URL [#12132](https://github.com/rerun-io/rerun/pull/12132)
+- Rust SDK: `blueprint` support [#12307](https://github.com/rerun-io/rerun/pull/12307) (thanks [@sectore](https://github.com/sectore)!)
+- Update MSRV to 1.90 [#12337](https://github.com/rerun-io/rerun/pull/12337)
+- Make `RecordingStreamBuilder::with_blueprint()` apply to everything, not just `spawn()` [#12347](https://github.com/rerun-io/rerun/pull/12347) (thanks [@kpreid](https://github.com/kpreid)!)
+- Rust SDK: Change default server memory limit [5cb7213](https://github.com/rerun-io/rerun/commit/5cb7213e90823092ec67ae805419a9dd19660c09)
+- Update ply-rs-bw to 3.0.0 (corrected) [#12593](https://github.com/rerun-io/rerun/pull/12593) (thanks [@bourumir-wyngs](https://github.com/bourumir-wyngs)!)
+
+#### 🪳 Bug fixes
+- Fix bad error reporting when registering a (faulty) RRD URI built from a relative path [#12309](https://github.com/rerun-io/rerun/pull/12309)
+- Only do `furthest_from` GC when we can download chunks again [#12363](https://github.com/rerun-io/rerun/pull/12363)
+- URDF loader: use `InstancePoses3D` for geometry scale [#12371](https://github.com/rerun-io/rerun/pull/12371)
+- Fix incorrect handling for cameras and depth images for 3D views that use target frames other than the scene root [#12361](https://github.com/rerun-io/rerun/pull/12361)
+- Fix OSS server locking up when asked for many chunks at once [#12384](https://github.com/rerun-io/rerun/pull/12384)
+- Fix GC sometimes not collecting anything [#12398](https://github.com/rerun-io/rerun/pull/12398)
+- URDF: Bundle pose + mesh scale in single `InstancePoses3D` [#12385](https://github.com/rerun-io/rerun/pull/12385) (thanks [@yujeong1jeong](https://github.com/yujeong1jeong)!)
+- Don't show error for implicit transform axes if we're already showing named transforms [#12419](https://github.com/rerun-io/rerun/pull/12419)
+- Fix opening link with only time selection in fragment [#12428](https://github.com/rerun-io/rerun/pull/12428)
+- Fix decoding errors for MCAP files with gaps in protobufs [#12436](https://github.com/rerun-io/rerun/pull/12436)
+- Fix time point sharing for duration timelines [#12466](https://github.com/rerun-io/rerun/pull/12466)
+- Fix transforms & videos breaking when receiving new data in the background [#12452](https://github.com/rerun-io/rerun/pull/12452)
+- Fix ignoring nested `oneof` fields in `protobuf` MCAP messages [#12462](https://github.com/rerun-io/rerun/pull/12462)
+- Fix early disconnect with `--newest-first` [#12484](https://github.com/rerun-io/rerun/pull/12484)
+- Fix: tap stream view to move time cursor [#12476](https://github.com/rerun-io/rerun/pull/12476)
+- Fix `RecordingInfo` properties not included in the segment table [3781b18](https://github.com/rerun-io/rerun/commit/3781b1867ea70193d9b2a0479874b70c68c4debb)
+- Fix DAE import crash caused by duplicate XML id attributes [#12555](https://github.com/rerun-io/rerun/pull/12555) (thanks [@yujeong1jeong](https://github.com/yujeong1jeong)!)
+- Warn when logging transform at `/` without set `parent_frame` [#12588](https://github.com/rerun-io/rerun/pull/12588)
+- Fix `sensor_msgs::PointCloud2` MCAP parser for small pointclouds [f705229](https://github.com/rerun-io/rerun/commit/f7052295f59bac02ee4d987284facdda406256ed)
+
+#### 🌁 Viewer improvements
+- Automatically cast to `Float64Array` in time series views [#12342](https://github.com/rerun-io/rerun/pull/12342)
+- Show loaded indicator when time panel is collapsed [#12396](https://github.com/rerun-io/rerun/pull/12396)
+- Video stream changes to support out of order samples [#12277](https://github.com/rerun-io/rerun/pull/12277)
+- Measure and display network latency to redap servers [#12426](https://github.com/rerun-io/rerun/pull/12426)
+- Enable vulkan backend for Mac Viewer builds, select graphics adapter more explicitly internally [#12449](https://github.com/rerun-io/rerun/pull/12449)
+- More robust world grid rendering [#12444](https://github.com/rerun-io/rerun/pull/12444)
+- Display downloaded & max size of recording in selection panel [#12429](https://github.com/rerun-io/rerun/pull/12429)
+- Allow multiple visualizers of same type per `Entity` [#12275](https://github.com/rerun-io/rerun/pull/12275)
+- Warn if an entity has multiple `CoordinateFrame` instances [#12514](https://github.com/rerun-io/rerun/pull/12514)
+- Fix case of unstable camera image plane distance [#12559](https://github.com/rerun-io/rerun/pull/12559)
+- Simplify memory panel with more tabs [9dada34](https://github.com/rerun-io/rerun/commit/9dada34153435b37fbbf2e4269f70ce8eee37c70)
+
+#### 🚀 Performance improvements
+- Implement backpressure in `re_log_channel` [3a25a25](https://github.com/rerun-io/rerun/commit/3a25a25db3765fac3dba445d3002c95906ebf7e2)
+
+#### 🧑‍🏫 Examples
+- Modernize `ros_node` example and documentation [#11968](https://github.com/rerun-io/rerun/pull/11968)
+- Add MCAP example [#12353](https://github.com/rerun-io/rerun/pull/12353)
+- Add eye control example [#12459](https://github.com/rerun-io/rerun/pull/12459)
+- Use optical flow tracking in detect and track objects example [#12564](https://github.com/rerun-io/rerun/pull/12564)
+- Show dynamic mesh update in `animated_urdf.py` example [#12571](https://github.com/rerun-io/rerun/pull/12571)
+
+#### 📚 Docs
+- Reshuffle documentation organization [#12355](https://github.com/rerun-io/rerun/pull/12355)
+- Update documentation about MCAP ROS 2 message support [#12406](https://github.com/rerun-io/rerun/pull/12406)
+- feat: Add the SAM 3D Body example [#12499](https://github.com/rerun-io/rerun/pull/12499) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- Add how to guide on querying videos [5a36526](https://github.com/rerun-io/rerun/commit/5a36526c61f70ffdbbcf776378b81b7af0e3b703)
+- Mention memory limit settings UI in docs [50ebee6](https://github.com/rerun-io/rerun/commit/50ebee6475a186064db7a30ed90ea96ab10549ed)
+- docs(sdk): add thread safety warning for log() with mutexes [#12579](https://github.com/rerun-io/rerun/pull/12579) (thanks [@ecto](https://github.com/ecto)!)
+
+#### 🖼 UI improvements
+- Add user menu [#12336](https://github.com/rerun-io/rerun/pull/12336)
+- Larger than ram time panel UI [#12338](https://github.com/rerun-io/rerun/pull/12338)
+- Improved auth section in server modal [#12369](https://github.com/rerun-io/rerun/pull/12369)
+- Show info message after screenshot from command palette [#12465](https://github.com/rerun-io/rerun/pull/12465)
+- Display chunk download bandwidth [#12451](https://github.com/rerun-io/rerun/pull/12451)
+- Fix icon colors in light theme [edac1a1](https://github.com/rerun-io/rerun/commit/edac1a15d6aec2e344017bcf9b8148af8e6389bd)
+
+
 ## [0.28.2](https://github.com/rerun-io/rerun/compare/0.28.1...0.28.2) - 2025-12-18 - Fix RRD compaction, plot panning, and Collada mesh loader
 
 ### ✨ Overview & highlights

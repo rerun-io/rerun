@@ -5,7 +5,7 @@
 use ahash::HashMap;
 use egui::remap_clamp;
 use egui_tiles::{Behavior as _, EditAction};
-use itertools::Either;
+use itertools::{Either, Itertools as _};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{
@@ -725,21 +725,27 @@ impl TilesDelegate<'_, '_> {
             return;
         };
 
+        let data_result_tree = &self.ctx.lookup_query_result(view_id).tree;
+
         let errors = visualizer_errors
             .values()
             .flat_map(|err| match err {
                 re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
                     Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
                 }
-                re_viewer_context::VisualizerExecutionErrorState::PerEntity(errors) => {
-                    Either::Right(errors.iter().map(|(entity, err)| {
-                        (
-                            Item::DataResult(view_id, entity.clone().into()),
+                re_viewer_context::VisualizerExecutionErrorState::PerInstruction(errors) => {
+                    Either::Right(errors.iter().filter_map(|(visualizer_instruction, err)| {
+                        let data_result = data_result_tree
+                            .lookup_result_by_visualizer_instruction(*visualizer_instruction)?;
+
+                        Some((
+                            Item::DataResult(view_id, data_result.entity_path.clone().into()),
                             err.clone(),
-                        )
+                        ))
                     }))
                 }
             })
+            .sorted()
             .collect::<Vec<_>>();
 
         if visualizer_errors.is_empty() {
@@ -758,8 +764,8 @@ impl TilesDelegate<'_, '_> {
                         .tint(ui.visuals().error_fg_color),
                 ))
                 .on_hover_text(format!(
-                    "Show {error_count} visualizer error{}",
-                    re_format::format_plural_s(error_count)
+                    "Show {}",
+                    re_format::format_plural_s(error_count, "visualizer error")
                 ));
 
             egui::Popup::menu(&response)

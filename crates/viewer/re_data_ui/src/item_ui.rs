@@ -677,6 +677,8 @@ pub fn entity_db_button_ui(
     ui_layout: UiLayout,
     include_app_id: bool,
 ) -> egui::Response {
+    re_tracing::profile_function!();
+
     use re_byte_size::SizeBytes as _;
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 

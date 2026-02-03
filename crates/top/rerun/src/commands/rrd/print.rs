@@ -128,6 +128,16 @@ impl PrintCommand {
                         .schema_metadata_mut()
                         .insert("rerun:source".to_owned(), source.to_string());
 
+                    // Just to be nice: this will display the sorbet schema hash in the header.
+                    rrd_manifest.data.schema_metadata_mut().insert(
+                        "schema_sha_256".to_owned(),
+                        rrd_manifest
+                            .sorbet_schema_sha256
+                            .iter()
+                            .map(|b| format!("{b:02x}"))
+                            .collect::<String>(),
+                    );
+
                     // Drop all per-entity and/or per-component columns to keep things readable.
                     //
                     // TODO(cmc): more config flags for columns to show etc.

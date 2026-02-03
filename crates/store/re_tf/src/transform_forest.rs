@@ -70,6 +70,22 @@ impl SizeBytes for TreeTransform {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for TreeTransform {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            root,
+            target_from_source,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child("root", root.total_size_bytes())
+            .with_child("target_from_source", target_from_source.total_size_bytes())
+            .into_tree()
+    }
+}
+
 #[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum TransformFromToError {
     #[error("No transform relationships about the target frame {0:?} are known")]
@@ -213,10 +229,8 @@ impl TransformForest {
         // Repeat steps 1) & 2) until we've processed all frames.
 
         let transforms = transform_cache.transforms_for_timeline(query.timeline());
-        let mut unprocessed_frames: IntSet<_> = transform_cache
-            .frame_id_registry()
-            .iter_frame_id_hashes()
-            .collect();
+        let frame_id_registry = transform_cache.frame_id_registry();
+        let mut unprocessed_frames: IntSet<_> = frame_id_registry.iter_frame_id_hashes().collect();
         let mut transform_stack = Vec::new(); // Keep pushing & draining from the same vector as a simple performance optimization.
 
         let mut forest = Self::default();
@@ -228,8 +242,8 @@ impl TransformForest {
                 entity_db,
                 query,
                 current_frame,
-                transform_cache.frame_id_registry(),
-                transforms,
+                &frame_id_registry,
+                &transforms,
                 &mut unprocessed_frames,
                 &mut transform_stack,
             );
@@ -355,20 +369,22 @@ impl TransformForest {
                 target_from_source: root_from_current_frame,
             };
 
-            let previous_transform = self
+            let _previous_transform = self
                 .root_from_frame
                 .insert(transforms.child_frame, transform_root_from_current);
 
             // TODO(RR-2667): Build out into cycle detection
-            debug_assert!(
-                previous_transform.is_none(),
-                "DEBUG ASSERT: Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
-                cache
-                    .frame_id_registry()
-                    .lookup_frame_id(transforms.child_frame),
-                cache.frame_id_registry().lookup_frame_id(root_frame),
-                previous_transform.and_then(|f| cache.frame_id_registry().lookup_frame_id(f.root))
-            );
+            #[cfg(debug_assertions)]
+            {
+                let frame_id_registry = cache.frame_id_registry();
+                debug_assert!(
+                    _previous_transform.is_none(),
+                    "DEBUG ASSERT: Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
+                    frame_id_registry.lookup_frame_id(transforms.child_frame),
+                    frame_id_registry.lookup_frame_id(root_frame),
+                    _previous_transform.and_then(|f| frame_id_registry.lookup_frame_id(f.root))
+                );
+            }
 
             root_from_target = root_from_current_frame;
         }
@@ -385,6 +401,22 @@ impl SizeBytes for TransformForest {
         } = self;
 
         roots.heap_size_bytes() + root_from_frame.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for TransformForest {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            roots,
+            root_from_frame,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child("roots", roots.total_size_bytes())
+            .with_child("root_from_frame", root_from_frame.total_size_bytes())
+            .into_tree()
     }
 }
 
@@ -896,8 +928,11 @@ mod tests {
     #[test]
     fn test_simple_entity_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = entity_hierarchy_test_scene()?;
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+        let mut transform_cache = TransformResolutionCache::new(&test_scene);
+        transform_cache.ensure_timeline_is_initialized(
+            test_scene.storage_engine().store(),
+            TimelineName::log_tick(),
+        );
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
@@ -1101,8 +1136,11 @@ mod tests {
         multiple_entities: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = simple_frame_hierarchy_test_scene(multiple_entities)?;
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+        let mut transform_cache = TransformResolutionCache::new(&test_scene);
+        transform_cache.ensure_timeline_is_initialized(
+            test_scene.storage_engine().store(),
+            TimelineName::log_tick(),
+        );
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
@@ -1280,9 +1318,12 @@ mod tests {
 
         // Handle creation from partially filled cache gracefully.
         {
-            let mut transform_cache = TransformResolutionCache::default();
             let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+            let mut transform_cache = TransformResolutionCache::new(&test_scene);
+            transform_cache.ensure_timeline_is_initialized(
+                test_scene.storage_engine().store(),
+                query.timeline(),
+            );
 
             // Add a connection the cache doesn't know about.
             test_scene.add_chunk(&Arc::new(
@@ -1319,7 +1360,6 @@ mod tests {
         // Extra nasty case: given a cold cache, the cache knows about everything except for a row _on the same time_ which talks about a new frame.
         // (this also makes sure that we get the right transform back for the known frames even when a latest-at query would yield something the cache doesn't know about)
         {
-            let mut transform_cache = TransformResolutionCache::default();
             let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
 
             test_scene.add_chunk(&Arc::new(
@@ -1332,7 +1372,11 @@ mod tests {
                     )
                     .build()?,
             ))?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+            let mut transform_cache = TransformResolutionCache::new(&test_scene);
+            transform_cache.ensure_timeline_is_initialized(
+                test_scene.storage_engine().store(),
+                query.timeline(),
+            );
 
             test_scene.add_chunk(&Arc::new(
                 // Add a connection the cache doesn't know about.
@@ -1416,10 +1460,10 @@ mod tests {
                 .build()?,
         ))?;
 
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(entity_db.storage_engine().store().iter_physical_chunks());
-
         let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let mut transform_cache = TransformResolutionCache::new(&entity_db);
+        transform_cache
+            .ensure_timeline_is_initialized(entity_db.storage_engine().store(), query.timeline());
         let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
 
         // Child still connects up to the root.

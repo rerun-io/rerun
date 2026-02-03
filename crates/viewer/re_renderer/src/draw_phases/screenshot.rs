@@ -10,7 +10,7 @@
 //! We could render the same image with subpixel moved camera in order to get super-sampling without hitting texture size limitations.
 //! Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
 
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
 use crate::allocator::GpuReadbackError;
 use crate::texture_info::Texture2DBufferInfo;

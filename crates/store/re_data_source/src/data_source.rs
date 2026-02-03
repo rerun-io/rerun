@@ -146,13 +146,10 @@ impl LogDataSource {
     /// but the loading is done in a background task.
     ///
     /// `on_redap_err` should handle authentication errors by showing a login prompt.
-    ///
-    /// `stream_mode` is a feature-flag for RRD manifest based larger-than-ram streaming.
     pub fn stream(
         self,
         on_auth_err: AuthErrorHandler,
         connection_registry: &ConnectionRegistryHandle,
-        stream_mode: crate::StreamMode,
     ) -> anyhow::Result<LogReceiver> {
         re_tracing::profile_function!();
 
@@ -228,13 +225,8 @@ impl LogDataSource {
                 let uri_clone = uri.clone();
                 let stream_segment = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
-                    re_redap_client::stream_blueprint_and_segment_from_server(
-                        client,
-                        tx,
-                        uri_clone,
-                        stream_mode,
-                    )
-                    .await
+                    re_redap_client::stream_blueprint_and_segment_from_server(client, tx, uri_clone)
+                        .await
                 };
 
                 spawn_future(async move {

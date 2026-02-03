@@ -15,6 +15,9 @@ impl ::prost::Name for VersionRequest {
 pub struct VersionResponse {
     #[prost(message, optional, tag = "1")]
     pub build_info: ::core::option::Option<super::super::common::v1alpha1::BuildInfo>,
+    /// A single version string representing the version of the whole stack.
+    #[prost(string, tag = "2")]
+    pub version: ::prost::alloc::string::String,
 }
 impl ::prost::Name for VersionResponse {
     const NAME: &'static str = "VersionResponse";

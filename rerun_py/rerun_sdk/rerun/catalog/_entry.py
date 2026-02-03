@@ -495,7 +495,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
-        using_index_values: IndexValuesLike | None = None,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None = None,
     ) -> datafusion.DataFrame:
         """
         Create a reader over this dataset.
@@ -519,17 +519,17 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        index : str | None
+        index
             The index (timeline) to use for the view.
             Pass `None` to read only static data.
-        include_semantically_empty_columns : bool
+        include_semantically_empty_columns
             Whether to include columns that are semantically empty.
-        include_tombstone_columns : bool
+        include_tombstone_columns
             Whether to include tombstone columns.
-        fill_latest_at : bool
+        fill_latest_at
             Whether to fill null values with the latest valid data.
-        using_index_values : IndexValuesLike | None
-            If provided, specifies the exact index values to sample for all segments.
+        using_index_values
+            If provided, specifies the exact index values to sample per segment.
             Can be a numpy array (datetime64[ns] or int64), a pyarrow Array, or a sequence.
             Use with `fill_latest_at=True` to populate rows with the most recent data.
 
@@ -798,8 +798,8 @@ class DatasetView:
         *,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None = None,
         fill_latest_at: bool = False,
-        using_index_values: IndexValuesLike | None = None,
     ) -> datafusion.DataFrame:
         """
         Create a reader over this DatasetView.
@@ -830,24 +830,61 @@ class DatasetView:
             Whether to include columns that are semantically empty.
         include_tombstone_columns
             Whether to include tombstone columns.
+        using_index_values
+            If a dict is provided, keys are segment IDs and values are the index values
+            to sample for that segment (per-segment semantics).
+            If a DataFrame is provided, it must have 'rerun_segment_id' and index columns.
+            Use with `fill_latest_at=True` to populate rows with the most recent data.
         fill_latest_at
             Whether to fill null values with the latest valid data.
-        using_index_values
-            If provided, specifies the exact index values to sample for all segments.
-            Can be a numpy array (datetime64[ns] or int64), a pyarrow Array, or a sequence.
-            Use with `fill_latest_at=True` to populate rows with the most recent data.
 
         Returns
         -------
         A DataFusion DataFrame.
 
         """
-        return self._internal.reader(
+        import logging
+
+        import datafusion
+
+        available_segments = set(self._internal.segment_ids())
+
+        index_values_dict = None
+        match using_index_values:
+            case None:
+                pass
+
+            case df if isinstance(df, datafusion.DataFrame):
+                index_values_dict = self._dataframe_to_index_values_dict(df, index)
+
+            case dict() as d:
+                index_values_dict = d
+
+            case _ as index_vals:
+                # Scalar IndexValuesLike: apply the same indices to all segments
+                index_values_dict = dict.fromkeys(available_segments, index_vals)
+
+        if index_values_dict is not None:
+            requested_segments = set(index_values_dict.keys())
+            missing_segments = requested_segments - available_segments
+
+            if missing_segments:
+                logging.warning(
+                    f"Index values for the following inexistent or filtered segments "
+                    f"were ignored: {', '.join(sorted(missing_segments))}"
+                )
+
+            valid_segments = requested_segments - missing_segments
+            view = self._internal.filter_segments([*valid_segments])
+        else:
+            view = self._internal
+
+        return view.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
             fill_latest_at=fill_latest_at,
-            using_index_values=using_index_values,
+            using_index_values=index_values_dict,
         )
 
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
@@ -929,6 +966,34 @@ class DatasetView:
             exprs.append(f"{index_col.name}:end")
 
         return self.segment_table().select(*exprs)
+
+    def _dataframe_to_index_values_dict(
+        self, df: datafusion.DataFrame, index: str | None
+    ) -> dict[str, IndexValuesLike]:
+        """Convert a DataFrame with segment_id + index columns to a dict."""
+
+        import datafusion as dfn
+
+        if "rerun_segment_id" not in df.schema().names:
+            raise ValueError("using_index_values DataFrame must have a 'rerun_segment_id' column")
+
+        if index is None:
+            raise ValueError("index must be provided when using_index_values is a DataFrame")
+
+        if index not in df.schema().names:
+            raise ValueError(f"using_index_values DataFrame must have an '{index}' column")
+
+        table = pa.table(
+            df.aggregate(
+                ["rerun_segment_id"], [dfn.functions.array_agg(dfn.col(index), order_by=dfn.col(index)).alias(index)]
+            )
+        )
+
+        # Group by segment_id
+        segment_id_col = table.column("rerun_segment_id")
+        index_col = table.column(index)
+
+        return {segment_id_col[i].as_py(): index_col[i].values.to_numpy() for i in range(table.num_rows)}
 
 
 class TableEntry(Entry[TableEntryInternal]):

@@ -8,7 +8,7 @@ use re_sdk_types::components::ImagePlaneDistance;
 use re_sdk_types::{ArchetypeName, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
 use re_view::{
-    DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
+    BlueprintResolvedLatestAtResults, DataResultQuery as _, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
@@ -163,25 +163,22 @@ impl ViewContextSystem for TransformTreeContext {
         re_tracing::profile_function!();
 
         let caches = ctx.store_context.caches;
-        let (transform_forest, transform_cache) =
-            caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.update_transform_forest(ctx.recording(), &ctx.current_query());
-                (
-                    c.get_transform_forest(),
-                    c.read_lock_transform_cache(ctx.recording()),
-                )
-            });
+        let transform_forest = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.update_transform_forest(ctx.recording(), &ctx.current_query());
+            c.transform_forest()
+        });
 
         // We update this here so it should exist.
         let transform_forest = transform_forest.unwrap_or_default();
 
-        let frame_ids = transform_cache
-            .frame_id_registry()
+        let frame_id_registry = caches
+            .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
+
+        let frame_ids = frame_id_registry
             .iter_frame_ids()
             .map(|(k, v)| (*k, v.clone()));
 
-        let child_frames_per_entity = transform_cache
-            .frame_id_registry()
+        let child_frames_per_entity = frame_id_registry
             .iter_entities_with_child_frames()
             .map(|(k, v)| (*k, v.clone()));
 
@@ -198,6 +195,8 @@ impl ViewContextSystem for TransformTreeContext {
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
+        re_tracing::profile_function!();
+
         let static_execution_result = static_execution_result
             .downcast_ref::<TransformTreeContextOncePerFrameResult>()
             .expect("Unexpected static execution result type");
@@ -205,24 +204,27 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_forest = static_execution_result.transform_forest.clone();
         self.frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
-        let results = query
-            .iter_all_data_results()
-            .map(|data_result| {
-                let latest_at_query = ctx.current_query();
+        let results = {
+            re_tracing::profile_scope!("latest-ats");
+            query
+                .iter_all_data_results()
+                .map(|data_result| {
+                    let latest_at_query = ctx.current_query();
 
-                let transform_frame_id_component =
-                    archetypes::CoordinateFrame::descriptor_frame().component;
+                    let transform_frame_id_component =
+                        archetypes::CoordinateFrame::descriptor_frame().component;
 
-                latest_at_with_blueprint_resolved_data(
-                    ctx,
-                    None,
-                    &latest_at_query,
-                    data_result,
-                    [transform_frame_id_component],
-                    None, // Coordinate frame is not visualizer-specific.
-                )
-            })
-            .collect::<Vec<_>>();
+                    latest_at_with_blueprint_resolved_data(
+                        ctx,
+                        None,
+                        &latest_at_query,
+                        data_result,
+                        [transform_frame_id_component],
+                        None, // Coordinate frame is not visualizer-specific.
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
 
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
@@ -231,6 +233,8 @@ impl ViewContextSystem for TransformTreeContext {
 
         // Target frame - check for blueprint override first, otherwise use space origin's coordinate frame.
         self.target_frame = {
+            re_tracing::profile_scope!("target_frame");
+
             let spatial_info_prop = ViewProperty::from_archetype::<
                 blueprint::archetypes::SpatialInformation,
             >(
@@ -254,34 +258,37 @@ impl ViewContextSystem for TransformTreeContext {
 
         let latest_at_query = query.latest_at_query();
 
-        // Add overrides to the transform frame id map so we can get back the id for errors.
-        for results in results {
-            let Some(frame) =
-                results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
-            else {
-                continue;
-            };
+        {
+            re_tracing::profile_scope!("add-overrides");
+            // Add overrides to the transform frame id map so we can get back the id for errors.
+            for results in results {
+                let Some(frame) =
+                    results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
+                else {
+                    continue;
+                };
 
-            let frame_hash = TransformFrameIdHash::new(&frame);
-            if !self.frame_id_hash_mapping.contains_key(&frame_hash) {
-                // As overrides are local to this view we need to clone the whole map to add new hashes.
-                Arc::make_mut(&mut self.frame_id_hash_mapping).insert(frame_hash, frame);
+                let frame_hash = TransformFrameIdHash::new(&frame);
+                if !self.frame_id_hash_mapping.contains_key(&frame_hash) {
+                    // As overrides are local to this view we need to clone the whole map to add new hashes.
+                    Arc::make_mut(&mut self.frame_id_hash_mapping).insert(frame_hash, frame);
+                }
             }
         }
 
         let caches = ctx.viewer_ctx.store_context.caches;
-        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.read_lock_transform_cache(ctx.recording())
+        let transforms_for_timeline = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.transforms_for_timeline(ctx.recording(), query.timeline)
         });
 
         let lookup_image_plane_distance = |transform_frame_id_hash: TransformFrameIdHash| -> f64 {
+            re_tracing::profile_scope!("image-plane-distance");
             // We're looking for an entity whose child frame is the given frame id hash.
             // From that entity we'd like to know what image frame distance we should be using.
             // (note that we do **not** care about that entity's `CoordinateFrame` here, rationale see `CamerasVisualizer`)
 
-            let Some(frame_transforms) = transform_cache
-                .transforms_for_timeline(query.timeline)
-                .frame_transforms(transform_frame_id_hash)
+            let Some(frame_transforms) =
+                transforms_for_timeline.frame_transforms(transform_frame_id_hash)
             else {
                 debug_assert!(
                     false,
@@ -294,18 +301,20 @@ impl ViewContextSystem for TransformTreeContext {
             lookup_image_plane_distance(ctx, entity_path.hash(), &latest_at_query)
         };
 
-        let tree_transforms_per_frame = self
-            .transform_forest
-            .transform_from_to(
-                self.target_frame,
-                self.entity_transform_id_mapping
-                    .transform_frame_id_to_entity_path
-                    .keys()
-                    .copied(),
-                &lookup_image_plane_distance,
-                // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
-            )
-            .collect::<Vec<_>>();
+        let tree_transforms_per_frame = {
+            re_tracing::profile_scope!("transform_from_to");
+            self.transform_forest
+                .transform_from_to(
+                    self.target_frame,
+                    self.entity_transform_id_mapping
+                        .transform_frame_id_to_entity_path
+                        .keys()
+                        .copied(),
+                    &lookup_image_plane_distance,
+                    // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
+                )
+                .collect::<Vec<_>>()
+        };
 
         // TODO(andreas, grtlr): We should not re-query all those transforms. We still have them around in `tree_transforms_per_frame` (and a bit below in later `self.transform_infos`).
         // Can we instead just do another lookup indirection to `self.transform_infos`?
@@ -329,7 +338,7 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            let transforms = transform_cache.transforms_for_timeline(query.timeline);
+            let transforms = &*transforms_for_timeline;
 
             let latest_at_query = &query.latest_at_query();
 
@@ -547,7 +556,7 @@ impl EntityTransformIdMapping {
     /// Build a lookup table from entity paths to their transform frame id hashes.
     fn new(
         ctx: &ViewContext<'_>,
-        results: &[HybridLatestAtResults<'_>],
+        results: &[BlueprintResolvedLatestAtResults<'_>],
         space_origin: &EntityPath,
     ) -> Self {
         // This is blueprint-dependent data and may also change over recording time,
@@ -594,7 +603,7 @@ impl EntityTransformIdMapping {
     fn determine_frame_id_mapping_for(
         &mut self,
         ctx: &ViewContext<'_>,
-        results: &HybridLatestAtResults<'_>,
+        results: &BlueprintResolvedLatestAtResults<'_>,
     ) {
         let transform_frame_id_component =
             archetypes::CoordinateFrame::descriptor_frame().component;

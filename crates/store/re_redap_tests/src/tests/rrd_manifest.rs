@@ -4,7 +4,7 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{FetchChunksRequest, GetRrdManifestRequest};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_sdk::external::re_log_encoding::{RrdManifest, ToApplication as _};
+use re_sdk::external::re_log_encoding::{RawRrdManifest, ToApplication as _};
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
 
@@ -76,7 +76,7 @@ async fn dataset_rrd_manifest_snapshot(
     service: &impl RerunCloudService,
     segment_id: SegmentId,
     dataset_name: &str,
-) -> tonic::Result<RrdManifest> {
+) -> tonic::Result<RawRrdManifest> {
     let responses = service
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
@@ -88,7 +88,7 @@ async fn dataset_rrd_manifest_snapshot(
         .await?
         .into_inner();
 
-    let mut rrd_manifest: Option<RrdManifest> = None;
+    let mut rrd_manifest: Option<RawRrdManifest> = None;
 
     use futures::{StreamExt as _, pin_mut};
     pin_mut!(responses);
@@ -121,14 +121,14 @@ async fn dataset_rrd_manifest_snapshot(
             // The actual values don't matter in any case, as long as we're able to use the
             // returned data to fetch the associated chunks, which we check above.
             .redact(&[
-                RrdManifest::FIELD_CHUNK_KEY,
-                RrdManifest::FIELD_CHUNK_BYTE_OFFSET,
-                RrdManifest::FIELD_CHUNK_BYTE_SIZE,
-                RrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED,
+                RawRrdManifest::FIELD_CHUNK_KEY,
+                RawRrdManifest::FIELD_CHUNK_BYTE_OFFSET,
+                RawRrdManifest::FIELD_CHUNK_BYTE_SIZE,
+                RawRrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED,
             ])
             // Implementation-specific fields shouldn't be compared at all.
             .filter_columns_by(
-                |f| !RrdManifest::COMMON_IMPL_SPECIFIC_FIELDS.contains(&f.name().as_str())
+                |f| !RawRrdManifest::COMMON_IMPL_SPECIFIC_FIELDS.contains(&f.name().as_str())
             )
             .unwrap()
             .horizontally_sorted()

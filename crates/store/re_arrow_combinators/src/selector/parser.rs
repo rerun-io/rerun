@@ -28,13 +28,43 @@ where
     tokens: std::iter::Peekable<I>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Expr {
-    Dot,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Segment {
     Field(String),
     Index(u64),
     Each,
+}
+
+impl std::fmt::Display for Segment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Field(name) => write!(f, ".{name}"),
+            Self::Index(n) => write!(f, "[{n}]"),
+            Self::Each => write!(f, "[]"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Expr {
+    Identity,
+    Path(Vec<Segment>),
     Pipe(Box<Self>, Box<Self>),
+}
+
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Identity => write!(f, "."),
+            Self::Path(segments) => {
+                for segment in segments {
+                    write!(f, "{segment}")?;
+                }
+                Ok(())
+            }
+            Self::Pipe(left, right) => write!(f, "{left} | {right}"),
+        }
+    }
 }
 
 // TODO(RR-3438): Add error location reporting.
@@ -79,63 +109,91 @@ where
     }
 
     fn expr(&mut self) -> Result<Expr> {
-        let mut left = self.term()?;
+        let mut left = self.path()?;
 
         while let Some(token) = self.tokens.peek() {
-            match &token.typ {
-                TokenType::Pipe => {
-                    self.tokens.next(); // Consume explicit pipe
-                    let right = self.term()?;
-                    left = Expr::Pipe(Box::new(left), Box::new(right));
-                }
-                TokenType::Field(_) | TokenType::Dot | TokenType::LBracket => {
-                    // Implicit pipe (adjacent terms)
-                    let right = self.term()?;
-                    left = Expr::Pipe(Box::new(left), Box::new(right));
-                }
-                TokenType::Integer(_) | TokenType::RBracket => break,
+            if token.typ == TokenType::Pipe {
+                self.tokens.next(); // Consume explicit pipe
+                let right = self.path()?;
+                left = Expr::Pipe(Box::new(left), Box::new(right));
+            } else {
+                break;
             }
         }
 
         Ok(left)
     }
 
-    fn term(&mut self) -> Result<Expr> {
-        let token = self.tokens.peek().ok_or(Error::UnexpectedEof)?;
-        match &token.typ {
-            TokenType::Dot => {
-                self.tokens.next();
-                Ok(Expr::Dot)
-            }
-            TokenType::Field(s) => {
-                let result = s.clone();
-                self.tokens.next();
-                Ok(Expr::Field(result))
-            }
-            TokenType::LBracket => {
-                self.tokens.next(); // Consume `[`
+    fn path(&mut self) -> Result<Expr> {
+        let mut segments = Vec::new();
 
-                // Check if it's `[]` (Each) or `[n]` (Index)
-                let token = self.tokens.peek().ok_or(Error::UnexpectedEof)?;
-                match &token.typ {
-                    TokenType::RBracket => {
-                        self.tokens.next(); // Consume `]`
-                        Ok(Expr::Each)
-                    }
-                    TokenType::Integer(n) => {
-                        let index = *n;
-                        self.tokens.next();
-                        self.consume(TokenType::RBracket)?;
-                        Ok(Expr::Index(index))
-                    }
-                    unexpected => Err(Error::UnexpectedSymbol {
-                        symbol: unexpected.clone(),
-                    }),
+        // Check if it starts with identity (.)
+        if let Some(token) = self.tokens.peek() {
+            if token.typ == TokenType::Dot {
+                self.tokens.next();
+                // If only `.`, return Identity
+                if !self.is_segment_start() {
+                    return Ok(Expr::Identity);
                 }
             }
-            unexpected => Err(Error::UnexpectedSymbol {
-                symbol: unexpected.clone(),
-            }),
+        } else {
+            return Err(Error::UnexpectedEof);
+        }
+
+        // Parse segments
+        while self.is_segment_start() {
+            segments.push(self.segment()?);
+        }
+
+        if segments.is_empty() {
+            Ok(Expr::Identity)
+        } else {
+            Ok(Expr::Path(segments))
+        }
+    }
+
+    fn is_segment_start(&mut self) -> bool {
+        matches!(
+            self.tokens.peek().map(|t| &t.typ),
+            Some(TokenType::Field(_) | TokenType::LBracket)
+        )
+    }
+
+    fn segment(&mut self) -> Result<Segment> {
+        match self.tokens.peek() {
+            Some(token) => match &token.typ {
+                TokenType::Field(s) => {
+                    let result = s.clone();
+                    self.tokens.next();
+                    Ok(Segment::Field(result))
+                }
+                TokenType::LBracket => {
+                    self.tokens.next(); // Consume `[`
+
+                    match self.tokens.peek() {
+                        Some(token) => match &token.typ {
+                            TokenType::RBracket => {
+                                self.tokens.next(); // Consume `]`
+                                Ok(Segment::Each)
+                            }
+                            TokenType::Integer(n) => {
+                                let index = *n;
+                                self.tokens.next();
+                                self.consume(TokenType::RBracket)?;
+                                Ok(Segment::Index(index))
+                            }
+                            unexpected => Err(Error::UnexpectedSymbol {
+                                symbol: unexpected.clone(),
+                            }),
+                        },
+                        None => Err(Error::UnexpectedEof),
+                    }
+                }
+                unexpected => Err(Error::UnexpectedSymbol {
+                    symbol: unexpected.clone(),
+                }),
+            },
+            None => Err(Error::UnexpectedEof),
         }
     }
 
@@ -164,8 +222,8 @@ mod test {
         Parser::new(tokens.into_iter()).parse()
     }
 
-    fn field(s: &str) -> Expr {
-        Expr::Field(s.into())
+    fn path(segments: Vec<Segment>) -> Expr {
+        Expr::Path(segments)
     }
 
     fn pipe(left: Expr, right: Expr) -> Expr {
@@ -175,24 +233,40 @@ mod test {
     #[test]
     fn basic() {
         assert_eq!(
-            parse(".a .b .c"),
-            Ok(pipe(pipe(field("a"), field("b")), field("c")))
+            parse(".a.b.c"),
+            Ok(path(vec![
+                Segment::Field("a".into()),
+                Segment::Field("b".into()),
+                Segment::Field("c".into())
+            ]))
         );
     }
 
     #[test]
     fn explicit_pipe() {
-        assert_eq!(parse(".foo | .bar"), Ok(pipe(field("foo"), field("bar"))));
+        assert_eq!(
+            parse(".foo | .bar"),
+            Ok(pipe(
+                path(vec![Segment::Field("foo".into())]),
+                path(vec![Segment::Field("bar".into())])
+            ))
+        );
     }
 
     #[test]
     fn identity() {
-        assert_eq!(parse("."), Ok(Expr::Dot));
+        assert_eq!(parse("."), Ok(Expr::Identity));
     }
 
     #[test]
     fn identity_pipe() {
-        assert_eq!(parse(". | .foo"), Ok(pipe(Expr::Dot, field("foo"))));
+        assert_eq!(
+            parse(". | .foo"),
+            Ok(pipe(
+                Expr::Identity,
+                path(vec![Segment::Field("foo".into())])
+            ))
+        );
     }
 
     #[test]
@@ -207,31 +281,50 @@ mod test {
 
     #[test]
     fn array_index() {
-        assert_eq!(parse("[0]"), Ok(Expr::Index(0)));
-        assert_eq!(parse("[42]"), Ok(Expr::Index(42)));
+        assert_eq!(parse(".[0]"), Ok(path(vec![Segment::Index(0)])));
+        assert_eq!(parse(".[42]"), Ok(path(vec![Segment::Index(42)])));
     }
 
     #[test]
     fn array_index_with_pipe() {
-        assert_eq!(parse(".foo | [0]"), Ok(pipe(field("foo"), Expr::Index(0))));
+        assert_eq!(
+            parse(".foo | .[0]"),
+            Ok(pipe(
+                path(vec![Segment::Field("foo".into())]),
+                path(vec![Segment::Index(0)])
+            ))
+        );
     }
 
     #[test]
     fn array_index_implicit_pipe() {
-        assert_eq!(parse(".foo[0]"), Ok(pipe(field("foo"), Expr::Index(0))));
+        assert_eq!(
+            parse(".foo[0]"),
+            Ok(path(vec![Segment::Field("foo".into()), Segment::Index(0)]))
+        );
         assert_eq!(
             parse(".foo[0][1]"),
-            Ok(pipe(pipe(field("foo"), Expr::Index(0)), Expr::Index(1)))
+            Ok(path(vec![
+                Segment::Field("foo".into()),
+                Segment::Index(0),
+                Segment::Index(1)
+            ]))
         );
     }
 
     #[test]
     fn array_each() {
-        assert_eq!(parse("[]"), Ok(Expr::Each));
-        assert_eq!(parse(".foo[]"), Ok(pipe(field("foo"), Expr::Each)));
+        assert_eq!(parse(".[]"), Ok(path(vec![Segment::Each])));
+        assert_eq!(
+            parse(".foo[]"),
+            Ok(path(vec![Segment::Field("foo".into()), Segment::Each]))
+        );
         assert_eq!(
             parse(".foo[] | .bar"),
-            Ok(pipe(pipe(field("foo"), Expr::Each), field("bar")))
+            Ok(pipe(
+                path(vec![Segment::Field("foo".into()), Segment::Each]),
+                path(vec![Segment::Field("bar".into())])
+            ))
         );
     }
 
@@ -239,17 +332,39 @@ mod test {
     fn array_each_implicit_pipe() {
         assert_eq!(
             parse(".foo[].bar"),
-            Ok(pipe(pipe(field("foo"), Expr::Each), field("bar")))
+            Ok(path(vec![
+                Segment::Field("foo".into()),
+                Segment::Each,
+                Segment::Field("bar".into())
+            ]))
         );
         assert_eq!(
             parse(".foo[][0]"),
-            Ok(pipe(pipe(field("foo"), Expr::Each), Expr::Index(0)))
+            Ok(path(vec![
+                Segment::Field("foo".into()),
+                Segment::Each,
+                Segment::Index(0)
+            ]))
         );
     }
 
     #[test]
     fn array_index_errors() {
-        // Missing closing bracket
-        assert_eq!(parse(".a [0"), Err(Error::UnexpectedEof));
+        assert_eq!(parse(".[0"), Err(Error::UnexpectedEof));
+    }
+
+    #[test]
+    fn test_display_chain_vs_pipe() {
+        let chain = parse(".location.x").unwrap();
+        assert_eq!(chain.to_string(), ".location.x");
+
+        let pipe = parse(".foo | .bar").unwrap();
+        assert_eq!(pipe.to_string(), ".foo | .bar");
+
+        let identity = parse(".").unwrap();
+        assert_eq!(identity.to_string(), ".");
+
+        let complex = parse(".a.b[] | .c[0]").unwrap();
+        assert_eq!(complex.to_string(), ".a.b[] | .c[0]");
     }
 }

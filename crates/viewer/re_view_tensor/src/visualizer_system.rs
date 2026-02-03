@@ -2,7 +2,7 @@ use re_chunk_store::{LatestAtQuery, RowId};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::components::{TensorData, ValueRange};
-use re_view::{RangeResultsExt as _, latest_at_with_blueprint_resolved_data};
+use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
@@ -42,12 +42,14 @@ impl VisualizerSystem for TensorSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let mut output = VisualizerExecutionOutput::default();
+
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             let annotations = None;
-            let results = latest_at_with_blueprint_resolved_data(
+            let latest_at_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 annotations,
                 &timeline_query,
@@ -55,19 +57,26 @@ impl VisualizerSystem for TensorSystem {
                 Tensor::all_component_identifiers(),
                 Some(instruction),
             );
+            let results =
+                re_view::BlueprintResolvedResults::from((timeline_query, latest_at_results));
+            let mut results = re_view::VisualizerInstructionQueryResults {
+                instruction_id: instruction.id,
+                query_results: &results,
+                output: &mut output,
+                timeline: query.timeline,
+            };
 
-            let all_tensor_chunks = results.get_required_chunk(Tensor::descriptor_data().component);
+            let all_tensor_chunks = results.iter_required(Tensor::descriptor_data().component);
             if all_tensor_chunks.is_empty() {
                 continue;
             }
 
-            let timeline = query.timeline;
-            let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {
+            let all_tensors_indexed = all_tensor_chunks.chunks().iter().flat_map(move |chunk| {
                 chunk
-                    .iter_component_indices(timeline)
+                    .iter_component_indices(query.timeline)
                     .zip(chunk.iter_component::<TensorData>())
             });
-            let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range().component);
+            let all_ranges = results.iter_optional(Tensor::descriptor_value_range().component);
 
             for ((_, tensor_row_id), tensors, data_ranges) in
                 re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())
@@ -97,6 +106,6 @@ impl VisualizerSystem for TensorSystem {
             }
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output)
     }
 }

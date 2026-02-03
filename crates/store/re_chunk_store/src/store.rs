@@ -434,6 +434,28 @@ impl ChunkStoreHandle {
     }
 }
 
+/// This keeps track of all missing virtual [`ChunkId`]s and all
+/// used physical [`ChunkId`]s.
+///
+/// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+/// found in local memory. This set is automatically populated anytime that happens.
+#[derive(Debug, Default)]
+pub struct QueriedChunkIdTracker {
+    pub used_physical: HashSet<ChunkId>,
+    pub missing: HashSet<ChunkId>,
+}
+
+impl re_byte_size::SizeBytes for QueriedChunkIdTracker {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            used_physical,
+            missing,
+        } = self;
+
+        used_physical.heap_size_bytes() + missing.heap_size_bytes()
+    }
+}
+
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
@@ -510,6 +532,9 @@ pub struct ChunkStore {
     /// The key is the ID of the source chunk, before splitting, which never made it into the store.
     /// The values are the IDs of the resulting split chunks, which were actually inserted.
     ///
+    /// Splitting cannot be recursive, and therefore there is never any requirement to traverse
+    /// this datastructure recursively.
+    ///
     /// So why is this useful? We use this data on the write path in order to detect when a chunk that
     /// was previously inserted, and split into smaller chunks, is being inserted *again*, e.g. because
     /// it had been offloaded due to memory pressure and is now making a comeback.
@@ -526,8 +551,13 @@ pub struct ChunkStore {
 
     /// Anytime a chunk gets compacted with another during insertion, this is recorded here.
     ///
-    /// The key is the ID of the chunk being inserted, before compaction, which never made it into the store.
+    /// The key can be either one of two things:
+    /// * The ID of an already stored physical chunk, that was elected for compaction.
+    /// * The ID of the chunk being inserted, before compaction, which never made it into the store.
+    ///
     /// The value is the ID of the resulting compacted chunk, which was actually inserted.
+    ///
+    /// Compaction is a recursive process: you should probably traverse this datastructure *recursively*.
     ///
     /// So why is this useful? We use this data on the write path in order to detect when a chunk that
     /// was previously inserted, and (potentially recursively) compacted with another chunk, is being
@@ -592,14 +622,9 @@ pub struct ChunkStore {
     /// This is too costly to be computed from scratch every frame, and is therefore materialized here.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
-    /// This keeps track of all missing [`ChunkId`]s.
-    ///
-    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
-    /// found in local memory. This set is automatically populated anytime that happens.
-    ///
-    /// Calling [`ChunkStore::take_missing_chunk_ids`] will atomically return the contents of this set
-    /// as well as clearing it.
-    pub(crate) missing_chunk_ids: RwLock<HashSet<ChunkId>>,
+    /// Calling [`ChunkStore::take_tracked_chunk_ids`] will atomically return the contents of this
+    /// struct as well as clearing it.
+    pub(crate) queried_chunk_id_tracker: RwLock<QueriedChunkIdTracker>,
 
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -647,7 +672,7 @@ impl Clone for ChunkStore {
             temporal_physical_chunks_stats: self.temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
             static_chunks_stats: self.static_chunks_stats,
-            missing_chunk_ids: Default::default(),
+            queried_chunk_id_tracker: Default::default(),
             insert_id: Default::default(),
             gc_id: Default::default(),
             event_id: Default::default(),
@@ -673,7 +698,7 @@ impl std::fmt::Display for ChunkStore {
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _,
             static_chunks_stats,
-            missing_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -756,7 +781,7 @@ impl ChunkStore {
             temporal_physical_chunks_stats: Default::default(),
             static_chunk_ids_per_entity: Default::default(),
             static_chunks_stats: Default::default(),
-            missing_chunk_ids: Default::default(),
+            queried_chunk_id_tracker: Default::default(),
             insert_id: 0,
             gc_id: 0,
             event_id: AtomicU64::new(0),
@@ -805,6 +830,20 @@ impl ChunkStore {
     #[inline]
     pub fn physical_chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
         self.chunks_per_chunk_id.get(id)
+    }
+
+    /// Get a *physical* chunk based on its ID and track the chunk as either
+    /// used or missing, to signal that it should be kept or fetched.
+    pub fn use_physical_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+        let chunk = self.physical_chunk(id);
+
+        if chunk.is_some() {
+            self.insert_used_chunk_id(*id);
+        } else {
+            self.insert_missing_chunk_id(*id);
+        }
+
+        chunk
     }
 
     /// Get the number of *physical* chunks in the store.
@@ -869,7 +908,8 @@ impl ChunkStore {
         Some((component_descr.component_type, datatype.clone()))
     }
 
-    /// Returns the set of [`ChunkId`]s that were detected as missing since the last time since method was called.
+    /// Returns and iterator over [`ChunkId`]s that were detected as
+    /// used or missing since the last time since method was called.
     ///
     /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
     /// found in local memory.
@@ -882,15 +922,31 @@ impl ChunkStore {
     /// The returned [`ChunkId`]s can live anywhere within the lineage tree, and therefore might
     /// not be usable for downstream consumers that did not track even compaction/split-off events.
     /// Use [`Self::find_root_chunks`] to find the original chunks that those IDs descended from.
-    pub fn take_missing_chunk_ids(&self) -> HashSet<ChunkId> {
-        std::mem::take(&mut self.missing_chunk_ids.write())
+    pub fn take_tracked_chunk_ids(&self) -> QueriedChunkIdTracker {
+        std::mem::take(&mut self.queried_chunk_id_tracker.write())
+    }
+
+    /// Signal that the chunk was used and should not be evicted by gc.
+    fn insert_used_chunk_id(&self, chunk_id: ChunkId) {
+        self.queried_chunk_id_tracker
+            .write()
+            .used_physical
+            .insert(chunk_id);
+    }
+
+    /// Signal that a chunk is missing and should be fetched when possible.
+    fn insert_missing_chunk_id(&self, chunk_id: ChunkId) {
+        self.queried_chunk_id_tracker
+            .write()
+            .missing
+            .insert(chunk_id);
     }
 
     /// How many missing chunk IDs are currently registered?
     ///
-    /// See also [`ChunkStore::take_missing_chunk_ids`].
+    /// See also [`ChunkStore::take_tracked_chunk_ids`].
     pub fn num_missing_chunk_ids(&self) -> usize {
-        self.missing_chunk_ids.read().len()
+        self.queried_chunk_id_tracker.read().missing.len()
     }
 }
 

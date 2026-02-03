@@ -4,11 +4,14 @@ mod app_testing_ext;
 pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
 use re_build_info::build_info;
+use re_viewer_context::AppOptions;
 
 use crate::{
     App, AppEnvironment, AsyncRuntimeHandle, MainThreadToken, StartupOptions,
     customize_eframe_and_setup_renderer,
 };
+
+pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
 
 #[derive(Default)]
 pub struct HarnessOptions {
@@ -16,6 +19,7 @@ pub struct HarnessOptions {
     pub max_steps: Option<u64>,
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
+    pub enable_component_mapping: bool,
 }
 
 /// Convenience function for creating a kittest harness of the viewer App.

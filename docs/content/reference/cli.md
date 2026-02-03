@@ -57,7 +57,8 @@ The Rerun command-line interface:
 > The server buffers log messages for the benefit of late-arriving viewers.
 > When this limit is reached, Rerun will drop the oldest data.
 > Example: `16GB` or `50%` (of system total).
-> Default is `0B`, or `25%` if any of the `--serve-*` flags are set.
+>
+> [Default: `1GiB`]
 
 * `--newest-first <NEWEST_FIRST>`
 > If true, play back the most recent data first when new clients connect.
@@ -94,16 +95,12 @@ The Rerun command-line interface:
 >
 > If started, the web server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
 >
-> Using this sets the default `--server-memory-limit` to 25% of available system memory.
->
 > [Default: `false`]
 
 * `--serve-grpc <SERVE_GRPC>`
 > This will host a gRPC server.
 >
 > The server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
->
-> Using this sets the default `--server-memory-limit` to 25% of available system memory.
 >
 > [Default: `false`]
 

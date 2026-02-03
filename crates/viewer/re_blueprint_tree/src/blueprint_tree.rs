@@ -9,7 +9,7 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, PerVisualizer, SystemCommand, SystemCommandSender as _,
+    Item, ItemCollection, ItemContext, PerVisualizerType, SystemCommand, SystemCommandSender as _,
     ViewId, ViewStates, ViewerContext, VisitorControlFlow, VisualizerExecutionErrorState,
     contents_name_style, icon_for_container_kind,
 };
@@ -403,7 +403,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         view_data: &ViewData,
         container_visible: bool,
-        errors: Option<&PerVisualizer<VisualizerExecutionErrorState>>,
+        errors: Option<&PerVisualizerType<VisualizerExecutionErrorState>>,
     ) {
         let mut visible = view_data.visible;
         let view_visible = visible && container_visible;
@@ -527,7 +527,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         data_result_data: &DataResultData,
         view_visible: bool,
-        errors: Option<&PerVisualizer<VisualizerExecutionErrorState>>,
+        errors: Option<&PerVisualizerType<VisualizerExecutionErrorState>>,
     ) {
         let item = Item::DataResult(
             data_result_data.view_id,
@@ -542,10 +542,14 @@ impl BlueprintTree {
                 );
 
                 let has_error = errors.is_some_and(|errors| {
-                    errors.values().any(|err| {
-                        err.error_string_for(&data_result_data.entity_path)
-                            .is_some()
-                    })
+                    data_result_data
+                        .visualizer_instruction_ids
+                        .iter()
+                        .any(|instruction_id| {
+                            errors
+                                .values()
+                                .any(|err| err.error_string_for(instruction_id).is_some())
+                        })
                 });
 
                 let item_content = list_item::LabelContent::new(format_matching_text(

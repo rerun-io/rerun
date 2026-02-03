@@ -6,10 +6,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
-use parking_lot::Mutex;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, EntityPathSubs};
+use re_mutex::Mutex;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
 use re_sdk_types::blueprint::components::{
     AutoLayout, AutoViews, RootContainer, ViewMaximized, ViewerRecommendationHash,
@@ -314,12 +314,25 @@ impl ViewportBlueprint {
             let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
             let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
 
-            let mut recommended_views = entry
-                .class
-                .spawn_heuristics(ctx, &include_entity)
-                .into_vec();
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &include_entity);
+            let max_views_spawned = spawn_heuristics.max_views_spawned();
+            let mut recommended_views = spawn_heuristics.into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
+
+            // Count how many views of this class already exist.
+            let existing_view_count = self
+                .views
+                .values()
+                .filter(|view| view.class_identifier() == class_id)
+                .count();
+
+            // Limit recommendations based on max_views_spawned.
+            // If we already have max or more views, don't spawn any more.
+            let max_new_views = max_views_spawned.saturating_sub(existing_view_count);
+            if max_new_views < recommended_views.len() {
+                recommended_views.truncate(max_new_views);
+            }
 
             // Remove all views that we already spawned via heuristic before.
             recommended_views.retain(|recommended_view| {

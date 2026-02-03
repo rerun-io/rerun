@@ -47,10 +47,6 @@ pub struct ServerOptions {
     pub playback_behavior: PlaybackBehavior,
 
     /// Start garbage collecting old data when we reach this.
-    ///
-    /// If server & client are running on the same machine and all clients are expected to connect before
-    /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
-    /// otherwise you're potentially doubling your memory usage!
     pub memory_limit: MemoryLimit,
 }
 
@@ -58,7 +54,7 @@ impl Default for ServerOptions {
     fn default() -> Self {
         Self {
             playback_behavior: PlaybackBehavior::OldestFirst,
-            memory_limit: MemoryLimit::from_bytes(100 * 1024 * 1024), // Be very conservative by default
+            memory_limit: MemoryLimit::from_bytes(1024 * 1024 * 1024), // Be very conservative by default
         }
     }
 }
@@ -198,7 +194,7 @@ async fn serve_impl(
         Box::pin(incoming)
     };
 
-    re_log::info!("Server memory limit set at {}", options.memory_limit);
+    re_log::debug!("Server memory limit set at {}", options.memory_limit);
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();
@@ -832,7 +828,7 @@ impl EventLoop {
         // This will block if the broadcast channel is full, applying back-pressure
         self.broadcast_log_tx.send_async(msg.clone()).await.ok();
 
-        if self.is_history_disabled() {
+        if !self.is_history_enabled() {
             // no need to gc or maintain history
             return;
         }
@@ -842,17 +838,14 @@ impl EventLoop {
         self.history.add_msg(msg);
     }
 
-    fn is_history_disabled(&self) -> bool {
-        self.options.memory_limit.max_bytes.is_some_and(|b| b == 0)
+    fn is_history_enabled(&self) -> bool {
+        self.options.memory_limit != MemoryLimit::ZERO
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
-        let Some(max_bytes) = self.options.memory_limit.max_bytes else {
-            // Unlimited memory!
-            return;
-        };
-
-        self.history.gc(max_bytes);
+        if self.options.memory_limit.is_limited() {
+            self.history.gc(self.options.memory_limit.as_bytes());
+        }
     }
 }
 

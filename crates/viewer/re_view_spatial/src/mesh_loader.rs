@@ -53,6 +53,7 @@ impl LoadedMesh {
         mesh: AnyMesh<'_>,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
             AnyMesh::Asset { asset } => Ok(Self::load_asset3d(name, asset, render_ctx)?),

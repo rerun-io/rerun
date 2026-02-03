@@ -444,13 +444,9 @@ impl RecordingStreamBuilder {
     /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
     ///
     /// The gRPC server will buffer in memory so that late connecting viewers will still get all the data.
-    /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`].
+    /// You can control the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`].
     /// Once the memory limit is reached, the earliest logged data
     /// will be dropped. Static data is never dropped.
-    ///
-    /// It is highly recommended that you use [`Self::serve_grpc_opts`] and set the memory limit to `0B`
-    /// if both the server and client are running on the same machine, otherwise you're potentially
-    /// doubling your memory usage!
     ///
     /// NOTE: When the `RecordingStream` is dropped or disconnected, it will shut down the gRPC server.
     pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
@@ -476,12 +472,8 @@ impl RecordingStreamBuilder {
     /// `0.0.0.0` is a good default for `bind_ip`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
+    /// You can control the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
-    ///
-    /// If server & client are running on the same machine and all clients are expected to connect before
-    /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
-    /// otherwise you're potentially doubling your memory usage!
     ///
     /// NOTE: When the `RecordingStream` is dropped or disconnected, it will shut down the gRPC server.
     pub fn serve_grpc_opts(

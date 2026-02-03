@@ -275,8 +275,10 @@ impl ItemCollection {
                 content_description.push_str(", ");
             }
             if entries.len() == 1 {
+                // Singular
                 content_description.push_str(desc);
             } else {
+                // Plural
                 content_description.push_str(&format!("{desc}s"));
             }
 

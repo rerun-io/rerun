@@ -1,7 +1,8 @@
+use re_renderer::video::{InsufficientSampleDataError, VideoPlayerError};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::Opacity;
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_view::{BlueprintResolvedResultsExt as _, DataResultQuery as _};
 use re_viewer_context::{
     IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
     ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
@@ -53,6 +54,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let mut output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
@@ -65,12 +68,14 @@ impl VisualizerSystem for VideoStreamVisualizer {
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
             let entity_path = &data_result.entity_path;
+            re_tracing::profile_scope!("Entity", entity_path.to_string().as_str());
 
             let Some(transform_info) = transform_info_for_archetype_or_report_error(
                 entity_path,
                 transforms,
                 self.data.preferred_view_kind,
                 view_kind,
+                &instruction.id,
                 &mut output,
             ) else {
                 continue;
@@ -96,7 +101,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 VideoStream::descriptor_opacity().component,
                 Some(instruction),
             );
-            let all_opacities = opacity_result.iter_as(
+            let all_opacities = opacity_result.iter_optional(
+                |error| output.report_warning_for(instruction.id, error),
                 view_query.timeline,
                 VideoStream::descriptor_opacity().component,
             );
@@ -161,7 +167,9 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
                 let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
                 let get_chunk_array = |id| {
-                    let chunk = storage_engine.store().physical_chunk(&id)?;
+                    let chunk = storage_engine
+                        .store()
+                        .use_physical_chunk_or_report_missing(&id)?;
 
                     let sample_component = VideoStream::descriptor_sample().component;
 
@@ -219,13 +227,25 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
 
                 Err(err) => {
+                    let severity = match err {
+                        VideoPlayerError::InsufficientSampleData(
+                            InsufficientSampleDataError::NoKeyFrames
+                            | InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp
+                            | InsufficientSampleDataError::NoSamples
+                            | InsufficientSampleDataError::NoLoadedSamples
+                            | InsufficientSampleDataError::ExpectedSampleNotLoaded
+                            | InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp,
+                        ) => VideoPlaybackIssueSeverity::Informational,
+                        _ => VideoPlaybackIssueSeverity::Error,
+                    };
+
                     show_video_playback_issue(
                         ctx,
                         &mut self.data,
                         highlight,
                         world_from_entity,
                         err.to_string(),
-                        VideoPlaybackIssueSeverity::Error,
+                        severity,
                         video_resolution,
                         entity_path,
                     );

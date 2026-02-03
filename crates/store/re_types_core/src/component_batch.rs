@@ -289,6 +289,15 @@ impl SerializedComponentBatch {
         let column: SerializedComponentColumn = self.into();
         column.repartitioned(lengths)
     }
+
+    /// Partitions the component data into a single-column batch with one item per row.
+    ///
+    /// See also [`SerializedComponentBatch::partitioned`].
+    #[inline]
+    pub fn column_of_unit_batches(self) -> SerializationResult<SerializedComponentColumn> {
+        let len = self.array.len();
+        self.partitioned(std::iter::repeat_n(1, len))
+    }
 }
 
 // ---

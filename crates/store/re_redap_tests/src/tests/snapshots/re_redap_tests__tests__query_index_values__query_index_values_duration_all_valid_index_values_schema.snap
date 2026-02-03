@@ -1,0 +1,34 @@
+---
+source: crates/store/re_redap_tests/src/tests/query_index_values.rs
+expression: results.format_schema_snapshot()
+---
+top-level metadata: [
+    sorbet:version: "0.1.2"
+]
+/my/entity:example.MyPoints:colors: nullable List[nullable u32] [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:entity_path: "/my/entity"
+    rerun:kind: "data"
+]
+/my/entity:example.MyPoints:labels: nullable List[nullable Utf8] [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:labels"
+    rerun:component_type: "example.MyLabel"
+    rerun:entity_path: "/my/entity"
+    rerun:is_static: "true"
+    rerun:kind: "data"
+]
+/my/entity:example.MyPoints:points: nullable List[nullable Struct[2]] [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:entity_path: "/my/entity"
+    rerun:kind: "data"
+]
+duration: nullable Duration(ns) [
+    rerun:index_name: "duration"
+    rerun:kind: "index"
+]
+rerun_segment_id: Utf8

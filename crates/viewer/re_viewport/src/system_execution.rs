@@ -5,10 +5,10 @@ use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
 use re_viewer_context::{
-    PerSystemDataResults, PerVisualizerInViewClass, SystemExecutionOutput, ViewContextCollection,
-    ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizerCollection,
-    VisualizerExecutionOutput,
+    PerSystemDataResults, PerVisualizerTypeInViewClass, SystemExecutionOutput,
+    ViewContextCollection, ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState,
+    ViewStates, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizerCollection, VisualizerExecutionOutput,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -25,7 +25,8 @@ fn run_view_systems(
     >,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
-) -> PerVisualizerInViewClass<Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>> {
+) -> PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>>
+{
     re_tracing::profile_function!(view.class_identifier().as_str());
 
     let view_ctx = view.bundle_context_with_state(ctx, view_state);
@@ -45,7 +46,7 @@ fn run_view_systems(
     };
 
     re_tracing::profile_wait!("VisualizerSystem::execute");
-    let per_visualizer_results = view_systems
+    let per_visualizer_type_results = view_systems
         .systems
         .par_iter_mut()
         .map(|(name, part)| {
@@ -55,9 +56,9 @@ fn run_view_systems(
         })
         .collect();
 
-    PerVisualizerInViewClass {
+    PerVisualizerTypeInViewClass {
         view_class_identifier: view.class_identifier(),
-        per_visualizer: per_visualizer_results,
+        per_visualizer: per_visualizer_type_results,
     }
 }
 

@@ -8,7 +8,7 @@ use itertools::{Either, Itertools as _};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_log_encoding::RrdManifest;
+use re_log_encoding::RawRrdManifest;
 use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
 use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
 use re_protos::cloud::v1alpha1::{
@@ -175,6 +175,9 @@ impl Dataset {
             .flat_map(|segment| segment.iter_layers().map(|(_, layer)| layer))
     }
 
+    // TODO(ab): now that we systematically check the merged schema upon registration, we could
+    // switch to keeping around a fully merged dataset schema instead of the present caching
+    // strategy. (That is, if performance requires it.)
     pub fn schema(&self) -> arrow::error::Result<Schema> {
         let mut cache = self.cached_schema.lock();
 
@@ -410,7 +413,7 @@ impl Dataset {
             .map_err(Error::failed_to_extract_properties)
     }
 
-    pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RrdManifest, Error> {
+    pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RawRrdManifest, Error> {
         let partition = self.segment(segment_id)?;
 
         let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
@@ -480,7 +483,7 @@ impl Dataset {
             let schema = {
                 let mut schema = Arc::unwrap_or_clone(schema);
                 let mut fields = schema.fields.to_vec();
-                fields.push(Arc::new(RrdManifest::field_chunk_key()));
+                fields.push(Arc::new(RawRrdManifest::field_chunk_key()));
                 schema.fields = fields.into();
                 schema
             };
@@ -522,6 +525,18 @@ impl Dataset {
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
         re_log::debug!(?segment_id, ?layer_name, "add_layer");
+
+        // Validate schema compatibility before inserting
+        let current_schema = self.schema()?;
+        let new_layer_schema = {
+            let fields = store_handle.read().schema().arrow_fields();
+            Schema::new_with_metadata(fields, HashMap::default())
+        };
+        Schema::try_merge([current_schema, new_layer_schema]).map_err(|err| {
+            Error::SchemaConflict(format!(
+                "schema incompatibility on segment '{segment_id}', layer '{layer_name}': {err}"
+            ))
+        })?;
 
         let overwritten = self
             .inner

@@ -1,5 +1,9 @@
-use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
+use std::{
+    collections::BTreeSet,
+    fmt::{Debug, Formatter},
+    ops::Deref,
+    sync::Arc,
+};
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
@@ -18,6 +22,7 @@ use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
     RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
+use re_mutex::Mutex;
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
@@ -61,6 +66,25 @@ impl EntityDbClass<'_> {
 
 // ---
 
+struct StoreSizeBytes(Mutex<Option<u64>>);
+
+impl Clone for StoreSizeBytes {
+    fn clone(&self) -> Self {
+        Self(Mutex::new(*self.0.lock()))
+    }
+}
+
+impl Deref for StoreSizeBytes {
+    type Target = Mutex<Option<u64>>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// ---
+
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
@@ -94,6 +118,9 @@ pub struct EntityDb {
     /// Ignores deletions.
     latest_row_id: Option<RowId>,
 
+    /// All the entity paths in this database, sorted for use in GUIs.
+    entity_paths: BTreeSet<EntityPath>,
+
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
@@ -110,6 +137,9 @@ pub struct EntityDb {
     /// The design statically guarantees the absence of deadlocks and race conditions that normally
     /// results from letting store and cache handles arbitrarily loose all across the codebase.
     storage_engine: StorageEngine,
+
+    /// Lazily calculated
+    store_size_bytes: StoreSizeBytes,
 
     stats: IngestionStatistics,
 }
@@ -163,9 +193,11 @@ impl EntityDb {
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
+            entity_paths: Default::default(),
             entity_path_from_hash: Default::default(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
+            store_size_bytes: StoreSizeBytes(Mutex::new(None)),
             stats: IngestionStatistics::default(),
         }
     }
@@ -225,6 +257,12 @@ impl EntityDb {
     #[inline]
     pub fn storage_engine(&self) -> StorageEngineReadGuard<'_> {
         self.storage_engine.read()
+    }
+
+    pub fn rrd_manifest_index_mut_and_storage_engine(
+        &mut self,
+    ) -> (&mut RrdManifestIndex, StorageEngineReadGuard<'_>) {
+        (&mut self.rrd_manifest_index, self.storage_engine.read())
     }
 
     /// Returns a reference to the backing [`StorageEngine`].
@@ -426,7 +464,7 @@ impl EntityDb {
             .latest_at(query, entity_path, [component]);
         results
             .component_mono(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -452,7 +490,7 @@ impl EntityDb {
 
         results
             .component_mono_quiet(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     #[inline]
@@ -473,6 +511,22 @@ impl EntityDb {
         }
 
         None
+    }
+
+    /// Check if we have all loaded chunk for the given entity and component at `query.at()`.
+    pub fn has_fully_loaded(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+        query: &LatestAtQuery,
+    ) -> bool {
+        let timeline = Timeline::new(query.timeline(), self.timeline_type(&query.timeline()));
+
+        !self
+            .rrd_manifest_index()
+            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
+            .iter()
+            .any(|chunk| chunk.time_range.contains(query.at()))
     }
 
     /// If this entity db is the result of a clone, which store was it cloned from?
@@ -539,9 +593,8 @@ impl EntityDb {
     }
 
     /// A sorted list of all the entity paths in this database.
-    pub fn entity_paths(&self) -> Vec<&EntityPath> {
-        use itertools::Itertools as _;
-        self.entity_path_from_hash.values().sorted().collect()
+    pub fn sorted_entity_paths(&self) -> impl Iterator<Item = &EntityPath> {
+        self.entity_paths.iter()
     }
 
     #[inline]
@@ -567,7 +620,7 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifest) {
+    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: Arc<RrdManifest>) {
         re_tracing::profile_function!();
         re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
@@ -575,7 +628,7 @@ impl EntityDb {
             .storage_engine
             .write()
             .store()
-            .insert_rrd_manifest(Arc::new(rrd_manifest.clone()))
+            .insert_rrd_manifest(rrd_manifest.clone())
         {
             re_log::error!("Failed to load RRD Manifest into store: {err}");
         }
@@ -627,6 +680,7 @@ impl EntityDb {
 
     /// Insert new data into the store.
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
 
@@ -636,6 +690,8 @@ impl EntityDb {
         chunk_timestamps: &re_sorbet::TimestampMetadata,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let store_events = self.storage_engine.write().store().insert_chunk(chunk)?;
+
+        self.entity_paths.insert(chunk.entity_path().clone());
 
         self.entity_path_from_hash
             .entry(chunk.entity_path().hash())
@@ -661,6 +717,8 @@ impl EntityDb {
     /// We call this on any changes, before returning the store events to the outsider caller.
     pub(crate) fn on_store_events(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
+
+        self.store_size_bytes.lock().take(); // invalidate
 
         let mut engine = self.storage_engine.write();
 
@@ -720,6 +778,10 @@ impl EntityDb {
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
+        let protected_chunks = self
+            .rrd_manifest_index
+            .chunk_prioritizer_mut()
+            .take_protected_chunks();
         let store_events = self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             time_budget: DEFAULT_GC_TIME_BUDGET,
@@ -737,7 +799,7 @@ impl EntityDb {
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
-
+            protected_chunks,
             furthest_from: if self.rrd_manifest_index.has_manifest() {
                 // If we have an RRD manifest, it means we can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:
@@ -1074,13 +1136,43 @@ impl EntityDb {
 impl re_byte_size::SizeBytes for EntityDb {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(emilk): size of entire EntityDb, including secondary indices etc
-        self.storage_engine
-            .read()
-            .store()
-            .stats()
-            .total()
-            .total_size_bytes
+        re_tracing::profile_function!();
+
+        let Self {
+            store_id,
+            enable_viewer_indexes,
+            data_source: _,
+            rrd_manifest_index,
+            set_store_info,
+            last_modified_at: _,
+            latest_row_id: _,
+            entity_paths,
+            entity_path_from_hash,
+            time_histogram_per_timeline,
+            storage_engine,
+            store_size_bytes,
+            stats: _,
+        } = self;
+
+        let storage_engine = storage_engine.read();
+
+        let store_size_bytes = {
+            // Calculate lazily
+            *store_size_bytes
+                .lock()
+                .get_or_insert_with(|| storage_engine.store().heap_size_bytes())
+        };
+
+        let storage_engine_size = storage_engine.cache().heap_size_bytes() + store_size_bytes;
+
+        store_id.heap_size_bytes()
+            + enable_viewer_indexes.heap_size_bytes()
+            + rrd_manifest_index.heap_size_bytes()
+            + set_store_info.heap_size_bytes()
+            + entity_paths.heap_size_bytes()
+            + entity_path_from_hash.heap_size_bytes()
+            + time_histogram_per_timeline.heap_size_bytes()
+            + storage_engine_size
     }
 }
 
@@ -1092,6 +1184,7 @@ impl MemUsageTreeCapture for EntityDb {
             rrd_manifest_index,
             time_histogram_per_timeline,
             storage_engine,
+            entity_paths,
             entity_path_from_hash,
 
             // Small:
@@ -1101,6 +1194,7 @@ impl MemUsageTreeCapture for EntityDb {
             set_store_info: _,
             last_modified_at: _,
             latest_row_id: _,
+            store_size_bytes: _,
             stats: _,
         } = self;
 
@@ -1109,6 +1203,11 @@ impl MemUsageTreeCapture for EntityDb {
         node.add(
             "chunk_store",
             storage_engine.read().capture_mem_usage_tree(),
+        );
+
+        node.add(
+            "entity_paths",
+            MemUsageTree::Bytes(entity_paths.total_size_bytes()),
         );
 
         node.add(

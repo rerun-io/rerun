@@ -18,7 +18,7 @@ use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{
     ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
-    SegmentQueryParams, StreamMode,
+    SegmentQueryParams,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -320,13 +320,10 @@ where
 ///
 /// A key advantage of this approach is that it ensures that the default blueprint is always in sync
 /// with the server's version.
-///
-/// `stream_mode` is a feature-flag for RRD manifest based larger-than-ram streaming.
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetSegmentUri,
-    stream_mode: StreamMode,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
@@ -359,7 +356,6 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_dataset,
             blueprint_segment,
             re_uri::Fragment::default(),
-            StreamMode::FullLoad, // We always load the full blueprint
         )
         .await?
         .is_break()
@@ -406,7 +402,6 @@ pub async fn stream_blueprint_and_segment_from_server(
         dataset_id.into(),
         segment_id.into(),
         fragment,
-        stream_mode,
     )
     .await?
     .is_break()
@@ -425,7 +420,6 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
-    stream_mode: StreamMode,
 ) -> ApiResult<ControlFlow<()>> {
     let store_id = store_info.store_id.clone();
 
@@ -468,56 +462,57 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    if stream_mode == StreamMode::OnDemand {
-        let manifest_result = client
-            .get_rrd_manifest(dataset_id, segment_id.clone())
-            .await;
-        match manifest_result {
-            Ok(rrd_manifest) => {
-                re_log::debug_once!("The server supports larger-than-RAM");
-                re_log::debug_once!(
-                    "Downloaded RRD manifest; {} (deflated)",
-                    re_format::format_bytes(rrd_manifest.total_size_bytes() as _)
-                );
+    let start_time = web_time::Instant::now();
+    let manifest_result = client
+        .get_rrd_manifest(dataset_id, segment_id.clone())
+        .await;
+    match manifest_result {
+        Ok(raw_rrd_manifest) => {
+            re_log::debug_once!(
+                "The server supports larger-than-RAM. RRD manifest ({} deflated) loaded in {:.1}s",
+                re_format::format_bytes(raw_rrd_manifest.total_size_bytes() as _),
+                start_time.elapsed().as_secs_f32(),
+            );
 
-                if tx
-                    .send(DataSourceMessage::RrdManifest(
-                        store_id.clone(),
-                        rrd_manifest.clone().into(),
-                    ))
-                    .is_err()
-                {
-                    re_log::debug!("Receiver disconnected");
-                    return Ok(ControlFlow::Break(()));
-                }
+            let rrd_manifest =
+                re_log_encoding::RrdManifest::try_new(raw_rrd_manifest).map_err(|err| {
+                    ApiError::invalid_arguments_with_source(err, "Invalid RRD manifest")
+                })?;
 
-                match store_id.kind() {
-                    StoreKind::Recording => {
-                        re_log::debug!("Letting the viewer load chunks on-demand");
-                        return Ok(ControlFlow::Continue(()));
-                    }
-                    StoreKind::Blueprint => {
-                        // Load all of the chunks in one go; most important first:
-                        let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
-                            ApiError::invalid_arguments_with_source(
-                                err,
-                                "Failed to sort chunk index",
-                            )
-                        })?;
-                        return load_chunks(client, tx, &store_id, batch).await;
-                    }
-                }
+            let rrd_manifest = Arc::new(rrd_manifest);
+
+            if tx
+                .send(DataSourceMessage::RrdManifest(
+                    store_id.clone(),
+                    rrd_manifest.clone(),
+                ))
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(ControlFlow::Break(()));
             }
-            Err(err) => {
-                if err.kind == ApiErrorKind::Unimplemented {
-                    re_log::debug_once!("The server does not support larger-than-RAM"); // Legacy server
-                } else {
-                    re_log::warn!("Failed to load RRD manifest: {err}");
+
+            match store_id.kind() {
+                StoreKind::Recording => {
+                    re_log::debug!("Letting the viewer load chunks on-demand");
+                    return Ok(ControlFlow::Continue(()));
+                }
+                StoreKind::Blueprint => {
+                    // Load all of the chunks in one go; most important first:
+                    let batch = sort_batch(rrd_manifest.data()).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
+                    })?;
+                    return load_chunks(client, tx, &store_id, batch).await;
                 }
             }
         }
-    } else {
-        re_log::debug_once!("Larger-than-RAM streaming is disabled");
+        Err(err) => {
+            if err.kind == ApiErrorKind::Unimplemented {
+                re_log::debug_once!("The server does not support larger-than-RAM"); // Legacy server
+            } else {
+                re_log::warn!("Failed to load RRD manifest: {err}");
+            }
+        }
     }
 
     // Fallback for servers that does not support the RRD manifests:
@@ -619,16 +614,8 @@ async fn stream_segment_from_server(
             })
             .collect();
 
-        let filtered_batch = arrow::compute::take_record_batch(
-            &batch,
-            &arrow::array::UInt32Array::from(
-                filtered_indices
-                    .iter()
-                    .map(|&i| i as u32)
-                    .collect::<Vec<u32>>(),
-            ),
-        )
-        .map_err(|err| ApiError::invalid_arguments_with_source(err, "take_record_batch"))?;
+        let filtered_batch = re_arrow_util::take_record_batch(&batch, &filtered_indices)
+            .map_err(|err| ApiError::invalid_arguments_with_source(err, "take_record_batch"))?;
 
         load_chunks(client, tx, &store_id, filtered_batch).await
     } else {

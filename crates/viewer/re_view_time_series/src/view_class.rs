@@ -1,6 +1,7 @@
-use egui::ahash::{HashMap, HashSet};
+use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
+use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
@@ -12,19 +13,19 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
+use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
-    PerVisualizerInViewClass, QueryRange, RecommendedView, RecommendedVisualizers,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableReason, VisualizerComponentMappings,
-    VisualizerComponentSource,
+    BlueprintContext as _, DatatypeMatchInfo, IdentifiedViewSystem as _, IndicatedEntities,
+    PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, RecommendedView,
+    RecommendedVisualizers, SystemExecutionOutput, TimeControlCommand, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
+    VisualizerComponentMappings, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -38,10 +39,10 @@ use crate::point_visualizer_system::SeriesPointsSystem;
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
-    scalar_range: Range1D,
+    pub(crate) scalar_range: Range1D,
 
     /// The size of the current range of time which covers the whole time series.
-    max_time_view_range: AbsoluteTimeRange,
+    pub(crate) max_time_view_range: AbsoluteTimeRange,
 
     /// We offset the time values of the plot so that unix timestamps don't run out of precision.
     ///
@@ -55,6 +56,12 @@ pub struct TimeSeriesViewState {
     /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
     /// forwarded to the default providers.
     pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
+
+    /// The number of time series rendered emitted by visualizers last frame.
+    ///
+    /// We track egui-ids here because the number of "series" passed to egui can actually be much higher
+    /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
+    pub(crate) num_time_series_last_frame_per_entity: HashMap<EntityPath, IntSet<egui::Id>>,
 }
 
 impl Default for TimeSeriesViewState {
@@ -64,6 +71,7 @@ impl Default for TimeSeriesViewState {
             max_time_view_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
             default_names_for_entities: Default::default(),
+            num_time_series_last_frame_per_entity: Default::default(),
         }
     }
 }
@@ -152,77 +160,7 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        for component in [
-            SeriesLines::descriptor_names().component,
-            SeriesPoints::descriptor_names().component,
-        ] {
-            system_registry.register_fallback_provider::<re_sdk_types::components::Name>(
-                component,
-                |ctx| {
-                    let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
-
-                    state
-                        .ok()
-                        .and_then(|state| {
-                            state
-                                .default_names_for_entities
-                                .get(ctx.target_entity_path)
-                                .map(|name| name.clone().into())
-                        })
-                        .or_else(|| {
-                            ctx.target_entity_path
-                                .last()
-                                .map(|part| part.ui_string().into())
-                        })
-                        .unwrap_or_default()
-                },
-            );
-        }
-        system_registry.register_fallback_provider(
-            ScalarAxis::descriptor_range().component,
-            |ctx| {
-                ctx.view_state()
-                    .as_any()
-                    .downcast_ref::<TimeSeriesViewState>()
-                    .map(|s| make_range_sane(s.scalar_range))
-                    .unwrap_or_default()
-            },
-        );
-        system_registry.register_fallback_provider(
-            TimeAxis::descriptor_view_range().component,
-            |ctx| {
-                let timeline_histograms = ctx.viewer_ctx().recording().timeline_histograms();
-                let (timeline_min, timeline_max) = timeline_histograms
-                    .get(ctx.viewer_ctx().time_ctrl.timeline_name())
-                    .and_then(|stats| Some((stats.min_opt()?, stats.max_opt()?)))
-                    .unzip();
-                ctx.view_state()
-                    .as_any()
-                    .downcast_ref::<TimeSeriesViewState>()
-                    .map(|s| {
-                        re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                            start: if Some(s.max_time_view_range.min) == timeline_min {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                            } else {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    s.max_time_view_range.min.into(),
-                                )
-                            },
-                            end: if Some(s.max_time_view_range.max) == timeline_max {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                            } else {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    s.max_time_view_range.max.into(),
-                                )
-                            },
-                        })
-                    })
-                    .unwrap_or(re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                        start: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                        end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                    }))
-            },
-        );
+        crate::fallbacks::register_fallbacks(system_registry);
 
         system_registry.register_visualizer::<SeriesLinesSystem>()?;
         system_registry.register_visualizer::<SeriesPointsSystem>()?;
@@ -301,99 +239,67 @@ impl ViewClass for TimeSeriesView {
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
-        let mut indicated_entities = IndicatedEntities::default();
-
-        for indicated in [
-            SeriesLinesSystem::identifier(),
-            SeriesPointsSystem::identifier(),
-        ]
-        .iter()
-        .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
-        {
-            indicated_entities.0.extend(indicated.0.iter().cloned());
-        }
-
-        // Because SeriesLines is our fallback visualizer, also include any entities for which
-        // SeriesLines is visualizable, even if not indicated.
-        if let Some(maybe_visualizable) = ctx
+        // Note that point series has the same visualizable conditions, it doesn't matter which one we look at here.
+        let Some(visualizable_entities) = ctx
             .visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
-        {
-            indicated_entities.0.extend(
-                maybe_visualizable
-                    .iter()
-                    .filter_map(|(ent, reason)| match reason {
-                        re_viewer_context::VisualizableReason::DatatypeMatchAny { components } => {
-                            components
-                                .iter()
-                                .any(|(_, match_kind)| {
-                                    // It has to have the native semantics for this though!
-                                    *match_kind
-                                        == re_viewer_context::DatatypeMatchKind::NativeSemantics
-                                })
-                                .then_some(ent)
-                        }
-                        _ => Some(ent),
-                    })
-                    .cloned(),
-            );
-        }
-
-        // Ensure we don't modify this list anymore before we check the `include_entity`.
-        let indicated_entities = indicated_entities;
-
-        if !indicated_entities.iter().any(include_entity) {
+        else {
             return ViewSpawnHeuristics::empty();
-        }
+        };
 
-        // Spawn time series data at the root if theres 'either:
-        // * time series data directly at the root
-        // * all time series data are direct children of the root
-        //
-        // This heuristic was last edited in 2015-04-11 by @emilk,
-        // because it was triggering too often (https://github.com/rerun-io/rerun/pull/9587).
-        // Maybe we should remove it completely?
-        // I have a feeling it was added to handle the case many scalars of the form `/x`, `/y`, `/z` etc,
-        // but we now support logging multiple scalars in one entity.
-        //
-        // This is the last hold out of "child of root" spawning, which we removed otherwise
-        // (see https://github.com/rerun-io/rerun/issues/4926)
-        let root_entities: IntSet<EntityPath> = ctx
-            .recording()
-            .tree()
-            .children
-            .values()
-            .map(|subtree| subtree.path.clone())
-            .collect();
-        if indicated_entities.contains(&EntityPath::root())
-            || indicated_entities.is_subset(&root_entities)
-        {
-            return ViewSpawnHeuristics::root();
-        }
+        // Collect entities with their match priority for sorting.
+        // We want things to be sorted for a) determinism and b) preferring important entities over less important ones in case we hit the max number
+        let mut entities_with_priority: Vec<(&EntityPath, ScalarMatchPriorityKey)> =
+            visualizable_entities
+                .iter()
+                .filter_map(|(entity_path, reason)| {
+                    if !include_entity(entity_path) {
+                        return None;
+                    }
 
-        // If there's other entities that have the right indicator & didn't match the above,
-        // spawn a time series view for each child of the root that has any entities with the right indicator.
-        let mut child_of_root_entities = HashSet::default();
-        #[expect(clippy::iter_over_hash_type)]
-        for entity in indicated_entities.iter() {
-            if let Some(child_of_root) = entity.iter().next() {
-                child_of_root_entities.insert(child_of_root);
-            }
-        }
+                    if let re_viewer_context::VisualizableReason::DatatypeMatchAny { matches } =
+                        reason
+                    {
+                        // Calculate the best match priority for this entity
+                        let priority = matches
+                            .iter()
+                            .filter(|(_, match_info)| {
+                                // Skip Rerun types without native semantics (like Color, LinearSpeed etc.) so we
+                                // don't spawn views for those.
+                                match match_info.kind {
+                                    re_viewer_context::DatatypeMatchKind::NativeSemantics => true,
+                                    re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => {
+                                        match_info.component_type.is_none_or(|t| !t.is_rerun_type())
+                                    }
+                                }
+                            })
+                            .map(|(source_component, match_info)| {
+                                scalar_match_priority(*source_component, match_info)
+                            })
+                            .min()?;
 
-        ViewSpawnHeuristics::new(child_of_root_entities.into_iter().map(|path_part| {
-            let entity = EntityPath::new(vec![path_part.clone()]);
-            RecommendedView::new_subtree(entity)
-        }))
+                        Some((entity_path, priority))
+                    } else {
+                        // No need to check other matches since that's the only type or reason we're using.
+                        None
+                    }
+                })
+                .collect();
+
+        // Sort by priority: best matches first, entity path as tie breaker.
+        entities_with_priority.sort_by_key(|(entity_path, priority)| (*priority, *entity_path));
+
+        ViewSpawnHeuristics::new_with_order_preserved(entities_with_priority.into_iter().map(
+            |(entity_path, _priority)| RecommendedView::new_single_entity(entity_path.clone()),
+        ))
     }
 
-    /// Choose the default visualizers to enable for this entity.
-    fn choose_default_visualizers(
+    /// Auto picked visualizers for an entity if there was not explicit selection.
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
             visualizable_entities_per_visualizer
@@ -463,6 +369,15 @@ impl ViewClass for TimeSeriesView {
             .chain(line_series.all_series.iter())
             .chain(point_series.all_series.iter())
             .collect();
+
+        state.num_time_series_last_frame_per_entity.clear();
+        for series in &all_plot_series {
+            state
+                .num_time_series_last_frame_per_entity
+                .entry(series.instance_path.entity_path.clone())
+                .or_default()
+                .insert(series.id());
+        }
 
         // Note that a several plot items can point to the same entity path and in some cases even to the same instance path!
         // (e.g. when plotting both lines & points with the same entity/instance path)
@@ -866,33 +781,85 @@ impl ViewClass for TimeSeriesView {
     }
 }
 
-fn scalar_mapping_selector(
-    reason_opt: Option<&VisualizableReason>,
-) -> Option<VisualizerComponentSource> {
-    let Some(VisualizableReason::DatatypeMatchAny { components }) = reason_opt else {
-        return None;
-    };
+/// Returns a priority score for a given Arrow datatype.
+/// Lower scores are preferred.
+fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes::DataType) -> u32 {
+    use re_log_types::external::arrow::datatypes::DataType;
+    match datatype {
+        DataType::Float64 => 0,
+        DataType::Float32 => 1,
+        DataType::Float16 => 2,
+        DataType::Int64 => 3,
+        DataType::Int32 => 5,
+        DataType::Int16 => 7,
+        DataType::Int8 => 9,
+        DataType::Boolean => 11,
+        DataType::UInt64 => 4,
+        DataType::UInt32 => 6,
+        DataType::UInt16 => 8,
+        DataType::UInt8 => 10,
+        _ => 100, // Any other type gets lowest priority
+    }
+}
+
+type ScalarMatchPriorityKey = (u32, bool, u32, ComponentIdentifier);
+
+/// Calculate a priority key for sorting datatype matches for scalar.
+/// Lower values mean that a mapping is preferred.
+fn scalar_match_priority(
+    source_component: ComponentIdentifier,
+    match_info: &DatatypeMatchInfo,
+) -> ScalarMatchPriorityKey {
+    // Sorting priorities:
+    // 1. Match kind: Full native (identity) > Native semantics > Physical datatype only
+    // 2. Component type: unknown/custom > known Rerun type
+    //    - Rationale: When expecting Scalars, prefer raw numeric data over components with
+    //      different known semantics (e.g., Color, LinearSpeed)
+    // 3. Datatype preference: f64 > f32 > int64 > int32 > ... (see `scalar_datatype_priority`)
+    // 4. Alphabetical order as final tiebreaker
 
     let target_component = Scalars::descriptor_scalars().component;
 
-    let mut first_native_semantic_match = None;
-    for (physical_component, match_kind) in components {
-        if first_native_semantic_match.is_none()
-            && *match_kind == re_viewer_context::DatatypeMatchKind::NativeSemantics
-        {
-            first_native_semantic_match = Some(*physical_component);
+    let primary_match_order = if source_component == target_component {
+        // Full native match - exact component identifier
+        0
+    } else {
+        match match_info.kind {
+            // Native semantic match - same semantic type but different component identifier
+            re_viewer_context::DatatypeMatchKind::NativeSemantics => 1,
+            // Physical datatype match - compatible datatype but different semantics
+            re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => 2,
         }
-        if first_native_semantic_match.is_some() && physical_component == &target_component {
-            // Perfect match, don't do any mapping.
-            return None;
-        }
-    }
+    };
 
-    first_native_semantic_match
-        .or_else(|| Some(components.first().0))
+    let is_rerun_native_type = match_info.component_type.is_some_and(|t| t.is_rerun_type());
+    let datatype_order = scalar_datatype_priority(&match_info.arrow_datatype);
+
+    (
+        primary_match_order,
+        is_rerun_native_type, // custom types (false) sort before Rerun types (true)
+        datatype_order,
+        source_component,
+    )
+}
+
+fn scalar_mapping_selector(
+    reason_opt: Option<&VisualizableReason>,
+) -> Option<VisualizerComponentSource> {
+    let Some(re_viewer_context::VisualizableReason::DatatypeMatchAny { matches }) = reason_opt
+    else {
+        return None;
+    };
+
+    matches
+        .iter()
+        .sorted_by_key(|(source_component, match_info)| {
+            scalar_match_priority(**source_component, match_info)
+        })
+        .next()
         .map(
-            |source_component| VisualizerComponentSource::SourceComponent {
-                source_component,
+            |(source_component, _)| VisualizerComponentSource::SourceComponent {
+                source_component: *source_component,
                 selector: String::new(),
             },
         )
@@ -1002,7 +969,7 @@ fn update_series_visibility_overrides_from_plot(
     let mut series_to_update = Vec::new();
     for series in all_plot_series {
         let entity_visibility_flags = per_visualizer_inst_id_series_new_visibility_state
-            .entry(series.visualizer_instruction_id.clone())
+            .entry(series.visualizer_instruction_id)
             .or_default();
 
         let visible_new = !hidden_items.contains(&series.id());
@@ -1209,7 +1176,7 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
 }
 
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
-fn make_range_sane(y_range: Range1D) -> Range1D {
+pub fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
 
     if !start.is_finite() {

@@ -12,7 +12,7 @@ use re_viewer_context::{
 
 use super::utilities::LabeledBatch;
 use super::{SpatialViewVisualizerData, process_labels_3d};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
@@ -54,7 +54,7 @@ impl Points3DVisualizer {
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Points3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
@@ -200,7 +200,7 @@ impl VisualizerSystem for Points3DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Points3D, _>(
             ctx,
             view_query,
@@ -208,15 +208,14 @@ impl VisualizerSystem for Points3DVisualizer {
             &mut output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_position_chunks =
-                    results.get_required_chunk(Points3D::descriptor_positions().component);
-                if all_position_chunks.is_empty() {
+                let all_positions =
+                    results.iter_required(Points3D::descriptor_positions().component);
+                if all_positions.is_empty() {
                     return Ok(());
                 }
 
-                let num_positions = all_position_chunks
+                let num_positions = all_positions
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|points| points.len())
@@ -227,22 +226,19 @@ impl VisualizerSystem for Points3DVisualizer {
                 }
 
                 point_builder.reserve(num_positions)?;
-
-                let timeline = ctx.query.timeline();
-                let all_positions_indexed = iter_slices::<[f32; 3]>(&all_position_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Points3D::descriptor_colors().component);
-                let all_radii = results.iter_as(timeline, Points3D::descriptor_radii().component);
-                let all_labels = results.iter_as(timeline, Points3D::descriptor_labels().component);
+                let all_colors = results.iter_optional(Points3D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Points3D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Points3D::descriptor_labels().component);
                 let all_class_ids =
-                    results.iter_as(timeline, Points3D::descriptor_class_ids().component);
+                    results.iter_optional(Points3D::descriptor_class_ids().component);
                 let all_keypoint_ids =
-                    results.iter_as(timeline, Points3D::descriptor_keypoint_ids().component);
+                    results.iter_optional(Points3D::descriptor_keypoint_ids().component);
                 let all_show_labels =
-                    results.iter_as(timeline, Points3D::descriptor_show_labels().component);
+                    results.iter_optional(Points3D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
-                    all_positions_indexed,     // RowId 5
-                    all_colors.slice::<u32>(), // RowId 7
+                    all_positions.slice::<[f32; 3]>(), // RowId 5
+                    all_colors.slice::<u32>(),         // RowId 7
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
                     all_class_ids.slice::<u16>(),

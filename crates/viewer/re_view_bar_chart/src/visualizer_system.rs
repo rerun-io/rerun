@@ -7,7 +7,10 @@ use re_sdk_types::{
     components::{self, Length},
     datatypes,
 };
-use re_view::{DataResultQuery as _, RangeResultsExt as _, clamped_vec_or_else};
+use re_view::{
+    BlueprintResolvedResultsExt as _, ComponentMappingError, DataResultQuery as _,
+    clamped_vec_or_else,
+};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
@@ -49,9 +52,15 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
+        let mut output = VisualizerExecutionOutput::default();
+
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
+            let warning_reporter = |error: &ComponentMappingError| {
+                output.report_warning_for(instruction.id, error);
+            };
+
             let results = data_result.latest_at_with_blueprint_resolved_data::<BarChart>(
                 ctx,
                 &timeline_query,
@@ -70,8 +79,11 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let abscissa: components::TensorData =
                     results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
                 let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
-                let widths =
-                    results.iter_as(view_query.timeline, BarChart::descriptor_widths().component);
+                let widths = results.iter_optional(
+                    warning_reporter,
+                    view_query.timeline,
+                    BarChart::descriptor_widths().component,
+                );
                 let widths: &[f32] = widths
                     .slice::<f32>()
                     .next()
@@ -97,6 +109,6 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             }
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output)
     }
 }

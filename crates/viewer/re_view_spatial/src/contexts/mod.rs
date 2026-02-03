@@ -9,16 +9,14 @@ use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ViewClassRegistryError};
 pub use transform_tree_context::{TransformInfo, TransformTreeContext};
 
-/// Context objects for a single entity in a spatial scene.
-pub struct SpatialSceneEntityContext<'a> {
+/// Context objects for a single visualizer instruction in a spatial scene.
+pub struct SpatialSceneVisualizerInstructionContext<'a> {
     pub transform_info: &'a TransformInfo,
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,
 
     pub highlight: &'a re_viewer_context::ViewOutlineMasks, // Not part of the context, but convenient to have here.
     pub view_class_identifier: ViewClassIdentifier,
-
-    pub output: &'a mut re_viewer_context::VisualizerExecutionOutput,
 }
 
 pub fn register_spatial_contexts(

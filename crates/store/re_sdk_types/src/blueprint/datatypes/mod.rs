@@ -14,6 +14,7 @@ mod text_log_column_kind_ext;
 mod timeline_column;
 mod timeline_column_ext;
 mod visualizer_component_mapping;
+mod visualizer_component_mapping_ext;
 
 pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::component_source_kind::ComponentSourceKind;

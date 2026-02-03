@@ -13,7 +13,7 @@ use re_viewer_context::{
 
 use super::utilities::LabeledBatch;
 use super::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
 
 // ---
@@ -38,7 +38,7 @@ impl Arrows3DVisualizer {
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Arrows3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -192,7 +192,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Arrows3D, _>(
             ctx,
             view_query,
@@ -200,15 +200,14 @@ impl VisualizerSystem for Arrows3DVisualizer {
             &mut output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_vector_chunks =
-                    results.get_required_chunk(Arrows3D::descriptor_vectors().component);
-                if all_vector_chunks.is_empty() {
+                let all_vectors = results.iter_required(Arrows3D::descriptor_vectors().component);
+                if all_vectors.is_empty() {
                     return Ok(());
                 }
 
-                let num_vectors = all_vector_chunks
+                // TODO(andreas): Introduce a utility for this?
+                let num_vectors = all_vectors
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|vectors| vectors.len())
@@ -221,20 +220,17 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 line_builder.reserve_strips(num_vectors)?;
                 line_builder.reserve_vertices(num_vectors * 2)?;
 
-                let timeline = ctx.query.timeline();
-                let all_vectors_indexed = iter_slices::<[f32; 3]>(&all_vector_chunks, timeline);
-                let all_origins =
-                    results.iter_as(timeline, Arrows3D::descriptor_origins().component);
-                let all_colors = results.iter_as(timeline, Arrows3D::descriptor_colors().component);
-                let all_radii = results.iter_as(timeline, Arrows3D::descriptor_radii().component);
-                let all_labels = results.iter_as(timeline, Arrows3D::descriptor_labels().component);
+                let all_origins = results.iter_optional(Arrows3D::descriptor_origins().component);
+                let all_colors = results.iter_optional(Arrows3D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Arrows3D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Arrows3D::descriptor_labels().component);
                 let all_class_ids =
-                    results.iter_as(timeline, Arrows3D::descriptor_class_ids().component);
+                    results.iter_optional(Arrows3D::descriptor_class_ids().component);
                 let all_show_labels =
-                    results.iter_as(timeline, Arrows3D::descriptor_show_labels().component);
+                    results.iter_optional(Arrows3D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
-                    all_vectors_indexed,
+                    all_vectors.slice::<[f32; 3]>(),
                     all_origins.slice::<[f32; 3]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),

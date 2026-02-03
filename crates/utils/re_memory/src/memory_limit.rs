@@ -16,7 +16,7 @@ pub struct MemoryLimit {
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
     ///
     /// None means "unlimited".
-    pub max_bytes: Option<u64>,
+    max_bytes: Option<u64>,
 }
 
 impl std::fmt::Display for MemoryLimit {
@@ -114,6 +114,26 @@ impl MemoryLimit {
     #[inline]
     pub fn is_unlimited(&self) -> bool {
         self.max_bytes.is_none()
+    }
+
+    /// Take the max of self and the given argument.
+    #[must_use]
+    pub fn at_least(self, min_bytes: u64) -> Self {
+        if let Some(max_bytes) = self.max_bytes {
+            Self::from_bytes(max_bytes.max(min_bytes))
+        } else {
+            Self::UNLIMITED
+        }
+    }
+
+    #[must_use]
+    pub fn saturating_sub(self, rhs: u64) -> Self {
+        if let Some(max_bytes) = self.max_bytes {
+            let new_max = max_bytes.saturating_sub(rhs);
+            Self::from_bytes(new_max)
+        } else {
+            Self::UNLIMITED
+        }
     }
 
     /// Split the memory limit into two limits according to the given fraction.

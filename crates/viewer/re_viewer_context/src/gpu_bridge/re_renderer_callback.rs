@@ -1,4 +1,4 @@
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
 slotmap::new_key_type! { pub struct ViewBuilderHandle; }
 

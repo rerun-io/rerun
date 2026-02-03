@@ -43,6 +43,7 @@ nasm = [
 [dependencies]
 re_byte_size.workspace = true
 re_log.workspace = true
+re_mutex.workspace = true
 re_quota_channel.workspace = true
 re_span.workspace = true
 re_tracing.workspace = true
@@ -54,7 +55,6 @@ cros-codecs.workspace = true
 econtext.workspace = true
 h264-reader.workspace = true
 itertools.workspace = true
-parking_lot.workspace = true
 poll-promise.workspace = true
 re_mp4.workspace = true
 saturating_cast.workspace = true

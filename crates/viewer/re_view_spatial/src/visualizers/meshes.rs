@@ -12,7 +12,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::mesh_loader::NativeMesh3D;
 use crate::view_kind::SpatialViewKind;
 
@@ -42,7 +42,7 @@ impl Mesh3DVisualizer {
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<GpuMeshInstance>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -125,10 +125,12 @@ impl VisualizerSystem for Mesh3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let mut output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Mesh3D, _>(
             ctx,
             view_query,
@@ -136,40 +138,30 @@ impl VisualizerSystem for Mesh3DVisualizer {
             &mut output,
             self.0.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_vertex_position_chunks =
-                    results.get_required_chunk(Mesh3D::descriptor_vertex_positions().component);
-                if all_vertex_position_chunks.is_empty() {
+                let all_vertex_positions =
+                    results.iter_required(Mesh3D::descriptor_vertex_positions().component);
+                if all_vertex_positions.is_empty() {
                     return Ok(());
                 }
-
-                let timeline = ctx.query.timeline();
-                let all_vertex_positions_indexed =
-                    iter_slices::<[f32; 3]>(&all_vertex_position_chunks, timeline);
                 let all_vertex_normals =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_normals().component);
+                    results.iter_optional(Mesh3D::descriptor_vertex_normals().component);
                 let all_vertex_colors =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_colors().component);
+                    results.iter_optional(Mesh3D::descriptor_vertex_colors().component);
                 let all_vertex_texcoords =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_texcoords().component);
+                    results.iter_optional(Mesh3D::descriptor_vertex_texcoords().component);
                 let all_triangle_indices =
-                    results.iter_as(timeline, Mesh3D::descriptor_triangle_indices().component);
+                    results.iter_optional(Mesh3D::descriptor_triangle_indices().component);
                 let all_albedo_factors =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_factor().component);
-                let all_albedo_buffers = results.iter_as(
-                    timeline,
-                    Mesh3D::descriptor_albedo_texture_buffer().component,
-                );
-                let all_albedo_formats = results.iter_as(
-                    timeline,
-                    Mesh3D::descriptor_albedo_texture_format().component,
-                );
+                    results.iter_optional(Mesh3D::descriptor_albedo_factor().component);
+                let all_albedo_buffers =
+                    results.iter_optional(Mesh3D::descriptor_albedo_texture_buffer().component);
+                let all_albedo_formats =
+                    results.iter_optional(Mesh3D::descriptor_albedo_texture_format().component);
 
                 let query_result_hash = results.query_result_hash();
 
                 let data = re_query::range_zip_1x7(
-                    all_vertex_positions_indexed,
+                    all_vertex_positions.slice::<[f32; 3]>(),
                     all_vertex_normals.slice::<[f32; 3]>(),
                     all_vertex_colors.slice::<u32>(),
                     all_vertex_texcoords.slice::<[f32; 2]>(),

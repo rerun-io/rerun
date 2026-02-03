@@ -55,6 +55,7 @@ pub async fn query_dataset_simple_filter(service: impl RerunCloudService) {
         &query,
         &[] as &[&str],
         None,
+        None,
     )
     .await
     .unwrap();

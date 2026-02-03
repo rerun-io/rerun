@@ -5,13 +5,13 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod aggregation;
+mod fallbacks;
 mod line_visualizer_system;
 mod point_visualizer_system;
 mod series_query;
 mod util;
 mod view_class;
 
-use re_log_types::EntityPath;
 use re_sdk_types::{
     blueprint::components::VisualizerInstructionId,
     components::{AggregationPolicy, MarkerShape},
@@ -125,8 +125,8 @@ impl PlotSeries {
 /// Error that can occur when loading a single series.
 enum LoadSeriesError {
     ViewPropertyQuery(ViewPropertyQueryError),
-    EntitySpecificVisualizerError {
-        entity_path: EntityPath,
+    InstructionSpecificVisualizerError {
+        instruction_id: VisualizerInstructionId,
         err: String,
     },
 }

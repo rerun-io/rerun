@@ -678,11 +678,7 @@ impl DataFusionTableDelegate<'_> {
             let selected_rows = selection.selected_rows;
 
             if let Some(segment_links_spec) = &self.blueprint.segment_links {
-                let label = format!(
-                    "Open {} segment{}",
-                    selected_rows.len(),
-                    format_plural_s(selected_rows.len())
-                );
+                let label = format!("Open {}", format_plural_s(selected_rows.len(), "segment"));
                 let response =
                     ui.add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label));
 

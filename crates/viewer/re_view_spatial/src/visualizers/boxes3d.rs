@@ -11,7 +11,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh;
 use crate::view_kind::SpatialViewKind;
 
@@ -32,7 +32,7 @@ impl Boxes3DVisualizer {
     fn process_data<'a>(
         builder: &mut ProcMeshDrawableBuilder<'_>,
         query_context: &QueryContext<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         batches: impl Iterator<Item = Boxes3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -121,7 +121,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
             "boxes3d",
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Boxes3D, _>(
             ctx,
             view_query,
@@ -129,15 +129,14 @@ impl VisualizerSystem for Boxes3DVisualizer {
             &mut output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_half_size_chunks =
-                    results.get_required_chunk(Boxes3D::descriptor_half_sizes().component);
-                if all_half_size_chunks.is_empty() {
+                let all_half_sizes =
+                    results.iter_required(Boxes3D::descriptor_half_sizes().component);
+                if all_half_sizes.is_empty() {
                     return Ok(());
                 }
 
-                let num_boxes: usize = all_half_size_chunks
+                let num_boxes: usize = all_half_sizes
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|vectors| vectors.len())
@@ -145,29 +144,22 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 if num_boxes == 0 {
                     return Ok(());
                 }
-
-                let timeline = ctx.query.timeline();
-                let all_half_sizes_indexed =
-                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
-                let all_centers =
-                    results.iter_as(timeline, Boxes3D::descriptor_centers().component);
-                let all_rotation_axis_angles = results.iter_as(
-                    timeline,
-                    Boxes3D::descriptor_rotation_axis_angles().component,
-                );
+                let all_centers = results.iter_optional(Boxes3D::descriptor_centers().component);
+                let all_rotation_axis_angles =
+                    results.iter_optional(Boxes3D::descriptor_rotation_axis_angles().component);
                 let all_quaternions =
-                    results.iter_as(timeline, Boxes3D::descriptor_quaternions().component);
-                let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors().component);
-                let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii().component);
-                let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels().component);
+                    results.iter_optional(Boxes3D::descriptor_quaternions().component);
+                let all_colors = results.iter_optional(Boxes3D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Boxes3D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Boxes3D::descriptor_labels().component);
                 let all_class_ids =
-                    results.iter_as(timeline, Boxes3D::descriptor_class_ids().component);
+                    results.iter_optional(Boxes3D::descriptor_class_ids().component);
                 let all_show_labels =
-                    results.iter_as(timeline, Boxes3D::descriptor_show_labels().component);
+                    results.iter_optional(Boxes3D::descriptor_show_labels().component);
 
                 // Deserialized because it's a union.
                 let all_fill_modes =
-                    results.iter_as(timeline, Boxes3D::descriptor_fill_mode().component);
+                    results.iter_optional(Boxes3D::descriptor_fill_mode().component);
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()
@@ -189,7 +181,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 }
 
                 let data = re_query::range_zip_1x8(
-                    all_half_sizes_indexed,
+                    all_half_sizes.slice::<[f32; 3]>(),
                     all_centers.slice::<[f32; 3]>(),
                     all_rotation_axis_angles.component_slow::<components::RotationAxisAngle>(),
                     all_quaternions.slice::<[f32; 4]>(),

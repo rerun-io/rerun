@@ -61,14 +61,10 @@ pub mod common {
 pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
-        pub mod ext {
-            pub use crate::v1alpha1::rerun_log_msg_v1alpha1_ext::*;
-        }
     }
 }
 
 pub mod cloud {
-    #[rustfmt::skip] // keep these constants single line for easy sorting
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_cloud_v1alpha1::*;
         pub mod ext {
@@ -395,6 +391,8 @@ mod sizes {
             let Self {
                 encoder_version,
                 payload,
+                compression: _,
+                uncompressed_size: _,
             } = self;
 
             encoder_version.heap_size_bytes()
