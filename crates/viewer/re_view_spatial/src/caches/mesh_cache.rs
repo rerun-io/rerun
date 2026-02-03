@@ -132,7 +132,7 @@ impl Cache for MeshCache {
     }
 
     fn purge_memory(&mut self) {
-        self.cache.clear();
+        // We already purge everything that isn't being actively used
     }
 
     fn vram_usage(&self) -> re_byte_size::MemUsageTree {

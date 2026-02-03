@@ -187,6 +187,9 @@ pub trait Cache: std::any::Any + Send + Sync + re_byte_size::MemUsageTreeCapture
 
     /// Attempt to free up memory.
     ///
+    /// This should attempt to purge everything
+    /// that is not currently in use.
+    ///
     /// Called BEFORE `begin_frame` (if at all).
     fn purge_memory(&mut self);
 
