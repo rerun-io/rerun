@@ -71,7 +71,7 @@ impl crate::Transform for &Selector {
 }
 
 /// Errors that can occur during selector parsing or execution.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, Clone)]
 pub enum Error {
     /// Error during lexing.
     #[error(transparent)]

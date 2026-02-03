@@ -1,12 +1,11 @@
 use itertools::Itertools as _;
+use rayon::prelude::*;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_sdk_types::{Component as _, components};
-use re_view::{
-    ChunksWithComponent, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
-};
+use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
@@ -62,41 +61,31 @@ impl VisualizerSystem for SeriesLinesSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        use rayon::prelude::*;
-
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         let plot_mem =
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
         let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
-        let data_results = query.iter_visualizer_instruction_for(Self::identifier());
+        let data_results: Vec<_> = query
+            .iter_visualizer_instruction_for(Self::identifier())
+            .collect();
 
-        for (result, (_data_result, instruction)) in data_results
-            .collect_vec()
+        let all_series: Result<Vec<_>, _> = data_results
             .par_iter()
             .map(|(data_result, instruction)| {
-                (
-                    Self::load_series(ctx, query, time_per_pixel, data_result, instruction),
-                    (data_result, instruction),
+                Self::load_series(
+                    ctx,
+                    query,
+                    time_per_pixel,
+                    data_result,
+                    instruction,
+                    &output,
                 )
             })
-            .collect::<Vec<_>>()
-        {
-            match result {
-                Err(err) => {
-                    return Err(err.into());
-                }
-                Ok(load_result) => {
-                    // TODO(andreas): We get duplicate warnings because of the bootstrapping queries.
-                    // TODO(RR-3506): at least with more meta information about the errors origin this de-duplication would be much less concerning.
-                    for report in load_result.reports.into_iter().unique() {
-                        output.report(instruction.id, report);
-                    }
-                    self.all_series.extend(load_result.series);
-                }
-            }
-        }
+            .collect();
+
+        self.all_series.extend(all_series?.into_iter().flatten());
 
         Ok(output)
     }
@@ -109,10 +98,9 @@ impl SeriesLinesSystem {
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> Result<crate::LoadSeriesResult, ViewPropertyQueryError> {
+        output: &re_viewer_context::VisualizerExecutionOutput,
+    ) -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
         re_tracing::profile_function!();
-
-        let mut reports = Vec::new();
 
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
@@ -120,8 +108,6 @@ impl SeriesLinesSystem {
         let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
-            use re_view::BlueprintResolvedResultsExt as _;
-
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
@@ -130,7 +116,7 @@ impl SeriesLinesSystem {
                 // cut-off the data early at the edge of the view.
                 .include_extended_bounds(true);
 
-            let results = range_with_blueprint_resolved_data(
+            let mut results = range_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &query,
@@ -140,23 +126,40 @@ impl SeriesLinesSystem {
                 instruction,
             );
 
-            // If we have no scalars, we can't do anything.
-            let all_scalar_chunks: ChunksWithComponent<'_> = match ChunksWithComponent::try_from(
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component),
-            ) {
-                Ok(chunks) => {
-                    if chunks.is_empty() {
-                        reports.push(re_viewer_context::VisualizerInstructionReport::error(
-                            "No valid scalar data found",
-                        ));
-                    }
-                    chunks
-                }
-                Err(err) => {
-                    reports.push(re_viewer_context::VisualizerInstructionReport::error(err));
-                    ChunksWithComponent::empty(archetypes::Scalars::descriptor_scalars().component)
-                }
+            // The plot view visualizes scalar data within a specific time range, without any kind
+            // of time-alignment / bootstrapping behavior:
+            // * For the scalar themselves, this is what you want: if you're trying to plot some
+            //   data between t=100 and t=200, you don't want to display a point from t=20 (and
+            //   _extended bounds_ will take care of lines crossing the limit).
+            // * For the secondary components (colors, radii, names, etc), this is a problem
+            //   though: you don't want your plot to change color depending on what the currently
+            //   visible time range is! Secondary components have to be bootstrapped.
+            //
+            // Bootstrapping is now handled automatically by the query system for the components
+            // we specified when calling range_with_blueprint_resolved_data.
+            results.merge_bootstrapped_data(re_view::latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min()),
+                data_result,
+                archetypes::SeriesLines::optional_components()
+                    .iter()
+                    .map(|c| c.component),
+                Some(instruction),
+            ));
+
+            // Wrap results for convenient error-reporting iteration
+            let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
+            let results = re_view::VisualizerInstructionQueryResults {
+                instruction_id: instruction.id,
+                query_results: &results,
+                output,
             };
+
+            // If we have no scalars, we can't do anything.
+            let scalar_iter =
+                results.iter_required(archetypes::Scalars::descriptor_scalars().component);
+            let all_scalar_chunks = scalar_iter.chunks();
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
             // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
@@ -178,85 +181,35 @@ impl SeriesLinesSystem {
                 },
             };
 
-            let num_series = determine_num_series(&all_scalar_chunks);
+            let num_series = determine_num_series(all_scalar_chunks);
             let mut points_per_series =
-                allocate_plot_points(&query, &default_point, &all_scalar_chunks, num_series);
+                allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
 
-            collect_scalars(&all_scalar_chunks, &mut points_per_series);
-
-            // The plot view visualizes scalar data within a specific time range, without any kind
-            // of time-alignment / bootstrapping behavior:
-            // * For the scalar themselves, this is what you want: if you're trying to plot some
-            //   data between t=100 and t=200, you don't want to display a point from t=20 (and
-            //   _extended bounds_ will take care of lines crossing the limit).
-            // * For the secondary components (colors, radii, names, etc), this is a problem
-            //   though: you don't want your plot to change color depending on what the currently
-            //   visible time range is! Secondary components have to be bootstrapped.
-            // TODO(andreas): We need to simplify this: find a way to combine a latest-at result into a range result, then we can use the `VisualizerInstructionQueryResults`
-            let bootstrapped_results = latest_at_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &LatestAtQuery::new(query.timeline, query.range.min()),
-                data_result,
-                archetypes::SeriesLines::all_component_identifiers(),
-                Some(instruction),
-            );
+            collect_scalars(all_scalar_chunks, &mut points_per_series);
 
             collect_colors(
                 entity_path,
                 &query,
-                &bootstrapped_results,
                 &results,
-                &all_scalar_chunks,
+                all_scalar_chunks,
                 &mut points_per_series,
                 &archetypes::SeriesLines::descriptor_colors(),
-                |err| {
-                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
-                        err.to_string(),
-                    ));
-                },
             );
             collect_radius_ui(
                 &query,
-                &bootstrapped_results,
                 &results,
-                &all_scalar_chunks,
+                all_scalar_chunks,
                 &mut points_per_series,
                 &archetypes::SeriesLines::descriptor_widths(),
                 0.5,
-                |err| {
-                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
-                        err.to_string(),
-                    ));
-                },
             );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-            let aggregation_policy =
-                archetypes::SeriesLines::descriptor_aggregation_policy().component;
-            let bootstrapped_aggregation_chunks =
-                bootstrapped_results.get_optional_chunks(aggregation_policy);
-            let results_aggregation_chunks = results.get_optional_chunks(aggregation_policy);
-            let mut aggregation_policy_chunks = Vec::new();
-            aggregation_policy_chunks.extend(bootstrapped_aggregation_chunks.iter(|err| {
-                reports.push(re_viewer_context::VisualizerInstructionReport::warning(
-                    err.to_string(),
-                ));
-            }));
-            aggregation_policy_chunks.extend(results_aggregation_chunks.iter(|err| {
-                reports.push(re_viewer_context::VisualizerInstructionReport::warning(
-                    err.to_string(),
-                ));
-            }));
-            let aggregator = aggregation_policy_chunks
-                .iter()
-                .find(|chunk| !chunk.chunk.is_empty())
-                .and_then(|chunk| {
-                    chunk
-                        .chunk
-                        .component_mono::<AggregationPolicy>(chunk.component, 0)?
-                        .ok()
-                })
+            let aggregator = results
+                .iter_optional(archetypes::SeriesLines::descriptor_aggregation_policy().component)
+                .component_slow::<AggregationPolicy>()
+                .next()
+                .and_then(|(_index, policies)| policies.first().copied())
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
                 //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
                 .unwrap_or_default();
@@ -312,23 +265,15 @@ impl SeriesLinesSystem {
 
             let series_visibility = collect_series_visibility(
                 &query_ctx,
-                &query,
-                &bootstrapped_results,
                 &results,
                 num_series,
                 archetypes::SeriesLines::descriptor_visible_series().component,
             );
             let series_names = collect_series_name(
                 &query_ctx,
-                &bootstrapped_results,
                 &results,
                 num_series,
                 &archetypes::SeriesLines::descriptor_names(),
-                |err| {
-                    reports.push(re_viewer_context::VisualizerInstructionReport::warning(
-                        err.to_string(),
-                    ));
-                },
             );
 
             let mut series = Vec::with_capacity(num_series);
@@ -359,13 +304,11 @@ impl SeriesLinesSystem {
                     &mut series,
                     instruction.id,
                 ) {
-                    reports.push(re_viewer_context::VisualizerInstructionReport::error(
-                        format!("Failed to create series: {err}"),
-                    ));
+                    results.report_error(format!("Failed to create series: {err}"));
                 }
             }
 
-            Ok(crate::LoadSeriesResult { series, reports })
+            Ok(series)
         }
     }
 }

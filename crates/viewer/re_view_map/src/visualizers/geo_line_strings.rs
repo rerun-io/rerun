@@ -3,7 +3,7 @@ use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::{LineDrawDataError, LineStripFlags};
 use re_sdk_types::archetypes::GeoLineStrings;
 use re_sdk_types::components::{Color, Radius};
-use re_view::DataResultQuery as _;
+use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -54,11 +54,10 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 view_query,
                 instruction,
             );
-            let mut results = re_view::VisualizerInstructionQueryResults {
+            let results = VisualizerInstructionQueryResults {
                 instruction_id: instruction.id,
                 query_results: &results,
                 output: &mut output,
-                timeline: view_query.timeline,
             };
 
             let mut batch_data = GeoLineStringsBatch::default();

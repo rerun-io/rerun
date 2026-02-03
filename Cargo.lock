@@ -10101,6 +10101,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

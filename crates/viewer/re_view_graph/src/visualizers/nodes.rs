@@ -7,7 +7,7 @@ use re_sdk_types::components::{
     Color, {self},
 };
 use re_sdk_types::{self, ArrowString, archetypes};
-use re_view::DataResultQuery as _;
+use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -88,11 +88,10 @@ impl VisualizerSystem for NodeVisualizer {
                 timeline_query.clone(),
                 latest_at_results,
             ));
-            let mut results = re_view::VisualizerInstructionQueryResults {
+            let results = VisualizerInstructionQueryResults {
                 instruction_id: instruction.id,
                 query_results: &results,
                 output: &mut output,
-                timeline: query.timeline,
             };
 
             let all_nodes = results.iter_required(GraphNodes::descriptor_node_ids().component);

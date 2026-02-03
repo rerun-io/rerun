@@ -25,7 +25,7 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     archetype_kind: Option<SpatialViewKind>,
     view_kind: SpatialViewKind,
     instruction_id: &VisualizerInstructionId,
-    output: &mut VisualizerExecutionOutput,
+    output: &VisualizerExecutionOutput,
 ) -> Option<&'a TransformInfo> {
     re_tracing::profile_function!();
 
@@ -89,7 +89,7 @@ pub fn is_valid_space_for_content(
     transform: &TransformInfo,
     content_kind: Option<SpatialViewKind>,
     view_kind: SpatialViewKind,
-    output: &mut VisualizerExecutionOutput,
+    output: &VisualizerExecutionOutput,
 ) -> bool {
     let Some(content_view_kind) = content_kind else {
         // This means the content doesn't have any particular view kind affinity, we expect it to be handled elsewhere if at all.

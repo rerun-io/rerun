@@ -49,13 +49,13 @@ impl VisualizerSystem for EncodedImageVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_encoded_image(ctx, results, spatial_ctx);
@@ -78,7 +78,7 @@ impl EncodedImageVisualizer {
     fn process_encoded_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &mut VisualizerInstructionQueryResults<'_>,
+        results: &VisualizerInstructionQueryResults<'_>,
         spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
     ) {
         re_tracing::profile_function!();
@@ -157,9 +157,7 @@ impl EncodedImageVisualizer {
                     );
                 }
                 Err(err) => {
-                    results
-                        .output
-                        .report_error_for(results.instruction_id, re_error::format(err));
+                    results.report_error(re_error::format(err));
                 }
             }
         }

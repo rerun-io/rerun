@@ -18,7 +18,7 @@ pub enum TokenType {
     Pipe,
 }
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, thiserror::Error, Clone)]
 pub enum Error {
     #[error("unexpected character `{ch}` at line {line}, column {column}")]
     UnexpectedChar {

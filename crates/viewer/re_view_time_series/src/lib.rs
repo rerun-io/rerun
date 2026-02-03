@@ -121,9 +121,3 @@ impl PlotSeries {
         egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
     }
 }
-
-/// Result from loading series, including any reports that occurred.
-struct LoadSeriesResult {
-    series: Vec<PlotSeries>,
-    reports: Vec<re_viewer_context::VisualizerInstructionReport>,
-}

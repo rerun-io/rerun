@@ -54,6 +54,49 @@ pub struct BlueprintResolvedRangeResults<'a> {
     pub(crate) component_mappings_hash: Hash64,
 }
 
+impl BlueprintResolvedRangeResults<'_> {
+    /// Merges bootstrapped data from a latest-at query into this range query result.
+    ///
+    /// Latest-at bootstrapping is used for optional/recommended components (like colors, radii,
+    /// labels, etc.) that should maintain stable values at the beginning of a visible time range.
+    /// Without bootstrapping, these components would only appear where they have data within the
+    /// visible range, causing them to change unexpectedly as the time window moves.
+    ///
+    /// For example, if a plot's color was set at t=50 and you're viewing t=100-200, you want
+    /// that color to persist throughout the range rather than disappearing or changing.
+    ///
+    /// Bootstrapped results are prepended to the store results and converted to static,
+    /// zeroed chunks to allow proper range zipping. Any errors from the bootstrap query
+    /// are also merged into the component sources.
+    // TODO(andreas): It's a bit overkill to do a full blueprint resolved query for both the range & latest-at part. This can be optimized!
+    pub fn merge_bootstrapped_data(&mut self, bootstrapped: BlueprintResolvedLatestAtResults<'_>) {
+        // Copy component sources from bootstrap if they indicate errors.
+        #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
+        for (component, source_result) in bootstrapped.component_sources {
+            if let Err(err) = source_result {
+                // If bootstrapping failed for a component, record the error (potentially overwriting an existing error)
+                self.component_sources.insert(component, Err(err));
+            }
+        }
+
+        // Prepend bootstrapped chunks to range results
+        #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
+        for (component, unit_chunk) in bootstrapped.store_results.components {
+            // Convert to a static, zeroed chunk for proper range zipping
+            let chunk = Arc::unwrap_or_clone(unit_chunk.into_chunk())
+                .into_static()
+                .zeroed();
+
+            // Prepend bootstrapped chunk to range results
+            self.store_results
+                .components
+                .entry(component)
+                .or_default()
+                .insert(0, chunk);
+        }
+    }
+}
+
 impl BlueprintResolvedLatestAtResults<'_> {
     /// Utility for retrieving the first instance of a component, ignoring defaults.
     #[inline]
@@ -124,6 +167,13 @@ pub enum BlueprintResolvedResults<'a> {
 }
 
 impl BlueprintResolvedResults<'_> {
+    pub fn timeline(&self) -> re_log_types::TimelineName {
+        match self {
+            BlueprintResolvedResults::LatestAt(query, _) => query.timeline(),
+            BlueprintResolvedResults::Range(query, _) => *query.timeline(),
+        }
+    }
+
     pub fn query_result_hash(&self) -> Hash64 {
         // This is called very frequently, don't put a profile scope here.
         // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
@@ -471,6 +521,13 @@ pub struct HybridResultsChunkIter<'a> {
 }
 
 impl<'a> HybridResultsChunkIter<'a> {
+    pub fn new(chunks_with_component: ChunksWithComponent<'a>, timeline: TimelineName) -> Self {
+        Self {
+            chunks_with_component,
+            timeline,
+        }
+    }
+
     /// True if there's no chunks to iterate on.
     #[inline]
     pub fn is_empty(&self) -> bool {

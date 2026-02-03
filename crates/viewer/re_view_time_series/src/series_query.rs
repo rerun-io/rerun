@@ -4,6 +4,8 @@ use itertools::Itertools as _;
 
 use re_chunk_store::RangeQuery;
 use re_chunk_store::external::re_chunk::CastToPrimitive;
+use re_log_types::external::arrow::array::BooleanArray;
+use re_log_types::external::arrow::buffer::BooleanBuffer;
 use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::components::SeriesVisible;
 use re_sdk_types::external::arrow;
@@ -11,9 +13,7 @@ use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{
     Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
 };
-use re_view::{
-    BlueprintResolvedRangeResults, BlueprintResolvedResultsExt as _, clamped_or_nothing,
-};
+use re_view::clamped_or_nothing;
 use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
 
 use crate::{PlotPoint, PlotSeriesKind};
@@ -40,22 +40,13 @@ pub fn determine_num_series(all_scalar_chunks: &re_view::ChunksWithComponent<'_>
 /// Queries the visibility flags for all series in a query.
 pub fn collect_series_visibility(
     query_ctx: &QueryContext<'_>,
-    query: &RangeQuery,
-    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
-    results: &BlueprintResolvedRangeResults<'_>,
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
     num_series: usize,
     visibility_component: ComponentIdentifier,
 ) -> Vec<bool> {
-    use re_sdk_types::external::arrow::{array::BooleanArray, buffer::BooleanBuffer};
-
-    let boolean_buffer: BooleanBuffer = bootstrapped_results
-        .iter_optional(|_| {}, *query.timeline(), visibility_component)
+    let boolean_buffer = results
+        .iter_optional(visibility_component)
         .slice::<bool>()
-        .chain(
-            results
-                .iter_optional(|_| {}, *query.timeline(), visibility_component)
-                .slice::<bool>(),
-        )
         .next()
         .map_or_else(
             || {
@@ -156,16 +147,13 @@ pub fn collect_scalars(
 }
 
 /// Collects colors for the series into pre-allocated plot points.
-#[expect(clippy::too_many_arguments)] // TODO(andreas): Refactor this.
 pub fn collect_colors(
     entity_path: &EntityPath,
     query: &RangeQuery,
-    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
-    results: &re_view::BlueprintResolvedRangeResults<'_>,
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     color_descriptor: &ComponentDescriptor,
-    mut reporter: impl FnMut(&re_view::ComponentMappingError),
 ) {
     re_tracing::profile_function!();
 
@@ -179,12 +167,8 @@ pub fn collect_colors(
         re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
     }
 
-    let bootstrapped_color_chunks =
-        bootstrapped_results.get_optional_chunks(color_descriptor.component);
-    let results_color_chunks = results.get_optional_chunks(color_descriptor.component);
-    let mut all_color_chunks = Vec::new();
-    all_color_chunks.extend(bootstrapped_color_chunks.iter(&mut reporter));
-    all_color_chunks.extend(results_color_chunks.iter(&mut reporter));
+    let color_iter = query_results.iter_optional(color_descriptor.component);
+    let all_color_chunks = color_iter.chunks().iter().collect_vec();
 
     if all_color_chunks.len() == 1 && all_color_chunks[0].chunk.is_static() {
         re_tracing::profile_scope!("override/default fast path");
@@ -259,20 +243,14 @@ pub fn collect_colors(
 /// Collects series names for the series into pre-allocated plot points.
 pub fn collect_series_name(
     query_ctx: &QueryContext<'_>,
-    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
-    results: &re_view::BlueprintResolvedRangeResults<'_>,
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     num_series: usize,
     name_descriptor: &ComponentDescriptor,
-    mut reporter: impl FnMut(&re_view::ComponentMappingError),
 ) -> Vec<String> {
     re_tracing::profile_function!();
 
-    let bootstrapped_name_chunks =
-        bootstrapped_results.get_optional_chunks(name_descriptor.component);
-    let results_name_chunks = results.get_optional_chunks(name_descriptor.component);
-    let mut all_name_chunks = Vec::new();
-    all_name_chunks.extend(bootstrapped_name_chunks.iter(&mut reporter));
-    all_name_chunks.extend(results_name_chunks.iter(&mut reporter));
+    let name_iter = query_results.iter_optional(name_descriptor.component);
+    let all_name_chunks = name_iter.chunks().iter().collect_vec();
     let mut series_names: Vec<String> = all_name_chunks
         .iter()
         .find(|chunk| !chunk.chunk.is_empty())
@@ -297,28 +275,21 @@ pub fn collect_series_name(
 }
 
 /// Collects `radius_ui` for the series into pre-allocated plot points.
-#[expect(clippy::too_many_arguments)] // TODO(andreas): Refactor this.
 pub fn collect_radius_ui(
     query: &RangeQuery,
-    bootstrapped_results: &re_view::BlueprintResolvedLatestAtResults<'_>,
-    results: &re_view::BlueprintResolvedRangeResults<'_>,
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     radius_descriptor: &ComponentDescriptor,
     radius_multiplier: f32,
-    mut reporter: impl FnMut(&re_view::ComponentMappingError),
 ) {
     re_tracing::profile_function!();
 
     let num_series = points_per_series.len();
 
     {
-        let bootstrapped_radius_chunks =
-            bootstrapped_results.get_optional_chunks(radius_descriptor.component);
-        let results_radius_chunks = results.get_optional_chunks(radius_descriptor.component);
-        let mut all_radius_chunks = Vec::new();
-        all_radius_chunks.extend(bootstrapped_radius_chunks.iter(&mut reporter));
-        all_radius_chunks.extend(results_radius_chunks.iter(&mut reporter));
+        let radius_iter = query_results.iter_optional(radius_descriptor.component);
+        let all_radius_chunks = radius_iter.chunks().iter().collect_vec();
 
         if all_radius_chunks.len() == 1 && all_radius_chunks[0].chunk.is_static() {
             re_tracing::profile_scope!("override/default fast path");

@@ -183,7 +183,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
@@ -194,7 +194,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let all_half_sizes =

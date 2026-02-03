@@ -50,7 +50,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
@@ -63,11 +63,10 @@ impl VisualizerSystem for Points3DColorVisualizer {
                 [rerun::Points3D::descriptor_colors().component],
                 instruction,
             );
-            let mut results = VisualizerInstructionQueryResults {
+            let results = VisualizerInstructionQueryResults {
                 instruction_id: instruction.id,
                 query_results: &results,
-                output: &mut output,
-                timeline: query.timeline,
+                output: &output,
             };
 
             // From the query result, get all the color arrays as `[u32]` slices.

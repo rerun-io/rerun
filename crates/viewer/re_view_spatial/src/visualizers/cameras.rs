@@ -229,7 +229,7 @@ impl VisualizerSystem for CamerasVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
         let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);

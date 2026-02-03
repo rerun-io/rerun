@@ -7,10 +7,10 @@ use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_types_core::{Archetype, ComponentIdentifier};
 use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
-use crate::BlueprintResolvedResults;
 use crate::blueprint_resolved_results::{
     BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults,
 };
+use crate::{BlueprintResolvedResults, ComponentMappingError};
 
 /// All information required to rewrite a source component into a target component.
 ///
@@ -85,7 +85,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
                             });
                             Ok(source.source_kind())
                         }
-                        Err(err) => Err(format!("parsing selector failed: {err}")),
+                        Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
                     }
                 }
             } else {
@@ -127,7 +127,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
                             Err(err) => {
                                 component_sources.insert(
                                     *target,
-                                    Err(format!("failed to execute selector: {err}")),
+                                    Err(ComponentMappingError::SelectorExecutionFailed(err)),
                                 );
                                 break 'ctx;
                             }
@@ -136,7 +136,10 @@ pub fn range_with_blueprint_resolved_data<'a>(
                     results.components.insert(*target, chunks);
                 }
             } else {
-                component_sources.insert(*target, Err(format!("component '{source}' not found")));
+                component_sources.insert(
+                    *target,
+                    Err(ComponentMappingError::ComponentNotFound(*source)),
+                );
             }
         }
 
@@ -241,7 +244,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                                 });
                                 Ok(source.source_kind())
                             }
-                            Err(err) => Err(format!("parsing selector failed: {err}")),
+                            Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
                         }
                     }
                 } else {
@@ -282,12 +285,17 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                     store_results.components.insert(*target, chunk);
                 }
                 Err(err) => {
-                    component_sources
-                        .insert(*target, Err(format!("failed to execute selector: {err}")));
+                    component_sources.insert(
+                        *target,
+                        Err(ComponentMappingError::SelectorExecutionFailed(err)),
+                    );
                 }
             }
         } else {
-            component_sources.insert(*target, Err(format!("component '{source}' not found")));
+            component_sources.insert(
+                *target,
+                Err(ComponentMappingError::ComponentNotFound(*source)),
+            );
         }
     }
 

@@ -1,14 +1,19 @@
 use re_log_types::hash::Hash64;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_viewer_context::{
+    VisualizerInstructionReport, VisualizerReportContext, VisualizerReportSeverity,
+};
 
-use crate::{BlueprintResolvedResults, BlueprintResolvedResultsExt as _, HybridResultsChunkIter};
+use crate::{
+    BlueprintResolvedResults, BlueprintResolvedResultsExt as _, ChunksWithComponent,
+    HybridResultsChunkIter,
+};
 
 /// Utility for processing queries while executing a visualizer instruction and reporting errors/warnings as they arise.
 pub struct VisualizerInstructionQueryResults<'a> {
     pub instruction_id: VisualizerInstructionId,
     pub query_results: &'a BlueprintResolvedResults<'a>,
-    pub output: &'a mut re_viewer_context::VisualizerExecutionOutput,
-    pub timeline: re_log_types::TimelineName,
+    pub output: &'a re_viewer_context::VisualizerExecutionOutput,
 }
 
 impl<'a> VisualizerInstructionQueryResults<'a> {
@@ -24,14 +29,30 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
     /// * [`HybridResultsChunkIter::slice_from_struct_field`]
     #[inline]
     pub fn iter_required(
-        &mut self,
+        &self,
         component: re_sdk_types::ComponentIdentifier,
     ) -> HybridResultsChunkIter<'a> {
-        self.query_results.iter_required(
-            |err| self.output.report_error_for(self.instruction_id, err),
-            self.timeline,
-            component,
-        )
+        let chunks_with_component = match ChunksWithComponent::try_from(
+            self.query_results.get_required_chunks(component),
+        ) {
+            Ok(chunks) => chunks,
+            Err(err) => {
+                let report = VisualizerInstructionReport {
+                    severity: VisualizerReportSeverity::Error,
+                    context: VisualizerReportContext {
+                        component: Some(component),
+                        extra: None,
+                    },
+                    summary: err.summary(),
+                    details: err.details(),
+                };
+
+                self.output.report(self.instruction_id, report);
+                ChunksWithComponent::empty(component)
+            }
+        };
+
+        HybridResultsChunkIter::new(chunks_with_component, self.query_results.timeline())
     }
 
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
@@ -47,18 +68,42 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
     /// * [`HybridResultsChunkIter::slice_from_struct_field`]
     #[inline]
     pub fn iter_optional(
-        &mut self,
+        &self,
         component: re_sdk_types::ComponentIdentifier,
     ) -> HybridResultsChunkIter<'a> {
-        self.query_results.iter_optional(
-            |err| self.output.report_warning_for(self.instruction_id, err),
-            self.timeline,
-            component,
-        )
+        let chunks_with_component = match ChunksWithComponent::try_from(
+            self.query_results.get_optional_chunks(component),
+        ) {
+            Ok(chunks) => chunks,
+            Err(err) => {
+                let report = VisualizerInstructionReport {
+                    severity: VisualizerReportSeverity::Warning,
+                    context: VisualizerReportContext {
+                        component: Some(component),
+                        extra: None,
+                    },
+                    summary: err.summary(),
+                    details: err.details(),
+                };
+
+                self.output.report(self.instruction_id, report);
+                ChunksWithComponent::empty(component)
+            }
+        };
+
+        HybridResultsChunkIter::new(chunks_with_component, self.query_results.timeline())
     }
 
     #[inline]
     pub fn query_result_hash(&self) -> Hash64 {
         self.query_results.query_result_hash()
+    }
+
+    pub fn report_error(&self, message: impl Into<String>) {
+        self.output.report_error_for(self.instruction_id, message);
+    }
+
+    pub fn report_warning(&self, message: impl Into<String>) {
+        self.output.report_warning_for(self.instruction_id, message);
     }
 }

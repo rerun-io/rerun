@@ -136,7 +136,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let preferred_view_kind = self.0.preferred_view_kind;
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
@@ -150,7 +150,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let all_lengths =

@@ -124,7 +124,7 @@ impl VisualizerSystem for Asset3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let preferred_view_kind = self.0.preferred_view_kind;
         let mut instances = Vec::new();
 
@@ -133,7 +133,7 @@ impl VisualizerSystem for Asset3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let all_blobs = results.iter_required(Asset3D::descriptor_blob().component);

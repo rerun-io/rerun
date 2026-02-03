@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use parking_lot::Mutex;
 use vec1::Vec1;
 
 use re_chunk::{ArchetypeName, ComponentType};
@@ -216,8 +217,10 @@ pub struct VisualizerExecutionOutput {
     /// Reports from last frame will be shown in the UI for the respective visualizer instruction.
     /// For errors that prevent any visualization at all, return a
     /// [`ViewSystemExecutionError`] instead.
+    ///
+    /// It's mutex protected to make it easier to append errors while processing instructions in parallel.
     pub reports_per_instruction:
-        HashMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>,
+        Mutex<HashMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>>,
     //
     // TODO(andreas): We should put other output here as well instead of passing around visualizer
     // structs themselves which is rather surprising.
@@ -228,13 +231,14 @@ pub struct VisualizerExecutionOutput {
 impl VisualizerExecutionOutput {
     /// Marks the given visualizer instruction as having encountered an error during visualization.
     pub fn report_error_for(
-        &mut self,
+        &self,
         instruction_id: VisualizerInstructionId,
         error: impl Into<String>,
     ) {
         // TODO(RR-3506): enforce supplying context information.
         let report = VisualizerInstructionReport::error(error);
         self.reports_per_instruction
+            .lock()
             .entry(instruction_id)
             .and_modify(|v| v.push(report.clone()))
             .or_insert_with(|| vec1::vec1![report]);
@@ -242,13 +246,14 @@ impl VisualizerExecutionOutput {
 
     /// Marks the given visualizer instruction as having encountered a warning during visualization.
     pub fn report_warning_for(
-        &mut self,
+        &self,
         instruction_id: VisualizerInstructionId,
         warning: impl Into<String>,
     ) {
         // TODO(RR-3506): enforce supplying context information.
         let report = VisualizerInstructionReport::warning(warning);
         self.reports_per_instruction
+            .lock()
             .entry(instruction_id)
             .and_modify(|v| v.push(report.clone()))
             .or_insert_with(|| vec1::vec1![report]);
@@ -256,11 +261,12 @@ impl VisualizerExecutionOutput {
 
     /// Report a detailed diagnostic for a visualizer instruction.
     pub fn report(
-        &mut self,
+        &self,
         instruction_id: VisualizerInstructionId,
         report: VisualizerInstructionReport,
     ) {
         self.reports_per_instruction
+            .lock()
             .entry(instruction_id)
             .and_modify(|v| v.push(report.clone()))
             .or_insert_with(|| vec1::vec1![report]);

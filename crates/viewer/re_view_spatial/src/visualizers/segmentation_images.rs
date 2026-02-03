@@ -50,14 +50,14 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         use super::entity_iterator::process_archetype;
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let entity_path = ctx.target_entity_path;
@@ -128,9 +128,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             );
                         }
                         Err(err) => {
-                            results
-                                .output
-                                .report_error_for(results.instruction_id, re_error::format(err));
+                            results.report_error(re_error::format(err));
                         }
                     }
                 }

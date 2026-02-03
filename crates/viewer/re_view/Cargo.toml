@@ -41,3 +41,4 @@ egui.workspace = true
 glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+thiserror.workspace = true

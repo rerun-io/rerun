@@ -243,7 +243,7 @@ impl VisualizerSystem for DepthImageVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let preferred_view_kind = self.data.preferred_view_kind;
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
@@ -252,7 +252,7 @@ impl VisualizerSystem for DepthImageVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let all_buffers = results.iter_required(DepthImage::descriptor_buffer().component);
@@ -289,17 +289,11 @@ impl VisualizerSystem for DepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 ) {
                     let Some(buffer) = buffers.first() else {
-                        results.output.report_error_for(
-                            results.instruction_id,
-                            "Depth image buffer is empty.",
-                        );
+                        results.report_error("Depth image buffer is empty.");
                         continue;
                     };
                     let Some(format) = first_copied(format.as_deref()) else {
-                        results.output.report_error_for(
-                            results.instruction_id,
-                            "Depth image format is missing.",
-                        );
+                        results.report_error("Depth image format is missing.");
                         continue;
                     };
 
@@ -317,9 +311,8 @@ impl VisualizerSystem for DepthImageVisualizer {
                         value_range: first_copied(value_range),
                     };
 
-                    let instruction_id = results.instruction_id;
                     let mut report_error = |error: String| {
-                        results.output.report_error_for(instruction_id, error);
+                        results.report_error(error);
                     };
 
                     process_depth_image_data(

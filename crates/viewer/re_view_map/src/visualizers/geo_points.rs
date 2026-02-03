@@ -4,7 +4,8 @@ use re_renderer::renderer::PointCloudDrawDataError;
 use re_sdk_types::archetypes::GeoPoints;
 use re_sdk_types::components::Radius;
 use re_view::{
-    AnnotationSceneContext, DataResultQuery as _, process_annotation_slices, process_color_slice,
+    AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults,
+    process_annotation_slices, process_color_slice,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
@@ -55,11 +56,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
         {
             let results =
                 data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
-            let mut results = re_view::VisualizerInstructionQueryResults {
+            let results = VisualizerInstructionQueryResults {
                 instruction_id: instruction.id,
                 query_results: &results,
                 output: &mut output,
-                timeline: view_query.timeline,
             };
 
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);

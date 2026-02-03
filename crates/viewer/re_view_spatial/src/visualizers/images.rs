@@ -54,13 +54,13 @@ impl VisualizerSystem for ImageVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, Image, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_image(ctx, results, spatial_ctx);
@@ -83,7 +83,7 @@ impl ImageVisualizer {
     fn process_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &mut re_view::VisualizerInstructionQueryResults<'_>,
+        results: &re_view::VisualizerInstructionQueryResults<'_>,
         spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
     ) {
         re_tracing::profile_function!();
@@ -151,9 +151,7 @@ impl ImageVisualizer {
                     );
                 }
                 Err(err) => {
-                    results
-                        .output
-                        .report_error_for(results.instruction_id, re_error::format(err));
+                    results.report_error(re_error::format(err));
                 }
             }
         }

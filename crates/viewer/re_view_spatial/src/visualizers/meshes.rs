@@ -127,7 +127,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
         use super::entity_iterator::process_archetype;
@@ -135,7 +135,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             self.0.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let all_vertex_positions =

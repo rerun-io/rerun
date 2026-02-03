@@ -2,7 +2,7 @@ use re_renderer::video::{InsufficientSampleDataError, VideoPlayerError};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::Opacity;
-use re_view::{BlueprintResolvedResultsExt as _, DataResultQuery as _};
+use re_view::DataResultQuery as _;
 use re_viewer_context::{
     IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
     ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
@@ -56,7 +56,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
         let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
@@ -76,7 +76,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 self.data.preferred_view_kind,
                 view_kind,
                 &instruction.id,
-                &mut output,
+                &output,
             ) else {
                 continue;
             };
@@ -95,17 +95,23 @@ impl VisualizerSystem for VideoStreamVisualizer {
             // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
             let mut video_resolution = glam::vec2(1280.0, 720.0);
 
-            let opacity_result = data_result.latest_at_with_blueprint_resolved_data_for_component(
-                ctx,
-                &latest_at,
-                VideoStream::descriptor_opacity().component,
-                Some(instruction),
+            let opacity_result_wrapped = re_view::BlueprintResolvedResults::LatestAt(
+                latest_at.clone(),
+                data_result.latest_at_with_blueprint_resolved_data_for_component(
+                    ctx,
+                    &latest_at,
+                    VideoStream::descriptor_opacity().component,
+                    Some(instruction),
+                ),
             );
-            let all_opacities = opacity_result.iter_optional(
-                |error| output.report_warning_for(instruction.id, error),
-                view_query.timeline,
-                VideoStream::descriptor_opacity().component,
-            );
+            let opacity_result = re_view::VisualizerInstructionQueryResults {
+                instruction_id: instruction.id,
+                query_results: &opacity_result_wrapped,
+                output: &output,
+            };
+
+            let all_opacities =
+                opacity_result.iter_optional(VideoStream::descriptor_opacity().component);
             let opacity = all_opacities
                 .slice::<f32>()
                 .next()

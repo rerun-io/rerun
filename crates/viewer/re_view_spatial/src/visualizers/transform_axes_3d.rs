@@ -58,7 +58,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
 

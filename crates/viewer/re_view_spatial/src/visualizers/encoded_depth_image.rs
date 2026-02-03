@@ -62,7 +62,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let preferred_view_kind = self.data.preferred_view_kind;
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
@@ -71,7 +71,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let all_blobs =
@@ -107,10 +107,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 ) {
                     let Some(blob) = blobs.first() else {
-                        results.output.report_error_for(
-                            results.instruction_id,
-                            "EncodedDepthImage blob is empty.",
-                        );
+                        results.report_error("EncodedDepthImage blob is empty.");
                         continue;
                     };
 
@@ -128,10 +125,9 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     }) {
                         Ok(image) => image,
                         Err(err) => {
-                            results.output.report_error_for(
-                                results.instruction_id,
-                                format!("Failed to decode EncodedDepthImage blob: {err}"),
-                            );
+                            results.report_error(format!(
+                                "Failed to decode EncodedDepthImage blob: {err}"
+                            ));
                             continue;
                         }
                     };
@@ -144,9 +140,8 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         value_range: first_copied(value_range),
                     };
 
-                    let instruction_id = results.instruction_id;
                     let mut report_error = |error: String| {
-                        results.output.report_error_for(instruction_id, error);
+                        results.report_error(error);
                     };
 
                     process_depth_image_data(

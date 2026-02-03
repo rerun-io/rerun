@@ -8,7 +8,7 @@ use re_sdk_types::{
     datatypes,
 };
 use re_view::{
-    BlueprintResolvedResultsExt as _, ComponentMappingError, DataResultQuery as _,
+    BlueprintResolvedResults, DataResultQuery as _, VisualizerInstructionQueryResults,
     clamped_vec_or_else,
 };
 use re_viewer_context::{
@@ -57,17 +57,13 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
-            let warning_reporter = |error: &ComponentMappingError| {
-                output.report_warning_for(instruction.id, error);
-            };
-
-            let results = data_result.latest_at_with_blueprint_resolved_data::<BarChart>(
+            let latest_at_results = data_result.latest_at_with_blueprint_resolved_data::<BarChart>(
                 ctx,
                 &timeline_query,
                 Some(instruction),
             );
 
-            let Some(tensor) = results.get_required_mono::<components::TensorData>(
+            let Some(tensor) = latest_at_results.get_required_mono::<components::TensorData>(
                 BarChart::descriptor_values().component,
             ) else {
                 continue;
@@ -76,14 +72,21 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             if tensor.is_vector() {
                 let length: u64 = tensor.shape().iter().product();
 
-                let abscissa: components::TensorData =
-                    results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
-                let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
-                let widths = results.iter_optional(
-                    warning_reporter,
-                    view_query.timeline,
-                    BarChart::descriptor_widths().component,
-                );
+                let abscissa: components::TensorData = latest_at_results
+                    .get_mono_with_fallback(BarChart::descriptor_abscissa().component);
+                let color = latest_at_results
+                    .get_mono_with_fallback(BarChart::descriptor_color().component);
+
+                // TODO(andreas): use this all the way.
+                let results =
+                    BlueprintResolvedResults::LatestAt(timeline_query.clone(), latest_at_results);
+                let results = VisualizerInstructionQueryResults {
+                    instruction_id: instruction.id,
+                    query_results: &results,
+                    output: &mut output,
+                };
+
+                let widths = results.iter_optional(BarChart::descriptor_widths().component);
                 let widths: &[f32] = widths
                     .slice::<f32>()
                     .next()

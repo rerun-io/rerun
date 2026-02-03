@@ -59,11 +59,10 @@ impl VisualizerSystem for TensorSystem {
             );
             let results =
                 re_view::BlueprintResolvedResults::from((timeline_query, latest_at_results));
-            let mut results = re_view::VisualizerInstructionQueryResults {
+            let results = re_view::VisualizerInstructionQueryResults {
                 instruction_id: instruction.id,
                 query_results: &results,
                 output: &mut output,
-                timeline: query.timeline,
             };
 
             let all_tensor_chunks = results.iter_required(Tensor::descriptor_data().component);

@@ -24,7 +24,7 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     context_systems: &ViewContextCollection,
-    output: &mut VisualizerExecutionOutput,
+    output: &VisualizerExecutionOutput,
     archetype_space_kind: Option<SpatialViewKind>,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
@@ -33,7 +33,7 @@ where
     F: FnMut(
         &QueryContext<'_>,
         &SpatialSceneVisualizerInstructionContext<'_>,
-        &mut VisualizerInstructionQueryResults<'_>,
+        &VisualizerInstructionQueryResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
     let view_kind = super::spatial_view_kind_from_view_class(ctx.view_class_identifier);
@@ -77,11 +77,10 @@ where
         let results =
             data_result.query_archetype_with_history::<A>(ctx, query, visualizer_instruction);
 
-        let mut visualizer_instruction_result = VisualizerInstructionQueryResults {
+        let visualizer_instruction_result = VisualizerInstructionQueryResults {
             instruction_id: visualizer_instruction.id,
             query_results: &results,
             output,
-            timeline: query.timeline,
         };
 
         let mut query_ctx = ctx.query_context(data_result, &latest_at);
@@ -92,7 +91,7 @@ where
             fun(
                 &query_ctx,
                 &instruction_context,
-                &mut visualizer_instruction_result,
+                &visualizer_instruction_result,
             )?;
         }
     }

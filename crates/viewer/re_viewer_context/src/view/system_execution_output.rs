@@ -68,12 +68,11 @@ impl VisualizerTypeReport {
     ) -> Option<Self> {
         match result {
             Ok(output) => {
-                if output.reports_per_instruction.is_empty() {
+                let reports = output.reports_per_instruction.lock();
+                if reports.is_empty() {
                     None
                 } else {
-                    Some(Self::PerInstructionReport(
-                        output.reports_per_instruction.clone(),
-                    ))
+                    Some(Self::PerInstructionReport(reports.clone()))
                 }
             }
 

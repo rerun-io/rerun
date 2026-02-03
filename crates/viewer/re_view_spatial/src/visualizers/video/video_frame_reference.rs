@@ -56,13 +56,13 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.

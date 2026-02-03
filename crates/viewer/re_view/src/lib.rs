@@ -48,8 +48,42 @@ pub mod external {
     pub use re_entity_db::external::*;
 }
 
-// TODO(RR-3506): Make this a proper error type from which we can derive context information.
-pub type ComponentMappingError = String;
+/// Error that can occur when mapping components.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum ComponentMappingError {
+    /// Failed to parse a selector.
+    #[error("Failed to parse selector: {0}")]
+    SelectorParseFailed(re_arrow_combinators::SelectorError),
+
+    /// Failed to execute a selector.
+    #[error("Failed to select data: {0}")]
+    SelectorExecutionFailed(re_arrow_combinators::SelectorError),
+
+    /// Component was not found.
+    #[error("Component '{0}' not found")]
+    ComponentNotFound(re_types_core::ComponentIdentifier),
+}
+
+impl ComponentMappingError {
+    pub fn summary(&self) -> String {
+        match self {
+            Self::SelectorParseFailed(_) => "Failed to parse selector.".to_owned(),
+            Self::SelectorExecutionFailed(_) => "Failed to select data.".to_owned(),
+            Self::ComponentNotFound(component) => {
+                format!("Component '{component}' not found.")
+            }
+        }
+    }
+
+    pub fn details(&self) -> Option<String> {
+        match self {
+            Self::SelectorParseFailed(err) | Self::SelectorExecutionFailed(err) => {
+                Some(err.to_string())
+            }
+            Self::ComponentNotFound(_) => None,
+        }
+    }
+}
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///

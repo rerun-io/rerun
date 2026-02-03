@@ -118,7 +118,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let preferred_view_kind = self.0.preferred_view_kind;
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
             ctx.viewer_ctx.render_ctx(),
@@ -131,7 +131,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 let all_half_sizes =

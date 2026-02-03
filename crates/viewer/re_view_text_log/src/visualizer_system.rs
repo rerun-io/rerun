@@ -50,7 +50,7 @@ impl VisualizerSystem for TextLogSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let query =
             re_chunk_store::RangeQuery::new(view_query.timeline, AbsoluteTimeRange::EVERYTHING)
                 .keep_extra_timelines(true);
@@ -58,7 +58,7 @@ impl VisualizerSystem for TextLogSystem {
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
-            self.process_visualizer_instruction(ctx, &query, data_result, instruction, &mut output);
+            self.process_visualizer_instruction(ctx, &query, data_result, instruction, &output);
         }
 
         {
@@ -78,7 +78,7 @@ impl TextLogSystem {
         query: &re_chunk_store::RangeQuery,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
-        output: &mut VisualizerExecutionOutput,
+        output: &VisualizerExecutionOutput,
     ) {
         re_tracing::profile_function!();
 
@@ -93,11 +93,10 @@ impl TextLogSystem {
 
         // Convert to HybridResults for unified access
         let results = re_view::BlueprintResolvedResults::from((query.clone(), range_results));
-        let mut results = re_view::VisualizerInstructionQueryResults {
+        let results = re_view::VisualizerInstructionQueryResults {
             instruction_id: instruction.id,
             query_results: &results,
             output,
-            timeline: *query.timeline(),
         };
 
         let all_texts = results.iter_required(TextLog::descriptor_text().component);
