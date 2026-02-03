@@ -1,7 +1,6 @@
 use std::str::FromStr as _;
 
 use egui::{NumExt as _, Ui};
-use re_data_source::StreamMode;
 use re_log_types::{Timestamp, TimestampFormat};
 use re_memory::MemoryLimit;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -141,24 +140,12 @@ fn settings_screen_ui_impl(
     ui.strong("Video");
     video_section_ui(ui, video);
 
-    separator_with_some_space(ui);
-    ui.strong("Experimental");
-    experimental_section_ui(ui, experimental);
-}
-
-fn experimental_section_ui(ui: &mut Ui, experimental: &mut ExperimentalAppOptions) {
-    let ExperimentalAppOptions { stream_mode } = experimental;
-
-    let mut larger_than_ram = *stream_mode == StreamMode::OnDemand;
-    ui.re_checkbox(&mut larger_than_ram, "Larger-than-RAM streaming");
-    *stream_mode = if larger_than_ram {
-        StreamMode::OnDemand
-    } else {
-        StreamMode::FullLoad
-    };
-
-    if larger_than_ram {
-        ui.warning_label("This is an experimental feature that is not yet fully supported.");
+    if false {
+        // There are currently no experimental features
+        let ExperimentalAppOptions {} = experimental;
+        separator_with_some_space(ui);
+        ui.strong("Experimental");
+        // experimental_section_ui(ui, experimental);
     }
 }
 

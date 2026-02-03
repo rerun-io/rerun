@@ -1481,11 +1481,9 @@ impl App {
         }
 
         let sender = self.command_sender.clone();
-        let stream = data_source.clone().stream(
-            Self::auth_error_handler(sender),
-            &self.connection_registry,
-            self.app_options().experimental.stream_mode,
-        );
+        let stream = data_source
+            .clone()
+            .stream(Self::auth_error_handler(sender), &self.connection_registry);
 
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {

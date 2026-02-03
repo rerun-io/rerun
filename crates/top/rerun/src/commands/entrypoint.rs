@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use re_data_source::{AuthErrorHandler, LogDataSource, StreamMode};
+use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -920,7 +920,6 @@ fn start_native_viewer(
                 &UrlParamProcessingConfig::native_viewer(),
                 &connection_registry,
                 Some(auth_error_handler),
-                app.app_options().experimental.stream_mode,
             )?;
 
             // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
@@ -1011,7 +1010,6 @@ fn connect_to_existing_server(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
-        Default::default(),
     )?;
     if !receivers.urls_to_pass_on_to_viewer.is_empty() {
         re_log::warn!(
@@ -1063,7 +1061,6 @@ fn serve_web(
         &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
         connection_registry,
         None,
-        Default::default(),
     )?;
 
     // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
@@ -1133,7 +1130,6 @@ fn serve_grpc(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
-        Default::default(),
     )?;
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
@@ -1166,7 +1162,6 @@ fn save_or_test_receive(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
-        Default::default(),
     )?;
     receivers.error_on_unhandled_urls(if save.is_none() {
         "--test-receive"
@@ -1505,7 +1500,6 @@ impl ReceiversFromUrlParams {
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
         auth_error_handler: Option<AuthErrorHandler>,
-        steam_mode: StreamMode,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
@@ -1556,9 +1550,7 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| {
-                data_source.stream(auth_error_handler.clone(), connection_registry, steam_mode)
-            })
+            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {
