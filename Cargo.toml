@@ -208,7 +208,7 @@ bit-vec = "0.8"
 bitflags = { version = "2.9", features = ["bytemuck"] }
 bytemuck = { version = "1.24", features = ["extern_crate_alloc"] }
 byteorder = "1.5.0"
-bytes = "1.10"
+bytes = "1.11.1"
 camino = "1.2"
 cargo_metadata = "0.23.0"
 cargo-run-wasm = "0.4.0"
