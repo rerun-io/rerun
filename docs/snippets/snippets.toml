@@ -115,6 +115,7 @@ features = [
 backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/explicit_recording", # The file path differs locally and on CI
+  "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
   # Dataplatform examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
@@ -465,6 +466,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "howto/dataframe_operations" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/convert_mcap_protobuf" = [ # Uses external MCAP file, depends on mcap_protobuf package
   "cpp",
   "py",
   "rust",
