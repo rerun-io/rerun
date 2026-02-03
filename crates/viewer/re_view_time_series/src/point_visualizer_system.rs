@@ -303,7 +303,12 @@ impl SeriesPointsSystem {
 
             let mut series = Vec::with_capacity(num_series);
 
-            debug_assert_eq!(points_per_series.len(), series_names.len());
+            debug_assert!(
+                points_per_series.len() <= series_names.len(),
+                "[DEBUG ASSERT] Number of series names {} after processing should be at least the number of series allocated {}",
+                series_names.len(),
+                points_per_series.len()
+            );
             for (instance, (points, label, visible)) in itertools::izip!(
                 points_per_series.into_iter(),
                 series_names.into_iter(),
