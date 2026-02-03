@@ -1,3 +1,4 @@
+use re_types_core::ArrowString;
 use re_types_core::datatypes::Utf8;
 
 use crate::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
@@ -10,8 +11,8 @@ impl VisualizerComponentMapping {
     pub fn new(
         target: impl Into<Utf8>,
         source_kind: ComponentSourceKind,
-        source_component: Option<impl Into<Utf8>>,
-        selector: Option<impl Into<Utf8>>,
+        source_component: Option<impl Into<ArrowString>>,
+        selector: Option<impl Into<ArrowString>>,
     ) -> Self {
         Self {
             target: target.into(),
@@ -49,7 +50,7 @@ impl VisualizerComponentMapping {
     /// ```
     pub fn new_source_component(
         target: impl Into<Utf8>,
-        source_component: impl Into<Utf8>,
+        source_component: impl Into<ArrowString>,
     ) -> Self {
         Self {
             target: target.into(),
@@ -72,8 +73,8 @@ impl VisualizerComponentMapping {
     /// ```
     pub fn new_source_component_with_selector(
         target: impl Into<Utf8>,
-        source_component: impl Into<Utf8>,
-        selector: impl Into<Utf8>,
+        source_component: impl Into<ArrowString>,
+        selector: impl Into<ArrowString>,
     ) -> Self {
         Self {
             target: target.into(),

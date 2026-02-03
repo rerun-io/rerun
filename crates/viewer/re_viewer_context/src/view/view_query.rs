@@ -39,11 +39,13 @@ impl VisualizerComponentSource {
             selector,
         } = mapping;
 
-        let source_component = source_component.as_ref().unwrap_or(target);
-
         match source_kind {
             ComponentSourceKind::SourceComponent => Self::SourceComponent {
-                source_component: source_component.as_str().into(),
+                source_component: source_component
+                    .as_ref()
+                    .map(|c| c.as_str())
+                    .unwrap_or_else(|| target.as_str())
+                    .into(),
                 selector: selector.as_ref().map_or(String::new(), |s| s.to_string()),
             },
 

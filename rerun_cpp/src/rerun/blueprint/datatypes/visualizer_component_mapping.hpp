@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 
 namespace arrow {
     class Array;
@@ -34,7 +35,7 @@ namespace rerun::blueprint::datatypes {
         /// Component selector for mapping.
         ///
         /// Defaults to `target` if not specified.
-        std::optional<rerun::datatypes::Utf8> source_component;
+        std::optional<std::string> source_component;
 
         /// Optional selector string using jq-like syntax to pick a specific field on `source_component`.
         ///
@@ -43,7 +44,7 @@ namespace rerun::blueprint::datatypes {
         /// Example: ".x" picks a field called "x" from the `source_component` if present.
         ///
         /// Defaults to empty string if not specified.
-        std::optional<rerun::datatypes::Utf8> selector;
+        std::optional<std::string> selector;
 
       public:
         VisualizerComponentMapping() = default;

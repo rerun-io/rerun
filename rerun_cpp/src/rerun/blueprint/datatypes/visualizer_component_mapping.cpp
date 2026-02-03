@@ -21,12 +21,8 @@ namespace rerun {
                 Loggable<rerun::blueprint::datatypes::ComponentSourceKind>::arrow_datatype(),
                 false
             ),
-            arrow::field(
-                "source_component",
-                Loggable<rerun::datatypes::Utf8>::arrow_datatype(),
-                true
-            ),
-            arrow::field("selector", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), true),
+            arrow::field("source_component", arrow::utf8(), true),
+            arrow::field("selector", arrow::utf8(), true),
         });
         return datatype;
     }
@@ -95,11 +91,7 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.source_component.has_value()) {
-                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
-                        field_builder,
-                        &element.source_component.value(),
-                        1
-                    ));
+                    ARROW_RETURN_NOT_OK(field_builder->Append(element.source_component.value()));
                 } else {
                     ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                 }
@@ -111,11 +103,7 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.selector.has_value()) {
-                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
-                        field_builder,
-                        &element.selector.value(),
-                        1
-                    ));
+                    ARROW_RETURN_NOT_OK(field_builder->Append(element.selector.value()));
                 } else {
                     ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                 }
