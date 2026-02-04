@@ -12,9 +12,12 @@ Before reading this document, you might want to familiarize yourself with the [R
 
 ## Operating modes
 
-The Rerun SDK provides 4 modes of operation: `spawn`, `connect_grpc`, `serve_grpc`, and `save`.
+The Rerun SDK provides multiple modes of operation: `spawn`, `connect_grpc`, `serve_grpc`, `save`, and `stdout`.
 
-All four of them are optional: when none of these modes are active, the client will simply buffer the logged data in memory, waiting for one of these modes to be enabled so that it can flush it.
+All of them are optional: when none of these modes are active, the client will simply buffer the logged data in memory, waiting for one of these modes to be enabled so that it can flush it.
+
+> [!WARNING]
+> These modes will override each other and destroy any existing sinks; if you want to run multiple sinks concurrently, you'll need to use `set_sinks()`.
 
 ### `spawn`
 
@@ -90,7 +93,7 @@ Use [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_fu
 Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save).
 
 
-### Standard Input/Output
+### Standard Input/Output (`stdout`)
 
 Streams all logging data to standard output, which can then be loaded by the Rerun Viewer by streaming it from standard input.
 
@@ -111,6 +114,24 @@ Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/
 Use [`RecordingStream::stdout`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.stdout).
 
 Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/stdio/src/main.rs).
+
+### `set_sinks`
+
+You can use this to log to multiple sinks concurrently, such as saving to disk while streaming to the viewer.
+
+snippet: howto/set_sinks
+
+#### Python
+
+Use [`rr.set_sinks`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.set_sinks)
+
+#### Rust
+
+Use [`RecordingStream::set_sinks`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_sinks)
+
+#### C++
+
+Use [`RecordingStream::set_sinks`](https://ref.rerun.io/docs/cpp/classrerun_1_1RecordingStream.html#a92c9d3ecd3007d87b9c801fa33b140dc)
 
 
 ## Adding the standard flags to your programs
