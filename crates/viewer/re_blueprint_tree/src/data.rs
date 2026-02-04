@@ -497,7 +497,6 @@ impl DataResultData {
                                 "DataResultNode {data_result_node:?} has an invalid child"
                             );
 
-                            re_tracing::profile_scope!("from_data_result_and_filter");
                             Self::from_data_result_and_filter(
                                 view_blueprint,
                                 query_result,

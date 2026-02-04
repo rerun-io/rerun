@@ -785,20 +785,23 @@ impl EntityDb {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             time_budget: DEFAULT_GC_TIME_BUDGET,
 
-            // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
-            // otherwise timestamp-based collection will ignore it.
-            protect_latest: 1,
+            #[expect(clippy::bool_to_int_with_if)]
+            protect_latest: if self.rrd_manifest_index.has_manifest() {
+                // We can redownload data, so we are free to drop anything.
+                // This makes the GC faster.
+                // Also, if it is important, then chunk is already in the `protected_chunks` set,
+                // which is based (in part) on the chunks used in the previous frame.
+                0
+            } else {
+                1 // We can't redownload data, so always keep the latest data point of each component
+            },
 
-            // TODO(emilk): we could protect the data that is currently being viewed
-            // (e.g. when paused in the live camera example).
-            // To be perfect it would need margins (because of latest-at), i.e. we would need to know
-            // exactly how far back the latest-at is of each component at the current time…
-            // …but maybe it doesn't have to be perfect.
-            //
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
+
             protected_chunks,
+
             furthest_from: if self.rrd_manifest_index.has_manifest() {
                 // If we have an RRD manifest, it means we can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:
