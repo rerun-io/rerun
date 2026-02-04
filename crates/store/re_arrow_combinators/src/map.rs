@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray};
+use arrow::array::{
+    Array, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray, StringArray,
+};
 use arrow::datatypes::Field;
 
 use crate::{Error, Transform};
@@ -194,6 +196,66 @@ where
         let result: PrimitiveArray<T> = source
             .iter()
             .map(|opt| Some(opt.unwrap_or(self.default_value)))
+            .collect();
+        Ok(result)
+    }
+}
+
+/// Prepends a prefix to each string value in a string array.
+///
+/// Null values are preserved.
+#[derive(Clone)]
+pub struct StringPrefix {
+    prefix: String,
+}
+
+impl StringPrefix {
+    /// Create a new string prefix prepender.
+    pub fn new(prefix: impl Into<String>) -> Self {
+        Self {
+            prefix: prefix.into(),
+        }
+    }
+}
+
+impl Transform for StringPrefix {
+    type Source = StringArray;
+    type Target = StringArray;
+
+    fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
+        let result: StringArray = source
+            .iter()
+            .map(|opt| opt.map(|s| format!("{}{}", self.prefix, s)))
+            .collect();
+        Ok(result)
+    }
+}
+
+/// Appends a suffix to each string value in a string array.
+///
+/// Null values are preserved.
+#[derive(Clone)]
+pub struct StringSuffix {
+    suffix: String,
+}
+
+impl StringSuffix {
+    /// Create a new string suffix appender.
+    pub fn new(suffix: impl Into<String>) -> Self {
+        Self {
+            suffix: suffix.into(),
+        }
+    }
+}
+
+impl Transform for StringSuffix {
+    type Source = StringArray;
+    type Target = StringArray;
+
+    fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
+        let result: StringArray = source
+            .iter()
+            .map(|opt| opt.map(|s| format!("{}{}", s, self.suffix)))
             .collect();
         Ok(result)
     }
