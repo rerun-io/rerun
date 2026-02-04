@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicU64;
 
 use ahash::{HashMap, HashSet};
 use arrow::datatypes::DataType as ArrowDataType;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
@@ -525,7 +526,7 @@ pub struct ChunkStore {
     ///   it can still be reached, provided that the associated Redap server still exists.
     ///
     /// This is purely additive: never garbage collected.
-    pub(crate) chunks_lineage: BTreeMap<ChunkId, ChunkDirectLineage>,
+    pub(crate) chunks_lineage: HashMap<ChunkId, ChunkDirectLineage>,
 
     /// Anytime a chunk gets split during insertion, this is recorded here.
     ///
@@ -737,7 +738,7 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "]\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "virtual chunks: [\n"))?;
-        for chunk_id in chunks_lineage.keys() {
+        for chunk_id in chunks_lineage.keys().sorted() {
             if chunks_per_chunk_id.contains_key(chunk_id) {
                 continue;
             }
