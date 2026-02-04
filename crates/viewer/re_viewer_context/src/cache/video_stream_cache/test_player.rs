@@ -195,14 +195,7 @@ impl TestVideoPlayer {
         }
         self.video_descr.samples[idx] = sample;
 
-        super::update_sample_durations(
-            &super::ChunkSampleRange {
-                first_sample: idx,
-                last_sample: idx,
-            },
-            &mut self.video_descr.samples,
-        )
-        .unwrap();
+        super::update_sample_durations(idx..idx + 1, &mut self.video_descr.samples).unwrap();
     }
 }
 
@@ -268,13 +261,7 @@ fn create_video(
         }
     }
 
-    super::update_sample_durations(
-        &super::ChunkSampleRange {
-            first_sample: 0,
-            last_sample: samples.next_index() - 1,
-        },
-        &mut samples,
-    )?;
+    super::update_sample_durations(0..samples.next_index(), &mut samples)?;
 
     let video_descr = VideoDataDescription {
         delivery_method: re_video::VideoDeliveryMethod::Stream {
@@ -1047,4 +1034,163 @@ fn cache_with_unordered_chunks() {
     player.play_store(0.0..25.0, dt, &store).unwrap();
 
     player.expect_decoded_samples(0..chunk_count);
+}
+
+/// Test for out-of-order chunk arrival that triggers a cache reset, followed by compaction.
+///
+/// Scenario:
+/// - chunk0: 2 rows at times 1.0 and 1.5
+/// - chunk1: 1 row at time 0
+/// - chunk2: 1 row at time 3
+///
+/// Arrival order:
+/// 1. chunk0: Sample { idx: 0, time: 1 }, Sample { idx: 1, time: 1.5 }
+/// 2. chunk1: Time 0 is before previous max time (1.5), triggers `OutOfOrderSamples` → cache reset
+/// 3. After reset and re-entry: Sample { idx: 0, time: 0 }, Sample { idx: 1, time: 1 }, Sample { idx: 2, time: 1.5 }
+/// 4. chunk2: Compacts with chunk1, adding Sample { idx: 3, time: 3 }
+///
+/// The bug this tests for: after reset and compaction, the chunk range could have
+/// incorrect length causing samples to not be iterated over.
+#[test]
+fn cache_out_of_order_arrival_with_compaction() {
+    let mut cache = VideoStreamCache::default();
+
+    // Enable compaction with max_rows = 2.
+    let mut store = EntityDb::with_store_config(
+        StoreId::recording("test", "test"),
+        true,
+        re_chunk_store::ChunkStoreConfig {
+            enable_changelog: true,
+            chunk_max_bytes: u64::MAX,
+            chunk_max_rows: 4,
+            chunk_max_rows_if_unsorted: 4,
+        },
+    );
+
+    let codec_chunk = Arc::new(codec_chunk());
+
+    // Create chunk0 with 2 rows (won't compact by itself).
+    let chunk0 = Arc::new(video_chunk(0.0, 2.0, 1, 4)); // times: 0.0, 2.0, 4.0, 6.0
+
+    // Create chunk1 and chunk2 with 1 row each.
+    let chunk1 = Arc::new(video_chunk(5.0, 2.0, 1, 2)); // times: 5.0, 7.0
+    let chunk2 = Arc::new(video_chunk(8.0, 0.0, 1, 1)); // time: 8.0
+
+    let codec_chunk_id = codec_chunk.id();
+    let chunk0_id = chunk0.id();
+    let chunk1_id = chunk1.id();
+    let chunk2_id = chunk2.id();
+
+    let replace_id = |s: &str| -> String {
+        s.replace(
+            &codec_chunk_id.to_string(),
+            &format!("chunk_codec {}", codec_chunk_id.short_string()),
+        )
+        .replace(
+            &chunk0_id.to_string(),
+            &format!("chunk0 {}", chunk0_id.short_string()),
+        )
+        .replace(
+            &chunk1_id.to_string(),
+            &format!("chunk1 {}", chunk1_id.short_string()),
+        )
+        .replace(
+            &chunk2_id.to_string(),
+            &format!("chunk2 {}", chunk2_id.short_string()),
+        )
+    };
+
+    // Load codec chunk and chunk0.
+    load_chunks(&mut store, &mut cache, &[codec_chunk, chunk0]);
+
+    let video_stream_before = playable_stream(&mut cache, &store);
+
+    let mut player = TestVideoPlayer::from_stream(video_stream_before);
+
+    player.play_store(0.0..8.0, 1.0, &store).unwrap();
+    player.expect_decoded_samples(0..4);
+
+    // Load chunk1 (time: 0) - this should trigger a reset because time 0 < time 1.
+    // The cache entry gets removed due to OutOfOrderSamples.
+    load_chunks(&mut store, &mut cache, &[chunk1]);
+
+    assert!(
+        store
+            .storage_engine()
+            .store()
+            .iter_physical_chunks()
+            .zip([Some(codec_chunk_id), Some(chunk0_id), Some(chunk1_id), None])
+            .all(|(c, expected_id)| {
+                let eq = Some(c.id()) == expected_id;
+
+                if !eq {
+                    eprintln!(
+                        "Expected {}, got {} with lineage:\n{}",
+                        expected_id
+                            .map(|c| c.short_string())
+                            .unwrap_or_else(|| "nothing".to_owned()),
+                        c.id().short_string(),
+                        replace_id(&store.storage_engine().store().format_lineage(&c.id())),
+                    );
+                }
+
+                eq
+            }),
+        "No compaction should've occurred"
+    );
+
+    assert!(
+        !cache
+            .0
+            .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
+                entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
+                timeline: re_chunk::TimelineName::new(TIMELINE_NAME)
+            }),
+        "The video stream cache should've cleared this entry"
+    );
+
+    // Verify the cache entry was reset by checking we get a different Arc.
+    let video_stream_after = playable_stream(&mut cache, &store);
+    // Create player from the new cache entry.
+    let mut player = TestVideoPlayer::from_stream(video_stream_after);
+
+    // Verify we can play the first three samples after reset (chunk1 + chunk0).
+    player.play_store(0.0..8.0, 1.0, &store).unwrap();
+    player.expect_decoded_samples(0..6);
+
+    // Load chunk2 (time: 3) - this should compact with chunk1.
+    load_chunks(&mut store, &mut cache, &[chunk2]);
+
+    assert!(
+        store
+            .storage_engine()
+            .store()
+            .iter_physical_chunks()
+            .any(|c| {
+                if let Some(re_chunk_store::ChunkDirectLineage::CompactedFrom(chunks)) =
+                    store.storage_engine().store().direct_lineage(&c.id())
+                {
+                    *chunks == [chunk1_id, chunk2_id].into_iter().collect()
+                } else {
+                    false
+                }
+            }),
+        "chunk 1 & 2, should've been compacted.\nchunks:\n{}",
+        replace_id(
+            &store
+                .storage_engine()
+                .store()
+                .iter_physical_chunks()
+                .map(|c| store.storage_engine().store().format_lineage(&c.id()))
+                .collect::<Vec<_>>()
+                .join("\n\n")
+        ),
+    );
+
+    // Play all samples including the newly added one.
+    // The bug would cause the sample from chunk2 to not be iterated over
+    // because the chunk range had incorrect length after reset + compaction.
+    player.play_store(0.0..9.0, 1.0, &store).unwrap();
+
+    player.expect_decoded_samples(0..7);
 }
