@@ -1191,44 +1191,56 @@ class TableEntry(Entry[TableEntryInternal]):
         insert_mode: TableInsertModeInternal,
     ) -> None:
         """Internal helper to write named parameters to the table."""
-        batch = self._python_objects_to_record_batch(self.arrow_schema(), named_params)
+        batch = _python_objects_to_record_batch(self.arrow_schema(), named_params)
         if batch is not None:
             reader = RecordBatchReader.from_batches(batch.schema, [batch])
             self._internal.write_batches(reader, insert_mode=insert_mode)
 
-    def _python_objects_to_record_batch(self, schema: pa.Schema, named_params: dict[str, Any]) -> pa.RecordBatch:
-        cast_params = {}
-        expected_len = None
 
-        for name, value in named_params.items():
-            field = schema.field(name)
-            if field is None:
-                raise ValueError(f"Column {name} does not exist in table")
+def _python_objects_to_record_batch(schema: pa.Schema, named_params: dict[str, Any]) -> pa.RecordBatch:
+    cast_params = {}
+    expected_len = None
 
-            if isinstance(value, str):
-                value = [value]
+    for name, value in named_params.items():
+        field = schema.field(name)
+        if field is None:
+            raise ValueError(f"Column {name} does not exist in table")
 
-            try:
-                cast_value = pa.array(value, type=field.type)
-            except TypeError:
-                cast_value = pa.array([value], type=field.type)
+        if isinstance(value, str):
+            value = [value]
 
-            cast_params[name] = cast_value
+        try:
+            cast_value = pa.array(value, type=field.type)
+        except TypeError:
+            cast_value = pa.array([value], type=field.type)
 
-            if expected_len is None:
-                expected_len = len(cast_value)
-            else:
-                if len(cast_value) != expected_len:
-                    raise ValueError("Columns have mismatched number of rows")
+        cast_params[name] = cast_value
 
-        if expected_len is None or expected_len == 0:
-            return
+        if expected_len is None:
+            expected_len = len(cast_value)
+        else:
+            if len(cast_value) != expected_len:
+                error = (
+                    f"Columns have mismatched number of rows. "
+                    f"Column '{name}' has {len(cast_value)} rows but expected {expected_len}."
+                )
 
-        columns = []
-        for field in schema:
-            if field.name in cast_params:
-                columns.append(cast_params[field.name])
-            else:
-                columns.append(pa.array([None] * expected_len, type=field.type))
+                if pa.types.is_list(field.type) or pa.types.is_large_list(field.type):
+                    error += (
+                        f" Hint: For single-row list-typed columns, wrap your list in another list: "
+                        f"{name}=[[...]] instead of {name}=[...]"  # NOLINT
+                    )
 
-        return pa.RecordBatch.from_arrays(columns, schema=schema)
+                raise ValueError(error)
+
+    if expected_len is None or expected_len == 0:
+        return
+
+    columns = []
+    for field in schema:
+        if field.name in cast_params:
+            columns.append(cast_params[field.name])
+        else:
+            columns.append(pa.array([None] * expected_len, type=field.type))
+
+    return pa.RecordBatch.from_arrays(columns, schema=schema)
