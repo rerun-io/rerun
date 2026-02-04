@@ -116,6 +116,7 @@ backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/explicit_recording", # The file path differs locally and on CI
   "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
+  "howto/convert_mcap_protobuf_send_column",
   # Dataplatform examples don't generate rrds
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
@@ -221,6 +222,13 @@ backwards_check = [
 "howto/convert_mcap_protobuf" = [
   "cpp", # Not implemented
   "rust", # Not implemented
+]
+"howto/convert_mcap_protobuf_send_column" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/component_mapping" = [
+  "cpp", # Not implemented
 ]
 "howto/dataframe_operations" = [
   "cpp", # Not implemented
@@ -475,7 +483,27 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"howto/convert_mcap_protobuf_send_column" = [ # Uses external MCAP file, depends on mcap_protobuf package
+  "cpp",
+  "py",
+  "rust",
+]
 "howto/dataframe_performance" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataset_resampling" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/layers" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/lerobot_export" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
@@ -520,3 +548,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
 "howto/convert_mcap_protobuf" = ["$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap"]
+"howto/convert_mcap_protobuf_send_column" = [
+  "$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap",
+]
