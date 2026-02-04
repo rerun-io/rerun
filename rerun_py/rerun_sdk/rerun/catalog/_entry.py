@@ -495,7 +495,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions.
+            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
+            contents.
 
         Returns
         -------
@@ -928,21 +929,37 @@ class DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
 
-        Filters are composed: if this view already has a segment filter,
-        the result is the intersection of both filters.
-
         Parameters
         ----------
-        segment_ids : str | Sequence[str] | datafusion.DataFrame
+        segment_ids
             A segment ID string, a list of segment ID strings, or a DataFusion DataFrame
-            with a column named 'rerun_segment_id'.
+            with a column named 'rerun_segment_id'. When passing a DataFrame,
+            if there are additional columns, they will be ignored.
 
         Returns
         -------
         DatasetView
             A new view filtered to the given segments.
 
+        Examples
+        --------
+        ```python
+        # Filter to a single segment
+        view = dataset.filter_segments("recording_0")
+
+        # Filter to specific segments
+        view = dataset.filter_segments(["recording_0", "recording_1"])
+
+        # Filter using a DataFrame
+        good_segments = segment_table.filter(col("success"))
+        view = dataset.filter_segments(good_segments)
+
+        # Read data from the filtered view
+        df = view.reader(index="timeline")
+        ```
+
         """
+
         import datafusion
 
         if isinstance(segment_ids, str):
@@ -963,12 +980,29 @@ class DatasetView:
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions.
+            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
+            contents.
 
         Returns
         -------
         DatasetView
             A new view filtered to the matching entity paths.
+
+        Examples
+        --------
+        ```python
+        # Filter to a single entity path
+        view = dataset.filter_contents("/points/**")
+
+        # Filter to specific entity paths
+        view = dataset.filter_contents(["/points/**"])
+
+        # Exclude certain paths
+        view = dataset.filter_contents(["/points/**", "-/text/**"])
+
+        # Chain with segment filters
+        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
+        ```
 
         """
         if isinstance(exprs, str):

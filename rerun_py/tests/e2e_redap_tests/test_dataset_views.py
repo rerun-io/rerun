@@ -74,8 +74,9 @@ def sort_schema(schema: pa.Schema) -> str:
     for field in schema:
         # Sorted field metadata
         field_meta = {}
-        for k, v in field.metadata.items():
-            field_meta[k] = v
+        if field.metadata is not None:
+            for k, v in field.metadata.items():
+                field_meta[k] = v
         all_fields[field.name] = dict(sorted(field_meta.items(), key=lambda item: item[0]))
 
     sorted_fields = dict(sorted(all_fields.items(), key=lambda item: item[0]))
@@ -97,6 +98,51 @@ def test_dataset_view_filter_contents(readonly_test_dataset: DatasetEntry, snaps
 
     view = readonly_test_dataset.filter_contents(["/obj1/**"])
     schema = sort_schema(pa.schema(view.schema()))
+    assert str(schema) == snapshot()
+
+
+def test_dataset_view_filter_contents_nonexistent_path(
+    readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
+) -> None:
+    """Test that filtering by a non-existent path returns no data columns."""
+
+    # Filter by a path that doesn't exist
+    view = readonly_test_dataset.filter_contents(["/this/does/not/exist/**"])
+    schema = sort_schema(pa.schema(view.schema()))
+    assert str(schema) == snapshot()
+
+    df = view.reader(index="time_1")
+    schema = sort_schema(pa.schema(df.schema()))
+    assert str(schema) == snapshot()
+
+
+def test_dataset_view_filter_contents_empty_list(
+    readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
+) -> None:
+    """Test that filtering with an empty list returns no data columns."""
+
+    view = readonly_test_dataset.filter_contents([])
+
+    schema = sort_schema(pa.schema(view.schema()))
+    assert str(schema) == snapshot()
+
+    df = view.reader(index="time_1")
+    schema = sort_schema(pa.schema(df.schema()))
+    assert str(schema) == snapshot()
+
+
+def test_dataset_view_no_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
+    """Test that not using filter_contents returns all data columns."""
+
+    all_segments = sorted(readonly_test_dataset.segment_ids())
+    view = readonly_test_dataset.filter_segments(all_segments[:1])
+
+    # Schema should include all data columns
+    schema = sort_schema(pa.schema(view.schema()))
+    assert str(schema) == snapshot()
+
+    df = view.reader(index="time_1")
+    schema = sort_schema(pa.schema(df.schema()))
     assert str(schema) == snapshot()
 
 

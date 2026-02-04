@@ -85,6 +85,205 @@
   
   '''
 # ---
+# name: test_dataset_view_filter_contents_empty_list
+  '''
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun.controls.RowId:
+      b'ARROW:extension:metadata': b'{"namespace":"row"}'
+      b'ARROW:extension:name': b'rerun.datatypes.TUID'
+      b'rerun:kind': b'control'
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
+# name: test_dataset_view_filter_contents_empty_list.1
+  '''
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun_segment_id:
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
+# name: test_dataset_view_filter_contents_nonexistent_path
+  '''
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun.controls.RowId:
+      b'ARROW:extension:metadata': b'{"namespace":"row"}'
+      b'ARROW:extension:name': b'rerun.datatypes.TUID'
+      b'rerun:kind': b'control'
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
+# name: test_dataset_view_filter_contents_nonexistent_path.1
+  '''
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun_segment_id:
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
+# name: test_dataset_view_no_filter_contents
+  '''
+  /obj1:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj1'
+      b'rerun:kind': b'data'
+  /obj2:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj2'
+      b'rerun:kind': b'data'
+  /obj3:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj3'
+      b'rerun:kind': b'data'
+  /text1:TextDocument:text:
+      b'rerun:archetype': b'rerun.archetypes.TextDocument'
+      b'rerun:component': b'TextDocument:text'
+      b'rerun:component_type': b'rerun.components.Text'
+      b'rerun:entity_path': b'/text1'
+      b'rerun:is_static': b'true'
+      b'rerun:kind': b'data'
+  /text2:TextDocument:text:
+      b'rerun:archetype': b'rerun.archetypes.TextDocument'
+      b'rerun:component': b'TextDocument:text'
+      b'rerun:component_type': b'rerun.components.Text'
+      b'rerun:entity_path': b'/text2'
+      b'rerun:is_static': b'true'
+      b'rerun:kind': b'data'
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun.controls.RowId:
+      b'ARROW:extension:metadata': b'{"namespace":"row"}'
+      b'ARROW:extension:name': b'rerun.datatypes.TUID'
+      b'rerun:kind': b'control'
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
+# name: test_dataset_view_no_filter_contents.1
+  '''
+  /obj1:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj1'
+      b'rerun:kind': b'data'
+  /obj2:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj2'
+      b'rerun:kind': b'data'
+  /obj3:Points3D:positions:
+      b'rerun:archetype': b'rerun.archetypes.Points3D'
+      b'rerun:component': b'Points3D:positions'
+      b'rerun:component_type': b'rerun.components.Position3D'
+      b'rerun:entity_path': b'/obj3'
+      b'rerun:kind': b'data'
+  /text1:TextDocument:text:
+      b'rerun:archetype': b'rerun.archetypes.TextDocument'
+      b'rerun:component': b'TextDocument:text'
+      b'rerun:component_type': b'rerun.components.Text'
+      b'rerun:entity_path': b'/text1'
+      b'rerun:is_static': b'true'
+      b'rerun:kind': b'data'
+  /text2:TextDocument:text:
+      b'rerun:archetype': b'rerun.archetypes.TextDocument'
+      b'rerun:component': b'TextDocument:text'
+      b'rerun:component_type': b'rerun.components.Text'
+      b'rerun:entity_path': b'/text2'
+      b'rerun:is_static': b'true'
+      b'rerun:kind': b'data'
+  log_tick:
+      b'rerun:index_name': b'log_tick'
+      b'rerun:kind': b'index'
+  log_time:
+      b'rerun:index_name': b'log_time'
+      b'rerun:kind': b'index'
+  rerun_segment_id:
+  time_1:
+      b'rerun:index_name': b'time_1'
+      b'rerun:kind': b'index'
+  time_2:
+      b'rerun:index_name': b'time_2'
+      b'rerun:kind': b'index'
+  time_3:
+      b'rerun:index_name': b'time_3'
+      b'rerun:kind': b'index'
+  
+  '''
+# ---
 # name: test_dataset_view_reader
   '''
   ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
