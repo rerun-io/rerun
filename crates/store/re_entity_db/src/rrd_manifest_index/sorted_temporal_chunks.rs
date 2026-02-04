@@ -226,10 +226,10 @@ impl SortedTemporalChunks {
     /// Iterate over all component chunk lists on a timeline.
     pub fn iter_all_component_chunks_on_timeline(
         &self,
-        timeline: &TimelineName,
+        timeline: TimelineName,
     ) -> impl Iterator<Item = &[ChunkCountInfo]> {
         self.per_timeline
-            .get(timeline)
+            .get(&timeline)
             .into_iter()
             .flat_map(|per_entity| {
                 per_entity
@@ -262,7 +262,7 @@ mod tests {
         assert!(cache.get(&timeline, &entity).is_none());
         assert_eq!(
             cache
-                .iter_all_component_chunks_on_timeline(&timeline)
+                .iter_all_component_chunks_on_timeline(timeline)
                 .count(),
             0
         );
