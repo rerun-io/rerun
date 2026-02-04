@@ -6095,18 +6095,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mcap_protobuf"
-version = "0.30.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "arrow",
- "clap",
- "re_arrow_combinators",
- "re_log_types",
- "rerun",
-]
-
-[[package]]
 name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8671,6 +8659,7 @@ dependencies = [
  "parking_lot",
  "parquet",
  "rayon",
+ "re_arrow_combinators",
  "re_arrow_util",
  "re_build_info",
  "re_chunk",

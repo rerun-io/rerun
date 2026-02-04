@@ -1,4 +1,4 @@
-//! Rerun dataloader for MCAP files.
+//! MCAP file loader implementation.
 
 use std::io::Cursor;
 use std::path::Path;
@@ -290,7 +290,7 @@ fn send_chunk_to_channel(tx: &Sender<LoadedData>, store_id: &StoreId, chunk: re_
     }
 }
 
-pub fn store_info(store_id: StoreId) -> SetStoreInfo {
+fn store_info(store_id: StoreId) -> SetStoreInfo {
     SetStoreInfo {
         row_id: *RowId::new(),
         info: StoreInfo::new(

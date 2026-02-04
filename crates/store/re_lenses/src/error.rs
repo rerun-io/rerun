@@ -31,14 +31,14 @@ pub enum LensError {
     ComponentOperationFailed {
         component: ComponentIdentifier,
         #[source]
-        source: OpError,
+        source: Box<OpError>, // Box because of size.
     },
 
     #[error("Failed to apply operations to timeline '{timeline_name}'")]
     TimeOperationFailed {
         timeline_name: TimelineName,
         #[source]
-        source: OpError,
+        source: Box<OpError>, // Box because of size.
     },
 
     #[error(
