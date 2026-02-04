@@ -93,7 +93,7 @@ Use [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_fu
 Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save).
 
 
-### `stdout`
+### Standard Input/Output (`stdout`)
 
 Streams all logging data to standard output, which can then be loaded by the Rerun Viewer by streaming it from standard input.
 
