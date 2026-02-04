@@ -9,9 +9,7 @@ from pathlib import Path
 import os
 import tempfile
 
-
 import rerun as rr
-
 
 RRD_DIR = Path(tempfile.mkdtemp())
 atexit.register(lambda: shutil.rmtree(RRD_DIR) if os.path.exists(RRD_DIR) else None)
@@ -69,7 +67,7 @@ with rr.server.Server(datasets={"dataset": rrd_paths}) as server:
     # endregion: filter
 
     # region: query
-    df = dataset.filter_contents("__properties/*").reader(index=None)
+    df = dataset.filter_contents("__properties/**").reader(index=None)
     df = df.sort("property:RecordingInfo:name").select(
         "rerun_segment_id", "property:RecordingInfo:name", "property:info:index"
     )
