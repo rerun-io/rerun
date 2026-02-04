@@ -7,6 +7,8 @@ use re_data_ui::item_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_sdk_types::View as _;
+use re_sdk_types::blueprint::views::TimeSeriesView;
 use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
@@ -14,7 +16,7 @@ use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizerType,
     SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ViewStates, ViewSystemIdentifier, ViewerContext, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -506,11 +508,116 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 });
 
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
+
+            view_visualizers_section_ui(ctx, ui, view);
             view_components_defaults_section_ui(&view_ctx, ui, view);
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
     }
+}
+
+/// Shows the list of visualizers used in this view.
+fn view_visualizers_section_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    view: &re_viewport_blueprint::ViewBlueprint,
+) {
+    re_tracing::profile_function!();
+
+    // Only show visualizers section for time series views
+    if view.class_identifier() != TimeSeriesView::identifier() {
+        return;
+    }
+
+    let query_result = ctx.lookup_query_result(view.id);
+
+    // Collect all visualizer instructions with their entity paths
+    let mut visualizers: Vec<(EntityPath, ViewSystemIdentifier)> = Vec::new();
+
+    #[expect(clippy::iter_over_hash_type)] // we'll sort by entity path later
+    for (instruction_id, handle) in &query_result.tree.data_results_by_visualizer_instruction {
+        if let Some(node) = query_result.tree.data_results.get(*handle)
+            && let Some(instruction) = node
+                .data_result
+                .visualizer_instructions
+                .iter()
+                .find(|i| i.id == *instruction_id)
+        {
+            visualizers.push((
+                node.data_result.entity_path.clone(),
+                instruction.visualizer_type,
+            ));
+        }
+    }
+
+    // Sort by entity path for consistent display
+    visualizers.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let markdown = "# Visualizers
+
+This section lists all active visualizers in this view. Each visualizer is displayed with its \
+type and the entity path it visualizes.";
+
+    ui.section_collapsing_header("Visualizers")
+        .with_help_markdown(markdown)
+        .show(ui, |ui| {
+            for (entity_path, visualizer_type) in &visualizers {
+                // Get the entity name (last segment of the path)
+                let entity_name = entity_path
+                    .last()
+                    .map(|part| part.ui_string())
+                    .unwrap_or_else(|| "/".to_owned());
+
+                // Get the full path without the leading slash for display
+                let full_path = entity_path
+                    .to_string()
+                    .strip_prefix('/')
+                    .map(|s| s.to_owned())
+                    .unwrap_or_else(|| entity_path.to_string());
+
+                // Create a rounded pill with toned-down background
+                let response = egui::Frame::new()
+                    .fill(ui.visuals().faint_bg_color)
+                    .corner_radius(6.0)
+                    .inner_margin(egui::Margin::symmetric(8, 4))
+                    .show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        ui.vertical(|ui| {
+                            // Visualizer name
+                            ui.label(
+                                egui::RichText::new(&entity_name)
+                                    .color(ui.tokens().visualizer_list_title_text_color),
+                            );
+                            // Entity path
+                            ui.label(
+                                egui::RichText::new(&full_path)
+                                    .size(11.0)
+                                    .color(ui.tokens().visualizer_list_path_text_color),
+                            );
+                        });
+                    });
+
+                // Make the pill clickable to select the entity
+                let response = ui
+                    .interact(
+                        response.response.rect,
+                        ui.id().with((entity_path, visualizer_type)),
+                        egui::Sense::click(),
+                    )
+                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+                if response.clicked() {
+                    let instance_path = InstancePath::from(entity_path.clone());
+                    ctx.command_sender()
+                        .send_system(SystemCommand::set_selection(Item::DataResult(
+                            view.id,
+                            instance_path,
+                        )));
+                }
+
+                ui.add_space(4.0);
+            }
+        });
 }
 
 /// Shows the active coordinate frame if it isn't the fallback frame.

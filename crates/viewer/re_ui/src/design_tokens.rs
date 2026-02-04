@@ -221,6 +221,10 @@ pub struct DesignTokens {
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
 
+    // Visualizer list colors (selection panel)
+    pub visualizer_list_title_text_color: Color32,
+    pub visualizer_list_path_text_color: Color32,
+
     pub code_index_color: Color32,
     pub code_string_color: Color32,
     pub code_null_color: Color32,
@@ -385,6 +389,9 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
+
+            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
+            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
 
             code_index_color: get_color("code_index_color"),
             code_string_color: get_color("code_string_color"),

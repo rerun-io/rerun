@@ -291,7 +291,12 @@
     "list_item_collapse_default": {
       "color": "{Gray.250}"
     },
-
+    "visualizer_list_title_text_color": {
+      "color": "{Gray.0}"
+    },
+    "visualizer_list_path_text_color": {
+      "color": "{Gray.500}"
+    },
     "code_index_color": {
       "color": "#894783"
     },

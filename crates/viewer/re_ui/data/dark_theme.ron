@@ -293,6 +293,13 @@
       "color": "{Gray.700}"
     },
 
+    "visualizer_list_title_text_color": {
+      "color": "{Gray.1000}"
+    },
+    "visualizer_list_path_text_color": {
+      "color": "{Gray.550}"
+    },
+
     //array indices
     "code_index_color": {
       "color": "#CC9CC6"
