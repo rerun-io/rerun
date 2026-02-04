@@ -4,9 +4,10 @@ use std::ops::RangeInclusive;
 use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
 use re_byte_size::SizeBytes as _;
-use re_chunk::{ChunkId, TimeInt, Timeline};
+use re_chunk::{ChunkId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_log_encoding::RrdManifest;
+use re_log_types::AbsoluteTimeRange;
 
 use crate::{
     chunk_promise::{BatchInfo, ChunkPromise, ChunkPromiseBatch, ChunkPromises},
@@ -47,6 +48,66 @@ pub struct ChunkPrefetchOptions {
 
     /// Maximum number of bytes in transit at once.
     pub max_uncompressed_bytes_in_transit: u64,
+}
+
+/// Special chunks for which we need the entire history, not just the latest-at value.
+///
+/// Right now, this is only used for transform-related chunks.
+#[derive(Clone, Default)]
+struct HighPrioChunks {
+    static_chunks: Vec<ChunkId>,
+
+    /// Sorted by time range min.
+    temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>>,
+}
+
+impl HighPrioChunks {
+    /// All static chunks, plus all temporal chunks on this timeline before the given time.
+    fn all_before(
+        &self,
+        timeline: TimelineName,
+        time: TimeInt,
+    ) -> impl Iterator<Item = ChunkId> + '_ {
+        self.static_chunks.iter().copied().chain(
+            self.temporal_chunks
+                .get(&timeline)
+                .into_iter()
+                .flat_map(|chunks| chunks.iter())
+                .filter(move |chunk| chunk.time_range.min <= time)
+                .map(|chunk| chunk.chunk_id),
+        )
+    }
+}
+
+impl re_byte_size::SizeBytes for HighPrioChunks {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            static_chunks,
+            temporal_chunks,
+        } = self;
+
+        static_chunks.heap_size_bytes() + temporal_chunks.heap_size_bytes()
+    }
+}
+
+#[derive(Clone)]
+struct HighPrioChunk {
+    chunk_id: ChunkId,
+    time_range: AbsoluteTimeRange,
+}
+
+impl re_byte_size::SizeBytes for HighPrioChunk {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            chunk_id: _,
+            time_range: _,
+        } = self;
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 #[derive(Default)]
@@ -202,7 +263,7 @@ pub struct ChunkPrioritizer {
     static_chunk_ids: HashSet<ChunkId>,
 
     /// Chunks that should be downloaded before any else.
-    high_priority_chunks: Vec<ChunkId>,
+    high_priority_chunks: HighPrioChunks,
 
     /// Maps a [`ChunkId`] to a specific row in the [`RrdManifest::data`] record batch.
     manifest_row_from_chunk_id: HashMap<ChunkId, usize>,
@@ -253,31 +314,43 @@ impl ChunkPrioritizer {
         native_static_map: &re_log_encoding::RrdManifestStaticMap,
         native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
         prefix: &str,
-    ) -> Vec<ChunkId> {
-        let mut chunk_ids = Vec::new();
+    ) -> HighPrioChunks {
+        let mut static_chunks: HashSet<ChunkId> = Default::default();
+        let mut temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>> = Default::default();
 
         for components in native_static_map.values() {
             for (component, chunk_id) in components {
                 if component.as_str().starts_with(prefix) {
-                    chunk_ids.push(*chunk_id);
+                    static_chunks.insert(*chunk_id);
                 }
             }
         }
 
         for timelines in native_temporal_map.values() {
-            for components in timelines.values() {
+            for (timeline, components) in timelines {
                 for (component, chunks) in components {
                     if component.as_str().starts_with(prefix) {
-                        chunk_ids.extend(chunks.keys().copied());
+                        for (chunk_id, entry) in chunks {
+                            temporal_chunks.entry(*timeline.name()).or_default().push(
+                                HighPrioChunk {
+                                    chunk_id: *chunk_id,
+                                    time_range: entry.time_range,
+                                },
+                            );
+                        }
                     }
                 }
             }
         }
 
-        chunk_ids.sort();
-        chunk_ids.dedup();
+        for chunks in temporal_chunks.values_mut() {
+            chunks.sort_by_key(|chunk| chunk.time_range.min);
+        }
 
-        chunk_ids
+        HighPrioChunks {
+            static_chunks: static_chunks.into_iter().collect(),
+            temporal_chunks,
+        }
     }
 
     fn update_high_priority_chunks(
@@ -297,8 +370,6 @@ impl ChunkPrioritizer {
             native_temporal_map,
             "Transform3D:", // Hard-coding this here is VERY hacky, but I want to ship MVP
         );
-
-        re_log::debug!("Found {} transform chunks", self.high_priority_chunks.len());
     }
 
     fn update_manifest_row_from_chunk_id(&mut self, manifest: &RrdManifest) {
@@ -361,10 +432,11 @@ impl ChunkPrioritizer {
     /// See [`Self::prioritize_and_prefetch`] for more details.
     fn chunks_in_priority<'a>(
         static_chunk_ids: &'a HashSet<ChunkId>,
-        high_priority_chunks: &'a [ChunkId],
+        high_priority_chunks: &'a HighPrioChunks,
         store: &'a ChunkStore,
         used_and_missing: QueriedChunkIdTracker,
-        start_time: TimeInt,
+        timeline: TimelineName,
+        time_cursor: TimeInt,
         chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
     ) -> impl Iterator<Item = ChunkId> + use<'a> {
         let QueriedChunkIdTracker {
@@ -385,20 +457,22 @@ impl ChunkPrioritizer {
 
         let chunks_ids_after_time_cursor = move || {
             chunks
-                .query(start_time..=TimeInt::MAX)
+                .query(time_cursor..=TimeInt::MAX)
                 .map(|(_, chunk_id)| *chunk_id)
         };
         let chunks_ids_before_time_cursor = move || {
             chunks
-                .query(TimeInt::MIN..=start_time.saturating_sub(1))
+                .query(TimeInt::MIN..=time_cursor.saturating_sub(1))
                 .map(|(_, chunk_id)| *chunk_id)
         };
 
+        let high_prio_chunks_before_time_cursor =
+            high_priority_chunks.all_before(timeline, time_cursor);
         let chunk_ids_in_priority_order = itertools::chain!(
             used,
             missing_roots,
             static_chunk_ids.iter().copied(),
-            high_priority_chunks.iter().copied(),
+            high_prio_chunks_before_time_cursor,
             std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
         );
@@ -453,6 +527,7 @@ impl ChunkPrioritizer {
             &self.high_priority_chunks,
             store,
             used_and_missing,
+            *options.timeline.name(),
             options.start_time,
             chunks,
         );
