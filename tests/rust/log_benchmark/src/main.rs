@@ -29,6 +29,7 @@
 use clap::Parser as _;
 
 use crate::image::ImageCommand;
+use crate::scalars::ScalarsCommand;
 use crate::transform3d::Transform3DCommand;
 
 mod boxes3d_batch;
@@ -55,7 +56,7 @@ pub fn lcg(lcg_state: &mut i64) -> i64 {
 #[derive(Debug, Clone, clap::Subcommand)]
 enum Benchmark {
     #[command(name = "scalars")]
-    Scalars,
+    Scalars(ScalarsCommand),
 
     #[command(name = "points3d_large_batch")]
     Points3DLargeBatch,
@@ -127,7 +128,7 @@ fn main() -> anyhow::Result<()> {
     println!("Running benchmark: {benchmark:?}");
 
     match benchmark {
-        Benchmark::Scalars => scalars::run(&rec)?,
+        Benchmark::Scalars(cmd) => cmd.run(&rec)?,
         Benchmark::Points3DLargeBatch => points3d_large_batch::run(&rec)?,
         Benchmark::Points3DManyIndividual => points3d_many_individual::run(&rec)?,
         Benchmark::Boxes3D => boxes3d_batch::run(&rec)?,

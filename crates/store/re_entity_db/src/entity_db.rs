@@ -662,7 +662,10 @@ impl EntityDb {
         &mut self,
         record_batch: &arrow::array::RecordBatch,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(format!(
+            "{} rows",
+            re_format::format_uint(record_batch.num_rows())
+        ));
 
         self.last_modified_at = web_time::Instant::now();
         let chunk_batch =
