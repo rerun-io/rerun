@@ -3,12 +3,10 @@
 use itertools::Itertools as _;
 
 use re_chunk_store::RangeQuery;
-use re_chunk_store::external::re_chunk::CastToPrimitive;
 use re_log_types::external::arrow::array::BooleanArray;
 use re_log_types::external::arrow::buffer::BooleanBuffer;
 use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::components::SeriesVisible;
-use re_sdk_types::external::arrow;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{
     Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
@@ -29,10 +27,8 @@ pub fn determine_num_series(all_scalar_chunks: &re_view::ChunksWithComponent<'_>
         .iter()
         .find_map(|chunk| {
             chunk
-                // TODO(grtlr): The comment above is even more important when we do casting (allocations) here.
-                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
-                .iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
-                .find_map(|values| (!values.is_empty()).then_some(values.len()))
+                .iter_slices::<f64>()
+                .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         })
         .unwrap_or(1)
 }
@@ -114,10 +110,7 @@ pub fn collect_scalars(
         let points = &mut *points_per_series[0];
         all_scalar_chunks
             .iter()
-            .flat_map(|chunk| {
-                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
-                chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
-            })
+            .flat_map(|chunk| chunk.iter_slices::<f64>())
             .enumerate()
             .for_each(|(i, values)| {
                 if let Some(value) = values.first() {
@@ -129,17 +122,13 @@ pub fn collect_scalars(
     } else {
         all_scalar_chunks
             .iter()
-            .flat_map(|chunk| {
-                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
-                chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
-            })
+            .flat_map(|chunk| chunk.iter_slices::<f64>())
             .enumerate()
             .for_each(|(i, values)| {
-                let values_slice = values.as_ref();
-                for (points, value) in points_per_series.iter_mut().zip(values_slice) {
+                for (points, value) in points_per_series.iter_mut().zip(values) {
                     points[i].value = *value;
                 }
-                for points in points_per_series.iter_mut().skip(values_slice.len()) {
+                for points in points_per_series.iter_mut().skip(values.len()) {
                     points[i].attrs.kind = PlotSeriesKind::Clear;
                 }
             });

@@ -16,8 +16,25 @@ use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_span::Span;
 use re_types_core::{ArrowString, Component, ComponentIdentifier};
 
-use crate::cast::error_on_downcast_failure;
 use crate::{Chunk, RowId, TimeColumn};
+
+// ---
+
+fn error_on_downcast_failure(
+    component: ComponentIdentifier,
+    target: &str,
+    actual: &arrow::datatypes::DataType,
+) {
+    if cfg!(debug_assertions) {
+        panic!(
+            "[DEBUG ASSERT] downcast to {target} failed for {component}. Array data type was {actual:?}. Data discarded"
+        );
+    } else {
+        re_log::error_once!(
+            "downcast to {target} failed for {component}. Array data type was {actual:?}. Data discarded"
+        );
+    }
+}
 
 // ---
 

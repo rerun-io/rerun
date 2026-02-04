@@ -16,7 +16,7 @@ mod query;
 mod view_property_ui;
 mod visualizer_query;
 
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
@@ -38,6 +38,7 @@ pub use outlines::{
 pub use query::{
     DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
+use re_log_types::external::arrow;
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
     view_property_ui_with_redirect,
@@ -59,6 +60,14 @@ pub enum ComponentMappingError {
     #[error("Failed to select data: {0}")]
     SelectorExecutionFailed(re_arrow_combinators::SelectorError),
 
+    /// Failed to cast component data to target datatype.
+    #[error("Failed to cast from {source_datatype} to {target_datatype}: {err}")]
+    CastFailed {
+        source_datatype: arrow::datatypes::DataType,
+        target_datatype: arrow::datatypes::DataType,
+        err: Arc<arrow::error::ArrowError>,
+    },
+
     /// Component was not found.
     #[error("Component '{0}' not found")]
     ComponentNotFound(re_types_core::ComponentIdentifier),
@@ -69,6 +78,13 @@ impl ComponentMappingError {
         match self {
             Self::SelectorParseFailed(_) => "Failed to parse selector.".to_owned(),
             Self::SelectorExecutionFailed(_) => "Failed to select data.".to_owned(),
+            Self::CastFailed {
+                source_datatype,
+                target_datatype,
+                ..
+            } => {
+                format!("Failed to cast from {source_datatype} to {target_datatype}.")
+            }
             Self::ComponentNotFound(component) => {
                 format!("Component '{component}' not found.")
             }
@@ -80,6 +96,7 @@ impl ComponentMappingError {
             Self::SelectorParseFailed(err) | Self::SelectorExecutionFailed(err) => {
                 Some(err.to_string())
             }
+            Self::CastFailed { err, .. } => Some(err.to_string()),
             Self::ComponentNotFound(_) => None,
         }
     }
