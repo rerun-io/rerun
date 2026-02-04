@@ -255,7 +255,9 @@ impl Ranges {
 
 #[derive(Clone)]
 struct ResolvedRange {
-    range: AbsoluteTimeRange,
+    /// The end time of the range. The start time is defined by the
+    /// end time of the prior range in the list or `MergedRanges.start_time`.
+    end_time: TimeInt,
 
     /// The number of unloaded chunks in this range, when this reaches 0
     /// we know the chunk is fully loaded.
@@ -265,7 +267,7 @@ struct ResolvedRange {
 impl re_byte_size::SizeBytes for ResolvedRange {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            range: _,
+            end_time: _,
             unloaded_count: _,
         } = self;
 
@@ -280,13 +282,15 @@ impl re_byte_size::SizeBytes for ResolvedRange {
 /// Stores time ranges that keep track if they're loaded or unloaded.
 #[derive(Clone)]
 pub struct MergedRanges {
+    start_time: TimeInt,
     ranges: Vec<ResolvedRange>,
-    ranges_from_chunk: ahash::HashMap<ChunkId, Vec<usize>>,
+    ranges_from_chunk: ahash::HashMap<ChunkId, std::ops::RangeInclusive<usize>>,
 }
 
 impl re_byte_size::SizeBytes for MergedRanges {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
+            start_time: _,
             ranges,
             ranges_from_chunk,
         } = self;
@@ -298,25 +302,38 @@ impl re_byte_size::SizeBytes for MergedRanges {
 impl MergedRanges {
     pub fn new(ranges: Vec<TimeRange>) -> Self {
         re_tracing::profile_function!();
-        let mut ranges_from_chunk = ahash::HashMap::<ChunkId, Vec<_>>::default();
+        let mut ranges_from_chunk =
+            ahash::HashMap::<ChunkId, std::ops::RangeInclusive<usize>>::default();
 
-        let new_ranges = ranges
+        let mut start_time = TimeInt::MAX;
+        let mut new_ranges = ranges
             .into_iter()
             .enumerate()
             .map(|(idx, range)| {
-                let unloaded_count = range.depends_on.len();
                 for chunk in range.depends_on {
-                    ranges_from_chunk.entry(chunk).or_default().push(idx);
+                    ranges_from_chunk
+                        .entry(chunk)
+                        .and_modify(|range| {
+                            *range = *range.start()..=idx;
+                        })
+                        .or_insert(idx..=idx);
                 }
+                start_time = start_time.min(range.range.min);
                 ResolvedRange {
-                    range: range.range,
-                    unloaded_count,
+                    end_time: range.range.max,
+                    // We assign this later
+                    unloaded_count: 0,
                 }
             })
-            .collect();
+            .collect::<Vec<_>>();
+
+        for idx in ranges_from_chunk.values().flat_map(|r| r.clone()) {
+            new_ranges[idx].unloaded_count += 1;
+        }
 
         Self {
             ranges: new_ranges,
+            start_time,
             ranges_from_chunk,
         }
     }
@@ -327,16 +344,19 @@ impl MergedRanges {
         let mut loaded_ranges = Vec::new();
         let mut in_progress: Option<AbsoluteTimeRange> = None;
 
+        let mut last_end = self.start_time;
         for range in &self.ranges {
             if range.unloaded_count == 0 {
                 if let Some(in_progress) = &mut in_progress {
-                    in_progress.max = range.range.max;
+                    in_progress.max = range.end_time;
                 } else {
-                    in_progress = Some(range.range);
+                    in_progress = Some(AbsoluteTimeRange::new(last_end, range.end_time));
                 }
             } else if let Some(range) = in_progress.take() {
                 loaded_ranges.push(range);
             }
+
+            last_end = range.end_time;
         }
 
         if let Some(range) = in_progress.take() {
@@ -347,24 +367,24 @@ impl MergedRanges {
     }
 
     pub fn on_chunk_loaded(&mut self, chunk: &ChunkId) {
-        let Some(ranges) = self.ranges_from_chunk.get(chunk) else {
+        let Some(range) = self.ranges_from_chunk.get(chunk) else {
             return;
         };
 
-        for range in ranges {
-            let resolved_range = &mut self.ranges[*range];
+        for idx in range.clone() {
+            let resolved_range = &mut self.ranges[idx];
 
             resolved_range.unloaded_count = resolved_range.unloaded_count.saturating_sub(1);
         }
     }
 
     pub fn on_chunk_unloaded(&mut self, chunk: &ChunkId) {
-        let Some(ranges) = self.ranges_from_chunk.get(chunk) else {
+        let Some(range) = self.ranges_from_chunk.get(chunk) else {
             return;
         };
 
-        for range in ranges {
-            self.ranges[*range].unloaded_count += 1;
+        for idx in range.clone() {
+            self.ranges[idx].unloaded_count += 1;
         }
     }
 }

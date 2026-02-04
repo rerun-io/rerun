@@ -1109,24 +1109,12 @@ fn cache_with_unordered_chunks() {
 
 /// Test for out-of-order chunk arrival that triggers a cache reset, followed by compaction.
 ///
-/// Scenario:
-/// - chunk0: 2 rows at times 1.0 and 1.5
-/// - chunk1: 1 row at time 0
-/// - chunk2: 1 row at time 3
-///
-/// Arrival order:
-/// 1. chunk0: Sample { idx: 0, time: 1 }, Sample { idx: 1, time: 1.5 }
-/// 2. chunk1: Time 0 is before previous max time (1.5), triggers `OutOfOrderSamples` → cache reset
-/// 3. After reset and re-entry: Sample { idx: 0, time: 0 }, Sample { idx: 1, time: 1 }, Sample { idx: 2, time: 1.5 }
-/// 4. chunk2: Compacts with chunk1, adding Sample { idx: 3, time: 3 }
-///
-/// The bug this tests for: after reset and compaction, the chunk range could have
-/// incorrect length causing samples to not be iterated over.
+/// This tests for the scenario where a `ChunkSampleRange` has
+/// less samples than the amount of samples it spans.
 #[test]
 fn cache_out_of_order_arrival_with_compaction() {
     let mut cache = VideoStreamCache::default();
 
-    // Enable compaction with max_rows = 2.
     let mut store = EntityDb::with_store_config(
         StoreId::recording("test", "test"),
         true,
@@ -1140,10 +1128,10 @@ fn cache_out_of_order_arrival_with_compaction() {
 
     let codec_chunk = Arc::new(codec_chunk());
 
-    // Create chunk0 with 2 rows (won't compact by itself).
+    // Create chunk0 with 4 rows so it won't compact.
     let chunk0 = Arc::new(video_chunk(0.0, 2.0, 1, 4)); // times: 0.0, 2.0, 4.0, 6.0
 
-    // Create chunk1 and chunk2 with 1 row each.
+    // Create chunk1 and chunk2 with less than 4 rows combined so they compact.
     let chunk1 = Arc::new(video_chunk(5.0, 2.0, 1, 2)); // times: 5.0, 7.0
     let chunk2 = Arc::new(video_chunk(8.0, 0.0, 1, 1)); // time: 8.0
 
@@ -1181,8 +1169,7 @@ fn cache_out_of_order_arrival_with_compaction() {
     player.play_store(0.0..8.0, 1.0, &store).unwrap();
     player.expect_decoded_samples(0..4);
 
-    // Load chunk1 (time: 0) - this should trigger a reset because time 0 < time 1.
-    // The cache entry gets removed due to OutOfOrderSamples.
+    // This should trigger a reset because time 5 < time 6.
     load_chunks(&mut store, &mut cache, &[chunk1]);
 
     assert!(
@@ -1207,7 +1194,7 @@ fn cache_out_of_order_arrival_with_compaction() {
 
                 eq
             }),
-        "No compaction should've occurred"
+        "No compaction should've occurred yet"
     );
 
     assert!(
@@ -1220,16 +1207,13 @@ fn cache_out_of_order_arrival_with_compaction() {
         "The video stream cache should've cleared this entry"
     );
 
-    // Verify the cache entry was reset by checking we get a different Arc.
     let video_stream_after = playable_stream(&mut cache, &store);
-    // Create player from the new cache entry.
     let mut player = TestVideoPlayer::from_stream(video_stream_after);
 
-    // Verify we can play the first three samples after reset (chunk1 + chunk0).
     player.play_store(0.0..8.0, 1.0, &store).unwrap();
     player.expect_decoded_samples(0..6);
 
-    // Load chunk2 (time: 3) - this should compact with chunk1.
+    // This should compact with chunk1.
     load_chunks(&mut store, &mut cache, &[chunk2]);
 
     assert!(
@@ -1258,9 +1242,6 @@ fn cache_out_of_order_arrival_with_compaction() {
         ),
     );
 
-    // Play all samples including the newly added one.
-    // The bug would cause the sample from chunk2 to not be iterated over
-    // because the chunk range had incorrect length after reset + compaction.
     player.play_store(0.0..9.0, 1.0, &store).unwrap();
 
     player.expect_decoded_samples(0..7);

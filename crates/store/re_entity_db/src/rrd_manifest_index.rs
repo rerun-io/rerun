@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
@@ -126,7 +126,6 @@ pub struct RrdManifestIndex {
     timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
 
     pub entity_tree: crate::EntityTree,
-    entity_has_temporal_data_on_timeline: IntMap<re_chunk::EntityPath, IntSet<TimelineName>>,
     entity_has_static_data: IntSet<re_chunk::EntityPath>,
 
     native_static_map: re_log_encoding::RrdManifestStaticMap,
@@ -150,7 +149,6 @@ impl RrdManifestIndex {
 
         self.update_timeline_stats();
         self.update_entity_tree();
-        self.update_entity_temporal_data();
         self.update_entity_static_data();
         self.chunk_prioritizer.on_rrd_manifest(
             &manifest,
@@ -243,15 +241,6 @@ impl RrdManifestIndex {
         }
     }
 
-    fn update_entity_temporal_data(&mut self) {
-        for (entity, timelines) in &self.native_temporal_map {
-            self.entity_has_temporal_data_on_timeline
-                .entry(entity.clone())
-                .or_default()
-                .extend(timelines.keys().map(|t| *t.name()));
-        }
-    }
-
     fn update_entity_static_data(&mut self) {
         for entity in self.native_static_map.keys() {
             self.entity_has_static_data.insert(entity.clone());
@@ -297,9 +286,9 @@ impl RrdManifestIndex {
         entity: &re_chunk::EntityPath,
         timeline: &TimelineName,
     ) -> bool {
-        self.entity_has_temporal_data_on_timeline
-            .get(entity)
-            .is_some_and(|timelines| timelines.contains(timeline))
+        self.sorted_chunks
+            .get(timeline, entity)
+            .is_some_and(|e| e.has_data())
     }
 
     pub fn entity_has_static_data(&self, entity: &re_chunk::EntityPath) -> bool {
@@ -528,11 +517,10 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             entity_has_static_data,
-            entity_has_temporal_data_on_timeline,
             entity_tree,
             manifest,
             sorted_chunks,
-            loaded_ranges: chunk_depend_ranges,
+            loaded_ranges,
             native_static_map,
             native_temporal_map,
             remote_chunks,
@@ -542,11 +530,10 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
         } = self;
 
         entity_has_static_data.heap_size_bytes()
-            + entity_has_temporal_data_on_timeline.heap_size_bytes()
             + entity_tree.heap_size_bytes()
             + manifest.heap_size_bytes()
             + sorted_chunks.heap_size_bytes()
-            + chunk_depend_ranges.heap_size_bytes()
+            + loaded_ranges.heap_size_bytes()
             + native_static_map.heap_size_bytes()
             + native_temporal_map.heap_size_bytes()
             + remote_chunks.heap_size_bytes()
@@ -563,10 +550,9 @@ impl MemUsageTreeCapture for RrdManifestIndex {
 
         let Self {
             entity_has_static_data,
-            entity_has_temporal_data_on_timeline,
             entity_tree,
             sorted_chunks,
-            loaded_ranges: chunk_depend_ranges,
+            loaded_ranges,
             manifest,
             native_static_map,
             native_temporal_map,
@@ -582,16 +568,9 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             "entity_has_static_data",
             entity_has_static_data.total_size_bytes(),
         );
-        node.add(
-            "entity_has_temporal_data_on_timeline",
-            entity_has_temporal_data_on_timeline.total_size_bytes(),
-        );
         node.add("entity_tree", entity_tree.total_size_bytes());
         node.add("sorted_chunks", sorted_chunks.total_size_bytes());
-        node.add(
-            "chunk_depend_ranges",
-            chunk_depend_ranges.total_size_bytes(),
-        );
+        node.add("loaded_ranges", loaded_ranges.total_size_bytes());
         node.add("manifest", manifest.total_size_bytes());
         node.add("native_static_map", native_static_map.total_size_bytes());
         node.add(

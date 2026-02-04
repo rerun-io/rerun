@@ -97,13 +97,18 @@ impl SortedEntityTemporalChunks {
             .get(component)
             .map_or(&[], |v| v.as_slice())
     }
+
+    /// Does this specific entity have any data on the relevant timeline?
+    pub fn has_data(&self) -> bool {
+        !self.per_component.is_empty()
+    }
 }
 
 /// Pre-sorted temporal chunk cache organized by timeline and entity.
 ///
 /// This cache is rebuilt whenever the manifest is updated via [`Self::update`].
 #[derive(Default, Clone)]
-pub(super) struct SortedTemporalChunks {
+pub struct SortedTemporalChunks {
     per_timeline: BTreeMap<TimelineName, IntMap<re_chunk::EntityPath, SortedEntityTemporalChunks>>,
 }
 
