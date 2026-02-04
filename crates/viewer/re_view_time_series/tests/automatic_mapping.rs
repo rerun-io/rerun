@@ -5,7 +5,9 @@
 
 use std::sync::Arc;
 
-use re_log_types::external::arrow::array::{Float64Array, Int16Array, Int32Array, StructArray};
+use re_log_types::external::arrow::array::{
+    Array, Float64Array, Int16Array, Int32Array, StructArray, UInt32Array,
+};
 use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::components;
@@ -276,6 +278,49 @@ fn setup_store(test_context: &mut TestContext) {
                 [(timeline, i)],
                 &DynamicArchetype::new("custom")
                     .with_component_from_data("path_data", Arc::new(outer_struct)),
+            )
+        });
+    }
+
+    // Scenario 13: Entity with list of structs with mixed field types
+    // Structure: { a: [{ b: Uint32, c: Float64 }] }
+    // Expected: Should extract nested Float64 field using [] operator (.a[].c)
+    for i in 0..10 {
+        use re_log_types::external::arrow::array::ListArray;
+        use re_log_types::external::arrow::buffer::OffsetBuffer;
+
+        // Create struct array with b (Uint32) and c (Float64) fields
+        let inner_struct = StructArray::from(vec![
+            (
+                Arc::new(Field::new("b", DataType::UInt32, false)),
+                Arc::new(UInt32Array::from(vec![i as u32 * 18, i as u32 * 19])) as Arc<dyn Array>,
+            ),
+            (
+                Arc::new(Field::new("c", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![i as f64 * 20.0, i as f64 * 21.0]))
+                    as Arc<dyn Array>,
+            ),
+        ]);
+
+        // Wrap in a list array (each row contains a list of structs)
+        let list_field = Arc::new(Field::new_list_field(
+            DataType::Struct(inner_struct.fields().clone()),
+            false,
+        ));
+        let offsets = OffsetBuffer::new(vec![0, 2].into());
+        let struct_list = ListArray::new(list_field, offsets, Arc::new(inner_struct), None);
+
+        // Create outer struct containing the list
+        let outer_struct = StructArray::from(vec![(
+            Arc::new(Field::new("a", struct_list.data_type().clone(), false)),
+            Arc::new(struct_list) as Arc<dyn Array>,
+        )]);
+
+        test_context.log_entity("entity_list_of_structs", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component_from_data("data", Arc::new(outer_struct)),
             )
         });
     }
@@ -593,6 +638,33 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
                 );
             }
             _ => panic!("Expected SourceComponent mapping for path length preference"),
+        }
+    }
+
+    // Scenario 13: Entity with list of structs with mixed field types
+    // Structure: { a: [{ b: Uint32, c: Float64 }] }
+    // Expected: Should extract Float64 field using [] operator (.a[].c) over Uint32 field
+    {
+        let instruction = single_visualizer_for(data_result_tree, "entity_list_of_structs");
+        let mapping = scalar_mapping_for(instruction);
+
+        match mapping {
+            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } => {
+                assert_eq!(
+                    source_component.as_str(),
+                    "custom:data",
+                    "Should map to component containing list of structs"
+                );
+                assert_eq!(
+                    selector.as_str(),
+                    ".a[].c",
+                    "Expected selector `.a[].c` to access Float64 field (c) within list of structs, preferring Float64 over Uint32 (b)"
+                );
+            }
+            _ => panic!("Expected SourceComponent mapping for list of structs with nested fields"),
         }
     }
 }

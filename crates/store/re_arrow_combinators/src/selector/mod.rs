@@ -9,10 +9,7 @@ mod lexer;
 mod parser;
 mod runtime;
 
-use arrow::{
-    array::ListArray,
-    datatypes::{DataType, Fields},
-};
+use arrow::{array::ListArray, datatypes::DataType};
 use vec1::Vec1;
 
 use parser::{Expr, Segment};
@@ -97,38 +94,51 @@ pub fn extract_nested_fields<P>(
 where
     P: Fn(&DataType) -> bool,
 {
-    fn rec<P>(acc: &mut Vec<(Selector, DataType)>, curr: &[Segment], fields: &Fields, predicate: &P)
-    where
-        P: Fn(&DataType) -> bool,
-    {
-        // First pass: collect all matching fields at the current level (breadth-first)
-        for field in fields {
-            let mut path = curr.to_vec();
-            path.push(Segment::Field(field.name().clone()));
-
-            if predicate(field.data_type()) {
-                acc.push((
-                    Selector(Expr::Path(path.clone())),
-                    field.data_type().clone(),
-                ));
-            }
-        }
-
-        // Second pass: recurse into nested structs
-        for field in fields {
-            if let DataType::Struct(nested_fields) = field.data_type() {
-                let mut path = curr.to_vec();
-                path.push(Segment::Field(field.name().clone()));
-                rec(acc, &path, nested_fields, predicate);
-            }
-        }
-    }
-
     let DataType::Struct(fields) = datatype else {
         return None;
     };
 
     let mut result = Vec::new();
-    rec(&mut result, &[], fields, &predicate);
+    let mut queue = std::collections::VecDeque::new();
+
+    // Initialize queue with root fields
+    queue.push_back((Vec::new(), fields));
+
+    // Breadth-first traversal
+    while let Some((path, fields)) = queue.pop_front() {
+        for field in fields {
+            let mut field_path = path.clone();
+            field_path.push(Segment::Field(field.name().clone()));
+
+            match field.data_type() {
+                DataType::Struct(nested_fields) => {
+                    // Queue nested struct for later processing
+                    queue.push_back((field_path, nested_fields));
+                }
+                DataType::List(inner) => {
+                    // Add the Each segment to unwrap the list
+                    field_path.push(Segment::Each);
+
+                    match inner.data_type() {
+                        DataType::Struct(nested_fields) => {
+                            // Queue nested struct within list for later processing
+                            queue.push_back((field_path, nested_fields));
+                        }
+                        dt if predicate(dt) => {
+                            // Direct match on list inner type
+                            result.push((Selector(Expr::Path(field_path)), dt.clone()));
+                        }
+                        _ => {}
+                    }
+                }
+                dt if predicate(dt) => {
+                    // Direct match on field type
+                    result.push((Selector(Expr::Path(field_path)), dt.clone()));
+                }
+                _ => {}
+            }
+        }
+    }
+
     Vec1::try_from_vec(result).ok()
 }
