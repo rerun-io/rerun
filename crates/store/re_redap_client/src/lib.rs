@@ -241,11 +241,13 @@ impl ApiError {
     }
 
     #[expect(clippy::needless_pass_by_value)]
-    pub fn invalid_server(origin: re_uri::Origin) -> Self {
-        Self::new(
-            ApiErrorKind::InvalidServer,
-            format!("{origin} is not a valid Rerun server"),
-        )
+    pub fn invalid_server(origin: re_uri::Origin, hint: Option<&str>) -> Self {
+        let mut msg = format!("{origin} is not a valid Rerun server");
+        if let Some(hint) = hint {
+            msg.push_str(". ");
+            msg.push_str(hint);
+        }
+        Self::new(ApiErrorKind::InvalidServer, msg)
     }
 
     /// Helper method to downcast the source error to a `ClientCredentialsError` if possible.

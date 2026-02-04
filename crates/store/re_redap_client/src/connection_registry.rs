@@ -6,12 +6,26 @@ use std::sync::Arc;
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
+use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
 
 use crate::connection_client::GenericConnectionClient;
 use crate::grpc::{RedapClient, RedapClientInner};
 use crate::{ApiError, ApiResult, TonicStatusError};
+
+/// Returns a suggested host if the user likely forgot the "api." prefix.
+///
+/// This detects the common mistake of connecting to `xxx.cloud.rerun.io` instead of
+/// `api.xxx.cloud.rerun.io`.
+fn suggest_api_prefix(origin: &Origin) -> Option<String> {
+    let host = origin.format_host();
+    if !host.starts_with("api.") && host.ends_with(".cloud.rerun.io") {
+        Some(format!("api.{host}"))
+    } else {
+        None
+    }
+}
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.
@@ -331,13 +345,21 @@ impl ConnectionRegistryHandle {
             {
                 Ok(res) => res,
                 Err(err) => {
-                    return Err(ApiError::connection(format!(
-                        "failed to connect to server '{origin}': {err}"
-                    )));
+                    let mut msg = format!("failed to connect to server '{origin}': {err}");
+                    if let Some(suggested) = suggest_api_prefix(&origin) {
+                        msg.push_str(&format!(". Did you mean '{suggested}'?"));
+                    }
+                    return Err(ApiError::connection(msg));
                 }
             };
+
             if !res.ok {
-                return Err(ApiError::invalid_server(origin));
+                let hint = suggest_api_prefix(&origin).map(|suggested| {
+                    format!(
+                        "Did you mean '{suggested}'? Rerun Cloud endpoints require the 'api.' prefix"
+                    )
+                });
+                return Err(ApiError::invalid_server(origin.clone(), hint.as_deref()));
             }
         }
 
