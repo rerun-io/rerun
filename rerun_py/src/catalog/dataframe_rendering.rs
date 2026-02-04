@@ -10,6 +10,13 @@ use re_arrow_util::{RecordBatchFormatOpts, format_record_batch_opts};
 pub struct PyRerunHtmlTable {
     max_width: Option<usize>,
     max_height: Option<usize>,
+
+    #[pyo3(get, set)]
+    max_memory_bytes: u64,
+    #[pyo3(get, set)]
+    min_rows_display: usize,
+    #[pyo3(get, set)]
+    repr_rows: usize,
 }
 
 impl PyRerunHtmlTable {
@@ -104,6 +111,9 @@ impl PyRerunHtmlTable {
         Self {
             max_width,
             max_height,
+            max_memory_bytes: 10 * 1024 * 1024,
+            min_rows_display: 20,
+            repr_rows: 20,
         }
     }
 

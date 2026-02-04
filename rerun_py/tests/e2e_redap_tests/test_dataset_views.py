@@ -168,7 +168,7 @@ def sorted_df(df: datafusion.DataFrame) -> datafusion.DataFrame:
     return df.select(*sorted_fields)
 
 
-def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry) -> None:
+def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
     dataset_view = readonly_test_dataset.filter_segments([
         "3ee345b2e801448cace33a1097b9b49b",
         "68224eead5ed40838b3f3bdb0edfd2b2",
@@ -182,44 +182,7 @@ def test_dataframe_api_using_index_values(readonly_test_dataset: DatasetEntry) -
         .sort("rerun_segment_id", "time_1")
     )
 
-    assert str(df) == inline_snapshot("""\
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                                                                                                        │
-│ * version: 0.1.2                                                                                                                                                                 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌──────────────────────────────────┬───────────────────────────────┬─────────────────────────────────────────────────────┬─────────────────────────────────────────────────────┐ │
-│ │ rerun_segment_id                 ┆ time_1                        ┆ /obj1:Points3D:positions                            ┆ /obj2:Points3D:positions                            │ │
-│ │ ---                              ┆ ---                           ┆ ---                                                 ┆ ---                                                 │ │
-│ │ type: Utf8                       ┆ type: nullable Timestamp(ns)  ┆ type: nullable List[nullable FixedSizeList[f32; 3]] ┆ type: nullable List[nullable FixedSizeList[f32; 3]] │ │
-│ │                                  ┆ index_name: time_1            ┆ archetype: Points3D                                 ┆ archetype: Points3D                                 │ │
-│ │                                  ┆ kind: index                   ┆ component: Points3D:positions                       ┆ component: Points3D:positions                       │ │
-│ │                                  ┆                               ┆ component_type: Position3D                          ┆ component_type: Position3D                          │ │
-│ │                                  ┆                               ┆ entity_path: /obj1                                  ┆ entity_path: /obj2                                  │ │
-│ │                                  ┆                               ┆ kind: data                                          ┆ kind: data                                          │ │
-│ ╞══════════════════════════════════╪═══════════════════════════════╪═════════════════════════════════════════════════════╪═════════════════════════════════════════════════════╡ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:30:45.123456789 ┆ null                                                ┆ [[19.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:34:45.123456789 ┆ [[3.0, 0.0, 0.0]]                                   ┆ [[13.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:36:45.123456789 ┆ [[4.0, 0.0, 0.0]]                                   ┆ [[1.0, 1.0, 0.0]]                                   │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:38:45.123456789 ┆ [[5.0, 0.0, 0.0]]                                   ┆ [[5.0, 1.0, 0.0]]                                   │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:40:45.123456789 ┆ [[6.0, 0.0, 0.0]]                                   ┆ [[25.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:44:45.123456789 ┆ null                                                ┆ null                                                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:46:45.123456789 ┆ null                                                ┆ [[22.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:48:45.123456789 ┆ null                                                ┆ [[9.0, 1.0, 0.0]]                                   │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:50:45.123456789 ┆ null                                                ┆ [[2.0, 1.0, 0.0]]                                   │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:52:45.123456789 ┆ [[12.0, 0.0, 0.0]]                                  ┆ [[4.0, 1.0, 0.0]]                                   │ │
-│ └──────────────────────────────────┴───────────────────────────────┴─────────────────────────────────────────────────────┴─────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-Data truncated due to size.\
-""")
+    assert str(df) == snapshot
 
     # Create a view with all partitions
     df = (
@@ -246,49 +209,14 @@ Data truncated due to size.\
         .sort("rerun_segment_id", "time_1")
     )
 
-    assert str(df) == inline_snapshot("""\
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                                                                                                        │
-│ * version: 0.1.2                                                                                                                                                                 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌──────────────────────────────────┬───────────────────────────────┬─────────────────────────────────────────────────────┬─────────────────────────────────────────────────────┐ │
-│ │ rerun_segment_id                 ┆ time_1                        ┆ /obj1:Points3D:positions                            ┆ /obj2:Points3D:positions                            │ │
-│ │ ---                              ┆ ---                           ┆ ---                                                 ┆ ---                                                 │ │
-│ │ type: Utf8                       ┆ type: nullable Timestamp(ns)  ┆ type: nullable List[nullable FixedSizeList[f32; 3]] ┆ type: nullable List[nullable FixedSizeList[f32; 3]] │ │
-│ │                                  ┆ index_name: time_1            ┆ archetype: Points3D                                 ┆ archetype: Points3D                                 │ │
-│ │                                  ┆ kind: index                   ┆ component: Points3D:positions                       ┆ component: Points3D:positions                       │ │
-│ │                                  ┆                               ┆ component_type: Position3D                          ┆ component_type: Position3D                          │ │
-│ │                                  ┆                               ┆ entity_path: /obj1                                  ┆ entity_path: /obj2                                  │ │
-│ │                                  ┆                               ┆ kind: data                                          ┆ kind: data                                          │ │
-│ ╞══════════════════════════════════╪═══════════════════════════════╪═════════════════════════════════════════════════════╪═════════════════════════════════════════════════════╡ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:34:45.123456789 ┆ [[3.0, 0.0, 0.0]]                                   ┆ [[13.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:44:45.123456789 ┆ null                                                ┆ null                                                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 68224eead5ed40838b3f3bdb0edfd2b2 ┆ 2024-01-15T10:40:45.123456789 ┆ [[6.0, 0.0, 0.0]]                                   ┆ null                                                │ │
-│ └──────────────────────────────────┴───────────────────────────────┴─────────────────────────────────────────────────────┴─────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
-""")
+    assert str(df) == snapshot
 
-    assert str(pa.table(df)) == inline_snapshot("""\
-pyarrow.Table
-rerun_segment_id: string not null
-time_1: timestamp[ns]
-/obj1:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
-  child 0, item: fixed_size_list<item: float not null>[3]
-      child 0, item: float not null
-/obj2:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
-  child 0, item: fixed_size_list<item: float not null>[3]
-      child 0, item: float not null
-----
-rerun_segment_id: [["3ee345b2e801448cace33a1097b9b49b","3ee345b2e801448cace33a1097b9b49b","68224eead5ed40838b3f3bdb0edfd2b2"]]
-time_1: [[2024-01-15 10:34:45.123456789,2024-01-15 10:44:45.123456789,2024-01-15 10:40:45.123456789]]
-/obj1:Points3D:positions: [[[[3,0,0]],null,[[6,0,0]]]]
-/obj2:Points3D:positions: [[[[13,1,0]],null,null]]\
-""")
+    assert str(pa.table(df)) == snapshot
 
 
-def test_dataframe_api_using_index_values_same_indices_on_all_segments(readonly_test_dataset: DatasetEntry) -> None:
+def test_dataframe_api_using_index_values_same_indices_on_all_segments(
+    readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
+) -> None:
     dataset_view = readonly_test_dataset.filter_segments([
         "3ee345b2e801448cace33a1097b9b49b",
         "68224eead5ed40838b3f3bdb0edfd2b2",
@@ -311,51 +239,14 @@ def test_dataframe_api_using_index_values_same_indices_on_all_segments(readonly_
         .sort("rerun_segment_id", "time_1")
     )
 
-    assert str(df) == inline_snapshot("""\
-┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                                                                                                        │
-│ * version: 0.1.2                                                                                                                                                                 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌──────────────────────────────────┬───────────────────────────────┬─────────────────────────────────────────────────────┬─────────────────────────────────────────────────────┐ │
-│ │ rerun_segment_id                 ┆ time_1                        ┆ /obj1:Points3D:positions                            ┆ /obj2:Points3D:positions                            │ │
-│ │ ---                              ┆ ---                           ┆ ---                                                 ┆ ---                                                 │ │
-│ │ type: Utf8                       ┆ type: nullable Timestamp(ns)  ┆ type: nullable List[nullable FixedSizeList[f32; 3]] ┆ type: nullable List[nullable FixedSizeList[f32; 3]] │ │
-│ │                                  ┆ index_name: time_1            ┆ archetype: Points3D                                 ┆ archetype: Points3D                                 │ │
-│ │                                  ┆ kind: index                   ┆ component: Points3D:positions                       ┆ component: Points3D:positions                       │ │
-│ │                                  ┆                               ┆ component_type: Position3D                          ┆ component_type: Position3D                          │ │
-│ │                                  ┆                               ┆ entity_path: /obj1                                  ┆ entity_path: /obj2                                  │ │
-│ │                                  ┆                               ┆ kind: data                                          ┆ kind: data                                          │ │
-│ ╞══════════════════════════════════╪═══════════════════════════════╪═════════════════════════════════════════════════════╪═════════════════════════════════════════════════════╡ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:34:45.123456789 ┆ [[3.0, 0.0, 0.0]]                                   ┆ [[13.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 3ee345b2e801448cace33a1097b9b49b ┆ 2024-01-15T10:44:45.123456789 ┆ null                                                ┆ null                                                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 68224eead5ed40838b3f3bdb0edfd2b2 ┆ 2024-01-15T10:34:45.123456789 ┆ [[3.0, 0.0, 0.0]]                                   ┆ null                                                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 68224eead5ed40838b3f3bdb0edfd2b2 ┆ 2024-01-15T10:44:45.123456789 ┆ [[8.0, 0.0, 0.0]]                                   ┆ [[5.0, 1.0, 0.0]]                                   │ │
-│ └──────────────────────────────────┴───────────────────────────────┴─────────────────────────────────────────────────────┴─────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
-""")
+    assert str(df) == snapshot
 
-    assert str(pa.table(df)) == inline_snapshot("""\
-pyarrow.Table
-rerun_segment_id: string not null
-time_1: timestamp[ns]
-/obj1:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
-  child 0, item: fixed_size_list<item: float not null>[3]
-      child 0, item: float not null
-/obj2:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
-  child 0, item: fixed_size_list<item: float not null>[3]
-      child 0, item: float not null
-----
-rerun_segment_id: [["3ee345b2e801448cace33a1097b9b49b","3ee345b2e801448cace33a1097b9b49b","68224eead5ed40838b3f3bdb0edfd2b2","68224eead5ed40838b3f3bdb0edfd2b2"]]
-time_1: [[2024-01-15 10:34:45.123456789,2024-01-15 10:44:45.123456789,2024-01-15 10:34:45.123456789,2024-01-15 10:44:45.123456789]]
-/obj1:Points3D:positions: [[[[3,0,0]],null,[[3,0,0]],[[8,0,0]]]]
-/obj2:Points3D:positions: [[[[13,1,0]],null,null,[[5,1,0]]]]\
-""")
+    assert str(pa.table(df)) == snapshot
 
 
-def test_dataframe_api_using_index_values_empty(readonly_test_dataset: DatasetEntry, caplog: LogCaptureFixture) -> None:
+def test_dataframe_api_using_index_values_empty(
+    readonly_test_dataset: DatasetEntry, caplog: LogCaptureFixture, snapshot: SnapshotAssertion
+) -> None:
     df = readonly_test_dataset.reader(
         index="time_1",
         using_index_values={
@@ -388,39 +279,12 @@ def test_dataframe_api_using_index_values_empty(readonly_test_dataset: DatasetEn
 
     assert str(df) == inline_snapshot("No data to display")
 
-    assert str(pa.table(df)) == inline_snapshot("""\
-pyarrow.Table
-rerun_segment_id: string not null
-time_1: timestamp[ns]
-time_2: duration[ns]
-time_3: int64
-/obj1:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
-  child 0, item: fixed_size_list<item: float not null>[3]
-      child 0, item: float not null
-/obj2:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
-  child 0, item: fixed_size_list<item: float not null>[3]
-      child 0, item: float not null
-/obj3:Points3D:positions: list<item: fixed_size_list<item: float not null>[3]>
-  child 0, item: fixed_size_list<item: float not null>[3]
-      child 0, item: float not null
-/text1:TextDocument:text: list<item: string>
-  child 0, item: string
-/text2:TextDocument:text: list<item: string>
-  child 0, item: string
-----
-rerun_segment_id: []
-time_1: []
-time_2: []
-time_3: []
-/obj1:Points3D:positions: []
-/obj2:Points3D:positions: []
-/obj3:Points3D:positions: []
-/text1:TextDocument:text: []
-/text2:TextDocument:text: []\
-""")
+    assert str(pa.table(df)) == snapshot
 
 
-def test_dataframe_api_using_index_values_dataframe(readonly_test_dataset: DatasetEntry) -> None:
+def test_dataframe_api_using_index_values_dataframe(
+    readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
+) -> None:
     """Demonstrate using the output of one query as `using_index_values` input for another."""
 
     # TODO(ab, jleibs): this example is slightly unfortunate because it is more about filtering rows than
@@ -439,41 +303,4 @@ def test_dataframe_api_using_index_values_dataframe(readonly_test_dataset: Datas
         .sort("rerun_segment_id", "time_1")
     )
 
-    assert str(df) == inline_snapshot("""\
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                                                  │
-│ * version: 0.1.2                                                                                                           │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌──────────────────────────────────┬───────────────────────────────┬─────────────────────────────────────────────────────┐ │
-│ │ rerun_segment_id                 ┆ time_1                        ┆ /obj2:Points3D:positions                            │ │
-│ │ ---                              ┆ ---                           ┆ ---                                                 │ │
-│ │ type: Utf8                       ┆ type: nullable Timestamp(ns)  ┆ type: nullable List[nullable FixedSizeList[f32; 3]] │ │
-│ │                                  ┆ index_name: time_1            ┆ archetype: Points3D                                 │ │
-│ │                                  ┆ kind: index                   ┆ component: Points3D:positions                       │ │
-│ │                                  ┆                               ┆ component_type: Position3D                          │ │
-│ │                                  ┆                               ┆ entity_path: /obj2                                  │ │
-│ │                                  ┆                               ┆ kind: data                                          │ │
-│ ╞══════════════════════════════════╪═══════════════════════════════╪═════════════════════════════════════════════════════╡ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:30:45.123456789 ┆ [[38.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:32:45.123456789 ┆ [[35.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:34:45.123456789 ┆ null                                                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:36:45.123456789 ┆ [[1.0, 1.0, 0.0]]                                   │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:38:45.123456789 ┆ [[9.0, 1.0, 0.0]]                                   │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:40:45.123456789 ┆ null                                                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:42:45.123456789 ┆ [[33.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:44:45.123456789 ┆ [[25.0, 1.0, 0.0]]                                  │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:48:45.123456789 ┆ null                                                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ 141a866deb2d49f69eb3215e8a404ffc ┆ 2024-01-15T10:52:45.123456789 ┆ [[6.0, 1.0, 0.0]]                                   │ │
-│ └──────────────────────────────────┴───────────────────────────────┴─────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-Data truncated due to size.\
-""")
+    assert str(df) == snapshot
