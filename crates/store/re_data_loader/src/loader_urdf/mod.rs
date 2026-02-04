@@ -1,5 +1,6 @@
 //! Rerun data loader and utilities for URDF files.
 
+pub mod joint_transform;
 mod urdf_tree;
 pub use urdf_tree::UrdfTree;
 
@@ -229,22 +230,22 @@ fn transform_from_pose(
     child_frame: String,
 ) -> Transform3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
-    let translation = [xyz[0] as f32, xyz[1] as f32, xyz[2] as f32];
-    let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
     Transform3D::update_fields()
-        .with_translation(translation)
-        .with_quaternion(quaternion)
+        .with_translation([xyz[0] as f32, xyz[1] as f32, xyz[2] as f32])
+        .with_quaternion(quat_from_rpy(&rpy.0).to_array())
         .with_parent_frame(parent_frame)
         .with_child_frame(child_frame)
 }
 
 fn instance_poses_from_pose(origin: &urdf_rs::Pose, scale: Option<Vec3D>) -> InstancePoses3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
-    let translation = Vec3D::new(xyz[0] as f32, xyz[1] as f32, xyz[2] as f32);
-    let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
     let mut poses = InstancePoses3D::update_fields()
-        .with_translations(vec![translation])
-        .with_quaternions(vec![quaternion]);
+        .with_translations(vec![Vec3D::new(
+            xyz[0] as f32,
+            xyz[1] as f32,
+            xyz[2] as f32,
+        )])
+        .with_quaternions(vec![quat_from_rpy(&rpy.0).to_array()]);
 
     if let Some(scale) = scale {
         poses = poses.with_scales(vec![scale]);
@@ -526,8 +527,13 @@ fn log_geometry(
     Ok(())
 }
 
-fn quat_xyzw_from_roll_pitch_yaw(roll: f32, pitch: f32, yaw: f32) -> [f32; 4] {
-    glam::Quat::from_euler(glam::EulerRot::ZYX, yaw, pitch, roll).to_array()
+fn quat_from_rpy(rpy: &[f64; 3]) -> glam::Quat {
+    glam::Quat::from_euler(
+        glam::EulerRot::ZYX,
+        rpy[2] as f32,
+        rpy[1] as f32,
+        rpy[0] as f32,
+    )
 }
 
 /// Read ROS package resource using the `package://` URI scheme.

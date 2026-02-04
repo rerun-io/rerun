@@ -57,7 +57,7 @@ def main() -> None:
                 # To move a joint, we just need to log a new transform between those frames.
                 # Here, we use the `compute_transform` method that automatically takes care
                 # of setting the frame names and calculating the full transform from the joint angle.
-                transform = joint.compute_transform(dynamic_angle)
+                transform = joint.compute_transform(dynamic_angle, clamp=True)
                 rec.log("transforms", transform)
 
                 # We can also work with links from the URDF tree.

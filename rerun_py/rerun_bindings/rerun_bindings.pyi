@@ -1142,6 +1142,15 @@ class _UrdfJointInternal:
     def limit_effort(self) -> float: ...
     @property
     def limit_velocity(self) -> float: ...
+    def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute the transform components for this joint at the given value.
+
+        The result is wrapped in a dictionary for easy conversion to the final types in Python.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
 
 class _UrdfLinkInternal:
     """Internal Rust representation of a URDF link."""

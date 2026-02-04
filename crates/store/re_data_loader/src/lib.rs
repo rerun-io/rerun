@@ -31,7 +31,7 @@ pub use self::loader_archetype::ArchetypeLoader;
 pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_mcap::McapLoader;
 pub use self::loader_rrd::RrdLoader;
-pub use self::loader_urdf::{UrdfDataLoader, UrdfTree};
+pub use self::loader_urdf::{UrdfDataLoader, UrdfTree, joint_transform as urdf_joint_transform};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     load_file::load_from_path,
