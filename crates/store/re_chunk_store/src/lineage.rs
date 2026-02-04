@@ -409,34 +409,42 @@ impl ChunkStore {
 
     /// Returns true if either the specified chunk or one of its ancestors resulted from a split.
     pub fn descends_from_a_split(&self, chunk_id: &ChunkId) -> bool {
-        fn recurse(store: &ChunkStore, chunk_id: &ChunkId, compaction_found: bool) -> bool {
-            let lineage = store.chunks_lineage.get(chunk_id);
-            match lineage {
-                Some(ChunkDirectLineage::SplitFrom(_chunk_id, _sibling_ids)) => {
-                    #[expect(clippy::manual_assert)]
-                    if cfg!(debug_assertions) && compaction_found {
-                        panic!(
-                            "Chunk {chunk_id} mixes compaction and splitting in its lineage tree"
-                        )
+        if cfg!(debug_assertions) {
+            // Do a bit more expensive recursion as a form of sanity checking:
+            fn recurse(store: &ChunkStore, chunk_id: &ChunkId, compaction_found: bool) -> bool {
+                let lineage = store.chunks_lineage.get(chunk_id);
+                match lineage {
+                    Some(ChunkDirectLineage::SplitFrom(_chunk_id, _sibling_ids)) => {
+                        debug_assert!(
+                            !compaction_found,
+                            "DEBUG ASSERT: Chunk {chunk_id} mixes compaction and splitting in its lineage tree"
+                        );
+                        true
                     }
-                    true
-                }
 
-                Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
-                    for chunk_id in chunk_ids {
-                        if recurse(store, chunk_id, true) {
-                            return true;
+                    Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
+                        for chunk_id in chunk_ids {
+                            if recurse(store, chunk_id, true) {
+                                return true;
+                            }
                         }
+                        false
                     }
-                    false
+
+                    _ => false,
                 }
-
-                _ => false,
             }
-        }
 
-        let compaction_found = false;
-        recurse(self, chunk_id, compaction_found)
+            let compaction_found = false;
+            recurse(self, chunk_id, compaction_found)
+        } else {
+            // We never mix splits and compactions in the same lineage tree,
+            // so no need to recurse:
+            matches!(
+                self.chunks_lineage.get(chunk_id),
+                Some(ChunkDirectLineage::SplitFrom { .. })
+            )
+        }
     }
 
     /// Returns true if either the specified chunk or one of its ancestors resulted from a compaction.
@@ -1050,11 +1058,12 @@ mod tests {
         let redacted_chunk_ids: ahash::HashMap<_, _> = store
             .chunks_lineage
             .keys()
+            .sorted()
             .map(|chunk_id| (*chunk_id, next_chunk_id()))
             .collect();
 
         let mut lineage_report = Vec::new();
-        for chunk_id in store.chunks_per_chunk_id.keys() {
+        for chunk_id in store.chunks_per_chunk_id.keys().sorted() {
             lineage_report.push(store.format_lineage(chunk_id));
         }
 
