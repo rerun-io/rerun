@@ -715,6 +715,9 @@ impl LatestAtCache {
         } = self;
 
         if let Some(cached) = per_query_time.get(&query.at()) {
+            // Report to the store that we used this chunk to signal that
+            // it should stay in memory.
+            store.report_used_physical_chunk_id(cached.unit.id());
             return (Some(cached.unit.clone()), vec![]);
         }
 

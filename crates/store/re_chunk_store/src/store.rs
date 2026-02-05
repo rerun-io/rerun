@@ -849,9 +849,9 @@ impl ChunkStore {
         let chunk = self.physical_chunk(id);
 
         if chunk.is_some() {
-            self.insert_used_chunk_id(*id);
+            self.report_used_physical_chunk_id(*id);
         } else {
-            self.insert_missing_chunk_id(*id);
+            self.report_missing_virtual_chunk_id(*id);
         }
 
         chunk
@@ -938,7 +938,7 @@ impl ChunkStore {
     }
 
     /// Signal that the chunk was used and should not be evicted by gc.
-    fn insert_used_chunk_id(&self, chunk_id: ChunkId) {
+    pub fn report_used_physical_chunk_id(&self, chunk_id: ChunkId) {
         self.queried_chunk_id_tracker
             .write()
             .used_physical
@@ -946,7 +946,7 @@ impl ChunkStore {
     }
 
     /// Signal that a chunk is missing and should be fetched when possible.
-    fn insert_missing_chunk_id(&self, chunk_id: ChunkId) {
+    pub fn report_missing_virtual_chunk_id(&self, chunk_id: ChunkId) {
         self.queried_chunk_id_tracker
             .write()
             .missing_virtual
