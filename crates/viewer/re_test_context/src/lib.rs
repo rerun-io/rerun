@@ -513,7 +513,7 @@ impl TestContext {
                 &re_entity_db::ChunkPrefetchOptions {
                     timeline: *timeline,
                     start_time: re_chunk::TimeInt::ZERO,
-                    max_uncompressed_bytes_per_batch: 0,
+                    max_on_wire_bytes_per_batch: 0,
                     total_uncompressed_byte_budget: 0,
                     max_bytes_on_wire_at_once: 0,
                 },

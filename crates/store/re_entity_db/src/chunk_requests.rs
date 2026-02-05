@@ -14,7 +14,7 @@ pub type ChunkPromise = poll_promise::Promise<Result<Vec<Chunk>, ()>>;
 #[derive(Clone, Debug)]
 pub struct RequestInfo {
     /// What chunks are included in this batch.
-    pub virtual_chunk_ids: ahash::HashSet<ChunkId>,
+    pub root_chunk_ids: ahash::HashSet<ChunkId>,
 
     /// Row indices in the RRD manifest.
     pub row_indices: BTreeSet<usize>,

@@ -42,7 +42,7 @@ pub struct ChunkPrefetchOptions {
     pub start_time: TimeInt,
 
     /// Batch together requests until we reach this size.
-    pub max_uncompressed_bytes_per_batch: u64,
+    pub max_on_wire_bytes_per_batch: u64,
 
     /// Total budget for all loaded chunks.
     pub total_uncompressed_byte_budget: u64,
@@ -115,7 +115,20 @@ impl re_byte_size::SizeBytes for HighPrioChunk {
 struct CurrentBatch {
     row_indices: Vec<usize>,
     uncompressed_bytes: u64,
-    bytes: u64,
+    on_wire_bytes: u64,
+}
+
+impl CurrentBatch {
+    fn reset(&mut self) {
+        let Self {
+            row_indices,
+            uncompressed_bytes,
+            on_wire_bytes,
+        } = self;
+        row_indices.clear();
+        *uncompressed_bytes = 0;
+        *on_wire_bytes = 0;
+    }
 }
 
 /// Helper struct responsible for batching requests and creating
@@ -124,7 +137,7 @@ struct ChunkRequestBatcher<'a> {
     manifest: &'a RrdManifest,
     chunk_byte_size_uncompressed: &'a [u64],
     chunk_byte_size: &'a [u64],
-    max_uncompressed_bytes_per_batch: u64,
+    max_on_wire_bytes_per_batch: u64,
 
     remaining_bytes_in_on_wire_budget: u64,
     current_batch: CurrentBatch,
@@ -143,7 +156,7 @@ impl<'a> ChunkRequestBatcher<'a> {
             chunk_byte_size_uncompressed: manifest.col_chunk_byte_size_uncompressed(),
             chunk_byte_size: manifest.col_chunk_byte_size(),
             manifest,
-            max_uncompressed_bytes_per_batch: options.max_uncompressed_bytes_per_batch,
+            max_on_wire_bytes_per_batch: options.max_on_wire_bytes_per_batch,
 
             remaining_bytes_in_on_wire_budget: options
                 .max_bytes_on_wire_at_once
@@ -163,9 +176,9 @@ impl<'a> ChunkRequestBatcher<'a> {
 
         let col_chunk_ids: &[ChunkId] = self.manifest.col_chunk_ids();
 
-        let mut virtual_chunk_ids = ahash::HashSet::default();
+        let mut root_chunk_ids = ahash::HashSet::default();
         for &row_idx in &row_indices {
-            virtual_chunk_ids.insert(col_chunk_ids[row_idx]);
+            root_chunk_ids.insert(col_chunk_ids[row_idx]);
         }
 
         let rb = re_arrow_util::take_record_batch(
@@ -175,42 +188,35 @@ impl<'a> ChunkRequestBatcher<'a> {
         self.to_load.push((
             rb,
             RequestInfo {
-                virtual_chunk_ids,
+                root_chunk_ids,
                 row_indices,
                 size_bytes_uncompressed: self.current_batch.uncompressed_bytes,
-                size_bytes_on_wire: self.current_batch.bytes,
+                size_bytes_on_wire: self.current_batch.on_wire_bytes,
             },
         ));
-        self.current_batch.bytes = 0;
-        self.current_batch.uncompressed_bytes = 0;
+        self.current_batch.reset();
         Ok(())
     }
 
     /// Add a chunk to be fetched.
-    fn try_fetch(
-        &mut self,
-        chunk_row_idx: usize,
-        virtual_chunk: &mut RootChunkInfo,
-    ) -> Result<bool, PrefetchError> {
+    fn try_fetch(&mut self, chunk_row_idx: usize) -> Result<bool, PrefetchError> {
         if self.remaining_bytes_in_on_wire_budget == 0 {
             return Ok(false);
         }
 
         let uncompressed_chunk_size = self.chunk_byte_size_uncompressed[chunk_row_idx];
-        let chunk_byte_size = self.chunk_byte_size[chunk_row_idx];
+        let on_wire_byte_size = self.chunk_byte_size[chunk_row_idx];
 
         self.current_batch.row_indices.push(chunk_row_idx);
         self.current_batch.uncompressed_bytes += uncompressed_chunk_size;
-        self.current_batch.bytes += chunk_byte_size;
+        self.current_batch.on_wire_bytes += on_wire_byte_size;
 
-        virtual_chunk.state = LoadState::InTransit;
-
-        if self.max_uncompressed_bytes_per_batch < self.current_batch.uncompressed_bytes {
+        if self.max_on_wire_bytes_per_batch <= self.current_batch.on_wire_bytes {
             self.finish_batch()?;
         }
         self.remaining_bytes_in_on_wire_budget = self
             .remaining_bytes_in_on_wire_budget
-            .saturating_sub(uncompressed_chunk_size);
+            .saturating_sub(on_wire_byte_size);
         Ok(true)
     }
 
@@ -596,7 +602,7 @@ impl ChunkPrioritizer {
                     }
 
                     if root_chunk.state == LoadState::Unloaded
-                        && !chunk_batcher.try_fetch(row_idx, root_chunk)?
+                        && !chunk_batcher.try_fetch(row_idx)?
                     {
                         // If we don't have anything more to fetch we stop looking.
                         //
@@ -667,6 +673,12 @@ impl ChunkPrioritizer {
 
         // Start loading all batches we prepared:
         for (rb, batch_info) in chunk_batcher.finish()? {
+            for root_chunk_id in &batch_info.root_chunk_ids {
+                if let Some(root_chunk) = root_chunks.get_mut(root_chunk_id) {
+                    root_chunk.state = LoadState::InTransit;
+                }
+            }
+
             let promise = load_chunks(rb);
             let batch = ChunkBatchRequest {
                 promise: Mutex::new(Some(promise)),

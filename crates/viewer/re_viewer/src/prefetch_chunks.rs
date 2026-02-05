@@ -38,7 +38,7 @@ pub fn prefetch_chunks_for_active_recording(
         total_uncompressed_byte_budget: memory_budget.as_bytes(),
 
         // Batch small chunks together.
-        max_uncompressed_bytes_per_batch: 1_000_000,
+        max_on_wire_bytes_per_batch: 256 * 1024,
 
         // TODO(RR-3204): what is a reasonable size here?
         // A high value -> better theoretical bandwidth
