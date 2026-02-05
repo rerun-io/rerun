@@ -6,7 +6,7 @@
 
 #### 🐍 Python API
 - Ensure that `import rerun_sdk.rerun` can be used [fd28cd3](https://github.com/rerun-io/rerun/commit/fd28cd3946567929b6e968d9df07bec5a67eabb0)
-- Allow access to redap token from python sdk [51506ca](https://github.com/rerun-io/rerun/commit/51506caeb34a6edadbca4c8938c0039fb0e35a51)
+- Allow access to redap token from Python SDK [51506ca](https://github.com/rerun-io/rerun/commit/51506caeb34a6edadbca4c8938c0039fb0e35a51)
 
 #### 🪳 Bug fixes
 - Fix viewer error list jumping around [05ae689](https://github.com/rerun-io/rerun/commit/05ae6895c38fc8fd74583e86fb6747b7d3017497)
