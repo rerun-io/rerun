@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rerun_bindings import init_login_flow
+from rerun_bindings import Credentials as Credentials, get_credentials as get_credentials, init_login_flow
 
 """
 WorkOS Authentication Module for Jupyter Notebooks.
