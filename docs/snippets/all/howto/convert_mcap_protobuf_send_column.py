@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from google.protobuf.json_format import MessageToDict
@@ -218,6 +219,11 @@ def send_collected_columns(rec: rr.RecordingStream, *collector_maps: dict[str, C
 
 parser = argparse.ArgumentParser(description="Convert MCAP Protobuf messages to Rerun format.")
 parser.add_argument("mcap_file", help="Path to the MCAP file to convert")
+parser.add_argument(
+    "--urdf-dir",
+    type=Path,
+    help="Directory containing robot URDF files (optional)",
+)
 args = parser.parse_args()
 
 path_to_mcap = args.mcap_file
@@ -227,6 +233,12 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as re
 
     # Connect the viewer's root to the "world" frame.
     rec.log("/", rr.CoordinateFrame("world"), static=True)
+
+    # Load all URDF files from directory if provided
+    if args.urdf_dir:
+        for urdf_path in args.urdf_dir.glob("*.urdf"):
+            rec.log_file_from_path(urdf_path, static=True)
+        rec.flush()  # Ensure URDFs finish loading before processing messages
 
     # State for deduplicating static logs
     logged_static_transforms: set[tuple[str, str]] = set()
