@@ -48,7 +48,7 @@ pub struct ChunkPrefetchOptions {
     pub total_uncompressed_byte_budget: u64,
 
     /// Maximum number of bytes in transit at once.
-    pub max_uncompressed_bytes_in_transit: u64,
+    pub max_bytes_on_wire_at_once: u64,
 }
 
 /// Special chunks for which we need the entire history, not just the latest-at value.
@@ -126,7 +126,7 @@ struct ChunkRequestBatcher<'a> {
     chunk_byte_size: &'a [u64],
     max_uncompressed_bytes_per_batch: u64,
 
-    remaining_bytes_in_transit_budget: u64,
+    remaining_bytes_in_on_wire_budget: u64,
     current_batch: CurrentBatch,
 
     // Output
@@ -145,9 +145,9 @@ impl<'a> ChunkRequestBatcher<'a> {
             manifest,
             max_uncompressed_bytes_per_batch: options.max_uncompressed_bytes_per_batch,
 
-            remaining_bytes_in_transit_budget: options
-                .max_uncompressed_bytes_in_transit
-                .saturating_sub(requests.num_uncompressed_bytes_pending()),
+            remaining_bytes_in_on_wire_budget: options
+                .max_bytes_on_wire_at_once
+                .saturating_sub(requests.num_on_wire_bytes_pending()),
             current_batch: Default::default(),
 
             to_load: Vec::new(),
@@ -178,7 +178,7 @@ impl<'a> ChunkRequestBatcher<'a> {
                 virtual_chunk_ids,
                 row_indices,
                 size_bytes_uncompressed: self.current_batch.uncompressed_bytes,
-                size_bytes: self.current_batch.bytes,
+                size_bytes_on_wire: self.current_batch.bytes,
             },
         ));
         self.current_batch.bytes = 0;
@@ -192,7 +192,7 @@ impl<'a> ChunkRequestBatcher<'a> {
         chunk_row_idx: usize,
         virtual_chunk: &mut VirtualChunkInfo,
     ) -> Result<bool, PrefetchError> {
-        if self.remaining_bytes_in_transit_budget == 0 {
+        if self.remaining_bytes_in_on_wire_budget == 0 {
             return Ok(false);
         }
 
@@ -208,8 +208,8 @@ impl<'a> ChunkRequestBatcher<'a> {
         if self.max_uncompressed_bytes_per_batch < self.current_batch.uncompressed_bytes {
             self.finish_batch()?;
         }
-        self.remaining_bytes_in_transit_budget = self
-            .remaining_bytes_in_transit_budget
+        self.remaining_bytes_in_on_wire_budget = self
+            .remaining_bytes_in_on_wire_budget
             .saturating_sub(uncompressed_chunk_size);
         Ok(true)
     }
@@ -489,8 +489,8 @@ impl ChunkPrioritizer {
     /// - Chunks after the time cursor in rising temporal order.
     /// - Chunks before the time cursor in rising temporal order.
     ///
-    /// We go through these chunks until we hit `options.total_uncompressed_byte_budget`
-    /// and prefetch missing chunks until we hit `options.max_uncompressed_bytes_in_transit`.
+    /// We go through these chunks until we hit [`ChunkPrefetchOptions::total_uncompressed_byte_budget`]
+    /// and prefetch missing chunks until we hit [`ChunkPrefetchOptions::max_bytes_on_wire_at_once`].
     pub fn prioritize_and_prefetch(
         &mut self,
         store: &ChunkStore,
@@ -510,7 +510,7 @@ impl ChunkPrioritizer {
 
         let mut chunk_batcher = ChunkRequestBatcher::new(manifest, &self.chunk_requests, options);
 
-        if chunk_batcher.remaining_bytes_in_transit_budget == 0 {
+        if chunk_batcher.remaining_bytes_in_on_wire_budget == 0 {
             // Early-out: too many bytes already in-transit.
             // But, make sure we don't GC the chunks that were used this frame:
             for physical_chunk_id in used_and_missing.used_physical {

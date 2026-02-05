@@ -515,7 +515,7 @@ impl TestContext {
                     start_time: re_chunk::TimeInt::ZERO,
                     max_uncompressed_bytes_per_batch: 0,
                     total_uncompressed_byte_budget: 0,
-                    max_uncompressed_bytes_in_transit: 0,
+                    max_bytes_on_wire_at_once: 0,
                 },
                 &|_| panic!("We have 0 bytes allowed memory"),
             );

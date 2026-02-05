@@ -42,7 +42,9 @@ pub fn prefetch_chunks_for_active_recording(
 
         // TODO(RR-3204): what is a reasonable size here?
         // A high value -> better theoretical bandwidth
-        max_uncompressed_bytes_in_transit: 10_000_000,
+        // Low value -> better responsiveness (e.g. when moving time cursor).
+        // In practice, this is a limit on how many bytes we can download _every frame_.
+        max_bytes_on_wire_at_once: 4_000_000,
     };
 
     let (rrd_manifest, storage_engine) = recording.rrd_manifest_index_mut_and_storage_engine();

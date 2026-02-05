@@ -22,8 +22,8 @@ pub struct RequestInfo {
     /// Total uncompressed size of all chunks in bytes.
     pub size_bytes_uncompressed: u64,
 
-    /// Size on the wire of all chunks in bytes.
-    pub size_bytes: u64,
+    /// Size on-wire of all chunks in bytes.
+    pub size_bytes_on_wire: u64,
 }
 
 /// Represents a batch of chunks being downloaded.
@@ -104,7 +104,11 @@ impl ChunkRequests {
         !self.requests.is_empty()
     }
 
-    pub fn num_uncompressed_bytes_pending(&self) -> u64 {
+    /// How much data is currently in transit?
+    ///
+    /// The size is the on-wire size, which is usually
+    /// the _compressed_ size.
+    pub fn num_on_wire_bytes_pending(&self) -> u64 {
         self.requests
             .iter()
             .map(|b| b.info.size_bytes_uncompressed)
@@ -147,7 +151,7 @@ impl ChunkRequests {
                 match promise.try_take() {
                     Ok(Ok(chunks)) => {
                         all_chunks.extend(chunks);
-                        history.add(time, ByteFloat(batch.info.size_bytes as f64));
+                        history.add(time, ByteFloat(batch.info.size_bytes_on_wire as f64));
                         false
                     }
                     Ok(Err(())) => false,
