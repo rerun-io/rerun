@@ -488,24 +488,39 @@ fn handle_compacted_chunk_addition(
         );
     }
 
+    // Find the first index we'll have to read in new samples from.
+    let first_unloaded_sample_idx = reused_chunks
+        .iter()
+        .filter_map(|(range, chunk)| {
+            video_data
+                .samples
+                .iter_index_range_clamped_mut(&range.idx_range())
+                .filter(|(_, s)| s.source_id() == chunk.id().as_tuid())
+                .find(|(_, s)| matches!(s, re_video::SampleMetadataState::Unloaded(_)))
+                .map(|(idx, _)| idx)
+        })
+        .min()
+        .or_else(|| {
+            if unseen_chunks.is_empty() {
+                None
+            } else {
+                Some(video_data.samples.next_index())
+            }
+        });
+
     let mut min = None;
     let mut max = None;
 
-    let mut first_unloaded_sample_idx = None;
     let mut sample_count = 0;
     let mut sample_count_after_first_unloaded = 0;
-    let mut update_min_max = |idx: re_video::SampleIndex, is_unloaded: bool| {
+    let mut update_min_max = |idx: re_video::SampleIndex| {
         let min = min.get_or_insert(idx);
         let max = max.get_or_insert(idx);
         *min = idx.min(*min);
         *max = idx.max(*max);
 
-        if first_unloaded_sample_idx.is_none() && is_unloaded {
-            first_unloaded_sample_idx = Some(idx);
-        }
-
         sample_count += 1;
-        if first_unloaded_sample_idx.is_some() {
+        if first_unloaded_sample_idx.is_some_and(|first_idx| first_idx <= idx) {
             sample_count_after_first_unloaded += 1;
         }
     };
@@ -516,10 +531,7 @@ fn handle_compacted_chunk_addition(
             .iter_index_range_clamped_mut(&range.idx_range())
             .filter(|(_, s)| s.source_id() == reused_chunk.id().as_tuid())
         {
-            update_min_max(
-                idx,
-                matches!(sample, re_video::SampleMetadataState::Unloaded(_)),
-            );
+            update_min_max(idx);
 
             *sample.source_id_mut() = compacted_chunk.id().as_tuid();
         }
@@ -535,7 +547,7 @@ fn handle_compacted_chunk_addition(
         for _ in 0..len {
             let idx = video_data.samples.next_index();
 
-            update_min_max(idx, true);
+            update_min_max(idx);
 
             video_data
                 .samples
@@ -802,7 +814,8 @@ impl ChunkSampleRange {
     ) -> Self {
         debug_assert!(
             sample_count <= last_sample - first_sample + 1,
-            "Counting sample indices twice?",
+            "Counting sample indices twice? {sample_count} <= {}",
+            last_sample - first_sample + 1,
         );
 
         Self {
