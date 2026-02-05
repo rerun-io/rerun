@@ -10,6 +10,10 @@ This document describes the current release and versioning strategy. This strate
 -   [`CODE_STYLE.md`](CODE_STYLE.md)
 -   [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
+## Repository
+
+:warning: The steps & workflows in this document are targeting the open-source Rerun repository (https://github.com/rerun-io/rerun), not our internal monorepo.
+
 ## Release cadence
 
 New Rerun versions are released approximately once every month. Sometimes we do out-of-schedule patch releases.
@@ -80,7 +84,9 @@ You can do this either using `git` on your command line, or through the UI:
 
 Once the branch has been created, push it to the remote repository.
 
-**NOTE (for patch releases)**: upon creation of the branch, the version is set to the final version of the previous release. This can create issues when testing the patch release, since it has a non-"+dev" version identical to/conflicting with an existing release. Because of that, an RC should preferably be created before testing.
+**NOTE (for patch releases)**: upon creation of the branch, the version is set to the final version of the previous release. This can create issues when testing the patch release, since it has a non-"+dev" version identical to/conflicting with an existing release. Because of that, an RC (release candidate) should preferably be created before testing.
+The release workflow section below explains how you can create an RC.
+Do this once you have prepared your patch-release branch and it's ready for testing.
 
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
 
