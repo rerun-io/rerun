@@ -306,6 +306,76 @@ def test_register_conflicting_property_schema(entry_factory: EntryFactory, tmp_p
 
 
 @pytest.mark.local_only
+def test_failed_registration_not_in_segment_table(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """Test that a failed segment registration does not show up in the segment table (separate segment id)."""
+
+    import pyarrow as pa
+
+    seg_1_path = tmp_path / "segment1.rrd"
+    seg_2_path = tmp_path / "segment2.rrd"
+
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment1") as rec:
+        rec.save(seg_1_path)
+        rec.send_property("prop", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float64())))
+
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment2") as rec:
+        rec.save(seg_2_path)
+        rec.send_property("prop", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float32())))
+
+    dataset = entry_factory.create_dataset("test_conflicting_property_schema")
+
+    dataset.register(seg_1_path.as_uri()).wait()
+
+    with pytest.raises(ValueError, match="schema"):
+        dataset.register(seg_2_path.as_uri()).wait()
+
+    # Verify it's segment1 (the successful one), not segment2 (the failed one)
+    segment_ids = dataset.segment_ids()
+    assert segment_ids == ["segment1"], f"Expected only segment1, got {segment_ids}"
+
+
+@pytest.mark.local_only
+def test_failed_layer_registration_not_in_segment_table(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """Test that a failed segment registration does not show up in the segment table (same segment id, different layers)."""
+
+    import pyarrow as pa
+
+    base_path = tmp_path / "base.rrd"
+    extra_path = tmp_path / "extra.rrd"
+
+    # Both use the same recording_id (segment1) but different layer names
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment1") as rec:
+        rec.save(base_path)
+        rec.send_property("prop", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float64())))
+
+    with rr.RecordingStream("rerun_example_conflicting_schema", recording_id="segment1") as rec:
+        rec.save(extra_path)
+        rec.send_property("prop", rr.AnyValues(test=pa.array([1.0, 2.0, 3.0], type=pa.float32())))
+
+    dataset = entry_factory.create_dataset("test_failed_layer_not_in_segment_table")
+
+    # Register base layer - should succeed
+    dataset.register(base_path.as_uri(), layer_name="base").wait()
+
+    # Register extra layer with conflicting schema - should fail
+    with pytest.raises(ValueError, match="schema"):
+        dataset.register(extra_path.as_uri(), layer_name="extra").wait()
+
+    # The segment table should still show the segment (because the base layer succeeded)
+    df = dataset.segment_table()
+    assert df.count() == 1
+
+    # Verify segment_id and layer_names columns
+    table = df.to_arrow_table()
+    segment_ids = table.column("rerun_segment_id").to_pylist()
+    layer_names = table.column("rerun_layer_names").to_pylist()
+
+    assert segment_ids == ["segment1"], f"Expected segment1, got {segment_ids}"
+    # Only the successful "base" layer should appear, not the failed "extra" layer
+    assert layer_names == [["base"]], f"Expected [['base']], got {layer_names}"
+
+
+@pytest.mark.local_only
 def test_register_duplicate_error_behavior(
     entry_factory: EntryFactory,
     recording_factory: Callable[[Sequence[str]], list[str]],

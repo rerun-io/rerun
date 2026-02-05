@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Float32Array, Float64Array, ListArray, RecordBatch, StringArray, TimestampNanosecondArray,
+    Array as _, Float32Array, Float64Array, ListArray, RecordBatch, StringArray,
+    TimestampNanosecondArray,
 };
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
@@ -968,6 +969,261 @@ pub async fn register_conflicting_property_schema(service: impl RerunCloudServic
             .contains("schema incompatibility "),
         "error should mention schema conflict, got: {error_message}"
     );
+}
+
+/// Test that segments with failed registrations do NOT appear in the segment table.
+///
+/// This test registers two segments with conflicting schemas in SEPARATE requests.
+/// The first registration should succeed, and the second should fail with a schema conflict.
+/// The segment table should only show the first (successful) segment.
+pub async fn register_conflicting_schema_filters_segment_table(service: impl RerunCloudService) {
+    use super::common::register_and_wait;
+
+    let dataset_name = "test_conflicting_schema_filters_segment_table";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    // First registration: segment1 with Float64 - should succeed
+    let first_def = DataSourcesDefinition::new_with_tuid_prefix(
+        100,
+        [LayerDefinition::static_components(
+            "segment1",
+            [(
+                EntityPath::from("/data"),
+                Box::new(AnyValues::default().with_component_from_data(
+                    "test",
+                    Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
+                )) as Box<dyn AsComponents>,
+            )],
+        )],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, first_def.to_data_sources())
+        .await;
+
+    // Second registration: segment2 with Float32 - will fail due to schema conflict
+    let second_def = DataSourcesDefinition::new_with_tuid_prefix(
+        101,
+        [LayerDefinition::static_components(
+            "segment2",
+            [(
+                EntityPath::from("/data"),
+                Box::new(AnyValues::default().with_component_from_data(
+                    "test",
+                    Arc::new(Float32Array::from(vec![1.0f32, 2.0, 3.0])),
+                )) as Box<dyn AsComponents>,
+            )],
+        )],
+    );
+    let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
+        data_sources: second_def.to_data_sources(),
+        on_duplicate: IfDuplicateBehavior::Error as i32,
+    })
+    .with_entry_name(dataset_name)
+    .unwrap();
+
+    // This registration should fail due to schema conflict
+    let task_results = register_and_wait(&service, request).await;
+    assert_task_failed(&task_results, "schema");
+
+    // Verify the segment table only contains segment1 (the successful one)
+    let segment_table = scan_segment_table(&service, dataset_name).await;
+
+    let segment_id_col = segment_table
+        .column_by_name(ScanSegmentTableResponse::FIELD_SEGMENT_ID)
+        .expect("segment_id column expected")
+        .downcast_array_ref::<StringArray>()
+        .expect("segment_id should be string array");
+
+    let segment_ids: Vec<&str> = (0..segment_id_col.len())
+        .map(|i| segment_id_col.value(i))
+        .collect();
+
+    assert_eq!(
+        segment_ids.len(),
+        1,
+        "Segment table should only contain 1 segment (segment1), got: {segment_ids:?}"
+    );
+    assert_eq!(
+        segment_ids[0], "segment1",
+        "Segment table should contain 'segment1', got: {segment_ids:?}"
+    );
+}
+
+/// Test that layers with failed registrations do NOT appear in the segment table.
+///
+/// This test registers two layers for the same segment with conflicting schemas in SEPARATE requests.
+/// The first registration should succeed, and the second should fail with a schema conflict.
+/// The segment table should show the segment with only the first (successful) layer.
+pub async fn register_conflicting_schema_same_segment_filters_layer(
+    service: impl RerunCloudService,
+) {
+    use super::common::register_and_wait;
+
+    let dataset_name = "test_conflicting_schema_same_segment_filters_layer";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    // First registration: segment1/base with Float64 - should succeed
+    let first_def = DataSourcesDefinition::new_with_tuid_prefix(
+        200,
+        [LayerDefinition::static_components(
+            "segment1",
+            [(
+                EntityPath::from("/data"),
+                Box::new(AnyValues::default().with_component_from_data(
+                    "test",
+                    Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
+                )) as Box<dyn AsComponents>,
+            )],
+        )
+        .layer_name("base")],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, first_def.to_data_sources())
+        .await;
+
+    // Second registration: segment1/extra with Float32 - will fail due to schema conflict
+    let second_def = DataSourcesDefinition::new_with_tuid_prefix(
+        201,
+        [LayerDefinition::static_components(
+            "segment1",
+            [(
+                EntityPath::from("/data"),
+                Box::new(AnyValues::default().with_component_from_data(
+                    "test",
+                    Arc::new(Float32Array::from(vec![1.0f32, 2.0, 3.0])),
+                )) as Box<dyn AsComponents>,
+            )],
+        )
+        .layer_name("extra")],
+    );
+    let request = tonic::Request::new(re_protos::cloud::v1alpha1::RegisterWithDatasetRequest {
+        data_sources: second_def.to_data_sources(),
+        on_duplicate: IfDuplicateBehavior::Error as i32,
+    })
+    .with_entry_name(dataset_name)
+    .unwrap();
+
+    // This registration should fail due to schema conflict
+    let task_results = register_and_wait(&service, request).await;
+    assert_task_failed(&task_results, "schema");
+
+    // Verify the segment table shows segment1 with only the base layer
+    let segment_table = scan_segment_table(&service, dataset_name).await;
+
+    let segment_id_col = segment_table
+        .column_by_name(ScanSegmentTableResponse::FIELD_SEGMENT_ID)
+        .expect("segment_id column expected")
+        .downcast_array_ref::<StringArray>()
+        .expect("segment_id should be string array");
+
+    let layer_names_col = segment_table
+        .column_by_name(ScanSegmentTableResponse::FIELD_LAYER_NAMES)
+        .expect("layer_names column expected")
+        .downcast_array_ref::<ListArray>()
+        .expect("layer_names should be list array");
+
+    assert_eq!(
+        segment_id_col.len(),
+        1,
+        "Segment table should only contain 1 segment"
+    );
+    assert_eq!(
+        segment_id_col.value(0),
+        "segment1",
+        "Segment table should contain 'segment1'"
+    );
+
+    let layer_names_arr = layer_names_col.value(0);
+    let layer_names = layer_names_arr
+        .downcast_array_ref::<StringArray>()
+        .expect("inner array should be string array");
+
+    let layers: Vec<&str> = (0..layer_names.len())
+        .map(|i| layer_names.value(i))
+        .collect();
+
+    assert_eq!(
+        layers,
+        vec!["base"],
+        "Segment should only have 'base' layer (the successful one), got: {layers:?}"
+    );
+}
+
+/// Helper to assert that at least one task failed with a message containing the expected substring.
+fn assert_task_failed(task_results: &[RecordBatch], expected_message_substring: &str) {
+    use re_protos::cloud::v1alpha1::QueryTasksResponse;
+
+    let mut found_failure = false;
+    let mut failure_message = String::new();
+
+    for batch in task_results {
+        let status_col = batch
+            .column_by_name(QueryTasksResponse::FIELD_EXEC_STATUS)
+            .expect("exec_status column expected")
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .expect("exec_status should be string array");
+
+        let msgs_col = batch
+            .column_by_name(QueryTasksResponse::FIELD_MSGS)
+            .expect("msgs column expected")
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .expect("msgs should be string array");
+
+        for i in 0..batch.num_rows() {
+            let status = status_col.value(i);
+            if status != "success" {
+                found_failure = true;
+                failure_message = msgs_col.value(i).to_owned();
+                break;
+            }
+        }
+        if found_failure {
+            break;
+        }
+    }
+
+    assert!(
+        found_failure,
+        "Expected at least one task to fail, but all tasks succeeded"
+    );
+    assert!(
+        failure_message
+            .to_lowercase()
+            .contains(&expected_message_substring.to_lowercase()),
+        "Expected failure message to contain '{expected_message_substring}', got: {failure_message}"
+    );
+}
+
+/// Helper to scan the segment table for a dataset.
+async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str) -> RecordBatch {
+    let responses: Vec<_> = service
+        .scan_segment_table(
+            tonic::Request::new(ScanSegmentTableRequest {
+                columns: vec![], // all of them
+            })
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await
+        .unwrap()
+        .into_inner()
+        .try_collect()
+        .await
+        .unwrap();
+
+    let batches: Vec<RecordBatch> = responses
+        .into_iter()
+        .map(|resp| resp.data.unwrap().try_into().unwrap())
+        .collect_vec();
+
+    // Handle empty responses by returning an empty batch with the expected schema
+    if batches.is_empty() {
+        return RecordBatch::new_empty(Arc::new(ScanSegmentTableResponse::schema()));
+    }
+
+    arrow::compute::concat_batches(batches.first().unwrap().schema_ref(), &batches).unwrap()
 }
 
 // ---
