@@ -4,6 +4,7 @@ mod camera_calibration;
 mod compressed_image;
 mod compressed_video;
 mod frame_transforms;
+mod log;
 mod pose_in_frame;
 mod poses_in_frame;
 
@@ -13,6 +14,7 @@ pub use camera_calibration::camera_calibration;
 pub use compressed_image::compressed_image;
 pub use compressed_video::compressed_video;
 pub use frame_transforms::frame_transforms;
+pub use log::log;
 pub use pose_in_frame::pose_in_frame;
 pub use poses_in_frame::poses_in_frame;
 
@@ -31,6 +33,7 @@ pub fn foxglove_lenses() -> Result<Lenses, LensError> {
     lenses.add_lens(frame_transforms()?);
     lenses.add_lens(compressed_video()?);
     lenses.add_lens(compressed_image()?);
+    lenses.add_lens(log()?);
     lenses.add_lens(pose_in_frame()?);
     lenses.add_lens(poses_in_frame()?);
     lenses.add_lens(camera_calibration()?);
