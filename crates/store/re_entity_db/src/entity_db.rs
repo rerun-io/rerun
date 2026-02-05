@@ -781,7 +781,7 @@ impl EntityDb {
         let protected_chunks = self
             .rrd_manifest_index
             .chunk_prioritizer()
-            .protected_chunks()
+            .desired_physical_chunks()
             .clone();
 
         let store_events = self.gc(&GarbageCollectionOptions {

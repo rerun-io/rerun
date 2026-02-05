@@ -219,6 +219,7 @@ impl ViewContextSystem for TransformTreeContext {
                     let transform_frame_id_component =
                         archetypes::CoordinateFrame::descriptor_frame().component;
 
+                    re_tracing::profile_scope!("latest_at_with_blueprint_resolved_data");
                     latest_at_with_blueprint_resolved_data(
                         ctx,
                         None,

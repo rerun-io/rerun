@@ -697,7 +697,7 @@ impl MessageBuffer {
 
         re_tracing::profile_scope!("Drop messages");
         re_log::info_once!(
-            "Exceeded gRPC proxy server memory limit ({}). Dropping the olddest log messages. Clients connecting after this will not see the full history.",
+            "Exceeded gRPC proxy server memory limit ({}). Dropping the oldest log messages. Clients connecting after this will not see the full history.",
             re_format::format_bytes(max_bytes as _)
         );
 

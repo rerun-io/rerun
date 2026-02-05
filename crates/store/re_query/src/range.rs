@@ -57,7 +57,7 @@ impl QueryCache {
             cache.handle_pending_invalidation();
 
             let (cached, missing) = cache.range(&store, query, entity_path, component);
-            results.missing.extend(missing);
+            results.missing_virtual.extend(missing);
             if !cached.is_empty() {
                 results.add(component, cached);
             }
@@ -78,7 +78,7 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`RangeResults::missing`] field.
+/// This lack of data is communicated using a non-empty [`RangeResults::missing_virtual`] field.
 #[derive(Debug, PartialEq)]
 pub struct RangeResults {
     /// The query that yielded these results.
@@ -92,7 +92,7 @@ pub struct RangeResults {
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing: Vec<ChunkId>,
+    pub missing_virtual: Vec<ChunkId>,
 
     /// Results for each individual component.
     pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
@@ -106,9 +106,9 @@ impl RangeResults {
     /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing`
+    /// [missing chunk IDs]: `Self::missing_virtual`
     pub fn is_partial(&self) -> bool {
-        !self.missing.is_empty()
+        !self.missing_virtual.is_empty()
     }
 
     /// Returns true if the results are *completely* empty.
@@ -117,10 +117,10 @@ impl RangeResults {
     pub fn is_empty(&self) -> bool {
         let Self {
             query: _,
-            missing,
+            missing_virtual,
             components,
         } = self;
-        missing.is_empty() && components.values().all(|chunks| chunks.is_empty())
+        missing_virtual.is_empty() && components.values().all(|chunks| chunks.is_empty())
     }
 
     /// Returns the [`Chunk`]s for the specified component.
@@ -148,7 +148,7 @@ impl RangeResults {
     fn new(query: RangeQuery) -> Self {
         Self {
             query,
-            missing: Default::default(),
+            missing_virtual: Default::default(),
             components: Default::default(),
         }
     }
@@ -357,7 +357,7 @@ impl RangeCache {
             .filter(|chunk| !chunk.is_empty())
             .collect();
 
-        (chunks, results.missing)
+        (chunks, results.missing_virtual)
     }
 
     #[inline]
@@ -468,7 +468,7 @@ mod tests {
             let expected = {
                 let mut results = RangeResults::new(query.clone());
                 results.add(component, vec![chunk2.clone()]);
-                results.missing = vec![chunk1.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
@@ -486,7 +486,7 @@ mod tests {
             let results = cache.range(&query, &entity_path, [component]);
             let expected = {
                 let mut results = RangeResults::new(query.clone());
-                results.missing = vec![chunk1.id(), chunk2.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk2.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());

@@ -12,9 +12,9 @@ pub type ChunkPromise = poll_promise::Promise<Result<Vec<Chunk>, ()>>;
 
 /// Information about a batch of chunks being downloaded.
 #[derive(Clone, Debug)]
-pub struct BatchInfo {
+pub struct RequestInfo {
     /// What chunks are included in this batch.
-    pub chunk_ids: BTreeSet<ChunkId>,
+    pub virtual_chunk_ids: BTreeSet<ChunkId>,
 
     /// Row indices in the RRD manifest.
     pub row_indices: BTreeSet<usize>,
@@ -27,14 +27,14 @@ pub struct BatchInfo {
 }
 
 /// Represents a batch of chunks being downloaded.
-pub struct ChunkPromiseBatch {
+pub struct ChunkBatchRequest {
     // The poll_promise API is a bit unergonomic.
     // For one, it is not `Sync`.
     // For another, it is not `Clone`.
     // There is room for something better here at some point.
     pub promise: Mutex<Option<ChunkPromise>>,
 
-    pub info: Arc<BatchInfo>,
+    pub info: Arc<RequestInfo>,
 }
 
 #[derive(Clone, Copy)]
@@ -65,30 +65,30 @@ impl std::ops::Div<f32> for ByteFloat {
 /// In-progress downloads of chunks.
 ///
 /// Used for larger-than-RAM streaming.
-pub struct ChunkPromises {
-    batches: Vec<ChunkPromiseBatch>,
+pub struct ChunkRequests {
+    requests: Vec<ChunkBatchRequest>,
 
     pub download_size_history: emath::History<ByteFloat>,
 }
 
-impl Default for ChunkPromises {
+impl Default for ChunkRequests {
     fn default() -> Self {
         Self {
-            batches: Vec::new(),
+            requests: Vec::new(),
             download_size_history: emath::History::new(0..50, 2.0),
         }
     }
 }
 
-static_assertions::assert_impl_all!(ChunkPromises: Sync);
+static_assertions::assert_impl_all!(ChunkRequests: Sync);
 
 #[cfg(feature = "testing")]
-impl Clone for ChunkPromises {
+impl Clone for ChunkRequests {
     fn clone(&self) -> Self {
         // This means the clone will have to start downloads from scratch.
         // In practice, the `Clone` feature is only used for tests.
         Self {
-            batches: Vec::new(),
+            requests: Vec::new(),
 
             download_size_history: {
                 let mut h = self.download_size_history.clone();
@@ -99,13 +99,13 @@ impl Clone for ChunkPromises {
     }
 }
 
-impl ChunkPromises {
+impl ChunkRequests {
     pub fn has_pending(&self) -> bool {
-        !self.batches.is_empty()
+        !self.requests.is_empty()
     }
 
     pub fn num_uncompressed_bytes_pending(&self) -> u64 {
-        self.batches
+        self.requests
             .iter()
             .map(|b| b.info.size_bytes_uncompressed)
             .sum()
@@ -133,14 +133,15 @@ impl ChunkPromises {
     }
 
     /// See if we have received any new chunks since last call.
-    pub fn resolve_pending(&mut self, time: f64) -> Vec<Chunk> {
+    #[must_use = "Returns newly received chunks"]
+    pub fn receive_finished(&mut self, time: f64) -> Vec<Chunk> {
         re_tracing::profile_function!();
 
         let mut all_chunks = Vec::new();
 
         let history = &mut self.download_size_history;
         history.flush(time);
-        self.batches.retain_mut(|batch| {
+        self.requests.retain_mut(|batch| {
             let mut promise_opt = batch.promise.lock();
             if let Some(promise) = promise_opt.take() {
                 match promise.try_take() {
@@ -163,13 +164,13 @@ impl ChunkPromises {
         all_chunks
     }
 
-    pub fn add(&mut self, batch: ChunkPromiseBatch) {
-        self.batches.push(batch);
+    pub fn add(&mut self, batch: ChunkBatchRequest) {
+        self.requests.push(batch);
     }
 
     /// Returns info about all in-progress downloads.
-    pub fn batch_infos(&self) -> Vec<Arc<BatchInfo>> {
-        self.batches
+    pub fn pending_requests(&self) -> Vec<Arc<RequestInfo>> {
+        self.requests
             .iter()
             .map(|batch| Arc::clone(&batch.info))
             .collect()

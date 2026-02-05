@@ -437,23 +437,26 @@ impl ChunkStoreHandle {
 
 /// This keeps track of all missing virtual [`ChunkId`]s and all
 /// used physical [`ChunkId`]s.
-///
-/// Chunks are considered missing when they are required to compute the results of a query, but cannot be
-/// found in local memory. This set is automatically populated anytime that happens.
 #[derive(Debug, Default)]
 pub struct QueriedChunkIdTracker {
+    /// Used physical chunks.
     pub used_physical: HashSet<ChunkId>,
-    pub missing: HashSet<ChunkId>,
+
+    /// Missing virtual chunks.
+    ///
+    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+    /// found in local memory. This set is automatically populated anytime that happens.
+    pub missing_virtual: HashSet<ChunkId>,
 }
 
 impl re_byte_size::SizeBytes for QueriedChunkIdTracker {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             used_physical,
-            missing,
+            missing_virtual,
         } = self;
 
-        used_physical.heap_size_bytes() + missing.heap_size_bytes()
+        used_physical.heap_size_bytes() + missing_virtual.heap_size_bytes()
     }
 }
 
@@ -829,8 +832,8 @@ impl ChunkStore {
 
     /// Get a *physical* chunk based on its ID.
     #[inline]
-    pub fn physical_chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
-        self.chunks_per_chunk_id.get(id)
+    pub fn physical_chunk(&self, physical_chunk_id: &ChunkId) -> Option<&Arc<Chunk>> {
+        self.chunks_per_chunk_id.get(physical_chunk_id)
     }
 
     /// Get a *physical* chunk based on its ID and track the chunk as either
@@ -939,7 +942,7 @@ impl ChunkStore {
     fn insert_missing_chunk_id(&self, chunk_id: ChunkId) {
         self.queried_chunk_id_tracker
             .write()
-            .missing
+            .missing_virtual
             .insert(chunk_id);
     }
 
@@ -947,7 +950,7 @@ impl ChunkStore {
     ///
     /// See also [`ChunkStore::take_tracked_chunk_ids`].
     pub fn num_missing_chunk_ids(&self) -> usize {
-        self.queried_chunk_id_tracker.read().missing.len()
+        self.queried_chunk_id_tracker.read().missing_virtual.len()
     }
 }
 

@@ -98,7 +98,7 @@ pub enum OnMissingChunk {
     Ignore,
 
     /// Remember the missing chunk ID in [`ChunkStore::take_tracked_chunk_ids`]
-    /// and report it back in [`QueryResults::missing`].
+    /// and report it back in [`QueryResults::missing_virtual`].
     Report,
 
     /// Panic when a chunk is missing.

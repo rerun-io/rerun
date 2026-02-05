@@ -100,9 +100,9 @@ impl crate::DataUi for EntityDb {
         // TODO(emilk): hide behind a feature flag?
         if cfg!(debug_assertions) && self.rrd_manifest_index().has_manifest() {
             ui.add_space(8.0);
-            ui.collapsing_header("LTR download-info", false, |ui| {
+            ui.collapsing_header("In-flight chunk requests", false, |ui| {
                 ui.weak("(only available in debug builds)");
-                chunk_promises_ui(ui, self.rrd_manifest_index());
+                chunk_requests_ui(ui, self.rrd_manifest_index());
             });
         }
     }
@@ -306,11 +306,10 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
     }
 }
 
-fn chunk_promises_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
-    let promises = rrd_manifest_index.chunk_promises();
-    let batch_infos = promises.batch_infos();
+fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
+    let requests = rrd_manifest_index.chunk_requests().pending_requests();
 
-    if batch_infos.is_empty() {
+    if requests.is_empty() {
         ui.label("No in-progress downloads");
         return;
     }
@@ -321,8 +320,8 @@ fn chunk_promises_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
 
     let col_chunk_entity_path_raw = rrd_manifest.col_chunk_entity_path_raw();
     let mut entities = BTreeSet::<EntityPath>::new();
-    for batch in &batch_infos {
-        for &row_idx in &batch.row_indices {
+    for request in &requests {
+        for &row_idx in &request.row_indices {
             let path = col_chunk_entity_path_raw.value(row_idx);
             entities.insert(EntityPath::parse_forgiving(path));
         }

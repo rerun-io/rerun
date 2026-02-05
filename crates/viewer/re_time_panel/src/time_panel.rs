@@ -1346,12 +1346,12 @@ impl TimePanel {
 
                 let freshness = entity_db
                     .rrd_manifest_index()
-                    .chunk_promises()
+                    .chunk_requests()
                     .bandwidth_data_freshness(ui.time());
                 if ctx.app_options().show_metrics && freshness > 0.0 {
                     let mut rate = entity_db
                         .rrd_manifest_index()
-                        .chunk_promises()
+                        .chunk_requests()
                         .bandwidth()
                         .unwrap_or(0.0);
 

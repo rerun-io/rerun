@@ -9,7 +9,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
-pub use crate::chunk_promise::{BatchInfo, ChunkPromise, ChunkPromises};
+pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
 
 mod chunk_prioritizer;
 mod sorted_temporal_chunks;
@@ -31,7 +31,7 @@ enum LoadState {
 
     /// We have requested it.
     ///
-    /// TODO(emilk): move this state to [`ChunkPromises`]
+    /// TODO(emilk): move this state to [`ChunkRequests`]
     InTransit,
 
     /// We have the chole chunk in memory.
@@ -49,14 +49,14 @@ impl LoadState {
 
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug, Default)]
-pub struct ChunkInfo {
+pub struct VirtualChunkInfo {
     state: LoadState,
 
     /// Empty for static chunks
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
 
-impl re_byte_size::SizeBytes for ChunkInfo {
+impl re_byte_size::SizeBytes for VirtualChunkInfo {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             state: _,
@@ -107,7 +107,7 @@ pub struct RrdManifestIndex {
     ///
     /// The chunk store may split large chunks and merge (compact) small ones,
     /// so what's in the chunk store can differ significantly.
-    remote_chunks: HashMap<ChunkId, ChunkInfo>,
+    virtual_chunks: HashMap<ChunkId, VirtualChunkInfo>,
 
     chunk_prioritizer: ChunkPrioritizer,
 
@@ -161,14 +161,14 @@ impl RrdManifestIndex {
         self.update_loaded_ranges();
 
         for &chunk_id in manifest.col_chunk_ids() {
-            self.remote_chunks.insert(chunk_id, Default::default());
+            self.virtual_chunks.insert(chunk_id, Default::default());
         }
 
         for timelines in self.native_temporal_map.values() {
             for (&timeline, comps) in timelines {
                 for chunks in comps.values() {
                     for (&chunk_id, entry) in chunks {
-                        let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
+                        let chunk_info = self.virtual_chunks.entry(chunk_id).or_default();
                         chunk_info
                             .temporals
                             .entry(*timeline.name())
@@ -200,13 +200,13 @@ impl RrdManifestIndex {
     }
 
     /// Iterate over all chunks in the manifest.
-    pub fn remote_chunks(&self) -> impl Iterator<Item = &ChunkInfo> {
-        self.remote_chunks.values()
+    pub fn virtual_chunks(&self) -> impl Iterator<Item = &VirtualChunkInfo> {
+        self.virtual_chunks.values()
     }
 
     /// Info about a chunk that is in the manifest
-    pub fn remote_chunk_info(&self, chunk_id: &ChunkId) -> Option<&ChunkInfo> {
-        self.remote_chunks.get(chunk_id)
+    pub fn virtual_chunk_info(&self, chunk_id: &ChunkId) -> Option<&VirtualChunkInfo> {
+        self.virtual_chunks.get(chunk_id)
     }
 
     fn update_timeline_stats(&mut self) {
@@ -319,7 +319,7 @@ impl RrdManifestIndex {
     }
 
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {
-        let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
+        let chunk_info = self.virtual_chunks.entry(chunk_id).or_default();
         chunk_info.state = LoadState::Loaded;
     }
 
@@ -370,7 +370,7 @@ impl RrdManifestIndex {
             }
         };
 
-        if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
+        if let Some(chunk_info) = self.virtual_chunks.get_mut(chunk_id) {
             chunk_info.state = state;
             update_ranges(*chunk_id);
         } else {
@@ -382,7 +382,7 @@ impl RrdManifestIndex {
                 );
             } else {
                 for (chunk_id, _) in root_chunk_ids {
-                    if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
+                    if let Some(chunk_info) = self.virtual_chunks.get_mut(&chunk_id) {
                         update_ranges(chunk_id);
                         chunk_info.state = state;
                     } else {
@@ -405,12 +405,12 @@ impl RrdManifestIndex {
         &self.chunk_prioritizer
     }
 
-    pub fn chunk_promises(&self) -> &ChunkPromises {
-        self.chunk_prioritizer.chunk_promises()
+    pub fn chunk_requests(&self) -> &ChunkRequests {
+        self.chunk_prioritizer.chunk_requests()
     }
 
-    pub fn chunk_promises_mut(&mut self) -> &mut ChunkPromises {
-        self.chunk_prioritizer.chunk_promises_mut()
+    pub fn chunk_requests_mut(&mut self) -> &mut ChunkRequests {
+        self.chunk_prioritizer.chunk_requests_mut()
     }
 
     /// Find the next candidates for prefetching.
@@ -433,7 +433,7 @@ impl RrdManifestIndex {
                 options,
                 load_chunks,
                 manifest,
-                &mut self.remote_chunks,
+                &mut self.virtual_chunks,
             )
         } else {
             Err(PrefetchError::NoManifest)
@@ -487,7 +487,7 @@ impl RrdManifestIndex {
     }
 
     fn is_chunk_unloaded(&self, chunk_id: &ChunkId) -> bool {
-        self.remote_chunks
+        self.virtual_chunks
             .get(chunk_id)
             .is_none_or(|c| c.state.is_unloaded())
     }
@@ -515,6 +515,8 @@ fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
 
 impl re_byte_size::SizeBytes for RrdManifestIndex {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             entity_has_static_data,
             entity_tree,
@@ -523,7 +525,7 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
             loaded_ranges,
             native_static_map,
             native_temporal_map,
-            remote_chunks,
+            virtual_chunks,
             chunk_prioritizer,
             timelines,
             full_uncompressed_size: _,
@@ -536,7 +538,7 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
             + loaded_ranges.heap_size_bytes()
             + native_static_map.heap_size_bytes()
             + native_temporal_map.heap_size_bytes()
-            + remote_chunks.heap_size_bytes()
+            + virtual_chunks.heap_size_bytes()
             + chunk_prioritizer.heap_size_bytes()
             + timelines.heap_size_bytes()
     }
@@ -556,7 +558,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             manifest,
             native_static_map,
             native_temporal_map,
-            remote_chunks,
+            virtual_chunks,
             chunk_prioritizer,
             timelines,
             full_uncompressed_size: _,
@@ -577,7 +579,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             "native_temporal_map",
             native_temporal_map.total_size_bytes(),
         );
-        node.add("remote_chunks", remote_chunks.total_size_bytes());
+        node.add("virtual_chunks", virtual_chunks.total_size_bytes());
         node.add("timelines", timelines.total_size_bytes());
 
         node.into_tree()

@@ -58,6 +58,8 @@ impl ViewProperty {
         blueprint_query: &LatestAtQuery,
         view_id: ViewId,
     ) -> Self {
+        re_tracing::profile_function!(A::name());
+
         Self::from_archetype_impl(
             blueprint_db,
             blueprint_query.clone(),
@@ -98,6 +100,8 @@ impl ViewProperty {
         ctx: &ViewContext<'_>,
         component: ComponentIdentifier,
     ) -> Result<C, ViewPropertyQueryError> {
+        re_tracing::profile_function!(component);
+
         self.component_array_or_fallback::<C>(ctx, component)?
             .into_iter()
             .next()

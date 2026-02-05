@@ -238,6 +238,8 @@ impl FallbackProviderRegistry {
         component_type: Option<ComponentType>,
         ctx: &QueryContext<'_>,
     ) -> ArrayRef {
+        re_tracing::profile_function!(component);
+
         let res = self
             .get_fallback_function(component, component_type, ctx)
             .map(|f| f(ctx));

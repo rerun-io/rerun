@@ -144,7 +144,7 @@ impl QueryCache {
                     // Indicate that we're missing this tombstone, and treat the data as incomplete until we know more.
 
                     max_clear_index = (TimeInt::MAX, RowId::MAX);
-                    results.missing.extend(missing);
+                    results.missing_virtual.extend(missing);
                 }
 
                 let Some(parent_entity_path) = clear_entity_path.parent() else {
@@ -175,7 +175,7 @@ impl QueryCache {
                     "should never have partial latest-at results"
                 );
             }
-            results.missing.extend(missing);
+            results.missing_virtual.extend(missing);
 
             if let Some(cached) = cached {
                 // 1. A `Clear` component doesn't shadow its own self.
@@ -225,7 +225,7 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`LatestAtResults::missing`] field.
+/// This lack of data is communicated using a non-empty [`LatestAtResults::missing_virtual`] field.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LatestAtResults {
     /// The associated [`EntityPath`].
@@ -242,7 +242,7 @@ pub struct LatestAtResults {
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing: Vec<ChunkId>,
+    pub missing_virtual: Vec<ChunkId>,
 
     /// The first index of all the results.
     pub min_index: (TimeInt, RowId),
@@ -266,7 +266,7 @@ impl LatestAtResults {
         Self {
             entity_path,
             query,
-            missing: Default::default(),
+            missing_virtual: Default::default(),
             min_index: (TimeInt::MAX, RowId::MAX),
             max_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
@@ -282,9 +282,9 @@ impl LatestAtResults {
     /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing`
+    /// [missing chunk IDs]: `Self::missing_virtual`
     pub fn is_partial(&self) -> bool {
-        !self.missing.is_empty()
+        !self.missing_virtual.is_empty()
     }
 
     /// Returns true if the results are *completely* empty.
@@ -294,12 +294,12 @@ impl LatestAtResults {
         let Self {
             entity_path: _,
             query: _,
-            missing,
+            missing_virtual,
             min_index: _,
             max_index: _,
             components,
         } = self;
-        missing.is_empty() && components.values().all(|chunks| chunks.is_empty())
+        missing_virtual.is_empty() && components.values().all(|chunks| chunks.is_empty())
     }
 
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
@@ -720,7 +720,7 @@ impl LatestAtCache {
         if results.is_partial() {
             // Contrary to range results, partial latest-at results cannot ever be correct on their own,
             // therefore we must give up the current query entirely.
-            return (None, results.missing);
+            return (None, results.missing_virtual);
         }
 
         let Some(((data_time, _row_id), unit)) = results
@@ -909,7 +909,7 @@ mod tests {
             let results = cache.latest_at(&query, &entity_path, [component]);
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
-                results.missing = vec![chunk1.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
@@ -937,7 +937,7 @@ mod tests {
             let results = cache.latest_at(&query, &entity_path, [component]);
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
-                results.missing = vec![chunk1.id(), chunk2.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk2.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
@@ -1104,7 +1104,7 @@ mod tests {
                 let results = cache.latest_at(&query, &entity_child, [component]);
                 let expected = {
                     let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
-                    results.missing = vec![tombstone.id()];
+                    results.missing_virtual = vec![tombstone.id()];
                     results
                 };
                 assert_eq!(true, results.is_partial());
@@ -1207,7 +1207,7 @@ mod tests {
             let results = cache.latest_at(&query, &entity_child, [component]);
             let expected = {
                 let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
-                results.missing = vec![chunk_parent_clear_flat.id()];
+                results.missing_virtual = vec![chunk_parent_clear_flat.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
