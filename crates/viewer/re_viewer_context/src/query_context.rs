@@ -283,6 +283,12 @@ impl DataResultTree {
             }
         }
     }
+
+    /// Iterates over all [`DataResult`]s.
+    #[inline]
+    pub fn iter_data_results(&self) -> impl Iterator<Item = &DataResult> {
+        self.data_results.values().map(|node| &node.data_result)
+    }
 }
 
 static EMPTY_QUERY: LazyLock<DataQueryResult> = LazyLock::new(Default::default);

@@ -5,10 +5,10 @@ use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
 use re_viewer_context::{
-    PerSystemDataResults, PerVisualizerTypeInViewClass, SystemExecutionOutput,
-    ViewContextCollection, ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState,
-    ViewStates, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizerCollection, VisualizerExecutionOutput,
+    PerVisualizerTypeInViewClass, SystemExecutionOutput, ViewContextCollection,
+    ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizerCollection,
+    VisualizerExecutionOutput, VisualizerInstructionsPerType,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -68,26 +68,29 @@ pub fn new_view_query<'a>(ctx: &'a ViewerContext<'a>, view: &'a ViewBlueprint) -
 
     let query_result = ctx.lookup_query_result(view.id);
 
-    let mut per_visualizer_data_results = PerSystemDataResults::default();
+    let mut active_visualizer_instructions_per_type = VisualizerInstructionsPerType::default();
     {
-        re_tracing::profile_scope!("per_system_data_results");
+        re_tracing::profile_scope!("active_visualizer_instructions_per_type");
 
-        query_result.tree.visit(&mut |node| {
-            for instruction in &node.data_result.visualizer_instructions {
-                per_visualizer_data_results
+        for data_result in query_result.tree.iter_data_results() {
+            if !data_result.visible {
+                continue;
+            }
+
+            for instruction in &data_result.visualizer_instructions {
+                active_visualizer_instructions_per_type
                     .entry(instruction.visualizer_type)
                     .or_default()
-                    .push(&node.data_result);
+                    .push((data_result, instruction));
             }
-            true
-        });
+        }
     }
 
     let current_query = ctx.time_ctrl.current_query();
     re_viewer_context::ViewQuery {
         view_id: view.id,
         space_origin: &view.space_origin,
-        per_visualizer_data_results,
+        active_visualizer_instructions_per_type,
         timeline: current_query.timeline(),
         latest_at: current_query.at(),
         highlights,

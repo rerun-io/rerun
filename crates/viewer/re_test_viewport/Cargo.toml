@@ -26,3 +26,7 @@ re_viewport_blueprint.workspace = true
 # External dependencies
 ahash.workspace = true
 egui.workspace = true
+
+[dev-dependencies]
+re_chunk.workspace = true
+re_entity_db.workspace = true

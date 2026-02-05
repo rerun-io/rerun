@@ -206,11 +206,16 @@ impl ViewContextSystem for TransformTreeContext {
 
         let results = {
             re_tracing::profile_scope!("latest-ats");
-            query
-                .iter_all_data_results()
-                .map(|data_result| {
-                    let latest_at_query = ctx.current_query();
+            let latest_at_query = ctx.current_query();
 
+            ctx.query_result
+                .tree
+                .iter_data_results()
+                .filter(|data_result| {
+                    // We're only interested in supplying visualizers.
+                    data_result.visible && !data_result.visualizer_instructions.is_empty()
+                })
+                .map(|data_result| {
                     let transform_frame_id_component =
                         archetypes::CoordinateFrame::descriptor_frame().component;
 

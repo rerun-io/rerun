@@ -9826,6 +9826,8 @@ version = "0.30.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
+ "re_chunk",
+ "re_entity_db",
  "re_log_types",
  "re_sdk_types",
  "re_test_context",

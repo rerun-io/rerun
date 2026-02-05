@@ -130,9 +130,12 @@ Configure in the selection panel:
             engine: ctx.recording().storage_engine_arc(),
         };
 
-        let view_contents = query
-            .iter_all_entities()
-            .map(|entity| (entity.clone(), None))
+        // TODO(andreas): why are we dealing with a ViewerContext and not a ViewContext here? The later would have the query results readily available.
+        let query_results = ctx.lookup_query_result(query.view_id);
+        let view_contents = query_results
+            .tree
+            .iter_data_results()
+            .map(|data_result| (data_result.entity_path.clone(), None))
             .collect();
 
         let sparse_fill_strategy = if view_query.latest_at_enabled()? {

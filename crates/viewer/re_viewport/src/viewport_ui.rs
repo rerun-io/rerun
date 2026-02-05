@@ -387,24 +387,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             let view = view_blueprint;
             re_tracing::profile_scope!("late-system-execute", view.class_identifier().as_str());
 
-            let query_result = ctx.lookup_query_result(view.id);
-
-            let mut per_visualizer_data_results = re_viewer_context::PerSystemDataResults::default();
-
-            {
-                re_tracing::profile_scope!("per_system_data_results");
-
-                query_result.tree.visit(&mut |node| {
-                    for instruction in &node.data_result.visualizer_instructions {
-                        per_visualizer_data_results
-                            .entry(instruction.visualizer_type)
-                            .or_default()
-                            .push(&node.data_result);
-                    }
-                    true
-                });
-            }
-
             let class_registry = self.ctx.view_class_registry();
             let class = view_blueprint.class(class_registry);
             let context_system_once_per_frame_results = class_registry.run_once_per_frame_context_systems(
