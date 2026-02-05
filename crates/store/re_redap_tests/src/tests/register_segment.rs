@@ -880,24 +880,42 @@ pub async fn register_conflicting_schema(service: impl RerunCloudService) {
                 // Float64
                 LayerDefinition::static_components(
                     "segment1",
-                    [(
-                        EntityPath::from("/data"),
-                        Box::new(AnyValues::default().with_component_from_data(
-                            "test",
-                            Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
-                        )) as Box<dyn AsComponents>,
-                    )],
+                    [
+                        (
+                            EntityPath::from("/data"),
+                            Box::new(AnyValues::default().with_component_from_data(
+                                "test",
+                                Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
+                            )) as Box<dyn AsComponents>,
+                        ), //
+                        (
+                            "/__properties/prop".into(),
+                            Box::new(AnyValues::default().with_component_from_data(
+                                "test",
+                                Arc::new(Float64Array::from(vec![1.0, 2.0, 3.0])),
+                            )) as Box<dyn AsComponents>,
+                        ),
+                    ],
                 ),
                 // Float32
                 LayerDefinition::static_components(
                     "segment2",
-                    [(
-                        EntityPath::from("/data"),
-                        Box::new(AnyValues::default().with_component_from_data(
-                            "test",
-                            Arc::new(Float32Array::from(vec![1.0f32, 2.0, 3.0])),
-                        )) as Box<dyn AsComponents>,
-                    )],
+                    [
+                        (
+                            EntityPath::from("/data"),
+                            Box::new(AnyValues::default().with_component_from_data(
+                                "test",
+                                Arc::new(Float32Array::from(vec![1.0f32, 2.0, 3.0])),
+                            )) as Box<dyn AsComponents>,
+                        ), //
+                        (
+                            "/__properties/prop".into(),
+                            Box::new(AnyValues::default().with_component_from_data(
+                                "test",
+                                Arc::new(Float64Array::from(vec![4.0, 5.0, 6.0])),
+                            )) as Box<dyn AsComponents>,
+                        ),
+                    ],
                 ),
             ],
         ),
@@ -918,6 +936,13 @@ pub async fn register_conflicting_schema(service: impl RerunCloudService) {
             .contains("schema incompatibility "),
         "error should mention schema conflict, got: {error_message}"
     );
+
+    scan_segment_table_and_snapshot(
+        &service,
+        "test_conflicting_schema",
+        "segment1_props_should_be_there",
+    )
+    .await;
 }
 
 /// Test that two RRDs with conflicting property schemas cannot be registered together.
