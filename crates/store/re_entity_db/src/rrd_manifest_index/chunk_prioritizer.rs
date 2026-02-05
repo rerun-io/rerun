@@ -12,7 +12,7 @@ use re_mutex::Mutex;
 
 use crate::{
     chunk_requests::{ChunkBatchRequest, ChunkPromise, ChunkRequests, RequestInfo},
-    rrd_manifest_index::{LoadState, VirtualChunkInfo},
+    rrd_manifest_index::{LoadState, RootChunkInfo},
     sorted_range_map::SortedRangeMap,
 };
 
@@ -163,7 +163,7 @@ impl<'a> ChunkRequestBatcher<'a> {
 
         let col_chunk_ids: &[ChunkId] = self.manifest.col_chunk_ids();
 
-        let mut virtual_chunk_ids = BTreeSet::default();
+        let mut virtual_chunk_ids = ahash::HashSet::default();
         for &row_idx in &row_indices {
             virtual_chunk_ids.insert(col_chunk_ids[row_idx]);
         }
@@ -190,7 +190,7 @@ impl<'a> ChunkRequestBatcher<'a> {
     fn try_fetch(
         &mut self,
         chunk_row_idx: usize,
-        virtual_chunk: &mut VirtualChunkInfo,
+        virtual_chunk: &mut RootChunkInfo,
     ) -> Result<bool, PrefetchError> {
         if self.remaining_bytes_in_on_wire_budget == 0 {
             return Ok(false);
@@ -256,16 +256,13 @@ pub struct ChunkPrioritizer {
     chunk_requests: ChunkRequests,
 
     /// Intervals of all root chunks in the rrd manifest per timeline.
-    virtual_chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
+    root_chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
 
     /// All static root chunks in the rrd manifest.
     static_chunk_ids: HashSet<ChunkId>,
 
     /// Chunks that should be downloaded before any else.
     high_priority_chunks: HighPrioChunks,
-
-    /// Maps a [`ChunkId`] to a specific row in the [`RrdManifest::data`] record batch.
-    manifest_row_from_chunk_id: HashMap<ChunkId, usize>,
 }
 
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
@@ -275,10 +272,9 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             had_missing_chunks: _,
             checked_virtual_chunks,
             chunk_requests: _, // not yet implemented
-            virtual_chunk_intervals,
+            root_chunk_intervals: virtual_chunk_intervals,
             static_chunk_ids,
             high_priority_chunks,
-            manifest_row_from_chunk_id,
         } = self;
 
         desired_physical_chunks.heap_size_bytes()
@@ -286,21 +282,14 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             + virtual_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
             + high_priority_chunks.heap_size_bytes()
-            + manifest_row_from_chunk_id.heap_size_bytes()
     }
 }
 
 impl ChunkPrioritizer {
-    pub fn on_rrd_manifest(
-        &mut self,
-        manifest: &RrdManifest,
-        native_static_map: &re_log_encoding::RrdManifestStaticMap,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) {
-        self.update_static_chunks(native_static_map);
-        self.update_chunk_intervals(native_temporal_map);
-        self.update_manifest_row_from_chunk_id(manifest);
-        self.update_high_priority_chunks(native_static_map, native_temporal_map);
+    pub fn on_rrd_manifest(&mut self, manifest: &RrdManifest) {
+        self.update_static_chunks(manifest);
+        self.update_chunk_intervals(manifest);
+        self.update_high_priority_chunks(manifest);
     }
 
     /// Returns true if the chunk store had missing chunks last time we prioritized chunks.
@@ -309,15 +298,11 @@ impl ChunkPrioritizer {
     }
 
     /// Find all chunk IDs that contain components with the given prefix.
-    fn find_chunks_with_component_prefix(
-        native_static_map: &re_log_encoding::RrdManifestStaticMap,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-        prefix: &str,
-    ) -> HighPrioChunks {
+    fn find_chunks_with_component_prefix(manifest: &RrdManifest, prefix: &str) -> HighPrioChunks {
         let mut static_chunks: HashSet<ChunkId> = Default::default();
         let mut temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>> = Default::default();
 
-        for components in native_static_map.values() {
+        for components in manifest.static_map().values() {
             for (component, chunk_id) in components {
                 if component.as_str().starts_with(prefix) {
                     static_chunks.insert(*chunk_id);
@@ -325,7 +310,7 @@ impl ChunkPrioritizer {
             }
         }
 
-        for timelines in native_temporal_map.values() {
+        for timelines in manifest.temporal_map().values() {
             for (timeline, components) in timelines {
                 for (component, chunks) in components {
                     if component.as_str().starts_with(prefix) {
@@ -352,11 +337,7 @@ impl ChunkPrioritizer {
         }
     }
 
-    fn update_high_priority_chunks(
-        &mut self,
-        native_static_map: &re_log_encoding::RrdManifestStaticMap,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) {
+    fn update_high_priority_chunks(&mut self, manifest: &RrdManifest) {
         // Find chunks containing transform-related components.
         // We need to download _all_ of them because any one of them could
         // contain a crucial part of the transform hierarchy.
@@ -365,36 +346,24 @@ impl ChunkPrioritizer {
         // available at each time point.
         // More here: https://linear.app/rerun/issue/RR-3441/required-transform-frames-arent-always-loaded
         self.high_priority_chunks = Self::find_chunks_with_component_prefix(
-            native_static_map,
-            native_temporal_map,
+            manifest,
             "Transform3D:", // Hard-coding this here is VERY hacky, but I want to ship MVP
         );
     }
 
-    fn update_manifest_row_from_chunk_id(&mut self, manifest: &RrdManifest) {
-        self.manifest_row_from_chunk_id.clear();
-        let col_chunk_ids = manifest.col_chunk_ids();
-        for (row_idx, &chunk_id) in col_chunk_ids.iter().enumerate() {
-            self.manifest_row_from_chunk_id.insert(chunk_id, row_idx);
-        }
-    }
-
-    fn update_static_chunks(&mut self, native_static_map: &re_log_encoding::RrdManifestStaticMap) {
-        for entity_chunks in native_static_map.values() {
+    fn update_static_chunks(&mut self, manifest: &RrdManifest) {
+        for entity_chunks in manifest.static_map().values() {
             for &chunk_id in entity_chunks.values() {
                 self.static_chunk_ids.insert(chunk_id);
             }
         }
     }
 
-    fn update_chunk_intervals(
-        &mut self,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) {
+    fn update_chunk_intervals(&mut self, manifest: &RrdManifest) {
         let mut per_timeline_chunks: BTreeMap<Timeline, Vec<(RangeInclusive<TimeInt>, ChunkId)>> =
             BTreeMap::default();
 
-        for timelines in native_temporal_map.values() {
+        for timelines in manifest.temporal_map().values() {
             for (timeline, components) in timelines {
                 let timeline_chunks = per_timeline_chunks.entry(*timeline).or_default();
                 for chunks in components.values() {
@@ -405,9 +374,9 @@ impl ChunkPrioritizer {
             }
         }
 
-        self.virtual_chunk_intervals.clear();
+        self.root_chunk_intervals.clear();
         for (timeline, chunks) in per_timeline_chunks {
-            self.virtual_chunk_intervals
+            self.root_chunk_intervals
                 .insert(timeline, SortedRangeMap::new(chunks));
         }
     }
@@ -443,15 +412,12 @@ impl ChunkPrioritizer {
             missing_virtual,
         } = used_and_missing;
 
-        let used = used_physical.into_iter();
+        let used_physical = used_physical.into_iter();
 
         let mut missing_roots = Vec::new();
 
-        // Reuse a vec for less allocations in the loop.
-        let mut scratch = Vec::new();
         for missing_virtual_chunk_id in missing_virtual {
-            store.collect_root_rrd_manifests(&missing_virtual_chunk_id, &mut scratch);
-            missing_roots.extend(scratch.drain(..).map(|(id, _)| id));
+            store.collect_root_ids(&missing_virtual_chunk_id, &mut missing_roots);
         }
 
         let chunks_ids_after_time_cursor = move || {
@@ -468,7 +434,7 @@ impl ChunkPrioritizer {
         let high_prio_chunks_before_time_cursor =
             high_priority_chunks.all_before(timeline, time_cursor);
         let chunk_ids_in_priority_order = itertools::chain!(
-            used,
+            used_physical,
             missing_roots,
             static_chunk_ids.iter().copied(),
             high_prio_chunks_before_time_cursor,
@@ -498,9 +464,9 @@ impl ChunkPrioritizer {
         options: &ChunkPrefetchOptions,
         load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
         manifest: &RrdManifest,
-        virtual_chunks: &mut HashMap<ChunkId, VirtualChunkInfo>,
+        root_chunks: &mut HashMap<ChunkId, RootChunkInfo>,
     ) -> Result<(), PrefetchError> {
-        let Some(chunks) = self.virtual_chunk_intervals.get(&options.timeline) else {
+        let Some(chunks) = self.root_chunk_intervals.get(&options.timeline) else {
             return Err(PrefetchError::UnknownTimeline(options.timeline));
         };
 
@@ -550,14 +516,14 @@ impl ChunkPrioritizer {
                 continue;
             }
 
-            match virtual_chunks.get_mut(&chunk_id) {
+            match root_chunks.get_mut(&chunk_id) {
                 Some(
-                    virtual_chunk @ VirtualChunkInfo {
+                    root_chunk @ RootChunkInfo {
                         state: LoadState::Unloaded | LoadState::InTransit,
                         ..
                     },
                 ) => {
-                    let row_idx = self.manifest_row_from_chunk_id[&chunk_id];
+                    let row_idx = root_chunk.row_id;
 
                     // We count only the chunks we are interested in as being part of the memory budget.
                     // The others can/will be evicted as needed.
@@ -578,8 +544,8 @@ impl ChunkPrioritizer {
                         }
                     }
 
-                    if virtual_chunk.state == LoadState::Unloaded
-                        && !chunk_batcher.try_fetch(row_idx, virtual_chunk)?
+                    if root_chunk.state == LoadState::Unloaded
+                        && !chunk_batcher.try_fetch(row_idx, root_chunk)?
                     {
                         // If we don't have anything more to fetch we stop looking.
                         //
@@ -596,7 +562,7 @@ impl ChunkPrioritizer {
                     self.desired_physical_chunks
                         .extend(physical_chunks_scratch.drain(..));
                 }
-                Some(VirtualChunkInfo {
+                Some(RootChunkInfo {
                     state: LoadState::Loaded,
                     ..
                 }) => {
@@ -645,9 +611,9 @@ impl ChunkPrioritizer {
                     //
                     // If these missing splits are missing we can let the `missing` chunk detection
                     // handle that.
-                    store.collect_root_rrd_manifests(&chunk_id, &mut manifest_chunks_scratch);
+                    store.collect_root_ids(&chunk_id, &mut manifest_chunks_scratch);
                     self.checked_virtual_chunks
-                        .extend(manifest_chunks_scratch.drain(..).map(|(id, _)| id));
+                        .extend(manifest_chunks_scratch.drain(..));
                 }
             }
         }

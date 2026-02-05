@@ -32,12 +32,19 @@ pub struct RrdManifest {
     chunk_byte_sizes: ScalarBuffer<u64>,
     chunk_byte_sizes_uncompressed: ScalarBuffer<u64>,
     chunk_keys: Option<BinaryArray>,
+
+    static_data_map: RrdManifestStaticMap,
+    temporal_data_map: RrdManifestTemporalMap,
 }
 
 impl re_byte_size::SizeBytes for RrdManifest {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
         // The Arrow arrays are clones (Arc-based), so they share memory with the manifest.
         self.raw.heap_size_bytes()
+            + self.static_data_map.heap_size_bytes()
+            + self.temporal_data_map.heap_size_bytes()
     }
 }
 
@@ -135,6 +142,9 @@ impl RrdManifest {
             None
         };
 
+        let static_data_map = manifest.calc_static_map()?;
+        let temporal_data_map = manifest.calc_temporal_map()?;
+
         Ok(Self {
             raw: manifest,
             chunk_ids,
@@ -145,6 +155,8 @@ impl RrdManifest {
             chunk_byte_sizes,
             chunk_byte_sizes_uncompressed,
             chunk_keys,
+            static_data_map,
+            temporal_data_map,
         })
     }
 
@@ -266,17 +278,15 @@ impl RrdManifest {
         self.raw.compute_sha256()
     }
 
-    /// Computes a map-based representation of the static data in this RRD manifest.
-    ///
-    /// Note: This delegates to [`RawRrdManifest::get_static_data_as_a_map`].
-    pub fn get_static_data_as_a_map(&self) -> CodecResult<RrdManifestStaticMap> {
-        self.raw.get_static_data_as_a_map()
+    /// Returns the map-based representation of the static data in this RRD manifest.
+    #[inline]
+    pub fn static_map(&self) -> &RrdManifestStaticMap {
+        &self.static_data_map
     }
 
-    /// Computes a map-based representation of the temporal data in this RRD manifest.
-    ///
-    /// Note: This delegates to [`RawRrdManifest::get_temporal_data_as_a_map`].
-    pub fn get_temporal_data_as_a_map(&self) -> CodecResult<RrdManifestTemporalMap> {
-        self.raw.get_temporal_data_as_a_map()
+    /// Returns the map-based representation of the temporal data in this RRD manifest.
+    #[inline]
+    pub fn temporal_map(&self) -> &RrdManifestTemporalMap {
+        &self.temporal_data_map
     }
 }

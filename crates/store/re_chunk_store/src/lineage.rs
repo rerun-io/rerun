@@ -338,31 +338,31 @@ impl ChunkStore {
     /// The resulting root chunks might or might not be volatile.
     /// If you only care about chunks that are still available for download, see [`Self::find_root_rrd_manifests`].
     pub fn find_root_chunks(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
-        fn recurse(store: &ChunkStore, chunk_id: &ChunkId, roots: &mut Vec<ChunkId>) {
-            let lineage = store.chunks_lineage.get(chunk_id);
-            match lineage {
-                Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                    recurse(store, chunk_id, roots);
-                }
-
-                Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
-                    for chunk_id in chunk_ids {
-                        recurse(store, chunk_id, roots);
-                    }
-                }
-
-                Some(ChunkDirectLineage::ReferencedFrom(_) | ChunkDirectLineage::Volatile) => {
-                    roots.push(*chunk_id);
-                }
-
-                _ => {}
-            }
-        }
-
         let mut roots = Vec::new();
-        recurse(self, chunk_id, &mut roots);
-
+        self.collect_root_ids(chunk_id, &mut roots);
         roots
+    }
+
+    /// See [`Self::find_root_chunks`].
+    pub fn collect_root_ids(&self, chunk_id: &ChunkId, roots: &mut Vec<ChunkId>) {
+        let lineage = self.chunks_lineage.get(chunk_id);
+        match lineage {
+            Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
+                self.collect_root_ids(chunk_id, roots);
+            }
+
+            Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
+                for chunk_id in chunk_ids {
+                    self.collect_root_ids(chunk_id, roots);
+                }
+            }
+
+            Some(ChunkDirectLineage::ReferencedFrom(_) | ChunkDirectLineage::Volatile) => {
+                roots.push(*chunk_id);
+            }
+
+            None => {}
+        }
     }
 
     /// Returns the top-level non-volatile roots of a given chunk, if any.
@@ -377,7 +377,6 @@ impl ChunkStore {
     pub fn find_root_rrd_manifests(&self, chunk_id: &ChunkId) -> Vec<(ChunkId, Arc<RrdManifest>)> {
         let mut roots = Vec::new();
         self.collect_root_rrd_manifests(chunk_id, &mut roots);
-
         roots
     }
 

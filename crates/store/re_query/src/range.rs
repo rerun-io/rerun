@@ -88,6 +88,9 @@ pub struct RangeResults {
     ///
     /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
     /// results of this query cannot accurately be computed.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build

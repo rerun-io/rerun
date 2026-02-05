@@ -58,15 +58,17 @@ fn simple_manifest() {
     let rrd_manifest_batch = &rrd_manifest.data;
 
     let static_map = rrd_manifest
-        .get_static_data_as_a_map()
+        .calc_static_map()
         .unwrap()
+        .clone()
         .into_iter()
         .map(|(k, v)| (k, v.into_iter().collect::<BTreeMap<_, _>>()))
         .collect::<BTreeMap<_, _>>();
 
     let temporal_map = rrd_manifest
-        .get_temporal_data_as_a_map()
+        .calc_temporal_map()
         .unwrap()
+        .clone()
         .into_iter()
         .map(|(k, v)| {
             (
@@ -80,11 +82,11 @@ fn simple_manifest() {
 
     insta::assert_snapshot!(
         "simple_manifest_batch_native_map_static",
-        format!("{:#?}", static_map),
+        format!("{static_map:#?}"),
     );
     insta::assert_snapshot!(
         "simple_manifest_batch_native_map_temporal",
-        format!("{:#?}", temporal_map),
+        format!("{temporal_map:#?}"),
     );
 
     insta::assert_snapshot!(

@@ -446,6 +446,13 @@ pub struct QueriedChunkIdTracker {
     ///
     /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
     /// found in local memory. This set is automatically populated anytime that happens.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
+    //
+    // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
+    // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
+    // their own tracking. And document it so.
     pub missing_virtual: HashSet<ChunkId>,
 }
 

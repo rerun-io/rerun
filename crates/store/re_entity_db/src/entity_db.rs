@@ -630,9 +630,7 @@ impl EntityDb {
             re_log::error!("Failed to load RRD Manifest into store: {err}");
         }
 
-        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
-            re_log::error!("Failed to load RRD Manifest: {err}");
-        }
+        self.rrd_manifest_index.append(rrd_manifest);
 
         self.time_histogram_per_timeline
             .on_rrd_manifest(&self.rrd_manifest_index);

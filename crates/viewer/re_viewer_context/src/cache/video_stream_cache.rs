@@ -324,8 +324,8 @@ fn handle_deletion(
     let tmp = BTreeMap::default();
     let per_chunk_map = entity_db
         .rrd_manifest_index()
-        .native_temporal_map()
-        .get(deleted_chunk.entity_path())
+        .manifest()
+        .and_then(|manifest| manifest.temporal_map().get(deleted_chunk.entity_path()))
         .and_then(|per_timeline| {
             let per_component = per_timeline.get(timeline)?;
             per_component.get(&VideoStream::descriptor_sample().component)
@@ -333,12 +333,11 @@ fn handle_deletion(
         .unwrap_or(&tmp);
 
     let mut rrd_manifest_chunks: Vec<_> = store
-        .find_root_rrd_manifests(&deleted_chunk.id())
+        .find_root_chunks(&deleted_chunk.id())
         .into_iter()
-        .filter_map(|(c, _)| {
-            let entry = per_chunk_map.get(&c)?;
-
-            Some((entry, c))
+        .filter_map(|chunk_id| {
+            let entry = per_chunk_map.get(&chunk_id)?;
+            Some((entry, chunk_id))
         })
         .collect();
 
@@ -717,10 +716,8 @@ fn load_video_data_from_chunks(
 
     let mut known_chunk_ranges = BTreeMap::new();
 
-    let known_chunks = if let Some(entity_timelines) = store
-        .rrd_manifest_index()
-        .native_temporal_map()
-        .get(entity_path)
+    let known_chunks = if let Some(manifest) = store.rrd_manifest_index().manifest()
+        && let Some(entity_timelines) = manifest.temporal_map().get(entity_path)
         && let Some((_, components)) = entity_timelines.iter().find(|(t, _)| *t.name() == timeline)
         && let Some(chunks) = components.get(&sample_component)
     {
@@ -1472,7 +1469,7 @@ fn load_known_chunk_ranges(
             continue;
         };
 
-        for (id, _) in store.find_root_rrd_manifests(&chunk.id) {
+        for id in store.find_root_chunks(&chunk.id) {
             *loaded_chunks_counts.entry(id).or_default() += chunk.samples.len() as u64;
         }
     }

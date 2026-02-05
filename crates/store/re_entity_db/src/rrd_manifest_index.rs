@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
-use re_log_encoding::{CodecResult, RrdManifest};
+use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
@@ -48,18 +48,32 @@ impl LoadState {
 }
 
 /// Info about a single chunk that we know ahead of loading it.
-#[derive(Clone, Debug, Default)]
-pub struct VirtualChunkInfo {
+#[derive(Clone, Debug)]
+pub struct RootChunkInfo {
     state: LoadState,
+
+    /// What row in the source RRD manifest is this chunk in?
+    row_id: usize,
 
     /// Empty for static chunks
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
 
-impl re_byte_size::SizeBytes for VirtualChunkInfo {
+impl RootChunkInfo {
+    fn from_row_idx(row_idx: usize) -> Self {
+        Self {
+            state: LoadState::Unloaded,
+            row_id: row_idx,
+            temporals: Default::default(),
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for RootChunkInfo {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             state: _,
+            row_id: _,
             temporals,
         } = self;
         temporals.heap_size_bytes()
@@ -105,9 +119,8 @@ pub struct RrdManifestIndex {
 
     /// These are the chunks known to exist in the data source (e.g. remote server).
     ///
-    /// The chunk store may split large chunks and merge (compact) small ones,
-    /// so what's in the chunk store can differ significantly.
-    virtual_chunks: HashMap<ChunkId, VirtualChunkInfo>,
+    /// The chunk store may split and/or merge root chunks, producing _derived_ chunks.
+    root_chunks: HashMap<ChunkId, RootChunkInfo>,
 
     chunk_prioritizer: ChunkPrioritizer,
 
@@ -128,9 +141,6 @@ pub struct RrdManifestIndex {
     pub entity_tree: crate::EntityTree,
     entity_has_static_data: IntSet<re_chunk::EntityPath>,
 
-    native_static_map: re_log_encoding::RrdManifestStaticMap,
-    native_temporal_map: re_log_encoding::RrdManifestTemporalMap,
-
     full_uncompressed_size: u64,
 }
 
@@ -141,34 +151,39 @@ impl std::fmt::Debug for RrdManifestIndex {
 }
 
 impl RrdManifestIndex {
-    pub fn append(&mut self, manifest: Arc<RrdManifest>) -> CodecResult<()> {
+    pub fn append(&mut self, manifest: Arc<RrdManifest>) {
         re_tracing::profile_function!();
 
-        self.native_static_map = manifest.get_static_data_as_a_map()?;
-        self.native_temporal_map = manifest.get_temporal_data_as_a_map()?;
-
-        self.update_timeline_stats();
-        self.update_entity_tree();
-        self.update_entity_static_data();
-        self.chunk_prioritizer.on_rrd_manifest(
-            &manifest,
-            &self.native_static_map,
-            &self.native_temporal_map,
-        );
-
-        self.sorted_chunks
-            .update(&self.entity_tree, &self.native_temporal_map);
-        self.update_loaded_ranges();
-
-        for &chunk_id in manifest.col_chunk_ids() {
-            self.virtual_chunks.insert(chunk_id, Default::default());
+        if self.manifest.is_some() {
+            re_log::warn!(
+                "Received a second RRD manifest schema for the same recording. This is not yet supported."
+            );
         }
 
-        for timelines in self.native_temporal_map.values() {
+        self.full_uncompressed_size = manifest.col_chunk_byte_size_uncompressed().iter().sum();
+
+        self.update_timeline_stats(&manifest);
+        self.update_entity_tree(&manifest);
+        self.update_entity_static_data(&manifest);
+        self.chunk_prioritizer.on_rrd_manifest(&manifest);
+
+        self.sorted_chunks
+            .update(&self.entity_tree, manifest.temporal_map());
+        self.update_loaded_ranges();
+
+        for (row_idx, &root_chunk_id) in manifest.col_chunk_ids().iter().enumerate() {
+            self.root_chunks
+                .insert(root_chunk_id, RootChunkInfo::from_row_idx(row_idx));
+        }
+
+        for timelines in manifest.temporal_map().values() {
             for (&timeline, comps) in timelines {
                 for chunks in comps.values() {
                     for (&chunk_id, entry) in chunks {
-                        let chunk_info = self.virtual_chunks.entry(chunk_id).or_default();
+                        let chunk_info = self
+                            .root_chunks
+                            .get_mut(&chunk_id)
+                            .expect("Bug in RRD manifest");
                         chunk_info
                             .temporals
                             .entry(*timeline.name())
@@ -186,31 +201,21 @@ impl RrdManifestIndex {
             }
         }
 
-        if self.manifest.is_some() {
-            re_log::warn!(
-                "Received a second RRD manifest schema for the same recording. This is not yet supported."
-            );
-        }
-
-        self.full_uncompressed_size = manifest.col_chunk_byte_size_uncompressed().iter().sum();
-
         self.manifest = Some(manifest);
-
-        Ok(())
     }
 
     /// Iterate over all chunks in the manifest.
-    pub fn virtual_chunks(&self) -> impl Iterator<Item = &VirtualChunkInfo> {
-        self.virtual_chunks.values()
+    pub fn root_chunks(&self) -> impl Iterator<Item = &RootChunkInfo> {
+        self.root_chunks.values()
     }
 
     /// Info about a chunk that is in the manifest
-    pub fn virtual_chunk_info(&self, chunk_id: &ChunkId) -> Option<&VirtualChunkInfo> {
-        self.virtual_chunks.get(chunk_id)
+    pub fn root_chunk_info(&self, chunk_id: &ChunkId) -> Option<&RootChunkInfo> {
+        self.root_chunks.get(chunk_id)
     }
 
-    fn update_timeline_stats(&mut self) {
-        for timelines in self.native_temporal_map.values() {
+    fn update_timeline_stats(&mut self, manifest: &RrdManifest) {
+        for timelines in manifest.temporal_map().values() {
             for (timeline, comps) in timelines {
                 let mut timeline_range = self
                     .timelines
@@ -231,18 +236,18 @@ impl RrdManifestIndex {
         }
     }
 
-    fn update_entity_tree(&mut self) {
-        for entity in self
-            .native_static_map
+    fn update_entity_tree(&mut self, manifest: &RrdManifest) {
+        for entity in manifest
+            .static_map()
             .keys()
-            .chain(self.native_temporal_map.keys())
+            .chain(manifest.temporal_map().keys())
         {
             self.entity_tree.on_new_entity(entity);
         }
     }
 
-    fn update_entity_static_data(&mut self) {
-        for entity in self.native_static_map.keys() {
+    fn update_entity_static_data(&mut self, manifest: &RrdManifest) {
+        for entity in manifest.static_map().keys() {
             self.entity_has_static_data.insert(entity.clone());
         }
     }
@@ -314,13 +319,10 @@ impl RrdManifestIndex {
         self.manifest.as_deref()
     }
 
-    pub fn native_temporal_map(&self) -> &re_log_encoding::RrdManifestTemporalMap {
-        &self.native_temporal_map
-    }
-
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {
-        let chunk_info = self.virtual_chunks.entry(chunk_id).or_default();
-        chunk_info.state = LoadState::Loaded;
+        if let Some(root_info) = self.root_chunks.get_mut(&chunk_id) {
+            root_info.state = LoadState::Loaded;
+        }
     }
 
     pub fn on_events(&mut self, store: &ChunkStore, store_events: &[ChunkStoreEvent]) {
@@ -370,19 +372,19 @@ impl RrdManifestIndex {
             }
         };
 
-        if let Some(chunk_info) = self.virtual_chunks.get_mut(chunk_id) {
+        if let Some(chunk_info) = self.root_chunks.get_mut(chunk_id) {
             chunk_info.state = state;
             update_ranges(*chunk_id);
         } else {
-            let root_chunk_ids = store.find_root_rrd_manifests(chunk_id);
+            let root_chunk_ids = store.find_root_chunks(chunk_id);
             if root_chunk_ids.is_empty() {
                 warn_when_editing_recording(
                     store_kind,
                     "Added chunk that was not part of the chunk index",
                 );
             } else {
-                for (chunk_id, _) in root_chunk_ids {
-                    if let Some(chunk_info) = self.virtual_chunks.get_mut(&chunk_id) {
+                for chunk_id in root_chunk_ids {
+                    if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
                         update_ranges(chunk_id);
                         chunk_info.state = state;
                     } else {
@@ -433,7 +435,7 @@ impl RrdManifestIndex {
                 options,
                 load_chunks,
                 manifest,
-                &mut self.virtual_chunks,
+                &mut self.root_chunks,
             )
         } else {
             Err(PrefetchError::NoManifest)
@@ -487,7 +489,7 @@ impl RrdManifestIndex {
     }
 
     fn is_chunk_unloaded(&self, chunk_id: &ChunkId) -> bool {
-        self.virtual_chunks
+        self.root_chunks
             .get(chunk_id)
             .is_none_or(|c| c.state.is_unloaded())
     }
@@ -523,9 +525,7 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
             manifest,
             sorted_chunks,
             loaded_ranges,
-            native_static_map,
-            native_temporal_map,
-            virtual_chunks,
+            root_chunks: virtual_chunks,
             chunk_prioritizer,
             timelines,
             full_uncompressed_size: _,
@@ -536,8 +536,6 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
             + manifest.heap_size_bytes()
             + sorted_chunks.heap_size_bytes()
             + loaded_ranges.heap_size_bytes()
-            + native_static_map.heap_size_bytes()
-            + native_temporal_map.heap_size_bytes()
             + virtual_chunks.heap_size_bytes()
             + chunk_prioritizer.heap_size_bytes()
             + timelines.heap_size_bytes()
@@ -556,9 +554,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             sorted_chunks,
             loaded_ranges,
             manifest,
-            native_static_map,
-            native_temporal_map,
-            virtual_chunks,
+            root_chunks: virtual_chunks,
             chunk_prioritizer,
             timelines,
             full_uncompressed_size: _,
@@ -574,11 +570,6 @@ impl MemUsageTreeCapture for RrdManifestIndex {
         node.add("sorted_chunks", sorted_chunks.total_size_bytes());
         node.add("loaded_ranges", loaded_ranges.total_size_bytes());
         node.add("manifest", manifest.total_size_bytes());
-        node.add("native_static_map", native_static_map.total_size_bytes());
-        node.add(
-            "native_temporal_map",
-            native_temporal_map.total_size_bytes(),
-        );
         node.add("virtual_chunks", virtual_chunks.total_size_bytes());
         node.add("timelines", timelines.total_size_bytes());
 
