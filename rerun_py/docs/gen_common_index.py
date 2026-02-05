@@ -465,6 +465,8 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Authentication",
         show_tables=True,
         mod_path=["rerun.auth"],
+        func_list=["login", "get_credentials"],
+        class_list=["Credentials"],
         show_submodules=True,
     ),
     Section(
