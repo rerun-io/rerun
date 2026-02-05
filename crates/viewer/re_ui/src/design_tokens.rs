@@ -76,6 +76,9 @@ pub struct DesignTokens {
     pub success_text_color: Color32,
     pub info_text_color: Color32,
 
+    /// Opacity multiplier for the background of 2D labels in spatial views.
+    pub spatial_label_bg_opacity: f32,
+
     /// Background color for viewport views.
     pub viewport_background: Color32,
 
@@ -290,6 +293,8 @@ impl DesignTokens {
 
             success_text_color: get_color("success_text_color"),
             info_text_color: get_color("info_text_color"),
+
+            spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
 
             viewport_background: get_color("viewport_background"),
 
