@@ -152,7 +152,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     array.as_ref(),
                     component_descriptor.clone(),
                     !ui_layout.is_single_line(),
-                )
+                ) != re_viewer_context::TryShowEditUiResult::NotShown
             {
                 return;
             }

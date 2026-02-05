@@ -73,7 +73,7 @@ pub use self::component_fallbacks::{
     ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for,
 };
 pub use self::component_ui_registry::{
-    ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName,
+    ComponentUiRegistry, ComponentUiTypes, EditTarget, TryShowEditUiResult, VariantName,
 };
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::display_mode::DisplayMode;

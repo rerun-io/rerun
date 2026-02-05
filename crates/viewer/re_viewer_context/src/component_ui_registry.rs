@@ -99,6 +99,13 @@ pub type UntypedComponentEditOrViewCallback = Box<
         + Sync,
 >;
 
+/// Result of trying to show an edit UI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TryShowEditUiResult {
+    Shown { edited_value: bool },
+    NotShown,
+}
+
 /// How to display components in a Ui.
 pub struct ComponentUiRegistry {
     /// Older component uis - TODO(#6661): we're in the process of removing these.
@@ -797,7 +804,7 @@ impl ComponentUiRegistry {
         component_raw: &dyn arrow::array::Array,
         allow_multiline: bool,
     ) {
-        if !self.try_show_edit_ui(
+        if self.try_show_edit_ui(
             ctx.viewer_ctx(),
             ui,
             EditTarget {
@@ -808,7 +815,8 @@ impl ComponentUiRegistry {
             component_raw,
             component_descr.clone(),
             allow_multiline,
-        ) {
+        ) == TryShowEditUiResult::NotShown
+        {
             // Even if we can't edit the component, it's still helpful to show what the value is.
             self.component_ui_raw(
                 ctx.viewer_ctx(),
@@ -836,13 +844,13 @@ impl ComponentUiRegistry {
         raw_current_value: &dyn arrow::array::Array,
         component_descr: ComponentDescriptor,
         allow_multiline: bool,
-    ) -> bool {
+    ) -> TryShowEditUiResult {
         re_tracing::profile_function!(component_descr.display_name());
 
         // We use the component type to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)
         let Some(component_type) = component_descr.component_type else {
-            return false;
+            return TryShowEditUiResult::NotShown;
         };
 
         let is_single_value = raw_current_value.len() == 1;
@@ -851,6 +859,7 @@ impl ComponentUiRegistry {
             self.untyped_component_ui_callback(component_type, allow_multiline, is_single_value);
 
         if let Some(edit_or_view) = edit_or_view {
+            let mut edited_value = false;
             if let Some(updated) = (*edit_or_view)(
                 ctx,
                 ui,
@@ -859,6 +868,8 @@ impl ComponentUiRegistry {
                 raw_current_value,
                 EditOrView::Edit,
             ) {
+                edited_value = true;
+
                 let EditTarget {
                     store_id,
                     timepoint,
@@ -872,10 +883,10 @@ impl ComponentUiRegistry {
                     updated,
                 );
             }
-            return true;
+            TryShowEditUiResult::Shown { edited_value }
+        } else {
+            TryShowEditUiResult::NotShown
         }
-
-        false
     }
 }
 
