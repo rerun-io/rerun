@@ -239,6 +239,30 @@ fn warn_entity_exceeds_memory(
     }
 }
 
+/// Chunk that we've prioritized in `chunks_in_priority`.
+struct PrioritizedChunk {
+    /// If this chunk came from `used_physical` or `missing_virtual` it's required
+    /// and we log a warning if we can't fit it.
+    required: bool,
+    chunk_id: ChunkId,
+}
+
+impl PrioritizedChunk {
+    fn required(chunk_id: ChunkId) -> Self {
+        Self {
+            required: true,
+            chunk_id,
+        }
+    }
+
+    fn optional(chunk_id: ChunkId) -> Self {
+        Self {
+            required: false,
+            chunk_id,
+        }
+    }
+}
+
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct ChunkPrioritizer {
@@ -406,7 +430,7 @@ impl ChunkPrioritizer {
         timeline: TimelineName,
         time_cursor: TimeInt,
         chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
-    ) -> impl Iterator<Item = ChunkId> + use<'a> {
+    ) -> impl Iterator<Item = PrioritizedChunk> + use<'a> {
         let QueriedChunkIdTracker {
             used_physical,
             missing_virtual,
@@ -433,15 +457,24 @@ impl ChunkPrioritizer {
 
         let high_prio_chunks_before_time_cursor =
             high_priority_chunks.all_before(timeline, time_cursor);
-        let chunk_ids_in_priority_order = itertools::chain!(
+
+        // Chunks that are required for the current view.
+        let required_chunks = itertools::chain!(
             used_physical,
             missing_roots,
             static_chunk_ids.iter().copied(),
             high_prio_chunks_before_time_cursor,
+        );
+
+        // Extra chunks we try to prefetch, but aren't necessarily required for the current view.
+        let optional_chunks = itertools::chain! {
             std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
             std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
-        );
-        chunk_ids_in_priority_order
+        };
+
+        required_chunks
+            .map(PrioritizedChunk::required)
+            .chain(optional_chunks.map(PrioritizedChunk::optional))
     }
 
     /// Prioritize which chunk (loaded & unloaded) we want to fit in the
@@ -506,7 +539,7 @@ impl ChunkPrioritizer {
         let mut manifest_chunks_scratch = Vec::new();
         let mut physical_chunks_scratch = Vec::new();
 
-        'outer: for chunk_id in chunk_ids_in_priority_order {
+        'outer: for PrioritizedChunk { required, chunk_id } in chunk_ids_in_priority_order {
             // chunk_id could be a virtual and/or physical chunk.
 
             // If we've already marked this as to be loaded, ignore it.
@@ -515,6 +548,29 @@ impl ChunkPrioritizer {
             {
                 continue;
             }
+
+            // Can we still fit this much bytes in memory with our new prioritization?
+            let mut try_use_uncompressed_bytes = |bytes| {
+                remaining_byte_budget = remaining_byte_budget.saturating_sub(bytes);
+
+                if remaining_byte_budget == 0 {
+                    if required {
+                        if cfg!(target_arch = "wasm32") {
+                            re_log::warn_once!(
+                                "Viewing the required data would take more memory than the current budget. Use the native viewer for a higher budget."
+                            );
+                        } else {
+                            re_log::warn_once!(
+                                "Viewing the required data would take more memory than the current budget. Increase the memory budget to view this recording."
+                            );
+                        }
+                    }
+
+                    false
+                } else {
+                    true
+                }
+            };
 
             match root_chunks.get_mut(&chunk_id) {
                 Some(
@@ -535,13 +591,8 @@ impl ChunkPrioritizer {
                         continue;
                     }
 
-                    {
-                        // Can we fit this chunk in memory?
-                        remaining_byte_budget =
-                            remaining_byte_budget.saturating_sub(uncompressed_chunk_size);
-                        if remaining_byte_budget == 0 {
-                            break; // We've already loaded too much.
-                        }
+                    if !try_use_uncompressed_bytes(uncompressed_chunk_size) {
+                        break 'outer;
                     }
 
                     if root_chunk.state == LoadState::Unloaded
@@ -576,12 +627,11 @@ impl ChunkPrioritizer {
                             re_log::warn_once!("Couldn't get physical chunk from chunk store");
                             continue;
                         };
-                        // Can we still fit this chunk in memory with our new prioritization?
-                        remaining_byte_budget =
-                            remaining_byte_budget.saturating_sub((**chunk).total_size_bytes());
-                        if remaining_byte_budget == 0 {
-                            break 'outer; // We've already loaded too much.
+
+                        if !try_use_uncompressed_bytes((**chunk).total_size_bytes()) {
+                            break 'outer;
                         }
+
                         self.desired_physical_chunks.insert(chunk_id);
                     }
 
@@ -594,11 +644,8 @@ impl ChunkPrioritizer {
                         continue;
                     };
 
-                    // Can we still fit this chunk in memory with our new prioritization?
-                    remaining_byte_budget =
-                        remaining_byte_budget.saturating_sub((**chunk).total_size_bytes());
-                    if remaining_byte_budget == 0 {
-                        break 'outer; // We've already loaded too much.
+                    if !try_use_uncompressed_bytes((**chunk).total_size_bytes()) {
+                        break 'outer;
                     }
 
                     // We want to skip trying to load in chunks from the rrd manifest for
