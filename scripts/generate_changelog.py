@@ -310,14 +310,15 @@ def main() -> None:
     web = []
 
     for commit_info, pr_info in zip(commit_infos, pr_infos, strict=False):
-        hexsha = commit_info.hexsha
+        hexsha_full = commit_info.hexsha
+        hexsha_short = hexsha_full[:7]
         title = commit_info.title
         pr_number = commit_info.pr_number
 
         if pr_number is None and pr_info is None:
             # Someone committed straight to main without PR:
-            summary = f"{title} [{hexsha[:7]}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
-            if f"[{hexsha[:7]}]" in previous_changelog or f"[{hexsha}]" in previous_changelog:
+            summary = f"{title} [{hexsha_short}](https://github.com/{OWNER}/{REPO}/commit/{hexsha_full})"
+            if f"[{hexsha_short}]" in previous_changelog or f"[{hexsha_full}]" in previous_changelog:
                 print(f"Ignoring dup: {summary}")
                 continue
 
@@ -338,21 +339,21 @@ def main() -> None:
                 dup_check = f"[#{pr_number}]"
             else:
                 # No PR number in title, but we have Reality PR info - use hash of synced commit in Rerun repo
-                summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
-                dup_check = f"[{hexsha}]"
+                summary = f"{title} [{hexsha_short}](https://github.com/{OWNER}/{REPO}/commit/{hexsha_full})"
+                dup_check = f"[{hexsha_full}]"
 
             if dup_check in previous_changelog:
                 eprint(f"Ignoring dup: {summary}")
                 continue
 
-            chronological.append(f"{summary} {hexsha}")
+            chronological.append(f"{summary} {hexsha_full}")
 
             if INCLUDE_LABELS and 0 < len(labels):
                 summary += f" ({', '.join(labels)})"
 
             if pr_info is not None:
                 gh_user_name = pr_info.gh_user_name
-                if gh_user_name not in get_rerun_org_members():
+                if gh_user_name is not None and gh_user_name not in get_rerun_org_members():
                     summary += f" (thanks [@{gh_user_name}](https://github.com/{gh_user_name})!)"
 
             if labels == ["⛴ release"]:
