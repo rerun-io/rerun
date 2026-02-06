@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
+use re_sdk_types::components::{AggregationPolicy, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_sdk_types::{Component as _, components};
 use re_view::range_with_blueprint_resolved_data;
@@ -162,11 +162,7 @@ impl SeriesLinesSystem {
             let all_scalar_chunks = scalar_iter.chunks();
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
-            let fallback_color: Color = typed_fallback_for(
-                &query_ctx,
-                archetypes::SeriesLines::descriptor_colors().component,
-            );
+            // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
             let fallback_stroke_width: StrokeWidth = typed_fallback_for(
                 &query_ctx,
                 archetypes::SeriesLines::descriptor_widths().component,
@@ -175,7 +171,8 @@ impl SeriesLinesSystem {
                 time: 0,
                 value: 0.0,
                 attrs: PlotPointAttrs {
-                    color: fallback_color.into(),
+                    // Filled out later.
+                    color: egui::Color32::DEBUG_COLOR,
                     radius_ui: 0.5 * *fallback_stroke_width.0,
                     kind: PlotSeriesKind::Continuous,
                 },
@@ -188,7 +185,7 @@ impl SeriesLinesSystem {
             collect_scalars(all_scalar_chunks, &mut points_per_series);
 
             collect_colors(
-                entity_path,
+                &query_ctx,
                 &query,
                 &results,
                 all_scalar_chunks,

@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use rayon::prelude::*;
-use re_sdk_types::components::{self, Color, MarkerShape, MarkerSize};
+use re_sdk_types::components::{self, MarkerShape, MarkerSize};
 use re_sdk_types::{Archetype as _, Component as _, archetypes};
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
@@ -111,7 +111,6 @@ impl SeriesPointsSystem {
         {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
-            let entity_path = &data_result.entity_path;
             let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
             let mut results = range_with_blueprint_resolved_data(
@@ -160,10 +159,7 @@ impl SeriesPointsSystem {
             let all_scalar_chunks = scalar_iter.chunks();
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            let fallback_color: Color = typed_fallback_for(
-                &query_ctx,
-                archetypes::SeriesPoints::descriptor_colors().component,
-            );
+            // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
             let fallback_size: MarkerSize = typed_fallback_for(
                 &query_ctx,
                 archetypes::SeriesPoints::descriptor_marker_sizes().component,
@@ -172,7 +168,8 @@ impl SeriesPointsSystem {
                 time: 0,
                 value: 0.0,
                 attrs: PlotPointAttrs {
-                    color: fallback_color.into(),
+                    // Filled out later.
+                    color: egui::Color32::DEBUG_COLOR,
                     // NOTE: arguably, the `MarkerSize` value should be twice the `radius_ui`. We do
                     // stick to the semantics of `MarkerSize` == radius for backward compatibility and
                     // because markers need a decent radius value to be at all legible.
@@ -189,7 +186,7 @@ impl SeriesPointsSystem {
 
             collect_scalars(all_scalar_chunks, &mut points_per_series);
             collect_colors(
-                entity_path,
+                &query_ctx,
                 &query,
                 &results,
                 all_scalar_chunks,

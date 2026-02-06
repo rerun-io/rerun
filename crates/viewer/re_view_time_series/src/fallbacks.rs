@@ -38,6 +38,41 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
     }
 
     for component in [
+        SeriesLines::descriptor_colors().component,
+        SeriesPoints::descriptor_colors().component,
+    ] {
+        system_registry.register_array_fallback_provider::<re_sdk_types::components::Color, _>(
+            component,
+            |ctx| {
+                let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
+                let Ok(state) = state else {
+                    return vec![re_viewer_context::auto_color_for_entity_path(
+                        ctx.target_entity_path,
+                    )];
+                };
+
+                // TODO(andreas): This isn't quite right, we want a different fallback for every visualizer id.
+                let num_series = state
+                    .num_time_series_last_frame_per_entity
+                    .get(ctx.target_entity_path)
+                    .map_or(1, |set| set.len().max(1));
+
+                (0..num_series)
+                    .map(|i| {
+                        // For historical reasons we take a different hash for the first series.
+                        let hash = if i == 0 {
+                            ctx.target_entity_path.hash64()
+                        } else {
+                            re_log_types::hash::Hash64::hash((ctx.target_entity_path, i)).hash64()
+                        } % u16::MAX as u64;
+                        re_viewer_context::auto_color_egui(hash as u16).into()
+                    })
+                    .collect()
+            },
+        );
+    }
+
+    for component in [
         SeriesLines::descriptor_visible_series().component,
         SeriesPoints::descriptor_visible_series().component,
     ] {

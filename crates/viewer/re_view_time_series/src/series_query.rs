@@ -3,16 +3,16 @@
 use itertools::Itertools as _;
 
 use re_chunk_store::RangeQuery;
-use re_log_types::external::arrow::array::BooleanArray;
+use re_log_types::TimeInt;
+use re_log_types::external::arrow::array::{self, BooleanArray};
 use re_log_types::external::arrow::buffer::BooleanBuffer;
-use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::components::SeriesVisible;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{
     Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
 };
 use re_view::clamped_or_nothing;
-use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
+use re_viewer_context::{QueryContext, typed_fallback_for};
 
 use crate::{PlotPoint, PlotSeriesKind};
 
@@ -137,7 +137,7 @@ pub fn collect_scalars(
 
 /// Collects colors for the series into pre-allocated plot points.
 pub fn collect_colors(
-    entity_path: &EntityPath,
+    query_ctx: &QueryContext<'_>,
     query: &RangeQuery,
     query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
@@ -174,23 +174,31 @@ pub fn collect_colors(
             }
         }
     } else if all_color_chunks.is_empty() {
-        if num_series > 1 {
-            re_tracing::profile_scope!("default color for multiple series");
+        re_tracing::profile_scope!("fallback colors");
 
-            // Have to fill in additional default colors.
-            // TODO(andreas): Could they somehow be provided by the fallback provider?
-            // It's tricky since the fallback provider doesn't know how many colors to produce!
-            for (i, points) in points_per_series.iter_mut().skip(1).enumerate() {
-                // Normally we generate colors from entity names, but getting the display label needs extra processing,
-                // and it's nice to not care about that here.
-                let fallback_color = auto_color_egui(
-                    (re_log_types::hash::Hash64::hash((entity_path, i)).hash64() % u16::MAX as u64)
-                        as u16,
-                );
+        let fallback_array = query_ctx
+            .viewer_ctx()
+            .component_fallback_registry
+            .fallback_for(
+                color_descriptor.component,
+                Some(components::Color::name()),
+                query_ctx,
+            );
+
+        if let Some(color_array) = fallback_array.as_any().downcast_ref::<array::UInt32Array>() {
+            let fallback_colors = color_array.values();
+
+            for (points, color) in points_per_series
+                .iter_mut()
+                .zip(clamped_or_nothing(fallback_colors.as_ref(), num_series))
+            {
+                let color = map_raw_color(color);
                 for point in points {
-                    point.attrs.color = fallback_color;
+                    point.attrs.color = color;
                 }
             }
+        } else {
+            re_log::error_once!("Failed to cast builtin color fallback to UInt32Array");
         }
     } else {
         re_tracing::profile_scope!("standard path");
