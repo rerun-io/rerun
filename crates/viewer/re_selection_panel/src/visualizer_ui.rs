@@ -430,6 +430,7 @@ fn collect_source_component_options(
     ctx: &ViewContext<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     component_descr: &ComponentDescriptor,
+    is_required_component: bool,
     query_info: &VisualizerQueryInfo,
 ) -> Vec<VisualizerComponentSource> {
     let no_mapping_mapping = VisualizerComponentSource::SourceComponent {
@@ -442,18 +443,6 @@ fn collect_source_component_options(
     };
 
     let reflection = ctx.viewer_ctx.reflection();
-
-    let is_required_component = if let Some(component_archetype) = component_descr.archetype
-        && let Some(archetype_reflection) = reflection.archetypes.get(&component_archetype)
-        && archetype_reflection
-            .required_fields()
-            .any(|field| field.component(component_archetype) == component_descr.component)
-    {
-        true
-    } else {
-        false
-    };
-
     // Collect suitable source components with the same datatype as the target component.
 
     // TODO(andreas): Right now we are _more_ flexible for required components, because there we also support
@@ -520,20 +509,32 @@ fn source_component_ui(
     query_info: &VisualizerQueryInfo,
     raw_override: &Option<ArrayRef>,
 ) {
-    // TODO(aedm): In some cases, there should be no separate source selector. Eg. when the value is as enum:
-    // we should offer "default" and enum options in a single dropdown. Simpler UI.
+    let reflection = ctx.viewer_ctx.reflection();
+
+    let is_required_component = if let Some(component_archetype) = component_descr.archetype
+        && let Some(archetype_reflection) = reflection.archetypes.get(&component_archetype)
+        && archetype_reflection
+            .required_fields()
+            .any(|field| field.component(component_archetype) == component_descr.component)
+    {
+        true
+    } else {
+        false
+    };
 
     let mut options = collect_source_component_options(
         ctx,
         entity_components_with_datatype,
         component_descr,
+        is_required_component,
         query_info,
     );
 
-    // TODO(andreas): Which order should these be in?
-    options.push(VisualizerComponentSource::Override); // TODO(andreas): Will we rename this to `Custom` eventually?
-
-    options.push(VisualizerComponentSource::Default);
+    if !is_required_component {
+        // TODO(andreas): Which order should these be in?
+        options.push(VisualizerComponentSource::Override); // TODO(andreas): Will we rename this to `Custom` eventually?
+        options.push(VisualizerComponentSource::Default);
+    }
 
     let current = current_component_source(
         instruction,
