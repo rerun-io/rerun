@@ -13,15 +13,16 @@ use re_sdk_types::blueprint::components::{
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, DatatypeMatch, IdentifiedViewSystem as _, IndicatedEntities,
+    BlueprintContext as _, DatatypeMatch, IdentifiedViewSystem as _, IndicatedEntities, Item,
     PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, RecommendedView,
-    RecommendedVisualizers, SystemExecutionOutput, TimeControlCommand, ViewClass,
-    ViewClassExt as _, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    RecommendedVisualizers, SystemCommandSender as _, SystemExecutionOutput, TimeControlCommand,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
     VisualizerComponentMappings, VisualizerComponentSource,
@@ -223,6 +224,7 @@ impl ViewClass for TimeSeriesView {
             }
 
             view_property_ui::<ScalarAxis>(&ctx, ui);
+            visualizers_ui(viewer_ctx, ui, view_id);
 
             Ok::<(), ViewSystemExecutionError>(())
         })
@@ -1300,6 +1302,101 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     } else {
         Range1D::new(start, end)
     }
+}
+
+/// Shows the list of visualizers used in this view.
+fn visualizers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: ViewId) {
+    re_tracing::profile_function!();
+
+    let query_result = ctx.lookup_query_result(view_id);
+
+    // Collect all visualizer instructions with their entity paths
+    let mut visualizers: Vec<(EntityPath, ViewSystemIdentifier)> = Vec::new();
+
+    #[expect(clippy::iter_over_hash_type)] // we'll sort by entity path later
+    for (instruction_id, handle) in &query_result.tree.data_results_by_visualizer_instruction {
+        if let Some(node) = query_result.tree.data_results.get(*handle)
+            && let Some(instruction) = node
+                .data_result
+                .visualizer_instructions
+                .iter()
+                .find(|i| i.id == *instruction_id)
+        {
+            visualizers.push((
+                node.data_result.entity_path.clone(),
+                instruction.visualizer_type,
+            ));
+        }
+    }
+
+    // Sort by entity path for consistent display
+    visualizers.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let markdown = "# Visualizers
+
+This section lists all active visualizers in this view. Each visualizer is displayed with its \
+type and the entity path it visualizes.";
+
+    ui.section_collapsing_header("Visualizers")
+        .with_help_markdown(markdown)
+        .show(ui, |ui| {
+            for (entity_path, visualizer_type) in &visualizers {
+                // Get the entity name (last segment of the path)
+                let entity_name = entity_path
+                    .last()
+                    .map(|part| part.ui_string())
+                    .unwrap_or_else(|| "/".to_owned());
+
+                // Get the full path without the leading slash for display
+                let full_path = entity_path
+                    .to_string()
+                    .strip_prefix('/')
+                    .map(|s| s.to_owned())
+                    .unwrap_or_else(|| entity_path.to_string());
+
+                // Create a rounded pill with toned-down background
+                let response = egui::Frame::new()
+                    .fill(ui.visuals().faint_bg_color)
+                    .corner_radius(6.0)
+                    .inner_margin(egui::Margin::symmetric(8, 4))
+                    .show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        ui.vertical(|ui| {
+                            // Visualizer name
+                            ui.label(
+                                egui::RichText::new(&entity_name)
+                                    .color(ui.tokens().visualizer_list_title_text_color),
+                            );
+                            // Entity path
+                            ui.label(
+                                egui::RichText::new(&full_path)
+                                    .size(11.0)
+                                    .color(ui.tokens().visualizer_list_path_text_color),
+                            );
+                        });
+                    });
+
+                // Make the pill clickable to select the entity
+                let response = ui
+                    .interact(
+                        response.response.rect,
+                        ui.id().with((entity_path, visualizer_type)),
+                        egui::Sense::click(),
+                    )
+                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+                if response.clicked() {
+                    let instance_path = InstancePath::from(entity_path.clone());
+                    ctx.command_sender().send_system(
+                        re_viewer_context::SystemCommand::set_selection(Item::DataResult(
+                            view_id,
+                            instance_path,
+                        )),
+                    );
+                }
+
+                ui.add_space(4.0);
+            }
+        });
 }
 
 #[test]

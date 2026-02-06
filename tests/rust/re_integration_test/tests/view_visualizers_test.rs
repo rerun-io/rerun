@@ -29,6 +29,7 @@ pub async fn test_view_visualizers_section() {
     harness.init_recording();
     harness.set_blueprint_panel_opened(true);
     harness.set_selection_panel_opened(true);
+    harness.set_time_panel_opened(false);
 
     let timeline = re_sdk::Timeline::new_sequence("frame");
 
@@ -145,19 +146,11 @@ pub async fn test_view_visualizers_section() {
     harness.blueprint_tree().click_label("Plots view");
     harness.run();
 
-    // Collapse "View properties" to make "Visualizers" section visible
-    harness.selection_panel().click_label("View properties");
-    harness.run();
-
     // Snapshot 2: Selection panel showing visualizers for Plots view
     harness.snapshot_app("view_visualizers_2_plots_view_selected");
 
     // Select the second view (Other view) - shows only SeriesLines visualizer
     harness.blueprint_tree().click_label("Other view");
-    harness.run();
-
-    // Collapse "View properties" to make "Visualizers" section visible
-    harness.selection_panel().click_label("View properties");
     harness.run();
 
     // Snapshot 3: Selection panel showing visualizers for Other view
