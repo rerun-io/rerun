@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, BinaryArray, FixedSizeBinaryArray, StringArray};
 use arrow::buffer::{BooleanBuffer, ScalarBuffer};
-use re_chunk::ChunkId;
 use re_chunk::external::re_byte_size;
+use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
 
 use super::{RawRrdManifest, RrdManifestSha256, RrdManifestStaticMap, RrdManifestTemporalMap};
@@ -221,6 +221,16 @@ impl RrdManifest {
     #[inline]
     pub fn col_chunk_entity_path_raw(&self) -> &StringArray {
         &self.chunk_entity_paths
+    }
+
+    /// Returns an iterator over the decoded Arrow data for the entity path column.
+    ///
+    /// This might incur interning costs, but is otherwise basically free.
+    pub fn col_chunk_entity_path(&self) -> impl Iterator<Item = EntityPath> {
+        self.chunk_entity_paths
+            .iter()
+            .flatten()
+            .map(EntityPath::parse_forgiving)
     }
 
     /// Returns the buffer for the is-static column.

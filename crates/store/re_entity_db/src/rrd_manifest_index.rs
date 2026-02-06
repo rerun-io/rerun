@@ -2,9 +2,10 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
+use itertools::izip;
 use nohash_hasher::IntSet;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
-use re_chunk::{ChunkId, Timeline, TimelineName};
+use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreKind};
@@ -50,18 +51,21 @@ impl LoadState {
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug)]
 pub struct RootChunkInfo {
-    state: LoadState,
+    pub entity_path: EntityPath,
 
     /// What row in the source RRD manifest is this chunk in?
-    row_id: usize,
+    pub row_id: usize,
+
+    state: LoadState,
 
     /// Empty for static chunks
     pub temporals: HashMap<TimelineName, TemporalChunkInfo>,
 }
 
 impl RootChunkInfo {
-    fn from_row_idx(row_idx: usize) -> Self {
+    fn new(entity_path: EntityPath, row_idx: usize) -> Self {
         Self {
+            entity_path,
             state: LoadState::Unloaded,
             row_id: row_idx,
             temporals: Default::default(),
@@ -72,11 +76,12 @@ impl RootChunkInfo {
 impl re_byte_size::SizeBytes for RootChunkInfo {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
+            entity_path,
             state: _,
             row_id: _,
             temporals,
         } = self;
-        temporals.heap_size_bytes()
+        entity_path.heap_size_bytes() + temporals.heap_size_bytes()
     }
 }
 
@@ -171,9 +176,11 @@ impl RrdManifestIndex {
             .update(&self.entity_tree, manifest.temporal_map());
         self.update_loaded_ranges();
 
-        for (row_idx, &root_chunk_id) in manifest.col_chunk_ids().iter().enumerate() {
+        for (row_idx, (&root_chunk_id, entity_path)) in
+            izip!(manifest.col_chunk_ids(), manifest.col_chunk_entity_path()).enumerate()
+        {
             self.root_chunks
-                .insert(root_chunk_id, RootChunkInfo::from_row_idx(row_idx));
+                .insert(root_chunk_id, RootChunkInfo::new(entity_path, row_idx));
         }
 
         for timelines in manifest.temporal_map().values() {

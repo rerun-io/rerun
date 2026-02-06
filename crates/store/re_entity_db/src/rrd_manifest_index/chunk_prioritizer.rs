@@ -3,12 +3,15 @@ use std::ops::RangeInclusive;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
+use itertools::{chain, izip};
+use nohash_hasher::IntSet;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_log_encoding::RrdManifest;
-use re_log_types::AbsoluteTimeRange;
+use re_log_types::{AbsoluteTimeRange, EntityPathHash};
 use re_mutex::Mutex;
+use re_tracing::profile_scope;
 
 use crate::{
     chunk_requests::{ChunkBatchRequest, ChunkPromise, ChunkRequests, RequestInfo},
@@ -56,8 +59,6 @@ pub struct ChunkPrefetchOptions {
 /// Right now, this is only used for transform-related chunks.
 #[derive(Clone, Default)]
 struct HighPrioChunks {
-    static_chunks: Vec<ChunkId>,
-
     /// Sorted by time range min.
     temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>>,
 }
@@ -69,25 +70,19 @@ impl HighPrioChunks {
         timeline: TimelineName,
         time: TimeInt,
     ) -> impl Iterator<Item = ChunkId> + '_ {
-        self.static_chunks.iter().copied().chain(
-            self.temporal_chunks
-                .get(&timeline)
-                .into_iter()
-                .flat_map(|chunks| chunks.iter())
-                .filter(move |chunk| chunk.time_range.min <= time)
-                .map(|chunk| chunk.chunk_id),
-        )
+        self.temporal_chunks
+            .get(&timeline)
+            .into_iter()
+            .flat_map(|chunks| chunks.iter())
+            .filter(move |chunk| chunk.time_range.min <= time)
+            .map(|chunk| chunk.chunk_id)
     }
 }
 
 impl re_byte_size::SizeBytes for HighPrioChunks {
     fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            static_chunks,
-            temporal_chunks,
-        } = self;
-
-        static_chunks.heap_size_bytes() + temporal_chunks.heap_size_bytes()
+        let Self { temporal_chunks } = self;
+        temporal_chunks.heap_size_bytes()
     }
 }
 
@@ -295,6 +290,8 @@ pub struct ChunkPrioritizer {
 
     /// Chunks that should be downloaded before any else.
     high_priority_chunks: HighPrioChunks,
+
+    entity_path_hash_from_chunk_id: HashMap<ChunkId, EntityPathHash>,
 }
 
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
@@ -307,6 +304,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             root_chunk_intervals: virtual_chunk_intervals,
             static_chunk_ids,
             high_priority_chunks,
+            entity_path_hash_from_chunk_id,
         } = self;
 
         desired_root_chunks.heap_size_bytes()
@@ -314,6 +312,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             + virtual_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
             + high_priority_chunks.heap_size_bytes()
+            + entity_path_hash_from_chunk_id.heap_size_bytes()
     }
 }
 
@@ -322,6 +321,13 @@ impl ChunkPrioritizer {
         self.update_static_chunks(manifest);
         self.update_chunk_intervals(manifest);
         self.update_high_priority_chunks(manifest);
+
+        for (chunk_id, entity_path) in
+            izip!(manifest.col_chunk_ids(), manifest.col_chunk_entity_path())
+        {
+            self.entity_path_hash_from_chunk_id
+                .insert(*chunk_id, entity_path.hash());
+        }
     }
 
     /// Returns true if the chunk store had missing chunks last time we prioritized chunks.
@@ -331,16 +337,9 @@ impl ChunkPrioritizer {
 
     /// Find all chunk IDs that contain components with the given prefix.
     fn find_chunks_with_component_prefix(manifest: &RrdManifest, prefix: &str) -> HighPrioChunks {
-        let mut static_chunks: HashSet<ChunkId> = Default::default();
         let mut temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>> = Default::default();
 
-        for components in manifest.static_map().values() {
-            for (component, chunk_id) in components {
-                if component.as_str().starts_with(prefix) {
-                    static_chunks.insert(*chunk_id);
-                }
-            }
-        }
+        // We intentionally ignore static chunks, because we already prioritize ALL static chunks.
 
         for timelines in manifest.temporal_map().values() {
             for (timeline, components) in timelines {
@@ -363,10 +362,7 @@ impl ChunkPrioritizer {
             chunks.sort_by_key(|chunk| chunk.time_range.min);
         }
 
-        HighPrioChunks {
-            static_chunks: static_chunks.into_iter().collect(),
-            temporal_chunks,
-        }
+        HighPrioChunks { temporal_chunks }
     }
 
     fn update_high_priority_chunks(&mut self, manifest: &RrdManifest) {
@@ -430,15 +426,20 @@ impl ChunkPrioritizer {
     /// An iterator over chunks in priority order.
     ///
     /// See [`Self::prioritize_and_prefetch`] for more details.
+    #[expect(clippy::too_many_arguments)] // TODO(emilk): refactor to simplify
     fn chunks_in_priority<'a>(
+        entities_of_interest: &'a IntSet<EntityPathHash>,
+        entity_path_hash_from_chunk_id: &'a HashMap<ChunkId, EntityPathHash>,
         static_chunk_ids: &'a HashSet<ChunkId>,
         high_priority_chunks: &'a HighPrioChunks,
         store: &'a ChunkStore,
         used_and_missing: QueriedChunkIdTracker,
         timeline: TimelineName,
         time_cursor: TimeInt,
-        chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
+        root_chunks_on_timeline: &'a SortedRangeMap<TimeInt, ChunkId>,
     ) -> impl Iterator<Item = PrioritizedChunk> + use<'a> {
+        re_tracing::profile_function!();
+
         let QueriedChunkIdTracker {
             used_physical,
             missing_virtual,
@@ -453,36 +454,61 @@ impl ChunkPrioritizer {
         }
 
         let chunks_ids_after_time_cursor = move || {
-            chunks
+            root_chunks_on_timeline
                 .query(time_cursor..=TimeInt::MAX)
                 .map(|(_, chunk_id)| *chunk_id)
         };
         let chunks_ids_before_time_cursor = move || {
-            chunks
+            root_chunks_on_timeline
                 .query(TimeInt::MIN..=time_cursor.saturating_sub(1))
                 .map(|(_, chunk_id)| *chunk_id)
         };
 
+        // Note: we do NOT take `entities_of_interest` for high-priority transform chunks,
+        // because that seems to cause bugs for unknown reasons.
         let high_prio_chunks_before_time_cursor =
             high_priority_chunks.all_before(timeline, time_cursor);
 
         // Chunks that are required for the current view.
-        let required_chunks = itertools::chain!(
+        let required_chunks = chain!(
             used_physical,
             missing_roots,
             static_chunk_ids.iter().copied(),
             high_prio_chunks_before_time_cursor,
         );
 
-        // Extra chunks we try to prefetch, but aren't necessarily required for the current view.
-        let optional_chunks = itertools::chain! {
-            std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
-            std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+        // Chunks that aren't currently required. Pure prefetching:
+        let optional_chunks = {
+            // Chunks for entities we are interested in.
+            let is_interesting_chunk = |chunk_id: &ChunkId| {
+                entities_of_interest.contains(&entity_path_hash_from_chunk_id[chunk_id])
+            };
+            let is_uninteresting_chunk = |chunk_id: &ChunkId| {
+                !entities_of_interest.contains(&entity_path_hash_from_chunk_id[chunk_id])
+            };
+
+            // Extra chunks we try to prefetch, that may _soon_ be needed:
+            let optional_interesting_chunks = chain!(
+                std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
+                std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+            )
+            .filter(is_interesting_chunk);
+
+            // Extra chunks we try to prefetch, that is unlikely to be needed anytime soon,
+            // but if we can we still want to load the whole recording:
+            let optional_uninteresting_chunks = chain!(
+                std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
+                std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+            )
+            .filter(is_uninteresting_chunk);
+
+            chain!(optional_interesting_chunks, optional_uninteresting_chunks)
         };
 
-        required_chunks
-            .map(PrioritizedChunk::required)
-            .chain(optional_chunks.map(PrioritizedChunk::optional))
+        chain!(
+            required_chunks.map(PrioritizedChunk::required),
+            optional_chunks.map(PrioritizedChunk::optional),
+        )
     }
 
     /// Prioritize which chunk (loaded & unloaded) we want to fit in the
@@ -507,7 +533,7 @@ impl ChunkPrioritizer {
         manifest: &RrdManifest,
         root_chunks: &mut HashMap<ChunkId, RootChunkInfo>,
     ) -> Result<(), PrefetchError> {
-        let Some(chunks) = self.root_chunk_intervals.get(&options.timeline) else {
+        let Some(root_chunks_on_timeline) = self.root_chunk_intervals.get(&options.timeline) else {
             return Err(PrefetchError::UnknownTimeline(options.timeline));
         };
 
@@ -537,15 +563,41 @@ impl ChunkPrioritizer {
             return Ok(());
         }
 
+        // Basically: what entities are currently being viewed by the user?
+        let mut entities_of_interest: IntSet<EntityPathHash> = Default::default();
+        {
+            profile_scope!("entities_of_interest");
+
+            let QueriedChunkIdTracker {
+                used_physical,
+                missing_virtual,
+            } = &used_and_missing;
+
+            for physical_chunk_id in used_physical {
+                if let Some(chunk) = store.physical_chunk(physical_chunk_id) {
+                    entities_of_interest.insert(chunk.entity_path().hash());
+                }
+            }
+            for missing_virtual_chunk_id in missing_virtual {
+                for root_id in store.find_root_chunks(missing_virtual_chunk_id) {
+                    if let Some(chunk) = root_chunks.get(&root_id) {
+                        entities_of_interest.insert(chunk.entity_path.hash());
+                    }
+                }
+            }
+        }
+
         // Mixes virtual and physical chunks (!)
         let chunk_ids_in_priority_order = Self::chunks_in_priority(
+            &entities_of_interest,
+            &self.entity_path_hash_from_chunk_id,
             &self.static_chunk_ids,
             &self.high_priority_chunks,
             store,
             used_and_missing,
             *options.timeline.name(),
             options.start_time,
-            chunks,
+            root_chunks_on_timeline,
         );
 
         let entity_paths = manifest.col_chunk_entity_path_raw();

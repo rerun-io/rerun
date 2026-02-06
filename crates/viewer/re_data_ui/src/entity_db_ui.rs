@@ -6,6 +6,7 @@ use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::{EntityDb, RrdManifestIndex};
+use re_format::{format_bytes, format_uint};
 use re_log_channel::LogSource;
 use re_log_types::{EntityPath, StoreKind};
 use re_ui::UiExt as _;
@@ -208,12 +209,11 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
             total_size_bytes
         };
 
-        ui.label(re_format::format_bytes(static_size as _))
-            .on_hover_text(
-                "Approximate size in RAM (decompressed).\n\
+        ui.label(format_bytes(static_size as _)).on_hover_text(
+            "Approximate size in RAM (decompressed).\n\
                         If you hover an entity in the streams view (bottom panel) you can see the \
                         size of individual entities.",
-            );
+        );
         ui.end_row();
 
         if db.rrd_manifest_index().has_manifest() {
@@ -226,8 +226,8 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
                 static_size
             };
 
-            let current = re_format::format_bytes(total_size_bytes as _);
-            let max_downloaded = re_format::format_bytes(max_downloaded as _);
+            let current = format_bytes(total_size_bytes as _);
+            let max_downloaded = format_bytes(max_downloaded as _);
 
             ui.horizontal(|ui| {
                 ui.label(format!("{current} / {max_downloaded}"));
@@ -307,30 +307,52 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
 }
 
 fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
-    let requests = rrd_manifest_index.chunk_requests().pending_requests();
-
-    if requests.is_empty() {
-        ui.label("No in-progress downloads");
-        return;
-    }
-
     let Some(rrd_manifest) = rrd_manifest_index.manifest() else {
         return;
     };
 
+    let requests = rrd_manifest_index.chunk_requests().pending_requests();
+
     let col_chunk_entity_path_raw = rrd_manifest.col_chunk_entity_path_raw();
+
     let mut entities = BTreeSet::<EntityPath>::new();
+    let mut total_in_flight_bytes = 0;
+    let mut total_uncompressed_bytes = 0;
+    let mut total_chunks = 0;
     for request in &requests {
+        total_in_flight_bytes += request.size_bytes_on_wire;
+        total_uncompressed_bytes += request.size_bytes_uncompressed;
+        total_chunks += request.row_indices.len() as u64;
+
         for &row_idx in &request.row_indices {
             let path = col_chunk_entity_path_raw.value(row_idx);
             entities.insert(EntityPath::parse_forgiving(path));
         }
     }
 
-    ui.label(format!(
-        "Currently downloading data for {} entities:",
-        entities.len(),
-    ));
+    ui.label("Data currently being downloaded from the server");
+
+    egui::Grid::new("chunk-requests").show(ui, |ui| {
+        ui.label("Chunks");
+        ui.label(format_uint(total_chunks));
+        ui.end_row();
+
+        ui.label("Requests");
+        ui.label(format_uint(requests.len()));
+        ui.end_row();
+
+        ui.label("Bytes (compressed)");
+        ui.label(format_bytes(total_in_flight_bytes as _));
+        ui.end_row();
+
+        ui.label("Bytes (uncompressed)");
+        ui.label(format_bytes(total_uncompressed_bytes as _));
+        ui.end_row();
+
+        ui.label("Entities");
+        ui.label(format_uint(entities.len()));
+        ui.end_row();
+    });
 
     for entity in &entities {
         ui.label(format!("  - {entity}"));
