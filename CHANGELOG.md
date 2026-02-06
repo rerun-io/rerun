@@ -1,5 +1,33 @@
 # Rerun changelog
 
+## [0.29.1](https://github.com/rerun-io/rerun/compare/0.29.0...0.29.1) - 2026-02-06 - Improved labels, bug fixes & performance improvements
+
+### ✨ Overview & highlights
+
+This is mainly a patch release with some fixes and improvements.
+
+We also included a change that makes labels translucent. This makes them less obtrusive and improves visibility of overlapping labels, as shown in the image segmentation example below.
+<picture>
+  <img src="https://static.rerun.io/translucent_labels/19694d87d846e01cc59837c4f3982eeab6d4a1a5/full.png" alt="Example of translucent labels in Rerun 0.29.1">
+</picture>
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Ensure that `import rerun_sdk.rerun` can be used [fd28cd3](https://github.com/rerun-io/rerun/commit/fd28cd3946567929b6e968d9df07bec5a67eabb0)
+- Allow access to redap token from Python SDK [51506ca](https://github.com/rerun-io/rerun/commit/51506caeb34a6edadbca4c8938c0039fb0e35a51)
+
+#### 🪳 Bug fixes
+- Fix viewer error list jumping around [05ae689](https://github.com/rerun-io/rerun/commit/05ae6895c38fc8fd74583e86fb6747b7d3017497)
+- Fix potential video deadlock [eefacdf](https://github.com/rerun-io/rerun/commit/eefacdf68e51abb5c4755d1754cee272ae7e5ad8)
+
+#### 🌁 Viewer improvements
+- Make labels in spatial view translucent [ec62ad9](https://github.com/rerun-io/rerun/commit/ec62ad908332e110f4ade168ae9d78286c6cbf5b)
+
+#### 🚀 Performance improvements
+- Do faster lineage check in release builds [0d546c0](https://github.com/rerun-io/rerun/commit/0d546c05912bb33aae8a06f252bab5749265521c)
+
+
 ## [0.29.0](https://github.com/rerun-io/rerun/compare/0.28.2...0.29.0) - 2026-01-28 - URDF improvements, improved ROS 2 docs, and memory panel
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-29
