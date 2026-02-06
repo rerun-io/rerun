@@ -94,7 +94,11 @@ impl VisualizerSystem for BarChartVisualizerSystem {
 
                 let widths = clamped_vec_or_else(widths, length as usize, || {
                     typed_fallback_for::<Length>(
-                        &ctx.query_context(data_result, &view_query.latest_at_query()),
+                        &ctx.query_context(
+                            data_result,
+                            &view_query.latest_at_query(),
+                            instruction.id,
+                        ),
                         BarChart::descriptor_widths().component,
                     )
                     .0

@@ -258,6 +258,7 @@ impl ViewProperty {
         QueryContext {
             view_ctx,
             target_entity_path: &self.blueprint_store_path,
+            instruction_id: None,
             archetype_name: Some(self.archetype_name),
             query: &self.blueprint_query,
         }

@@ -226,6 +226,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     BlueprintResolvedRangeResults {
         overrides,
         store_results,
+        _instruction_id: visualizer_instruction.id,
         view_defaults: &ctx.query_result.view_defaults,
         component_sources,
         component_mappings_hash: Hash64::hash(&active_remappings),
@@ -375,6 +376,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         overrides,
         store_results,
         view_defaults: &ctx.query_result.view_defaults,
+        instruction_id: visualizer_instruction.map(|instruction| instruction.id),
         ctx,
         query: latest_at_query.clone(),
         data_result,

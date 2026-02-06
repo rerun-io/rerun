@@ -170,6 +170,7 @@ impl SpatialView2D {
                 let query_ctx = QueryContext {
                     view_ctx: &view_ctx,
                     target_entity_path: query.space_origin,
+                    instruction_id: None,
                     archetype_name: Some(archetypes::Pinhole::name()),
                     query: &query.latest_at_query(),
                 };

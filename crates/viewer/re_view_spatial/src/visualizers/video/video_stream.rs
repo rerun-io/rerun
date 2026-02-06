@@ -83,7 +83,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             let world_from_entity = transform_info
                 .single_transform_required_for_entity(entity_path, VideoStream::name())
                 .as_affine3a();
-            let query_context = ctx.query_context(data_result, &latest_at);
+            let query_context = ctx.query_context(data_result, &latest_at, instruction.id);
             let highlight = view_query
                 .highlights
                 .entity_outline_mask(entity_path.hash());
@@ -209,6 +209,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                             &re_viewer_context::QueryContext {
                                 view_ctx: ctx,
                                 target_entity_path: entity_path,
+                                instruction_id: Some(instruction.id),
                                 archetype_name: Some(VideoStream::name()),
                                 query: &latest_at,
                             },

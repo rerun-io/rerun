@@ -549,7 +549,7 @@ fn lookup_image_plane_distance(
                     .component_mono_quiet::<ImagePlaneDistance>(plane_dist_component)
                     .unwrap_or_else(|| {
                         typed_fallback_for(
-                            &ctx.query_context(data_result, latest_at_query),
+                            &ctx.query_context_without_visualizer(data_result, latest_at_query),
                             plane_dist_component,
                         )
                     })
@@ -623,7 +623,7 @@ impl EntityTransformIdMapping {
                     // Make sure this is the same as the fallback provider (which is a lot slower to run)
                     debug_assert_eq!(
                         TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
-                            &ctx.query_context(results.data_result, &results.query),
+                            &ctx.query_context_without_visualizer(results.data_result, &results.query),
                             transform_frame_id_component
                         )),
                         fallback

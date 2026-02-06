@@ -298,7 +298,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 .entity_outline_mask(data_result.entity_path.hash());
 
             if let Err(err) = self.visit_instance(
-                &ctx.query_context(data_result, &query.latest_at_query()),
+                &ctx.query_context(data_result, &query.latest_at_query(), instruction.id),
                 &mut line_builder,
                 transforms,
                 &component_data,

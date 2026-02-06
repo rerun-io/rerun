@@ -29,6 +29,9 @@ pub struct QueryContext<'a> {
     /// For view properties this is the path that stores the respective view property archetype.
     pub target_entity_path: &'a re_log_types::EntityPath,
 
+    /// If the query is made from a visualizer, this contains that visualizer's id.
+    pub instruction_id: Option<VisualizerInstructionId>,
+
     /// Archetype name in which context the component is needed.
     ///
     /// View properties always have an archetype context, but overrides/defaults may not.

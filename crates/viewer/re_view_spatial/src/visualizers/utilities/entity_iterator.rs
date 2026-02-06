@@ -83,7 +83,7 @@ where
             output,
         };
 
-        let mut query_ctx = ctx.query_context(data_result, &latest_at);
+        let mut query_ctx = ctx.query_context(data_result, &latest_at, visualizer_instruction.id);
         query_ctx.archetype_name = Some(A::name());
 
         {

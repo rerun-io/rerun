@@ -73,9 +73,9 @@ impl VisualizerSystem for GeoPointsVisualizer {
             let all_class_ids = results.iter_optional(GeoPoints::descriptor_class_ids().component);
 
             // fallback component values
-            let query_context = ctx.query_context(data_result, &latest_at_query);
+            let query_context = ctx.query_context(data_result, &latest_at_query, instruction.id);
             let fallback_radius: Radius = typed_fallback_for(
-                &ctx.query_context(data_result, &latest_at_query),
+                &ctx.query_context(data_result, &latest_at_query, instruction.id),
                 GeoPoints::descriptor_radii().component,
             );
 

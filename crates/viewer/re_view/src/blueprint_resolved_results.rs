@@ -6,8 +6,8 @@ use nohash_hasher::IntMap;
 use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
-use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
+use re_sdk_types::{ComponentIdentifier, blueprint::components::VisualizerInstructionId};
 use re_viewer_context::{DataResult, ViewContext, typed_fallback_for};
 
 use crate::{
@@ -25,6 +25,7 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
     pub overrides: LatestAtResults,
     pub store_results: LatestAtResults,
     pub view_defaults: &'a LatestAtResults,
+    pub(crate) instruction_id: Option<VisualizerInstructionId>,
 
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
@@ -46,6 +47,7 @@ pub struct BlueprintResolvedRangeResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) store_results: RangeResults,
     pub(crate) view_defaults: &'a LatestAtResults,
+    pub(crate) _instruction_id: VisualizerInstructionId,
 
     pub(crate) component_sources:
         IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
@@ -123,7 +125,13 @@ impl BlueprintResolvedLatestAtResults<'_> {
         component: ComponentIdentifier,
     ) -> C {
         self.get_instance::<C>(0, component).unwrap_or_else(|| {
-            let query_context = self.ctx.query_context(self.data_result, &self.query);
+            let query_context = if let Some(instruction_id) = self.instruction_id {
+                self.ctx
+                    .query_context(self.data_result, &self.query, instruction_id)
+            } else {
+                self.ctx
+                    .query_context_without_visualizer(self.data_result, &self.query)
+            };
             typed_fallback_for(&query_context, component)
         })
     }

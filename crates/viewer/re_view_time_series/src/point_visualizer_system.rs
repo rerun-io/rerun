@@ -102,7 +102,7 @@ impl SeriesPointsSystem {
         re_tracing::profile_function!();
 
         let current_query = ctx.current_query();
-        let query_ctx = ctx.query_context(data_result, &current_query);
+        let query_ctx = ctx.query_context(data_result, &current_query, instruction.id);
 
         let fallback_shape = MarkerShape::default();
 
