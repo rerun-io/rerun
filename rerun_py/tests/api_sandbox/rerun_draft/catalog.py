@@ -191,8 +191,8 @@ class DatasetEntry(Entry):
 
         return self._inner.segment_table(join_meta, join_key)
 
-    def manifest(self) -> datafusion.DataFrame:
-        return self._inner.manifest()
+    def manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
+        return self._inner.manifest(include_diagnostic_data=include_diagnostic_data)
 
     def segment_url(
         self,

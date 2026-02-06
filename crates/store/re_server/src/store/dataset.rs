@@ -356,6 +356,7 @@ impl Dataset {
         let mut num_chunks = Vec::with_capacity(row_count);
         let mut size_bytes = Vec::with_capacity(row_count);
         let mut schema_sha256s = Vec::with_capacity(row_count);
+        let mut registration_statuses = Vec::with_capacity(row_count);
 
         let mut properties = Vec::with_capacity(row_count);
 
@@ -384,6 +385,11 @@ impl Dataset {
                     .map_err(Error::failed_to_extract_properties)?,
             );
 
+            // In re_server, only successful registrations exist (schema conflicts fail synchronously),
+            // so all entries are always `Done`.
+            registration_statuses
+                .push(re_protos::cloud::v1alpha1::ext::LayerRegistrationStatus::Done.to_string());
+
             properties.push(
                 layer
                     .compute_properties()
@@ -401,6 +407,7 @@ impl Dataset {
             num_chunks,
             size_bytes,
             schema_sha256s,
+            registration_statuses,
         )
         .map_err(Error::failed_to_extract_properties)?;
 

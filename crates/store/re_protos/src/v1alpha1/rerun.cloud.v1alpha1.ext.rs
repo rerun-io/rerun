@@ -33,6 +33,71 @@ macro_rules! lazy_field_ref {
     }};
 }
 
+// --- SegmentRegistrationStatus ---
+
+/// Registration status for a segment/layer in the dataset manifest.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerRegistrationStatus {
+    Pending = 0,
+    /// Registration for this segment has completed successfully.
+    Done = 1,
+    /// Registration for this segment has failed.
+    Error = 2,
+}
+
+impl LayerRegistrationStatus {
+    const PENDING_STR: &str = "pending";
+    const DONE_STR: &str = "done";
+    const ERROR_STR: &str = "error";
+}
+
+impl std::fmt::Display for LayerRegistrationStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => f.write_str(Self::PENDING_STR),
+            Self::Done => f.write_str(Self::DONE_STR),
+            Self::Error => f.write_str(Self::ERROR_STR),
+        }
+    }
+}
+
+impl std::str::FromStr for LayerRegistrationStatus {
+    type Err = crate::TypeConversionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            Self::PENDING_STR => Ok(Self::Pending),
+            Self::DONE_STR => Ok(Self::Done),
+            Self::ERROR_STR => Ok(Self::Error),
+            _ => Err(crate::TypeConversionError::InvalidField {
+                package_name: "rerun.cloud.v1alpha1",
+                type_name: "SegmentRegistrationStatus",
+                field_name: "value",
+                reason: format!("invalid registration status: {s}"),
+            }),
+        }
+    }
+}
+
+impl TryFrom<u8> for LayerRegistrationStatus {
+    type Error = crate::TypeConversionError;
+
+    fn try_from(value: u8) -> Result<Self, <Self as TryFrom<u8>>::Error> {
+        match value {
+            0 => Ok(Self::Pending),
+            1 => Ok(Self::Done),
+            2 => Ok(Self::Error),
+            _ => Err(crate::TypeConversionError::InvalidField {
+                package_name: "rerun.cloud.v1alpha1",
+                type_name: "SegmentRegistrationStatus",
+                field_name: "value",
+                reason: format!("invalid registration status: {value}"),
+            }),
+        }
+    }
+}
+
 // --- CreateIndexRequest
 #[derive(Debug)]
 pub struct CreateIndexRequest {
@@ -1726,6 +1791,7 @@ impl ScanDatasetManifestResponse {
     pub const FIELD_NUM_CHUNKS: &str = "rerun_num_chunks";
     pub const FIELD_SIZE_BYTES: &str = "rerun_size_bytes";
     pub const FIELD_SCHEMA_SHA256: &str = "rerun_schema_sha256";
+    pub const FIELD_REGISTRATION_STATUS: &str = "rerun_registration_status";
 
     pub fn field_layer_name() -> FieldRef {
         lazy_field_ref!(Field::new(Self::FIELD_LAYER_NAME, DataType::Utf8, false))
@@ -1775,6 +1841,14 @@ impl ScanDatasetManifestResponse {
         ))
     }
 
+    pub fn field_registration_status() -> FieldRef {
+        lazy_field_ref!(Field::new(
+            Self::FIELD_REGISTRATION_STATUS,
+            DataType::Utf8,
+            false
+        ))
+    }
+
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_layer_name(),
@@ -1786,6 +1860,7 @@ impl ScanDatasetManifestResponse {
             Self::field_num_chunks(),
             Self::field_size_bytes(),
             Self::field_schema_sha256(),
+            Self::field_registration_status(),
         ]
     }
 
@@ -1804,6 +1879,7 @@ impl ScanDatasetManifestResponse {
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
         schema_sha256s: Vec<[u8; 32]>,
+        registration_statuses: Vec<String>,
     ) -> arrow::error::Result<RecordBatch> {
         let row_count = segment_ids.len();
         let schema = Arc::new(Self::schema());
@@ -1823,6 +1899,7 @@ impl ScanDatasetManifestResponse {
             Arc::new(UInt64Array::from(num_chunks)),
             Arc::new(UInt64Array::from(size_bytes)),
             Arc::new(schema_sha256_builder.finish()),
+            Arc::new(StringArray::from(registration_statuses)),
         ];
 
         RecordBatch::try_new_with_options(
@@ -2573,6 +2650,7 @@ mod tests {
         let num_chunks = vec![1];
         let size_bytes = vec![2];
         let schema_sha256 = vec![[1; 32]];
+        let registration_status = vec![LayerRegistrationStatus::Done.to_string()];
 
         ScanDatasetManifestResponse::create_dataframe(
             layer_name,
@@ -2584,6 +2662,7 @@ mod tests {
             num_chunks,
             size_bytes,
             schema_sha256,
+            registration_status,
         )
         .unwrap();
     }

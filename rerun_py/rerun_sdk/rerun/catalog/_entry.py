@@ -293,10 +293,30 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return segment_table_df
 
-    def manifest(self) -> datafusion.DataFrame:
-        """Return the dataset manifest as a DataFusion DataFrame."""
+    def manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
+        """
+        Return the dataset manifest as a DataFusion DataFrame.
 
-        return self._internal.manifest()
+        Parameters
+        ----------
+        include_diagnostic_data:
+            Include diagnostic data in the manifest. That may include rows that correspond to layers which failed
+            registration, were deleted, or are in pending states.
+
+            !!! note
+
+                Diagnostic data is subject to change in any release and should not be relied on for production.
+
+        """
+
+        from datafusion import col
+
+        df = self._internal.manifest()
+
+        if not include_diagnostic_data:
+            df = df.filter(col("rerun_registration_status") == "done").drop("rerun_registration_status")
+
+        return df
 
     def segment_url(  # noqa: PLR0917
         self,
