@@ -415,6 +415,22 @@ impl RrdManifestIndex {
         self.chunk_prioritizer.chunk_requests_mut()
     }
 
+    /// Cancel all fetches of things that are not currently needed.
+    pub fn cancel_outdated_requests(&mut self) {
+        if self.has_manifest() {
+            let cancelred_chunks = self.chunk_prioritizer.cancel_outdated_requests();
+            for chunk_id in cancelred_chunks {
+                if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
+                    chunk_info.state = LoadState::Unloaded;
+                } else {
+                    re_log::warn!(
+                        "Canceled chunk fetch that was not part of the chunk index. This is unexpected and may indicate a bug in the RRD manifest or chunk store."
+                    );
+                }
+            }
+        }
+    }
+
     /// Find the next candidates for prefetching.
     ///
     /// This will also clear the tracked missing/used chunks ids in the store.

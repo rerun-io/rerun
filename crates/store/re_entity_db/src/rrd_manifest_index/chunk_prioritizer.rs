@@ -272,15 +272,17 @@ impl PrioritizedChunk {
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct ChunkPrioritizer {
+    /// All root chunks that we have an interest in having loaded,
+    /// (or at least a part of them).
+    desired_root_chunks: HashSet<ChunkId>,
+
     /// All physical chunks that are 'in' the memory limit.
     ///
     /// These chunks are protected from being gc'd.
-    pub(super) desired_physical_chunks: HashSet<ChunkId>,
+    desired_physical_chunks: HashSet<ChunkId>,
 
     /// Tracks whether the viewer was missing any chunks last time we prioritized chunks.
     had_missing_chunks: bool,
-
-    checked_virtual_chunks: HashSet<ChunkId>,
 
     /// Chunks that are in the progress of being downloaded.
     chunk_requests: ChunkRequests,
@@ -298,17 +300,17 @@ pub struct ChunkPrioritizer {
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
+            desired_root_chunks,
             desired_physical_chunks,
             had_missing_chunks: _,
-            checked_virtual_chunks,
             chunk_requests: _, // not yet implemented
             root_chunk_intervals: virtual_chunk_intervals,
             static_chunk_ids,
             high_priority_chunks,
         } = self;
 
-        desired_physical_chunks.heap_size_bytes()
-            + checked_virtual_chunks.heap_size_bytes()
+        desired_root_chunks.heap_size_bytes()
+            + desired_physical_chunks.heap_size_bytes()
             + virtual_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
             + high_priority_chunks.heap_size_bytes()
@@ -517,8 +519,18 @@ impl ChunkPrioritizer {
 
         if chunk_batcher.remaining_bytes_in_on_wire_budget == 0 {
             // Early-out: too many bytes already in-transit.
+
             // But, make sure we don't GC the chunks that were used this frame:
-            for physical_chunk_id in used_and_missing.used_physical {
+            let QueriedChunkIdTracker {
+                used_physical,
+                missing_virtual: _,
+            } = used_and_missing;
+
+            for physical_chunk_id in used_physical {
+                for root_id in store.find_root_chunks(&physical_chunk_id) {
+                    self.desired_root_chunks.insert(root_id);
+                }
+
                 self.desired_physical_chunks.insert(physical_chunk_id);
             }
 
@@ -538,11 +550,12 @@ impl ChunkPrioritizer {
 
         let entity_paths = manifest.col_chunk_entity_path_raw();
 
+        // Each branch below updates both these two sets:
+        self.desired_root_chunks.clear();
         self.desired_physical_chunks.clear();
-        self.checked_virtual_chunks.clear();
 
         // Reuse vecs for less allocations in the loop.
-        let mut manifest_chunks_scratch = Vec::new();
+        let mut root_chunks_scratch = Vec::new();
         let mut physical_chunks_scratch = Vec::new();
 
         'outer: for PrioritizedChunk { required, chunk_id } in chunk_ids_in_priority_order {
@@ -550,7 +563,7 @@ impl ChunkPrioritizer {
 
             // If we've already marked this as to be loaded, ignore it.
             if self.desired_physical_chunks.contains(&chunk_id)
-                || self.checked_virtual_chunks.contains(&chunk_id)
+                || self.desired_root_chunks.contains(&chunk_id)
             {
                 continue;
             }
@@ -614,7 +627,8 @@ impl ChunkPrioritizer {
                         // be in memory here.
                         break 'outer;
                     }
-                    self.checked_virtual_chunks.insert(chunk_id);
+
+                    self.desired_root_chunks.insert(chunk_id);
                     store.collect_physical_descendents_of(&chunk_id, &mut physical_chunks_scratch);
                     self.desired_physical_chunks
                         .extend(physical_chunks_scratch.drain(..));
@@ -623,6 +637,8 @@ impl ChunkPrioritizer {
                     state: LoadState::Loaded,
                     ..
                 }) => {
+                    self.desired_root_chunks.insert(chunk_id);
+
                     store.collect_physical_descendents_of(&chunk_id, &mut physical_chunks_scratch);
                     for chunk_id in physical_chunks_scratch.drain(..) {
                         if self.desired_physical_chunks.contains(&chunk_id) {
@@ -640,8 +656,6 @@ impl ChunkPrioritizer {
 
                         self.desired_physical_chunks.insert(chunk_id);
                     }
-
-                    self.checked_virtual_chunks.insert(chunk_id);
                 }
                 None => {
                     // If it's not in the rrd manifest it should be a physical chunk.
@@ -664,9 +678,11 @@ impl ChunkPrioritizer {
                     //
                     // If these missing splits are missing we can let the `missing` chunk detection
                     // handle that.
-                    store.collect_root_ids(&chunk_id, &mut manifest_chunks_scratch);
-                    self.checked_virtual_chunks
-                        .extend(manifest_chunks_scratch.drain(..));
+                    store.collect_root_ids(&chunk_id, &mut root_chunks_scratch);
+                    self.desired_root_chunks
+                        .extend(root_chunks_scratch.drain(..));
+
+                    self.desired_physical_chunks.insert(chunk_id);
                 }
             }
         }
@@ -688,5 +704,12 @@ impl ChunkPrioritizer {
         }
 
         Ok(())
+    }
+
+    /// Cancel all fetches of things that are not currently needed.
+    #[must_use = "Returns root chunks whose download got cancelled. Mark them as unloaded!"]
+    pub fn cancel_outdated_requests(&mut self) -> Vec<ChunkId> {
+        self.chunk_requests
+            .cancel_outdated_requests(&self.desired_root_chunks)
     }
 }

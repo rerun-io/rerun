@@ -3243,13 +3243,15 @@ impl App {
 
                 self.process_store_events_for_db(store_hub, &store_id, &store_events);
 
-                // Need to reborrow as read-only since we passed store_hub as mutable earlier.
-                let db = store_hub
-                    .entity_db(&store_id)
-                    .expect("Just queried it mutable and that was fine.");
+                // Need to reborrow since we pass `&mut store_hub` above.
+                let db = store_hub.entity_db_mut(&store_id);
 
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!
+
+                // We cancel right after resoliving (above), so that
+                // we give each fetch as much time as possible to finish.
+                db.rrd_manifest_index.cancel_outdated_requests();
 
                 if db.rrd_manifest_index.chunk_requests().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more

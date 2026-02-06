@@ -179,4 +179,39 @@ impl ChunkRequests {
             .map(|batch| Arc::clone(&batch.info))
             .collect()
     }
+
+    /// Cancel all fetches of things that are not longer desired.
+    ///
+    /// Returned all root chunks that whose download got cancelled.
+    #[must_use = "Returns root chunks whose download got cancelled. Mark them as unloaded!"]
+    pub fn cancel_outdated_requests(
+        &mut self,
+        desired_root_chunks: &ahash::HashSet<ChunkId>,
+    ) -> Vec<ChunkId> {
+        re_tracing::profile_function!();
+
+        let batches = &mut self.requests;
+
+        let mut canceled_root_chunks = vec![];
+
+        let num_batches_before = batches.len();
+        batches.retain(|batch| {
+            if batch.info.root_chunk_ids.is_disjoint(desired_root_chunks) {
+                canceled_root_chunks.extend(batch.info.root_chunk_ids.iter().copied());
+                false // cancel
+            } else {
+                true // keep
+            }
+        });
+
+        let num_batches_after = batches.len();
+        if num_batches_after < num_batches_before {
+            re_log::trace!(
+                "Canceled {} in-flight chunk fetches",
+                num_batches_before - num_batches_after,
+            );
+        }
+
+        canceled_root_chunks
+    }
 }
