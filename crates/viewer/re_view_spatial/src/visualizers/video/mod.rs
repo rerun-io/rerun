@@ -117,6 +117,20 @@ enum VideoPlaybackIssueSeverity {
     ///
     /// E.g. not having the necessary data yet.
     Informational,
+
+    /// We still have required unloaded samples before we're able to play this video.
+    Loading,
+}
+
+impl From<re_renderer::video::VideoPlayerError> for VideoPlaybackIssueSeverity {
+    fn from(value: re_renderer::video::VideoPlayerError) -> Self {
+        use re_renderer::video::VideoPlayerError;
+        match value {
+            VideoPlayerError::UnloadedSampleData(_) => Self::Loading,
+            VideoPlayerError::InsufficientSampleData(_) => Self::Informational,
+            _ => Self::Error,
+        }
+    }
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -139,6 +153,25 @@ fn show_video_playback_issue(
         video_size,
         ctx.view_class_identifier,
     );
+
+    let style = match severity {
+        VideoPlaybackIssueSeverity::Error => UiLabelStyle::Error,
+        VideoPlaybackIssueSeverity::Informational => UiLabelStyle::Default,
+        VideoPlaybackIssueSeverity::Loading => {
+            // Make sure to use the video instead of texture size here,
+            // since the texture may be a placeholder which doesn't have the full size yet.
+            let top_left_corner_position = world_from_entity.transform_point3(glam::Vec3::ZERO);
+            let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_size.x);
+            let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y);
+
+            visualizer_data.loading_spinners.push(LoadingSpinner {
+                center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                half_extent_u: 0.5 * extent_u,
+                half_extent_v: 0.5 * extent_v,
+            });
+            return;
+        }
+    };
 
     let render_ctx = ctx.viewer_ctx.render_ctx();
 
@@ -216,10 +249,6 @@ fn show_video_playback_issue(
         egui::vec2(video_error_rect_size.x * 3.0, video_error_rect_size.y),
     );
 
-    let style = match severity {
-        VideoPlaybackIssueSeverity::Error => UiLabelStyle::Error,
-        VideoPlaybackIssueSeverity::Informational => UiLabelStyle::Default,
-    };
     visualizer_data.ui_labels.push(UiLabel {
         text: error_string,
         style,

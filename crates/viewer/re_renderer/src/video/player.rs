@@ -7,7 +7,9 @@ use web_time::Instant;
 use super::VideoFrameTexture;
 use super::chunk_decoder::VideoSampleDecoder;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
-use crate::video::{DecoderDelayState, InsufficientSampleDataError, VideoPlayerError};
+use crate::video::{
+    DecoderDelayState, InsufficientSampleDataError, UnloadedSampleDataError, VideoPlayerError,
+};
 
 pub struct PlayerConfiguration {
     /// Don't report hickups lasting shorter than this.
@@ -161,7 +163,7 @@ pub fn request_keyframe_before<'a>(
                     VideoPlayerError::BadData
                 }),
             re_video::SampleMetadataState::Unloaded(_) => {
-                Err(InsufficientSampleDataError::ExpectedSampleNotLoaded.into())
+                Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into())
             }
         }
     } else {
@@ -209,7 +211,7 @@ fn try_request_missing_samples_at_presentation_timestamp<'a>(
     let Some(found_loaded_sample_idx) =
         sample_idx_after_timestamp.or_else(|| best_sample_idx_before_timestamp.map(|(_, idx)| idx))
     else {
-        return InsufficientSampleDataError::NoLoadedSamples.into();
+        return UnloadedSampleDataError::NoLoadedSamples.into();
     };
 
     match request_keyframe_before(
@@ -538,9 +540,7 @@ impl VideoPlayer {
                     // Usually `last_enqueued` is greater than `requested_sample_idx`
                     // since we stay ahead of the requested sample as described above.
                     if last_enqueued <= requested_sample_idx {
-                        return Err(VideoPlayerError::InsufficientSampleData(
-                            InsufficientSampleDataError::ExpectedSampleNotLoaded,
-                        ));
+                        return Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into());
                     }
 
                     break;

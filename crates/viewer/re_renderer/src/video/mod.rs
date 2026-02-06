@@ -13,6 +13,16 @@ use re_video::{DecodeSettings, VideoDataDescription};
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
 
+/// Detailed error for unloaded samples.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum UnloadedSampleDataError {
+    #[error("Video doesn't have any loaded samples.")]
+    NoLoadedSamples,
+
+    #[error("Frame data required for the requested sample is not loaded yet.")]
+    ExpectedSampleNotLoaded,
+}
+
 /// Detailed error for lack of sample data.
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum InsufficientSampleDataError {
@@ -22,17 +32,11 @@ pub enum InsufficientSampleDataError {
     #[error("Video doesn't have any samples.")]
     NoSamples,
 
-    #[error("Video doesn't have any loaded samples.")]
-    NoLoadedSamples,
-
     #[error("No key frames prior to current time.")]
     NoKeyFramesPriorToRequestedTimestamp,
 
     #[error("No frames prior to current time.")]
     NoSamplesPriorToRequestedTimestamp,
-
-    #[error("The requested frame data is not, or no longer, available.")]
-    ExpectedSampleNotLoaded,
 
     #[error("Missing samples between last decoded sample and requested sample.")]
     MissingSamples,
@@ -52,6 +56,9 @@ pub enum VideoPlayerError {
 
     #[error(transparent)]
     InsufficientSampleData(#[from] InsufficientSampleDataError),
+
+    #[error(transparent)]
+    UnloadedSampleData(#[from] UnloadedSampleDataError),
 
     /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]

@@ -4,9 +4,7 @@ use crossbeam::channel::{Receiver, Sender};
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, StoreId, external::re_tuid::Tuid};
-use re_renderer::video::{
-    InsufficientSampleDataError, VideoPlayer, VideoPlayerError, VideoSampleDecoder,
-};
+use re_renderer::video::{VideoPlayer, VideoPlayerError, VideoSampleDecoder};
 use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
 use re_video::{
     AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME, AsyncDecoder, SampleIndex, SampleMetadataState, Time,
@@ -382,16 +380,8 @@ fn player_unsorted() {
 fn assert_loading(err: Result<(), VideoPlayerError>) {
     let err = err.unwrap_err();
     assert!(
-        matches!(
-            err,
-            VideoPlayerError::InsufficientSampleData(
-                InsufficientSampleDataError::ExpectedSampleNotLoaded
-            )
-        ),
-        "Expected '{}' got '{err}'",
-        VideoPlayerError::InsufficientSampleData(
-            InsufficientSampleDataError::ExpectedSampleNotLoaded
-        )
+        matches!(err, VideoPlayerError::UnloadedSampleData(_)),
+        "Expected 'VideoPlayerError::UnloadedSampleData(_)' got '{err}'",
     );
 }
 

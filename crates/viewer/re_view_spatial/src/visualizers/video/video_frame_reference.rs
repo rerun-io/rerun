@@ -219,7 +219,7 @@ impl VideoFrameReferenceVisualizer {
                                 spatial_ctx.highlight,
                                 world_from_entity,
                                 err.to_string(),
-                                VideoPlaybackIssueSeverity::Error,
+                                err.into(),
                                 video_resolution,
                                 entity_path,
                             );
