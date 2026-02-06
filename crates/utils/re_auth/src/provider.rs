@@ -4,7 +4,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 
-use crate::{Error, Jwt};
+use crate::{Error, Jwt, Permission};
 
 /// Identifies who should be the consumer of a token. In our case, this is the Rerun storage node.
 const AUDIENCE: &str = "redap";
@@ -99,6 +99,9 @@ pub struct RedapClaims {
 
     /// Issued at time of the token.
     pub iat: u64,
+
+    #[serde(default)]
+    pub permissions: Vec<Permission>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -129,12 +132,22 @@ impl Claims {
         }
     }
 
-    #[cfg(feature = "oauth")]
-    pub fn permissions(&self) -> &[crate::oauth::Permission] {
+    pub fn permissions(&self) -> &[Permission] {
         match self {
+            #[cfg(feature = "oauth")]
             Self::RerunCloud(claims) => &claims.permissions[..],
-            Self::Redap(_) => &[],
+            Self::Redap(claims) => &claims.permissions[..],
         }
+    }
+
+    pub fn has_read_permission(&self) -> bool {
+        self.permissions().iter().any(|p| p == &Permission::Read)
+    }
+
+    pub fn has_write_permission(&self) -> bool {
+        self.permissions()
+            .iter()
+            .any(|p| p == &Permission::ReadWrite)
     }
 }
 
@@ -259,6 +272,7 @@ impl RedapProvider {
         duration: Duration,
         issuer: impl Into<String>,
         subject: impl Into<String>,
+        permission: Permission,
     ) -> Result<Jwt, Error> {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
 
@@ -268,6 +282,7 @@ impl RedapProvider {
             aud: vec![AUDIENCE.to_owned()],
             exp: (now + duration).as_secs(),
             iat: now.as_secs(),
+            permissions: vec![permission],
         });
 
         let token = encode(
@@ -425,6 +440,7 @@ mod tests {
             aud: vec!["redap".to_owned()],
             exp: 1234567890,
             iat: 1234567890,
+            permissions: vec![],
         };
 
         let json = serde_json::to_value(&claims).unwrap();
@@ -440,6 +456,7 @@ mod tests {
             aud: vec!["redap".to_owned(), "other".to_owned()],
             exp: 1234567890,
             iat: 1234567890,
+            permissions: vec![],
         };
 
         let json = serde_json::to_value(&claims).unwrap();

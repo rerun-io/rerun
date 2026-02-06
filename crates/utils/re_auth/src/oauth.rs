@@ -2,7 +2,7 @@ use base64::Engine as _;
 use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use serde::{Deserialize, Serialize};
 
-use crate::Jwt;
+use crate::{Jwt, Permission};
 
 pub mod api;
 mod storage;
@@ -129,21 +129,6 @@ pub enum FetchJwksError {
 
     #[error("failed to deserialize JWKS: {0}")]
     Deserialize(#[from] serde_json::Error),
-}
-
-/// Rerun Cloud permissions
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Permission {
-    /// User can read data.
-    #[serde(rename = "read")]
-    Read,
-
-    /// User can both read and write data.
-    #[serde(rename = "read-write")]
-    ReadWrite,
-
-    #[serde(untagged)]
-    Unknown(String),
 }
 
 #[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future

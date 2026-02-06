@@ -22,6 +22,7 @@ fn generate_read_only_token_with_duration() {
             Duration::from_secs(2 * 60 * 60),
             "re_auth_test",
             "test@rerun.io",
+            re_auth::Permission::ReadWrite,
         )
         .unwrap();
 
@@ -40,7 +41,12 @@ fn expired_token() {
     let duration = Duration::from_secs(1);
 
     let token = provider
-        .token(Duration::from_secs(1), "re_auth_test", "test@rerun.io")
+        .token(
+            Duration::from_secs(1),
+            "re_auth_test",
+            "test@rerun.io",
+            re_auth::Permission::ReadWrite,
+        )
         .unwrap();
 
     std::thread::sleep(duration * 2);

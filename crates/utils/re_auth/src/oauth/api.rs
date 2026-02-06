@@ -7,7 +7,7 @@ use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use sha2::{Digest as _, Sha256};
 
 use super::RefreshToken;
-use crate::oauth::OAUTH_CLIENT_ID;
+use crate::{Permission, oauth::OAUTH_CLIENT_ID};
 
 static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_SERVER_URL")
@@ -416,6 +416,7 @@ pub struct GenerateToken<'a> {
     pub server: url::Origin,
     pub token: &'a str,
     pub expiration: jiff::Span,
+    pub permission: Permission,
 }
 
 #[derive(serde::Deserialize)]
@@ -430,6 +431,7 @@ impl IntoRequest for GenerateToken<'_> {
         #[derive(serde::Serialize)]
         struct Body {
             expiration: jiff::Span,
+            permission: Permission,
         }
 
         let mut req = ehttp::Request::json(
@@ -439,6 +441,7 @@ impl IntoRequest for GenerateToken<'_> {
             ),
             &Body {
                 expiration: self.expiration,
+                permission: self.permission,
             },
         )
         .map_err(Error::Serialize)?;

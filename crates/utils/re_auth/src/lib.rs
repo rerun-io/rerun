@@ -16,6 +16,37 @@ mod provider;
 mod service;
 mod token;
 
+/// Rerun Cloud permissions
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum Permission {
+    /// User can read data.
+    #[serde(rename = "read")]
+    Read,
+
+    /// User can both read and write data.
+    #[serde(rename = "read-write")]
+    ReadWrite,
+
+    #[serde(untagged)]
+    Unknown(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("invalid permission")]
+pub struct InvalidPermission;
+
+impl std::str::FromStr for Permission {
+    type Err = InvalidPermission;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "read" => Ok(Self::Read),
+            "read-write" => Ok(Self::ReadWrite),
+            _ => Err(InvalidPermission),
+        }
+    }
+}
+
 pub mod credentials;
 
 #[cfg(all(feature = "cli", feature = "oauth", not(target_arch = "wasm32")))]

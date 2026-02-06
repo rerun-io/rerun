@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 pub use crate::callback_server::Error;
 use crate::oauth::api::{GenerateToken, send_async};
 use crate::oauth::login_flow::OauthLoginFlowState;
-use crate::{OauthLoginFlow, oauth};
+use crate::{OauthLoginFlow, Permission, oauth};
 
 pub struct LoginOptions {
     pub open_browser: bool,
@@ -96,6 +96,7 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
 pub struct GenerateTokenOptions {
     pub server: url::Origin,
     pub expiration: jiff::Span,
+    pub permission: Permission,
 }
 
 pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> {
@@ -114,6 +115,7 @@ pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> 
         server: options.server,
         token: credentials.access_token().as_str(),
         expiration: options.expiration,
+        permission: options.permission,
     })
     .await
     .map_err(|err| Error::Generic(err.into()))?;

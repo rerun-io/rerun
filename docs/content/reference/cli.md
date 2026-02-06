@@ -275,7 +275,7 @@ You can use this token to authorize requests to the Rerun Data Platform.
 
 It's closer to an API key than an access token, as it can be revoked before it expires.
 
-**Usage**: `rerun auth generate-token --server <SERVER> --expiration <EXPIRATION>`
+**Usage**: `rerun auth generate-token [OPTIONS] --server <SERVER> --expiration <EXPIRATION>`
 
 **Options**
 
@@ -284,6 +284,13 @@ It's closer to an API key than an access token, as it can be revoked before it e
 
 * `--expiration <EXPIRATION>`
 > Duration of the token, either in: - "human time", e.g. `1 day`, or - ISO 8601 duration format, e.g. `P1D`.
+
+* `--permission <PERMISSION>`
+> Which permission the token should have.
+>
+> [`read`, `read-write`]
+>
+> [Default: `read`]
 
 ## rerun mcap
 
