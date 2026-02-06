@@ -69,6 +69,9 @@ pub struct ChunkRequests {
     requests: Vec<ChunkBatchRequest>,
 
     pub download_size_history: emath::History<ByteFloat>,
+
+    // Used for debug UI. Could maybe be a `egui::History`.
+    pub recently_canceled: emath::History<usize>,
 }
 
 impl Default for ChunkRequests {
@@ -76,6 +79,7 @@ impl Default for ChunkRequests {
         Self {
             requests: Vec::new(),
             download_size_history: emath::History::new(0..50, 2.0),
+            recently_canceled: emath::History::new(0..100, 1.0),
         }
     }
 }
@@ -85,16 +89,17 @@ static_assertions::assert_impl_all!(ChunkRequests: Sync);
 #[cfg(feature = "testing")]
 impl Clone for ChunkRequests {
     fn clone(&self) -> Self {
+        use tap::Tap as _;
+
         // This means the clone will have to start downloads from scratch.
         // In practice, the `Clone` feature is only used for tests.
+
         Self {
             requests: Vec::new(),
 
-            download_size_history: {
-                let mut h = self.download_size_history.clone();
-                h.clear();
-                h
-            },
+            download_size_history: self.download_size_history.clone().tap_mut(|h| h.clear()),
+
+            recently_canceled: self.recently_canceled.clone().tap_mut(|h| h.clear()),
         }
     }
 }
@@ -124,12 +129,12 @@ impl ChunkRequests {
     ///
     /// - `1.0` means the most recent download just completed.
     /// - `0.0` means no downloads have completed within `Self.download_size_history.max_age()`.
-    pub fn bandwidth_data_freshness(&self, time: f64) -> f64 {
+    pub fn bandwidth_data_freshness(&self, egui_now_time: f64) -> f64 {
         self.download_size_history
             .iter()
             .last()
             .map(|(t, _)| {
-                let age = time - t;
+                let age = egui_now_time - t;
 
                 (1.0 - age / self.download_size_history.max_age() as f64).at_least(0.0)
             })
@@ -138,20 +143,23 @@ impl ChunkRequests {
 
     /// See if we have received any new chunks since last call.
     #[must_use = "Returns newly received chunks"]
-    pub fn receive_finished(&mut self, time: f64) -> Vec<Chunk> {
+    pub fn receive_finished(&mut self, egui_now_time: f64) -> Vec<Chunk> {
         re_tracing::profile_function!();
 
         let mut all_chunks = Vec::new();
 
         let history = &mut self.download_size_history;
-        history.flush(time);
+        history.flush(egui_now_time);
         self.requests.retain_mut(|batch| {
             let mut promise_opt = batch.promise.lock();
             if let Some(promise) = promise_opt.take() {
                 match promise.try_take() {
                     Ok(Ok(chunks)) => {
                         all_chunks.extend(chunks);
-                        history.add(time, ByteFloat(batch.info.size_bytes_on_wire as f64));
+                        history.add(
+                            egui_now_time,
+                            ByteFloat(batch.info.size_bytes_on_wire as f64),
+                        );
                         false
                     }
                     Ok(Err(())) => false,
@@ -186,6 +194,7 @@ impl ChunkRequests {
     #[must_use = "Returns root chunks whose download got cancelled. Mark them as unloaded!"]
     pub fn cancel_outdated_requests(
         &mut self,
+        egui_now_time: f64,
         desired_root_chunks: &ahash::HashSet<ChunkId>,
     ) -> Vec<ChunkId> {
         re_tracing::profile_function!();
@@ -204,12 +213,13 @@ impl ChunkRequests {
             }
         });
 
-        let num_batches_after = batches.len();
-        if num_batches_after < num_batches_before {
-            re_log::trace!(
-                "Canceled {} in-flight chunk fetches",
-                num_batches_before - num_batches_after,
-            );
+        let num_canceled = num_batches_before - batches.len();
+
+        self.recently_canceled.flush(egui_now_time);
+
+        if 0 < num_canceled {
+            re_log::trace!("Canceled {num_canceled} in-flight chunk fetches");
+            self.recently_canceled.add(egui_now_time, num_canceled);
         }
 
         canceled_root_chunks

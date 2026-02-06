@@ -96,6 +96,10 @@ impl std::fmt::Display for LogSource {
 }
 
 impl LogSource {
+    pub fn is_redap(&self) -> bool {
+        matches!(self, Self::RedapGrpcStream { .. })
+    }
+
     pub fn is_network(&self) -> bool {
         match self {
             Self::File(_) | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,

@@ -423,9 +423,11 @@ impl RrdManifestIndex {
     }
 
     /// Cancel all fetches of things that are not currently needed.
-    pub fn cancel_outdated_requests(&mut self) {
+    pub fn cancel_outdated_requests(&mut self, egui_now_time: f64) {
         if self.has_manifest() {
-            let cancelred_chunks = self.chunk_prioritizer.cancel_outdated_requests();
+            let cancelred_chunks = self
+                .chunk_prioritizer
+                .cancel_outdated_requests(egui_now_time);
             for chunk_id in cancelred_chunks {
                 if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
                     chunk_info.state = LoadState::Unloaded;

@@ -760,8 +760,8 @@ impl ChunkPrioritizer {
 
     /// Cancel all fetches of things that are not currently needed.
     #[must_use = "Returns root chunks whose download got cancelled. Mark them as unloaded!"]
-    pub fn cancel_outdated_requests(&mut self) -> Vec<ChunkId> {
+    pub fn cancel_outdated_requests(&mut self, egui_now_time: f64) -> Vec<ChunkId> {
         self.chunk_requests
-            .cancel_outdated_requests(&self.desired_root_chunks)
+            .cancel_outdated_requests(egui_now_time, &self.desired_root_chunks)
     }
 }

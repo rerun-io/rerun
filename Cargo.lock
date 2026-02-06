@@ -8898,6 +8898,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "static_assertions",
+ "tap",
  "thiserror 2.0.17",
  "web-time",
 ]

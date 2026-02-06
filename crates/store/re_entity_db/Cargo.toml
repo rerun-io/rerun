@@ -58,6 +58,7 @@ nohash-hasher.workspace = true
 poll-promise.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 static_assertions.workspace = true
+tap.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 

@@ -40,7 +40,6 @@ pub fn prefetch_chunks_for_active_recording(
         // Batch small chunks together.
         max_on_wire_bytes_per_batch: 256 * 1024,
 
-        // TODO(RR-3204): what is a reasonable size here?
         // A high value -> better theoretical bandwidth
         // Low value -> better responsiveness (e.g. when moving time cursor).
         // In practice, this is a limit on how many bytes we can download _every frame_.

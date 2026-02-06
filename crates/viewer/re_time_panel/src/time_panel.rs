@@ -425,22 +425,22 @@ impl TimePanel {
 
         if time_ctrl.is_pending() {
             ui.loading_screen_ui(|ui| {
-                ui.label(
-                    egui::RichText::from(format!(
-                        "Waiting for timeline: {}",
-                        time_ctrl.timeline_name()
-                    ))
-                    .heading()
-                    .strong(),
-                );
-                if ui
-                    .button(
-                        egui::RichText::new("Go to default timeline")
-                            .color(ui.style().visuals.weak_text_color()),
-                    )
-                    .clicked()
-                {
-                    time_commands.push(TimeControlCommand::ResetActiveTimeline);
+                if entity_db.is_currently_downloading_manifest() {
+                    let text = "Downloading meta-data";
+                    ui.label(egui::RichText::from(text).heading().strong());
+                } else {
+                    let text = format!("Waiting for timeline: {}", time_ctrl.timeline_name());
+                    ui.label(egui::RichText::from(text).heading().strong());
+
+                    if ui
+                        .button(
+                            egui::RichText::new("Go to default timeline")
+                                .color(ui.style().visuals.weak_text_color()),
+                        )
+                        .clicked()
+                    {
+                        time_commands.push(TimeControlCommand::ResetActiveTimeline);
+                    }
                 }
             });
 

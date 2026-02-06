@@ -3251,7 +3251,8 @@ impl App {
 
                 // We cancel right after resoliving (above), so that
                 // we give each fetch as much time as possible to finish.
-                db.rrd_manifest_index.cancel_outdated_requests();
+                db.rrd_manifest_index
+                    .cancel_outdated_requests(self.egui_ctx.time());
 
                 if db.rrd_manifest_index.chunk_requests().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more

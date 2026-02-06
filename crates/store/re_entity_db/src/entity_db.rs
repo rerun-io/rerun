@@ -304,6 +304,14 @@ impl EntityDb {
         &mut self.rrd_manifest_index
     }
 
+    /// Are we currently in the process of downloading the RRD Manifest?
+    pub fn is_currently_downloading_manifest(&self) -> bool {
+        self.data_source
+            .as_ref()
+            .is_some_and(|source| source.is_redap())
+            && !self.rrd_manifest_index.has_manifest()
+    }
+
     #[inline]
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
         self.set_store_info.as_ref()

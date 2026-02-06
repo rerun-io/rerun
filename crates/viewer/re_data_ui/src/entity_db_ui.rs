@@ -98,11 +98,9 @@ impl crate::DataUi for EntityDb {
             }
         }
 
-        // TODO(emilk): hide behind a feature flag?
-        if cfg!(debug_assertions) && self.rrd_manifest_index().has_manifest() {
-            ui.add_space(8.0);
+        if ctx.app_options().show_metrics && self.rrd_manifest_index().has_manifest() {
+            ui.add_space(4.0);
             ui.collapsing_header("In-flight chunk requests", false, |ui| {
-                ui.weak("(only available in debug builds)");
                 chunk_requests_ui(ui, self.rrd_manifest_index());
             });
         }
@@ -311,7 +309,8 @@ fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
         return;
     };
 
-    let requests = rrd_manifest_index.chunk_requests().pending_requests();
+    let chunk_requests = rrd_manifest_index.chunk_requests();
+    let requests = chunk_requests.pending_requests();
 
     let col_chunk_entity_path_raw = rrd_manifest.col_chunk_entity_path_raw();
 
@@ -333,12 +332,28 @@ fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
     ui.label("Data currently being downloaded from the server");
 
     egui::Grid::new("chunk-requests").show(ui, |ui| {
-        ui.label("Chunks");
-        ui.label(format_uint(total_chunks));
+        ui.label("Speed");
+        if let Some(bytes_per_second) = chunk_requests.bandwidth() {
+            ui.label(format!("{}/s", format_bytes(bytes_per_second)));
+        }
         ui.end_row();
 
         ui.label("Requests");
         ui.label(format_uint(requests.len()));
+        ui.end_row();
+
+        ui.label("Chunks");
+        ui.label(format_uint(total_chunks));
+        ui.end_row();
+
+        ui.label("Recently canceled");
+        ui.label(format_uint(
+            chunk_requests
+                .recently_canceled
+                .iter()
+                .map(|(_time, count)| count)
+                .sum::<usize>(),
+        ));
         ui.end_row();
 
         ui.label("Bytes (compressed)");
