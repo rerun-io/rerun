@@ -48,6 +48,20 @@ all-features = true # Will also enable the `__disable_server` feature, meaning t
 ## because none of the unit tests actually rely on us serving the `.wasm` file.
 __disable_server = []
 
+## Build the binary to expect web viewer assets in trailing data.
+## This can be enabled in two ways:
+## * Compile with the env-var `RERUN_TRAILING_WEB_VIEWER=1`
+## * Use `--features __trailing_web_viewer` when building this crate
+##
+## When enabled, the binary will NOT include the web viewer assets at compile time.
+## Instead, it expects them to be appended as a zip archive via a post-processing step
+## using `scripts/append_web_viewer.py`. This allows parallel building of CLI and web viewer
+## in CI, which are then combined later.
+##
+## WARNING: Binaries built this way CANNOT serve the web viewer until the post-processing
+## step is completed. Attempting to do so will result in a panic.
+__trailing_web_viewer = []
+
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
@@ -57,6 +71,7 @@ re_log = { workspace = true, features = ["setup"] }
 document-features.workspace = true
 tiny_http.workspace = true
 thiserror.workspace = true
+zip.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }

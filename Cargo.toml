@@ -445,6 +445,7 @@ wgpu = { version = "27.0.1", default-features = false, features = [
 ] }
 xshell = "0.2.7"
 xxhash-rust = { version = "0.8", features = ["xxh32"] }
+zip = { version = "2.1", default-features = false, features = ["deflate"] }
 
 # ---------------------------------------------------------------------------------
 [profile]
