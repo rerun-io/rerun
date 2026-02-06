@@ -2,6 +2,15 @@
 
 ## [0.29.1](https://github.com/rerun-io/rerun/compare/0.29.0...0.29.1) - 2026-02-06 - Improved labels, bug fixes & performance improvements
 
+### ✨ Overview & highlights
+
+This is mainly a patch release with some fixes and improvements.
+
+We also included a change that makes labels translucent. This makes them less obtrusive and improves visibility of overlapping labels, as shown in the image segmentation example below.
+<picture>
+  <img src="https://static.rerun.io/translucent_labels/19694d87d846e01cc59837c4f3982eeab6d4a1a5/full.png" alt="Example of translucent labels in Rerun 0.29.1">
+</picture>
+
 ### 🔎 Details
 
 #### 🐍 Python API
