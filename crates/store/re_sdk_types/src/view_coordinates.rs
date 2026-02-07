@@ -100,6 +100,7 @@ impl Axis3 {
     /// * 1 => [`Self::Y`]
     /// * 2 => [`Self::Z`]
     #[inline]
+    #[expect(clippy::panic)]
     pub fn from_dim(dim: usize) -> Self {
         match dim {
             0 => Self::X,

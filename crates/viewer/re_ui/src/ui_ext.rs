@@ -41,6 +41,7 @@ pub trait UiExt {
 
     #[inline]
     #[track_caller]
+    #[expect(clippy::panic)]
     fn sanity_check(&self) {
         // TODO(emilk/egui#7537): add the contents of this function as a callback in egui instead.
         let ui = self.ui();

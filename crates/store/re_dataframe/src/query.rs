@@ -1251,6 +1251,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         ) {
             Ok(batch) => Some(batch),
             Err(err) => {
+                #[expect(clippy::panic)]
                 if cfg!(debug_assertions) {
                     panic!("Failed to create record batch: {err}");
                 } else {

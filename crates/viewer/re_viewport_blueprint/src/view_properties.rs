@@ -187,6 +187,7 @@ impl ViewProperty {
         component_batch: &dyn ComponentBatch,
     ) {
         if !self.component_descrs.contains(component_descr) {
+            #[expect(clippy::panic)] // Debug only.
             if cfg!(debug_assertions) {
                 panic!(
                     "trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`",
