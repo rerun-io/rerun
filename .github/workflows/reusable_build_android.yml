@@ -1,0 +1,115 @@
+name: Reusable Android Build
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
+
+  workflow_dispatch:
+    inputs:
+      CONCURRENCY:
+        required: false
+        type: string
+        default: "adhoc"
+        description: "Concurrency group to use"
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-build-android
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: --deny warnings
+  RUSTDOCFLAGS: --deny warnings
+
+  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
+  SCCACHE_GHA_ENABLED: "false"
+
+  # Wrap every `rustc` invocation in `sccache`.
+  RUSTC_WRAPPER: "sccache"
+
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest-16-cores
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || github.sha }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          ndk-version: "27.2.12479018"
+          cmake-version: "3.22.1"
+
+      - name: Install Rust toolchain
+        run: |
+          rustup show
+          rustup target add aarch64-linux-android x86_64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Build Rust library for Android (arm64-v8a)
+        run: |
+          cargo ndk \
+            -t arm64-v8a \
+            -o crates/viewer/re_viewer_android/app/src/main/jniLibs \
+            build --release -p re_viewer --lib --features android-game-activity
+
+      - name: Build Rust library for Android (x86_64)
+        run: |
+          cargo ndk \
+            -t x86_64 \
+            -o crates/viewer/re_viewer_android/app/src/main/jniLibs \
+            build --release -p re_viewer --lib --features android-game-activity
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Android APK (debug)
+        working-directory: crates/viewer/re_viewer_android
+        run: ./gradlew assembleDebug
+
+      - name: Build Android APK (release)
+        working-directory: crates/viewer/re_viewer_android
+        run: ./gradlew assembleRelease
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rerun-viewer-android-debug
+          path: crates/viewer/re_viewer_android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rerun-viewer-android-release
+          path: crates/viewer/re_viewer_android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error

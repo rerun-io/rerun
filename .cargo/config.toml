@@ -20,3 +20,11 @@ IS_IN_RERUN_WORKSPACE = "yes"
 # https://docs.rs/getrandom/latest/getrandom/#webassembly-support
 [target.wasm32-unknown-unknown]
 rustflags = ['--cfg=web_sys_unstable_apis', '--cfg=getrandom_backend="wasm_js"']
+
+# Android cross-compilation targets.
+# The linker paths assume the Android NDK toolchain is on PATH (e.g. via cargo-ndk).
+[target.aarch64-linux-android]
+linker = "aarch64-linux-android30-clang"
+
+[target.x86_64-linux-android]
+linker = "x86_64-linux-android30-clang"

@@ -82,7 +82,7 @@ pub struct App {
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::history::PopstateListener>,
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
     profiler: re_tracing::Profiler,
 
     /// Listens to the local text log stream
@@ -337,7 +337,7 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
             profiler: Default::default(),
 
             text_log_rx,
@@ -381,7 +381,7 @@ impl App {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
     }
@@ -852,7 +852,7 @@ impl App {
                     }
                 }
 
-                #[cfg(not(target_arch = "wasm32"))] // Native
+                #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))] // Native desktop
                 {
                     let mut selected_stores = vec![];
                     for item in self.state.selection_state.selected_items().iter_items() {
@@ -898,6 +898,11 @@ impl App {
                         }
                     }
                 }
+
+                #[cfg(target_os = "android")]
+                {
+                    re_log::warn!("File saving is not yet supported on Android.");
+                }
             }
             UICommand::SaveRecordingSelection => {
                 if let Err(err) = save_active_recording(
@@ -915,7 +920,7 @@ impl App {
                 }
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
             UICommand::Open => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
@@ -927,6 +932,10 @@ impl App {
                             file_path,
                         )));
                 }
+            }
+            #[cfg(target_os = "android")]
+            UICommand::Open => {
+                re_log::warn!("File open dialog is not yet supported on Android.");
             }
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
@@ -945,7 +954,7 @@ impl App {
                 });
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
             UICommand::Import => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
@@ -957,6 +966,10 @@ impl App {
                             file_path,
                         )));
                 }
+            }
+            #[cfg(target_os = "android")]
+            UICommand::Import => {
+                re_log::warn!("File import dialog is not yet supported on Android.");
             }
             #[cfg(target_arch = "wasm32")]
             UICommand::Import => {
@@ -1032,9 +1045,14 @@ impl App {
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
             UICommand::OpenProfiler => {
                 self.profiler.start();
+            }
+
+            #[cfg(target_os = "android")]
+            UICommand::OpenProfiler => {
+                re_log::warn!("Profiler is not available on Android");
             }
 
             UICommand::ToggleMemoryPanel => {
@@ -2628,7 +2646,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 /// [This may only be called on the main thread](https://docs.rs/rfd/latest/rfd/#macos-non-windowed-applications-async-and-threading).
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf> {
     re_tracing::profile_function!();
 
@@ -2796,8 +2814,8 @@ fn save_entity_db(
         });
     }
 
-    // Native
-    #[cfg(not(target_arch = "wasm32"))]
+    // Native desktop (with file dialog)
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
     {
         let path = {
             re_tracing::profile_scope!("file_dialog");
@@ -2812,6 +2830,13 @@ fn save_entity_db(
                 Ok(path)
             })?;
         }
+    }
+
+    // Android: file dialogs are not supported yet.
+    #[cfg(target_os = "android")]
+    {
+        let _ = (app, rrd_version, file_name, title, messages);
+        re_log::warn!("File saving is not yet supported on Android.");
     }
 
     Ok(())

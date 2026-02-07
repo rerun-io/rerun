@@ -260,6 +260,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e999941b234f3131b00bc13c22d06e8c5ff726d1b6318ac7eb276997bbb4fef0"
 
 [[package]]
+name = "android_log-sys"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84521a3cf562bc62942e294181d9eef17eb38ceb8c68677bc49f144e4c3d4f8d"
+
+[[package]]
+name = "android_logger"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05b07e8e73d720a1f2e4b6014766e6039fd2e96a4fa44e2a78d0e1fa2ff49826"
+dependencies = [
+ "android_log-sys",
+ "env_filter",
+ "log",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3376,6 +3393,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
 dependencies = [
  "log",
+ "regex",
 ]
 
 [[package]]
@@ -8787,6 +8805,7 @@ name = "re_viewer"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "android_logger",
  "anyhow",
  "arrow",
  "bytemuck",
@@ -8803,6 +8822,7 @@ dependencies = [
  "image",
  "itertools 0.14.0",
  "js-sys",
+ "log",
  "parking_lot",
  "percent-encoding",
  "poll-promise",
@@ -8863,11 +8883,13 @@ dependencies = [
  "strum_macros",
  "tap",
  "thiserror 1.0.69",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
  "wgpu",
+ "winit",
 ]
 
 [[package]]

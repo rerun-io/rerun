@@ -1,27 +1,38 @@
-use re_ui::{ContextExt as _, UiExt as _};
-
 pub fn mobile_warning_ui(ui: &mut egui::Ui) {
-    // We have not yet optimized the UI experience for mobile. Show a warning banner
-    // with a link to the tracking issue.
-
-    if ui.ctx().os() == egui::os::OperatingSystem::IOS
-        || ui.ctx().os() == egui::os::OperatingSystem::Android
+    // When running natively on Android (compiled with android-game-activity),
+    // we don't show the warning -- Android is a supported platform.
+    // The warning is only shown when accessing the *web* viewer from a mobile browser,
+    // or on iOS (which is not yet natively supported).
+    #[cfg(target_os = "android")]
     {
-        let frame = egui::Frame {
-            fill: ui.visuals().panel_fill,
-            ..ui.tokens().bottom_panel_frame()
-        };
+        let _ = ui;
+        return;
+    }
 
-        egui::TopBottomPanel::bottom("warning_panel")
-            .resizable(false)
-            .frame(frame)
-            .show_inside(ui, |ui| {
-                ui.centered_and_justified(|ui| {
-                    let text = ui
-                        .ctx()
-                        .warning_text("Mobile OSes are not yet supported. Click for details.");
-                    ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1672");
+    #[cfg(not(target_os = "android"))]
+    {
+        use re_ui::{ContextExt as _, UiExt as _};
+
+        let is_mobile_web = ui.ctx().os() == egui::os::OperatingSystem::IOS
+            || ui.ctx().os() == egui::os::OperatingSystem::Android;
+
+        if is_mobile_web {
+            let frame = egui::Frame {
+                fill: ui.visuals().panel_fill,
+                ..ui.tokens().bottom_panel_frame()
+            };
+
+            egui::TopBottomPanel::bottom("warning_panel")
+                .resizable(false)
+                .frame(frame)
+                .show_inside(ui, |ui| {
+                    ui.centered_and_justified(|ui| {
+                        let text = ui
+                            .ctx()
+                            .warning_text("Mobile OSes are not yet supported. Click for details.");
+                        ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1672");
+                    });
                 });
-            });
+        }
     }
 }

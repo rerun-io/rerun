@@ -1,0 +1,15 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Native libraries (built by cargo-ndk, not checked in)
+app/src/main/jniLibs/
+
+# APK/AAB outputs
+*.apk
+*.aab

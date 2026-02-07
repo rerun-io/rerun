@@ -166,6 +166,10 @@ codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/stor
 # NOTE:must be --all-features, otherwise we might miss some optional commands.
 man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md"
 
+# Build the Rerun Viewer Rust library for Android (arm64-v8a and x86_64).
+# Requires: `cargo install cargo-ndk`, Android NDK, and `rustup target add aarch64-linux-android x86_64-linux-android`.
+build-android = "cargo ndk -t arm64-v8a -t x86_64 -o crates/viewer/re_viewer_android/app/src/main/jniLibs build --release -p re_viewer --lib --features android-game-activity"
+
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).

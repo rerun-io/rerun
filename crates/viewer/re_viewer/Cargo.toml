@@ -47,6 +47,10 @@ map_view = ["dep:re_view_map"]
 ## This only works on native.
 perf_telemetry = ["dep:re_perf_telemetry", "re_grpc_client/perf_telemetry"]
 
+## Enable the Android GameActivity backend (via eframe/egui-winit/winit).
+## Use this feature when building for Android.
+android-game-activity = ["eframe/android-game-activity"]
+
 
 [dependencies]
 # Internal:
@@ -80,7 +84,7 @@ re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
 re_smart_channel.workspace = true
 re_time_panel.workspace = true
-re_tracing = { workspace = true, features = ["server"] }
+re_tracing.workspace = true
 re_types_core.workspace = true
 re_types.workspace = true
 re_ui.workspace = true
@@ -125,7 +129,6 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 parking_lot.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
-rfd.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -135,9 +138,21 @@ thiserror.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
 
-# Native dependencies:
+# Native (non-wasm) dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
+
+# Desktop-only dependencies (native but NOT Android):
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))'.dependencies]
+rfd.workspace = true
+re_tracing = { workspace = true, features = ["server"] }
+
+# Android-only dependencies:
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.14"
+log = "0.4"
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+winit = { workspace = true }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

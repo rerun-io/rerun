@@ -46,7 +46,6 @@ anyhow.workspace = true
 directories.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
-rfd.workspace = true
 serde.workspace = true
 strum_macros.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
@@ -55,6 +54,10 @@ uuid = { workspace = true, features = ["serde", "v4", "js"] }
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home.workspace = true
+
+# Desktop-only dependencies (native but NOT Android):
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))'.dependencies]
+rfd.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -8,6 +8,9 @@ mod welcome_screen;
 pub(crate) mod memory_panel;
 mod settings_screen;
 
+#[cfg(target_os = "android")]
+pub(crate) mod android_ui;
+
 pub use recordings_panel::recordings_panel_ui;
 // ----
 

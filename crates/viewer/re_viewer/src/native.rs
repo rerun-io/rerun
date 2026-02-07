@@ -14,6 +14,7 @@ pub fn run_native_app(
     app_creator: AppCreator,
     force_wgpu_backend: Option<&str>,
 ) -> eframe::Result {
+    #[cfg(not(target_os = "android"))]
     if crate::docker_detection::is_docker() {
         re_log::warn_once!(
             "It looks like you are running the Rerun Viewer inside a Docker container. This is not officially supported, and may lead to performance issues and bugs. See https://github.com/rerun-io/rerun/issues/6835 for more.",
@@ -35,18 +36,33 @@ pub fn run_native_app(
 
 pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions {
     re_tracing::profile_function!();
-    eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_app_id(APP_ID) // Controls where on disk the app state is persisted
+
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_app_id(APP_ID) // Controls where on disk the app state is persisted
+        .with_min_inner_size([320.0, 450.0]); // Should be high enough to fit the rerun menu
+
+    // Desktop-specific window chrome and sizing
+    #[cfg(not(target_os = "android"))]
+    {
+        viewport = viewport
             .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
             .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
             .with_icon(icon_data())
             .with_inner_size([1600.0, 1200.0])
-            .with_min_inner_size([320.0, 450.0]) // Should be high enough to fit the rerun menu
             .with_title_shown(!re_ui::FULLSIZE_CONTENT)
             .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
             .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
-            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
+            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS); // To have rounded corners without decorations we need transparency
+    }
+
+    // Android: fullscreen, no decorations
+    #[cfg(target_os = "android")]
+    {
+        viewport = viewport.with_decorations(false).with_fullscreen(true);
+    }
+
+    eframe::NativeOptions {
+        viewport,
 
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: crate::wgpu_options(force_wgpu_backend),
@@ -57,6 +73,7 @@ pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions
     }
 }
 
+#[cfg(not(target_os = "android"))]
 #[allow(clippy::unnecessary_wraps)]
 fn icon_data() -> egui::IconData {
     re_tracing::profile_function!();

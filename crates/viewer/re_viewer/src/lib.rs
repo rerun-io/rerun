@@ -66,6 +66,12 @@ pub mod native;
 pub use native::{run_native_app, run_native_viewer_with_messages};
 
 // ----------------------------------------------------------------------------
+// When compiling for Android:
+
+#[cfg(target_os = "android")]
+mod android;
+
+// ----------------------------------------------------------------------------
 // When compiling for web:
 
 #[cfg(target_arch = "wasm32")]
