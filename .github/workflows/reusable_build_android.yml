@@ -75,16 +75,10 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
 
-      - name: Build Rust library for Android (arm64-v8a)
+      - name: Build Rust library for Android (arm64-v8a + x86_64)
         run: |
           cargo ndk \
             -t arm64-v8a \
-            -o crates/viewer/re_viewer_android/app/src/main/jniLibs \
-            build --release -p re_viewer --lib --features android-game-activity
-
-      - name: Build Rust library for Android (x86_64)
-        run: |
-          cargo ndk \
             -t x86_64 \
             -o crates/viewer/re_viewer_android/app/src/main/jniLibs \
             build --release -p re_viewer --lib --features android-game-activity

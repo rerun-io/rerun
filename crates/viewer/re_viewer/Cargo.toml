@@ -142,7 +142,6 @@ itertools.workspace = true
 jiff.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
-rfd.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -168,8 +167,8 @@ re_tracing = { workspace = true, features = ["server"] }
 
 # Android-only dependencies:
 [target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.14"
-log = "0.4"
+android_logger.workspace = true
+log.workspace = true
 re_grpc_server.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 winit = { workspace = true }
@@ -209,4 +208,5 @@ tokio.workspace = true
 insta.workspace = true
 
 [build-dependencies]
+cfg_aliases.workspace = true
 re_build_tools.workspace = true

@@ -1,9 +1,9 @@
 pub fn mobile_warning_ui(ui: &mut egui::Ui) {
-    // When running natively on Android, show the gRPC connection banner instead
-    // of the mobile warning -- Android is a supported platform.
+    // On native Android this function is still called but there's nothing to warn about
+    // — Android is a supported platform.
     #[cfg(target_os = "android")]
     {
-        crate::ui::android_ui::grpc_connection_banner(ui);
+        let _ = ui;
         return;
     }
 

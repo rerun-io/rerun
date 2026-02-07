@@ -3,6 +3,11 @@
 //! These bindings cover the subset of `AMediaCodec`, `AMediaFormat`, and
 //! `AMediaCodecBufferInfo` needed for synchronous video decoding.
 //!
+//! We hand-roll these bindings rather than depending on the `ndk-sys` crate
+//! because we only need a small surface area (~20 functions) and `ndk-sys`
+//! pulls in the entire NDK, which significantly increases compile times and
+//! dependency weight. If the surface area grows, consider switching to `ndk-sys`.
+//!
 //! Reference: <https://developer.android.com/ndk/reference/group/media>
 
 #![allow(non_camel_case_types, dead_code)]

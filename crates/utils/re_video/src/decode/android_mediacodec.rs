@@ -80,15 +80,15 @@ impl MediaCodecDecoder {
         let mime = match video.codec {
             VideoCodec::H264 => ndk::MIME_H264.as_ptr().cast::<std::os::raw::c_char>(),
             VideoCodec::H265 => ndk::MIME_H265.as_ptr().cast::<std::os::raw::c_char>(),
-            #[allow(unreachable_patterns)]
-            _ => return Err(MediaCodecError::UnsupportedCodec(video.codec)),
+            VideoCodec::AV1 | VideoCodec::VP8 | VideoCodec::VP9 => {
+                return Err(MediaCodecError::UnsupportedCodec(video.codec));
+            }
         };
 
         let mime_str = match video.codec {
             VideoCodec::H264 => "video/avc",
             VideoCodec::H265 => "video/hevc",
-            #[allow(unreachable_patterns)]
-            _ => "unknown",
+            VideoCodec::AV1 | VideoCodec::VP8 | VideoCodec::VP9 => "unknown",
         };
 
         // Create the decoder
@@ -98,12 +98,18 @@ impl MediaCodecDecoder {
             return Err(MediaCodecError::CreateFailed(mime_str.to_owned()));
         }
 
-        // Get dimensions from encoding details or use defaults
-        let (width, height) = video
-            .encoding_details
-            .as_ref()
-            .map(|d| (d.coded_dimensions[0] as u32, d.coded_dimensions[1] as u32))
-            .unwrap_or((1920, 1080));
+        // Get dimensions from encoding details or use defaults.
+        let (width, height) = if let Some(details) = &video.encoding_details {
+            (
+                details.coded_dimensions[0] as u32,
+                details.coded_dimensions[1] as u32,
+            )
+        } else {
+            re_log::warn_once!(
+                "MediaCodec: no encoding details available, falling back to 1920x1080"
+            );
+            (1920, 1080)
+        };
 
         let mut decoder = Self {
             codec,
@@ -128,9 +134,11 @@ impl MediaCodecDecoder {
     ) -> std::result::Result<(), MediaCodecError> {
         re_tracing::profile_function!();
 
-        // SAFETY: `AMediaFormat_new` returns a valid format or null (which we assert).
+        // SAFETY: `AMediaFormat_new` returns a valid format or null.
         let format = unsafe { ndk::AMediaFormat_new() };
-        assert!(!format.is_null(), "AMediaFormat_new returned null");
+        if format.is_null() {
+            return Err(MediaCodecError::ConfigureFailed(ndk::AMEDIA_ERROR_UNKNOWN));
+        }
 
         // SAFETY: All calls operate on a valid `format` pointer and use null-terminated C strings.
         unsafe {
@@ -138,8 +146,9 @@ impl MediaCodecDecoder {
             let mime_value = match self.codec_type {
                 VideoCodec::H264 => ndk::MIME_H264.as_ptr().cast(),
                 VideoCodec::H265 => ndk::MIME_H265.as_ptr().cast(),
-                #[allow(unreachable_patterns)]
-                _ => ndk::MIME_H264.as_ptr().cast(),
+                // `new()` already rejects these, so this is unreachable,
+                // but we match explicitly so adding a new variant is a compile error.
+                VideoCodec::AV1 | VideoCodec::VP8 | VideoCodec::VP9 => ndk::MIME_H264.as_ptr().cast(),
             };
             ndk::AMediaFormat_setString(
                 format,
@@ -236,24 +245,20 @@ impl MediaCodecDecoder {
                 }
 
                 if !csd0.is_empty() {
-                    unsafe {
-                        ndk::AMediaFormat_setBuffer(
-                            format,
-                            ndk::AMEDIAFORMAT_KEY_CSD0.as_ptr().cast(),
-                            csd0.as_ptr().cast(),
-                            csd0.len(),
-                        );
-                    }
+                    ndk::AMediaFormat_setBuffer(
+                        format,
+                        ndk::AMEDIAFORMAT_KEY_CSD0.as_ptr().cast(),
+                        csd0.as_ptr().cast(),
+                        csd0.len(),
+                    );
                 }
                 if !csd1.is_empty() {
-                    unsafe {
-                        ndk::AMediaFormat_setBuffer(
-                            format,
-                            ndk::AMEDIAFORMAT_KEY_CSD1.as_ptr().cast(),
-                            csd1.as_ptr().cast(),
-                            csd1.len(),
-                        );
-                    }
+                    ndk::AMediaFormat_setBuffer(
+                        format,
+                        ndk::AMEDIAFORMAT_KEY_CSD1.as_ptr().cast(),
+                        csd1.as_ptr().cast(),
+                        csd1.len(),
+                    );
                 }
             }
             VideoCodec::H265 => {
@@ -266,18 +271,17 @@ impl MediaCodecDecoder {
                 };
 
                 if !hvcc_raw.is_empty() {
-                    unsafe {
-                        ndk::AMediaFormat_setBuffer(
-                            format,
-                            ndk::AMEDIAFORMAT_KEY_CSD0.as_ptr().cast(),
-                            hvcc_raw.as_ptr().cast(),
-                            hvcc_raw.len(),
-                        );
-                    }
+                    ndk::AMediaFormat_setBuffer(
+                        format,
+                        ndk::AMEDIAFORMAT_KEY_CSD0.as_ptr().cast(),
+                        hvcc_raw.as_ptr().cast(),
+                        hvcc_raw.len(),
+                    );
                 }
             }
-            #[allow(unreachable_patterns)]
-            _ => {}
+            // `new()` already rejects these, so this is unreachable,
+            // but we match explicitly so adding a new variant is a compile error.
+            VideoCodec::AV1 | VideoCodec::VP8 | VideoCodec::VP9 => {}
         }
     }
 
@@ -322,7 +326,7 @@ impl MediaCodecDecoder {
 
             std::ptr::copy_nonoverlapping(chunk.data.as_ptr(), buf_ptr, chunk.data.len());
 
-            let pts_us = chunk.presentation_timestamp.0 as u64;
+            let pts_us = u64::try_from(chunk.presentation_timestamp.0).unwrap_or(0);
             let status = ndk::AMediaCodec_queueInputBuffer(
                 self.codec,
                 input_idx,
@@ -393,10 +397,20 @@ impl MediaCodecDecoder {
                     continue;
                 }
 
-                let data_slice = std::slice::from_raw_parts(
-                    buf_ptr.add(info.offset as usize),
-                    info.size as usize,
-                );
+                let offset = info.offset as usize;
+                let size = info.size as usize;
+
+                // Validate that offset + size fits within the buffer to avoid UB.
+                if offset.saturating_add(size) > buf_size {
+                    re_log::warn_once!(
+                        "MediaCodec: output buffer info out of range \
+                         (offset={offset}, size={size}, buf_size={buf_size}), skipping frame"
+                    );
+                    ndk::AMediaCodec_releaseOutputBuffer(self.codec, output_idx_usize, false);
+                    continue;
+                }
+
+                let data_slice = std::slice::from_raw_parts(buf_ptr.add(offset), size);
 
                 let result = self.convert_output_to_frame(data_slice, chunk);
 
@@ -506,6 +520,9 @@ impl MediaCodecDecoder {
                 format: PixelFormat::Yuv {
                     layout: YuvPixelLayout::Y_U_V420,
                     range: YuvRange::Limited, // MediaCodec typically outputs limited range
+                    // TODO(android): Derive the correct matrix coefficients from the
+                    // bitstream (SPS VUI parameters) instead of hardcoding BT.709.
+                    // For SD content (<= 576p) BT.601 would be more appropriate.
                     coefficients: YuvMatrixCoefficients::Bt709,
                 },
             },

@@ -78,7 +78,7 @@ pub struct App {
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
 
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[cfg(desktop)]
     profiler: re_tracing::Profiler,
 
     /// Listens to the local text log stream
@@ -432,7 +432,7 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,
 
-            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+            #[cfg(desktop)]
             profiler: Default::default(),
 
             text_log_rx,
@@ -479,7 +479,7 @@ impl App {
         }
     }
 
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[cfg(desktop)]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
     }
@@ -1596,7 +1596,7 @@ impl App {
                     }
                 }
 
-                #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))] // Native desktop
+                #[cfg(desktop)]
                 {
                     let mut selected_stores = vec![];
                     for item in self.state.selection_state.selected_items().iter_items() {
@@ -1664,7 +1664,7 @@ impl App {
                 }
             }
 
-            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+            #[cfg(desktop)]
             UICommand::Open => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
@@ -1698,7 +1698,7 @@ impl App {
                 });
             }
 
-            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+            #[cfg(desktop)]
             UICommand::Import => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
@@ -1831,7 +1831,7 @@ impl App {
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             }
 
-            #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+            #[cfg(desktop)]
             UICommand::OpenProfiler => {
                 self.profiler.start();
             }
@@ -3846,7 +3846,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 /// [This may only be called on the main thread](https://docs.rs/rfd/latest/rfd/#macos-non-windowed-applications-async-and-threading).
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+#[cfg(desktop)]
 fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf> {
     re_tracing::profile_function!();
 
@@ -4015,7 +4015,7 @@ fn save_entity_db(
     }
 
     // Native desktop (with file dialog)
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    #[cfg(desktop)]
     {
         let path = {
             re_tracing::profile_scope!("file_dialog");
