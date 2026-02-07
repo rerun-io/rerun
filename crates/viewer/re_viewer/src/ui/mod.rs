@@ -1,6 +1,9 @@
 mod memory_history;
 mod mobile_warning_ui;
 mod open_url_modal;
+
+#[cfg(target_os = "android")]
+pub(crate) mod android_ui;
 mod rerun_menu;
 mod share_modal;
 mod top_panel;

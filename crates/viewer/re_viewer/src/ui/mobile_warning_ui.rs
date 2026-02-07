@@ -1,11 +1,9 @@
 pub fn mobile_warning_ui(ui: &mut egui::Ui) {
-    // When running natively on Android (compiled with android-game-activity),
-    // we don't show the warning -- Android is a supported platform.
-    // The warning is only shown when accessing the *web* viewer from a mobile browser,
-    // or on iOS (which is not yet natively supported).
+    // When running natively on Android, show the gRPC connection banner instead
+    // of the mobile warning -- Android is a supported platform.
     #[cfg(target_os = "android")]
     {
-        let _ = ui;
+        crate::ui::android_ui::grpc_connection_banner(ui);
         return;
     }
 

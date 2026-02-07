@@ -2,15 +2,34 @@
 //!
 //! This module provides the `android_main` function that serves as the entry point
 //! when the viewer is launched as an Android application using the GameActivity backend.
+//!
+//! The viewer spawns a gRPC server on the device so that Rerun SDKs (Python, Rust, C++)
+//! can stream data directly to the Android viewer over the network.
 
 use re_capabilities::MainThreadToken;
 use re_viewer_context::AsyncRuntimeHandle;
 
+/// Default port for the gRPC server on Android.
+const GRPC_PORT: u16 = re_grpc_server::DEFAULT_SERVER_PORT;
+
+/// Try to determine the device's local (LAN) IP address.
+///
+/// This uses a standard trick: open a UDP socket aimed at an external address
+/// (without actually sending data) and read back the local address the OS chose.
+/// Works on Android without any special permissions beyond `INTERNET`.
+fn get_device_ip() -> Option<std::net::IpAddr> {
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    // Connect to a public DNS address -- no data is sent, but the OS picks the
+    // right local interface for us.
+    socket.connect("8.8.8.8:80").ok()?;
+    socket.local_addr().ok().map(|addr| addr.ip())
+}
+
 /// The Android entry point.
 ///
 /// This is called by the Android GameActivity runtime when the app is launched.
-/// It sets up logging, creates a tokio runtime, configures eframe for Android,
-/// and launches the Rerun Viewer.
+/// It sets up logging, creates a tokio runtime, spawns a gRPC server for incoming
+/// SDK connections, configures eframe for Android, and launches the Rerun Viewer.
 ///
 /// # Safety
 ///
@@ -28,9 +47,35 @@ unsafe fn android_main(app: winit::platform::android::activity::AndroidApp) {
     let main_thread_token = MainThreadToken::i_promise_i_am_on_the_main_thread();
 
     // Create a tokio runtime for async operations (gRPC, data loading, etc.).
-    let tokio_runtime =
-        tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    let tokio_runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    let _guard = tokio_runtime.enter();
     let async_runtime = AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+
+    // --- Spawn the gRPC server so SDKs can stream data to this device ---
+    let server_addr: std::net::SocketAddr = ([0, 0, 0, 0], GRPC_PORT).into();
+    let server_options = re_grpc_server::ServerOptions {
+        memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.25),
+        ..Default::default()
+    };
+
+    let log_rx = re_grpc_server::spawn_with_recv(
+        server_addr,
+        server_options,
+        re_grpc_server::shutdown::never(),
+    );
+
+    // Determine device IP for display in the UI.
+    let device_ip = get_device_ip();
+    if let Some(ip) = &device_ip {
+        log::info!("gRPC server listening on {ip}:{GRPC_PORT}");
+        log::info!(
+            "Connect from SDK:  rr.connect_grpc(\"rerun+http://{ip}:{GRPC_PORT}/proxy\")"
+        );
+    } else {
+        log::warn!(
+            "gRPC server listening on 0.0.0.0:{GRPC_PORT} (could not determine device IP)"
+        );
+    }
 
     let build_info = crate::build_info();
     let app_env = crate::AppEnvironment::Custom("Android".to_owned());
@@ -44,12 +89,14 @@ unsafe fn android_main(app: winit::platform::android::activity::AndroidApp) {
         hide_welcome_screen: false,
         detach_process: false,
         resolution_in_points: None,
-        expect_data_soon: None,
+        // Hint that data will arrive soon (SDK will connect via gRPC).
+        expect_data_soon: Some(false),
         // Force Vulkan on Android (the primary graphics API for Android).
         force_wgpu_backend: Some("vulkan".to_owned()),
         video_decoder_hw_acceleration: None,
         on_event: None,
         panel_state_overrides: Default::default(),
+        viewer_base_url: None,
     };
 
     let native_options = eframe::NativeOptions {
@@ -75,15 +122,24 @@ unsafe fn android_main(app: winit::platform::android::activity::AndroidApp) {
             // Apply Android-specific touch-friendly style adjustments.
             crate::ui::android_ui::apply_android_style(&cc.egui_ctx);
 
-            let app = crate::App::new(
+            // Store the server address in egui memory so the UI can display it.
+            let connect_url = device_ip.map(|ip| format!("rerun+http://{ip}:{GRPC_PORT}/proxy"));
+            cc.egui_ctx
+                .data_mut(|d| d.insert_temp(egui::Id::new("android_grpc_url"), connect_url));
+
+            let mut app = crate::App::new(
                 main_thread_token,
                 build_info,
                 app_env,
                 startup_options,
                 cc,
-                None, // No connection registry on Android (for now)
+                None,
                 async_runtime,
             );
+
+            // Wire the gRPC server receiver into the viewer.
+            app.add_log_receiver(log_rx);
+
             Ok(Box::new(app))
         }),
     )

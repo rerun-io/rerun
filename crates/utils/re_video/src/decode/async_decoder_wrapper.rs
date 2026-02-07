@@ -3,7 +3,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use super::{AsyncDecoder, Chunk, Result};
 
-#[cfg(with_dav1d)]
 use crate::{VideoDataDescription, decode::FrameResult};
 
 use crate::{Receiver, Sender};
@@ -47,7 +46,6 @@ impl Default for Comms {
 }
 
 /// Blocking decoder of video chunks.
-#[cfg(with_dav1d)]
 pub trait SyncDecoder {
     /// Submit some work and read the results.
     ///

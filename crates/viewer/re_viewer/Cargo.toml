@@ -170,6 +170,7 @@ re_tracing = { workspace = true, features = ["server"] }
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14"
 log = "0.4"
+re_grpc_server.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 winit = { workspace = true }
 
