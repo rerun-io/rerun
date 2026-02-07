@@ -277,7 +277,7 @@ insta = "1.43"
 itertools = "0.14.0"
 jiff = { version = "0.2.15", features = ["js"] }
 js-sys = "0.3.77"
-jsonwebtoken = { version = "9.3", default-features = false }
+jsonwebtoken = { version = "10.3", default-features = false }
 lance = { version = "0.38.2", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
 lance-index = { version = "0.38.2", default-features = false }
 lance-linalg = { version = "0.38.2", default-features = false }
