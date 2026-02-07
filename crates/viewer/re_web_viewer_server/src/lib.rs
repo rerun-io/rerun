@@ -47,7 +47,7 @@ mod data {
 
     #[inline]
     pub fn signed_in_html() -> &'static [u8] {
-        include_bytes!("./signed-in.html")
+        include_bytes!("../web_viewer/signed-in.html")
     }
 }
 

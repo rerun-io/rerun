@@ -38,6 +38,7 @@ def create_web_viewer_zip(web_viewer_dir: Path) -> bytes:
         "sw.js",
         "re_viewer.js",
         "re_viewer_bg.wasm",
+        "signed-in.html",
     ]
 
     # Check that all required files exist
@@ -52,11 +53,6 @@ def create_web_viewer_zip(web_viewer_dir: Path) -> bytes:
         for filename in required_files:
             file_path = web_viewer_dir / filename
             zip_file.write(file_path, arcname=filename)
-
-        # Also include signed-in.html from the src directory
-        signed_in_path = web_viewer_dir.parent / "src" / "signed-in.html"
-        if signed_in_path.exists():
-            zip_file.write(signed_in_path, arcname="signed-in.html")
 
     return zip_buffer.getvalue()
 
