@@ -1,0 +1,136 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: test_results
+---
+TestResult {
+    filter: Float(
+        FloatFilter {
+            operator: Ge,
+            rhs_value: Some(
+                2.0,
+            ),
+        },
+    ),
+    field: Field {
+        name: "column",
+        data_type: List(
+            Field {
+                name: "item",
+                data_type: Float64,
+                nullable: true,
+                dict_id: 0,
+                dict_is_ordered: false,
+                metadata: {},
+            },
+        ),
+        nullable: true,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
+    },
+    unfiltered: ListArray
+    [
+      PrimitiveArray<Float64>
+    [
+      1.0,
+      2.0,
+      3.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      2.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      2.0,
+      2.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      4.0,
+      5.0,
+      6.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      7.0,
+      4.0,
+      9.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      5.0,
+      2.0,
+      1.0,
+    ],
+      null,
+      PrimitiveArray<Float64>
+    [
+      null,
+    ],
+      PrimitiveArray<Float64>
+    [
+      null,
+      1.0,
+      2.0,
+      3.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      1.0,
+      2.0,
+      3.0,
+      null,
+    ],
+    ],
+    filtered: ListArray
+    [
+      PrimitiveArray<Float64>
+    [
+      1.0,
+      2.0,
+      3.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      2.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      2.0,
+      2.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      4.0,
+      5.0,
+      6.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      7.0,
+      4.0,
+      9.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      5.0,
+      2.0,
+      1.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      null,
+      1.0,
+      2.0,
+      3.0,
+    ],
+      PrimitiveArray<Float64>
+    [
+      1.0,
+      2.0,
+      3.0,
+      null,
+    ],
+    ],
+}

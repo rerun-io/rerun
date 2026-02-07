@@ -4,12 +4,10 @@ use camino::Utf8PathBuf;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{
-    Object, ObjectKind, Objects, Reporter,
-    codegen::{autogen_warning, common::StringExt as _},
-};
-
 use super::util::string_from_quoted;
+use crate::codegen::autogen_warning;
+use crate::codegen::common::StringExt as _;
+use crate::{Object, ObjectKind, Objects, Reporter};
 
 pub(crate) fn generate_blueprint_validation(
     reporter: &Reporter,
@@ -19,7 +17,7 @@ pub(crate) fn generate_blueprint_validation(
     let blueprint_scope = Some("blueprint".to_owned());
     let mut code = String::new();
     code.push_str(&format!("// {}\n\n", autogen_warning!()));
-    code.push_str("#![expect(clippy::empty_line_after_doc_comments)]\n\n");
+    code.push_str("#![allow(clippy::empty_line_after_doc_comments)]\n\n");
 
     code.push_str("use re_entity_db::EntityDb;\n");
     code.push_str("use super::validation::validate_component;\n");

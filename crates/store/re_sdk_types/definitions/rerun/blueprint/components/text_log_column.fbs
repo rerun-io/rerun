@@ -1,0 +1,15 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A text log column
+table TextLogColumn (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "PartialEq, Eq, Default, Hash",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// The text log column.
+  text_log_column: rerun.blueprint.datatypes.TextLogColumn (order: 100);
+}

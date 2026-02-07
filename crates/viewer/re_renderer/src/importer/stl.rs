@@ -28,17 +28,21 @@ pub fn load_stl_from_buffer(
 
     let (normals, triangles): (Vec<_>, Vec<_>) = reader
         .into_iter()
-        .map(|triangle| triangle.unwrap())
-        .map(|triangle| {
-            (
-                [triangle.normal.0, triangle.normal.0, triangle.normal.0],
-                [
-                    triangle.vertices[0].0,
-                    triangle.vertices[1].0,
-                    triangle.vertices[2].0,
-                ],
-            )
+        .map(|triangle_res| {
+            triangle_res.map(|triangle| {
+                (
+                    [triangle.normal.0, triangle.normal.0, triangle.normal.0],
+                    [
+                        triangle.vertices[0].0,
+                        triangle.vertices[1].0,
+                        triangle.vertices[2].0,
+                    ],
+                )
+            })
         })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(StlImportError::StlIoError)?
+        .into_iter()
         .unzip();
 
     let num_vertices = triangles.len() * 3;
@@ -50,6 +54,9 @@ pub fn load_stl_from_buffer(
         albedo_factor: crate::Rgba::WHITE,
     };
 
+    let vertex_positions = bytemuck::cast_vec(triangles);
+    let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+
     let mesh = mesh::CpuMesh {
         label: name.clone(),
         triangle_indices: (0..num_vertices as u32)
@@ -57,7 +64,7 @@ pub fn load_stl_from_buffer(
             .map(glam::UVec3::from)
             .collect::<Vec<_>>(),
 
-        vertex_positions: bytemuck::cast_vec(triangles),
+        vertex_positions,
 
         // Normals on STL are per triangle, not per vertex.
         // Yes, this makes STL always look faceted.
@@ -68,6 +75,8 @@ pub fn load_stl_from_buffer(
         vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
 
         materials: smallvec![material],
+
+        bbox,
     };
 
     mesh.sanity_check()?;

@@ -15,7 +15,6 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 /// It is up to the callback implementer to handle this, if needed.
 //
 // TODO(#6412): probably don't need this anymore.
-#[allow(clippy::type_complexity)]
 #[derive(Clone)]
 pub struct ArrowRecordBatchReleaseCallback(Arc<dyn Fn(ArrowRecordBatch) + Send + Sync>);
 
@@ -71,7 +70,7 @@ pub struct ArrowMsg {
     pub chunk_id: re_tuid::Tuid,
 
     /// Schema and data for all control & data columns.
-    pub batch: ArrowRecordBatch,
+    pub batch: ArrowRecordBatch, // TODO(#10343): make this a `re_sorbet::ChunkBatch`
 
     pub on_release: Option<ArrowRecordBatchReleaseCallback>,
 }

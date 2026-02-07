@@ -82,6 +82,8 @@ jobs:
               - pixi.toml # maybe our build commands have changed
               - "**/*.rs"
               - "**/*.toml"
+              - "crates/**/*.png"
+              - "tests/rust/**/*.png"
 
             protobuf_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
@@ -122,7 +124,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      CHANNEL: pr
+      CHANNEL: main # We run the full test suite here, because we've had so many breakages
     secrets: inherit
 
   python-checks:
@@ -144,8 +146,8 @@ jobs:
       CHANNEL: pr
     secrets: inherit
 
-  min-cli-build:
-    name: "Minimum CLI Build"
+  cli-build:
+    name: "Rerun CLI Build"
     needs: [paths-filter]
     if: needs.paths-filter.outputs.python_changes == 'true' || needs.paths-filter.outputs.rust_changes == 'true'
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
@@ -158,7 +160,7 @@ jobs:
   # choice, but reusable_test_wheels.yml is broken for that target (https://github.com/rerun-io/rerun/issues/5525)
   min-wheel-build:
     name: "Minimum Wheel Build"
-    needs: [min-cli-build, paths-filter]
+    needs: [cli-build, paths-filter]
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && (needs.paths-filter.outputs.python_changes == 'true' || needs.paths-filter.outputs.rust_changes == 'true')
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
@@ -227,4 +229,13 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
+
+  check-doc-redirects:
+    name: "Check Doc Redirects"
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.docs_changes == 'true'
+    uses: ./.github/workflows/reusable_checks_doc_redirects.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit

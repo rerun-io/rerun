@@ -1,59 +1,68 @@
-use crate::{
-    context::Renderers,
-    draw_phases::DrawPhase,
-    renderer::{DrawData, DrawError, Renderer as _},
-    wgpu_resources::GpuRenderPipelinePoolAccessor,
-};
+use std::any::Any;
 
-#[derive(thiserror::Error, Debug)]
-pub enum QueueableDrawDataError {
-    #[error("Failed to retrieve renderer of type {0}")]
-    FailedToRetrieveRenderer(&'static str),
+use crate::renderer::{DrawData, DrawableCollectionViewInfo};
+use crate::{DrawableCollector, RenderContext, RendererTypeId};
 
-    #[error(transparent)]
-    DrawError(#[from] DrawError),
+/// Utility trait for implementing dynamic dispatch within [`QueueableDrawData`].
+pub trait TypeErasedDrawData: Any {
+    /// See [`DrawData::collect_drawables`].
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    );
 
-    #[error("Mismatching draw data type, expected {0}")]
-    UnexpectedDrawDataType(&'static str),
+    /// Returns the name of the renderer that this draw data is associated with.
+    fn renderer_name(&self) -> &'static str;
+
+    /// Returns the key of the renderer that this draw data is associated with.
+    ///
+    /// This also makes sure that the renderer has been initialized already.
+    fn renderer_key(&self, ctx: &RenderContext) -> RendererTypeId;
 }
 
-type DrawFn = dyn for<'pipelines, 'encoder> Fn(
-        &Renderers,
-        &GpuRenderPipelinePoolAccessor<'pipelines>,
-        DrawPhase,
-        &mut wgpu::RenderPass<'encoder>,
-        &dyn std::any::Any,
-    ) -> Result<(), QueueableDrawDataError>
-    + Sync
-    + Send;
+impl<D: DrawData + 'static> TypeErasedDrawData for D {
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        <D as DrawData>::collect_drawables(self, view_info, collector);
+    }
+
+    fn renderer_name(&self) -> &'static str {
+        std::any::type_name::<D::Renderer>()
+    }
+
+    fn renderer_key(&self, ctx: &RenderContext) -> RendererTypeId {
+        ctx.renderer::<D::Renderer>().key()
+    }
+}
 
 /// Type erased draw data that can be submitted directly to the view builder.
-pub struct QueueableDrawData {
-    pub(crate) draw_func: Box<DrawFn>,
-    pub(crate) draw_data: Box<dyn std::any::Any + std::marker::Send + std::marker::Sync>,
-    pub(crate) renderer_name: &'static str,
-    pub(crate) participated_phases: &'static [DrawPhase],
+pub struct QueueableDrawData(Box<dyn TypeErasedDrawData + Send + Sync>);
+
+impl<D: TypeErasedDrawData + DrawData + Sync + Send + 'static> From<D> for QueueableDrawData {
+    fn from(draw_data: D) -> Self {
+        Self(Box::new(draw_data))
+    }
 }
 
-impl<D: DrawData + Sync + Send + 'static> From<D> for QueueableDrawData {
-    fn from(draw_data: D) -> Self {
-        Self {
-            draw_func: Box::new(move |renderers, gpu_resources, phase, pass, draw_data| {
-                let renderer = renderers.get::<D::Renderer>().ok_or(
-                    QueueableDrawDataError::FailedToRetrieveRenderer(std::any::type_name::<
-                        D::Renderer,
-                    >()),
-                )?;
-                let draw_data = draw_data.downcast_ref::<D>().ok_or(
-                    QueueableDrawDataError::UnexpectedDrawDataType(std::any::type_name::<D>()),
-                )?;
-                renderer
-                    .draw(gpu_resources, phase, pass, draw_data)
-                    .map_err(QueueableDrawDataError::from)
-            }),
-            draw_data: Box::new(draw_data),
-            renderer_name: std::any::type_name::<D::Renderer>(),
-            participated_phases: D::Renderer::participated_phases(),
-        }
+impl std::ops::Deref for QueueableDrawData {
+    type Target = dyn TypeErasedDrawData + Send + Sync;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
+impl QueueableDrawData {
+    /// Panics if the type `D` is not the underlying type of this draw data.
+    #[inline]
+    pub(crate) fn expect_downcast<D: DrawData + Any + 'static>(&self) -> &D {
+        (self.0.as_ref() as &dyn Any)
+            .downcast_ref::<D>()
+            .expect("Draw data doesn't have the expected type")
     }
 }

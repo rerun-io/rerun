@@ -121,13 +121,13 @@ def run_llm_ner(text: str) -> None:
     # Initialize model
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
     model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
-    ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)
+    ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)  # type: ignore[call-overload]
 
     # Compute intermediate and final output
     token_ids = tokenizer.encode(text)
     token_words = tokenizer.convert_ids_to_tokens(token_ids)
 
-    print("Computing embeddings and output...")
+    print("Computing embeddings and output…")
     # NOTE The embeddings are currently computed twice (next line and as part of the pipeline)
     #  It'd be better to directly log from inside the pipeline to avoid this.
     embeddings = ner_pipeline.model.base_model(torch.tensor([token_ids])).last_hidden_state

@@ -7,35 +7,35 @@
 //! Quad spanning happens in the vertex shader, uploaded are only the data for the actual points (no vertex buffer!).
 //!
 //! Like with the `super::lines::LineRenderer`, we're rendering as all quads in a single triangle list draw call.
-//! (Rationale for this can be found in the [`lines.rs`]'s documentation)
+//! (Rationale for this can be found in the [`crate::renderer::lines`]'s documentation)
 //!
 //! For WebGL compatibility, data is uploaded as textures. Color is stored in a separate srgb texture, meaning
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::{num::NonZeroU64, ops::Range};
+use std::num::NonZeroU64;
+use std::ops::Range;
 
-use crate::{
-    DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
-    allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
-    include_shader_module,
-    wgpu_resources::GpuRenderPipelinePoolAccessor,
-};
 use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
-use crate::{
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
-    },
-};
-
 use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::draw_phases::{
+    DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor,
+};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{
+    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
+    include_shader_module,
+};
 
 bitflags! {
     /// Property flags for a point batch
@@ -53,7 +53,8 @@ bitflags! {
 }
 
 pub mod gpu_data {
-    use crate::{Size, draw_phases::PickingLayerObjectId, wgpu_buffer_types};
+    use crate::draw_phases::PickingLayerObjectId;
+    use crate::{Size, wgpu_buffer_types};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
 
@@ -112,6 +113,26 @@ pub struct PointCloudDrawData {
 
 impl DrawData for PointCloudDrawData {
     type Renderer = PointCloudRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
+        // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
+
+        for (batch_idx, batch) in self.batches.iter().enumerate() {
+            collector.add_drawable(
+                batch.active_phases,
+                DrawDataDrawable {
+                    // TODO(andreas): Don't have distance information yet. For now just always draw points last since they're quite expensive.
+                    distance_sort_key: f32::MAX,
+                    draw_data_payload: batch_idx as _,
+                },
+            );
+        }
+    }
 }
 
 /// Data that is valid for a batch of point cloud points.
@@ -421,14 +442,6 @@ impl PointCloudRenderer {
 impl Renderer for PointCloudRenderer {
     type RendererDrawData = PointCloudDrawData;
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::OutlineMask,
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-        ]
-    }
-
     fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 
@@ -544,7 +557,7 @@ impl Renderer for PointCloudRenderer {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
@@ -588,30 +601,39 @@ impl Renderer for PointCloudRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
-        let (pipeline_handle, bind_group_all_points) = match phase {
-            DrawPhase::OutlineMask => (
-                self.render_pipeline_outline_mask,
-                &draw_data.bind_group_all_points_outline_mask,
-            ),
-            DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_points),
-            DrawPhase::PickingLayer => (
-                self.render_pipeline_picking_layer,
-                &draw_data.bind_group_all_points,
-            ),
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
-        let Some(bind_group_all_points) = bind_group_all_points else {
-            return Ok(()); // No points submitted.
         };
         let pipeline = render_pipelines.get(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group_all_points, &[]);
 
-        for batch in &draw_data.batches {
-            if batch.active_phases.contains(phase) {
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            let bind_group_all_points = match phase {
+                DrawPhase::OutlineMask => &draw_data.bind_group_all_points_outline_mask,
+                DrawPhase::Opaque | DrawPhase::PickingLayer => &draw_data.bind_group_all_points,
+                _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+            };
+            let Some(bind_group_all_points) = bind_group_all_points else {
+                debug_assert!(
+                    false,
+                    "Point data bind group for draw phase {phase:?} was not set despite being submitted for drawing."
+                );
+                continue;
+            };
+            pass.set_bind_group(1, bind_group_all_points, &[]);
+
+            for drawable in *drawables {
+                let batch = &draw_data.batches[drawable.draw_data_payload as usize];
                 pass.set_bind_group(2, &batch.bind_group, &[]);
                 pass.draw(batch.vertex_range.clone(), 0..1);
             }

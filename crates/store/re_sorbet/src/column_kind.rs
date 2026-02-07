@@ -44,7 +44,7 @@ impl TryFrom<&ArrowField> for ColumnKind {
             "We should have migrated to 'rerun:kind'"
         );
 
-        let Some(kind) = field.get_opt("rerun:kind") else {
+        let Some(kind) = field.get_opt(crate::metadata::RERUN_KIND) else {
             return Ok(Self::default());
         };
         match kind {

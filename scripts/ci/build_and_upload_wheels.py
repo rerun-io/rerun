@@ -33,7 +33,7 @@ def run(
 
 def detect_target() -> str:
     arch = platform.machine()
-    if arch == "x86_64" or arch == "aarch64":
+    if arch in {"x86_64", "aarch64"}:
         pass  # leave it as is
     elif arch == "arm64":
         arch = "aarch64"
@@ -80,12 +80,10 @@ def build_and_upload(
 
     compatibility = f"--compatibility {compatibility}" if compatibility is not None else ""
 
-    # Build into `dist`
     run(
         "maturin build "
         f"{compatibility} "
         "--manifest-path rerun_py/Cargo.toml "
-        "--quiet "
         "--release "
         f"--target {target} "
         f"{maturin_feature_flags} "
@@ -98,6 +96,19 @@ def build_and_upload(
         # Upload to GCS
         print("Uploading to GCS…")
         bucket.blob(f"{gcs_dir}/{pkg}").upload_from_filename(f"{dist}/{pkg}")
+
+
+def upload_only(bucket: Bucket, gcs_dir: str, wheel_path: str) -> None:
+    """Upload an existing wheel to GCS without building."""
+    import os
+
+    if not os.path.exists(wheel_path):
+        raise FileNotFoundError(f"Wheel file not found: {wheel_path}")
+
+    wheel_name = os.path.basename(wheel_path)
+    print(f"Uploading {wheel_name} to GCS…")
+    bucket.blob(f"{gcs_dir}/{wheel_name}").upload_from_filename(wheel_path)
+    print(f"Uploaded {wheel_name} to gs://rerun-builds/{gcs_dir}/{wheel_name}")
 
 
 def main() -> None:
@@ -117,6 +128,11 @@ def main() -> None:
         help='The platform tag for linux, e.g. "manylinux_2_28"',
     )
     parser.add_argument("--upload-gcs", action="store_true", default=False, help="Upload the wheel to GCS")
+    parser.add_argument(
+        "--upload-only",
+        type=str,
+        help="Upload an existing wheel file without building. Provide path to the wheel file.",
+    )
     args = parser.parse_args()
 
     if args.upload_gcs:
@@ -124,13 +140,18 @@ def main() -> None:
     else:
         bucket = None
 
-    build_and_upload(
-        bucket,
-        args.mode,
-        args.dir,
-        args.target or detect_target(),
-        args.compat,
-    )
+    if args.upload_only:
+        if not bucket:
+            raise ValueError("--upload-only requires --upload-gcs to be set")
+        upload_only(bucket, args.dir, args.upload_only)
+    else:
+        build_and_upload(
+            bucket,
+            args.mode,
+            args.dir,
+            args.target or detect_target(),
+            args.compat,
+        )
 
 
 if __name__ == "__main__":

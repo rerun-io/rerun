@@ -19,12 +19,14 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_arrow_ui.workspace = true
+re_arrow_util.workspace = true
 re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
-re_types.workspace = true
-re_ui = { workspace = true, features = ["arrow"] }
+re_types_core.workspace = true
+re_ui.workspace = true
 re_viewer_context.workspace = true
 
 arrow.workspace = true

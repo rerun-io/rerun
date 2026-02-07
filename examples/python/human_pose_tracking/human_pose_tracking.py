@@ -6,11 +6,10 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import cv2
 import mediapipe as mp
@@ -20,6 +19,9 @@ import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 DESCRIPTION = """
 # Human pose tracking
@@ -37,7 +39,7 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 MODEL_URL_TEMPLATE: Final = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_{model_name}/float16/latest/pose_landmarker_{model_name}.task"
 
 
-def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_count: int | None) -> None:
+def track_pose(video_path: str, model_path: str, *, max_frame_count: int | None) -> None:
     options = mp.tasks.vision.PoseLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(
             model_asset_path=model_path,
@@ -191,8 +193,7 @@ def download(url: str, destination_path: Path) -> None:
     with requests.get(url, stream=True) as req:
         req.raise_for_status()
         with open(destination_path, "wb") as f:
-            for chunk in req.iter_content(chunk_size=8192):
-                f.write(chunk)
+            f.writelines(req.iter_content(chunk_size=8192))
 
 
 def main() -> None:
@@ -210,7 +211,6 @@ def main() -> None:
     )
     parser.add_argument("--dataset-dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video-path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
-    parser.add_argument("--no-segment", action="store_true", help="Don't run person segmentation.")
     parser.add_argument(
         "--model",
         type=str,
@@ -253,7 +253,7 @@ def main() -> None:
     if not args.model_path:
         model_path = get_downloaded_model_path(args.model_dir, args.model)
 
-    track_pose(video_path, model_path, segment=not args.no_segment, max_frame_count=args.max_frame)
+    track_pose(video_path, model_path, max_frame_count=args.max_frame)
 
     rr.script_teardown(args)
 

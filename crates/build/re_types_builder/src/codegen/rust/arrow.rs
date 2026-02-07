@@ -35,7 +35,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             DataType::Atomic(AtomicDataType::Float32) => quote!(DataType::Float32),
             DataType::Atomic(AtomicDataType::Float64) => quote!(DataType::Float64),
 
-            DataType::Binary => quote!(DataType::Binary),
+            DataType::Binary => quote!(DataType::LargeBinary),
 
             DataType::Utf8 => quote!(DataType::Utf8),
 
@@ -135,20 +135,6 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
         quote! {
             Field::new(#name, #datatype, #is_nullable)
             #maybe_with_metadata
-        }
-        .to_tokens(tokens);
-    }
-}
-
-// NOTE: Needed because `quote!()` interprets the option otherwise.
-pub struct OptionTokenizer<T>(pub Option<T>);
-
-impl<T: quote::ToTokens> quote::ToTokens for OptionTokenizer<T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some(v) = &self.0 {
-            quote!(Some(#v))
-        } else {
-            quote!(None)
         }
         .to_tokens(tokens);
     }

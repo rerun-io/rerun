@@ -2,8 +2,6 @@
 //!
 //! See also the `any_values_column_updates` example, which achieves the same thing in a single operation.
 
-#![allow(clippy::from_iter_instead_of_collect)]
-
 use std::sync::Arc;
 
 use rerun::external::arrow;
@@ -13,13 +11,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for step in 0..64 {
         let sin_cos = rerun::AnyValues::default()
-            .with_field(
+            .with_component_from_data(
                 "sin",
                 Arc::new(arrow::array::Float64Array::from_iter(
                     [((step as f64) / 10.0).sin()], //
                 )),
             )
-            .with_field(
+            .with_component_from_data(
                 "cos",
                 Arc::new(arrow::array::Float64Array::from_iter(
                     [((step as f64) / 10.0).cos()], //

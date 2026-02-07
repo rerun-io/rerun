@@ -107,22 +107,26 @@ export interface WebViewerOptions {
 // otherwise we need to restructure how we pass options to the viewer
 
 /**
- * The public interface is @see {WebViewerOptions}
+ * The public interface is @see {WebViewerOptions}. This adds a few additional, internal options.
  *
  * @private
  */
 export interface AppOptions extends WebViewerOptions {
+  /** The url that's used when sharing web viewer urls
+   *
+   * If not set, the viewer will use the url of the page it is embedded in.
+   */
+  viewer_base_url?: string;
+
+  /** Whether the viewer is running in a notebook. */
+  notebook?: boolean;
+
   url?: string;
-  manifest_url?: string;
-  video_decoder?: VideoDecoder;
-  render_backend?: Backend;
-  hide_welcome_screen?: boolean;
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
   on_viewer_event?: (event_json: string) => void;
   fullscreen?: FullscreenOptions;
-  enable_history?: boolean;
 }
 
 // Types are based on `crates/viewer/re_viewer/src/event.rs`.
@@ -305,7 +309,7 @@ function delay(ms: number) {
  * ```
  *
  * Data may be provided to the Viewer as:
- * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.24.0/examples/dna.rrd")`
+ * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.29.0/examples/dna.rrd")`
  * - A Rerun gRPC URL, e.g. `viewer.start("rerun+http://127.0.0.1:9876/proxy")`
  * - A stream of log messages, via {@link WebViewer.open_channel}.
  *
@@ -910,6 +914,17 @@ export class WebViewer {
       this.#maximize();
     }
   }
+
+  set_credentials(access_token: string, email: string) {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to set credentials in a stopped web viewer`,
+      );
+    }
+    this.#handle.set_credentials(access_token, email);
+  }
+
+
 
   #minimize = () => { };
 

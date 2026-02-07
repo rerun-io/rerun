@@ -10,6 +10,10 @@ A time series view for scalars over time, for use with [`archetypes.Scalars`](ht
 
 ### `axis_x`
 Configures the horizontal axis of the plot.
+
+* `link`: How should the horizontal/X/time axis be linked across multiple plots?
+* `view_range`: The view range of the horizontal/X/time axis.
+* `zoom_lock`: If enabled, the X axis range will remain locked to the specified range when zooming.
 ### `axis_y`
 Configures the vertical axis of the plot.
 
@@ -20,6 +24,11 @@ Configures the legend of the plot.
 
 * `corner`: To what corner the legend is aligned.
 * `visible`: Whether the legend is shown at all.
+### `background`
+Configures the background of the plot.
+
+* `color`: Color used for the background.
+* `show_grid`: Should the grid be drawn?
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -35,7 +44,7 @@ If a timeline is specified more than once, the first entry will be used.
 
 snippet: views/timeseries
 
-<picture data-inline-viewer="snippets/timeseries">
+<picture data-inline-viewer="snippets/views/timeseries">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1024w.png">

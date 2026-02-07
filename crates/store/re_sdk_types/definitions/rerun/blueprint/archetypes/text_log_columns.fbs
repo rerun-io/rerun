@@ -1,0 +1,21 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration of the text log columns.
+table TextLogColumns (
+  "attr.rerun.scope": "blueprint"
+) {
+  // --- Optional ---
+
+
+  /// What timeline columns to show.
+  ///
+  /// Defaults to displaying all timelines.
+  timeline_columns: [rerun.blueprint.components.TimelineColumn] ("attr.rerun.component_optional", nullable, order: 1000);
+
+  /// All columns to be displayed.
+  ///
+  /// Defaults to showing all text log column kinds in the order of the enum.
+  text_log_columns: [rerun.blueprint.components.TextLogColumn] ("attr.rerun.component_optional", nullable, order: 2000);
+}
+

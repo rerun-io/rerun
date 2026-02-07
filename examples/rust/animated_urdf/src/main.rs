@@ -12,7 +12,8 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-use rerun::external::{re_data_loader::UrdfTree, re_log, urdf_rs};
+use rerun::external::re_data_loader::{UrdfTree, urdf_joint_transform};
+use rerun::external::{re_log, urdf_rs};
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
@@ -20,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let (rec, _serve_guard) = args.rerun.init("rerun_example_clock")?;
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_animated_urdf")?;
     run(&rec, &args)
 }
 
@@ -31,15 +32,13 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log_file_from_path(urdf_path, None, true)?;
 
     // Load the URDF tree structure into memory:
-    let urdf = UrdfTree::from_file_path(urdf_path)?;
+    let urdf = UrdfTree::from_file_path(urdf_path, None)?;
 
     // Animate:
     for step in 0..10000 {
         rec.set_time_sequence("step", step);
         for (joint_index, joint) in urdf.joints().enumerate() {
             if joint.joint_type == urdf_rs::JointType::Revolute {
-                let fixed_axis = joint.axis.xyz.0;
-
                 // Usually this angle would come from a measurement - here we just fake something:
                 let dynamic_angle = emath::remap(
                     (step as f64 * (0.02 + joint_index as f64 / 100.0)).sin(),
@@ -47,17 +46,15 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                     joint.limit.lower..=joint.limit.upper,
                 );
 
-                // NOTE: each joint already has a fixed origin pose (logged with the URDF file),
-                // and Rerun won't allow us to override or add to that transform here.
-                // So instead we apply the dynamic rotation to the child link of the joint:
-                let child_link = urdf.get_joint_child(joint);
-                let link_path = urdf.get_link_path(child_link);
-                rec.log(
-                    link_path,
-                    &rerun::Transform3D::update_fields().with_rotation(
-                        rerun::RotationAxisAngle::new(fixed_axis, dynamic_angle as f32),
-                    ),
-                )?;
+                // Rerun loads the URDF transforms with child/parent frame relations.
+                // In order to move a joint, we just need to log a new transform between two of those frames.
+                //
+                // We can use the `compute_transform3d` utility here, it handles origin + axis-angle rotation
+                // and sets the parent/child frames according to the joint.
+                let joint_transform =
+                    urdf_joint_transform::compute_transform3d(joint, dynamic_angle, true)?;
+
+                rec.log("/transforms", &joint_transform)?;
             }
         }
     }

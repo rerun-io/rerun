@@ -11,8 +11,8 @@
 use std::rc::Rc;
 
 use re_entity_db::EntityDb;
+use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, RecordingId, TimeReal, Timeline, TimelineName};
-use re_smart_channel::SmartChannelSource;
 use re_viewer_context::{ContainerId, Item, ItemCollection, ItemContext, ViewId};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -26,7 +26,7 @@ pub struct ViewerEvent {
     #[serde(with = "serde::recording_id")]
     pub recording_id: RecordingId,
 
-    pub partition_id: Option<String>,
+    pub segment_id: Option<String>,
 
     #[serde(flatten)]
     pub kind: ViewerEventKind,
@@ -35,13 +35,13 @@ pub struct ViewerEvent {
 impl ViewerEvent {
     #[inline]
     fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Self {
-        let partition_id = db.data_source.as_ref().and_then(|ds| {
-            if let SmartChannelSource::RedapGrpcStream {
-                uri: re_uri::DatasetDataUri { partition_id, .. },
+        let segment_id = db.data_source.as_ref().and_then(|ds| {
+            if let LogSource::RedapGrpcStream {
+                uri: re_uri::DatasetSegmentUri { segment_id, .. },
                 ..
             } = ds
             {
-                Some(partition_id.clone())
+                Some(segment_id.clone())
             } else {
                 None
             }
@@ -50,7 +50,7 @@ impl ViewerEvent {
         Self {
             application_id: db.application_id().clone(),
             recording_id: db.recording_id().clone(),
-            partition_id,
+            segment_id,
             kind,
         }
     }
@@ -397,7 +397,7 @@ mod serde {
             T: re_viewer_context::BlueprintIdRegistry,
         {
             let s: String = Deserialize::deserialize(deserializer)?;
-            re_types::external::uuid::Uuid::try_parse(&s)
+            re_sdk_types::external::uuid::Uuid::try_parse(&s)
                 .map_err(serde::de::Error::custom)
                 .map(re_viewer_context::BlueprintId::from)
         }

@@ -1,5 +1,5 @@
 // Allow unwrap() in benchmarks
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 #[cfg(not(all(feature = "decoder", feature = "encoder")))]
 compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features.");
@@ -8,12 +8,9 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_chunk::{Chunk, RowId};
-use re_log_types::{
-    LogMsg, StoreId, StoreKind, TimeInt, TimeType, Timeline, entity_path,
-    example_components::{MyColor, MyPoint, MyPoints},
-};
-
-use re_log_encoding::EncodingOptions;
+use re_log_encoding::rrd::EncodingOptions;
+use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+use re_log_types::{LogMsg, StoreId, StoreKind, TimeInt, TimeType, Timeline, entity_path};
 const PROTOBUF_COMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_COMPRESSED;
 
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -35,10 +32,10 @@ criterion_main!(benches);
 
 fn encode_log_msgs(
     messages: &[LogMsg],
-    encoding_options: re_log_encoding::EncodingOptions,
+    encoding_options: re_log_encoding::rrd::EncodingOptions,
 ) -> Vec<u8> {
     let mut bytes = vec![];
-    re_log_encoding::encoder::encode_ref(
+    re_log_encoding::Encoder::encode_into(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
         messages.iter().map(Ok),
@@ -50,8 +47,7 @@ fn encode_log_msgs(
 }
 
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
-    let messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
-        .unwrap()
+    let messages = re_log_encoding::DecoderApp::decode_lazy(&mut bytes)
         .collect::<Result<Vec<LogMsg>, _>>()
         .unwrap();
     assert!(bytes.is_empty());

@@ -1,8 +1,8 @@
-use fixed::{FixedI128, traits::LossyInto as _};
-
-use crate::TimeInt;
+use fixed::FixedI128;
+use fixed::traits::LossyInto as _;
 
 use super::NonMinI64;
+use crate::TimeInt;
 
 /// Either nanoseconds or sequence numbers.
 ///
@@ -13,7 +13,7 @@ use super::NonMinI64;
 /// This is like [`TimeInt`] with added precision to be able to represent
 /// time between sequences (and even between nanoseconds).
 /// This is needed in the time panel to refer to time between sequence numbers,
-/// e.g. for panning.
+/// e.g. for smooth panning.
 ///
 /// We use 64+64 bit fixed point representation in order to support
 /// large numbers (nanos since unix epoch) with sub-integer precision.
@@ -23,6 +23,7 @@ pub struct TimeReal(FixedI128<typenum::U64>);
 
 impl TimeReal {
     pub const MIN: Self = Self(FixedI128::MIN);
+    pub const ZERO: Self = Self(FixedI128::ZERO);
     pub const MAX: Self = Self(FixedI128::MAX);
 
     #[inline]
@@ -66,6 +67,11 @@ impl TimeReal {
     #[inline]
     pub fn as_secs_f64(self) -> f64 {
         self.as_f64() / 1_000_000_000f64
+    }
+
+    /// Returns the value half-way to `other`.
+    pub fn midpoint(self, other: Self) -> Self {
+        Self((self.0 + other.0) / FixedI128::from_num(2))
     }
 }
 

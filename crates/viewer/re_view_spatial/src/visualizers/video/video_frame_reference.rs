@@ -1,36 +1,27 @@
 use std::sync::Arc;
 
 use re_log_types::EntityPath;
-use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{
-    Archetype as _,
-    archetypes::{AssetVideo, VideoFrameReference},
-    components::{self, Blob, MediaType, VideoTimestamp},
-};
+use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::video::Video;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
-    VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
-use crate::{
-    PickableTexturedRect,
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{
-        SpatialViewVisualizerData,
-        entity_iterator::{self, process_archetype},
-        filter_visualizable_2d_entities,
-        video::{
-            VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
-            visualize_video_frame_texture,
-        },
-    },
+use crate::PickableTexturedRect;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::SpatialViewVisualizerData;
+use crate::visualizers::entity_iterator::process_archetype;
+use crate::visualizers::video::{
+    VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
+    visualize_video_frame_texture,
 };
 
-// TODO(#9832): Support opacity for videos
-// TODO(jan): Fallback opacity in the same way as color/depth/segmentation images
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
 }
@@ -50,17 +41,11 @@ impl IdentifiedViewSystem for VideoFrameReferenceVisualizer {
 }
 
 impl VisualizerSystem for VideoFrameReferenceVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<VideoFrameReference>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<VideoFrameReference>()
     }
 
     fn execute(
@@ -68,32 +53,39 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
+        let output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
             context_systems,
+            &output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
                 // Same is true for the image visualizers in general - there seems to be no practical reason to do range queries
                 // for visualization here.
-                use re_view::RangeResultsExt as _;
 
-                let timeline = ctx.query.timeline();
                 let entity_path = ctx.target_entity_path;
 
-                let Some(all_video_timestamp_chunks) =
-                    results.get_required_chunks(VideoFrameReference::descriptor_timestamp())
-                else {
+                let all_video_timestamps =
+                    results.iter_required(VideoFrameReference::descriptor_timestamp().component);
+                if all_video_timestamps.is_empty() {
                     return Ok(());
-                };
-                let all_video_references =
-                    results.iter_as(timeline, VideoFrameReference::descriptor_video_reference());
+                }
+                let all_video_references = results
+                    .iter_optional(VideoFrameReference::descriptor_video_reference().component);
+                let all_opacities =
+                    results.iter_optional(VideoFrameReference::descriptor_opacity().component);
 
-                for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
-                    entity_iterator::iter_component(&all_video_timestamp_chunks, timeline),
+                for (_index, video_timestamps, video_references, opacity) in re_query::range_zip_1x2(
+                    all_video_timestamps.component_slow(),
                     all_video_references.slice::<String>(),
+                    all_opacities.slice::<f32>(),
                 ) {
                     let Some(video_timestamp): Option<&VideoTimestamp> = video_timestamps.first()
                     else {
@@ -105,6 +97,16 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         spatial_ctx,
                         video_timestamp,
                         video_references,
+                        opacity
+                            .and_then(|slice| slice.first())
+                            .copied()
+                            .map(Opacity::from)
+                            .unwrap_or_else(|| {
+                                typed_fallback_for(
+                                    ctx,
+                                    VideoFrameReference::descriptor_opacity().component,
+                                )
+                            }),
                         entity_path,
                         view_query.view_id,
                     );
@@ -114,32 +116,26 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             },
         )?;
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
 
 impl VideoFrameReferenceVisualizer {
+    #[expect(clippy::too_many_arguments)]
     fn process_video_frame(
         &mut self,
         ctx: &re_viewer_context::QueryContext<'_>,
-        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
         video_timestamp: &VideoTimestamp,
-        video_references: Option<Vec<re_types::ArrowString>>,
+        video_references: Option<Vec<re_sdk_types::ArrowString>>,
+        opacity: Opacity,
         entity_path: &EntityPath,
         view_id: ViewId,
     ) {
@@ -150,16 +146,16 @@ impl VideoFrameReferenceVisualizer {
         // Follow the reference to the video asset.
         let video_reference: EntityPath = video_references
             .and_then(|v| v.first().map(|e| e.as_str().into()))
-            .unwrap_or_else(|| {
-                TypedComponentFallbackProvider::<components::EntityPath>::fallback_for(self, ctx)
-                    .as_str()
-                    .into()
-            });
+            .unwrap_or_else(|| ctx.target_entity_path.clone());
         let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx(), &video_reference);
 
         let world_from_entity = spatial_ctx
             .transform_info
-            .single_entity_transform_required(ctx.target_entity_path, VideoFrameReference::name());
+            .single_transform_required_for_entity(
+                ctx.target_entity_path,
+                VideoFrameReference::name(),
+            )
+            .as_affine3a();
 
         // Note that we may or may not know the video size independently of error occurrence.
         // (if it's just a decoding error we may still know the size from the container!)
@@ -193,13 +189,13 @@ impl VideoFrameReferenceVisualizer {
                         video.data_descr().timescale,
                     );
 
-                    match video.frame_at(
-                        ctx.render_ctx(),
-                        player_stream_id,
-                        video_time,
-                        &std::iter::once(video_buffer.as_ref()).collect(),
-                    ) {
+                    match video.frame_at(ctx.render_ctx(), player_stream_id, video_time, &|_| {
+                        &video_buffer
+                    }) {
                         Ok(video_frame_reference) => {
+                            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+                            let multiplicative_tint =
+                                re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
                             visualize_video_frame_texture(
                                 ctx.view_ctx,
                                 &mut self.data,
@@ -209,6 +205,7 @@ impl VideoFrameReferenceVisualizer {
                                 world_from_entity,
                                 spatial_ctx.highlight,
                                 video_resolution,
+                                multiplicative_tint,
                             );
                         }
 
@@ -222,7 +219,7 @@ impl VideoFrameReferenceVisualizer {
                                 spatial_ctx.highlight,
                                 world_from_entity,
                                 err.to_string(),
-                                VideoPlaybackIssueSeverity::Error,
+                                err.into(),
                                 video_resolution,
                                 entity_path,
                             );
@@ -263,20 +260,20 @@ fn latest_at_query_video_from_datastore(
     let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
-        AssetVideo::all_components().iter(),
+        AssetVideo::all_component_identifiers(),
     );
 
-    let blob_row_id = results.component_row_id(&AssetVideo::descriptor_blob())?;
-    let blob = results.component_instance::<Blob>(0, &AssetVideo::descriptor_blob())?;
+    let blob_row_id = results.component_row_id(AssetVideo::descriptor_blob().component)?;
+    let blob = results.component_instance::<Blob>(0, AssetVideo::descriptor_blob().component)?;
     let media_type =
-        results.component_instance::<MediaType>(0, &AssetVideo::descriptor_media_type());
+        results.component_instance::<MediaType>(0, AssetVideo::descriptor_media_type().component);
 
     let video = ctx.store_context.caches.entry(|c: &mut VideoAssetCache| {
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,
             blob_row_id,
-            &AssetVideo::descriptor_blob(),
+            AssetVideo::descriptor_blob().component,
             &blob,
             media_type.as_ref(),
             ctx.app_options().video_decoder_settings(),
@@ -284,17 +281,3 @@ fn latest_at_query_video_from_datastore(
     });
     Some((video, blob))
 }
-
-impl TypedComponentFallbackProvider<components::EntityPath> for VideoFrameReferenceVisualizer {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> components::EntityPath {
-        ctx.target_entity_path.to_string().into()
-    }
-}
-
-impl TypedComponentFallbackProvider<components::DrawOrder> for VideoFrameReferenceVisualizer {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::DrawOrder {
-        components::DrawOrder::DEFAULT_VIDEO
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [components::EntityPath, components::DrawOrder]);

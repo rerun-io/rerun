@@ -47,6 +47,7 @@ impl Manifest {
             .channel
             .examples(workspace_root)?
             .into_iter()
+            .filter(|example| example.include_in_manifest)
             .map(|example| ManifestEntry::new(example, &base_url, &base_source_url))
             .collect::<Vec<_>>();
 

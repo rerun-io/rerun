@@ -1,4 +1,4 @@
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_ui::Icon;
 use re_viewer_context::{ContainerId, Item, RecommendedView};
 use re_viewport_blueprint::ViewBlueprint;

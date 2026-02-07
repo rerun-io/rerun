@@ -1,19 +1,19 @@
-use crate::{
-    OutlineConfig, Rgba,
-    allocator::create_and_fill_uniform_buffer,
-    include_shader_module,
-    renderer::{DrawData, DrawError, Renderer, screen_triangle_vertex_shader},
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
-
-use crate::{DrawPhase, RenderContext};
-
 use smallvec::smallvec;
+
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::renderer::{
+    DrawData, DrawDataDrawable, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer,
+    screen_triangle_vertex_shader,
+};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+    RenderPipelineDesc,
+};
+use crate::{
+    DrawPhase, DrawableCollector, OutlineConfig, RenderContext, Rgba, include_shader_module,
+};
 
 mod gpu_data {
     use crate::wgpu_buffer_types;
@@ -50,6 +50,20 @@ pub struct CompositorDrawData {
 
 impl DrawData for CompositorDrawData {
     type Renderer = Compositor;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Compositing | DrawPhase::CompositingScreenshot,
+            DrawDataDrawable {
+                distance_sort_key: 0.0,
+                draw_data_payload: 0,
+            },
+        );
+    }
 }
 
 impl CompositorDrawData {
@@ -216,29 +230,27 @@ impl Renderer for Compositor {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &CompositorDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
-        let pipeline_handle = match phase {
-            DrawPhase::Compositing => {
-                if draw_data.enable_blending {
-                    self.render_pipeline_blended
-                } else {
-                    self.render_pipeline_opaque
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            let pipeline_handle = match phase {
+                DrawPhase::Compositing => {
+                    if draw_data.enable_blending {
+                        self.render_pipeline_blended
+                    } else {
+                        self.render_pipeline_opaque
+                    }
                 }
-            }
-            DrawPhase::CompositingScreenshot => self.render_pipeline_screenshot,
-            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
-        let pipeline = render_pipelines.get(pipeline_handle)?;
+                DrawPhase::CompositingScreenshot => self.render_pipeline_screenshot,
+                _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+            };
+            let pipeline = render_pipelines.get(pipeline_handle)?;
 
-        pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, &draw_data.bind_group, &[]);
-        pass.draw(0..3, 0..1);
+            pass.set_pipeline(pipeline);
+            pass.set_bind_group(1, &draw_data.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+        }
 
         Ok(())
-    }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Compositing, DrawPhase::CompositingScreenshot]
     }
 }

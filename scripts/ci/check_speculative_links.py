@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import re
+import sys
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
@@ -36,7 +37,7 @@ def main() -> None:
             for file in bad_files:
                 for link in file:
                     print(link)
-            exit(1)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,38 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration for the background of a spatial view.
+table Background (
+  "attr.python.aliases": "datatypes.Rgba32Like | blueprint_components.BackgroundKindLike",
+  "attr.rerun.scope": "blueprint"
+) {
+  // --- Required ---
+
+  /// The type of the background.
+  kind: rerun.blueprint.components.BackgroundKind ("attr.rerun.component_required", order: 1000);
+
+  // --- Optional ---
+
+  /// Color used for the solid background type.
+  // TODO(andreas): Can't link to [components.BackgroundKind.SolidColor] since blueprint components aren't part of the doc page yet.
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
+}
+
+/// Configuration of a background in a plot view.
+table PlotBackground (
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Color used for the background.
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
+
+  /// Should the grid be drawn?
+  show_grid: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 2000);
+}
+
+/// Configuration of a background in a graph view.
+table GraphBackground (
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Color used for the background.
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
+}

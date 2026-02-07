@@ -2,9 +2,8 @@
 
 use camino::{Utf8Path, Utf8PathBuf};
 
-use crate::{CodeGenerator, GeneratedFiles};
-
 use super::autogen_warning;
+use crate::{CodeGenerator, GeneratedFiles};
 
 pub struct FbsCodeGenerator {
     definition_dir: Utf8PathBuf,

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
@@ -8,6 +7,8 @@ import pyarrow as pa
 from ... import datatypes
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from .component_column_selector import ComponentColumnSelectorArrayLike
 
 
@@ -43,9 +44,8 @@ class ComponentColumnSelectorExt:
             if not isinstance(spec, str):
                 raise ValueError(f"Unexpected input value (`spec` must be a string): {spec}")
             entity_path, component = _parse_spec(spec)
-        else:
-            if entity_path is None or component is None:
-                raise ValueError("Both `entity_path` and `component` must be provided.")
+        elif entity_path is None or component is None:
+            raise ValueError("Both `entity_path` and `component` must be provided.")
 
         self.__attrs_init__(entity_path=entity_path, component=component)
 

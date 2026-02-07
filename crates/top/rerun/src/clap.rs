@@ -62,7 +62,7 @@ pub struct RerunArgs {
     ///
     /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
-    #[allow(clippy::option_option)]
+    #[expect(clippy::option_option)]
     connect: Option<Option<String>>,
 
     /// Connects and sends the logged data to a web-based Rerun viewer.
@@ -81,6 +81,10 @@ pub struct RerunArgs {
     #[clap(long, default_value = "25%")]
     server_memory_limit: String,
 
+    /// If true, play back the most recent data first when new clients connect.
+    #[clap(long)]
+    newest_first: bool,
+
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
     bind: String,
@@ -98,7 +102,7 @@ pub struct ServeGuard {
 impl Drop for ServeGuard {
     fn drop(&mut self) {
         if self.block_on_drop {
-            eprintln!("Sleeping indefinitely while serving web viewer... Press ^C when done.");
+            eprintln!("Sleeping indefinitely while serving web viewer… Press ^C when done.");
             // TODO(andreas): It would be a lot better if we had a handle to the web server and could call `block_until_shutdown` on it.
             std::thread::sleep(std::time::Duration::from_secs(u64::MAX));
         }
@@ -109,39 +113,106 @@ impl RerunArgs {
     /// Creates a new [`RecordingStream`] according to the CLI parameters.
     #[track_caller] // track_caller so that we can see if we are being called from an official example.
     pub fn init(&self, application_id: &str) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        self.init_with_blueprint_opts(application_id, None)
+    }
+
+    /// Creates a new [`RecordingStream`] with a [`re_sdk::blueprint::Blueprint`] that activates immediately.
+    ///
+    /// For a default blueprint that only activates on reset, see [`Self::init_with_default_blueprint`].
+    #[track_caller]
+    pub fn init_with_blueprint(
+        &self,
+        application_id: &str,
+        blueprint: re_sdk::blueprint::Blueprint,
+    ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        let activation = re_sdk::blueprint::BlueprintActivation {
+            make_active: true,
+            make_default: true,
+        };
+        self.init_with_blueprint_opts(
+            application_id,
+            Some(re_sdk::blueprint::BlueprintOpts {
+                blueprint,
+                activation,
+            }),
+        )
+    }
+
+    /// Creates a new [`RecordingStream`] with a default [`re_sdk::blueprint::Blueprint`].
+    ///
+    /// The blueprint activates only when the user resets. For immediate activation, see [`Self::init_with_blueprint`].
+    #[track_caller]
+    pub fn init_with_default_blueprint(
+        &self,
+        application_id: &str,
+        blueprint: re_sdk::blueprint::Blueprint,
+    ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        let activation = re_sdk::blueprint::BlueprintActivation {
+            make_active: false,
+            make_default: true,
+        };
+        self.init_with_blueprint_opts(
+            application_id,
+            Some(re_sdk::blueprint::BlueprintOpts {
+                blueprint,
+                activation,
+            }),
+        )
+    }
+
+    /// Internal helper that handles blueprint options.
+    #[track_caller]
+    fn init_with_blueprint_opts(
+        &self,
+        application_id: &str,
+        blueprint_opts: Option<re_sdk::blueprint::BlueprintOpts>,
+    ) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        let mut builder = RecordingStreamBuilder::new(application_id);
+
+        // Add blueprint to builder if provided
+        if let Some(re_sdk::blueprint::BlueprintOpts {
+            blueprint,
+            activation,
+        }) = blueprint_opts
+        {
+            builder = if activation.make_active {
+                builder.with_blueprint(blueprint)
+            } else {
+                builder.with_default_blueprint(blueprint)
+            };
+        }
+
         match self.to_behavior()? {
-            RerunBehavior::Stdout => Ok((
-                RecordingStreamBuilder::new(application_id).stdout()?,
-                Default::default(),
-            )),
+            RerunBehavior::Stdout => Ok((builder.stdout()?, Default::default())),
 
-            RerunBehavior::Connect(url) => Ok((
-                RecordingStreamBuilder::new(application_id)
-                    .connect_grpc_opts(url, re_sdk::default_flush_timeout())?,
-                Default::default(),
-            )),
+            RerunBehavior::Connect(url) => {
+                Ok((builder.connect_grpc_opts(url)?, Default::default()))
+            }
 
-            RerunBehavior::Save(path) => Ok((
-                RecordingStreamBuilder::new(application_id).save(path)?,
-                Default::default(),
-            )),
+            RerunBehavior::Save(path) => Ok((builder.save(path)?, Default::default())),
 
-            RerunBehavior::Spawn => Ok((
-                RecordingStreamBuilder::new(application_id).spawn()?,
-                Default::default(),
-            )),
+            RerunBehavior::Spawn => Ok((builder.spawn()?, Default::default())),
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
-                    .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+                let server_options = re_sdk::ServerOptions {
+                    playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(
+                        self.newest_first,
+                    ),
 
-                let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve")
-                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_memory_limit)?;
+                    memory_limit: re_sdk::MemoryLimit::parse(&self.server_memory_limit)
+                        .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?,
+                };
+
+                let rec = builder.serve_grpc_opts(
+                    &self.bind,
+                    crate::DEFAULT_SERVER_PORT,
+                    server_options,
+                )?;
 
                 crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
                     open_browser: true,
-                    connect_to: Some("rerun+http://localhost:9876/proxy".to_owned()),
+                    connect_to: vec!["rerun+http://localhost:9876/proxy".to_owned()],
                     ..Default::default()
                 })?
                 .detach();
@@ -156,7 +227,7 @@ impl RerunArgs {
         }
     }
 
-    #[allow(clippy::unnecessary_wraps)] // False positive on some feature flags
+    #[expect(clippy::unnecessary_wraps)] // False positive on some feature flags
     fn to_behavior(&self) -> anyhow::Result<RerunBehavior> {
         if self.stdout {
             return Ok(RerunBehavior::Stdout);

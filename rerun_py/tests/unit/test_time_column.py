@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pyarrow as pa
 import pytest
 import rerun as rr
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 VALID_SEQUENCE_CASES = [
     ([0, 1, 2, 3], pa.array([0, 1, 2, 3], type=pa.int64())),

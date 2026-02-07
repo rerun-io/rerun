@@ -1,12 +1,16 @@
+use std::sync::Arc;
+
 use opentelemetry::trace::TracerProvider as _;
-use opentelemetry_sdk::{
-    logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
-};
+use opentelemetry_otlp::WithTonicConfig as _;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, SdkTracerProvider};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 
-use crate::{LogFormat, TelemetryArgs};
+use crate::shared_reader::SharedManualReader;
+use crate::{LogFormat, TelemetryArgs, TraceIdLayer};
 
 // ---
 
@@ -20,6 +24,9 @@ pub struct Telemetry {
     logs: Option<SdkLoggerProvider>,
     traces: Option<SdkTracerProvider>,
     metrics: Option<SdkMeterProvider>,
+
+    /// The shared manual reader for pull-based metrics collection
+    metrics_reader: Option<Arc<opentelemetry_sdk::metrics::ManualReader>>,
 
     drop_behavior: TelemetryDropBehavior,
 }
@@ -43,11 +50,12 @@ pub enum TelemetryDropBehavior {
 }
 
 impl Telemetry {
-    pub fn flush(&mut self) {
+    pub fn flush(&self) {
         let Self {
             logs,
             traces,
             metrics,
+            metrics_reader: _,
             drop_behavior: _,
         } = self;
 
@@ -70,7 +78,7 @@ impl Telemetry {
         }
     }
 
-    pub fn shutdown(&mut self) {
+    pub fn shutdown(&self) {
         // NOTE: We do both `force_flush` and `shutdown` because, even though they both flush the
         // pipeline, sometimes one has better error messages than the other (although, more often
         // than not, they both provide useless errors and you should make sure to look into the
@@ -81,6 +89,7 @@ impl Telemetry {
             logs,
             traces,
             metrics,
+            metrics_reader: _,
             drop_behavior: _,
         } = self;
 
@@ -132,8 +141,10 @@ impl Telemetry {
             trace_endpoint,
             trace_sampler,
             trace_sampler_args,
+            tracestate,
             metric_endpoint,
             metric_interval,
+            metrics_listen_address: _, // TelemetryArgs only, used at the caller site
         } = args;
 
         if !enabled {
@@ -157,9 +168,16 @@ impl Telemetry {
                 logs: None,
                 metrics: None,
                 traces: None,
+                metrics_reader: None,
                 drop_behavior,
             });
         }
+
+        let Some(service_name) = service_name else {
+            anyhow::bail!(
+                "either `OTEL_SERVICE_NAME` or `TelemetryArgs::service_name` must be set in order to initialize telemetry"
+            );
+        };
 
         // For these things, all we need to do is make sure that the right OTEL env var is set.
         // All the downstream libraries will do the right thing if they are.
@@ -187,6 +205,7 @@ impl Telemetry {
                 .add_directive_if_absent(base, "h2", forced)?
                 .add_directive_if_absent(base, "hyper", forced)?
                 .add_directive_if_absent(base, "hyper_util", forced)?
+                .add_directive_if_absent(base, "lance", forced)?
                 .add_directive_if_absent(base, "lance-arrow", forced)?
                 .add_directive_if_absent(base, "lance-core", forced)?
                 .add_directive_if_absent(base, "lance-datafusion", forced)?
@@ -207,9 +226,12 @@ impl Telemetry {
                 .add_directive_if_absent(base, "tower", forced)?
                 .add_directive_if_absent(base, "tower_http", forced)?
                 .add_directive_if_absent(base, "tower_web", forced)?
+                .add_directive_if_absent(base, "typespec_client_core", forced)?
                 //
                 .add_directive_if_absent(base, "lance::index", "off")?
+                .add_directive_if_absent(base, "lance::io::exec", "off")?
                 .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
+                .add_directive_if_absent(base, "lance_index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::builder", "off")?
                 .add_directive_if_absent(base, "lance_encoding", "off")
         };
@@ -247,7 +269,7 @@ impl Telemetry {
             // Everything is generically typed, which is why this is such a nightmare to do.
             macro_rules! handle_format {
                 ($format:ident) => {{
-                    let layer = layer.event_format(tracing_subscriber::fmt::format().$format());
+                    let layer = layer.$format();
                     if log_test_output {
                         layer.with_test_writer().boxed()
                     } else {
@@ -303,16 +325,41 @@ impl Telemetry {
         let (tracer_provider, layer_traces_otlp) = if otel_enabled {
             let exporter = opentelemetry_otlp::SpanExporter::builder()
                 .with_tonic() // There's no good reason to use HTTP for traces (at the moment, that is)
+                .with_compression(opentelemetry_otlp::Compression::Gzip) // use gzip compression to reduce bandwidth
                 .build()?;
 
-            let provider = SdkTracerProvider::builder()
-                .with_batch_exporter(exporter)
+            // we customize batch exporter config to ensure more optimal span exporting
+            let batch_config = BatchConfigBuilder::default()
+                // increase max queue size from default 2048 to ensure we don't drop spans during high throughput
+                .with_max_queue_size(8192)
+                // export more spans per batch to reduce number of requests (default is 512)
+                // together with queue size this help ensure more robust exporting under high throughput
+                .with_max_export_batch_size(2048)
                 .build();
 
-            // This will be used by the `TracingInjectorInterceptor` & `TracingExtractorInterceptor` to
-            // encode the trace information into the request headers.
-            opentelemetry::global::set_text_map_propagator(
+            let batch_processor = BatchSpanProcessor::builder(exporter)
+                .with_batch_config(batch_config)
+                .build();
+
+            let provider = SdkTracerProvider::builder()
+                .with_span_processor(batch_processor)
+                .build();
+
+            // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.
+            // Additional `tracestate` can be added through the relevant env var and the custom enricher below.
+            let mut propagators: Vec<
+                Box<dyn opentelemetry::propagation::TextMapPropagator + Send + Sync>,
+            > = vec![Box::new(
                 opentelemetry_sdk::propagation::TraceContextPropagator::new(),
+            )];
+
+            if !tracestate.is_empty() {
+                let enricher = crate::tracestate::TraceStateEnricher::new(&tracestate);
+                propagators.push(Box::new(enricher));
+            }
+
+            opentelemetry::global::set_text_map_propagator(
+                opentelemetry::propagation::TextMapCompositePropagator::new(propagators),
             );
 
             // This is to make sure that if some third-party system is logging raw OpenTelemetry
@@ -333,29 +380,45 @@ impl Telemetry {
         // Metric strategy
         // ===============
         //
-        // * Our metric strategy is basically the opposite of our logging strategy: everything goes
-        //   through OpenTelemetry directly, `tracing` is never involved.
+        // * Metrics can be pushed to an OTLP endpoint as defined by OTEL SDK variables.
+        //   OTEL_METRIC_EXPORT_INTERVAL environment variable applies for push interval.
+        //   This is enabled by setting OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
         //
-        // * Metrics are uploaded (as opposed to scrapped!) using the OTLP protocol, on a fixed interval
-        //   defined by the OTEL_METRIC_EXPORT_INTERVAL environment variable.
+        // * Additionally a prometheus-style scraping endpoint can be enabled by calling
+        //   start_metrics_listener() on the returned Telemetry instance.
+        //
+        // Both ways use the same data for actual metrics.
+        //
+        let (metric_provider, metrics_reader) = if otel_enabled {
+            let mut builder = SdkMeterProvider::builder();
 
-        let metric_provider = if otel_enabled {
-            let exporter = opentelemetry_otlp::MetricExporter::builder()
-                // That's the only thing Prometheus supports.
+            // OTLP exporter for push-based metrics
+            let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
                 .with_temporality(opentelemetry_sdk::metrics::Temporality::Cumulative)
-                .with_http() // Prometheus only supports HTTP-based OTLP
+                .with_http()
                 .build()?;
+            builder = builder.with_periodic_exporter(otlp_exporter);
 
-            let provider = SdkMeterProvider::builder()
-                .with_periodic_exporter(exporter)
-                .build();
+            // Always add a ManualReader for potential metrics listener
+            // We use SharedManualReader to share the same reader instance between
+            // the MeterProvider (for registration) and the metrics server (for collection)
+            let shared_reader =
+                SharedManualReader::new(opentelemetry_sdk::metrics::Temporality::Cumulative);
 
-            // All metrics are logged directly via `opentelemetry`.
+            let reader_for_telemetry = shared_reader.inner();
+            builder = builder.with_reader(shared_reader);
+
+            let provider = builder.build();
+
+            // Set as global provider - this makes all metrics created via opentelemetry::global::meter()
+            // available to all registered readers: OTLP push and ManualReader
             opentelemetry::global::set_meter_provider(provider.clone());
 
-            Some(provider)
+            tracing::info!("metric provider created with manual reader support");
+
+            (Some(provider), Some(reader_for_telemetry))
         } else {
-            None
+            (None, None)
         };
 
         if tracy_enabled {
@@ -369,6 +432,7 @@ impl Telemetry {
                     .with(layer_logs_otlp)
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
+                    .with(TraceIdLayer::default())
                     .with(self::tracy::tracy_layer())
                     .try_init()?;
             }
@@ -382,15 +446,67 @@ impl Telemetry {
                 .with(layer_logs_otlp)
                 .with(layer_logs_and_traces_stdio)
                 .with(layer_traces_otlp)
+                .with(TraceIdLayer::default())
                 .try_init()?;
         }
+
+        crate::memory_telemetry::install_memory_use_meters();
+
+        tracing::info!("Telemetry initialized");
 
         Ok(Self {
             drop_behavior,
             logs: logger_provider,
             traces: tracer_provider,
             metrics: metric_provider,
+            metrics_reader,
         })
+    }
+
+    /// Start a dedicated HTTP server for metrics collection at the given address.
+    ///
+    /// This binds to the specified address and spawns an HTTP server that exposes a
+    /// `/metrics` endpoint for Prometheus-style scraping. The metrics are collected
+    /// on-demand when the endpoint is accessed.
+    ///
+    /// # Arguments
+    ///
+    /// * `addr` - The address to listen on (e.g., ":9091", "0.0.0.0:9091", or "127.0.0.1:9091")
+    ///
+    /// # Returns
+    ///
+    /// Returns an error if:
+    /// - Telemetry was not initialized with metrics support
+    /// - The address is invalid or cannot be parsed
+    /// - The server fails to bind to the address (e.g., port already in use)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use re_perf_telemetry::{Telemetry, TelemetryArgs, TelemetryDropBehavior};
+    ///
+    /// let args = TelemetryArgs { /* ... */ };
+    /// let telemetry = Telemetry::init(args, TelemetryDropBehavior::Shutdown)?;
+    ///
+    /// // This will return an error if the port is already in use
+    /// telemetry.start_metrics_listener(":9091").await?;
+    /// ```
+    pub async fn start_metrics_listener(&self, addr: &str) -> anyhow::Result<()> {
+        let reader = self.metrics_reader.as_ref()
+            .ok_or_else(|| anyhow::anyhow!(
+                "Cannot start metrics listener: telemetry was not initialized with metrics support. \
+                Ensure TELEMETRY_ENABLED=true and OTEL_SDK_ENABLED=true"
+            ))?;
+
+        // Clone the Arc to pass to the server
+        let reader_for_server = Arc::clone(reader);
+
+        // Start the metrics server - this will bind synchronously and return an error
+        // if binding fails (e.g., port already in use), but the actual serving happens
+        // asynchronously in a spawned task
+        crate::metrics_server::start_metrics_server(addr, reader_for_server).await?;
+
+        Ok(())
     }
 }
 

@@ -1,10 +1,10 @@
 //! Use `send_column` to send an entire column of custom data to Rerun.
 
-#![allow(clippy::from_iter_instead_of_collect)]
+#![expect(clippy::from_iter_instead_of_collect)]
 
 use std::sync::Arc;
 
-use rerun::{external::arrow, TimeColumn};
+use rerun::{TimeColumn, external::arrow};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_batch_value_column_updates")

@@ -1,14 +1,11 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 #![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
 
 use anyhow::Context as _;
 use egui::{Color32, Margin, Stroke, Theme, Vec2};
 
-use crate::{
-    CUSTOM_WINDOW_DECORATIONS,
-    color_table::{ColorTable, ColorToken, Hue, Scale},
-    format_with_decimals_in_range,
-};
+use crate::color_table::{ColorTable, ColorToken, Hue, Scale};
+use crate::{CUSTOM_WINDOW_DECORATIONS, format_with_decimals_in_range};
 
 #[derive(Debug)]
 pub struct AlertVisuals {
@@ -58,6 +55,8 @@ pub struct DesignTokens {
     pub large_button_icon_size: Vec2,
     pub large_button_corner_radius: f32,
     pub small_icon_size: Vec2,
+    pub modal_button_width: f32,
+    pub default_modal_width: f32,
 
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
@@ -77,6 +76,12 @@ pub struct DesignTokens {
     pub success_text_color: Color32,
     pub info_text_color: Color32,
 
+    /// Opacity multiplier for the background of 2D labels in spatial views.
+    pub spatial_label_bg_opacity: f32,
+
+    /// Background color for viewport views.
+    pub viewport_background: Color32,
+
     /// Background color for widgets that should catch the user's attention.
     pub highlight_color: Color32,
 
@@ -88,6 +93,9 @@ pub struct DesignTokens {
 
     /// The color we use to mean "loop this selection"
     pub loop_selection_color: Color32,
+
+    /// Like [`Self::loop_selection_color`], but inactive.
+    pub loop_selection_color_inactive: Color32,
 
     /// The color we use to mean "loop all the data"
     pub loop_everything_color: Color32,
@@ -110,6 +118,8 @@ pub struct DesignTokens {
     pub icon_color_on_primary_hovered: Color32,
     pub selection_stroke_color: Color32,
     pub selection_bg_fill: Color32,
+    pub focus_outline_stroke: Stroke,
+    pub focus_halo_stroke: Stroke,
 
     // ------
     pub panel_bg_color: Color32,
@@ -139,6 +149,8 @@ pub struct DesignTokens {
 
     /// Color for table interaction noninteractive background stroke
     pub table_interaction_noninteractive_bg_stroke: Color32,
+
+    pub table_interaction_row_selection_fill: Color32,
 
     pub table_sort_icon_color: Color32,
 
@@ -190,6 +202,9 @@ pub struct DesignTokens {
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
 
+    /// This is the color of time ranges that has only been partially loaded.
+    pub density_graph_outside_valid_ranges: Color32,
+
     // Spatial view colors:
     pub axis_color_x: Color32,
     pub axis_color_y: Color32,
@@ -208,11 +223,31 @@ pub struct DesignTokens {
     pub list_item_hovered_bg: Color32,
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
+
+    // Visualizer list colors (selection panel)
+    pub visualizer_list_title_text_color: Color32,
+    pub visualizer_list_path_text_color: Color32,
+
+    pub code_index_color: Color32,
+    pub code_string_color: Color32,
+    pub code_null_color: Color32,
+    pub code_primitive_color: Color32,
+    pub code_keyword_color: Color32,
+
+    // Table filter UI
+    pub table_filter_frame_stroke: Stroke,
+
+    pub bg_fill_inverse: Color32,
+    pub bg_fill_inverse_hover: Color32,
+    pub text_inverse: Color32,
+    pub icon_inverse: Color32,
 }
 
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        anyhow::ensure!(!tokens_ron.trim().is_empty(), "Empty theme file");
+
         let color_table_ron: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
             .expect("Failed to parse data/color_table.ron");
         let colors = load_color_table(&color_table_ron);
@@ -226,6 +261,13 @@ impl DesignTokens {
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
         let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
+        let selection_bg_fill = get_color("selection_bg_fill");
+
+        let loop_selection_color =
+            selection_bg_fill.gamma_multiply(get_scalar("loop_selection_alpha")?);
+        let loop_selection_color_inactive =
+            selection_bg_fill.gamma_multiply(get_scalar("loop_selection_alpha_inactive")?);
+
         Ok(Self {
             theme,
             typography,
@@ -234,6 +276,8 @@ impl DesignTokens {
             large_button_icon_size: Vec2::splat(get_scalar("large_button_icon_size")?),
             large_button_corner_radius: get_scalar("large_button_corner_radius")?,
             small_icon_size: Vec2::splat(get_scalar("small_icon_size")?),
+            modal_button_width: get_scalar("modal_button_width")?,
+            default_modal_width: get_scalar("default_modal_width")?,
 
             top_bar_color: get_color("top_bar_color"),
             bottom_bar_color: get_color("bottom_bar_color"),
@@ -250,12 +294,17 @@ impl DesignTokens {
             success_text_color: get_color("success_text_color"),
             info_text_color: get_color("info_text_color"),
 
+            spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
+
+            viewport_background: get_color("viewport_background"),
+
             highlight_color: get_color("highlight_color"),
 
             label_button_icon_color: get_color("label_button_icon_color"),
             section_header_color: get_color("section_header_color"),
 
-            loop_selection_color: get_color("loop_selection_color"),
+            loop_selection_color,
+            loop_selection_color_inactive,
             loop_everything_color: get_color("loop_everything_color"),
 
             thumbnail_background_color: get_color("thumbnail_background_color"),
@@ -269,8 +318,10 @@ impl DesignTokens {
             text_color_on_primary_hovered: get_color("text_color_on_primary_hovered"),
             icon_color_on_primary: get_color("icon_color_on_primary"),
             icon_color_on_primary_hovered: get_color("icon_color_on_primary_hovered"),
-            selection_bg_fill: get_color("selection_bg_fill"),
+            selection_bg_fill,
             selection_stroke_color: get_color("selection_stroke_color"),
+            focus_outline_stroke: get_stroke("focus_outline_stroke"),
+            focus_halo_stroke: get_stroke("focus_halo_stroke"),
 
             panel_bg_color: get_color("panel_bg_color"),
             text_edit_bg_color: get_color("text_edit_bg_color"),
@@ -284,6 +335,7 @@ impl DesignTokens {
             table_interaction_noninteractive_bg_stroke: get_color(
                 "table_interaction_noninteractive_bg_stroke",
             ),
+            table_interaction_row_selection_fill: get_color("table_interaction_row_selection_fill"),
             table_sort_icon_color: get_color("table_sort_icon_color"),
 
             drag_pill_droppable_fill: get_color("drag_pill_droppable_fill"),
@@ -323,6 +375,7 @@ impl DesignTokens {
 
             density_graph_selected: get_color("density_graph_selected"),
             density_graph_unselected: get_color("density_graph_unselected"),
+            density_graph_outside_valid_ranges: get_color("density_graph_outside_valid_ranges"),
 
             axis_color_x: get_color("axis_color_x"),
             axis_color_y: get_color("axis_color_y"),
@@ -341,6 +394,22 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
+
+            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
+            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
+
+            code_index_color: get_color("code_index_color"),
+            code_string_color: get_color("code_string_color"),
+            code_null_color: get_color("code_null_color"),
+            code_primitive_color: get_color("code_primitive_color"),
+
+            code_keyword_color: get_color("code_keyword_color"),
+            table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
+
+            bg_fill_inverse: get_color("bg_fill_inverse"),
+            bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
+            text_inverse: get_color("text_inverse"),
+            icon_inverse: get_color("icon_inverse"),
         })
     }
 
@@ -464,7 +533,7 @@ impl DesignTokens {
         egui_style.spacing.scroll.bar_width = 6.0;
         egui_style.spacing.scroll.bar_outer_margin = 2.0;
 
-        egui_style.spacing.tooltip_width = 720.0;
+        egui_style.spacing.tooltip_width = 600.0;
 
         egui_style.visuals.image_loading_spinners = false;
     }
@@ -575,16 +644,16 @@ impl DesignTokens {
         6.0
     }
 
-    pub fn window_corner_radius(&self) -> f32 {
-        6.0
+    pub fn window_corner_radius(&self) -> u8 {
+        6
     }
 
-    pub fn normal_corner_radius(&self) -> f32 {
-        6.0
+    pub fn normal_corner_radius(&self) -> u8 {
+        6
     }
 
-    pub fn small_corner_radius(&self) -> f32 {
-        4.0
+    pub fn small_corner_radius(&self) -> u8 {
+        4
     }
 
     pub fn table_cell_margin(&self, table_style: TableStyle) -> Margin {
@@ -912,7 +981,7 @@ fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json
 
 // ----------------------------------------------------------------------------
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[derive(Debug, serde::Deserialize)]
 struct Typography {
     fontSize: String,

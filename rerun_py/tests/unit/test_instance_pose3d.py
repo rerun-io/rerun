@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 from fractions import Fraction
-from typing import Optional, cast
+from typing import cast
 
 import rerun as rr
 from rerun.datatypes import (
@@ -39,11 +39,11 @@ def test_instance_poses3d() -> None:
     scale_arrays = [None, [1.0, 2.0, 3.0], [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]]
 
     all_arrays = itertools.zip_longest(
-        VEC_3D_INPUT + [None],
+        [*VEC_3D_INPUT, None],
         rotation_axis_angle_arrays,
         quaternion_arrays,
         scale_arrays,
-        MAT_3X3_INPUT + [None],
+        [*MAT_3X3_INPUT, None],
     )
 
     for (
@@ -53,19 +53,19 @@ def test_instance_poses3d() -> None:
         scale,
         mat3x3,
     ) in all_arrays:
-        translations = cast(Optional[rr.datatypes.Vec3DArrayLike], translation)
-        rotation_axis_angles = cast(Optional[rr.datatypes.RotationAxisAngleArrayLike], rotation_axis_angle)
-        quaternions = cast(Optional[rr.datatypes.QuaternionArrayLike], quaternion)
-        scales = cast(Optional[rr.datatypes.Vec3DArrayLike | rr.datatypes.Float32Like], scale)
-        mat3x3 = cast(Optional[rr.datatypes.Mat3x3ArrayLike], mat3x3)
+        translations = cast("rr.datatypes.Vec3DArrayLike | None", translation)
+        rotation_axis_angles = cast("rr.datatypes.RotationAxisAngleArrayLike | None", rotation_axis_angle)
+        quaternions = cast("rr.datatypes.QuaternionArrayLike | None", quaternion)
+        scales = cast("rr.datatypes.Vec3DArrayLike | rr.datatypes.Float32Like | None", scale)
+        mat3x3 = cast("rr.datatypes.Mat3x3ArrayLike | None", mat3x3)
 
         print(
             f"rr.InstancePoses3D(\n"
-            f"    translations={translations!r}\n"  #
-            f"    rotation_axis_angles={rotation_axis_angles!r}\n"  #
-            f"    quaternions={quaternions!r}\n"  #
-            f"    scales={scales!r}\n"  #
-            f"    mat3x3={mat3x3!r}\n"  #
+            f"    translations={translations!r}\n"
+            f"    rotation_axis_angles={rotation_axis_angles!r}\n"
+            f"    quaternions={quaternions!r}\n"
+            f"    scales={scales!r}\n"
+            f"    mat3x3={mat3x3!r}\n"
             f")",
         )
         arch = rr.InstancePoses3D(
@@ -77,8 +77,8 @@ def test_instance_poses3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.translations == rr.components.PoseTranslation3DBatch._converter(translations)
-        assert arch.rotation_axis_angles == rr.components.PoseRotationAxisAngleBatch._converter(rotation_axis_angles)
-        assert arch.quaternions == rr.components.PoseRotationQuatBatch._converter(quaternions)
-        assert arch.scales == rr.components.PoseScale3DBatch._converter(scales)
-        assert arch.mat3x3 == rr.components.PoseTransformMat3x3Batch._converter(mat3x3)
+        assert arch.translations == rr.components.Translation3DBatch._converter(translations)
+        assert arch.rotation_axis_angles == rr.components.RotationAxisAngleBatch._converter(rotation_axis_angles)
+        assert arch.quaternions == rr.components.RotationQuatBatch._converter(quaternions)
+        assert arch.scales == rr.components.Scale3DBatch._converter(scales)
+        assert arch.mat3x3 == rr.components.TransformMat3x3Batch._converter(mat3x3)

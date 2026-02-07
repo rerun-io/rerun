@@ -1,14 +1,9 @@
-#![allow(
-    clippy::needless_pass_by_value,
-    clippy::unnecessary_wraps,
-    clippy::unused_self
-)]
+#![expect(clippy::needless_pass_by_value, clippy::unnecessary_wraps)]
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::PostHogBatch;
-use crate::{AnalyticsEvent, Config, PostHogEvent};
+use crate::{AnalyticsEvent, Config, PostHogBatch, PostHogEvent};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
@@ -85,9 +80,5 @@ impl Pipeline {
                 }
             },
         );
-    }
-
-    pub fn flush_blocking(&self) {
-        // Can't block on the web… so all we can do is _hope_ that the outstanding requests made it through.
     }
 }

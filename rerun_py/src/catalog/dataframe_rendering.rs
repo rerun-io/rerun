@@ -3,14 +3,20 @@ use arrow::pyarrow::FromPyArrow as _;
 use arrow::record_batch::RecordBatch;
 use comfy_table::Table;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
-use re_arrow_util::format_data_type;
-use re_format_arrow::{RecordBatchFormatOpts, format_record_batch_opts};
+use re_arrow_util::{RecordBatchFormatOpts, format_record_batch_opts};
 
-#[pyclass(name = "RerunHtmlTable")]
-#[derive(Clone)]
+#[pyclass(eq, name = "RerunHtmlTable", module = "rerun_bindings.rerun_bindings")]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PyRerunHtmlTable {
     max_width: Option<usize>,
     max_height: Option<usize>,
+
+    #[pyo3(get, set)]
+    max_memory_bytes: u64,
+    #[pyo3(get, set)]
+    min_rows_display: usize,
+    #[pyo3(get, set)]
+    repr_rows: usize,
 }
 
 impl PyRerunHtmlTable {
@@ -64,7 +70,7 @@ impl PyRerunHtmlTable {
                 format!(
                     "<th><strong>{}</strong><br>{}</th>",
                     field.name(),
-                    format_data_type(field.data_type())
+                    re_arrow_util::format_field_datatype(field)
                 )
             })
             .collect::<Vec<String>>();
@@ -97,14 +103,17 @@ impl PyRerunHtmlTable {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRerunHtmlTable {
     #[new]
     #[pyo3(signature = (max_width=None, max_height=None))]
     pub fn new(max_width: Option<usize>, max_height: Option<usize>) -> Self {
         Self {
-            max_height,
             max_width,
+            max_height,
+            max_memory_bytes: 10 * 1024 * 1024,
+            min_rows_display: 20,
+            repr_rows: 20,
         }
     }
 
@@ -117,7 +126,10 @@ impl PyRerunHtmlTable {
         has_more: bool,
         table_uuid: &str,
     ) -> PyResult<String> {
-        let batch_opts = RecordBatchFormatOpts::default();
+        let batch_opts = RecordBatchFormatOpts {
+            include_metadata: false,
+            ..Default::default()
+        };
 
         let tables = batches
             .into_iter()

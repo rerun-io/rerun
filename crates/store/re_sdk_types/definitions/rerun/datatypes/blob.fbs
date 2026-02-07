@@ -1,0 +1,17 @@
+namespace rerun.datatypes;
+
+// ---
+
+/// A binary blob of data.
+/// \rs
+/// \rs Ref-counted internally and therefore cheap to clone.
+table Blob (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "bytes | npt.NDArray[np.uint8]",
+  "attr.python.array_aliases": "bytes | npt.NDArray[np.uint8]",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  data: [ubyte] (order: 100);
+}

@@ -18,7 +18,11 @@ from git import Repo
 
 
 def changed_files() -> list[str]:
-    repo = Repo(os.getcwd())
+    try:
+        repo = Repo(os.getcwd())
+    except Exception as e:
+        logging.error(f"Failed to open git repo at {os.getcwd()}: {e}")
+        repo = Repo(os.path.dirname(os.getcwd()))
 
     current_branch = repo.active_branch
     common_ancestor = repo.merge_base(current_branch, "main")[0]
@@ -73,18 +77,17 @@ class LintJob:
             files = self.no_filter_args
             if self.no_filter_cmd is not None:
                 cmd = self.no_filter_cmd.split()
-        else:
-            # Apply regex filtering if filter_files is specified
-            if self.filter_files is not None:
-                pattern = re.compile(self.filter_files)
-                files = [f for f in files if not pattern.match(f)]
+        # Apply regex filtering if filter_files is specified
+        elif self.filter_files is not None:
+            pattern = re.compile(self.filter_files)
+            files = [f for f in files if not pattern.match(f)]
 
-        cmd_arr = ["pixi", "run"] + cmd
+        cmd_arr = ["pixi", "run", *cmd]
 
-        cmd_preview = subprocess.list2cmdline(cmd_arr + ["<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
+        cmd_preview = subprocess.list2cmdline([*cmd_arr, "<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
 
         full_cmd = cmd_arr + files
-        proc = subprocess.run(full_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        proc = subprocess.run(full_cmd, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if proc.returncode == 0:
             logging.info(f"PASS: {cmd} in {time.time() - start:.2f}s")
             logging.debug(f"----------\n{cmd_preview}\n{proc.stdout}\n----------")
@@ -169,7 +172,7 @@ def main() -> None:
             "lint-rs-files",
             extensions=[".rs"],
             no_filter_cmd="lint-rs-all",
-            filter_files=r"^crates/store/re_types(_core)?/",
+            filter_files=r"^crates/store/re_sdk_types(_core)?/",
         ),
         LintJob("py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
         # Even though mypy will accept a list of files, the results it generates are inconsistent
@@ -177,6 +180,8 @@ def main() -> None:
         LintJob("py-lint", extensions=[".py"], accepts_files=False),
         LintJob("toml-fmt-check", extensions=[".toml"]),
         LintJob("lint-typos --force-exclude"),
+        LintJob("check-large-files"),
+        LintJob("nb-strip-check", accepts_files=False),
     ]
 
     for command in skip:

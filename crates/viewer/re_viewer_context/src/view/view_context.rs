@@ -1,11 +1,12 @@
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
-
-use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
 use super::VisualizerCollection;
+use crate::blueprint_helpers::BlueprintContext as _;
+use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
 
 /// The context associated with a view.
 ///
@@ -18,6 +19,9 @@ pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_id: ViewId,
     pub view_class_identifier: ViewClassIdentifier,
+    // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
+    // Until then, we make this available here so that fallback providers have access to it.
+    pub space_origin: &'a EntityPath,
     pub view_state: &'a dyn crate::ViewState,
     pub query_result: &'a DataQueryResult,
 }
@@ -28,10 +32,27 @@ impl<'a> ViewContext<'a> {
         &'a self,
         data_result: &'a DataResult,
         query: &'a LatestAtQuery,
+        instruction_id: VisualizerInstructionId,
     ) -> QueryContext<'a> {
         QueryContext {
             view_ctx: self,
             target_entity_path: &data_result.entity_path,
+            instruction_id: instruction_id.into(),
+            archetype_name: None,
+            query,
+        }
+    }
+
+    #[inline]
+    pub fn query_context_without_visualizer(
+        &'a self,
+        data_result: &'a DataResult,
+        query: &'a LatestAtQuery,
+    ) -> QueryContext<'a> {
+        QueryContext {
+            view_ctx: self,
+            target_entity_path: &data_result.entity_path,
+            instruction_id: None,
             archetype_name: None,
             query,
         }
@@ -173,5 +194,19 @@ impl<'a> ViewContext<'a> {
         self.viewer_ctx
             .view_class_registry()
             .new_visualizer_collection(self.view_class_identifier)
+    }
+
+    /// Returns the view class for the currently active view.
+    pub fn view_class(&self) -> &dyn crate::ViewClass {
+        self.viewer_ctx
+            .view_class_registry()
+            .get_class_or_log_error(self.view_class_identifier)
+    }
+
+    /// Returns the view class for the currently active view.
+    pub fn view_class_entry(&self) -> &crate::view::view_class_registry::ViewClassRegistryEntry {
+        self.viewer_ctx
+            .view_class_registry()
+            .get_class_entry_or_log_error(self.view_class_identifier)
     }
 }

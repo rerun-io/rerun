@@ -8,9 +8,8 @@ import itertools
 import logging
 import math
 import os
-from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import cv2
 import mediapipe as mp
@@ -20,6 +19,9 @@ import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 import tqdm
 from mediapipe.tasks.python import vision
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
 
 # If set, log everything as static.
 #
@@ -265,13 +267,13 @@ class FaceLandmarkerLogger:
             except StopIteration:
                 return True
 
-        if is_empty(zip(detection_result.face_landmarks, detection_result.face_blendshapes)):
+        if is_empty(zip(detection_result.face_landmarks, detection_result.face_blendshapes, strict=False)):
             rr.log("video/landmarker/faces", rr.Clear(recursive=True), static=ALL_STATIC)
             rr.log("reconstruction/faces", rr.Clear(recursive=True), static=ALL_STATIC)
             rr.log("blendshapes", rr.Clear(recursive=True), static=ALL_STATIC)
 
         for i, (landmark, blendshapes) in enumerate(
-            zip(detection_result.face_landmarks, detection_result.face_blendshapes),
+            zip(detection_result.face_landmarks, detection_result.face_blendshapes, strict=False),
         ):
             if len(landmark) == 0 or len(blendshapes) == 0:
                 rr.log(

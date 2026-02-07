@@ -7,10 +7,32 @@ codegen = "run --package re_types_builder --"
 # Temporary solution while we wait for our own xtasks!
 run-wasm = "run --release --package run_wasm --"
 
+
+[build]
+# Incremental compilation blows up the size of the target folder, and is also buggy.
+incremental = false
+
+
 [env]
 # Some of our build.rs files only run if this is set,
 # so that we don't run them on cargo publish or on users machines.
 IS_IN_RERUN_WORKSPACE = "yes"
+
+# Use a stable pyo3 config file to prevent cargo cache invalidation when building
+# via different tools (maturin develop vs uv sync). The config file pins the Python
+# executable to .venv/bin/python, ensuring consistent builds regardless of whether
+# uv uses an isolated build environment.
+# The `relative = true` makes cargo expand this to an absolute path.
+#
+# NOTE: This file must be generated before any cargo build involving pyo3.
+# Run `pixi run ensure-pyo3-build-cfg `
+#
+# If you need to build outside of pixi, you may run `python scripts/generate_pyo3_config.py`
+# manually. But, mixing this with any pixi invocations will result in spurious rebuilds.
+PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
+
+[target.osx-arm64.activation.env]
+AR = "llvm-ar" # Various Wasm targets fail on mac without llvm-ar
 
 # `web_sys_unstable_apis` is required to enable the web_sys clipboard API which egui_web uses.
 # https://wasm-bindgen.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
@@ -21,10 +43,7 @@ IS_IN_RERUN_WORKSPACE = "yes"
 [target.wasm32-unknown-unknown]
 rustflags = ['--cfg=web_sys_unstable_apis', '--cfg=getrandom_backend="wasm_js"']
 
-# Android cross-compilation targets.
-# The linker paths assume the Android NDK toolchain is on PATH (e.g. via cargo-ndk).
-[target.aarch64-linux-android]
-linker = "aarch64-linux-android30-clang"
-
-[target.x86_64-linux-android]
-linker = "x86_64-linux-android30-clang"
+# Use rust-lld on Windows due problems with large debug symbols.
+# See https://github.com/rust-lang/rust/issues/141626
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"

@@ -4,11 +4,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    pass
+    from .. import datatypes
 
 NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
@@ -23,6 +22,7 @@ class GeoPointsExt:
         lat_lon: datatypes.DVec2DArrayLike,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
+        class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the GeoPoints archetype.
@@ -38,11 +38,15 @@ class GeoPointsExt:
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.
+        class_ids:
+            Optional class Ids for the points.
+
+            The [`components.ClassId`][rerun.components.ClassId] provides colors if not specified explicitly.
 
         """
 
         # You can define your own __init__ function as a member of GeoPointsExt in geo_points_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(positions=lat_lon, radii=radii, colors=colors)
+            self.__attrs_init__(positions=lat_lon, radii=radii, colors=colors, class_ids=class_ids)
             return
         self.__attrs_clear__()

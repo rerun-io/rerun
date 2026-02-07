@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
+use egui::text::{LayoutJob, TextWrapping};
+use egui::{NumExt as _, TextWrapMode};
+
 use crate::UiExt as _;
+use crate::syntax_highlighting::SyntaxHighlightedBuilder;
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,19 +77,23 @@ impl UiLayout {
 
         // Respect set wrap_mode if already set
         if ui.style().wrap_mode.is_none() {
-            match self {
+            let wrap_mode = match self {
                 Self::List => {
                     if ui.is_sizing_pass() {
-                        // grow parent if needed - that's the point of a sizing pass
-                        label = label.extend();
+                        if ui.is_tooltip() {
+                            TextWrapMode::Truncate // Dangerous to let this grow without bounds. TODO(emilk): let it grow up to `tooltip_width`
+                        } else {
+                            // grow parent if needed - that's the point of a sizing pass
+                            TextWrapMode::Extend
+                        }
                     } else {
-                        label = label.truncate();
+                        TextWrapMode::Truncate
                     }
                 }
-                Self::Tooltip | Self::SelectionPanel => {
-                    label = label.wrap();
-                }
-            }
+                Self::Tooltip | Self::SelectionPanel => TextWrapMode::Wrap,
+            };
+
+            label = label.wrap_mode(wrap_mode);
         }
 
         ui.add(label)
@@ -94,29 +102,59 @@ impl UiLayout {
     /// Show data while respecting the given UI layout.
     ///
     /// Import: for data only, labels should use [`UiLayout::label`] instead.
+    ///
+    /// Make sure to use the right syntax highlighting. Check [`SyntaxHighlightedBuilder`] docs
+    /// for details.
     // TODO(#6315): must be merged with `Self::label` and have an improved API
-    pub fn data_label(self, ui: &mut egui::Ui, string: impl AsRef<str>) -> egui::Response {
-        self.data_label_impl(ui, string.as_ref())
+    pub fn data_label(
+        self,
+        ui: &mut egui::Ui,
+        data: impl Into<SyntaxHighlightedBuilder>,
+    ) -> egui::Response {
+        self.data_label_impl(ui, data.into().into_job(ui.style()))
     }
 
-    fn decorate_url(ui: &mut egui::Ui, text: &str, galley: Arc<egui::Galley>) -> egui::Response {
+    fn decorate_url(ui: &mut egui::Ui, mut galley: Arc<egui::Galley>) -> egui::Response {
+        ui.sanity_check();
+
+        if ui.layer_id().order == egui::Order::Tooltip
+            && ui.spacing().tooltip_width < galley.size().x
+        {
+            // This will make the tooltip too wide.
+            // TODO(#11211): do proper fix
+
+            debug_assert!(
+                galley.size().x < ui.spacing().tooltip_width + 1000.0,
+                "DEBUG ASSERT: adding huge galley with width: {} to a tooltip.",
+                galley.size().x
+            );
+
+            // Ugly hack that may or may not work correctly.
+            let mut layout_job = Arc::unwrap_or_clone(galley.job.clone());
+            layout_job.wrap.max_width = ui.spacing().tooltip_width;
+            galley = ui.fonts_mut(|f| f.layout_job(layout_job));
+        }
+
+        let text = galley.text();
         // By default e.g., "droid:full" would be considered a valid URL. We decided we only care
         // about sane URL formats that include "://". This means e.g., "mailto:hello@world" won't
         // be considered a URL, but that is preferable to showing links for anything with a colon.
-        if text.contains("://") && url::Url::parse(text).is_ok() {
-            // This is a general link and should not open a new tab unless desired by the user.
-            ui.re_hyperlink(text, text, false)
-        } else {
-            ui.label(galley)
+        if text.contains("://") {
+            // Syntax highlighting may add quotes around strings.
+            let stripped = text.trim_matches(SyntaxHighlightedBuilder::QUOTE_CHAR);
+            if url::Url::parse(stripped).is_ok() {
+                // This is a general link and should not open a new tab unless desired by the user.
+                return ui.re_hyperlink(galley.clone(), stripped, false);
+            }
         }
+        let response = ui.label(galley);
+        ui.sanity_check();
+        response
     }
 
-    fn data_label_impl(self, ui: &mut egui::Ui, string: &str) -> egui::Response {
-        let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-        let color = ui.visuals().text_color();
+    fn data_label_impl(self, ui: &mut egui::Ui, mut layout_job: LayoutJob) -> egui::Response {
         let wrap_width = ui.available_width();
-        let mut layout_job =
-            egui::text::LayoutJob::simple(string.to_owned(), font_id, color, wrap_width);
+        layout_job.wrap = TextWrapping::wrap_at_width(wrap_width);
 
         match self {
             Self::List => {
@@ -129,8 +167,20 @@ impl UiLayout {
                 layout_job.break_on_newline = false;
 
                 if ui.is_sizing_pass() {
-                    // grow parent if needed - that's the point of a sizing pass
-                    layout_job.wrap.max_width = f32::INFINITY;
+                    if ui.is_tooltip() {
+                        // We should only allow this to grow up to the width of the tooltip:
+                        let max_tooltip_width = ui.style().spacing.tooltip_width;
+                        let growth_margin = max_tooltip_width - ui.max_rect().width();
+
+                        layout_job.wrap.max_width += growth_margin;
+
+                        // There are limits to how small we shrink this though,
+                        // even at the cost of making the tooltip too wide.
+                        layout_job.wrap.max_width = layout_job.wrap.max_width.at_least(10.0);
+                    } else {
+                        // grow parent if needed - that's the point of a sizing pass
+                        layout_job.wrap.max_width = f32::INFINITY;
+                    }
                 } else {
                     // Truncate
                     layout_job.wrap.break_anywhere = true;
@@ -142,8 +192,8 @@ impl UiLayout {
             Self::SelectionPanel => {}
         }
 
-        let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
+        let galley = ui.fonts_mut(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
-        Self::decorate_url(ui, string, galley)
+        Self::decorate_url(ui, galley)
     }
 }

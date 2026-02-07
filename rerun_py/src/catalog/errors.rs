@@ -6,6 +6,9 @@
 //!   `Error` enum, and implement a mapping to a user-facing Python error in the `to_py_err`
 //!   function. Then, use `?`.
 //!
+//! - For errors at the API boundaries between client and server, prefer mapping to
+//!   [`re_redap_client::ApiError`] rather than wrapping the error in a new enum variant.
+//!
 //! - Don't hesitate to introduce new error classes if this could help the user catch specific
 //!   errors. Use the [`pyo3::create_exception`] macro for that and update [`super::register`] to
 //!   expose it.
@@ -16,10 +19,24 @@
 use std::error::Error as _;
 
 use pyo3::PyErr;
-use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
+use pyo3::exceptions::{
+    PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
+};
+use re_redap_client::ApiErrorKind;
 
-use re_grpc_client::ConnectionError;
-use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
+pyo3::create_exception!(
+    rerun_bindings.rerun_bindings,
+    NotFoundError,
+    PyException,
+    "Raised when the requested resource is not found."
+);
+
+pyo3::create_exception!(
+    rerun_bindings.rerun_bindings,
+    AlreadyExistsError,
+    PyException,
+    "Raised when trying to create a resource that already exists."
+);
 
 // ---
 
@@ -29,22 +46,22 @@ use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
     #[error("{0}")]
-    ConnectionError(#[from] ConnectionError),
+    TonicStatusError(Box<tonic::Status>),
 
     #[error("{0}")]
-    TonicStatusError(#[from] tonic::Status),
+    TonicTransportError(Box<tonic::transport::Error>),
 
     #[error("{0}")]
     UriError(#[from] re_uri::Error),
 
     #[error("{0}")]
-    ChunkError(#[from] re_chunk::ChunkError),
+    ChunkError(Box<re_chunk::ChunkError>),
 
     #[error("{0}")]
-    ChunkStoreError(#[from] re_chunk_store::ChunkStoreError),
+    ChunkStoreError(Box<re_chunk_store::ChunkStoreError>),
 
     #[error("{0}")]
-    StreamError(#[from] re_grpc_client::StreamError),
+    ApiError(Box<re_redap_client::ApiError>),
 
     #[error("{0}")]
     ArrowError(#[from] arrow::error::ArrowError),
@@ -53,10 +70,10 @@ enum ExternalError {
     UrlParseError(#[from] url::ParseError),
 
     #[error("{0}")]
-    DatafusionError(#[from] datafusion::error::DataFusionError),
+    DatafusionError(Box<datafusion::error::DataFusionError>),
 
     #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
+    CodecError(#[from] re_log_encoding::rrd::CodecError),
 
     #[error(transparent)]
     SorbetError(#[from] re_sorbet::SorbetError),
@@ -68,30 +85,38 @@ enum ExternalError {
     ColumnSelectorResolveError(#[from] re_sorbet::ColumnSelectorResolveError),
 
     #[error(transparent)]
-    TypeConversionError(#[from] re_protos::TypeConversionError),
+    TypeConversionError(Box<re_protos::TypeConversionError>),
 
     #[error(transparent)]
     TokenError(#[from] re_auth::TokenError),
 }
 
-impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
-    for ExternalError
-{
-    fn from(value: GetDatasetSchemaResponseError) -> Self {
-        match value {
-            GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
-            GetDatasetSchemaResponseError::TypeConversionError(err) => {
-                re_grpc_client::StreamError::from(err).into()
+const _: () = assert!(
+    std::mem::size_of::<ExternalError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
+macro_rules! impl_from_boxed {
+    ($external_type:ty, $variant:ident) => {
+        impl From<$external_type> for ExternalError {
+            fn from(value: $external_type) -> Self {
+                Self::$variant(Box::new(value))
             }
         }
-    }
+    };
 }
+
+impl_from_boxed!(re_chunk::ChunkError, ChunkError);
+impl_from_boxed!(re_chunk_store::ChunkStoreError, ChunkStoreError);
+impl_from_boxed!(re_redap_client::ApiError, ApiError);
+impl_from_boxed!(tonic::transport::Error, TonicTransportError);
+impl_from_boxed!(tonic::Status, TonicStatusError);
+impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
+impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
 
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
-            ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
-
             ExternalError::TonicStatusError(status) => {
                 if status.code() == tonic::Code::DeadlineExceeded {
                     PyTimeoutError::new_err("Deadline expired before operation could complete")
@@ -111,6 +136,8 @@ impl From<ExternalError> for PyErr {
                 }
             }
 
+            ExternalError::TonicTransportError(err) => PyConnectionError::new_err(err.to_string()),
+
             ExternalError::UriError(err) => PyValueError::new_err(format!("Invalid URI: {err}")),
 
             ExternalError::ChunkError(err) => PyValueError::new_err(format!("Chunk error: {err}")),
@@ -119,9 +146,23 @@ impl From<ExternalError> for PyErr {
                 PyValueError::new_err(format!("Chunk store error: {err}"))
             }
 
-            ExternalError::StreamError(err) => {
-                PyValueError::new_err(format!("Data streaming error: {err}"))
-            }
+            ExternalError::ApiError(err) => match err.kind {
+                ApiErrorKind::Connection | ApiErrorKind::InvalidServer => {
+                    PyConnectionError::new_err(err.to_string())
+                }
+                ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
+                    PyPermissionError::new_err(err.to_string())
+                }
+                ApiErrorKind::Serialization | ApiErrorKind::InvalidArguments => {
+                    PyValueError::new_err(err.to_string())
+                }
+                ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
+                ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
+                ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
+                ApiErrorKind::Unimplemented | ApiErrorKind::Internal => {
+                    PyRuntimeError::new_err(err.to_string())
+                }
+            },
 
             ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
 
@@ -150,7 +191,7 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::TokenError(err) => {
-                PyValueError::new_err(format!("Invalid token: {err}"))
+                PyPermissionError::new_err(format!("Invalid token: {err}"))
             }
         }
     }

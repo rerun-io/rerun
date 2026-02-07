@@ -14,7 +14,7 @@ permissions:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 jobs:
   # Get latest release version from crates.io
@@ -30,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Get version
         id: versioning
@@ -44,7 +44,8 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     strategy:
       matrix:
-        toolchain: ["nightly-2025-02-05"]
+        # We have to use a nightly version because rustdoc json format is unstable.
+        toolchain: ["nightly-2025-09-16"]
     needs: [get-version]
     steps:
       - uses: actions/checkout@v4
@@ -59,10 +60,9 @@ jobs:
           # pinned to a specific version that happens to work with current `rustdoc-types`
           toolchains: ${{ matrix.toolchain }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
-          environments: py-docs
+          pixi-version: v0.55.0
 
       - name: Install rerun-sdk
         run: |
@@ -74,7 +74,8 @@ jobs:
           #   We already test with `-D warnings` elsewhere, and the output is really noisy with the nightly warnings.
           # - The web viewer server - we don't want to waste time building the web viewer,
           #   because it is not actually going to run
-          RUSTFLAGS: "-Awarnings --cfg disable_web_viewer_server"
+          RUSTFLAGS: "-Awarnings"
+          RERUN_DISABLE_WEB_VIEWER_SERVER: "1"
         run: |
           pixi run search-index build \
             landing \

@@ -25,34 +25,36 @@ re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
-re_log_types.workspace = true
+re_log_types = { workspace = true, features = ["serde"] }
 re_sorbet.workspace = true
+re_tracing.workspace = true
+re_types_core = { workspace = true, features = ["serde"] }
 re_tuid.workspace = true
 
 # External
 arrow.workspace = true
+http.workspace = true
 jiff.workspace = true
+lz4_flex.workspace = true
+pin-project-lite.workspace = true
 prost-types.workspace = true
 prost.workspace = true
 pyo3 = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
+tonic-prost.workspace = true
+tower.workspace = true
+tracing.workspace = true
 url = { workspace = true, features = ["serde"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tonic = { workspace = true, default-features = false, features = [
-  "codegen",
-  "prost",
-  "transport",
-] }
+tonic = { workspace = true, default-features = false, features = ["codegen", "transport"] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tonic = { workspace = true, default-features = false, features = [
-  "codegen",
-  "prost",
-] }
+tonic = { workspace = true, default-features = false, features = ["codegen"] }
+
 
 [lints]
 workspace = true

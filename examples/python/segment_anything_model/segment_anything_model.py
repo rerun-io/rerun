@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Segment Anything](https://github.com/facebookresearch/segment-anything).
 
 Can be used to test mask-generation on one or more images. Images can be local file-paths
 or remote urls.
@@ -12,7 +12,7 @@ import argparse
 import logging
 import os
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 from urllib.parse import urlparse
 
 import cv2
@@ -23,11 +23,13 @@ import rerun.blueprint as rrb
 import torch
 import torchvision
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-from segment_anything.modeling import Sam
 from tqdm import tqdm
 
+if TYPE_CHECKING:
+    from segment_anything.modeling import Sam
+
 DESCRIPTION = """
-Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Segment Anything](https://github.com/facebookresearch/segment-anything).
 
 The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/segment_anything_model).
 """.strip()

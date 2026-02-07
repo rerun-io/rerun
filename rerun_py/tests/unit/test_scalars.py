@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from rerun.archetypes import Scalars
-from rerun.datatypes import Float64ArrayLike
+
+if TYPE_CHECKING:
+    from rerun.datatypes import Float64ArrayLike
 
 CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
     (

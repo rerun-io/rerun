@@ -55,7 +55,7 @@ class SeriesPointsExt:
         # You can define your own __init__ function as a member of SeriesPointsExt in series_points_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if all(arg is None for arg in [colors, markers, names, visible_series, marker_sizes]):
-                # TODO(#10512): Back when we had indcators, we did'nt need to specify any additional components
+                # Back when we had indicators, we did'nt need to specify any additional components
                 # when logging a `SeriesPoints`. Now that we don't have indicators anymore, we need to have at
                 # least one component set in `SeriesPoints`, otherwise nothing would get logged and visualizers
                 # couldn't pick up that archetype. To prevent this from happening, we log a circle by default.

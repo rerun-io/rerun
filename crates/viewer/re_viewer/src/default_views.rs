@@ -1,28 +1,45 @@
-use re_viewer_context::{ViewClassRegistry, ViewClassRegistryError};
+use re_viewer_context::{
+    AppOptions, FallbackProviderRegistry, ViewClassRegistry, ViewClassRegistryError,
+};
 
-pub fn create_view_class_registry() -> Result<ViewClassRegistry, ViewClassRegistryError> {
+pub fn create_view_class_registry(
+    app_options: &AppOptions,
+    fallback_registry: &mut FallbackProviderRegistry,
+) -> Result<ViewClassRegistry, ViewClassRegistryError> {
     re_tracing::profile_function!();
     let mut view_class_registry = ViewClassRegistry::default();
-    populate_view_class_registry_with_builtin(&mut view_class_registry)?;
+    populate_view_class_registry_with_builtin(
+        app_options,
+        &mut view_class_registry,
+        fallback_registry,
+    )?;
     Ok(view_class_registry)
 }
 
 /// Add built-in views to the registry.
 fn populate_view_class_registry_with_builtin(
+    app_options: &AppOptions,
     view_class_registry: &mut ViewClassRegistry,
+    fallback_registry: &mut FallbackProviderRegistry,
 ) -> Result<(), ViewClassRegistryError> {
     re_tracing::profile_function!();
-    view_class_registry.add_class::<re_view_bar_chart::BarChartView>()?;
-    view_class_registry.add_class::<re_view_dataframe::DataframeView>()?;
-    view_class_registry.add_class::<re_view_graph::GraphView>()?;
+    view_class_registry
+        .add_class::<re_view_bar_chart::BarChartView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_dataframe::DataframeView>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_graph::GraphView>(app_options, fallback_registry)?;
     #[cfg(feature = "map_view")]
-    view_class_registry.add_class::<re_view_map::MapView>()?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView2D>()?;
-    view_class_registry.add_class::<re_view_spatial::SpatialView3D>()?;
-    view_class_registry.add_class::<re_view_tensor::TensorView>()?;
-    view_class_registry.add_class::<re_view_text_document::TextDocumentView>()?;
-    view_class_registry.add_class::<re_view_text_log::TextView>()?;
-    view_class_registry.add_class::<re_view_time_series::TimeSeriesView>()?;
+    view_class_registry.add_class::<re_view_map::MapView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_spatial::SpatialView2D>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_spatial::SpatialView3D>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_tensor::TensorView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_text_document::TextDocumentView>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_text_log::TextView>(app_options, fallback_registry)?;
+    view_class_registry
+        .add_class::<re_view_time_series::TimeSeriesView>(app_options, fallback_registry)?;
 
     Ok(())
 }
@@ -30,7 +47,7 @@ fn populate_view_class_registry_with_builtin(
 #[cfg(test)]
 mod tests {
     use egui::Vec2;
-    use egui_kittest::SnapshotOptions;
+    use egui_kittest::SnapshotResults;
     use re_chunk::EntityPath;
     use re_test_context::TestContext;
     use re_ui::UiExt as _;
@@ -49,7 +66,12 @@ mod tests {
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
-        let view_class_registry = create_view_class_registry().unwrap();
+        let view_class_registry = create_view_class_registry(
+            &test_context.app_options,
+            &mut test_context.component_fallback_registry,
+        )
+        .unwrap();
+        let mut snapshot_results = SnapshotResults::new();
         for egui_theme in [egui::Theme::Light, egui::Theme::Dark] {
             for entry in view_class_registry.iter_registry() {
                 let class = &entry.class;
@@ -59,8 +81,7 @@ mod tests {
                 let mut did_run = false;
 
                 let mut harness = test_context
-                    .setup_kittest_for_rendering()
-                    .with_size([400.0, 640.0])
+                    .setup_kittest_for_rendering_ui([400.0, 700.0])
                     .build_ui(|ui| {
                         ui.ctx().set_theme(egui_theme);
 
@@ -83,10 +104,12 @@ mod tests {
 
                 harness.run();
 
-                let snapshot_options = SnapshotOptions::new().output_path(format!(
-                    "tests/snapshots/all_view_selecion_uis/{egui_theme:?}"
-                ));
+                let snapshot_options = re_ui::testing::default_snapshot_options_for_ui()
+                    .output_path(format!(
+                        "tests/snapshots/all_view_selection_uis/{egui_theme:?}"
+                    ));
                 harness.snapshot_options(entry.identifier.to_string(), &snapshot_options);
+                snapshot_results.extend_harness(&mut harness);
 
                 drop(harness);
 

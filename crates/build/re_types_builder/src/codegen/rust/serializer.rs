@@ -1,19 +1,14 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::{
-    Object, Objects, TypeRegistry,
-    data_type::{AtomicDataType, DataType, UnionMode},
-    objects::EnumIntegerType,
+use super::arrow::{
+    ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
+    quoted_arrow_primitive_type,
 };
-
-use super::{
-    arrow::{
-        ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
-        quoted_arrow_primitive_type,
-    },
-    util::{is_tuple_struct_from_obj, quote_comment},
-};
+use super::util::{is_tuple_struct_from_obj, quote_comment};
+use crate::data_type::{AtomicDataType, DataType, UnionMode};
+use crate::objects::EnumIntegerType;
+use crate::{Object, Objects, TypeRegistry};
 
 // ---
 
@@ -474,7 +469,6 @@ enum InnerRepr {
 ///
 /// TODO(#2993): However, we still emit a validity/null bitmaps for lists inside lists
 /// since Python and Rust do so.
-#[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
     datatype: &DataType,
@@ -583,7 +577,14 @@ fn quote_arrow_field_serializer(
             }
         }
 
-        DataType::Utf8 => {
+        DataType::Binary | DataType::Utf8 => {
+            let is_binary = datatype.to_logical_type() == &DataType::Binary;
+            let as_bytes = if is_binary {
+                quote!()
+            } else {
+                quote!(.as_bytes())
+            };
+
             // NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default`.
             let (quoted_member_accessor, quoted_transparent_length) = if inner_is_arrow_transparent
@@ -623,52 +624,59 @@ fn quote_arrow_field_serializer(
 
             let inner_data_and_offsets = if elements_are_nullable {
                 quote! {
-                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
                     );
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                     // about it while building the backing buffer since it's all offsets driven.
                     for data in #data_src.iter().flatten() {
-                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             } else {
                 quote! {
-                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                         #data_src.iter() #quoted_transparent_length
                     );
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     let capacity = offsets.last().copied().unwrap() as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     for data in &#data_src {
-                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             };
 
-            quote! {{
-                #inner_data_and_offsets
+            if is_binary {
+                quote! {{
+                    #inner_data_and_offsets
+                    as_array_ref(LargeBinaryArray::new(offsets, inner_data, #validity_src))
+                }}
+            } else {
+                quote! {{
+                    #inner_data_and_offsets
 
-                // Safety: we're building this from actual native strings, so no need to do the
-                // whole utf8 validation _again_.
-                // It would be nice to use quote_comment here and put this safety notice in the generated code,
-                // but that seems to push us over some complexity limit causing rustfmt to fail.
-                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
-            }}
+                    // Safety: we're building this from actual native strings, so no need to do the
+                    // whole utf8 validation _again_.
+                    // It would be nice to use quote_comment here and put this safety notice in the generated code,
+                    // but that seems to push us over some complexity limit causing rustfmt to fail.
+                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
+                }}
+            }
         }
 
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
@@ -752,15 +760,53 @@ fn quote_arrow_field_serializer(
 
                 match inner_repr {
                     InnerRepr::ScalarBuffer => {
-                        // TODO(emilk): this can probably be optimized
-                        quote! {
-                            #data_src
+                        // Special optimization for Blob (Vec<u8>): reuse ScalarBuffer for single-blob case.
+                        // For other ScalarBuffer types, use standard concat approach.
+                        let is_blob =
+                            matches!(inner_datatype, DataType::Atomic(AtomicDataType::UInt8));
+
+                        if is_blob {
+                            // Blob optimization: avoid allocation for single-buffer case
+                            quote! {
+                                {
+                                    let mut iter = #data_src
+                                        .iter()
+                                        #flatten_if_needed;
+                                    let first = iter.next();
+                                    let second = iter.next();
+
+                                    match (first, second) {
+                                        (Some(single), None) => {
+                                            // Single buffer: cheap Arc clone
+                                            single.clone()
+                                        }
+                                        (Some(first_buf), Some(second_buf)) => {
+                                            // Multiple buffers: single Vec allocation for slices
+                                            std::iter::once(first_buf.as_ref() as &[_])
+                                                .chain(std::iter::once(second_buf.as_ref() as &[_]))
+                                                .chain(iter.map(|b| b.as_ref() as &[_]))
+                                                .collect::<Vec<_>>()
+                                                .concat()
+                                                .into()
+                                        }
+                                        _ => {
+                                            // Empty case
+                                            Vec::new().into()
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Standard path for other ScalarBuffer types
+                            quote! {
+                                #data_src
                                 .iter()
                                 #flatten_if_needed
-                                .map(|b| b as &[_])
+                                .map(|b| b.as_ref() as &[_])
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into()
+                            }
                         }
                     }
                     InnerRepr::NativeIterable => {
@@ -851,8 +897,8 @@ fn quote_arrow_field_serializer(
             //
             // This workaround does not apply if we don't have any validity on the outer type.
             // (as it is always the case with unions where the nullability is encoded as a separate variant)
-            let quoted_inner_validity = if let (true, DataType::FixedSizeList(_, count)) =
-                (elements_are_nullable, datatype.to_logical_type())
+            let quoted_inner_validity = if elements_are_nullable
+                && let DataType::FixedSizeList(_, count) = datatype.to_logical_type()
             {
                 quote! {
                     let #inner_validity_ident: Option<arrow::buffer::NullBuffer> =
@@ -919,6 +965,6 @@ fn quote_arrow_field_serializer(
             }}
         }
 
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { .. } => unimplemented!("{datatype:#?}"),
     }
 }

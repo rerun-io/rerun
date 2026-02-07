@@ -1,19 +1,14 @@
-use crate::{
-    ViewBuilder,
-    allocator::create_and_fill_uniform_buffer,
-    draw_phases::DrawPhase,
-    include_shader_module,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
+use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
-use crate::Rgba;
-
-use smallvec::smallvec;
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::draw_phases::DrawPhase;
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{DrawableCollector, Rgba, ViewBuilder, include_shader_module};
 
 /// Configuration for the world grid renderer.
 pub struct WorldGridConfiguration {
@@ -66,6 +61,23 @@ pub struct WorldGridDrawData {
 
 impl DrawData for WorldGridDrawData {
     type Renderer = WorldGridRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Transparent,
+            DrawDataDrawable {
+                // The grid is everywhere, making it a bit hard to sort against other transparent objects.
+                // We could use distance from the plane, but we rather use a stable sorting here to avoid flickering,
+                // therefore we want to draw it before any other "real" transparentobjects.
+                distance_sort_key: -1.0,
+                draw_data_payload: 0,
+            },
+        );
+    }
 }
 
 impl WorldGridDrawData {
@@ -180,18 +192,16 @@ impl Renderer for WorldGridRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &WorldGridDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, &draw_data.bind_group, &[]);
-        pass.draw(0..4, 0..1);
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            pass.set_bind_group(1, &draw_data.bind_group, &[]);
+            pass.draw(0..4, 0..1);
+        }
 
         Ok(())
-    }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Transparent]
     }
 }

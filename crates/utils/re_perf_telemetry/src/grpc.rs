@@ -1,27 +1,70 @@
+// Some well-known headers that we want to re-surface all the way up to the root of the active trace.
+//
+// See `re_protos::headers`.
+
+const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
+const RERUN_HTTP_HEADER_CLIENT_VERSION: &str = "x-rerun-client-version";
+const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
+
 // --- Telemetry middlewares ---
 
 /// Implements [`tower_http::trace::MakeSpan`] where the trace name is the gRPC method name.
+///
+/// See details in `make_span` on how we ensure context propagation.
 ///
 /// We keep track of a bunch of relevant in-house state associated with the span in `SpanMetadata`.
 #[derive(Debug, Clone)]
 pub struct GrpcMakeSpan {
     gauge: opentelemetry::metrics::Gauge<u64>,
+    // unfortunately we can't have different implementation of `MakeSpan` as that creates a ripple effect
+    // through the entire hierarchy of types of the RedapClient and its usage, hence to disable the span
+    // creation, we create noop spans instead if telemetry is disabled at runtime
+    create_noop_spans: bool,
 }
 
 impl GrpcMakeSpan {
-    #[expect(clippy::new_without_default)] // future-proofing
     pub fn new() -> Self {
+        // if telemetry is not explicitly enabled through an env var, we create noop spans
+        let create_noop_spans = !std::env::var("TELEMETRY_ENABLED")
+            .is_ok_and(|v| v == "1" || v.to_lowercase() == "true" || v.to_lowercase() == "yes");
+
         let meter = opentelemetry::global::meter("grpc");
         let gauge = meter
             .u64_gauge("grpc_make_span_state_size")
             .with_description("Size of the SpanMetadata state")
             .build();
-        Self { gauge }
+        Self {
+            gauge,
+            create_noop_spans,
+        }
+    }
+}
+
+impl Default for GrpcMakeSpan {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
     fn make_span(&mut self, request: &http::Request<B>) -> tracing::Span {
+        if self.create_noop_spans {
+            return tracing::Span::none();
+        }
+
+        // Extract `OpenTelemetry` context from headers before creating the span
+        let parent_ctx = opentelemetry::global::get_text_map_propagator(|prop| {
+            prop.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
+        });
+
+        // This replaces the current tracing context with the extracted one, and it ensures that
+        // any spans created within this scope will be children of the extracted context.
+        // Note on the guard: guard must stay alive until after span creation so that tracing::span!()
+        // can inherit the trace context. It is obviously dropped at the end of this function, but that's
+        // ok as the future spans will inherit *this* span, not the old context. This makes sure that
+        // we have propagation e2e (both client and server side), so change carefully.
+        let _guard = parent_ctx.attach();
+
         let endpoint = request.uri().path().to_owned();
         let url = request
             .uri()
@@ -29,13 +72,24 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             .strip_suffix(&endpoint)
             .map(ToOwned::to_owned);
 
+        let client_version = request
+            .headers()
+            .get(RERUN_HTTP_HEADER_CLIENT_VERSION)
+            .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
+
+        let server_version = request
+            .headers()
+            .get(RERUN_HTTP_HEADER_SERVER_VERSION)
+            .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
+
         let email = request
             .headers()
             .get("authorization")
-            .and_then(|auth| auth.to_str().ok().and_then(|s| s.strip_prefix("Bearer ")))
+            .and_then(|auth| auth.to_str().ok()?.strip_prefix("Bearer "))
             .and_then(|token| token.split('.').skip(1).take(1).next())
             .and_then(|data| {
-                use base64::{Engine as _, engine::general_purpose};
+                use base64::Engine as _;
+                use base64::engine::general_purpose;
                 general_purpose::STANDARD_NO_PAD.decode(data).ok()
             })
             .and_then(|data| {
@@ -48,9 +102,9 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
                     .map(|data| data.sub)
             });
 
-        let dataset_id = request
+        let entry_id = request
             .headers()
-            .get("x-rerun-dataset-id")
+            .get(RERUN_HTTP_HEADER_ENTRY_ID)
             .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
 
         // NOTE: Remember: the span we're creating here will propagate no matter what -- there is
@@ -65,18 +119,28 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             otel.name = %endpoint,
             url,
             method = %request.method(),
-            version = ?request.version(),
-            headers = ?safe_headers,
-            email,
-            dataset_id,
+            // Record trace_id and benchmark_id as top level span fields.
+            //
+            // At this stage we may not know yet the actual trace_id (depending on whether
+            // we're generating a new trace or continuing an existing one). However,
+            // we need to pre-declare these fields if we want to record values for them later.
+            //
+            // The fields will be filled in by a separate [`tracing_subscriber::Layer`] (see
+            // [`TraceIdLayer`]).
+            trace_id = tracing::field::Empty,
+            // This will only be filled if we have a benchmark_id in the tracestate.
+            // That's OK, it won't be printed if empty.
+            benchmark_id = tracing::field::Empty,
         );
 
         let size = SpanMetadata::insert_opt(
             span.id(),
             SpanMetadata {
                 endpoint,
+                client_version,
+                server_version,
                 email,
-                dataset_id,
+                entry_id,
                 first_chunk_returned: false,
                 grpc_eos_classifier: None,
             },
@@ -109,11 +173,21 @@ struct SpanMetadata {
     /// Which gRPC endpoint? Extracted from h2 headers.
     endpoint: String,
 
+    /// The identity and semantic version advertised by the gRPC client.
+    ///
+    /// Extracted from h2 headers. See also `re_protos::headers::RERUN_HTTP_HEADER_CLIENT_VERSION`.
+    client_version: Option<String>,
+
+    /// The identity and semantic version advertised by the gRPC server.
+    ///
+    /// Extracted from h2 headers. See also `re_protos::headers::RERUN_HTTP_HEADER_SERVER_VERSION`.
+    server_version: Option<String>,
+
     /// What email, if any? Extracted from h2 auth headers.
     email: Option<String>,
 
-    /// What dataset ID, if any? Extracted from h2 Rerun extension headers.
-    dataset_id: Option<String>,
+    /// What entry ID, if any? Extracted from h2 Rerun extension headers.
+    entry_id: Option<String>,
 
     /// Has the gRPC stream associated with this span streamed back its first chunk of data yet?
     ///
@@ -131,8 +205,10 @@ impl Default for SpanMetadata {
     fn default() -> Self {
         Self {
             endpoint: "undefined".to_owned(),
+            client_version: None,
+            server_version: None,
             email: None,
-            dataset_id: None,
+            entry_id: None,
             first_chunk_returned: false,
             grpc_eos_classifier: None,
         }
@@ -217,8 +293,33 @@ impl GrpcOnRequest {
 }
 
 impl<B> tower_http::trace::OnRequest<B> for GrpcOnRequest {
-    fn on_request(&mut self, _request: &http::Request<B>, _span: &tracing::Span) {
-        tracing::trace!("grpc_on_request");
+    fn on_request(&mut self, request: &http::Request<B>, span: &tracing::Span) {
+        let Some(span_metadata) = SpanMetadata::get_opt(span.id().as_ref()) else {
+            tracing::info!(
+                uri = %request.uri(),
+                "grpc_on_request with unknown span.id"
+            );
+            return;
+        };
+
+        let SpanMetadata {
+            endpoint,
+            client_version,
+            server_version,
+            email,
+            entry_id: dataset_id,
+            first_chunk_returned: _,
+            grpc_eos_classifier: _,
+        } = span_metadata.clone();
+
+        let client_version = client_version.as_deref().unwrap_or("undefined");
+        let server_version = server_version.as_deref().unwrap_or("undefined");
+        let email = email.as_deref().unwrap_or("undefined");
+        let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
+
+        // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
+        // support OTLP, can actually see them.
+        tracing::info!(%endpoint, %client_version, %server_version, %email, %dataset_id, "grpc_on_request");
     }
 }
 
@@ -228,11 +329,16 @@ impl<B> tower_http::trace::OnRequest<B> for GrpcOnRequest {
 #[derive(Clone)]
 pub struct GrpcOnResponse {
     histogram: opentelemetry::metrics::Histogram<f64>,
+    eos_counter: opentelemetry::metrics::Counter<u64>,
+}
+
+#[derive(Default)]
+pub struct GrpcOnResponseOptions {
+    pub fully_qualified_route_names: Option<Vec<String>>,
 }
 
 impl GrpcOnResponse {
-    #[expect(clippy::new_without_default)] // future-proofing
-    pub fn new() -> Self {
+    pub fn new(options: GrpcOnResponseOptions) -> Self {
         let meter = opentelemetry::global::meter("grpc");
         let histogram = meter
             .f64_histogram("grpc_on_response_ms")
@@ -241,7 +347,71 @@ impl GrpcOnResponse {
                 10.0, 25.0, 50.0, 75.0, 100.0, 200.0, 350.0, 500.0, 750.0, 1000.0, 2500.0, 5000.0,
             ])
             .build();
-        Self { histogram }
+        let eos_counter = meter
+            .u64_counter("grpc_on_eos")
+            .with_description("End-of-stream counter for all gRPC endpoints")
+            .build();
+
+        if let Some(fully_qualified_rout_names) = options.fully_qualified_route_names {
+            for endpoint in &fully_qualified_rout_names {
+                eos_counter.add(
+                    0,
+                    &GrpcEosMetadata {
+                        endpoint: endpoint.clone(),
+                        grpc_status: String::new(),
+                        client_version: None,
+                        server_version: None,
+                        email: None,
+                        dataset_id: None,
+                    }
+                    .otel_kvs(),
+                );
+            }
+        }
+        Self {
+            histogram,
+            eos_counter,
+        }
+    }
+}
+
+struct GrpcEosMetadata {
+    endpoint: String,
+    grpc_status: String,
+    client_version: Option<String>,
+    server_version: Option<String>,
+    email: Option<String>,
+    dataset_id: Option<String>,
+}
+
+impl GrpcEosMetadata {
+    fn otel_kvs(self) -> Vec<opentelemetry::KeyValue> {
+        vec![
+            opentelemetry::KeyValue::new("endpoint", self.endpoint),
+            opentelemetry::KeyValue::new("grpc_status", self.grpc_status),
+            opentelemetry::KeyValue::new(
+                "client_version",
+                self.client_version
+                    .as_deref()
+                    .unwrap_or("undefined")
+                    .to_owned(),
+            ),
+            opentelemetry::KeyValue::new(
+                "server_version",
+                self.server_version
+                    .as_deref()
+                    .unwrap_or("undefined")
+                    .to_owned(),
+            ),
+            opentelemetry::KeyValue::new(
+                "email",
+                self.email.as_deref().unwrap_or("undefined").to_owned(),
+            ),
+            opentelemetry::KeyValue::new(
+                "dataset_id",
+                self.dataset_id.as_deref().unwrap_or("undefined").to_owned(),
+            ),
+        ]
     }
 }
 
@@ -258,8 +428,10 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
 
         let SpanMetadata {
             endpoint,
+            client_version,
+            server_version,
             email,
-            dataset_id,
+            entry_id: dataset_id,
             first_chunk_returned: _,
             grpc_eos_classifier: _,
         } = span_metadata.clone();
@@ -268,23 +440,27 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
             let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
             let http_status = response.status().as_str().to_owned();
 
+            let client_version = client_version.as_deref().unwrap_or("undefined");
+            let server_version = server_version.as_deref().unwrap_or("undefined");
             let email = email.as_deref().unwrap_or("undefined");
             let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
 
             // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
             // support OTLP, can actually see them.
             if grpc_status == "Ok" {
-                tracing::info!(%endpoint, %grpc_status, %http_status, %email, %dataset_id, ?latency, "grpc_on_response");
+                tracing::info!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
             } else {
-                tracing::error!(%endpoint, %grpc_status, %http_status, %email, %dataset_id, ?latency, "grpc_on_response");
+                tracing::error!(%endpoint, %grpc_status, %http_status, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_response");
             }
 
             self.histogram.record(
                 latency.as_secs_f64() * 1000.0,
                 &[
-                    opentelemetry::KeyValue::new("endpoint", endpoint),
+                    opentelemetry::KeyValue::new("endpoint", endpoint.clone()),
                     opentelemetry::KeyValue::new("grpc_status", grpc_status),
                     opentelemetry::KeyValue::new("http_status", http_status),
+                    opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
+                    opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                     opentelemetry::KeyValue::new("email", email.to_owned()),
                     opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
                 ],
@@ -295,15 +471,36 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
         let classified =
             tower_http::classify::GrpcErrorsAsFailures::new().classify_response(response);
         match classified {
-            tower_http::classify::ClassifiedResponse::Ready(Err(err)) => match err {
-                tower_http::classify::GrpcFailureClass::Code(code) => {
-                    record(tonic::Code::from_i32(code.into()));
-                }
+            tower_http::classify::ClassifiedResponse::Ready(Err(err)) => {
+                let grpc_code = match err {
+                    tower_http::classify::GrpcFailureClass::Code(code) => {
+                        tonic::Code::from_i32(code.into())
+                    }
+                    tower_http::classify::GrpcFailureClass::Error(err) => {
+                        tonic::Status::from_error(err.into()).code()
+                    }
+                };
+                record(grpc_code);
 
-                tower_http::classify::GrpcFailureClass::Error(err) => {
-                    record(tonic::Status::from_error(err.into()).code());
-                }
-            },
+                // For immediate errors, emit grpc_on_eos counter here since on_eos won't be called
+                let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
+
+                self.eos_counter.add(
+                    1,
+                    &GrpcEosMetadata {
+                        endpoint: endpoint.clone(),
+                        grpc_status,
+                        client_version,
+                        server_version,
+                        email,
+                        dataset_id,
+                    }
+                    .otel_kvs(),
+                );
+
+                // Remove metadata since on_eos won't be called for immediate errors
+                SpanMetadata::remove_opt(span.id().as_ref());
+            }
 
             tower_http::classify::ClassifiedResponse::Ready(Ok(_)) => {
                 record(tonic::Code::Ok);
@@ -355,24 +552,30 @@ impl<B> tower_http::trace::OnBodyChunk<B> for GrpcOnFirstBodyChunk {
 
         let SpanMetadata {
             endpoint,
+            client_version,
+            server_version,
             email,
-            dataset_id,
+            entry_id: dataset_id,
             first_chunk_returned,
             grpc_eos_classifier: _,
         } = span_metadata.clone();
 
         if !first_chunk_returned {
+            let client_version = client_version.as_deref().unwrap_or("undefined");
+            let server_version = server_version.as_deref().unwrap_or("undefined");
             let email = email.as_deref().unwrap_or("undefined");
             let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
 
             // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
             // support OTLP, can actually see them.
-            tracing::debug!(%endpoint, %email, %dataset_id, ?latency, "grpc_on_first_body_chunk");
+            tracing::debug!(%endpoint, %client_version, %server_version, %email, %dataset_id, ?latency, "grpc_on_first_body_chunk");
 
             self.histogram.record(
                 latency.as_secs_f64() * 1000.0,
                 &[
                     opentelemetry::KeyValue::new("endpoint", endpoint),
+                    opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
+                    opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                     opentelemetry::KeyValue::new("email", email.to_owned()),
                     opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
                 ],
@@ -425,8 +628,10 @@ impl tower_http::trace::OnEos for GrpcOnEos {
 
         let SpanMetadata {
             endpoint,
+            client_version,
+            server_version,
             email,
-            dataset_id,
+            entry_id: dataset_id,
             first_chunk_returned: _,
             grpc_eos_classifier,
         } = span_metadata;
@@ -447,6 +652,8 @@ impl tower_http::trace::OnEos for GrpcOnEos {
         } else {
             tracing::warn!(
                 endpoint,
+                client_version,
+                server_version,
                 email,
                 dataset_id,
                 "couldn't determine gRPC EOS status code"
@@ -455,15 +662,17 @@ impl tower_http::trace::OnEos for GrpcOnEos {
         };
         let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
 
+        let client_version = client_version.as_deref().unwrap_or("undefined");
+        let server_version = server_version.as_deref().unwrap_or("undefined");
         let email = email.as_deref().unwrap_or("undefined");
         let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
 
         // NOTE: repeat all these attributes so services such as CloudWatch, which don't really
         // support OTLP, can actually see them.
         if grpc_status == "Ok" {
-            tracing::info!(%endpoint, %grpc_status, %email, %dataset_id, ?duration, "grpc_on_eos");
+            tracing::info!(%endpoint, %grpc_status, %client_version, %server_version, %email, %dataset_id, ?duration, "grpc_on_eos");
         } else {
-            tracing::error!(%endpoint, %grpc_status, %email, %dataset_id, ?duration, "grpc_on_eos");
+            tracing::error!(%endpoint, %grpc_status, %client_version, %server_version, %email, %dataset_id, ?duration, "grpc_on_eos");
         }
 
         self.counter.add(
@@ -471,6 +680,8 @@ impl tower_http::trace::OnEos for GrpcOnEos {
             &[
                 opentelemetry::KeyValue::new("endpoint", endpoint),
                 opentelemetry::KeyValue::new("grpc_status", grpc_status),
+                opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
+                opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                 opentelemetry::KeyValue::new("email", email.to_owned()),
                 opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
             ],
@@ -478,64 +689,48 @@ impl tower_http::trace::OnEos for GrpcOnEos {
     }
 }
 
-pub type ServerTelemetryLayer = tower::layer::util::Stack<
-    tonic::service::interceptor::InterceptorLayer<TracingExtractorInterceptor>,
-    tower::layer::util::Stack<
-        tower_http::trace::TraceLayer<
-            tower_http::trace::GrpcMakeClassifier,
-            GrpcMakeSpan,
-            GrpcOnRequest,
-            GrpcOnResponse,
-            GrpcOnFirstBodyChunk,
-            GrpcOnEos,
-        >,
-        tower::layer::util::Stack<
-            tower_http::propagate_header::PropagateHeaderLayer,
-            tower::layer::util::Stack<
-                tower_http::propagate_header::PropagateHeaderLayer,
-                tower::layer::util::Identity,
-            >,
-        >,
-    >,
+pub type ServerTelemetryLayer = tower_http::trace::TraceLayer<
+    tower_http::trace::GrpcMakeClassifier,
+    GrpcMakeSpan,
+    GrpcOnRequest,
+    GrpcOnResponse,
+    GrpcOnFirstBodyChunk,
+    GrpcOnEos,
 >;
+
+#[derive(Default)]
+pub struct TelemetryLayerOptions {
+    pub fully_qualified_route_names: Option<Vec<String>>,
+}
 
 /// Creates a new [`tower::Layer`] middleware that automatically:
 /// * Traces gRPC requests and responses.
 /// * Logs all gRPC responses (status, latency, etc).
 /// * Measures all gRPC responses (status, latency, etc).
-pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
-    use tower_http::propagate_header::PropagateHeaderLayer;
-    let dataset_id_propagation_layer =
-        PropagateHeaderLayer::new(http::HeaderName::from_static("x-rerun-dataset-id"));
-    let request_id_propagation_layer =
-        PropagateHeaderLayer::new(http::HeaderName::from_static("x-request-id"));
-
-    let trace_layer = tower_http::trace::TraceLayer::new_for_grpc()
+///
+/// Note on callback behavior based on testing:
+/// * unary endpoint success - `on_response` and `on_eos` called
+/// * unary endpoint failure - both `on_response` (error handling path) and `on_failure` called. We currently don't have `on_failure` implemented.
+/// * streaming endpoint success - `on_response` and `on_eos` called
+/// * streaming endpoint immediate error (no stream started)  - `on_response` (error handling path) called and `on_failure` (again, not implemented)
+/// * streaming endpoint mid stream error - `on_response` called (but only initially with OK code, no error detected here), `on_eos` called (and existing error handling logic executed).
+///   `on_failure` is not called here and from code inspection it seems that is only called for immediate failures and polling frame errors (transport errors, although not verified with testing)
+pub fn new_server_telemetry_layer(options: TelemetryLayerOptions) -> ServerTelemetryLayer {
+    tower_http::trace::TraceLayer::new_for_grpc()
         .make_span_with(GrpcMakeSpan::new())
         .on_request(GrpcOnRequest::new())
-        .on_response(GrpcOnResponse::new())
+        .on_response(GrpcOnResponse::new(GrpcOnResponseOptions {
+            fully_qualified_route_names: options.fully_qualified_route_names,
+        }))
         .on_body_chunk(GrpcOnFirstBodyChunk::new())
-        .on_eos(GrpcOnEos::new());
-
-    tower::ServiceBuilder::new()
-        .layer(dataset_id_propagation_layer)
-        .layer(request_id_propagation_layer)
-        .layer(trace_layer)
-        .layer(TracingExtractorInterceptor::new_layer())
-        .into_inner()
+        .on_eos(GrpcOnEos::new())
 }
 
 pub type ClientTelemetryLayer = tower::layer::util::Stack<
     tonic::service::interceptor::InterceptorLayer<TracingInjectorInterceptor>,
     tower::layer::util::Stack<
         tower_http::trace::TraceLayer<tower_http::trace::GrpcMakeClassifier, GrpcMakeSpan>,
-        tower::layer::util::Stack<
-            tower_http::propagate_header::PropagateHeaderLayer,
-            tower::layer::util::Stack<
-                tower_http::propagate_header::PropagateHeaderLayer,
-                tower::layer::util::Identity,
-            >,
-        >,
+        tower::layer::util::Identity,
     >,
 >;
 
@@ -547,18 +742,13 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
 // TODO(cmc): at the moment there's little value to have anything beyond traces on the client, but
 // we ultimately can add all the same things that we have on the server as we need them.
 pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
-    use tower_http::propagate_header::PropagateHeaderLayer;
-    let dataset_id_propagation_layer =
-        PropagateHeaderLayer::new(http::HeaderName::from_static("x-rerun-dataset-id"));
-    let request_id_propagation_layer =
-        PropagateHeaderLayer::new(http::HeaderName::from_static("x-request-id"));
-
-    let trace_layer =
-        tower_http::trace::TraceLayer::new_for_grpc().make_span_with(GrpcMakeSpan::new());
+    let trace_layer = tower_http::trace::TraceLayer::new_for_grpc()
+        // Note: we're actually disabling all DEBUG level logs for `tower` in re_log, so if you want to enable it
+        // you'll need to adjust that as well. See crates/utils/re_log/src/lib.rs
+        .on_failure(DefaultOnFailure::new().level(tracing::Level::DEBUG))
+        .make_span_with(GrpcMakeSpan::new());
 
     tower::ServiceBuilder::new()
-        .layer(dataset_id_propagation_layer)
-        .layer(request_id_propagation_layer)
         .layer(trace_layer)
         .layer(TracingInjectorInterceptor::new_layer())
         .into_inner()
@@ -573,7 +763,6 @@ pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
 /// converting to the `OpenTelemetry` format, and finally injected into the request headers, thereby
 /// propagating the trace across network boundaries.
 ///
-/// See also [`TracingExtractorInterceptor`].
 #[derive(Default, Clone)]
 pub struct TracingInjectorInterceptor;
 
@@ -587,7 +776,7 @@ impl TracingInjectorInterceptor {
 }
 
 impl tonic::service::Interceptor for TracingInjectorInterceptor {
-    fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+    fn call(&mut self, mut req: tonic::Request<()>) -> tonic::Result<tonic::Request<()>> {
         struct MetadataMap<'a>(&'a mut tonic::metadata::MetadataMap);
 
         impl opentelemetry::propagation::Injector for MetadataMap<'_> {
@@ -613,53 +802,52 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
     }
 }
 
-/// This implements a [`tonic::service::Interceptor`] that extracts trace/span metadata from the
-/// request headers, according to W3C standards.
-///
-/// This trace/span information (which is still an `OpenTelemetry` payload, at that point) is then
-/// injected back into the currently opened [`tracing::Span`] (if any), therefore propagating the
-/// trace across network boundaries.
-#[derive(Default, Clone)]
-pub struct TracingExtractorInterceptor;
+// ---
 
-impl TracingExtractorInterceptor {
-    /// Creates a new [`tower::Layer`] middleware that automatically applies the extractor.
-    ///
-    /// See also [`new_server_telemetry_layer`].
-    pub fn new_layer() -> tonic::service::interceptor::InterceptorLayer<Self> {
-        tonic::service::interceptor::InterceptorLayer::new(Self)
-    }
+use opentelemetry::trace::TraceContextExt as _;
+use tower_http::trace::DefaultOnFailure;
+use tracing::span::Id;
+use tracing::{Span, Subscriber};
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
+
+/// A `tracing_subscriber::Layer` that injects the opentelemetry `trace_id` as a `benchmark_id` field
+/// top level field on every span.
+///
+/// This allows us to use the upstream tooling to filter logs within a span by `trace_id`
+#[derive(Default)]
+pub struct TraceIdLayer {
+    _private: (),
 }
 
-impl tonic::service::Interceptor for TracingExtractorInterceptor {
-    fn call(&mut self, req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
-        struct MetadataMap<'a>(&'a tonic::metadata::MetadataMap);
+// Just a marker to avoid injecting multiple times per span.
+struct TraceIdInjected;
 
-        impl opentelemetry::propagation::Extractor for MetadataMap<'_> {
-            fn get(&self, key: &str) -> Option<&str> {
-                self.0.get(key)?.to_str().ok()
+impl<S> Layer<S> for TraceIdLayer
+where
+    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+{
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+        if let Some(span_ref) = ctx.span(id) {
+            if span_ref.extensions().get::<TraceIdInjected>().is_some() {
+                return;
             }
 
-            fn keys(&self) -> Vec<&str> {
-                self.0
-                    .keys()
-                    .map(|key| match key {
-                        tonic::metadata::KeyRef::Ascii(v) => v.as_str(),
-                        tonic::metadata::KeyRef::Binary(v) => v.as_str(),
-                    })
-                    .collect::<Vec<_>>()
+            let current_span = Span::current();
+            let otel_cx = current_span.context();
+            let otel_span = otel_cx.span();
+            let span_cx = otel_span.span_context();
+
+            if span_cx.is_valid() {
+                let trace_id = span_cx.trace_id();
+                let trace_state = span_cx.trace_state();
+                current_span.record("trace_id", trace_id.to_string());
+                if let Some(benchmark_id) = trace_state.get("benchmark_id") {
+                    current_span.record("benchmark_id", benchmark_id.to_owned());
+                }
+                span_ref.extensions_mut().insert(TraceIdInjected);
             }
         }
-
-        // Grab the trace information from the headers, in OpenTelemetry format.
-        let parent_ctx = opentelemetry::global::get_text_map_propagator(|prop| {
-            prop.extract(&MetadataMap(req.metadata()))
-        });
-
-        // Convert the trace information back into `tracing` and inject it into the current span (if any).
-        use tracing_opentelemetry::OpenTelemetrySpanExt as _;
-        tracing::Span::current().set_parent(parent_ctx);
-
-        Ok(req)
     }
 }

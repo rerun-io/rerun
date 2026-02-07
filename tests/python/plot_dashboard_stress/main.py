@@ -159,6 +159,7 @@ def main() -> None:
         ticks = zip(
             offsets,
             (sim_times[offset : offset + args.temporal_batch_size] for offset in offsets),
+            strict=False,
         )
 
     time_column = None
@@ -185,7 +186,7 @@ def main() -> None:
                     value_index = slice(index, index + args.temporal_batch_size)
                     rr.send_columns(
                         f"{plot_path}/{series_path}",
-                        indexes=[cast(rr.TimeColumn, time_column)],
+                        indexes=[cast("rr.TimeColumn", time_column)],
                         columns=rr.Scalars.columns(scalars=values[value_index, plot_idx, series_idx]),
                     )
 

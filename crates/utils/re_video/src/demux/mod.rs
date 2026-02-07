@@ -1,22 +1,26 @@
 //! Video demultiplexing.
 //!
-//! Parses a video file into a raw [`VideoDataDescription`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
+//! Parses a video file into a raw [`VideoDataDescription`] struct, which contains basic metadata and a list of keyframes.
 //!
 //! The entry point is [`VideoDataDescription::load_from_bytes`]
 //! which produces an instance of [`VideoDataDescription`] from any supported video container.
 
 pub mod mp4;
 
-use std::{collections::BTreeMap, ops::Range};
+use std::collections::BTreeMap;
 
 use bit_vec::BitVec;
 use itertools::Itertools as _;
 use re_span::Span;
+use re_tuid::Tuid;
 use web_time::Instant;
 
 use super::{Time, Timescale};
-
-use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
+use crate::nalu::AnnexBStreamWriteError;
+use crate::{
+    Chunk, StableIndexDeque, TrackId, TrackKind, write_avc_chunk_to_annexb,
+    write_hevc_chunk_to_annexb,
+};
 
 /// Chroma subsampling mode.
 ///
@@ -109,11 +113,41 @@ impl VideoCodec {
     }
 }
 
-/// Index used for referencing into [`VideoDataDescription::gops`].
-pub type GopIndex = usize;
-
 /// Index used for referencing into [`VideoDataDescription::samples`].
 pub type SampleIndex = usize;
+
+/// An index into [`VideoDataDescription::keyframe_indices`], not stable between mutations.
+pub type KeyframeIndex = usize;
+
+/// Distinguishes static videos from potentially ongoing video streams.
+#[derive(Clone)]
+pub enum VideoDeliveryMethod {
+    /// A static video with a fixed, known duration which won't be updated further.
+    Static { duration: Time },
+
+    /// A stream that *may* be periodically updated.
+    ///
+    /// Video streams may drop samples at the beginning and add new samples at the end.
+    /// The last sample's duration is treated as unknown.
+    /// However, it is typically assumed to be as long as the average sample duration.
+    Stream {
+        /// Last time we added/removed samples from the [`VideoDataDescription`].
+        ///
+        /// This is used solely as a heuristic input for how the player schedules work to decoders.
+        /// For live streams, even those that stopped, this is expected to be wallclock time of when a sample was
+        /// added do this datastructure. *Not* when the sample was first recorded.
+        last_time_updated_samples: Instant,
+    },
+}
+
+impl VideoDeliveryMethod {
+    #[inline]
+    pub fn new_stream() -> Self {
+        Self::Stream {
+            last_time_updated_samples: Instant::now(),
+        }
+    }
+}
 
 /// Description of video data.
 ///
@@ -138,17 +172,11 @@ pub struct VideoDataDescription {
     /// This happens for streams logged on a non-temporal timeline.
     pub timescale: Option<Timescale>,
 
-    /// Duration of the video, in time units if known.
-    ///
-    /// For open ended video streams rather than video files this is generally unknown.
-    pub duration: Option<Time>,
+    /// Whether this is a finite video or a stream.
+    pub delivery_method: VideoDeliveryMethod,
 
-    /// We split video into GOPs, each beginning with a key frame,
-    /// followed by any number of delta frames.
-    ///
-    /// To facilitate streaming, gops at the beginning of the queue may be discarded over time
-    /// and new ones may be added. Also, the most recent gop may grow over time.
-    pub gops: StableIndexDeque<GroupOfPictures>,
+    /// A sorted list of all keyframe's sample indices in the video.
+    pub keyframe_indices: Vec<SampleIndex>,
 
     /// Samples contain the byte offsets into `data` for each frame.
     ///
@@ -161,18 +189,10 @@ pub struct VideoDataDescription {
     ///
     /// To facilitate streaming, samples may be removed from the beginning and added at the end,
     /// but individual samples are never supposed to change.
-    pub samples: StableIndexDeque<SampleMetadata>,
+    pub samples: StableIndexDeque<SampleMetadataState>,
 
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
-
-    /// If this is potentially a live stream, then when was the last time, we added/removed samples from this data description.
-    ///
-    /// This is used solely as a heuristic input for how the player schedules work to decoders.
-    /// For static video data this is expected to be `None`.
-    /// For live streams, even those that stopped, this is expected to be wallclock time of when a sample was
-    /// added do this datastructure. *Not* when the sample was first recorded.
-    pub last_time_updated_samples: Option<Instant>,
 
     /// All the tracks in the mp4; not just the video track.
     ///
@@ -186,15 +206,14 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
             codec: _,
             encoding_details: _,
             timescale: _,
-            duration: _,
-            gops,
+            delivery_method: _,
+            keyframe_indices,
             samples,
             samples_statistics,
             mp4_tracks,
-            last_time_updated_samples: _,
         } = self;
 
-        gops.heap_size_bytes()
+        keyframe_indices.heap_size_bytes()
             + samples.heap_size_bytes()
             + samples_statistics.heap_size_bytes()
             + mp4_tracks.len() as u64 * std::mem::size_of::<(TrackId, Option<TrackKind>)>() as u64
@@ -202,6 +221,21 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
 }
 
 impl VideoDataDescription {
+    /// Get the group of pictures which use a keyframe, including the keyframe sample itself.
+    pub fn gop_sample_range_for_keyframe(
+        &self,
+        keyframe_idx: usize,
+    ) -> Option<std::ops::Range<SampleIndex>> {
+        Some(
+            *self.keyframe_indices.get(keyframe_idx)?
+                ..self
+                    .keyframe_indices
+                    .get(keyframe_idx + 1)
+                    .copied()
+                    .unwrap_or_else(|| self.samples.next_index()),
+        )
+    }
+
     /// Checks various invariants that the video description should always uphold.
     ///
     /// Violation of any of these variants is **not** a user(-data) error, but instead an
@@ -213,7 +247,7 @@ impl VideoDataDescription {
     ///
     /// Check implementation for details.
     pub fn sanity_check(&self) -> Result<(), String> {
-        self.sanity_check_gops()?;
+        self.sanity_check_keyframes()?;
         self.sanity_check_samples()?;
 
         // If an STSD box is present, then its content type must match with the internal codec.
@@ -244,72 +278,58 @@ impl VideoDataDescription {
         Ok(())
     }
 
-    fn sanity_check_gops(&self) -> Result<(), String> {
-        for gop in self.gops.iter() {
-            // All GOP sample ranges are non-empty.
-            if gop.sample_range.is_empty() {
-                return Err("GOP sample range is empty".to_owned());
-            }
+    fn sanity_check_keyframes(&self) -> Result<(), String> {
+        if !self.keyframe_indices.is_sorted() {
+            return Err("Keyframes aren't sorted".to_owned());
+        }
 
-            // GOP sample ranges only refer to samples within the sample description.
-            if gop.sample_range.start < self.samples.min_index() {
+        for &keyframe in &self.keyframe_indices {
+            if keyframe < self.samples.min_index() {
                 return Err(format!(
-                    "First index of GOP sample range start {:?} refers to sample outside of the list of samples.",
-                    gop.sample_range
-                ));
-            }
-            if gop.sample_range.end > self.samples.next_index() {
-                return Err(format!(
-                    "Last index of GOP sample range {:?} refers to sample outside of the list of samples.",
-                    gop.sample_range
+                    "Keyframe {keyframe} refers to sample to the left of the list of samples.",
                 ));
             }
 
-            // All samples at the beginning of a GOP are marked with `is_sync==true`
-            if !self.samples[gop.sample_range.start].is_sync {
+            if keyframe >= self.samples.next_index() {
                 return Err(format!(
-                    "First sample of GOP sample range {:?} is not marked with `is_sync`.",
-                    gop.sample_range
+                    "Keyframe {keyframe} refers to sample to the right of the list of samples.",
                 ));
+            }
+
+            match &self.samples[keyframe] {
+                SampleMetadataState::Present(sample_metadata) => {
+                    // All samples at the beginning of a GOP are marked with `is_sync==true`
+                    if !sample_metadata.is_sync {
+                        return Err(format!("Keyframe {keyframe} is not marked with `is_sync`."));
+                    }
+                }
+                SampleMetadataState::Unloaded(_) => {
+                    return Err(format!("Keyframe {keyframe} refers to an unloaded sample"));
+                }
             }
         }
 
-        // GOP sample ranges are sorted and are contiguous (have no gaps).
-        for (a, b) in self.gops.iter().tuple_windows() {
-            if a.sample_range.end != b.sample_range.start {
-                return Err(format!(
-                    "GOPs sample ranges are not contiguous: {:?} {:?}",
-                    a.sample_range, b.sample_range
-                ));
-            }
-            if a.sample_range.start >= b.sample_range.start {
-                return Err(format!(
-                    "GOPs sample ranges are not contiguous or sorted: {:?} {:?}",
-                    a.sample_range, b.sample_range
-                ));
-            }
-        }
-
-        // The last GOP includes the last sample.
-        if let Some(front_gop) = self.gops.back()
-            && front_gop.sample_range.end != self.samples.next_index()
+        // Make sure all keyframes are tracked.
+        let mut keyframes = self.keyframe_indices.iter().copied();
+        for (sample_idx, sample) in self
+            .samples
+            .iter_indexed()
+            .filter_map(|(idx, s)| Some((idx, s.sample()?)))
         {
-            return Err(format!(
-                "Last GOP sample range {:?} does not include the last sample {}.",
-                front_gop.sample_range,
-                self.samples.next_index() - 1
-            ));
+            if sample.is_sync && keyframes.next().is_none_or(|idx| idx != sample_idx) {
+                return Err(format!("Not tracking the keyframe {sample_idx}."));
+            }
         }
-        // Note that this isn't true vice versa!
-        // The first GOP may not include the first few samples.
-
         Ok(())
     }
 
     fn sanity_check_samples(&self) -> Result<(), String> {
         // Decode timestamps are strictly monotonically increasing.
         for (a, b) in self.samples.iter().tuple_windows() {
-            if a.decode_timestamp > b.decode_timestamp {
+            if let SampleMetadataState::Present(a) = a
+                && let SampleMetadataState::Present(b) = b
+                && a.decode_timestamp > b.decode_timestamp
+            {
                 return Err(format!(
                     "Decode timestamps are not strictly monotonically increasing: {:?} {:?}",
                     a.decode_timestamp, b.decode_timestamp
@@ -328,6 +348,90 @@ impl VideoDataDescription {
 
         Ok(())
     }
+
+    /// Returns the encoded bytes for a sample in the format expected by [`VideoCodec`].
+    ///
+    /// * H.264/H.265: MP4 stores samples using AVCC/HVCC length-prefixed NALs and relies on container
+    ///   metadata for SPS/PPS/VPS. This method makes sure to unpack this.
+    /// * AV1 samples are stored as-is.
+    /// * VP8/VP9: Not yet supported
+    pub fn sample_data_in_stream_format(
+        &self,
+        chunk: &crate::Chunk,
+    ) -> Result<Vec<u8>, SampleConversionError> {
+        match self.codec {
+            VideoCodec::AV1 => Ok(chunk.data.clone()),
+            VideoCodec::H264 => {
+                let stsd = self
+                    .encoding_details
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .stsd
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+
+                let re_mp4::StsdBoxContent::Avc1(avc1_box) = &stsd.contents else {
+                    return Err(SampleConversionError::UnexpectedStsdContent {
+                        codec: self.codec,
+                        found: format!("{:?}", stsd.contents),
+                    });
+                };
+
+                let mut output = Vec::new();
+                write_avc_chunk_to_annexb(avc1_box, &mut output, chunk.is_sync, chunk)
+                    .map_err(SampleConversionError::AnnexB)?;
+                Ok(output)
+            }
+            VideoCodec::H265 => {
+                let stsd = self
+                    .encoding_details
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .stsd
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+
+                let hvcc_box = match &stsd.contents {
+                    re_mp4::StsdBoxContent::Hvc1(hvc1_box)
+                    | re_mp4::StsdBoxContent::Hev1(hvc1_box) => hvc1_box,
+                    other => {
+                        return Err(SampleConversionError::UnexpectedStsdContent {
+                            codec: self.codec,
+                            found: format!("{other:?}"),
+                        });
+                    }
+                };
+
+                let mut output = Vec::new();
+                write_hevc_chunk_to_annexb(hvcc_box, &mut output, chunk.is_sync, chunk)
+                    .map_err(SampleConversionError::AnnexB)?;
+                Ok(output)
+            }
+            VideoCodec::VP8 | VideoCodec::VP9 => {
+                // TODO(#10186): Support VP8/VP9 for the `VideoStream` archetype
+                Err(SampleConversionError::UnsupportedCodec(self.codec))
+            }
+        }
+    }
+}
+
+/// Errors converting [`VideoDataDescription`] samples into the format expected by the decoder.
+#[derive(thiserror::Error, Debug)]
+pub enum SampleConversionError {
+    #[error("Missing encoding details for codec {0:?}")]
+    MissingEncodingDetails(VideoCodec),
+
+    #[error("Missing stsd box for codec {0:?}")]
+    MissingStsd(VideoCodec),
+
+    #[error("Unexpected stsd contents for codec {codec:?}: {found}")]
+    UnexpectedStsdContent { codec: VideoCodec, found: String },
+
+    #[error("Failed converting sample to Annex-B: {0}")]
+    AnnexB(#[from] AnnexBStreamWriteError),
+
+    #[error("Unsupported codec {0:?}")]
+    UnsupportedCodec(VideoCodec),
 }
 
 /// Various information about how the video was encoded.
@@ -369,18 +473,7 @@ pub struct VideoEncodingDetails {
     pub stsd: Option<re_mp4::StsdBox>,
 }
 
-impl VideoEncodingDetails {
-    /// Get the AVCC box from the stsd box if any.
-    pub fn avcc(&self) -> Option<&re_mp4::Avc1Box> {
-        let stsd = self.stsd.as_ref()?;
-        match &stsd.contents {
-            re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
-            _ => None,
-        }
-    }
-}
-
-/// Meta informationa about the video samples.
+/// Meta information about the video samples.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SamplesStatistics {
     /// Whether all decode timestamps are equal to presentation timestamps.
@@ -419,11 +512,12 @@ impl SamplesStatistics {
         has_sample_highest_pts_so_far: None,
     };
 
-    pub fn new(samples: &StableIndexDeque<SampleMetadata>) -> Self {
+    pub fn new(samples: &StableIndexDeque<SampleMetadataState>) -> Self {
         re_tracing::profile_function!();
 
         let dts_always_equal_pts = samples
             .iter()
+            .filter_map(|s| s.sample())
             .all(|s| s.decode_timestamp == s.presentation_timestamp);
 
         let mut biggest_pts_so_far = Time::MIN;
@@ -431,12 +525,14 @@ impl SamplesStatistics {
             samples
                 .iter()
                 .map(move |sample| {
-                    if sample.presentation_timestamp > biggest_pts_so_far {
-                        biggest_pts_so_far = sample.presentation_timestamp;
-                        true
-                    } else {
-                        false
-                    }
+                    sample.sample().is_some_and(|sample| {
+                        if sample.presentation_timestamp > biggest_pts_so_far {
+                            biggest_pts_so_far = sample.presentation_timestamp;
+                            true
+                        } else {
+                            false
+                        }
+                    })
                 })
                 .collect()
         });
@@ -456,10 +552,15 @@ impl VideoDataDescription {
         data: &[u8],
         media_type: &str,
         debug_name: &str,
+        source_id: Tuid,
     ) -> Result<Self, VideoLoadError> {
+        if data.is_empty() {
+            return Err(VideoLoadError::ZeroBytes);
+        }
+
         re_tracing::profile_function!();
         match media_type {
-            "video/mp4" => Self::load_mp4(data, debug_name),
+            "video/mp4" => Self::load_mp4(data, debug_name, source_id),
 
             media_type => {
                 if media_type.starts_with("video/") {
@@ -473,18 +574,6 @@ impl VideoDataDescription {
                 }
             }
         }
-    }
-
-    /// Length of the video if known.
-    ///
-    /// NOTE: This includes the duration of the final frame too!
-    ///
-    /// For video streams (as opposed to video files) this is generally unknown.
-    #[inline]
-    pub fn duration(&self) -> Option<std::time::Duration> {
-        let timescale = self.timescale?;
-        let duration = self.duration?;
-        Some(duration.duration(timescale))
     }
 
     /// The codec used to encode the video.
@@ -516,6 +605,52 @@ impl VideoDataDescription {
         self.samples.num_elements()
     }
 
+    /// Duration of all present samples.
+    ///
+    /// Returns `None` iff the video has no timescale.
+    /// Other special cases like zero samples or single sample with unknown duration will return a zero duration.
+    ///
+    /// Since this is only about present samples and not historical, future or missing data,
+    /// the duration may shrink as samples are dropped and grow as new samples are added.
+    // TODO(andreas): This makes it somewhat unsuitable for various usecases in the viewer. We should probably accumulate the max duration somewhere.
+    pub fn duration(&self) -> Option<std::time::Duration> {
+        let timescale = self.timescale?;
+
+        Some(match &self.delivery_method {
+            VideoDeliveryMethod::Static { duration } => duration.duration(timescale),
+
+            VideoDeliveryMethod::Stream { .. } => match self.samples.num_elements() {
+                0 => std::time::Duration::ZERO,
+                1 => {
+                    let first = self.samples.iter().find_map(|s| s.sample())?;
+                    first
+                        .duration
+                        .map(|d| d.duration(timescale))
+                        .unwrap_or(std::time::Duration::ZERO)
+                }
+                _ => {
+                    // TODO(#10090): This is only correct because there's no b-frames on streams right now.
+                    // If there are b-frames determining the last timestamp is a bit more complicated.
+                    let first = self.samples.iter().find_map(|s| s.sample())?;
+                    let last = self.samples.iter().rev().find_map(|s| s.sample())?;
+
+                    let last_sample_duration = last.duration.map_or_else(
+                        || {
+                            // Use average duration of all samples so far.
+                            (last.presentation_timestamp - first.presentation_timestamp)
+                                .duration(timescale)
+                                / (last.frame_nr - first.frame_nr)
+                        },
+                        |d| d.duration(timescale),
+                    );
+
+                    (last.presentation_timestamp - first.presentation_timestamp).duration(timescale)
+                        + last_sample_duration
+                }
+            },
+        })
+    }
+
     /// `num_frames / duration`.
     ///
     /// Note that the video could have a variable framerate!
@@ -530,44 +665,92 @@ impl VideoDataDescription {
         })
     }
 
-    /// Determines the video timestamps of all frames inside a video, returning raw time values.
+    /// Determines the video timestamps of all present frames inside a video, returning raw time values.
+    /// Reserved sample has no timestamp information and are thus ignored.
     ///
     /// Returns None if the video has no timescale.
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
     pub fn frame_timestamps_nanos(&self) -> Option<impl Iterator<Item = i64> + '_> {
         let timescale = self.timescale?;
 
-        // Segments are guaranteed to be sorted among each other, but within a segment,
-        // presentation timestamps may not be sorted since this is sorted by decode timestamps.
-        Some(self.gops.iter().flat_map(move |seg| {
+        Some(
             self.samples
-                .iter_index_range_clamped(&seg.sample_range)
-                .map(|(_idx, sample)| sample.presentation_timestamp)
+                .iter()
+                .filter_map(|sample| Some(sample.sample()?.presentation_timestamp))
                 .sorted()
-                .map(move |pts| pts.into_nanos(timescale))
-        }))
+                .map(move |pts| pts.into_nanos(timescale)),
+        )
     }
 
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        samples: &StableIndexDeque<SampleMetadata>,
+        keyframes: &[KeyframeIndex],
+        samples: &StableIndexDeque<SampleMetadataState>,
         decode_time: Time,
     ) -> Option<SampleIndex> {
-        samples.latest_at_idx(|sample| sample.decode_timestamp, &decode_time)
+        // First find what keyframe this decode timestamp is in, as an optimization since
+        // we can't efficiently binary search the sample list with possible gaps.
+        //
+        // Keyframes will always be [`SampleMetadataState::Present`] and
+        // have a decode timestamp we can compare against.
+        let keyframe_idx = keyframes
+            .partition_point(|p| {
+                samples
+                    .get(*p)
+                    .map(|s| s.sample())
+                    .inspect(|_s| {
+                        debug_assert!(_s.is_some(), "Keyframes mentioned in the keyframe lookup list should always be loaded");
+                    })
+                    .flatten()
+                    .is_some_and(|s| s.decode_timestamp <= decode_time)
+            })
+            .checked_sub(1)?;
+
+        let start = *keyframes.get(keyframe_idx)?;
+        let end = keyframes
+            .get(keyframe_idx + 1)
+            .copied()
+            .unwrap_or_else(|| samples.next_index());
+
+        // Within that keyframe's range, find the most suitable frame for the given decode time.
+        let range = start..end;
+
+        let mut found_sample_idx = None;
+        for (idx, sample) in samples.iter_index_range_clamped(&range) {
+            let Some(s) = sample.sample() else {
+                continue;
+            };
+
+            if s.decode_timestamp <= decode_time {
+                found_sample_idx = Some(idx);
+            } else {
+                break;
+            }
+        }
+
+        found_sample_idx
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
+    ///
+    /// The returned sample index is guaranteed to be [`SampleMetadataState::Present`].
     fn latest_sample_index_at_presentation_timestamp_internal(
-        samples: &StableIndexDeque<SampleMetadata>,
+        keyframes: &[KeyframeIndex],
+        samples: &StableIndexDeque<SampleMetadataState>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
     ) -> Option<SampleIndex> {
         // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         // Because `decode <= presentation`, we never have to look further backwards in the
         // video than this.
-        let decode_sample_idx =
-            Self::latest_sample_index_at_decode_timestamp(samples, presentation_timestamp)?;
+        let decode_sample_idx = Self::latest_sample_index_at_decode_timestamp(
+            keyframes,
+            samples,
+            presentation_timestamp,
+        );
+
+        let decode_sample_idx = decode_sample_idx?;
 
         // It's very common that dts==pts in which case we're done!
         let Some(has_sample_highest_pts_so_far) =
@@ -586,8 +769,10 @@ impl VideoDataDescription {
         // since smaller presentation timestamps may still show up further back!
         let mut best_index = SampleIndex::MAX;
         let mut best_pts = Time::MIN;
-        for sample_idx in (0..=decode_sample_idx).rev() {
-            let sample = &samples[sample_idx];
+        for sample_idx in (samples.min_index()..=decode_sample_idx).rev() {
+            let Some(sample) = samples[sample_idx].sample() else {
+                continue;
+            };
 
             if sample.presentation_timestamp == presentation_timestamp {
                 // Clean hit. Take this one, no questions asked :)
@@ -621,6 +806,7 @@ impl VideoDataDescription {
         presentation_timestamp: Time,
     ) -> Option<SampleIndex> {
         Self::latest_sample_index_at_presentation_timestamp_internal(
+            &self.keyframe_indices,
             &self.samples,
             &self.samples_statistics,
             presentation_timestamp,
@@ -634,57 +820,100 @@ impl VideoDataDescription {
     /// Therefore, this may be a jump on sample index.
     pub fn previous_presented_sample(&self, sample: &SampleMetadata) -> Option<&SampleMetadata> {
         let idx = Self::latest_sample_index_at_presentation_timestamp_internal(
+            &self.keyframe_indices,
             &self.samples,
             &self.samples_statistics,
             sample.presentation_timestamp - Time::new(1),
         )?;
-        self.samples.get(idx)
+        match self.samples.get(idx) {
+            Some(SampleMetadataState::Present(sample)) => Some(sample),
+            None | Some(_) => unreachable!(),
+        }
     }
 
-    /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
-    pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<GopIndex> {
-        self.gops.latest_at_idx(
-            |gop| self.samples[gop.sample_range.start].decode_timestamp,
-            &decode_time,
-        )
+    /// Returns the index of the keyframe for a specific sample.
+    pub fn sample_keyframe_idx(&self, sample_idx: SampleIndex) -> Option<KeyframeIndex> {
+        self.keyframe_indices
+            .partition_point(|idx| *idx <= sample_idx)
+            .checked_sub(1)
     }
 
-    /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
-    pub fn gop_index_containing_presentation_timestamp(
+    fn find_keyframe_index(
         &self,
-        presentation_timestamp: Time,
-    ) -> Option<SampleIndex> {
-        let requested_sample_index =
-            self.latest_sample_index_at_presentation_timestamp(presentation_timestamp)?;
+        cmp_time: impl Fn(&SampleMetadata) -> bool,
+    ) -> Option<KeyframeIndex> {
+        self.keyframe_indices
+            .partition_point(|sample_idx| {
+                if let Some(sample) = self.samples[*sample_idx].sample() {
+                    cmp_time(sample)
+                } else {
+                    debug_assert!(false, "[DEBUG]: keyframe indices should always be valid");
 
-        // Do a binary search through GOPs by the decode timestamp of the found sample
-        // to find the GOP that contains the sample.
-        self.gop_index_containing_decode_timestamp(
-            self.samples[requested_sample_index].decode_timestamp,
-        )
+                    false
+                }
+            })
+            .checked_sub(1)
+    }
+
+    /// For a given decode (!) timestamp, return the index of the keyframe index containing the given timestamp.
+    pub fn decode_time_keyframe_index(&self, decode_time: Time) -> Option<KeyframeIndex> {
+        self.find_keyframe_index(|t| t.decode_timestamp <= decode_time)
+    }
+
+    /// For a given presentation timestamp, return the index of the keyframe index containing the given timestamp.
+    pub fn presentation_time_keyframe_index(&self, pts: Time) -> Option<KeyframeIndex> {
+        self.find_keyframe_index(|t| t.presentation_timestamp <= pts)
     }
 }
 
-/// A Group of Pictures (GOP) always starts with an I(DR)-frame, followed by delta-frames.
+/// The state of the current sample.
 ///
-/// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
-/// We generally refer to "closed GOPs" only, such that they are re-entrant for decoders
-/// (as opposed to "open GOPs" which may refer to frames from other GOPs).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GroupOfPictures {
-    /// Range of samples contained in this GOP.
-    // TODO(andreas): sample ranges between GOPs are guaranteed to be contiguous.
-    // So we could actually just read the second part of the range by looking at the next gop.
-    pub sample_range: Range<SampleIndex>,
+/// When the source is loaded, all of its samples will be either `Present` or `Skip`.
+#[derive(Debug, Clone)]
+pub enum SampleMetadataState {
+    /// Sample is present and contains video data.
+    Present(SampleMetadata),
+
+    /// The source for this sample hasn't arrived yet.
+    Unloaded(Tuid),
 }
 
-impl re_byte_size::SizeBytes for GroupOfPictures {
-    fn heap_size_bytes(&self) -> u64 {
-        0
+impl SampleMetadataState {
+    pub fn sample(&self) -> Option<&SampleMetadata> {
+        match self {
+            Self::Present(sample_metadata) => Some(sample_metadata),
+            Self::Unloaded(_) => None,
+        }
     }
 
-    fn is_pod() -> bool {
-        true
+    pub fn sample_mut(&mut self) -> Option<&mut SampleMetadata> {
+        match self {
+            Self::Present(sample_metadata) => Some(sample_metadata),
+            Self::Unloaded(_) => None,
+        }
+    }
+
+    pub fn source_id(&self) -> Tuid {
+        match self {
+            Self::Present(sample) => sample.source_id,
+            Self::Unloaded(id) => *id,
+        }
+    }
+
+    pub fn source_id_mut(&mut self) -> &mut Tuid {
+        match self {
+            Self::Present(sample) => &mut sample.source_id,
+            Self::Unloaded(id) => id,
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for SampleMetadataState {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Present(sample_metadata) => sample_metadata.heap_size_bytes(),
+            Self::Unloaded(c) => c.heap_size_bytes(),
+        }
     }
 }
 
@@ -705,7 +934,7 @@ impl re_byte_size::SizeBytes for GroupOfPictures {
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct SampleMetadata {
-    /// Is this the start of a new (closed) [`GroupOfPictures`]?
+    /// Is this the start of a new (closed) group of pictures?
     ///
     /// What this means in detail is dependent on the codec but they are generally
     /// at least I(DR)-frames and often have additional metadata such that
@@ -742,10 +971,10 @@ pub struct SampleMetadata {
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
 
-    /// Index of the data buffer in which this sample is stored.
-    pub buffer_index: usize,
+    /// The chunk this sample comes from.
+    pub source_id: Tuid,
 
-    /// Offset and length within the data buffer addressed by [`SampleMetadata::buffer_index`].
+    /// Offset and length within a data buffer indicated by [`SampleMetadata::source_id`].
     pub byte_span: Span<u32>,
 }
 
@@ -769,8 +998,12 @@ impl SampleMetadata {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, buffers: &StableIndexDeque<&[u8]>, sample_idx: SampleIndex) -> Option<Chunk> {
-        let buffer = *buffers.get(self.buffer_index)?;
+    pub fn get<'a>(
+        &self,
+        get_buffer: &dyn Fn(Tuid) -> &'a [u8],
+        sample_idx: SampleIndex,
+    ) -> Option<Chunk> {
+        let buffer = get_buffer(self.source_id);
         let data = buffer.get(self.byte_span.range_usize())?.to_vec();
 
         Some(Chunk {
@@ -788,7 +1021,10 @@ impl SampleMetadata {
 /// Errors that can occur when loading a video.
 #[derive(thiserror::Error, Debug)]
 pub enum VideoLoadError {
-    #[error("Failed to determine media type from data: {0}")]
+    #[error("The video file is empty (zero bytes)")]
+    ZeroBytes,
+
+    #[error("MP4 error: {0}")]
     ParseMp4(#[from] re_mp4::Error),
 
     #[error("Video file has no video tracks")]
@@ -830,14 +1066,19 @@ pub enum VideoLoadError {
     SpsParsingError(h264_reader::nal::sps::SpsError),
 }
 
+impl re_byte_size::SizeBytes for VideoLoadError {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // close enough
+    }
+}
+
 impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")
             .field("codec", &self.codec)
             .field("encoding_details", &self.encoding_details)
             .field("timescale", &self.timescale)
-            .field("duration", &self.duration)
-            .field("gops", &self.gops)
+            .field("keyframe_indices", &self.keyframe_indices)
             .field("samples", &self.samples.iter_indexed().collect::<Vec<_>>())
             .finish()
     }
@@ -846,6 +1087,7 @@ impl std::fmt::Debug for VideoDataDescription {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nalu::ANNEXB_NAL_START_CODE;
 
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
@@ -871,16 +1113,20 @@ mod tests {
         let samples = pts
             .into_iter()
             .zip(dts)
-            .map(|(pts, dts)| SampleMetadata {
-                is_sync: false,
-                frame_nr: 0, // unused
-                decode_timestamp: Time(dts),
-                presentation_timestamp: Time(pts),
-                duration: Some(Time(1)),
-                buffer_index: 0,
-                byte_span: Default::default(),
+            .map(|(pts, dts)| {
+                SampleMetadataState::Present(SampleMetadata {
+                    is_sync: true,
+                    frame_nr: 0, // unused
+                    decode_timestamp: Time(dts),
+                    presentation_timestamp: Time(pts),
+                    duration: Some(Time(1)),
+                    source_id: Tuid::new(),
+                    byte_span: Default::default(),
+                })
             })
             .collect::<StableIndexDeque<_>>();
+        let keyframe_indices: Vec<SampleIndex> =
+            (samples.min_index()..samples.next_index()).collect();
 
         let sample_statistics = SamplesStatistics::new(&samples);
         assert!(!sample_statistics.dts_always_equal_pts);
@@ -888,6 +1134,7 @@ mod tests {
         // Test queries on the samples.
         let query_pts = |pts| {
             VideoDataDescription::latest_sample_index_at_presentation_timestamp_internal(
+                &keyframe_indices,
                 &samples,
                 &sample_statistics,
                 pts,
@@ -896,7 +1143,10 @@ mod tests {
 
         // Check that query for all exact positions works as expected using brute force search as the reference.
         for (idx, sample) in samples.iter_indexed() {
-            assert_eq!(Some(idx), query_pts(sample.presentation_timestamp));
+            assert_eq!(
+                Some(idx),
+                query_pts(sample.sample().unwrap().presentation_timestamp)
+            );
         }
 
         // Check that for slightly offsetted positions the query is still correct.
@@ -904,11 +1154,11 @@ mod tests {
         for (idx, sample) in samples.iter_indexed() {
             assert_eq!(
                 Some(idx),
-                query_pts(sample.presentation_timestamp + Time(1))
+                query_pts(sample.sample().unwrap().presentation_timestamp + Time(1))
             );
             assert_eq!(
                 Some(idx),
-                query_pts(sample.presentation_timestamp + Time(255))
+                query_pts(sample.sample().unwrap().presentation_timestamp + Time(255))
             );
         }
 
@@ -943,5 +1193,98 @@ mod tests {
         // Test way outside of the range.
         // (this is not the last element in the list since that one doesn't have the highest PTS)
         assert_eq!(Some(48), query_pts(Time(123123123123123123)));
+    }
+
+    /// Helper function to check if data contains Annex B start codes
+    fn has_annexb_start_codes(data: &[u8]) -> bool {
+        data.windows(4).any(|w| w == ANNEXB_NAL_START_CODE)
+    }
+
+    fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
+        let workspace_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
+            .unwrap()
+            .to_path_buf();
+
+        let codec_str = match codec {
+            VideoCodec::H264 => "h264",
+            VideoCodec::H265 => "h265",
+            VideoCodec::VP9 => "vp9",
+            VideoCodec::VP8 => {
+                panic!("We don't have test data for vp8, because Mp4 doesn't support vp8.")
+            }
+            VideoCodec::AV1 => "av1",
+        };
+
+        if need_dts_equal_pts && (codec == VideoCodec::H264 || codec == VideoCodec::H265) {
+            // Only H264 and H265 have DTS != PTS when b-frames are present.
+            workspace_dir.join(format!(
+                "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}_nobframes.mp4",
+            ))
+        } else {
+            workspace_dir.join(format!(
+                "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}.mp4",
+            ))
+        }
+    }
+
+    /// Helper function to test video sampling for a specific codec
+    fn test_video_codec_sampling(codec: VideoCodec, need_dts_equal_pts: bool) {
+        let video_path = video_test_file_mp4(codec, need_dts_equal_pts);
+        let data = std::fs::read(&video_path).unwrap();
+        let video_data = VideoDataDescription::load_from_bytes(
+            &data,
+            "video/mp4",
+            &format!("test_{codec:?}_video_sampling"),
+            Tuid::new(),
+        )
+        .unwrap();
+
+        let mut idr_count = 0;
+        let mut non_idr_count = 0;
+
+        for (sample_idx, sample) in video_data.samples.iter_indexed() {
+            let chunk = sample
+                .sample()
+                .unwrap()
+                .get(&|_| &data, sample_idx)
+                .unwrap();
+            let converted = video_data.sample_data_in_stream_format(&chunk).unwrap();
+
+            if chunk.is_sync {
+                idr_count += 1;
+
+                // IDR frame should have SPS/PPS (only for H.264)
+                if codec == VideoCodec::H264 {
+                    let has_sps = converted
+                        .windows(5)
+                        .any(|w| w[0..4] == *ANNEXB_NAL_START_CODE && (w[4] & 0x1F) == 7);
+                    assert!(has_sps, "IDR frame at index {sample_idx} should have SPS");
+                }
+            } else {
+                non_idr_count += 1;
+            }
+
+            // All frames should have Annex B start codes (only for H.264/H.265)
+            if codec == VideoCodec::H264 || codec == VideoCodec::H265 {
+                assert!(
+                    has_annexb_start_codes(&converted),
+                    "Frame at index {sample_idx} should have Annex B start codes",
+                );
+            }
+        }
+
+        assert!(idr_count > 0, "Should have at least one IDR frame");
+        assert!(non_idr_count > 0, "Should have at least one non-IDR frame");
+    }
+
+    #[test]
+    fn test_full_video_sampling_all_codecs() {
+        // TODO(#10186): Add VP9 once we have it.
+        for codec in [VideoCodec::H264, VideoCodec::H265, VideoCodec::AV1] {
+            test_video_codec_sampling(codec, false);
+        }
     }
 }

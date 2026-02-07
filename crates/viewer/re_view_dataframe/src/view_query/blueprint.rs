@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{AbsoluteTimeRange, Timeline, TimelineName};
+use re_sdk_types::blueprint::archetypes::DataframeQuery;
+use re_sdk_types::blueprint::{components, datatypes};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
-use re_types::blueprint::archetypes::DataframeQuery;
-use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
 use crate::dataframe_ui::HideColumnAction;
@@ -22,14 +22,14 @@ impl Query {
         let timeline_name = self
             .query_property
             .component_or_empty::<components::TimelineName>(
-                &DataframeQuery::descriptor_timeline(),
+                DataframeQuery::descriptor_timeline().component,
             )?;
 
         // if the timeline is unset, we "freeze" it to the current time panel timeline
         if let Some(timeline_name) = timeline_name {
             Ok(timeline_name.into())
         } else {
-            let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
+            let timeline_name = *ctx.time_ctrl.timeline_name();
             self.save_timeline_name(ctx, &timeline_name);
 
             Ok(timeline_name)
@@ -68,9 +68,9 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::FilterByRange>(
-                &DataframeQuery::descriptor_filter_by_range(),
+                DataframeQuery::descriptor_filter_by_range().component,
             )?
-            .map(|range_filter| (AbsoluteTimeRange::new(range_filter.start, range_filter.end)))
+            .map(|range_filter| AbsoluteTimeRange::new(range_filter.start, range_filter.end))
             .unwrap_or(AbsoluteTimeRange::EVERYTHING))
     }
 
@@ -104,7 +104,7 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::FilterIsNotNull>(
-                &DataframeQuery::descriptor_filter_is_not_null(),
+                DataframeQuery::descriptor_filter_is_not_null().component,
             )?)
     }
 
@@ -124,7 +124,7 @@ impl Query {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>(
-                &DataframeQuery::descriptor_apply_latest_at(),
+                DataframeQuery::descriptor_apply_latest_at().component,
             )?
             .is_some_and(|comp| *comp.0))
     }
@@ -203,7 +203,7 @@ impl Query {
         let selected_columns = self
             .query_property
             .component_or_empty::<components::SelectedColumns>(
-                &DataframeQuery::descriptor_select(),
+                DataframeQuery::descriptor_select().component,
             )?;
 
         // no selected columns means all columns are visible
@@ -300,14 +300,15 @@ impl Query {
 
 #[cfg(test)]
 mod test {
-    use super::Query;
     use re_test_context::TestContext;
     use re_viewer_context::ViewId;
+
+    use super::Query;
 
     /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
     #[test]
     fn test_latest_at_enabled() {
-        let mut test_context = TestContext::new();
+        let test_context = TestContext::new();
 
         let view_id = ViewId::random();
 
@@ -315,7 +316,10 @@ mod test {
             let query = Query::from_blueprint(ctx, view_id);
             query.save_latest_at_enabled(ctx, true);
         });
-        test_context.handle_system_commands();
+
+        egui::__run_test_ctx(|egui_ctx| {
+            test_context.handle_system_commands(egui_ctx);
+        });
 
         test_context.run_in_egui_central_panel(|ctx, _| {
             let query = Query::from_blueprint(ctx, view_id);

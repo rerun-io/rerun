@@ -1,24 +1,23 @@
 use std::sync::Arc;
 
+use egui::epaint::CubicBezierShape;
 use egui::{
     Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2, Rect, Response, RichText,
-    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText, epaint::CubicBezierShape,
+    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
 };
 use re_chunk::EntityPath;
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePath;
-use re_types::ArrowString;
+use re_sdk_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, UiLayout, ViewHighlights,
-    ViewQuery, ViewerContext,
+    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SystemCommand,
+    SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery, ViewerContext,
 };
 
-use crate::{
-    graph::{Graph, Node},
-    layout::{EdgeGeometry, Layout, PathGeometry},
-    visualizers::Label,
-};
+use crate::graph::{Graph, Node};
+use crate::layout::{EdgeGeometry, Layout, PathGeometry};
+use crate::visualizers::Label;
 
 pub enum DrawableLabel {
     Circle(CircleLabel),
@@ -96,9 +95,9 @@ impl DrawableLabel {
             .stroke(Stroke::new(1.0, ui.style().visuals.text_color()));
 
         Self::Text(TextLabel {
+            color,
             frame,
             galley,
-            color,
         })
     }
 }
@@ -375,10 +374,11 @@ pub fn draw_graph(
                 // Warning! The order is very important here.
                 if response.double_clicked() {
                     // Select the entire entity
-                    ctx.selection_state().set_selection(Item::DataResult(
-                        query.view_id,
-                        instance_path.entity_path.clone().into(),
-                    ));
+                    ctx.command_sender()
+                        .send_system(SystemCommand::set_selection(Item::DataResult(
+                            query.view_id,
+                            instance_path.entity_path.clone().into(),
+                        )));
                 } else if response.hovered() || response.clicked() {
                     *hover_click_item = Some((
                         Item::DataResult(query.view_id, instance_path.clone()),

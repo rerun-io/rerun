@@ -1,6 +1,6 @@
 use crate::{CError, CErrorCode, CStringView};
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
     video_bytes: *const u8,
@@ -16,13 +16,17 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         CError::unexpected_null("video_bytes").write_error(error);
         return std::ptr::null_mut();
     }
+    if video_bytes_len == 0 {
+        CError::new(CErrorCode::VideoLoadError, "Zero video bytes").write_error(error);
+        return std::ptr::null_mut();
+    }
     let Some(alloc_func) = alloc_func else {
         CError::unexpected_null("alloc_func").write_error(error);
         return std::ptr::null_mut();
     };
 
     let video_bytes = unsafe { std::slice::from_raw_parts(video_bytes, video_bytes_len as usize) };
-    let media_type_str = media_type.as_str("media_type").ok();
+    let media_type_str = media_type.as_maybe_empty_str("media_type").ok();
 
     let Some(media_type_str) =
         media_type_str.or_else(|| infer::Infer::new().get(video_bytes).map(|v| v.mime_type()))
@@ -39,12 +43,13 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         video_bytes,
         media_type_str,
         "AssetVideo",
+        re_sdk::external::re_tuid::Tuid::new(),
     ) {
         Ok(video) => video,
         Err(err) => {
             CError::new(
                 CErrorCode::VideoLoadError,
-                &format!("Failed to play video: {err}"),
+                &format!("Failed to load video: {err}"),
             )
             .write_error(error);
             return std::ptr::null_mut();

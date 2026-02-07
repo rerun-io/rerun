@@ -4,12 +4,14 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_sdk_types::archetypes;
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::Position3D;
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{ViewClass as _, ViewId};
-use re_viewport_blueprint::{ViewBlueprint, ViewContents};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 const SNAPSHOT_SIZE: egui::Vec2 = egui::vec2(300.0, 300.0);
 
@@ -46,8 +48,7 @@ fn setup_blueprint(
         }
 
         if let Some(color_override) = color_override {
-            let override_path = ViewContents::override_path_for_entity(view.id, entity_path);
-            ctx.save_blueprint_archetype(override_path.clone(), color_override);
+            ctx.save_visualizers(entity_path, view.id, [color_override]);
         }
 
         blueprint.add_view_at_root(view)
@@ -65,7 +66,7 @@ pub fn test_static_overwrite_original() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, None, None);
 
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "static_overwrite_original",
         SNAPSHOT_SIZE,
@@ -84,7 +85,7 @@ pub fn test_static_overwrite_radius_default() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, Some(&radius_default), None);
 
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "static_overwrite_radius_default",
         SNAPSHOT_SIZE,
@@ -105,7 +106,7 @@ pub fn test_static_overwrite_color_override() {
     let view_id = setup_blueprint(&mut test_context, &entity_path, None, Some(&color_override));
 
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "static_overwrite_color_override",
         SNAPSHOT_SIZE,
@@ -113,33 +114,31 @@ pub fn test_static_overwrite_color_override() {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
 
-    let raw_input = harness.input_mut();
-    raw_input
-        .events
-        .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-    raw_input.events.push(egui::Event::MouseWheel {
-        unit: egui::MouseWheelUnit::Line,
-        delta: egui::Vec2::UP * 3.1,
-        modifiers: egui::Modifiers::default(),
+    test_context.with_blueprint_ctx(|ctx, _| {
+        ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.current_blueprint(),
+            ctx.blueprint_query(),
+            view_id,
+        )
+        .save_blueprint_component(
+            &ctx,
+            &EyeControls3D::descriptor_position(),
+            &Position3D::new(0.0, 5.0, 3.0),
+        );
     });
-    harness.run_steps(8);
+    test_context.handle_system_commands(&harness.ctx);
+    harness.run();
 
-    let broken_pixels_fraction = 0.004;
-
-    let options = SnapshotOptions::new()
-        .failed_pixel_count_threshold((size.x * size.y * broken_pixels_fraction).round() as usize);
-
-    harness.snapshot_options(name, &options);
+    harness.snapshot(name);
 }

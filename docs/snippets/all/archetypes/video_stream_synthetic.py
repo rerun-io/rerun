@@ -10,6 +10,10 @@ duration_seconds = 4
 width = 480
 height = 320
 ball_radius = 30
+codec = rr.VideoCodec.H265  # rr.VideoCodec.H264
+
+formats = {rr.VideoCodec.H265: "hevc", rr.VideoCodec.H264: "h264"}
+encoders = {rr.VideoCodec.H265: "libx265", rr.VideoCodec.H264: "libx264"}
 
 
 def create_example_video_frame(frame_i: int) -> npt.NDArray[np.uint8]:
@@ -26,12 +30,12 @@ def create_example_video_frame(frame_i: int) -> npt.NDArray[np.uint8]:
     return img
 
 
-rr.init("rerun_example_video_stream_synthetic", spawn=True)
+rr.init("rerun_example_video_stream_synthetic")
 
 # Setup encoding pipeline.
 av.logging.set_level(av.logging.VERBOSE)
-container = av.open("/dev/null", "w", format="h264")  # Use AnnexB H.264 stream.
-stream = container.add_stream("libx264", rate=fps)
+container = av.open("/dev/null", "w", format=formats[codec])  # Use AnnexB H.265 stream.
+stream = container.add_stream(encoders[codec], rate=fps)
 # Type narrowing
 assert isinstance(stream, av.video.stream.VideoStream)
 stream.width = width
@@ -41,7 +45,7 @@ stream.height = height
 stream.max_b_frames = 0
 
 # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.
-rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264), static=True)
+rr.log("video_stream", rr.VideoStream(codec=codec), static=True)
 
 # Generate frames and stream them directly to Rerun.
 for frame_i in range(fps * duration_seconds):

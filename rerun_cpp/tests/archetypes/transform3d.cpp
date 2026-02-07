@@ -31,7 +31,7 @@ SCENARIO(
     const auto quaternion = rrd::Quaternion::from_xyzw(1.0f, 2.0f, 3.0f, 4.0f);
     const auto axis_angle = rrd::RotationAxisAngle({1.0f, 2.0f, 3.0f}, rrd::Angle::degrees(90.0f));
 
-    Transform3D manual = Transform3D::clear_fields();
+    Transform3D manual = Transform3D();
 
     GIVEN("Transform3D from translation") {
         auto utility = Transform3D::from_translation({1.0f, 2.0f, 3.0f});
@@ -233,8 +233,7 @@ SCENARIO(
     }
 
     GIVEN("A custom relation") {
-        auto utility =
-            Transform3D::clear_fields().with_relation(rrc::TransformRelation::ChildFromParent);
+        auto utility = Transform3D().with_relation(rrc::TransformRelation::ChildFromParent);
         manual.relation = ComponentBatch::from_loggable(
                               rrc::TransformRelation::ChildFromParent,
                               Transform3D::Descriptor_relation

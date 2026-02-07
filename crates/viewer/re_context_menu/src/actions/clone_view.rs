@@ -1,4 +1,4 @@
-use re_viewer_context::{Item, ViewId};
+use re_viewer_context::{Item, SystemCommand, SystemCommandSender as _, ViewId};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -20,8 +20,8 @@ impl ContextMenuAction for CloneViewAction {
             .duplicate_view(view_id, ctx.viewer_context)
         {
             ctx.viewer_context
-                .selection_state()
-                .set_selection(Item::View(new_view_id));
+                .command_sender()
+                .send_system(SystemCommand::set_selection(Item::View(new_view_id)));
             ctx.viewport_blueprint
                 .mark_user_interaction(ctx.viewer_context);
         }

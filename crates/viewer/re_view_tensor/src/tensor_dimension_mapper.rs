@@ -1,12 +1,11 @@
-use re_types::{
-    blueprint::archetypes::{self},
-    datatypes::TensorDimensionIndexSelection,
-};
+use re_sdk_types::blueprint::archetypes;
+use re_sdk_types::datatypes::TensorDimensionIndexSelection;
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{TensorDimension, dimension_mapping::TensorSliceSelection};
+use crate::TensorDimension;
+use crate::dimension_mapping::TensorSliceSelection;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {
@@ -41,7 +40,6 @@ impl DragDropAddress {
                     dimension: h.dimension,
                     index: shape[h.dimension as usize].size / 2, // Select middle if this becomes index fixed.
                 }),
-            #[allow(clippy::unwrap_used)]
             Self::Selector(selector_idx) => Some(slice_selection.indices[*selector_idx].0),
             Self::NewSelector => None,
         }
@@ -129,7 +127,6 @@ fn drag_source_ui_id(drag_context_id: egui::Id, dim_idx: u32) -> egui::Id {
     drag_context_id.with("tensor_dimension_ui").with(dim_idx)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn tensor_dimension_ui(
     ui: &mut egui::Ui,
     drag_context_id: egui::Id,

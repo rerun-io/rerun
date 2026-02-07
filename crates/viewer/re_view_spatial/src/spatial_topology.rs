@@ -3,14 +3,11 @@ use std::sync::OnceLock;
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber,
-    ChunkStoreSubscriberHandle,
+    ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
-use re_types::{
-    Component as _,
-    components::{PinholeProjection, ViewCoordinates},
-};
+use re_sdk_types::Component as _;
+use re_sdk_types::components::{PinholeProjection, ViewCoordinates};
 
 bitflags::bitflags! {
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -101,7 +98,7 @@ impl SubSpace {
 
     /// Whether 2D content in this subspace can be displayed.
     #[inline]
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn supports_2d_content(&self) -> bool {
         // There's currently no way to prevent a subspace from displaying 2D content.
         true
@@ -143,10 +140,10 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            if event.diff.kind != ChunkStoreDiffKind::Addition {
+            let Some(add) = event.to_addition() else {
                 // Topology is only additive, don't care about removals.
                 continue;
-            }
+            };
 
             // Possible optimization:
             // only update topologies if an entity is logged the first time or a new relevant component was added.
@@ -154,8 +151,8 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
                 .entry(event.store_id.clone())
                 .or_default()
                 .on_store_diff(
-                    event.diff.chunk.entity_path(),
-                    event.diff.chunk.component_descriptors(),
+                    add.delta_chunk().entity_path(),
+                    add.delta_chunk().component_descriptors(),
                 );
         }
     }
@@ -178,6 +175,10 @@ pub struct SpatialTopology {
     ///
     /// This is purely an optimization to speed up searching for `subspaces`.
     subspace_origin_per_logged_entity: IntMap<EntityPathHash, EntityPathHash>,
+
+    /// When there is an explicit coordinate frame there are effectively more entity
+    /// trees than are known about here. And heuristic can't make the same assumptions.
+    has_explicit_coordinate_frame: bool,
 }
 
 impl Default for SpatialTopology {
@@ -197,6 +198,7 @@ impl Default for SpatialTopology {
             .collect(),
 
             subspace_origin_per_logged_entity: Default::default(),
+            has_explicit_coordinate_frame: false,
         }
     }
 }
@@ -259,10 +261,10 @@ impl SpatialTopology {
         self.subspaces.get(&origin)
     }
 
-    fn on_store_diff(
+    fn on_store_diff<'a>(
         &mut self,
         entity_path: &EntityPath,
-        added_components: impl Iterator<Item = re_types::ComponentDescriptor>,
+        added_components: impl Iterator<Item = &'a re_sdk_types::ComponentDescriptor>,
     ) {
         re_tracing::profile_function!();
 
@@ -274,6 +276,8 @@ impl SpatialTopology {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == ViewCoordinates::name() {
                 new_heuristic_hints.insert(HeuristicHints::ViewCoordinates3d);
+            } else if added_component == re_tf::TransformFrameId::name() {
+                self.has_explicit_coordinate_frame = true;
             }
         }
 
@@ -413,19 +417,21 @@ impl SpatialTopology {
 
         self.subspaces.insert(new_space.origin.hash(), new_space);
     }
+
+    /// True if a component of type [`re_tf::TransformFrameId`] has been logged.
+    pub fn has_explicit_coordinate_frame(&self) -> bool {
+        self.has_explicit_coordinate_frame
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use re_log_types::EntityPath;
-    use re_types::{
-        Component as _, ComponentDescriptor,
-        components::{PinholeProjection, ViewCoordinates},
-    };
-
-    use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};
+    use re_sdk_types::components::{PinholeProjection, ViewCoordinates};
+    use re_sdk_types::{Component as _, ComponentDescriptor};
 
     use super::SpatialTopology;
+    use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};
 
     #[test]
     fn no_splits() {
@@ -463,7 +469,7 @@ mod tests {
         );
 
         // Add splitting entities to the root space - this should not cause any splits.
-        #[allow(clippy::single_element_loop)]
+        #[expect(clippy::single_element_loop)]
         for (name, flags) in [
             (PinholeProjection::name(), SubSpaceConnectionFlags::Pinhole),
             // Add future ways of splitting here (in the past `DisconnectedSpace` was used here).
@@ -645,7 +651,7 @@ mod tests {
     }
 
     fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentDescriptor]) {
-        topo.on_store_diff(&path.into(), components.iter().cloned());
+        topo.on_store_diff(&path.into(), components.iter());
     }
 
     fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {

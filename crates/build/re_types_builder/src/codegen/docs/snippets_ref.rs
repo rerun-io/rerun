@@ -1,10 +1,8 @@
 //! Generate the snippets reference.
 
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, BTreeSet, HashMap},
-    path::PathBuf,
-};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -37,7 +35,7 @@ struct OptOut {
 }
 
 /// Everything we know about a snippet, including which objects (archetypes, components, etc) it references.
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug, Clone)]
 struct Snippet<'o> {
     path: PathBuf,
@@ -208,7 +206,7 @@ impl SnippetsRefCodeGenerator {
 
             // NOTE: `/` is written with a UTF8 zero-width word joiner (<https://unicode-explorer.com/c/2060>)
             // on both sides in order to force the markdown renderer to *not* split it into two lines ("archetype/\nthing").
-            #[allow(clippy::invisible_characters)]
+            #[expect(clippy::invisible_characters)]
             let snippet_name_qualified = &snippet.name_qualified.replace('/', "⁠/⁠");
 
             let row = format!(
@@ -320,7 +318,7 @@ impl SnippetsRefCodeGenerator {
         );
         // NOTE: `C++` is written with a UTF8 zero-width word joiner (<https://unicode-explorer.com/c/2060>) in
         // order to force the markdown renderer to *not* split it into two lines ("C+\n+").
-        #[allow(clippy::invisible_characters)]
+        #[expect(clippy::invisible_characters)]
         let out = format!(
             "
 {autogen_warning}
@@ -379,7 +377,7 @@ _All snippets, organized by the blueprint-related [`Archetype`](https://rerun.io
 "
         );
 
-        #[allow(clippy::string_add)]
+        #[expect(clippy::string_add)]
         files_to_write.insert(self.out_dir.join("INDEX.md"), out.trim().to_owned() + "\n");
 
         Ok(files_to_write)
@@ -394,7 +392,7 @@ fn collect_snippets_recursively<'o>(
 ) -> anyhow::Result<Snippets<'o>> {
     let mut snippets = Snippets::default();
 
-    #[allow(clippy::unwrap_used)] // we just use unwrap for string <-> path conversion here
+    #[expect(clippy::unwrap_used)] // we just use unwrap for string <-> path conversion here
     for snippet in dir.read_dir()? {
         let snippet = snippet?;
         let meta = snippet.metadata()?;
@@ -473,16 +471,16 @@ fn collect_snippets_recursively<'o>(
         let cpp = path.with_extension("cpp").exists();
 
         let snippet = Snippet {
+            path,
             name,
             name_qualified,
-            path,
-
-            contents,
-            description,
 
             python,
             rust,
+
             cpp,
+            description,
+            contents,
 
             archetypes,
             components,
@@ -563,11 +561,11 @@ fn test_contains_whole_word() {
     assert!(contains_whole_word("underscore_is_breaking", "underscore"));
     assert!(contains_whole_word("underscore_is_breaking", "is_breaking"));
     assert!(contains_whole_word(
-        "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
+        "rrb.ActiveVisualizers(rrb.visualizers.SeriesPoints)",
         "SeriesPoints" // plural!
     ));
     assert!(!contains_whole_word(
-        "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
+        "rrb.ActiveVisualizers(rrb.visualizers.SeriesPoints)",
         "SeriesPoint" // singular!
     ));
     assert!(
@@ -649,7 +647,7 @@ impl<'o> KnownObjects<'o> {
 
 /// Returns `true` if the given name has not been released yet.
 fn is_speculative(any_name: &str) -> anyhow::Result<bool> {
-    let is_pre_0_21_release = {
+    let is_pre_0_25_release = {
         // Reminder of what those look like:
         // env!("CARGO_PKG_VERSION") = "0.21.0-alpha.1+dev"
         // env!("CARGO_PKG_VERSION_MAJOR") = "0"
@@ -661,28 +659,17 @@ fn is_speculative(any_name: &str) -> anyhow::Result<bool> {
             .parse()
             .context("couldn't parse minor crate version")?;
 
-        minor < 21
+        minor < 25
     };
 
-    const RELEASED_IN_0_21: &[&str] = &[
+    const RELEASED_IN_0_25: &[&str] = &[
         // archetypes & components
-        "GraphEdge",
-        "GraphEdges",
-        "GraphNode",
-        "GraphNodes",
-        "GraphView",
-        "Plane3D",
+        "DynamicArchetype",
         // snippets
-        "concepts/explicit_recording",
-        "descriptors/descr_builtin_archetype",
-        "descriptors/descr_builtin_component",
-        "descriptors/descr_custom_archetype",
-        "descriptors/descr_custom_component",
-        "howto/any_values_send_columns",
-        "views/graph",
+        "tutorials/dynamic_archetype",
     ];
 
-    let is_speculative = is_pre_0_21_release && RELEASED_IN_0_21.contains(&any_name);
+    let is_speculative = is_pre_0_25_release && RELEASED_IN_0_25.contains(&any_name);
 
     Ok(is_speculative)
 }

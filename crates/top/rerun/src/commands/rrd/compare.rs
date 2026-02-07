@@ -1,11 +1,8 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::Context as _;
 use itertools::{Itertools as _, izip};
-
 use re_chunk::Chunk;
 
 // ---
@@ -81,40 +78,62 @@ impl CompareCommand {
             re_format::format_uint(chunks2.len()),
         );
 
-        let mut unordered_failed = false;
-        if *unordered {
-            let mut chunks2_opt: Vec<Option<Arc<Chunk>>> =
-                chunks2.clone().into_iter().map(Some).collect_vec();
-            'outer: for chunk1 in &chunks1 {
-                for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
-                    #[allow(clippy::unwrap_used)]
-                    if re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
-                        *chunk2 = None;
-                        continue 'outer;
-                    }
-                }
-                unordered_failed = true;
-                break;
-            }
-        }
-
         fn format_chunk(chunk: &Chunk) -> String {
-            re_format_arrow::format_record_batch_opts(
+            re_arrow_util::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
-                &re_format_arrow::RecordBatchFormatOpts {
-                    transposed: false,
+                &re_arrow_util::RecordBatchFormatOpts {
                     width: Some(800),
-                    include_metadata: true,
-                    include_column_metadata: true,
+                    max_cell_content_width: 100,
                     trim_field_names: false,
                     trim_metadata_keys: false,
                     trim_metadata_values: false,
+                    ..Default::default()
                 },
             )
             .to_string()
         }
 
-        if !*unordered || unordered_failed {
+        if *unordered {
+            let mut chunks2_remaining = chunks2;
+            let mut unmatched_chunks1 = Vec::new();
+
+            for chunk1 in &chunks1 {
+                if let Some(pos) = chunks2_remaining
+                    .iter()
+                    .position(|chunk2| re_chunk::Chunk::ensure_similar(chunk1, chunk2).is_ok())
+                {
+                    chunks2_remaining.swap_remove(pos);
+                } else {
+                    unmatched_chunks1.push(chunk1.clone());
+                }
+            }
+
+            if !unmatched_chunks1.is_empty() || !chunks2_remaining.is_empty() {
+                let mut error_msg = String::from("Unordered comparison failed:\n");
+
+                if !unmatched_chunks1.is_empty() {
+                    error_msg.push_str(&format!(
+                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:\n",
+                        unmatched_chunks1.len()
+                    ));
+                    for chunk in &unmatched_chunks1 {
+                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                    }
+                }
+
+                if !chunks2_remaining.is_empty() {
+                    error_msg.push_str(&format!(
+                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:\n",
+                        chunks2_remaining.len()
+                    ));
+                    for chunk in &chunks2_remaining {
+                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                    }
+                }
+
+                anyhow::bail!(error_msg);
+            }
+        } else {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
                 re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
                     format!(
@@ -122,8 +141,8 @@ impl CompareCommand {
                         similar_asserts::SimpleDiff::from_str(
                             &format_chunk(&chunk1),
                             &format_chunk(&chunk2),
-                            "got",
-                            "expected",
+                            &path_to_rrd1.display().to_string(),
+                            &path_to_rrd2.display().to_string(),
                         ),
                     )
                 })?;
@@ -157,20 +176,22 @@ fn load_chunks(
     // in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
     // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
+    let decoder = re_log_encoding::DecoderApp::decode_lazy(rrd_file);
     for msg in decoder {
         let msg = msg.context("decode rrd message")?;
         stores
             .entry(msg.store_id().clone())
             .or_insert_with(|| {
+                let enable_viewer_indexes = false; // that would just slow us down for no reason
                 re_entity_db::EntityDb::with_store_config(
                     msg.store_id().clone(),
+                    enable_viewer_indexes,
                     // We must make sure not to do any store-side compaction during comparisons, or
                     // this will result in flaky roundtrips in some instances.
                     re_chunk_store::ChunkStoreConfig::ALL_DISABLED,
                 )
             })
-            .add(&msg)
+            .add_log_msg(&msg)
             .context("decode rrd file contents")?;
     }
 
@@ -185,7 +206,7 @@ fn load_chunks(
         "more than one data recording found in rrd file"
     );
 
-    #[allow(clippy::unwrap_used)] // safe, ensured above
+    #[expect(clippy::unwrap_used)] // safe, ensured above
     let store = stores.pop().unwrap();
     let engine = store.storage_engine();
 
@@ -193,7 +214,7 @@ fn load_chunks(
         store.application_id().clone(),
         engine
             .store()
-            .iter_chunks()
+            .iter_physical_chunks()
             .filter_map(|c| {
                 if ignore_chunks_without_components {
                     (c.num_components() > 0).then_some(c.clone())

@@ -1,14 +1,12 @@
 use smallvec::smallvec;
 
-use crate::{
-    include_shader_module,
-    view_builder::ViewBuilder,
-    wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc},
-};
-
 use super::{
     DrawData, DrawError, DrawPhase, GpuRenderPipelinePoolAccessor, RenderContext, Renderer,
 };
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc};
+use crate::{DrawableCollector, include_shader_module};
 
 pub struct TestTriangle {
     render_pipeline: GpuRenderPipelineHandle,
@@ -19,11 +17,24 @@ pub struct TestTriangleDrawData;
 
 impl DrawData for TestTriangleDrawData {
     type Renderer = TestTriangle;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Opaque,
+            DrawDataDrawable {
+                distance_sort_key: 0.0,
+                draw_data_payload: 0,
+            },
+        );
+    }
 }
 
 impl TestTriangleDrawData {
-    pub fn new(ctx: &RenderContext) -> Self {
-        std::mem::drop(ctx.renderer::<TestTriangle>()); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
+    pub fn new(_ctx: &RenderContext) -> Self {
         Self {}
     }
 }
@@ -79,15 +90,14 @@ impl Renderer for TestTriangle {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        _draw_data: &TestTriangleDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;
         pass.set_pipeline(pipeline);
-        pass.draw(0..3, 0..1);
-        Ok(())
-    }
+        for DrawInstruction { .. } in draw_instructions {
+            pass.draw(0..3, 0..1);
+        }
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Opaque]
+        Ok(())
     }
 }

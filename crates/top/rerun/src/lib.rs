@@ -123,15 +123,12 @@ pub mod demo_util;
 #[cfg(feature = "log")]
 pub mod log_integration;
 
-#[cfg(feature = "log")]
-pub use re_log::default_log_filter;
-
-#[cfg(feature = "log")]
-pub use log_integration::Logger;
-
 #[cfg(feature = "run")]
 pub use commands::{CallSource, run};
-
+#[cfg(feature = "log")]
+pub use log_integration::Logger;
+#[cfg(feature = "log")]
+pub use re_log::default_log_filter;
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 
@@ -141,14 +138,15 @@ pub mod dataframe {
     pub use re_dataframe::*;
 }
 
+pub use re_capabilities::MainThreadToken;
+
 /// Everything needed to build custom `ChunkStoreSubscriber`s.
 pub use re_entity_db::external::re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreSubscriber,
+    ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion,
+    ChunkStoreDiffVirtualAddition, ChunkStoreEvent, ChunkStoreGeneration, ChunkStoreHandle,
+    ChunkStoreSubscriber,
 };
 pub use re_log_types::StoreKind;
-
-pub use re_capabilities::MainThreadToken;
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.
@@ -163,38 +161,27 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 
 /// Re-exports of other crates.
 pub mod external {
-    pub use anyhow;
-    pub use arrow;
-
-    pub use ::re_build_info;
-    pub use ::re_entity_db;
     pub use ::re_entity_db::external::*;
-    pub use ::re_error;
-    pub use ::re_format;
-    pub use ::re_format_arrow;
-
-    #[cfg(feature = "run")]
-    pub use re_data_source;
-
+    #[cfg(feature = "oss_server")]
+    pub use ::re_server;
     #[cfg(feature = "clap")]
     #[cfg(not(target_arch = "wasm32"))]
     pub use clap;
-
     #[cfg(any(feature = "run", feature = "native_viewer"))]
     pub use re_crash_handler;
-
-    #[cfg(feature = "native_viewer")]
-    pub use re_viewer;
-
-    #[cfg(feature = "native_viewer")]
-    pub use re_viewer::external::*;
-
+    #[cfg(feature = "run")]
+    pub use re_data_source;
     #[cfg(any(feature = "sdk", feature = "server"))]
     pub use re_sdk::external::*;
-
     #[cfg(feature = "sdk")]
-    pub use re_types;
-
+    pub use re_sdk_types;
     #[cfg(feature = "sdk")]
-    pub use re_types::external::*;
+    pub use re_sdk_types::external::*;
+    #[cfg(feature = "native_viewer")]
+    pub use re_viewer;
+    #[cfg(feature = "native_viewer")]
+    pub use re_viewer::external::*;
+    pub use {
+        ::re_arrow_util, ::re_build_info, ::re_entity_db, ::re_error, ::re_format, anyhow, arrow,
+    };
 }

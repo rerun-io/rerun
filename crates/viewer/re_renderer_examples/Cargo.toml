@@ -13,7 +13,7 @@ workspace = true
 [features]
 
 [[bin]]
-name = "2d"    # NOLINT
+name = "2d" # NOLINT
 path = "2d.rs" # NOLINT
 
 [[bin]]
@@ -52,7 +52,7 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 macaw.workspace = true
 pollster.workspace = true
-rand = { workspace = true, features = ["std", "std_rng"] }
+rand = { workspace = true, features = ["std", "std_rng", "thread_rng"] }
 web-time.workspace = true
 wgpu.workspace = true
 winit = { workspace = true, default-features = false, features = [

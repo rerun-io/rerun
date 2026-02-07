@@ -37,7 +37,7 @@ title: "Arrows2D"
 
 snippet: archetypes/arrows2d_simple
 
-<picture data-inline-viewer="snippets/arrows2d_simple">
+<picture data-inline-viewer="snippets/archetypes/arrows2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1024w.png">

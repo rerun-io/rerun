@@ -1,30 +1,23 @@
 use itertools::Itertools as _;
-
+use rayon::prelude::*;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_types::{
-    Archetype as _,
-    archetypes::{self},
-    components::{AggregationPolicy, Color, Name, SeriesVisible, StrokeWidth},
-};
-use re_view::{
-    RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
-    range_with_blueprint_resolved_data,
-};
+use re_sdk_types::components::{AggregationPolicy, StrokeWidth};
+use re_sdk_types::{Archetype as _, archetypes};
+use re_sdk_types::{Component as _, components};
+use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
-    ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
-    auto_color_for_entity_path,
+    AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::series_query::{
     allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
     collect_series_visibility, determine_num_series,
 };
-use crate::util::{determine_time_per_pixel, determine_time_range, points_to_series};
-use crate::view_class::TimeSeriesViewState;
-use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ViewPropertyQueryError, util};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
@@ -38,18 +31,26 @@ impl IdentifiedViewSystem for SeriesLinesSystem {
     }
 }
 
-const DEFAULT_STROKE_WIDTH: f32 = 0.75;
-
 impl VisualizerSystem for SeriesLinesSystem {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info
-            .queried
-            .extend(archetypes::SeriesLines::all_components().iter().cloned());
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesLines::name().into(),
+            required: AnyPhysicalDatatypeRequirement {
+                semantic_type: components::Scalar::name(),
+                physical_types: util::series_supported_datatypes().into_iter().collect(),
+                allow_static_data: false,
+            }
+            .into(),
 
-        query_info.relevant_archetypes = std::iter::once(archetypes::SeriesLines::name()).collect();
-
-        query_info
+            queried: archetypes::Scalars::all_components()
+                .iter()
+                .chain(archetypes::SeriesLines::all_components().iter())
+                .cloned()
+                .collect(),
+        }
     }
 
     fn execute(
@@ -57,136 +58,56 @@ impl VisualizerSystem for SeriesLinesSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.load_scalars(ctx, query);
-        Ok(Vec::new())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
-}
-
-impl TypedComponentFallbackProvider<Color> for SeriesLinesSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLinesSystem {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
-        StrokeWidth(DEFAULT_STROKE_WIDTH.into())
-    }
-}
-
-impl TypedComponentFallbackProvider<Name> for SeriesLinesSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
-
-        state
-            .ok()
-            .and_then(|state| {
-                state
-                    .default_names_for_entities
-                    .get(ctx.target_entity_path)
-                    .map(|name| name.clone().into())
-            })
-            .or_else(|| {
-                ctx.target_entity_path
-                    .last()
-                    .map(|part| part.ui_string().into())
-            })
-            .unwrap_or_default()
-    }
-}
-
-impl TypedComponentFallbackProvider<SeriesVisible> for SeriesLinesSystem {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
-        true.into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(SeriesLinesSystem => [Color, StrokeWidth, Name, SeriesVisible]);
-
-impl SeriesLinesSystem {
-    fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
-        re_tracing::profile_function!();
+        let output = VisualizerExecutionOutput::default();
 
         let plot_mem =
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
-        let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
+        let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
-        let data_results = query.iter_visible_data_results(Self::identifier());
+        let data_results: Vec<_> = query
+            .iter_visualizer_instruction_for(Self::identifier())
+            .collect();
 
-        let parallel_loading = true;
-        if parallel_loading {
-            use rayon::prelude::*;
-            re_tracing::profile_wait!("load_series");
-            for mut one_series in data_results
-                .collect_vec()
-                .par_iter()
-                .map(|data_result| -> Vec<PlotSeries> {
-                    let mut series = vec![];
-                    self.load_series(
-                        ctx,
-                        query,
-                        plot_mem.as_ref(),
-                        time_per_pixel,
-                        data_result,
-                        &mut series,
-                    );
-                    series
-                })
-                .collect::<Vec<_>>()
-            {
-                self.all_series.append(&mut one_series);
-            }
-        } else {
-            let mut series = vec![];
-            for data_result in data_results {
-                self.load_series(
+        let all_series: Result<Vec<_>, _> = data_results
+            .par_iter()
+            .map(|(data_result, instruction)| {
+                Self::load_series(
                     ctx,
                     query,
-                    plot_mem.as_ref(),
                     time_per_pixel,
                     data_result,
-                    &mut series,
-                );
-            }
-            self.all_series = series;
-        }
-    }
+                    instruction,
+                    &output,
+                )
+            })
+            .collect();
 
-    #[allow(clippy::too_many_arguments)]
+        self.all_series.extend(all_series?.into_iter().flatten());
+
+        Ok(output)
+    }
+}
+
+impl SeriesLinesSystem {
     fn load_series(
-        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        plot_mem: Option<&egui_plot::PlotMemory>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
-        all_series: &mut Vec<PlotSeries>,
-    ) {
+        instruction: &re_viewer_context::VisualizerInstruction,
+        output: &re_viewer_context::VisualizerExecutionOutput,
+    ) -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
         re_tracing::profile_function!();
 
         let current_query = ctx.current_query();
-        let query_ctx = ctx.query_context(data_result, &current_query);
+        let query_ctx = ctx.query_context(data_result, &current_query, instruction.id);
 
-        let time_offset = ctx
-            .view_state
-            .downcast_ref::<TimeSeriesViewState>()
-            .map_or(0, |state| state.time_offset);
-        let time_range =
-            determine_time_range(view_query.latest_at, time_offset, data_result, plot_mem);
+        let time_range = util::determine_time_range(ctx, data_result)?;
+
         {
-            use re_view::RangeResultsExt as _;
-
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
@@ -195,42 +116,15 @@ impl SeriesLinesSystem {
                 // cut-off the data early at the edge of the view.
                 .include_extended_bounds(true);
 
-            let results = range_with_blueprint_resolved_data(
+            let mut results = range_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &query,
                 data_result,
-                archetypes::Scalars::all_components()
-                    .iter()
-                    .chain(archetypes::SeriesLines::all_components().iter()),
+                archetypes::Scalars::all_component_identifiers()
+                    .chain(archetypes::SeriesLines::all_component_identifiers()),
+                instruction,
             );
-
-            // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) =
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
-            else {
-                return;
-            };
-
-            // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            // TODO(andreas): Fallback should produce several colors. Instead, we generate additional ones on the fly if necessary right now.
-            let fallback_color: Color = self.fallback_for(&query_ctx);
-            let fallback_stroke_width: StrokeWidth = self.fallback_for(&query_ctx);
-            let default_point = PlotPoint {
-                time: 0,
-                value: 0.0,
-                attrs: PlotPointAttrs {
-                    color: fallback_color.into(),
-                    radius_ui: 0.5 * *fallback_stroke_width.0,
-                    kind: PlotSeriesKind::Continuous,
-                },
-            };
-
-            let num_series = determine_num_series(&all_scalar_chunks);
-            let mut points_per_series =
-                allocate_plot_points(&query, &default_point, &all_scalar_chunks, num_series);
-
-            collect_scalars(&all_scalar_chunks, &mut points_per_series);
 
             // The plot view visualizes scalar data within a specific time range, without any kind
             // of time-alignment / bootstrapping behavior:
@@ -240,51 +134,79 @@ impl SeriesLinesSystem {
             // * For the secondary components (colors, radii, names, etc), this is a problem
             //   though: you don't want your plot to change color depending on what the currently
             //   visible time range is! Secondary components have to be bootstrapped.
-            let query_shadowed_components = false;
-            let bootstrapped_results = latest_at_with_blueprint_resolved_data(
+            //
+            // Bootstrapping is now handled automatically by the query system for the components
+            // we specified when calling range_with_blueprint_resolved_data.
+            results.merge_bootstrapped_data(re_view::latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
-                &LatestAtQuery::new(query.timeline, query.range.min()),
+                &re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min()),
                 data_result,
-                archetypes::SeriesLines::all_components().iter(),
-                query_shadowed_components,
+                archetypes::SeriesLines::optional_components()
+                    .iter()
+                    .map(|c| c.component),
+                Some(instruction),
+            ));
+
+            // Wrap results for convenient error-reporting iteration
+            let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
+            let results = re_view::VisualizerInstructionQueryResults {
+                instruction_id: instruction.id,
+                query_results: &results,
+                output,
+            };
+
+            // If we have no scalars, we can't do anything.
+            let scalar_iter =
+                results.iter_required(archetypes::Scalars::descriptor_scalars().component);
+            let all_scalar_chunks = scalar_iter.chunks();
+
+            // All the default values for a `PlotPoint`, accounting for both overrides and default values.
+            // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
+            let fallback_stroke_width: StrokeWidth = typed_fallback_for(
+                &query_ctx,
+                archetypes::SeriesLines::descriptor_widths().component,
             );
+            let default_point = PlotPoint {
+                time: 0,
+                value: 0.0,
+                attrs: PlotPointAttrs {
+                    // Filled out later.
+                    color: egui::Color32::DEBUG_COLOR,
+                    radius_ui: 0.5 * *fallback_stroke_width.0,
+                    kind: PlotSeriesKind::Continuous,
+                },
+            };
+
+            let num_series = determine_num_series(all_scalar_chunks);
+            let mut points_per_series =
+                allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
+
+            collect_scalars(all_scalar_chunks, &mut points_per_series);
 
             collect_colors(
-                entity_path,
+                &query_ctx,
                 &query,
-                &bootstrapped_results,
                 &results,
-                &all_scalar_chunks,
+                all_scalar_chunks,
                 &mut points_per_series,
                 &archetypes::SeriesLines::descriptor_colors(),
             );
             collect_radius_ui(
                 &query,
-                &bootstrapped_results,
                 &results,
-                &all_scalar_chunks,
+                all_scalar_chunks,
                 &mut points_per_series,
                 &archetypes::SeriesLines::descriptor_widths(),
                 0.5,
             );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-            let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
-            let aggregator = bootstrapped_results
-                .get_optional_chunks(aggregation_policy_descr.clone())
-                .iter()
-                .chain(
-                    results
-                        .get_optional_chunks(aggregation_policy_descr.clone())
-                        .iter(),
-                )
-                .find(|chunk| !chunk.is_empty())
-                .and_then(|chunk| {
-                    chunk
-                        .component_mono::<AggregationPolicy>(&aggregation_policy_descr, 0)?
-                        .ok()
-                })
+            let aggregator = results
+                .iter_optional(archetypes::SeriesLines::descriptor_aggregation_policy().component)
+                .component_slow::<AggregationPolicy>()
+                .next()
+                .and_then(|(_index, policies)| policies.first().copied())
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
                 //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
                 .unwrap_or_default();
@@ -339,22 +261,26 @@ impl SeriesLinesSystem {
             }
 
             let series_visibility = collect_series_visibility(
-                &query,
-                &bootstrapped_results,
+                &query_ctx,
                 &results,
                 num_series,
-                archetypes::SeriesLines::descriptor_visible_series(),
+                archetypes::SeriesLines::descriptor_visible_series().component,
             );
             let series_names = collect_series_name(
-                self,
                 &query_ctx,
-                &bootstrapped_results,
                 &results,
                 num_series,
                 &archetypes::SeriesLines::descriptor_names(),
             );
 
-            debug_assert_eq!(points_per_series.len(), series_names.len());
+            let mut series = Vec::with_capacity(num_series);
+
+            debug_assert!(
+                points_per_series.len() <= series_names.len(),
+                "[DEBUG ASSERT] Number of series names {} after processing should be at least the number of series allocated {}",
+                series_names.len(),
+                points_per_series.len()
+            );
             for (instance, (points, label, visible)) in itertools::izip!(
                 points_per_series.into_iter(),
                 series_names.into_iter(),
@@ -365,13 +291,10 @@ impl SeriesLinesSystem {
                 let instance_path = if num_series == 1 {
                     InstancePath::entity_all(data_result.entity_path.clone())
                 } else {
-                    InstancePath::instance(
-                        data_result.entity_path.clone(),
-                        (instance as u64).into(),
-                    )
+                    InstancePath::instance(data_result.entity_path.clone(), instance as u64)
                 };
 
-                points_to_series(
+                if let Err(err) = util::points_to_series(
                     instance_path,
                     time_per_pixel,
                     visible,
@@ -380,9 +303,14 @@ impl SeriesLinesSystem {
                     view_query,
                     label,
                     aggregator,
-                    all_series,
-                );
+                    &mut series,
+                    instruction.id,
+                ) {
+                    results.report_error(format!("Failed to create series: {err}"));
+                }
             }
+
+            Ok(series)
         }
     }
 }
@@ -404,13 +332,19 @@ fn collect_recursive_clears(
         let results = ctx.recording_engine().cache().latest_at(
             &LatestAtQuery::new(query.timeline, query.range.min()),
             &clear_entity_path,
-            [&clear_descriptor],
+            [clear_descriptor.component],
         );
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.clone())
-                .slice::<bool>()
+                .get(clear_descriptor.component)
+                .iter()
+                .flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
+                        chunk.iter_slices::<bool>(clear_descriptor.component)
+                    )
+                })
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
                         !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
@@ -420,15 +354,23 @@ fn collect_recursive_clears(
     }
 
     loop {
-        let results =
-            ctx.recording_engine()
-                .cache()
-                .range(query, &clear_entity_path, [&clear_descriptor]);
+        let results = ctx.recording_engine().cache().range(
+            query,
+            &clear_entity_path,
+            [clear_descriptor.component],
+        );
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.clone())
-                .slice::<bool>()
+                .get(clear_descriptor.component)
+                .unwrap_or_default()
+                .iter()
+                .flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(*query.timeline(), clear_descriptor.component),
+                        chunk.iter_slices::<bool>(clear_descriptor.component)
+                    )
+                })
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
                         !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);

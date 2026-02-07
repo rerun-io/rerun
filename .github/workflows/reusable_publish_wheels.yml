@@ -22,11 +22,12 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
   id-token: "write"
+  packages: "read"
 
 jobs:
   get-commit-sha:
@@ -95,18 +96,6 @@ jobs:
       MODE: "pypi"
     secrets: inherit
 
-  build-macos-x64:
-    name: "Macos-x64: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-macos-x64-${{ inputs.concurrency }}
-      PLATFORM: macos-x64
-      WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-      MODE: "pypi"
-    secrets: inherit
-
   ## Test
 
   test-windows-x64:
@@ -134,13 +123,7 @@ jobs:
   generate-wheel-index:
     name: "Generate Pip Index"
     needs:
-      [
-        build-linux-x64,
-        build-linux-arm64,
-        build-windows-x64,
-        build-macos-arm64,
-        build-macos-x64,
-      ]
+      [build-linux-x64, build-linux-arm64, build-windows-x64, build-macos-arm64]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
       CONCURRENCY: generate-wheel-index-${{ inputs.concurrency }}
@@ -158,9 +141,9 @@ jobs:
           fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
           ref: ${{ inputs.release-commit }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -175,7 +158,7 @@ jobs:
 
       - name: Publish to PyPI
         run: |
-          pixi run python scripts/ci/publish_wheels.py \
+          pixi run uvpy scripts/ci/publish_wheels.py \
             --version ${{ inputs.release-version }} \
             --dir "commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels" \
             --repository "${{ vars.PYPI_REPOSITORY }}" \

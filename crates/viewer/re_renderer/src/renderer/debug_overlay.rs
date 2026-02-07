@@ -1,18 +1,15 @@
-use crate::{
-    RectInt,
-    allocator::create_and_fill_uniform_buffer,
-    draw_phases::DrawPhase,
-    include_shader_module,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
+use smallvec::smallvec;
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
-
-use smallvec::smallvec;
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::draw_phases::DrawPhase;
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+    RenderPipelineDesc,
+};
+use crate::{DrawableCollector, RectInt, include_shader_module};
 
 mod gpu_data {
     use crate::wgpu_buffer_types;
@@ -67,6 +64,20 @@ pub struct DebugOverlayDrawData {
 
 impl DrawData for DebugOverlayDrawData {
     type Renderer = DebugOverlayRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Compositing,
+            DrawDataDrawable {
+                distance_sort_key: 100.0, // Should draw after compositing.
+                draw_data_payload: 0,
+            },
+        );
+    }
 }
 
 impl DebugOverlayDrawData {
@@ -228,18 +239,16 @@ impl Renderer for DebugOverlayRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &DebugOverlayDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;
-
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, &draw_data.bind_group, &[]);
-        pass.draw(0..4, 0..1);
+
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            pass.set_bind_group(1, &draw_data.bind_group, &[]);
+            pass.draw(0..4, 0..1);
+        }
 
         Ok(())
-    }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Compositing]
     }
 }

@@ -1,9 +1,7 @@
 use std::sync::mpsc;
 
-use crate::{
-    texture_info::Texture2DBufferInfo,
-    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture},
-};
+use crate::texture_info::Texture2DBufferInfo;
+use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture};
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum CpuWriteGpuReadError {
@@ -49,12 +47,12 @@ pub enum CpuWriteGpuReadError {
 /// Note that the "vec like behavior" further encourages
 /// * not leaving holes
 /// * keeping writes sequential
+///
+/// Must be dropped before calling [`CpuWriteGpuReadBelt::before_queue_submit`] (typically the end of a frame).
+/// If this buffer is not dropped before calling [`CpuWriteGpuReadBelt::before_queue_submit`], a validation error will occur.
 pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// Write view into the relevant buffer portion.
-    ///
-    /// UNSAFE: The lifetime is transmuted to be `'static`.
-    /// In actuality it is tied to the lifetime of [`chunk_buffer`](Self::chunk_buffer)!
-    write_view: wgpu::BufferViewMut<'static>,
+    write_view: wgpu::BufferViewMut,
 
     /// Range in T elements in `write_view` that haven't been written yet.
     unwritten_element_range: std::ops::Range<usize>,
@@ -256,7 +254,6 @@ where
     /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
     ///
     /// Fails if the buffer size is not sufficient to fill the entire texture.
-    #[allow(unused)]
     pub fn copy_to_texture2d_entire_first_layer(
         self,
         encoder: &mut wgpu::CommandEncoder,
@@ -369,28 +366,14 @@ impl Chunk {
         let byte_offset_in_chunk_buffer = self.unused_offset;
         let end_offset = byte_offset_in_chunk_buffer + size_in_bytes;
 
-        debug_assert!(byte_offset_in_chunk_buffer % CpuWriteGpuReadBelt::MIN_OFFSET_ALIGNMENT == 0);
+        debug_assert!(
+            byte_offset_in_chunk_buffer.is_multiple_of(CpuWriteGpuReadBelt::MIN_OFFSET_ALIGNMENT)
+        );
         debug_assert!(end_offset <= self.buffer.size());
 
         let buffer_slice = self.buffer.slice(byte_offset_in_chunk_buffer..end_offset);
         let write_view = buffer_slice.get_mapped_range_mut();
         self.unused_offset = end_offset;
-
-        #[allow(unsafe_code)]
-        // SAFETY:
-        // write_view has a lifetime dependency on the chunk's buffer - internally it holds a pointer to it!
-        //
-        // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
-        // Additionally, the buffer pool needs to ensure:
-        // * it can't drop buffers if there's still users
-        //      -> We assert on that
-        // * buffers are never moved in memory
-        //      -> buffers are always owned by the pool and are always Arc.
-        //          This means it not allowed to move the buffer out.
-        //          (We could make them Pin<Arc<>> but this complicates things inside the BufferPool)
-        let write_view = unsafe {
-            std::mem::transmute::<wgpu::BufferViewMut<'_>, wgpu::BufferViewMut<'static>>(write_view)
-        };
 
         CpuWriteGpuReadBuffer {
             chunk_buffer: self.buffer.clone(),
@@ -485,6 +468,8 @@ impl CpuWriteGpuReadBelt {
                 <= Self::MIN_OFFSET_ALIGNMENT
         );
 
+        // we must use an unbounded channel to avoid blocking on web
+        #[expect(clippy::disallowed_methods)]
         let (sender, receiver) = mpsc::channel();
         Self {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_OFFSET_ALIGNMENT),
@@ -568,7 +553,10 @@ impl CpuWriteGpuReadBelt {
 
     /// Prepare currently mapped buffers for use in a submission.
     ///
-    /// This must be called before the command encoder(s) used in [`CpuWriteGpuReadBuffer`] copy operations are submitted.
+    /// All existing [`CpuWriteGpuReadBuffer`] MUST be dropped before calling this function.
+    /// Any not dropped [`CpuWriteGpuReadBuffer`] will cause a validation error.
+    ///
+    /// This must be called BEFORE the command encoder(s) used in any [`CpuWriteGpuReadBuffer`] copy operations are submitted.
     ///
     /// At this point, all the partially used staging buffers are closed (cannot be used for
     /// further writes) until after [`CpuWriteGpuReadBelt::after_queue_submit`] is called *and* the GPU is done
@@ -580,6 +568,10 @@ impl CpuWriteGpuReadBelt {
         // https://github.com/gfx-rs/wgpu/issues/1468
         // However, WebGPU does not support this!
 
+        // We're done with writing to this chunk and are ready to have the GPU read it!
+        //
+        // This part has to happen before submit, otherwise we get a validation error that
+        // the buffers are still mapped and can't be read by the gpu.
         for chunk in self.active_chunks.drain(..) {
             chunk.buffer.unmap();
             self.closed_chunks.push(chunk);
@@ -591,6 +583,12 @@ impl CpuWriteGpuReadBelt {
     /// This must only be called after the command encoder(s) used in [`CpuWriteGpuReadBuffer`]
     /// copy operations are submitted. Additional calls are harmless.
     /// Not calling this as soon as possible may result in increased buffer memory usage.
+    ///
+    /// Implementation note:
+    /// We can't use [`wgpu::CommandEncoder::map_buffer_on_submit`] here because for that we'd need to know which
+    /// command encoder is the last one scheduling any cpu->gpu copy operations.
+    /// Note that if chunks were fully tied to a single encoder, we could call [`wgpu::CommandEncoder::map_buffer_on_submit`]
+    /// once we know a chunk has all its cpu->gpu copy operations scheduled on that very encoder.
     pub fn after_queue_submit(&mut self) {
         re_tracing::profile_function!();
         self.receive_chunks();

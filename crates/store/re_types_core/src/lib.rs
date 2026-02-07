@@ -25,50 +25,62 @@ pub mod arrow_helpers;
 mod arrow_string;
 pub mod arrow_zip_validity;
 mod as_components;
+mod chunk_id;
 mod component_batch;
 mod component_descriptor;
-mod id;
+mod dynamic_archetype;
 mod loggable;
 pub mod reflection;
 mod result;
+mod row_id;
+mod timeline_name;
 mod tuid;
 mod view;
+mod wrapper_component;
 
-pub use self::{
-    archetype::{Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier},
-    arrow_string::ArrowString,
-    as_components::AsComponents,
-    component_batch::{ComponentBatch, SerializedComponentBatch, SerializedComponentColumn},
-    component_descriptor::ComponentDescriptor,
-    id::{ChunkId, RowId},
-    loggable::{
-        Component, ComponentDescriptorSet, ComponentType, DatatypeName, Loggable,
-        UnorderedComponentDescriptorSet,
-    },
-    result::{
-        DeserializationError, DeserializationResult, ResultExt, SerializationError,
-        SerializationResult, _Backtrace,
-    },
-    tuid::tuids_to_arrow,
-    view::{View, ViewClassIdentifier},
+pub use self::archetype::{
+    Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier,
 };
+pub use self::arrow_string::ArrowString;
+pub use self::as_components::AsComponents;
+pub use self::chunk_id::ChunkId;
+pub use self::component_batch::{
+    ComponentBatch, SerializedComponentBatch, SerializedComponentColumn,
+};
+pub use self::component_descriptor::{
+    ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
+    FIELD_METADATA_KEY_COMPONENT_TYPE,
+};
+pub use self::dynamic_archetype::DynamicArchetype;
+pub use self::loggable::{
+    Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
+};
+pub use self::result::{
+    _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
+    SerializationResult,
+};
+pub use self::row_id::RowId;
+pub use self::tuid::tuids_to_arrow;
+pub use self::view::{View, ViewClassIdentifier};
+pub use self::wrapper_component::WrapperComponent;
+pub use timeline_name::TimelineName;
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
-/// There are also re-exported by `re_types`.
+/// There are also re-exported by `re_sdk_types`.
 pub mod archetypes;
 
 /// Fundamental [`Component`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
-/// There are also re-exported by `re_types`.
+/// There are also re-exported by `re_sdk_types`.
 pub mod components;
 
 /// Fundamental datatypes that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
-/// There are also re-exported by `re_types`.
+/// There are also re-exported by `re_sdk_types`.
 pub mod datatypes;
 
 // ---
@@ -81,9 +93,7 @@ pub mod macros {
 }
 
 pub mod external {
-    pub use anyhow;
-    pub use arrow;
-    pub use re_tuid;
+    pub use {anyhow, arrow, re_tuid};
 }
 
 /// Useful macro for statically asserting that a `struct` contains some specific fields.
@@ -142,8 +152,8 @@ macro_rules! static_assert_struct_has_fields {
 ///
 /// For that reason, this method favors a nice user experience over error handling: errors will
 /// merely be logged, not returned (except in debug builds, where all errors panic).
-#[doc(hidden)] // public so we can access it from re_types too
-#[allow(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
+#[doc(hidden)] // public so we can access it from re_sdk_types too
+#[expect(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
 pub fn try_serialize_field<L: Loggable>(
     descriptor: ComponentDescriptor,
     instances: impl IntoIterator<Item = impl Into<L>>,

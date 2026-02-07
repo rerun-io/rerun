@@ -24,8 +24,6 @@ def test_asset3d() -> None:
     ]
 
     for asset in assets:
-        assert (
-            asset.blob is not None
-            and asset.blob.as_arrow_array() == rr.components.BlobBatch(blob_comp).as_arrow_array()
-        )
+        assert asset.blob is not None
+        assert asset.blob.as_arrow_array() == rr.components.BlobBatch(blob_comp).as_arrow_array()
         assert asset.media_type == rr.components.MediaTypeBatch(rr.components.MediaType.GLB)

@@ -22,6 +22,7 @@ TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference
 * `sample`: [`VideoSample`](../components/video_sample.md)
 
 ### Optional
+* `opacity`: [`Opacity`](../components/opacity.md)
 * `draw_order`: [`DrawOrder`](../components/draw_order.md)
 
 
@@ -41,7 +42,7 @@ TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference
 
 snippet: archetypes/video_stream_synthetic
 
-<picture data-inline-viewer="snippets/video_stream_synthetic">
+<picture data-inline-viewer="snippets/archetypes/video_stream_synthetic">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1024w.png">

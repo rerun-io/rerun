@@ -1,0 +1,25 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// If playing, whether and how the playback time should loop.
+enum LoopMode: ubyte (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// Invalid value. Won't show up in generated types.
+	Invalid = 0,
+
+	/// Looping is off.
+	Off (default),
+
+  /// We are looping within the current loop selection.
+	Selection,
+
+  /// We are looping the entire recording.
+  ///
+  /// The loop selection is ignored.
+	All,
+}

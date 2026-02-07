@@ -1,19 +1,92 @@
-use nohash_hasher::IntSet;
-use re_types::ComponentDescriptor;
+use std::sync::Arc;
 
-use crate::{
-    HybridResults,
-    results_ext::{HybridLatestAtResults, HybridRangeResults},
-};
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
+use re_log_types::external::arrow;
+use re_log_types::external::arrow::array::Array as _;
+use re_log_types::hash::Hash64;
 use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
-use re_types_core::Archetype;
+use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
+use re_types_core::{Archetype, ComponentIdentifier};
 use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
-// ---
+use crate::blueprint_resolved_results::{
+    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults,
+};
+use crate::{BlueprintResolvedResults, ComponentMappingError};
 
-/// Queries for the given `component_types` using range semantics with blueprint support.
+/// Casts the values in a `ListArray` to the target datatype.
+///
+/// Returns the array unchanged if already the correct type (zero-copy).
+fn cast_list_array_values(
+    source: &arrow::array::ListArray,
+    target_datatype: &arrow::datatypes::DataType,
+) -> Result<arrow::array::ListArray, arrow::error::ArrowError> {
+    let values = source.values();
+
+    // Happy path: already the right type
+    if values.data_type() == target_datatype {
+        return Ok(source.clone());
+    }
+
+    // Cast the values
+    let casted_values = arrow::compute::cast(values, target_datatype)?;
+
+    // Rebuild the ListArray with casted values
+    arrow::array::ListArray::try_new(
+        Arc::new(arrow::datatypes::Field::new_list_field(
+            target_datatype.clone(),
+            true,
+        )),
+        source.offsets().clone(),
+        casted_values,
+        source.nulls().cloned(),
+    )
+}
+
+/// Applies a selector (if present) and casts the component for known datatypes (if required).
+fn transform_chunk(
+    target: &ComponentIdentifier,
+    source: &ComponentIdentifier,
+    selector: &Option<re_arrow_combinators::Selector>,
+    target_datatype: Option<&arrow::datatypes::DataType>,
+    chunk: &re_chunk_store::Chunk,
+) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
+    chunk.with_mapped_component(*source, *target, |arr| {
+        let transformed = if let Some(sel) = selector {
+            sel.execute_per_row(&arr)
+                .map_err(ComponentMappingError::SelectorExecutionFailed)?
+        } else {
+            arr
+        };
+
+        // Apply casting if target datatype is known.
+        if let Some(dt) = target_datatype {
+            cast_list_array_values(&transformed, dt).map_err(|err| {
+                ComponentMappingError::CastFailed {
+                    source_datatype: transformed.data_type().clone(),
+                    target_datatype: dt.clone(),
+                    err: Arc::new(err),
+                }
+            })
+        } else {
+            Ok(transformed)
+        }
+    })
+}
+
+/// All information required to rewrite a source component into a target component.
+///
+/// Also applies a [`re_arrow_combinators::Selector`], if specified.
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct ActiveRemapping {
+    target: ComponentIdentifier,
+    source: ComponentIdentifier,
+    selector: Option<re_arrow_combinators::Selector>,
+}
+
+/// Queries for the given `components` using range semantics with blueprint support.
 ///
 /// Data will be resolved, in order of priority:
 /// - Data overrides from the blueprint
@@ -22,38 +95,145 @@ use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerCo
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`crate::HybridResults`].
-pub fn range_with_blueprint_resolved_data<'a, 'b>(
+/// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
+/// [`crate::BlueprintResolvedResults`].
+pub fn range_with_blueprint_resolved_data<'a>(
     ctx: &ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
-    component_descrs: impl IntoIterator<Item = &'b ComponentDescriptor>,
-) -> HybridRangeResults<'a> {
+    components: impl IntoIterator<Item = ComponentIdentifier>,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+) -> BlueprintResolvedRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
-    let mut component_descrs = component_descrs.into_iter().cloned().collect::<IntSet<_>>();
+    // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
+    // Logic gets surprisingly complicated quickly though.
 
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_descrs.iter());
+    let mut components = components.into_iter().collect::<IntSet<_>>();
 
-    // No need to query for components that have overrides.
-    component_descrs.retain(|component_descr| overrides.get(component_descr).is_none());
-
-    let results = ctx.recording_engine().cache().range(
-        range_query,
-        &data_result.entity_path,
-        component_descrs.iter(),
+    let overrides = query_overrides(
+        ctx.viewer_ctx,
+        visualizer_instruction,
+        components.iter().copied(),
     );
 
-    HybridRangeResults {
+    // Apply component mappings when querying the recording.
+    let mut active_remappings = Vec::new();
+    let mut component_sources = IntMap::default();
+    let store_results = {
+        // Apply component mappings when querying the recording.
+        for (target_component, source) in &visualizer_instruction.component_mappings {
+            let source = if let re_viewer_context::VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            } = source
+                && components.remove(target_component)
+            {
+                components.insert(*source_component);
+
+                if selector.is_empty() {
+                    active_remappings.push(ActiveRemapping {
+                        target: *target_component,
+                        source: *source_component,
+                        selector: None,
+                    });
+                    Ok(source.source_kind())
+                } else {
+                    match selector.parse::<re_arrow_combinators::Selector>() {
+                        Ok(selector) => {
+                            active_remappings.push(ActiveRemapping {
+                                target: *target_component,
+                                source: *source_component,
+                                selector: Some(selector),
+                            });
+                            Ok(source.source_kind())
+                        }
+                        Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
+                    }
+                }
+            } else {
+                Ok(source.source_kind())
+            };
+
+            component_sources.insert(*target_component, source);
+        }
+
+        let mut results = ctx.recording_engine().cache().range(
+            range_query,
+            &data_result.entity_path,
+            components.iter().copied(),
+        );
+
+        // Apply mapping to the results.
+        let reflection = ctx.viewer_ctx.reflection();
+        for ActiveRemapping {
+            target,
+            source,
+            selector,
+        } in &active_remappings
+        {
+            let target_datatype = reflection.lookup_datatype(*target);
+
+            // NOTE: We clone the chunks instead of removing them, because multiple mappings may
+            // reference the same source component.
+            if let Some(mut chunks) = results.components.get(source).cloned() {
+                'ctx: {
+                    for chunk in &mut chunks {
+                        let result =
+                            transform_chunk(target, source, selector, target_datatype, chunk);
+
+                        match result {
+                            Ok(modified_chunk) => *chunk = modified_chunk,
+                            Err(err) => {
+                                component_sources.insert(*target, Err(err));
+                                break 'ctx;
+                            }
+                        }
+                    }
+                    results.components.insert(*target, chunks);
+                }
+            } else {
+                component_sources.insert(
+                    *target,
+                    Err(ComponentMappingError::ComponentNotFound(*source)),
+                );
+            }
+        }
+
+        results
+    };
+
+    // Auto-determine remaining mapping sources.
+    #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
+    for component in &components {
+        match component_sources.entry(*component) {
+            std::collections::hash_map::Entry::Occupied(_) => {}
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                let source = if overrides.get(*component).is_some() {
+                    ComponentSourceKind::Override
+                } else if store_results.components.contains_key(component) {
+                    ComponentSourceKind::SourceComponent
+                } else {
+                    ComponentSourceKind::Default
+                };
+
+                entry.insert(Ok(source));
+            }
+        }
+    }
+
+    BlueprintResolvedRangeResults {
         overrides,
-        results,
-        defaults: &ctx.query_result.component_defaults,
+        store_results,
+        _instruction_id: visualizer_instruction.id,
+        view_defaults: &ctx.query_result.view_defaults,
+        component_sources,
+        component_mappings_hash: Hash64::hash(&active_remappings),
     }
 }
 
-/// Queries for the given `component_types` using latest-at semantics with blueprint support.
+/// Queries for the given `components` using latest-at semantics with blueprint support.
 ///
 /// Data will be resolved, in order of priority:
 /// - Data overrides from the blueprint
@@ -62,53 +242,158 @@ pub fn range_with_blueprint_resolved_data<'a, 'b>(
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`crate::HybridResults`].
-///
-/// If `query_shadowed_components` is true, store components will be queried, even if they are not used.
-pub fn latest_at_with_blueprint_resolved_data<'a, 'b>(
+/// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
+/// [`crate::BlueprintResolvedResults`].
+pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
-    component_descrs: impl IntoIterator<Item = &'b ComponentDescriptor>,
-    query_shadowed_components: bool,
-) -> HybridLatestAtResults<'a> {
+    components: impl IntoIterator<Item = ComponentIdentifier>,
+    visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+) -> BlueprintResolvedLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
-    let mut component_descrs = component_descrs.into_iter().cloned().collect::<IntSet<_>>();
+    // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
+    // Logic gets surprisingly complicated quickly though.
 
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_descrs.iter());
+    let mut components = components.into_iter().collect::<IntSet<_>>();
+    let overrides = if let Some(visualizer_instruction) = visualizer_instruction {
+        query_overrides(
+            ctx.viewer_ctx,
+            visualizer_instruction,
+            components.iter().copied(),
+        )
+    } else {
+        query_overrides_at_path(
+            ctx.viewer_ctx,
+            data_result.override_base_path(),
+            components.iter().copied(),
+        )
+    };
 
-    // No need to query for components that have overrides unless opted in!
-    if !query_shadowed_components {
-        component_descrs.retain(|component_descr| overrides.get(component_descr).is_none());
+    // Apply component mappings when querying the recording.
+    let mut active_remappings = Vec::new();
+    let mut component_sources = IntMap::default();
+    if let Some(visualizer_instruction) = visualizer_instruction {
+        for (target_component, source) in &visualizer_instruction.component_mappings {
+            let source_result =
+                if let re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector,
+                } = source
+                    && components.remove(target_component)
+                {
+                    components.insert(*source_component);
+
+                    if selector.is_empty() {
+                        active_remappings.push(ActiveRemapping {
+                            target: *target_component,
+                            source: *source_component,
+                            selector: None,
+                        });
+                        Ok(source.source_kind())
+                    } else {
+                        match selector.parse::<re_arrow_combinators::Selector>() {
+                            Ok(selector) => {
+                                active_remappings.push(ActiveRemapping {
+                                    target: *target_component,
+                                    source: *source_component,
+                                    selector: Some(selector),
+                                });
+                                Ok(source.source_kind())
+                            }
+                            Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
+                        }
+                    }
+                } else {
+                    Ok(source.source_kind())
+                };
+
+            component_sources.insert(*target_component, source_result);
+        }
     }
 
-    let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
+    let mut store_results = ctx.viewer_ctx.recording_engine().cache().latest_at(
         latest_at_query,
         &data_result.entity_path,
-        component_descrs.iter(),
+        components.iter().copied(),
     );
 
-    HybridLatestAtResults {
+    // Apply mapping to the results.
+    let reflection = ctx.viewer_ctx.reflection();
+    for ActiveRemapping {
+        target,
+        source,
+        selector,
+    } in &active_remappings
+    {
+        let target_datatype = reflection.lookup_datatype(*target);
+
+        // NOTE: We borrow the chunk instead of removing it, because multiple mappings may
+        // reference the same source component.
+        if let Some(chunk) = store_results.components.get(source) {
+            let result = transform_chunk(target, source, selector, target_datatype, chunk);
+            match result {
+                Ok(modified_chunk) => {
+                    let chunk = std::sync::Arc::new(modified_chunk)
+                        .to_unit()
+                        .expect("The source chunk was a unit chunk.");
+                    store_results.components.insert(*target, chunk);
+                }
+                Err(err) => {
+                    component_sources.insert(*target, Err(err));
+                }
+            }
+        } else {
+            component_sources.insert(
+                *target,
+                Err(ComponentMappingError::ComponentNotFound(*source)),
+            );
+        }
+    }
+
+    // Auto-determine remaining mapping sources.
+    #[expect(clippy::iter_over_hash_type)] // Doing that to fill another hashmap.
+    for component in &components {
+        match component_sources.entry(*component) {
+            std::collections::hash_map::Entry::Occupied(_) => {}
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                let source = if overrides.get(*component).is_some() {
+                    ComponentSourceKind::Override
+                } else if store_results.components.contains_key(component) {
+                    ComponentSourceKind::SourceComponent
+                } else {
+                    ComponentSourceKind::Default
+                };
+
+                entry.insert(Ok(source));
+            }
+        }
+    }
+
+    BlueprintResolvedLatestAtResults {
         overrides,
-        results,
-        defaults: &ctx.query_result.component_defaults,
+        store_results,
+        view_defaults: &ctx.query_result.view_defaults,
+        instruction_id: visualizer_instruction.map(|instruction| instruction.id),
         ctx,
         query: latest_at_query.clone(),
         data_result,
+        component_sources,
+        component_indices_hash: Hash64::hash(&active_remappings),
     }
 }
 
-pub fn query_archetype_with_history<'a, 'b>(
+pub fn query_archetype_with_history<'a>(
     ctx: &'a ViewContext<'a>,
     timeline: &TimelineName,
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
-    component_descriptors: impl IntoIterator<Item = &'b ComponentDescriptor>,
+    components: impl IntoIterator<Item = ComponentIdentifier>,
     data_result: &'a re_viewer_context::DataResult,
-) -> HybridResults<'a> {
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+) -> BlueprintResolvedResults<'a> {
     match query_range {
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
@@ -123,84 +408,70 @@ pub fn query_archetype_with_history<'a, 'b>(
                 None,
                 &range_query,
                 data_result,
-                component_descriptors,
+                components,
+                visualizer_instruction,
             );
             (range_query, results).into()
         }
         QueryRange::LatestAt => {
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
-            let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &latest_query,
                 data_result,
-                component_descriptors,
-                query_shadowed_defaults,
+                components,
+                Some(visualizer_instruction),
             );
             (latest_query, results).into()
         }
     }
 }
 
-fn query_overrides<'a>(
+fn query_overrides(
     ctx: &ViewerContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    component_descriptors: impl IntoIterator<Item = &'a ComponentDescriptor>,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    components: impl IntoIterator<Item = ComponentIdentifier>,
+) -> LatestAtResults {
+    if visualizer_instruction.component_overrides.is_empty() {
+        LatestAtResults::empty("<overrides>".into(), ctx.current_query())
+    } else {
+        query_overrides_at_path(
+            ctx,
+            &visualizer_instruction.override_path,
+            components
+                .into_iter()
+                .filter(|c| visualizer_instruction.component_overrides.contains(c)),
+        )
+    }
+}
+
+fn query_overrides_at_path(
+    ctx: &ViewerContext<'_>,
+    blueprint_path: &re_log_types::EntityPath,
+    components: impl IntoIterator<Item = ComponentIdentifier>,
 ) -> LatestAtResults {
     // First see if any components have overrides.
     let mut overrides = LatestAtResults::empty("<overrides>".into(), ctx.current_query());
 
     let blueprint_engine = &ctx.store_context.blueprint.storage_engine();
 
-    // TODO(jleibs): partitioning overrides by path
-    for component_descr in component_descriptors {
-        if let Some(override_value) = data_result
-            .property_overrides
-            .component_overrides
-            .get(component_descr)
-        {
-            let current_query = match override_value.store_kind {
-                re_log_types::StoreKind::Recording => ctx.current_query(),
-                re_log_types::StoreKind::Blueprint => ctx.blueprint_query.clone(),
-            };
+    for component in components {
+        // TODO(andreas): Batch these queries?
+        let component_override_result =
+            blueprint_engine
+                .cache()
+                .latest_at(ctx.blueprint_query, blueprint_path, [component]);
 
-            #[allow(clippy::match_same_arms)] // see @jleibs comment below
-            let component_override_result = match override_value.store_kind {
-                re_log_types::StoreKind::Recording => {
-                    // TODO(jleibs): This probably is not right, but this code path is not used
-                    // currently. This may want to use range_query instead depending on how
-                    // component override data-references are resolved.
-                    blueprint_engine.cache().latest_at(
-                        &current_query,
-                        &override_value.path,
-                        [component_descr],
-                    )
-                }
-                re_log_types::StoreKind::Blueprint => blueprint_engine.cache().latest_at(
-                    &current_query,
-                    &override_value.path,
-                    [component_descr],
-                ),
-            };
+        // If we successfully find a non-empty override, add it to our results.
+        if let Some(value) = component_override_result.get(component) {
+            let index = value.index(&ctx.blueprint_query.timeline());
 
-            // If we successfully find a non-empty override, add it to our results.
+            // NOTE: This can never happen, but I'd rather it happens than an unwrap.
+            debug_assert!(index.is_some(), "{value:#?}");
+            let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
 
-            // TODO(jleibs): it seems like value could still be null/empty if the override
-            // has been cleared. It seems like something is preventing that from happening
-            // but I don't fully understand what.
-            //
-            // This is extra tricky since the promise hasn't been resolved yet so we can't
-            // actually look at the data.
-            if let Some(value) = component_override_result.get(component_descr) {
-                let index = value.index(&current_query.timeline());
-
-                // NOTE: This can never happen, but I'd rather it happens than an unwrap.
-                debug_assert!(index.is_some(), "{value:#?}");
-                let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
-
-                overrides.add(component_descr.clone(), index, value.clone());
-            }
+            overrides.add(component, index, value.clone());
         }
     }
     overrides
@@ -211,24 +482,27 @@ pub trait DataResultQuery {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-    ) -> HybridLatestAtResults<'a>;
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+    ) -> BlueprintResolvedLatestAtResults<'a>;
 
     fn latest_at_with_blueprint_resolved_data_for_component<'a>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        component_descr: &ComponentDescriptor,
-    ) -> HybridLatestAtResults<'a>;
+        component: ComponentIdentifier,
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+    ) -> BlueprintResolvedLatestAtResults<'a>;
 
     /// Queries for the given components, taking into account:
     /// * visible history if enabled
     /// * blueprint overrides & defaults
-    fn query_components_with_history<'a, 'b>(
+    fn query_components_with_history<'a>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
-        component_descriptors: impl IntoIterator<Item = &'b ComponentDescriptor>,
-    ) -> HybridResults<'a>;
+        component_descriptors: impl IntoIterator<Item = ComponentIdentifier>,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    ) -> BlueprintResolvedResults<'a>;
 
     /// Queries for all components of an archetype, taking into account:
     /// * visible history if enabled
@@ -237,8 +511,14 @@ pub trait DataResultQuery {
         &'a self,
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
-    ) -> HybridResults<'a> {
-        self.query_components_with_history(ctx, view_query, A::all_components().iter())
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    ) -> BlueprintResolvedResults<'a> {
+        self.query_components_with_history(
+            ctx,
+            view_query,
+            A::all_component_identifiers(),
+            visualizer_instruction,
+        )
     }
 }
 
@@ -247,15 +527,15 @@ impl DataResultQuery for DataResult {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-    ) -> HybridLatestAtResults<'a> {
-        let query_shadowed_components = false;
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+    ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,
             self,
-            A::all_components().iter(),
-            query_shadowed_components,
+            A::all_component_identifiers(),
+            visualizer_instruction,
         )
     }
 
@@ -263,32 +543,34 @@ impl DataResultQuery for DataResult {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        component_descr: &ComponentDescriptor,
-    ) -> HybridLatestAtResults<'a> {
-        let query_shadowed_components = false;
+        component: ComponentIdentifier,
+        visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+    ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,
             self,
-            std::iter::once(component_descr),
-            query_shadowed_components,
+            std::iter::once(component),
+            visualizer_instruction,
         )
     }
 
-    fn query_components_with_history<'a, 'b>(
+    fn query_components_with_history<'a>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
-        component_descriptors: impl IntoIterator<Item = &'b ComponentDescriptor>,
-    ) -> HybridResults<'a> {
+        components: impl IntoIterator<Item = ComponentIdentifier>,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    ) -> BlueprintResolvedResults<'a> {
         query_archetype_with_history(
             ctx,
             &view_query.timeline,
             view_query.latest_at,
             self.query_range(),
-            component_descriptors,
+            components,
             self,
+            visualizer_instruction,
         )
     }
 }

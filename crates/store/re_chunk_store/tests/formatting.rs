@@ -3,10 +3,8 @@ use std::sync::Arc;
 use insta::Settings;
 use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::ChunkStore;
-use re_log_types::{
-    ApplicationId, EntityPath, Timestamp, build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex, MyPoints},
-};
+use re_log_types::example_components::{MyColor, MyIndex, MyPoints};
+use re_log_types::{ApplicationId, EntityPath, Timestamp, build_frame_nr, build_log_time};
 use re_types_core::ComponentBatch as _;
 
 /// Ensure that `ChunkStore::to_string()` is nice and readable.
@@ -51,6 +49,10 @@ fn format_chunk_store() -> anyhow::Result<()> {
     settings.add_filter(
         r"\* version: \d+\.\d+\.\d+(\s*)│",
         "* version: [**REDACTED**]<>│".replace("<>", &" ".repeat(149)),
+    );
+    settings.add_filter(
+        r"\* heap_size_bytes: \d+(\s*)│",
+        "* heap_size_bytes: [**REDACTED**]<>│".replace("<>", &" ".repeat(142)),
     );
     settings.bind(|| {
         insta::assert_snapshot!("format_chunk_store", format!("{:240}", store));

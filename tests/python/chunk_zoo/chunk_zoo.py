@@ -9,10 +9,13 @@ To add new specimens to the zoo, add a function whose name starts with "specimen
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 import rerun as rr
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def frame_times(t: int | Sequence[int], *args: int) -> list[rr.TimeColumn]:

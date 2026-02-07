@@ -1,17 +1,21 @@
+// Run the example with `cargo r -p re_ui --example re_ui_example`
+
 mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use egui::Modifiers;
+use crossbeam::channel::Receiver;
+use egui::{Modifiers, os};
+use re_ui::filter_widget::{FilterState, format_matching_text};
+use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::notifications::NotificationUi;
 use re_ui::{
-    CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
-    filter_widget::FilterState, list_item,
+    CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
+    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _, icons, list_item,
 };
-use re_ui::{IconText, filter_widget::format_matching_text};
-use re_ui::{icons, notifications};
 
 /// Sender that queues up the execution of a command.
-pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
+pub struct CommandSender(crossbeam::channel::Sender<UICommand>);
 
 impl UICommandSender for CommandSender {
     /// Send a command to be executed.
@@ -22,7 +26,7 @@ impl UICommandSender for CommandSender {
 }
 
 /// Receiver for the [`CommandSender`]
-pub struct CommandReceiver(std::sync::mpsc::Receiver<UICommand>);
+pub struct CommandReceiver(crossbeam::channel::Receiver<UICommand>);
 
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
@@ -35,22 +39,23 @@ impl CommandReceiver {
 
 /// Creates a new command channel.
 fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (sender, receiver) = std::sync::mpsc::channel();
+    let (sender, receiver) = crossbeam::channel::bounded(256);
     (CommandSender(sender), CommandReceiver(receiver))
 }
 
 fn main() -> eframe::Result {
     re_log::setup_logging();
 
+    let fullsize_content = re_ui::fullsize_content(os::OperatingSystem::default());
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_app_id("re_ui_example")
             .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
-            .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
+            .with_fullsize_content_view(fullsize_content)
             .with_inner_size([1200.0, 800.0])
-            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_title_shown(!fullsize_content)
             .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
-            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_titlebar_shown(!fullsize_content)
             .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
         ..Default::default()
@@ -61,16 +66,16 @@ fn main() -> eframe::Result {
         native_options,
         Box::new(move |cc| {
             re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
-            Ok(Box::new(ExampleApp::new()))
+            Ok(Box::new(ExampleApp::new(cc.egui_ctx.clone())))
         }),
     )
 }
 
 pub struct ExampleApp {
-    notifications: notifications::NotificationUi,
+    notifications: NotificationUi,
 
     /// Listens to the local text log stream
-    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+    text_log_rx: Receiver<re_log::LogMsg>,
 
     tree: egui_tiles::Tree<Tab>,
 
@@ -99,7 +104,7 @@ pub struct ExampleApp {
 }
 
 impl ExampleApp {
-    fn new() -> Self {
+    fn new(ctx: egui::Context) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
 
@@ -108,7 +113,7 @@ impl ExampleApp {
         let (command_sender, command_receiver) = command_channel();
 
         Self {
-            notifications: Default::default(),
+            notifications: NotificationUi::new(ctx),
             text_log_rx,
 
             tree,
@@ -154,7 +159,7 @@ impl eframe::App for ExampleApp {
 
         self.show_text_logs_as_notifications();
 
-        self.top_bar(egui_ctx);
+        self.top_bar(_frame, egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
             .frame(egui_ctx.tokens().bottom_panel_frame())
@@ -248,13 +253,12 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .button(list_item::ItemMenuButton::new(
-                    &re_ui::icons::ADD,
-                    "Add",
-                    |ui| {
-                        ui.weak("empty");
-                    },
-                ))
+                .with_button(
+                    ui.small_icon_button_widget(&re_ui::icons::ADD, "Add")
+                        .on_menu(|ui| {
+                            ui.weak("empty");
+                        }),
+                )
                 .show(ui, |ui| {
                     ui.label("Some data here");
                 });
@@ -318,6 +322,12 @@ impl eframe::App for ExampleApp {
                             ..Default::default()
                         })
                         .show_inside(ui, left_panel_top_section_ui);
+                    ui.selectable_label_with_icon(
+                        &icons::ADD,
+                        "foo/bar/baz",
+                        false,
+                        re_ui::LabelStyle::Normal,
+                    );
 
                     egui::ScrollArea::both()
                         .auto_shrink([false; 2])
@@ -365,8 +375,13 @@ impl eframe::App for ExampleApp {
                 tabs_ui(ui, &mut self.tree);
             });
 
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send_ui(cmd);
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx, &parse_url) {
+            match cmd {
+                CommandPaletteAction::UiCommand(cmd) => self.command_sender.send_ui(cmd),
+                CommandPaletteAction::OpenUrl(url) => {
+                    egui_ctx.open_url(egui::OpenUrl::new_tab(url.url));
+                }
+            }
         }
         if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(egui_ctx) {
             self.command_sender.send_ui(cmd);
@@ -375,7 +390,6 @@ impl eframe::App for ExampleApp {
         while let Some(cmd) = self.command_receiver.recv() {
             self.latest_cmd = cmd.text().to_owned();
 
-            #[allow(clippy::single_match)]
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {
@@ -397,16 +411,23 @@ impl eframe::App for ExampleApp {
     }
 }
 
+fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
+    url.starts_with("http").then(|| CommandPaletteUrl {
+        url: url.to_owned(),
+        command_text: "Open http(s) URL".to_owned(),
+    })
+}
+
 impl ExampleApp {
-    fn top_bar(&mut self, egui_ctx: &egui::Context) {
-        let top_bar_style = egui_ctx.top_bar_style(false);
+    fn top_bar(&mut self, frame: &eframe::Frame, egui_ctx: &egui::Context) {
+        let top_bar_style = egui_ctx.top_bar_style(frame, false);
 
         egui::TopBottomPanel::top("top_bar")
             .frame(egui_ctx.tokens().top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
-                if !re_ui::NATIVE_WINDOW_BAR {
+                if !re_ui::native_window_bar(egui_ctx.os()) {
                     // Interact with background first, so that buttons in the top bar gets input priority
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(
@@ -450,14 +471,17 @@ impl ExampleApp {
 
             ui.medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut self.show_right_panel,
             );
             ui.medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut self.show_bottom_panel,
             );
             ui.medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut self.show_left_panel,
             );
 

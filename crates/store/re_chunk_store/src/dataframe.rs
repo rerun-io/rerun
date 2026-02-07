@@ -1,17 +1,11 @@
 //! All the APIs used specifically for `re_dataframe`.
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ops::{Deref, DerefMut},
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::ops::{Deref, DerefMut};
 
-use arrow::{
-    array::ListArray as ArrowListArray,
-    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
-};
+use arrow::array::ListArray as ArrowListArray;
+use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use itertools::Itertools as _;
-
-use crate::{ChunkStore, ColumnMetadata};
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_sorbet::{
@@ -19,6 +13,8 @@ use re_sorbet::{
     IndexColumnDescriptor, TimeColumnSelector,
 };
 use tap::Tap as _;
+
+use crate::{ChunkStore, ColumnMetadata};
 
 // --- Queries v2 ---
 
@@ -338,7 +334,8 @@ impl ChunkStore {
                     .map(move |(descr, _, datatype)| (entity_path, descr, datatype))
             })
             .filter_map(|(entity_path, component_descr, datatype)| {
-                let metadata = self.lookup_column_metadata(entity_path, component_descr)?;
+                let metadata =
+                    self.lookup_column_metadata(entity_path, component_descr.component)?;
 
                 Some(((entity_path, component_descr), (metadata, datatype)))
             })
@@ -442,7 +439,7 @@ impl ChunkStore {
             is_static,
             is_tombstone,
             is_semantically_empty,
-        }) = self.lookup_column_metadata(&selector.entity_path, component_descr)
+        }) = self.lookup_column_metadata(&selector.entity_path, component_descr.component)
         {
             result.is_static = is_static;
             result.is_tombstone = is_tombstone;

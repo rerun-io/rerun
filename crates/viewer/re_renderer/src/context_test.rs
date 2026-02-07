@@ -1,20 +1,30 @@
 //! Extensions for the [`RenderContext`] for testing.
 //!
+use std::sync::LazyLock;
+
 use crate::{RenderConfig, RenderContext, device_caps};
+
+/// Adapter shared with all tests.
+///
+/// Devices are not re-used since we want to isolate wgpu resources.
+static TEST_ADAPTER: LazyLock<wgpu::Adapter> = LazyLock::new(|| {
+    let instance = wgpu::Instance::new(&device_caps::testing_instance_descriptor());
+    device_caps::select_testing_adapter(&instance)
+});
 
 impl RenderContext {
     /// Creates a new [`RenderContext`] for testing.
     pub fn new_test() -> Self {
-        let instance = wgpu::Instance::new(&device_caps::testing_instance_descriptor());
-        let adapter = device_caps::select_testing_adapter(&instance);
-        let device_caps = device_caps::DeviceCaps::from_adapter(&adapter)
+        let adapter = &*TEST_ADAPTER;
+
+        let device_caps = device_caps::DeviceCaps::from_adapter(adapter)
             .expect("Failed to determine device capabilities");
         let (device, queue) =
             pollster::block_on(adapter.request_device(&device_caps.device_descriptor()))
                 .expect("Failed to request device.");
 
         Self::new(
-            &adapter,
+            adapter,
             device,
             queue,
             wgpu::TextureFormat::Rgba8Unorm,
@@ -38,7 +48,12 @@ impl RenderContext {
 
         // Wait for all GPU work to finish.
         self.device
-            .poll(wgpu::PollType::Wait)
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                // Native Windows driver will reset driver at 2 seconds.
+                // But lavapipe sometimes takes a bit longer.
+                timeout: Some(std::time::Duration::from_secs(10)),
+            })
             .expect("Failed to wait for GPU work to finish");
 
         // Start a new frame in order to handle the previous' frame errors.

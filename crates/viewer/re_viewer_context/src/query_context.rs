@@ -1,10 +1,11 @@
 use std::sync::LazyLock;
 
 use ahash::HashMap;
+use nohash_hasher::IntMap;
+use re_log_types::{EntityPath, EntityPathHash};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
-
-use re_log_types::{EntityPath, EntityPathHash};
 
 use crate::{
     DataResult, StoreContext, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline,
@@ -28,10 +29,13 @@ pub struct QueryContext<'a> {
     /// For view properties this is the path that stores the respective view property archetype.
     pub target_entity_path: &'a re_log_types::EntityPath,
 
+    /// If the query is made from a visualizer, this contains that visualizer's id.
+    pub instruction_id: Option<VisualizerInstructionId>,
+
     /// Archetype name in which context the component is needed.
     ///
     /// View properties always have an archetype context, but overrides/defaults may not.
-    pub archetype_name: Option<re_types::ArchetypeName>,
+    pub archetype_name: Option<re_sdk_types::ArchetypeName>,
 
     /// Query which didn't yield a result for the component at the target entity path.
     pub query: &'a re_chunk_store::LatestAtQuery,
@@ -85,7 +89,7 @@ pub struct DataQueryResult {
     pub num_visualized_entities: usize,
 
     /// Latest-at results for all component defaults in this view.
-    pub component_defaults: re_query::LatestAtResults,
+    pub view_defaults: re_query::LatestAtResults,
 }
 
 impl Default for DataQueryResult {
@@ -94,12 +98,10 @@ impl Default for DataQueryResult {
             tree: Default::default(),
             num_matching_entities: 0,
             num_visualized_entities: 0,
-            component_defaults: re_query::LatestAtResults {
-                entity_path: "<defaults>".into(),
-                query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
-                compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
-                components: Default::default(),
-            },
+            view_defaults: re_query::LatestAtResults::empty(
+                "<defaults>".into(),
+                re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
+            ),
         }
     }
 }
@@ -113,7 +115,7 @@ impl DataQueryResult {
     #[inline]
     pub fn result_for_entity(&self, path: &EntityPath) -> Option<&DataResult> {
         self.tree
-            .lookup_result_by_path(path)
+            .lookup_result_by_path(path.hash())
             .filter(|result| !result.tree_prefix_only)
     }
 }
@@ -125,7 +127,7 @@ impl Clone for DataQueryResult {
             tree: self.tree.clone(),
             num_matching_entities: self.num_matching_entities,
             num_visualized_entities: self.num_visualized_entities,
-            component_defaults: self.component_defaults.clone(),
+            view_defaults: self.view_defaults.clone(),
         }
     }
 }
@@ -133,12 +135,10 @@ impl Clone for DataQueryResult {
 /// A hierarchical tree of [`DataResult`]s
 #[derive(Clone, Default, Debug)]
 pub struct DataResultTree {
-    data_results: SlotMap<DataResultHandle, DataResultNode>,
-    // TODO(jleibs): Decide if we really want to compute this per-query.
-    // at the moment we only look up a single path per frame for the selection panel. It's probably
-    // less over-head to just walk the tree once instead of pre-computing an entire map we use for
-    // a single lookup.
-    data_results_by_path: HashMap<EntityPathHash, DataResultHandle>,
+    pub data_results: SlotMap<DataResultHandle, DataResultNode>,
+    pub data_results_by_path: IntMap<EntityPathHash, DataResultHandle>,
+    pub data_results_by_visualizer_instruction: HashMap<VisualizerInstructionId, DataResultHandle>,
+
     root_handle: Option<DataResultHandle>,
 }
 
@@ -164,6 +164,13 @@ impl DataResultTree {
             data_results,
             data_results_by_path,
             root_handle,
+            // Filled in later.
+            // TODO(andreas): This is super messy: we rely on this being filled out by `DataQueryPropertyResolver::update_overrides`.
+            // At the time `DataResultTree::new` is called we don't have any information about visualizer instructions yet.
+            // Really the underlying problem is that we for no apparent reason separate creation of data results from
+            // creation of visualizer instructions & determination of available overrides.
+            // Merging those two tree walks should make things also a lot more efficient and even parallelizable if we want.
+            data_results_by_visualizer_instruction: Default::default(),
         }
     }
 
@@ -236,26 +243,29 @@ impl DataResultTree {
         self.data_results.get(handle)
     }
 
-    /// Look up a [`DataResultNode`] in the tree based on its handle.
+    /// Look up a [`DataResultNode`] in the tree based on an [`EntityPathHash`].
     #[inline]
-    pub fn lookup_node_mut(&mut self, handle: DataResultHandle) -> Option<&mut DataResultNode> {
-        self.data_results.get_mut(handle)
+    pub fn lookup_node_by_path(&self, path: EntityPathHash) -> Option<&DataResultNode> {
+        self.lookup_node(*self.data_results_by_path.get(&path)?)
     }
 
-    /// Look up a [`DataResultNode`] in the tree based on an [`EntityPath`].
+    /// Look up a [`DataResult`] in the tree based on an [`EntityPathHash`].
     #[inline]
-    pub fn lookup_node_by_path(&self, path: &EntityPath) -> Option<&DataResultNode> {
-        self.data_results_by_path
-            .get(&path.hash())
-            .and_then(|handle| self.lookup_node(*handle))
+    pub fn lookup_result_by_path(&self, path: EntityPathHash) -> Option<&DataResult> {
+        self.lookup_result(*self.data_results_by_path.get(&path)?)
     }
 
-    /// Look up a [`DataResult`] in the tree based on an [`EntityPath`].
+    /// Look up a [`DataResultNode`] in the tree based on a visualizer instruction ID.
     #[inline]
-    pub fn lookup_result_by_path(&self, path: &EntityPath) -> Option<&DataResult> {
-        self.data_results_by_path
-            .get(&path.hash())
-            .and_then(|handle| self.lookup_result(*handle))
+    pub fn lookup_result_by_visualizer_instruction(
+        &self,
+        visualizer_instruction: VisualizerInstructionId,
+    ) -> Option<&DataResult> {
+        self.lookup_result(
+            *self
+                .data_results_by_visualizer_instruction
+                .get(&visualizer_instruction)?,
+        )
     }
 
     #[inline]
@@ -275,6 +285,12 @@ impl DataResultTree {
                 self.visit_recursive(*child, visitor);
             }
         }
+    }
+
+    /// Iterates over all [`DataResult`]s.
+    #[inline]
+    pub fn iter_data_results(&self) -> impl Iterator<Item = &DataResult> {
+        self.data_results.values().map(|node| &node.data_result)
     }
 }
 

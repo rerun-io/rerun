@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .. import datatypes
+if TYPE_CHECKING:
+    from .. import datatypes
 
 
 class VisibleTimeRangeExt:
@@ -37,8 +38,7 @@ class VisibleTimeRangeExt:
             if start is None or end is None:
                 raise ValueError("Specify either start_and_end or both start & end")
             range = TimeRange(start=start, end=end)
-        else:
-            if start is not None or end is not None:
-                raise ValueError("Specify either start_and_end or both start & end, not both")
+        elif start is not None or end is not None:
+            raise ValueError("Specify either start_and_end or both start & end, not both")
 
         self.__attrs_init__(timeline=timeline, range=range)

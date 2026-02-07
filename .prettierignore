@@ -5,13 +5,14 @@ rerun_py/site/**
 
 rerun_js/web-viewer/re_viewer_bg.js
 rerun_js/web-viewer/re_viewer.js
-web_viewer/re_viewer.js
 crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js
 
 .pixi
 /build
 /compare_screenshot
 **/target
+**/target_pixi
+**/target_pixi_wasm
 **/target_ra
 **/target_wasm
 **/venv*

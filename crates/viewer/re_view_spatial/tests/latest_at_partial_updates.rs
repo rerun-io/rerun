@@ -1,10 +1,11 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, build_frame_nr};
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_sdk_types::{Archetype as _, archetypes};
+use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
-use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -74,7 +75,7 @@ fn test_latest_at_partial_update() {
 
     let view_id = setup_blueprint(&mut test_context);
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "latest_at_partial_updates",
         egui::vec2(200.0, 200.0),
@@ -88,14 +89,16 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view.id,
             ctx.store_context.blueprint.tree(),
-            re_types::blueprint::archetypes::VisualBounds2D::name(),
+            re_sdk_types::blueprint::archetypes::VisualBounds2D::name(),
         );
         ctx.save_blueprint_archetype(
             property_path.clone(),
-            &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
-                x_range: [-0.5, 1.5].into(),
-                y_range: [-0.5, 1.5].into(),
-            }),
+            &re_sdk_types::blueprint::archetypes::VisualBounds2D::new(
+                re_sdk_types::datatypes::Range2D {
+                    x_range: [-0.5, 1.5].into(),
+                    y_range: [-0.5, 1.5].into(),
+                },
+            ),
         );
 
         ctx.save_blueprint_archetype(
@@ -110,34 +113,31 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
 ) {
-    let rec_config = test_context.recording_config.clone();
-
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
+
     {
-        let broken_pixels_fraction = 0.004;
-        let options = SnapshotOptions::new()
-            .output_path(format!("tests/snapshots/{name}"))
-            .failed_pixel_count_threshold(
-                (size.x * size.y * broken_pixels_fraction).round() as usize
-            );
+        let options = SnapshotOptions::new().output_path(format!("tests/snapshots/{name}"));
 
         let mut success = true;
         for frame_nr in 42..=46 {
             {
                 let (timeline, time) = build_frame_nr(frame_nr);
-                let mut time_ctrl = rec_config.time_ctrl.write();
-                time_ctrl.set_timeline(timeline);
-                time_ctrl.set_time(time);
+                test_context.send_time_commands(
+                    test_context.active_store_id(),
+                    [
+                        TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                        TimeControlCommand::SetTime(time.into()),
+                    ],
+                );
             }
 
             harness.run_steps(8);

@@ -13,18 +13,17 @@
 mod example;
 mod install;
 mod manifest;
+mod notebook;
 mod rrd;
 mod snippets;
 mod wait_for_output;
 
-use example::Channel;
-use wait_for_output::wait_for_output;
-
-pub use example::{Example, ExamplesManifest, Language};
-
 // -----------------------------------------------------------------------------
-
 use argh::FromArgs;
+use example::Channel;
+pub use example::{Example, ExamplesManifest, Language};
+use install::Install;
+use wait_for_output::wait_for_output;
 
 /// Build examples and their manifest.
 #[derive(FromArgs)]
@@ -41,6 +40,7 @@ enum Cmd {
     Rrd(rrd::Rrd),
     Manifest(manifest::Manifest),
     Snippets(snippets::Snippets),
+    Notebook(notebook::Notebook),
 }
 
 pub fn main(args: Args) -> anyhow::Result<()> {
@@ -51,5 +51,6 @@ pub fn main(args: Args) -> anyhow::Result<()> {
         Cmd::Rrd(cmd) => cmd.run(),
         Cmd::Manifest(cmd) => cmd.run(),
         Cmd::Snippets(cmd) => cmd.run(),
+        Cmd::Notebook(cmd) => cmd.run(),
     }
 }

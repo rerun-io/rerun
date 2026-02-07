@@ -1,0 +1,34 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: test_results
+---
+TestResult {
+    filter: Int(
+        IntFilter {
+            operator: Eq,
+            rhs_value: Some(
+                3,
+            ),
+        },
+    ),
+    field: Field {
+        name: "column",
+        data_type: Int8,
+        nullable: false,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
+    },
+    unfiltered: PrimitiveArray<Int8>
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+    ],
+    filtered: PrimitiveArray<Int8>
+    [
+      3,
+    ],
+}

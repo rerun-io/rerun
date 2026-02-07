@@ -23,6 +23,12 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
+
+[package.metadata.cargo-shear]
+# TODO(lancedb/lance#3073): remove `lance` feature flag
+ignored = ["re_server"]
+
+
 [[bin]]
 name = "rerun"
 path = "src/bin/rerun.rs"
@@ -35,12 +41,14 @@ doc = false
 ## so we have all the bells and wistles here, except those that may require extra tools
 ## (like "nasm").
 ## That is: `cargo install rerun-cli --locked` should work for _everyone_.
-default = ["native_viewer", "web_viewer", "map_view"]
+default = ["web_viewer", "base"]
 
+## Our base feature set, included in `default` and in `release`, but excludes the web viewer.
+base = ["native_viewer", "map_view", "oss_server", "perf_telemetry"]
 
 # !!!IMPORTANT!!!
 #
-# Do you _really_ want to add features in `release` that are not in `default`?
+# Do you _really_ want to add features in `release_no_web_viewer` that are not in `base`?
 #
 # Here are some reasons not to:
 # - These features will be missing from the `cargo install rerun-cli --locked` command our users will inevitably use.
@@ -56,9 +64,15 @@ default = ["native_viewer", "web_viewer", "map_view"]
 # warning with instructions is printed when building `rerun-cli` in release mode without the `nasm` feature (see
 # `build.rs`).
 
-## The features we enable when we build the pre-built binaries during our releases.
+## The features we enable when we build the pre-built binaries during our releases,
+## but excluding the web viewer.
 ## This may enable features that require extra build tools that not everyone has.
-release = ["default", "nasm"]
+release_no_web_viewer = ["base", "lance", "nasm"]
+
+## The features we enable when we build the pre-built binaries during our releases.
+## These are the binaries we put in our release artifacts, and bundle in our Python wheel.
+## This may enable features that require extra build tools that not everyone has.
+release_full = ["release_no_web_viewer", "web_viewer"]
 
 
 ## Support the map view.
@@ -73,9 +87,17 @@ nasm = ["rerun/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
-## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+## Enable the in-memory Rerun Server, useful for testing.
+oss_server = ["rerun/oss_server"]
+
+## Add support for Lance tables in the in-memory OSS Rerun Server (`oss_server` feature flag).
+## This is opt-in because of <https://github.com/lance-format/lance/issues/3073>.
+# TODO(lancedb/lance#3073): remove feature flag
+lance = ["re_server/lance"]
+
+## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).
 ##
-## This only works on native.
+## This only works on native, and only with `TELEMETRY_ENABLED` set.
 perf_telemetry = ["rerun/perf_telemetry"]
 
 ## Support serving a web viewer over HTTP.
@@ -86,7 +108,6 @@ perf_telemetry = ["rerun/perf_telemetry"]
 #
 # TODO(#4295): web_viewer shouldn't require rerun/sdk
 web_viewer = ["rerun/web_viewer", "rerun/sdk"]
-
 
 [dependencies]
 re_build_info.workspace = true
@@ -103,8 +124,10 @@ rerun = { workspace = true, default-features = false, features = [
   "server",
 ] }
 
+re_server = { workspace = true, optional = true }
+
 document-features.workspace = true
-mimalloc = "0.1.43"
+mimalloc.workspace = true
 
 
 [build-dependencies]

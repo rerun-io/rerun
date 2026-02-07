@@ -1,11 +1,8 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
+use re_arrow_util::WrongDatatypeError;
 use re_types_core::{Loggable as _, RowId};
 
 use crate::MetadataExt as _;
-
-#[derive(thiserror::Error, Debug)]
-#[error("{0}")]
-pub struct WrongDatatypeError(String);
 
 /// Describes the schema of the primary [`RowId`] column.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -20,6 +17,12 @@ impl RowIdColumnDescriptor {
     #[inline]
     pub fn from_sorted(is_sorted: bool) -> Self {
         Self { is_sorted }
+    }
+
+    /// Column name, used in Arrow record batches and schemas.
+    #[expect(clippy::unused_self)]
+    pub fn column_name(&self) -> String {
+        RowId::partial_descriptor().to_string()
     }
 
     /// Short field/column name
@@ -42,7 +45,7 @@ impl RowIdColumnDescriptor {
 
         let mut metadata = std::collections::HashMap::from([
             (
-                "rerun:kind".to_owned(),
+                crate::metadata::RERUN_KIND.to_owned(),
                 crate::ColumnKind::RowId.to_string(),
             ),
             (
@@ -60,15 +63,11 @@ impl RowIdColumnDescriptor {
         }
 
         let nullable = false; // All rows has an id
-        ArrowField::new(
-            RowId::partial_descriptor().to_string(),
-            RowId::arrow_datatype(),
-            nullable,
-        )
-        .with_metadata(metadata)
+        ArrowField::new(self.column_name(), RowId::arrow_datatype(), nullable)
+            .with_metadata(metadata)
     }
 
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn datatype(&self) -> ArrowDatatype {
         RowId::arrow_datatype()
     }
@@ -78,17 +77,9 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
     type Error = WrongDatatypeError;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        let actual_datatype = field.data_type();
-        let expected_datatype = RowId::arrow_datatype();
-        if actual_datatype == &expected_datatype {
-            Ok(Self {
-                is_sorted: field.metadata().get_bool("rerun:is_sorted"),
-            })
-        } else {
-            Err(WrongDatatypeError(format!(
-                "Expected a RowId column with datatype {expected_datatype:?}, but column {:?} has datatype {actual_datatype:?}",
-                field.name()
-            )))
-        }
+        WrongDatatypeError::ensure_datatype(field, &RowId::arrow_datatype())?;
+        Ok(Self {
+            is_sorted: field.metadata().get_bool("rerun:is_sorted"),
+        })
     }
 }

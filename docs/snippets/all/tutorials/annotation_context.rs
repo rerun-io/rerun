@@ -1,6 +1,6 @@
 use rerun::{
-    datatypes::{ClassDescriptionMapElem, KeypointId},
     AnnotationContext, AnnotationInfo, ClassDescription, Rgba32,
+    datatypes::{ClassDescriptionMapElem, KeypointId},
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

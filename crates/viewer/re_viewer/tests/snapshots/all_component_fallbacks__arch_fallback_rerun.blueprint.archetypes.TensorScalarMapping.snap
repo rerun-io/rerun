@@ -1,0 +1,7 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+mag_filter: [1]
+colormap: [5]
+gamma: [1.0]

@@ -2,41 +2,41 @@ use std::sync::Arc;
 
 use arrow::array::ArrayRef;
 use rand::Rng as _;
-
-use re_chunk::{Chunk, ChunkId, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName};
+use re_chunk::{
+    Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
+};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreDiffKind, GarbageCollectionOptions,
-    GarbageCollectionTarget,
+    ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, OnMissingChunk,
 };
-use re_log_types::{
-    AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-};
-use re_types::{
-    ComponentDescriptor,
-    testing::{build_some_large_structs, large_struct_descriptor},
-};
+use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+use re_log_types::{AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time};
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::testing::{build_some_large_structs, large_struct_descriptor};
 
 // ---
 
 fn query_latest_array(
     store: &ChunkStore,
     entity_path: &EntityPath,
-    component_descr: &ComponentDescriptor,
+    component: ComponentIdentifier,
     query: &LatestAtQuery,
 ) -> Option<(TimeInt, RowId, ArrayRef)> {
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_descr)
+        // Purposefully ignoring missing chunks.
+        // We know there's going to be missing chunks: it's the whole point of these tests to be
+        // removing chunks.
+        .latest_at_relevant_chunks(OnMissingChunk::Ignore, query, entity_path, component)
+        .chunks
         .into_iter()
         .filter_map(|chunk| {
-            let chunk = chunk.latest_at(query, component_descr).into_unit()?;
+            let chunk = chunk.latest_at(query, component).into_unit()?;
             chunk.index(&query.timeline()).map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(component_descr)
+    unit.component_batch_raw(component)
         .map(|array| (data_time, row_id, array))
 }
 
@@ -46,7 +46,7 @@ fn query_latest_array(
 fn simple() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
@@ -58,10 +58,10 @@ fn simple() -> anyhow::Result<()> {
         for i in 0..num_ents {
             let entity_path = EntityPath::from(format!("this/that/{i}"));
 
-            let num_frames = rng.gen_range(0..=100);
-            let frames = (0..num_frames).filter(|_| rand::thread_rng().r#gen());
+            let num_frames = rng.random_range(0..=100);
+            let frames = (0..num_frames).filter(|_| rand::rng().random());
             for frame_nr in frames {
-                let num_instances = rng.gen_range(0..=1_000);
+                let num_instances = rng.random_range(0..=1_000);
                 let chunk = Chunk::builder(entity_path.clone())
                     .with_component_batch(
                         RowId::new(),
@@ -196,7 +196,7 @@ fn simple_static() -> anyhow::Result<()> {
             let (_data_time, row_id, _array) = query_latest_array(
                 &store,
                 &entity_path,
-                component_descr,
+                component_descr.component,
                 &LatestAtQuery::new(timeline_frame_nr, frame_nr),
             )
             .unwrap();
@@ -299,7 +299,7 @@ fn protected() -> anyhow::Result<()> {
                 let row_id = query_latest_array(
                     &store,
                     &entity_path,
-                    component_descr,
+                    component_descr.component,
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                 )
                 .map(|(_data_time, row_id, _array)| row_id);
@@ -436,11 +436,11 @@ fn protected_time_ranges() -> anyhow::Result<()> {
 
     let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 4)));
     assert_eq!(events.len(), 1);
-    assert!(Arc::ptr_eq(&events[0].diff.chunk, &chunk1));
+    assert!(Arc::ptr_eq(events[0].diff.delta_chunk().unwrap(), &chunk1));
 
     let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 3)));
     assert_eq!(events.len(), 1);
-    assert!(Arc::ptr_eq(&events[0].diff.chunk, &chunk4));
+    assert!(Arc::ptr_eq(events[0].diff.delta_chunk().unwrap(), &chunk4));
 
     Ok(())
 }
@@ -516,8 +516,13 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
                                entity_path: &EntityPath,
                                query: &LatestAtQuery,
                                expected_row_id: Option<RowId>| {
-        let row_id = query_latest_array(store, entity_path, &MyIndex::partial_descriptor(), query)
-            .map(|(_data_time, row_id, _array)| row_id);
+        let row_id = query_latest_array(
+            store,
+            entity_path,
+            MyIndex::partial_descriptor().component,
+            query,
+        )
+        .map(|(_data_time, row_id, _array)| row_id);
 
         assert_eq!(expected_row_id, row_id);
     };
@@ -550,12 +555,15 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
 
     let events = store.drop_entity_path(&entity_path1);
     assert_eq!(3, events.len());
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[1].kind);
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[2].kind);
-    similar_asserts::assert_eq!(chunk3 /* static comes first */, events[0].chunk);
-    similar_asserts::assert_eq!(chunk1, events[1].chunk);
-    similar_asserts::assert_eq!(chunk2, events[2].chunk);
+    assert!(events[0].is_deletion());
+    assert!(events[1].is_deletion());
+    assert!(events[2].is_deletion());
+    similar_asserts::assert_eq!(
+        &chunk3, /* static comes first */
+        events[0].delta_chunk().unwrap()
+    );
+    similar_asserts::assert_eq!(&chunk1, events[1].delta_chunk().unwrap());
+    similar_asserts::assert_eq!(&chunk2, events[2].delta_chunk().unwrap());
 
     assert_latest_value(
         &store,
@@ -588,8 +596,8 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
 
     let events = store.drop_entity_path(&entity_path2);
     assert_eq!(1, events.len());
-    assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
-    similar_asserts::assert_eq!(chunk4, events[0].chunk);
+    assert!(events[0].is_deletion());
+    similar_asserts::assert_eq!(&chunk4, events[0].delta_chunk().unwrap());
 
     assert_latest_value(
         &store,

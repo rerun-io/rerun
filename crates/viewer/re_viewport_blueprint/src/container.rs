@@ -2,20 +2,20 @@ use std::fmt::Debug;
 
 use ahash::HashMap;
 use egui_tiles::TileId;
-
 use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::Loggable as _;
-use re_types::blueprint::archetypes as blueprint_archetypes;
-use re_types::blueprint::components::{
+use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
+use re_sdk_types::blueprint::components::{
     ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
 };
-use re_types::components::Name;
-use re_types::{Archetype as _, components::Visible};
-use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
+use re_sdk_types::components::{Name, Visible};
+use re_sdk_types::{Archetype as _, Loggable as _};
+use re_viewer_context::{
+    BlueprintContext as _, ContainerId, Contents, ContentsName, ViewId, ViewerContext,
+};
 
-/// The native version of a [`re_types::blueprint::archetypes::ContainerBlueprint`].
+/// The native version of a [`re_sdk_types::blueprint::archetypes::ContainerBlueprint`].
 ///
 /// This represents a single container in the blueprint. On each frame, it is
 /// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
@@ -73,36 +73,36 @@ impl ContainerBlueprint {
         let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
-            blueprint_archetypes::ContainerBlueprint::all_components().iter(),
+            blueprint_archetypes::ContainerBlueprint::all_component_identifiers(),
         );
 
         // This is a required component. Note that when loading containers we crawl the subtree and so
         // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
         // is the marker that the have been cleared and not an error.
         let container_kind = results.component_mono::<ContainerKind>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_container_kind(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_container_kind().component,
         )?;
 
         let display_name = results.component_mono::<Name>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_display_name().component,
         );
         let contents = results.component_batch::<IncludedContent>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_contents(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_contents().component,
         );
         let col_shares = results.component_batch::<ColumnShare>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_col_shares(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_col_shares().component,
         );
         let row_shares = results.component_batch::<RowShare>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_row_shares(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_row_shares().component,
         );
         let active_tab = results.component_mono::<ActiveTab>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_active_tab(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_active_tab().component,
         );
         let visible = results.component_mono::<Visible>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_visible(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_visible().component,
         );
         let grid_columns = results.component_mono::<GridColumns>(
-            &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+            blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns().component,
         );
 
         // ----
@@ -189,7 +189,7 @@ impl ContainerBlueprint {
         let contents: Vec<_> = contents.iter().map(|item| item.as_entity_path()).collect();
 
         let container_kind = crate::container_kind_from_egui(*container_kind);
-        let mut arch = re_types::blueprint::archetypes::ContainerBlueprint::new(container_kind)
+        let mut arch = re_sdk_types::blueprint::archetypes::ContainerBlueprint::new(container_kind)
             .with_contents(&contents)
             .with_col_shares(col_shares.clone())
             .with_row_shares(row_shares.clone())
@@ -202,18 +202,20 @@ impl ContainerBlueprint {
             arch = arch.with_display_name(display_name.clone());
         }
 
-        // TODO(jleibs): The need for this pattern is annoying. Should codegen
-        // a version of this that can take an Option.
-        if let Some(active_tab) = &active_tab {
-            arch = arch.with_active_tab(&active_tab.as_entity_path());
-        }
+        // We want to write an empty array if `active_tab` is none. So can't use `arch.with_active_tab`
+        // here.
+        arch.active_tab =
+            re_sdk_types::try_serialize_field::<re_sdk_types::blueprint::components::ActiveTab>(
+                re_sdk_types::blueprint::archetypes::ContainerBlueprint::descriptor_active_tab(),
+                active_tab.map(|c| c.as_entity_path()).as_ref(),
+            );
 
         if let Some(cols) = grid_columns {
             arch = arch.with_grid_columns(*cols);
         } else {
-            arch.grid_columns = Some(re_types::SerializedComponentBatch::new(
-                re_types::blueprint::components::GridColumns::arrow_empty(),
-                re_types::blueprint::archetypes::ContainerBlueprint::descriptor_grid_columns(),
+            arch.grid_columns = Some(re_sdk_types::SerializedComponentBatch::new(
+                re_sdk_types::blueprint::components::GridColumns::arrow_empty(),
+                re_sdk_types::blueprint::archetypes::ContainerBlueprint::descriptor_grid_columns(),
             ));
         }
 
@@ -395,7 +397,7 @@ impl ContainerBlueprint {
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
         ctx.save_blueprint_archetype(
             self.entity_path(),
-            &re_types::archetypes::Clear::recursive(),
+            &re_sdk_types::archetypes::Clear::recursive(),
         );
     }
 
@@ -409,11 +411,7 @@ impl ContainerBlueprint {
         let container = match self.container_kind {
             egui_tiles::ContainerKind::Tabs => {
                 let mut tabs = egui_tiles::Tabs::new(children);
-                tabs.active = self
-                    .active_tab
-                    .as_ref()
-                    .map(|id| id.as_tile_id())
-                    .or_else(|| tabs.children.first().copied());
+                tabs.active = self.active_tab.as_ref().map(|id| id.as_tile_id());
                 egui_tiles::Container::Tabs(tabs)
             }
             egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {

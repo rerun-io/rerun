@@ -1,0 +1,15 @@
+---
+source: crates/store/re_redap_tests/src/tests/register_segment.rs
+expression: batch.format_schema_snapshot()
+---
+property:prop:test: nullable List[nullable f64] [
+    rerun:component: "test"
+    rerun:entity_path: "/__properties/prop"
+    rerun:kind: "data"
+]
+rerun_last_updated_at: Timestamp(ns)
+rerun_layer_names: List[Utf8]
+rerun_num_chunks: u64
+rerun_segment_id: Utf8
+rerun_size_bytes: u64
+rerun_storage_urls: List[Utf8]

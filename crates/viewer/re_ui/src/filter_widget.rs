@@ -203,7 +203,7 @@ impl FilterState {
     ///
     /// In this mode, the filter is active as soon as the query is non-empty. The session remains
     /// active until the query is cleared.
-    pub fn search_field_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn search_field_ui(&mut self, ui: &mut egui::Ui, hint_text: impl Into<egui::WidgetText>) {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
         let textedit_id = ui.id().with("textedit");
@@ -212,7 +212,7 @@ impl FilterState {
         let visuals = response
             .as_ref()
             .map(|r| ui.style().interact(r))
-            .unwrap_or(&ui.visuals().widgets.inactive);
+            .unwrap_or_else(|| &ui.visuals().widgets.inactive);
 
         let selection_stroke = ui.visuals().selection.stroke;
         let stroke = if response.is_some_and(|r| r.has_focus()) {
@@ -245,7 +245,7 @@ impl FilterState {
                             egui::TextEdit::singleline(&mut inner_state.filter_query)
                                 .id(textedit_id)
                                 .frame(false)
-                                .hint_text("Search for entity…")
+                                .hint_text(hint_text)
                                 .desired_width(ui.available_width()),
                         )
                     });

@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 const IMAGE_CHANNELS: u64 = 4;
 
 #[derive(Debug, Clone, clap::Parser)]
@@ -52,6 +50,12 @@ impl ImageCommand {
     ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
 
+        let entity_path = if self.static_ {
+            "static_test_image"
+        } else {
+            "test_image"
+        };
+
         for i in 0..self.num_log_calls {
             raw_image_data[i] = 255; // Change a single pixel of the image data, just to make sure we transmit something different each time.
 
@@ -68,7 +72,7 @@ impl ImageCommand {
             };
 
             re_tracing::profile_scope!("log");
-            rec.log_with_static("test_image", self.static_, &image)?;
+            rec.log_with_static(entity_path, self.static_, &image)?;
         }
 
         Ok(())

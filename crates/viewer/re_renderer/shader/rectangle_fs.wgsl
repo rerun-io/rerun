@@ -37,9 +37,15 @@ fn decode_color(sampled_value: vec4f) -> vec4f {
         }
     }
 
-    // Premultiply alpha.
-    if rect_info.multiply_rgb_with_alpha != 0u {
+    if rect_info.texture_alpha == TEXTURE_ALPHA_OPAQUE {
+        rgba.a = 1.0; // ignore the alpha in the texture
+    } else if rect_info.texture_alpha == TEXTURE_ALPHA_SEPARATE_ALPHA {
+        // Premultiply alpha.
         rgba = vec4f(rgba.xyz * rgba.a, rgba.a);
+    } else if rect_info.texture_alpha == TEXTURE_ALPHA_ALREADY_PREMULTIPLIED {
+        // All good
+    } else {
+        rgba = ERROR_RGBA; // unknown enum
     }
 
     return rgba;

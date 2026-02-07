@@ -50,6 +50,7 @@ if(NOT TARGET rerun_c)
 
     if(APPLE)
         if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+            message(WARNING "macOS x86 is officially unsupported by Rerun.")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_x64.a)
         elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)

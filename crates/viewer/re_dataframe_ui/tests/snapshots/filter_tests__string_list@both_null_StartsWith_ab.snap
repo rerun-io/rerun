@@ -1,0 +1,51 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: test_results
+---
+TestResult {
+    filter: String(
+        StringFilter {
+            operator: StartsWith,
+            query: "ab",
+        },
+    ),
+    field: Field {
+        name: "column",
+        data_type: List(
+            Field {
+                name: "column",
+                data_type: Utf8,
+                nullable: true,
+                dict_id: 0,
+                dict_is_ordered: false,
+                metadata: {},
+            },
+        ),
+        nullable: true,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
+    },
+    unfiltered: ListArray
+    [
+      StringArray
+    [
+      "hello_ab",
+      "a",
+    ],
+      null,
+      StringArray
+    [
+      "ab",
+      null,
+    ],
+    ],
+    filtered: ListArray
+    [
+      StringArray
+    [
+      "ab",
+      null,
+    ],
+    ],
+}

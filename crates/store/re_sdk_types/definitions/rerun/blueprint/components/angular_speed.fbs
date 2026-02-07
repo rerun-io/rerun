@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+/// Angular speed, used for rotation speed for example.
+table AngularSpeed (
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rust.derive": "Default"
+) {
+  /// Speed value in radians per second.
+  speed: rerun.datatypes.Float64 (order: 100);
+}
+

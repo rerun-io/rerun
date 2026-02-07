@@ -1,23 +1,25 @@
-use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
-
+use egui::emath::OrderedFloat;
+use egui::text::TextWrapping;
+use egui::{NumExt as _, WidgetText};
 use macaw::BoundingBox;
 use re_format::format_f32;
-use re_types::{
-    blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
-};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::blueprint::components::VisualBounds2D;
+use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
-use re_viewer_context::{HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewState};
-
-use crate::{
-    Pinhole,
-    pickable_textured_rect::PickableRectSourceData,
-    picking::{PickableUiRect, PickingResult},
-    scene_bounding_boxes::SceneBoundingBoxes,
-    view_kind::SpatialViewKind,
-    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
+use re_viewer_context::{
+    HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
-use super::{eye::Eye, ui_3d::View3DState};
+use super::eye::Eye;
+use super::ui_3d::View3DState;
+use crate::Pinhole;
+use crate::pickable_textured_rect::PickableRectSourceData;
+use crate::picking::{PickableUiRect, PickingResult};
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -88,20 +90,24 @@ impl SpatialViewState {
 
         let view_systems = &system_output.view_systems;
 
+        // Reset the counts and start over.
+        self.image_counts_last_frame = Default::default();
+
         for data in view_systems.iter_visualizer_data::<SpatialViewVisualizerData>() {
             for pickable_rect in &data.pickable_rects {
-                let PickableRectSourceData::Image {
-                    image: ImageInfo { kind, .. },
-                    ..
-                } = &pickable_rect.source_data
-                else {
-                    continue;
-                };
-
-                match kind {
-                    ImageKind::Segmentation => self.image_counts_last_frame.segmentation += 1,
-                    ImageKind::Color => self.image_counts_last_frame.color += 1,
-                    ImageKind::Depth => self.image_counts_last_frame.depth += 1,
+                match &pickable_rect.source_data {
+                    PickableRectSourceData::Image {
+                        image: ImageInfo { kind, .. },
+                        ..
+                    } => match kind {
+                        ImageKind::Segmentation => self.image_counts_last_frame.segmentation += 1,
+                        ImageKind::Color => self.image_counts_last_frame.color += 1,
+                        ImageKind::Depth => self.image_counts_last_frame.depth += 1,
+                    },
+                    PickableRectSourceData::Video => {
+                        self.image_counts_last_frame.color += 1;
+                    }
+                    PickableRectSourceData::Placeholder => {}
                 }
             }
         }
@@ -123,11 +129,13 @@ impl SpatialViewState {
     }
 
     // Say the name out loud. It is fun!
-    pub fn view_eye_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        scene_view_coordinates: Option<ViewCoordinates>,
-    ) {
+    pub fn view_eye_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
+        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        );
+
         if ui
             .button("Reset")
             .on_hover_text(
@@ -136,19 +144,7 @@ impl SpatialViewState {
             .clicked()
         {
             self.bounding_boxes.smoothed = self.bounding_boxes.current;
-            self.state_3d
-                .reset_camera(&self.bounding_boxes, scene_view_coordinates);
-        }
-
-        {
-            let mut spin = self.state_3d.spin();
-            if ui
-                .re_checkbox(&mut spin, "Spin")
-                .on_hover_text("Spin camera around the orbit center")
-                .changed()
-            {
-                self.state_3d.set_spin(spin);
-            }
+            self.state_3d.reset_eye(ctx, &eye_property);
         }
     }
 
@@ -166,7 +162,7 @@ impl SpatialViewState {
         match kind {
             ImageKind::Segmentation => {
                 if counts.color + counts.depth > 0 {
-                    // Segmentation images should always be opaque if there was more than one image in the view,
+                    // Segmentation images should always be transparent if there was more than one image in the view,
                     // excluding other segmentation images.
                     0.5
                 } else {
@@ -183,6 +179,12 @@ impl SpatialViewState {
             // NOTE: Depth images do not support opacity
             ImageKind::Depth => 1.0,
         }
+    }
+
+    /// Accesser method for getting the entity, if any, that was tracked last time
+    /// the eye was updated.
+    pub fn last_tracked_entity(&self) -> Option<&re_log_types::EntityPath> {
+        self.state_3d.eye_state.last_tracked_entity.as_ref()
     }
 }
 
@@ -213,29 +215,26 @@ pub fn create_labels(
     for label in labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
-                // TODO(#1640): 2D labels are not visible in 3D for now.
                 if spatial_kind == SpatialViewKind::ThreeD {
-                    continue;
+                    continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let rect_in_ui = ui_from_scene.transform_rect(rect);
                 (
                     // Place the text centered below the rect
                     (rect_in_ui.width() - 4.0).at_least(60.0),
-                    rect_in_ui.center_bottom() + egui::vec2(0.0, 3.0),
+                    rect_in_ui.center_bottom(),
                 )
             }
             UiLabelTarget::Point2D(pos) => {
-                // TODO(#1640): 2D labels are not visible in 3D for now.
                 if spatial_kind == SpatialViewKind::ThreeD {
-                    continue;
+                    continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let pos_in_ui = ui_from_scene.transform_pos(pos);
-                (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
+                (f32::INFINITY, pos_in_ui)
             }
             UiLabelTarget::Position3D(pos) => {
-                // TODO(#1640): 3D labels are not visible in 2D for now.
                 if spatial_kind == SpatialViewKind::TwoD {
-                    continue;
+                    continue; // TODO(#1640): 3D labels are not visible in 2D for now.
                 }
                 let pos_in_ui = ui_from_world_3d * pos.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
@@ -255,7 +254,7 @@ pub fn create_labels(
         };
         let format = egui::TextFormat::simple(font_id, text_color);
 
-        let galley = parent_ui.fonts(|fonts| {
+        let galley = parent_ui.fonts_mut(|fonts| {
             fonts.layout_job({
                 egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
@@ -275,9 +274,10 @@ pub fn create_labels(
             })
         });
 
-        let text_rect = egui::Align2::CENTER_TOP
-            .anchor_rect(egui::Rect::from_min_size(text_anchor_pos, galley.size()));
-        let bg_rect = text_rect.expand2(egui::vec2(4.0, 2.0));
+        let offset = egui::vec2(0.0, 5.0); // Add some margin
+        let text_rect =
+            egui::Align2::CENTER_TOP.anchor_size(text_anchor_pos + offset, galley.size());
+        let bg_rect = text_rect.expand2(egui::vec2(2.0, 0.0));
 
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
@@ -298,6 +298,9 @@ pub fn create_labels(
             },
             HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
+
+        let background_color =
+            background_color.gamma_multiply(parent_ui.tokens().spatial_label_bg_opacity);
 
         let rect_stroke = if is_error {
             egui::Stroke::new(1.0, parent_ui.style().visuals.error_fg_color)
@@ -336,8 +339,7 @@ pub fn paint_loading_spinners(
     eye3d: &Eye,
     visualizers: &re_viewer_context::VisualizerCollection,
 ) {
-    use glam::Vec3Swizzles as _;
-    use glam::Vec4Swizzles as _;
+    use glam::{Vec3Swizzles as _, Vec4Swizzles as _};
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
@@ -378,25 +380,5 @@ pub fn paint_loading_spinners(
 
             egui::Spinner::new().paint_at(ui, rect);
         }
-    }
-}
-
-pub fn format_vector(v: glam::Vec3) -> String {
-    use glam::Vec3;
-
-    if v == Vec3::X {
-        "+X".to_owned()
-    } else if v == -Vec3::X {
-        "-X".to_owned()
-    } else if v == Vec3::Y {
-        "+Y".to_owned()
-    } else if v == -Vec3::Y {
-        "-Y".to_owned()
-    } else if v == Vec3::Z {
-        "+Z".to_owned()
-    } else if v == -Vec3::Z {
-        "-Z".to_owned()
-    } else {
-        format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
     }
 }

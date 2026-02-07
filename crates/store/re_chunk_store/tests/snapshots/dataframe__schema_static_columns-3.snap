@@ -1,7 +1,6 @@
 ---
 source: crates/store/re_chunk_store/tests/dataframe.rs
 expression: non_static_only
-snapshot_kind: text
 ---
 [
     "example.MyPoints:points",

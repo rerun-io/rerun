@@ -1,0 +1,25 @@
+---
+source: crates/store/re_log_encoding/tests/footers_and_manifests.rs
+expression: "format!(\"{:#?}\", static_map)"
+---
+{
+    /my_entity1: {
+        "example.MyPoints:colors": ChunkId(
+            00000000000000010000000000000002,
+        ),
+        "example.MyPoints:labels": ChunkId(
+            00000000000000010000000000000002,
+        ),
+    },
+    /my_entity2: {
+        "example.MyPoints:colors": ChunkId(
+            00000000000000010000000000000003,
+        ),
+        "example.MyPoints:labels": ChunkId(
+            00000000000000010000000000000003,
+        ),
+        "example.MyPoints:points": ChunkId(
+            00000000000000010000000000000003,
+        ),
+    },
+}

@@ -1,6 +1,5 @@
-use std::sync::mpsc;
-
 use camino::Utf8Path;
+use crossbeam::channel::{Receiver, Sender};
 
 /// Creates a new context.
 ///
@@ -8,8 +7,8 @@ use camino::Utf8Path;
 ///
 /// The [`Report`] should not be sent to other threads.
 pub fn init() -> (Report, Reporter) {
-    let (errors_tx, errors_rx) = mpsc::channel();
-    let (warnings_tx, warnings_rx) = mpsc::channel();
+    let (errors_tx, errors_rx) = crossbeam::channel::bounded(1024);
+    let (warnings_tx, warnings_rx) = crossbeam::channel::bounded(1024);
     (
         Report::new(errors_rx, warnings_rx),
         Reporter::new(errors_tx, warnings_tx),
@@ -19,26 +18,26 @@ pub fn init() -> (Report, Reporter) {
 /// Used to accumulate errors and warnings.
 #[derive(Clone)]
 pub struct Reporter {
-    errors: mpsc::Sender<String>,
-    warnings: mpsc::Sender<String>,
+    errors: Sender<String>,
+    warnings: Sender<String>,
 }
 
 impl Reporter {
-    fn new(errors: mpsc::Sender<String>, warnings: mpsc::Sender<String>) -> Self {
+    fn new(errors: Sender<String>, warnings: Sender<String>) -> Self {
         Self { errors, warnings }
     }
 
     /// Error about a file as a whole.
     ///
     /// Use sparingly for things like failing to write a file or failing to format it.
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_file(&self, path: &Utf8Path, text: impl ToString) {
         self.errors
             .send(format!("{path}: {}", text.to_string()))
             .ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error(&self, virtpath: &str, fqname: &str, text: impl ToString) {
         self.errors
             .send(format!(
@@ -49,12 +48,12 @@ impl Reporter {
             .ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn warn_no_context(&self, text: impl ToString) {
         self.warnings.send(text.to_string()).ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn warn(&self, virtpath: &str, fqname: &str, text: impl ToString) {
         self.warnings
             .send(format!(
@@ -65,7 +64,7 @@ impl Reporter {
             .ok();
     }
 
-    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_any(&self, text: impl ToString) {
         self.errors.send(text.to_string()).ok();
     }
@@ -75,7 +74,8 @@ impl Reporter {
         if let Ok(path) = Utf8Path::new(virtpath).canonicalize() {
             path.display().to_string()
         } else if let Ok(path) =
-            Utf8Path::new(&format!("crates/store/re_types/definitions/{virtpath}")).canonicalize()
+            Utf8Path::new(&format!("crates/store/re_sdk_types/definitions/{virtpath}"))
+                .canonicalize()
         {
             path.display().to_string()
         } else {
@@ -88,13 +88,13 @@ impl Reporter {
 ///
 /// This should only exist on the main thread.
 pub struct Report {
-    errors: mpsc::Receiver<String>,
-    warnings: mpsc::Receiver<String>,
+    errors: Receiver<String>,
+    warnings: Receiver<String>,
     _not_send: std::marker::PhantomData<*mut ()>,
 }
 
 impl Report {
-    fn new(errors: mpsc::Receiver<String>, warnings: mpsc::Receiver<String>) -> Self {
+    fn new(errors: Receiver<String>, warnings: Receiver<String>) -> Self {
         Self {
             errors,
             warnings,

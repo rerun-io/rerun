@@ -7,7 +7,7 @@ The Rerun C++ SDK allows logging data to Rerun directly from C++.
 
 ## Getting started
 
-Read the [getting started guide](https://www.rerun.io/docs/getting-started/quick-start/cpp) on how to use the Rerun C++ SDK.
+Read the [getting started guide](https://www.rerun.io/docs/getting-started/data-in/cpp) on how to use the Rerun C++ SDK.
 
 ### Logging
 
@@ -68,7 +68,7 @@ From a build system perspective, the SDK consists of three dependencies:
   * This includes **both** source and header files!
   * To avoid compatibility issues across different platforms, compiler versions and C++ standard library versions
 we recommend to build the C++ SDK directly from source.
-Note that this also what happens when you follow the CMake setup in the [quickstart guide](https://www.rerun.io/docs/getting-started/quick-start/cpp).
+Note that this also what happens when you follow the CMake setup in the [quickstart guide](https://www.rerun.io/docs/getting-started/data-in/cpp).
 * [rerun_c](https://github.com/rerun-io/rerun/tree/latest/crates/top/rerun_c/) static libraries
   * Rerun C is a minimal C SDK and forms the bridge to the shared Rust codebase
   * Due to the rigidity of the C ABI and lack of complex standard library types in the interface,
@@ -76,7 +76,7 @@ Note that this also what happens when you follow the CMake setup in the [quickst
     which is why we offer pre-built libraries with every release for all major platforms
 * [Apache Arrow C++ library](https://arrow.apache.org/docs/cpp/index.html)
   * The SDK uses this library to perform all serialization before handing data over to rerun_c
-  * See [Install arrow-cpp](arrow_cpp_install.md) for how to install this library
+  * See [Install Arrow C++](arrow_cpp_install.md) for how to install this library
 
 
 ### SDK bundle (rerun_cpp_sdk.zip)
@@ -102,7 +102,7 @@ but it should be possible to setup Rerun C++ without CMake fairly easily:
 You have to add all files from the [src/](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp/src/) folder
 either directly to your project or a library.
 In addition, you need to link the `rerun_c` libraries and the [Arrow C++ library](https://arrow.apache.org/docs/cpp/index.html).
-For more information on how to install Arrow, see [Install arrow-cpp](arrow_cpp_install.md).
+For more information on how to install Arrow, see [Install Arrow C++](arrow_cpp_install.md).
 
 Make sure to compile with C++17 or newer.
 

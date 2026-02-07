@@ -1,18 +1,17 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
-
-use re_chunk::ChunkId;
+use re_byte_size::{MemUsageTreeCapture, SizeBytes as _};
+use re_chunk::{ChunkId, ComponentIdentifier};
 use re_chunk_store::{
-    ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
+    ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
+    ChunkStoreHandle, ChunkStoreSubscriber,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeInt, TimelineName};
-use re_types_core::{ComponentDescriptor, archetypes};
+use re_types_core::archetypes;
 
 use crate::{LatestAtCache, RangeCache};
 
@@ -23,7 +22,7 @@ use crate::{LatestAtCache, RangeCache};
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,
     pub timeline_name: TimelineName,
-    pub component_descr: ComponentDescriptor,
+    pub component: ComponentIdentifier,
 }
 
 impl re_byte_size::SizeBytes for QueryCacheKey {
@@ -31,12 +30,12 @@ impl re_byte_size::SizeBytes for QueryCacheKey {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             entity_path,
-            timeline_name: timeline,
-            component_descr,
+            timeline_name,
+            component: component_identifier,
         } = self;
         entity_path.heap_size_bytes()
-            + timeline.heap_size_bytes()
-            + component_descr.heap_size_bytes()
+            + timeline_name.heap_size_bytes()
+            + component_identifier.heap_size_bytes()
     }
 }
 
@@ -45,11 +44,11 @@ impl std::fmt::Debug for QueryCacheKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            timeline_name: timeline,
-            component_descr,
+            timeline_name,
+            component: component_identifier,
         } = self;
         f.write_fmt(format_args!(
-            "{entity_path}:{component_descr} on '{timeline}'"
+            "{entity_path}:{component_identifier} on '{timeline_name}'"
         ))
     }
 }
@@ -59,12 +58,12 @@ impl QueryCacheKey {
     pub fn new(
         entity_path: impl Into<EntityPath>,
         timeline: impl Into<TimelineName>,
-        component_descr: ComponentDescriptor,
+        component_identifier: ComponentIdentifier,
     ) -> Self {
         Self {
             entity_path: entity_path.into(),
             timeline_name: timeline.into(),
-            component_descr,
+            component: component_identifier,
         }
     }
 }
@@ -159,6 +158,57 @@ pub struct QueryCache {
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) range_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<RangeCache>>>>,
+}
+
+impl re_byte_size::SizeBytes for QueryCache {
+    fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
+
+        let Self {
+            store: _,
+            store_id: _,
+            might_require_clearing,
+
+            // TODO(RR-3366): this seems to be over-estimating a lot?
+            // Maybe double-counting chunks or other arrow data?
+            latest_at_per_cache_key: _,
+
+            range_per_cache_key,
+        } = self;
+
+        might_require_clearing.heap_size_bytes() + range_per_cache_key.heap_size_bytes()
+    }
+}
+
+impl MemUsageTreeCapture for QueryCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
+        let Self {
+            store_id: _,
+            store: _,
+            might_require_clearing,
+            latest_at_per_cache_key: _,
+            range_per_cache_key,
+        } = self;
+
+        re_byte_size::MemUsageNode::new()
+            .with_child(
+                "might_require_clearing",
+                might_require_clearing.total_size_bytes(),
+            )
+            // TODO(RR-3366): this seems to be over-estimating a lot?
+            // Maybe double-counting chunks or other arrow data?
+            // .with_child(
+            //     "latest_at_per_cache_key",
+            //     latest_at_per_cache_key.total_size_bytes(),
+            // )
+            .with_child(
+                "range_per_cache_key",
+                range_per_cache_key.total_size_bytes(),
+            )
+            .into_tree()
+    }
 }
 
 impl std::fmt::Debug for QueryCache {
@@ -283,7 +333,7 @@ impl ChunkStoreSubscriber for QueryCache {
 
         #[derive(Default, Debug)]
         struct CompactedEvents {
-            static_: HashMap<(EntityPath, ComponentDescriptor), BTreeSet<ChunkId>>,
+            static_: HashMap<(EntityPath, ComponentIdentifier), BTreeSet<ChunkId>>,
             temporal_latest_at: HashMap<QueryCacheKey, TimeInt>,
             temporal_range: HashMap<QueryCacheKey, BTreeSet<ChunkId>>,
         }
@@ -305,87 +355,197 @@ impl ChunkStoreSubscriber for QueryCache {
                 store_id,
             );
 
-            let ChunkStoreDiff {
-                kind: _, // Don't care: both additions and deletions invalidate query results.
-                chunk,
-                compacted,
-            } = diff;
+            match diff {
+                ChunkStoreDiff::VirtualAddition(ChunkStoreDiffVirtualAddition { rrd_manifest }) => {
+                    re_tracing::profile_scope!("compact event (virtual addition)");
 
-            {
-                re_tracing::profile_scope!("compact events");
+                    // Some virtual data was inserted into the store, we need to keep track of this information.
+                    //
+                    // In particular, we must know if there are pending tombstones out there, in order to properly
+                    // populate the `might_require_clearing` set.
 
-                if chunk.is_static() {
-                    for component_descr in chunk.component_descriptors() {
-                        let compacted_events = compacted_events
-                            .static_
-                            .entry((chunk.entity_path().clone(), component_descr))
-                            .or_default();
+                    for (entity_path, per_component) in rrd_manifest.static_map() {
+                        for (component, chunk_id) in per_component {
+                            compacted_events
+                                .static_
+                                .entry((entity_path.clone(), *component))
+                                .or_default()
+                                .insert(*chunk_id);
+                        }
+                    }
 
-                        compacted_events.insert(chunk.id());
-                        // If a compaction was triggered, make sure to drop the original chunks too.
-                        compacted_events.extend(compacted.iter().flat_map(
-                            |ChunkCompactionReport {
-                                 srcs: compacted_chunks,
-                                 new_chunk: _,
-                             }| compacted_chunks.keys().copied(),
-                        ));
+                    for (entity_path, per_timeline) in rrd_manifest.temporal_map() {
+                        for (timeline, per_component) in per_timeline {
+                            for (component, per_chunk) in per_component {
+                                for (chunk_id, entry) in per_chunk {
+                                    let key = QueryCacheKey::new(
+                                        entity_path.clone(),
+                                        *timeline.name(),
+                                        *component,
+                                    );
+
+                                    // latest-at
+                                    {
+                                        let data_time_min = entry.time_range.min();
+                                        compacted_events
+                                            .temporal_latest_at
+                                            .entry(key.clone())
+                                            .and_modify(|time| {
+                                                *time = TimeInt::min(*time, data_time_min);
+                                            })
+                                            .or_insert(data_time_min);
+                                    }
+
+                                    // range
+                                    {
+                                        let compacted_events =
+                                            compacted_events.temporal_range.entry(key).or_default();
+                                        compacted_events.insert(*chunk_id);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                for (timeline, per_component) in chunk.time_range_per_component() {
-                    for (component_desc, time_range) in per_component {
-                        let key = QueryCacheKey::new(
-                            chunk.entity_path().clone(),
-                            timeline,
-                            component_desc,
-                        );
+                ChunkStoreDiff::Addition(add) => {
+                    re_tracing::profile_scope!("compact event (physical addition)");
 
-                        // latest-at
-                        {
-                            let mut data_time_min = time_range.min();
+                    // Some physical data was inserted into the store, we need to invalidate the caches appropriately.
 
-                            // If a compaction was triggered, make sure to drop the original chunks too.
-                            if let Some(ChunkCompactionReport {
-                                srcs: compacted_chunks,
-                                new_chunk: _,
-                            }) = compacted
-                            {
-                                for chunk in compacted_chunks.values() {
-                                    let data_time_compacted = chunk
-                                        .time_range_per_component()
-                                        .get(&timeline)
-                                        .and_then(|per_component| {
-                                            per_component.get(&key.component_descr)
-                                        })
-                                        .map_or(TimeInt::MAX, |time_range| time_range.min());
+                    // Static
+                    if add.chunk_before_processing.is_static() {
+                        // For static data, we maintain an actual chunk collection that must maps 1:1 with the current
+                        // state of the store, therefore we must work with processed data.
+                        let chunk = &add.chunk_after_processing;
 
-                                    data_time_min =
-                                        TimeInt::min(data_time_min, data_time_compacted);
-                                }
-                            }
-
-                            compacted_events
-                                .temporal_latest_at
-                                .entry(key.clone())
-                                .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
-                                .or_insert(data_time_min);
-                        }
-
-                        // range
-                        {
-                            let compacted_events =
-                                compacted_events.temporal_range.entry(key).or_default();
+                        for component_identifier in chunk.components_identifiers() {
+                            let compacted_events = compacted_events
+                                .static_
+                                .entry((chunk.entity_path().clone(), component_identifier))
+                                .or_default();
 
                             compacted_events.insert(chunk.id());
-                            // If a compaction was triggered, make sure to drop the original chunks too.
-                            compacted_events.extend(compacted.iter().flat_map(
-                                |ChunkCompactionReport {
-                                     srcs: compacted_chunks,
-                                     new_chunk: _,
-                                 }| {
-                                    compacted_chunks.keys().copied()
-                                },
-                            ));
+
+                            // If a compaction was triggered, make sure to drop the original chunks.
+                            //
+                            // There's nothing to be done for splits, since the original chunk never made it into
+                            // the store anyway.
+                            if let ChunkDirectLineageReport::CompactedFrom(chunks) =
+                                &add.direct_lineage
+                            {
+                                compacted_events.extend(chunks.keys().copied());
+                            }
+                        }
+                    }
+
+                    // LatestAt
+                    {
+                        // For latest-at, we want to make sure to invalidate all chunks beyond the
+                        // smallest timestamp that was modified.
+                        //
+                        // For compaction, that means looking at the complete processed chunk, because even though
+                        // this has no semantic impact on the query, we still want to make sure that cache does not
+                        // keep strong references to these old chunks that have now been compaced away.
+                        let chunk = match &add.direct_lineage {
+                            ChunkDirectLineageReport::CompactedFrom(_) => {
+                                &add.chunk_after_processing
+                            }
+                            _ => add.delta_chunk(),
+                        };
+
+                        for (timeline, per_component) in chunk.time_range_per_component() {
+                            for (component_identifier, time_range) in per_component {
+                                let key = QueryCacheKey::new(
+                                    chunk.entity_path().clone(),
+                                    timeline,
+                                    component_identifier,
+                                );
+
+                                let data_time_min = time_range.min();
+                                compacted_events
+                                    .temporal_latest_at
+                                    .entry(key.clone())
+                                    .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                    .or_insert(data_time_min);
+                            }
+                        }
+                    }
+
+                    // Range
+                    {
+                        // For ranges, we maintain an actual chunk collection that must maps 1:1 with the current
+                        // state of the store, therefore we must work with processed data.
+                        let chunk = &add.chunk_after_processing;
+
+                        for (timeline, per_component) in chunk.time_range_per_component() {
+                            for component_identifier in per_component.keys().copied() {
+                                let key = QueryCacheKey::new(
+                                    chunk.entity_path().clone(),
+                                    timeline,
+                                    component_identifier,
+                                );
+
+                                let compacted_events =
+                                    compacted_events.temporal_range.entry(key).or_default();
+                                compacted_events.insert(chunk.id());
+
+                                // If a compaction was triggered, make sure to drop the original chunks.
+                                //
+                                // There's nothing to be done for splits, since the original chunk never made it into
+                                // the store anyway.
+                                if let ChunkDirectLineageReport::CompactedFrom(chunks) =
+                                    &add.direct_lineage
+                                {
+                                    compacted_events.extend(chunks.keys().copied());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ChunkStoreDiff::Deletion(del) => {
+                    re_tracing::profile_scope!("compact event (physical deletion)");
+
+                    // Some physical data was removed from the store, we need to invalidate the caches appropriately.
+
+                    if del.chunk.is_static() {
+                        for component_identifier in del.chunk.components_identifiers() {
+                            let compacted_events = compacted_events
+                                .static_
+                                .entry((del.chunk.entity_path().clone(), component_identifier))
+                                .or_default();
+
+                            compacted_events.insert(del.chunk.id());
+                        }
+                    }
+
+                    for (timeline, per_component) in del.chunk.time_range_per_component() {
+                        for (component_identifier, time_range) in per_component {
+                            let key = QueryCacheKey::new(
+                                del.chunk.entity_path().clone(),
+                                timeline,
+                                component_identifier,
+                            );
+
+                            // latest-at
+                            {
+                                let data_time_min = time_range.min();
+
+                                compacted_events
+                                    .temporal_latest_at
+                                    .entry(key.clone())
+                                    .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                    .or_insert(data_time_min);
+                            }
+
+                            // range
+                            {
+                                let compacted_events =
+                                    compacted_events.temporal_range.entry(key).or_default();
+
+                                compacted_events.insert(del.chunk.id());
+                            }
                         }
                     }
                 }
@@ -406,19 +566,19 @@ impl ChunkStoreSubscriber for QueryCache {
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
-            for ((entity_path, component_descr), chunk_ids) in compacted_events.static_ {
-                if component_descr == archetypes::Clear::descriptor_is_recursive() {
+            for ((entity_path, component_identifier), chunk_ids) in compacted_events.static_ {
+                if component_identifier == archetypes::Clear::descriptor_is_recursive().component {
                     might_require_clearing.insert(entity_path.clone());
                 }
 
                 for (key, cache) in caches_latest_at.iter() {
-                    if key.entity_path == entity_path && key.component_descr == component_descr {
+                    if key.entity_path == entity_path && key.component == component_identifier {
                         cache.write().pending_invalidations.insert(TimeInt::STATIC);
                     }
                 }
 
                 for (key, cache) in caches_range.iter() {
-                    if key.entity_path == entity_path && key.component_descr == component_descr {
+                    if key.entity_path == entity_path && key.component == component_identifier {
                         cache
                             .write()
                             .pending_invalidations
@@ -432,7 +592,7 @@ impl ChunkStoreSubscriber for QueryCache {
             re_tracing::profile_scope!("temporal");
 
             for (key, time) in compacted_events.temporal_latest_at {
-                if key.component_descr == archetypes::Clear::descriptor_is_recursive() {
+                if key.component == archetypes::Clear::descriptor_is_recursive().component {
                     might_require_clearing.insert(key.entity_path.clone());
                 }
 

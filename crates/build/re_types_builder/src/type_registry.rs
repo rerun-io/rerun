@@ -4,11 +4,9 @@ use std::collections::HashMap;
 
 use anyhow::Context as _;
 
-use crate::{
-    ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type,
-    data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode},
-    objects::EnumIntegerType,
-};
+use crate::data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode};
+use crate::objects::EnumIntegerType;
+use crate::{ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type};
 
 // --- Registry ---
 
@@ -163,6 +161,7 @@ impl TypeRegistry {
             Type::Float16 => LazyDatatype::Atomic(AtomicDataType::Float16),
             Type::Float32 => LazyDatatype::Atomic(AtomicDataType::Float32),
             Type::Float64 => LazyDatatype::Atomic(AtomicDataType::Float64),
+            Type::Binary => LazyDatatype::Binary,
             Type::String => LazyDatatype::Utf8,
             Type::Array { elem_type, length } => LazyDatatype::FixedSizeList(
                 LazyField {
@@ -215,6 +214,7 @@ impl TypeRegistry {
             ElementType::Float16 => LazyDatatype::Atomic(AtomicDataType::Float16),
             ElementType::Float32 => LazyDatatype::Atomic(AtomicDataType::Float32),
             ElementType::Float64 => LazyDatatype::Atomic(AtomicDataType::Float64),
+            ElementType::Binary => LazyDatatype::Binary,
             ElementType::String => LazyDatatype::Utf8,
             ElementType::Object { fqname } => LazyDatatype::Unresolved { fqname },
         }

@@ -1,17 +1,29 @@
+use std::io::Cursor;
+
+use cros_codecs::codec::h265::parser::{
+    Nalu as H265Nalu, NaluType as H265NaluType, Parser as H265Parser,
+};
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
 use re_span::Span;
+use saturating_cast::SaturatingCast as _;
 
-use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
-
-use crate::{
-    StableIndexDeque, Time, Timescale,
-    demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails},
-    h264::encoding_details_from_h264_sps,
+use super::{SampleMetadata, VideoDataDescription, VideoLoadError};
+use crate::demux::{
+    ChromaSubsamplingModes, SampleMetadataState, SamplesStatistics, VideoDeliveryMethod,
+    VideoEncodingDetails,
 };
+use crate::h264::encoding_details_from_h264_sps;
+use crate::h265::encoding_details_from_h265_sps;
+use crate::nalu::ANNEXB_NAL_START_CODE;
+use crate::{StableIndexDeque, Time, Timescale};
 
 impl VideoDataDescription {
-    pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
+    pub fn load_mp4(
+        bytes: &[u8],
+        debug_name: &str,
+        source_id: re_tuid::Tuid,
+    ) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
             re_tracing::profile_scope!("Mp4::read_bytes");
@@ -29,40 +41,36 @@ impl VideoDataDescription {
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
         let timescale = Timescale::new(track.timescale);
-        let duration = Time::new(track.duration as i64);
-        let mut samples = StableIndexDeque::<SampleMetadata>::with_capacity(track.samples.len());
-        let mut gops = StableIndexDeque::<GroupOfPictures>::new();
-        let mut gop_sample_start_index = 0;
+        let mut samples =
+            StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
+        let mut keyframe_indices = Vec::new();
 
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
             for sample in &track.samples {
-                if sample.is_sync && !samples.is_empty() {
-                    let sample_range = gop_sample_start_index..samples.next_index();
-                    gops.push_back(GroupOfPictures { sample_range });
-                    gop_sample_start_index = samples.next_index();
+                if sample.is_sync {
+                    keyframe_indices.push(samples.next_index());
                 }
 
                 let decode_timestamp = Time::new(sample.decode_timestamp);
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
-                let duration = Time::new(sample.duration as i64);
+                let duration = Time::new(sample.duration.saturating_cast());
 
                 let byte_span = Span {
                     start: sample.offset as u32,
                     len: sample.size as u32,
                 };
 
-                samples.push_back(SampleMetadata {
+                samples.push_back(SampleMetadataState::Present(SampleMetadata {
                     is_sync: sample.is_sync,
                     frame_nr: 0, // filled in after the loop
                     decode_timestamp,
                     presentation_timestamp,
                     duration: Some(duration),
-                    // There's only a single buffer, which is the raw mp4 video data.
-                    buffer_index: 0,
+                    source_id,
                     byte_span,
-                });
+                }));
             }
         }
 
@@ -73,7 +81,7 @@ impl VideoDataDescription {
                 samples
                     .iter()
                     .take(50)
-                    .map(|s| s.presentation_timestamp.0)
+                    .filter_map(|s| Some(s.sample()?.presentation_timestamp.0))
                     .collect::<Vec<_>>()
             );
             re_log::info!(
@@ -81,15 +89,9 @@ impl VideoDataDescription {
                 samples
                     .iter()
                     .take(50)
-                    .map(|s| s.decode_timestamp.0)
+                    .filter_map(|s| Some(s.sample()?.decode_timestamp.0))
                     .collect::<Vec<_>>()
             );
-        }
-
-        // Append the last GOP if there are any samples left:
-        if !samples.is_empty() {
-            let sample_range = gop_sample_start_index..samples.next_index();
-            gops.push_back(GroupOfPictures { sample_range });
         }
 
         {
@@ -97,7 +99,8 @@ impl VideoDataDescription {
             let mut samples_are_in_decode_order = true;
             for (a, b) in samples
                 .iter()
-                .tuple_windows::<(&SampleMetadata, &SampleMetadata)>()
+                .tuple_windows::<(&SampleMetadataState, &SampleMetadataState)>()
+                .filter_map(|(a, b)| Some((a.sample()?, b.sample()?)))
             {
                 samples_are_in_decode_order &= a.decode_timestamp <= b.decode_timestamp;
             }
@@ -110,7 +113,10 @@ impl VideoDataDescription {
 
         {
             re_tracing::profile_scope!("Calculate frame numbers");
-            let mut samples_sorted_by_pts = samples.iter_mut().collect::<Vec<_>>();
+            let mut samples_sorted_by_pts = samples
+                .iter_mut()
+                .filter_map(|f| f.sample_mut())
+                .collect::<Vec<_>>();
             samples_sorted_by_pts.sort_by_key(|s| s.presentation_timestamp);
             for (frame_nr, sample) in samples_sorted_by_pts.into_iter().enumerate() {
                 sample.frame_nr = frame_nr as u32;
@@ -138,10 +144,11 @@ impl VideoDataDescription {
             codec,
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
-            duration: Some(duration),
+            delivery_method: VideoDeliveryMethod::Static {
+                duration: Time::new(track.duration.saturating_cast()),
+            },
             samples_statistics,
-            last_time_updated_samples: None,
-            gops,
+            keyframe_indices,
             samples,
             mp4_tracks,
         };
@@ -171,20 +178,53 @@ fn codec_details_from_stds(
     // For AVC we don't have to rely on the stsd box, since we can parse the SPS directly.
     // re_mp4 doesn't have a full SPS parser, so almost certainly we're getting more information out this way,
     // also this means that we have less divergence with the video streaming case.
-    if let re_mp4::StsdBoxContent::Avc1(avcc_box) = &stsd.contents {
-        // TODO(andreas): How to handle multiple SPS?
-        if let Some(sps_nal) = avcc_box.avcc.sequence_parameter_sets.first() {
-            let complete = true;
-            let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
+    match &stsd.contents {
+        re_mp4::StsdBoxContent::Avc1(avcc_box) => {
+            if let Some(sps_nal) = avcc_box.avcc.sequence_parameter_sets.first() {
+                let complete = true;
+                let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
 
-            return nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())
-                .and_then(|sps| encoding_details_from_h264_sps(&sps))
-                .map_err(VideoLoadError::SpsParsingError)
-                .map(|details| VideoEncodingDetails {
-                    stsd: Some(stsd),
-                    ..details
-                });
+                return nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())
+                    .and_then(|sps| encoding_details_from_h264_sps(&sps))
+                    .map_err(VideoLoadError::SpsParsingError)
+                    .map(|details| VideoEncodingDetails {
+                        stsd: Some(stsd),
+                        ..details
+                    });
+            }
         }
+        re_mp4::StsdBoxContent::Hev1(hvc1_box) | re_mp4::StsdBoxContent::Hvc1(hvc1_box) => {
+            let hvcc = &*hvc1_box.hvcc;
+
+            for array in &hvcc.arrays {
+                if let Ok(nalu_type) = H265NaluType::try_from(array.nal_unit_type as u32)
+                    && matches!(nalu_type, H265NaluType::SpsNut)
+                {
+                    for nal in &array.nalus {
+                        let mut annexb =
+                            Vec::with_capacity(ANNEXB_NAL_START_CODE.len() + nal.size as usize);
+                        annexb.extend_from_slice(ANNEXB_NAL_START_CODE);
+                        annexb.extend_from_slice(&nal.data);
+
+                        let mut parser = H265Parser::default();
+                        let mut rdr = Cursor::new(annexb.as_slice());
+
+                        if let Ok(nalu) = H265Nalu::next(&mut rdr) {
+                            let sps_ref = parser
+                                .parse_sps(&nalu)
+                                .map_err(|_err| VideoLoadError::NoVideoTrack)?;
+                            let details = encoding_details_from_h265_sps(sps_ref);
+
+                            return Ok(VideoEncodingDetails {
+                                stsd: Some(stsd.clone()),
+                                ..details
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
     }
 
     Ok(VideoEncodingDetails {

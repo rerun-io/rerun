@@ -34,7 +34,7 @@ pub struct SpawnOptions {
     /// When this limit is reached, Rerun will drop the oldest data.
     /// Example: `16GB` or `50%` (of system total).
     ///
-    /// Defaults to `0B`.
+    /// Defaults to `1GiB`.
     pub server_memory_limit: String,
 
     /// Specifies the name of the Rerun executable.
@@ -72,7 +72,7 @@ impl Default for SpawnOptions {
             port: re_grpc_server::DEFAULT_SERVER_PORT,
             wait_for_bind: false,
             memory_limit: "75%".into(),
-            server_memory_limit: "0B".into(),
+            server_memory_limit: "1GiB".into(),
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
             extra_args: Vec::new(),
@@ -87,7 +87,7 @@ impl SpawnOptions {
     /// Resolves the final connect address value.
     pub fn connect_addr(&self) -> std::net::SocketAddr {
         std::net::SocketAddr::new(
-            std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             self.port,
         )
     }
@@ -95,7 +95,7 @@ impl SpawnOptions {
     /// Resolves the final listen address value.
     pub fn listen_addr(&self) -> std::net::SocketAddr {
         std::net::SocketAddr::new(
-            std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
+            std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
             self.port,
         )
     }
@@ -108,10 +108,21 @@ impl SpawnOptions {
 
         #[cfg(debug_assertions)]
         {
-            let local_build_path = format!("target/debug/{RERUN_BINARY}");
+            let cargo_target_dir =
+                std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
+            let local_build_path = format!(
+                "{cargo_target_dir}/debug/{}{}",
+                self.executable_name,
+                std::env::consts::EXE_SUFFIX
+            );
             if std::fs::metadata(&local_build_path).is_ok() {
                 re_log::info!("Spawning the locally built rerun at {local_build_path}");
                 return local_build_path;
+            } else {
+                re_log::info!(
+                    "No locally built rerun found at {local_build_path:?}, using executable named {:?} from PATH.",
+                    self.executable_name
+                );
             }
         }
 
@@ -168,12 +179,12 @@ impl std::fmt::Debug for SpawnError {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect_grpc`] or use [`crate::RecordingStream::spawn`] directly.
-#[allow(unsafe_code)]
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
+    use std::net::TcpStream;
     #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;
-
-    use std::{net::TcpStream, process::Command, time::Duration};
+    use std::process::Command;
+    use std::time::Duration;
 
     // NOTE: These are indented on purpose, it just looks better and reads easier.
 
@@ -308,6 +319,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         // SAFETY: This code is only run in the child fork, we are not modifying any memory
         // that is shared with the parent process.
         #[cfg(target_family = "unix")]
+        #[expect(unsafe_code)]
         unsafe {
             rerun_bin.pre_exec(|| {
                 // On unix systems, we want to make sure that the child process becomes its

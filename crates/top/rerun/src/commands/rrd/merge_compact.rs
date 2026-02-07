@@ -2,7 +2,6 @@ use std::io::{IsTerminal as _, Write as _};
 
 use anyhow::Context as _;
 use itertools::Either;
-
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
@@ -195,12 +194,14 @@ fn merge_and_compact(
                 if let Err(err) = entity_dbs
                     .entry(msg.store_id().clone())
                     .or_insert_with(|| {
+                        let enable_viewer_indexes = false; // that would just slow us down for no reason
                         re_entity_db::EntityDb::with_store_config(
                             msg.store_id().clone(),
+                            enable_viewer_indexes,
                             store_config.clone(),
                         )
                     })
-                    .add(&msg)
+                    .add_log_msg(&msg)
                 {
                     re_log::error!(%err, "couldn't index corrupt chunk");
                     is_success = false;
@@ -238,7 +239,7 @@ fn merge_and_compact(
 
         let num_chunks_before = entity_dbs
             .values()
-            .map(|db| db.storage_engine().store().num_chunks() as u64)
+            .map(|db| db.storage_engine().store().num_physical_chunks() as u64)
             .sum::<u64>();
         let mut num_chunks_after = 0;
         entity_dbs = entity_dbs
@@ -249,11 +250,11 @@ fn merge_and_compact(
                 let engine = unsafe { db.storage_engine_raw() };
 
                 let mut store = ChunkStore::new(store_id.clone(), store_config.clone());
-                for chunk in engine.read().store().iter_chunks() {
+                for chunk in engine.read().store().iter_physical_chunks() {
                     store.insert_chunk(chunk)?;
                 }
 
-                num_chunks_after += store.num_chunks() as u64;
+                num_chunks_after += store.num_physical_chunks() as u64;
                 *engine.write().store() = store;
 
                 Ok::<_, ChunkStoreError>((store_id, db))
@@ -300,7 +301,7 @@ fn merge_and_compact(
         });
 
     // TODO(cmc): encoding options should match the original.
-    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
+    let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
     let version = entity_dbs
         .values()
         .next()
@@ -309,7 +310,7 @@ fn merge_and_compact(
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
     re_log::info!("encoding…");
-    let rrd_out_size = re_log_encoding::encoder::encode(
+    let rrd_out_size = re_log_encoding::Encoder::encode_into(
         version,
         encoding_options,
         // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
@@ -321,7 +322,7 @@ fn merge_and_compact(
 
     rrd_out.flush().context("couldn't flush output")?;
 
-    let rrds_in_size = rx_size_bytes.recv().ok();
+    let rrds_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
     let num_chunks_reduction = format!(
         "-{:3.3}%",
         100.0 - num_chunks_after as f64 / (num_chunks_before as f64 + f64::EPSILON) * 100.0

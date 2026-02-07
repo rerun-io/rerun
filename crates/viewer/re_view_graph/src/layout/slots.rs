@@ -4,9 +4,8 @@
 //! We achieve this by bringing edges into a canonical form via [`SlotId`], which
 //! we can then use to find duplicates.
 
-use crate::graph::NodeId;
-
 use super::request::EdgeTemplate;
+use crate::graph::NodeId;
 
 /// Uniquely identifies a [`Slot`] by ordering the [`NodeIds`](NodeId) that make up an edge.
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]

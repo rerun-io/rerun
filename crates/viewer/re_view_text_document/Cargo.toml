@@ -23,10 +23,9 @@ default = []
 
 [dependencies]
 re_chunk_store.workspace = true
-re_renderer.workspace = true
 re_view.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 
@@ -34,4 +33,7 @@ egui.workspace = true
 egui_commonmark.workspace = true
 
 [dev-dependencies]
+re_log_types.workspace = true
 re_test_context.workspace = true
+re_test_viewport.workspace = true
+re_viewport_blueprint.workspace = true

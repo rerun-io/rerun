@@ -17,10 +17,18 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
+from .channel_id import ChannelId, ChannelIdBatch
+from .channel_message_counts import (
+    ChannelMessageCounts,
+    ChannelMessageCountsArrayLike,
+    ChannelMessageCountsBatch,
+    ChannelMessageCountsLike,
+)
 from .class_id import ClassId, ClassIdBatch
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch
 from .color import Color, ColorBatch
 from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike
+from .count import Count, CountBatch
 from .depth_meter import DepthMeter, DepthMeterBatch
 from .draw_order import DrawOrder, DrawOrderBatch
 from .entity_path import EntityPath, EntityPathBatch
@@ -37,6 +45,7 @@ from .image_buffer import ImageBuffer, ImageBufferBatch
 from .image_format import ImageFormat, ImageFormatBatch
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch
 from .interactive import Interactive, InteractiveBatch
+from .key_value_pairs import KeyValuePairs, KeyValuePairsArrayLike, KeyValuePairsBatch, KeyValuePairsLike
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
 from .length import Length, LengthBatch
@@ -56,11 +65,6 @@ from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
 from .plane3d import Plane3D, Plane3DBatch
-from .pose_rotation_axis_angle import PoseRotationAxisAngle, PoseRotationAxisAngleBatch
-from .pose_rotation_quat import PoseRotationQuat, PoseRotationQuatBatch
-from .pose_scale3d import PoseScale3D, PoseScale3DBatch
-from .pose_transform_mat3x3 import PoseTransformMat3x3, PoseTransformMat3x3Batch
-from .pose_translation3d import PoseTranslation3D, PoseTranslation3DBatch
 from .position2d import Position2D, Position2DBatch
 from .position3d import Position3D, Position3DBatch
 from .radius import Radius, RadiusBatch
@@ -70,6 +74,7 @@ from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch
 from .rotation_quat import RotationQuat, RotationQuatBatch
 from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
+from .schema_id import SchemaId, SchemaIdBatch
 from .series_visible import SeriesVisible, SeriesVisibleBatch
 from .show_labels import ShowLabels, ShowLabelsBatch
 from .stroke_width import StrokeWidth, StrokeWidthBatch
@@ -81,6 +86,7 @@ from .texcoord2d import Texcoord2D, Texcoord2DBatch
 from .text import Text, TextBatch
 from .text_log_level import TextLogLevel, TextLogLevelBatch
 from .timestamp import Timestamp, TimestampBatch
+from .transform_frame_id import TransformFrameId, TransformFrameIdBatch
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch
 from .transform_relation import (
     TransformRelation,
@@ -114,6 +120,12 @@ __all__ = [
     "AxisLengthBatch",
     "Blob",
     "BlobBatch",
+    "ChannelId",
+    "ChannelIdBatch",
+    "ChannelMessageCounts",
+    "ChannelMessageCountsArrayLike",
+    "ChannelMessageCountsBatch",
+    "ChannelMessageCountsLike",
     "ClassId",
     "ClassIdBatch",
     "ClearIsRecursive",
@@ -124,6 +136,8 @@ __all__ = [
     "ColormapArrayLike",
     "ColormapBatch",
     "ColormapLike",
+    "Count",
+    "CountBatch",
     "DepthMeter",
     "DepthMeterBatch",
     "DrawOrder",
@@ -162,6 +176,10 @@ __all__ = [
     "ImagePlaneDistanceBatch",
     "Interactive",
     "InteractiveBatch",
+    "KeyValuePairs",
+    "KeyValuePairsArrayLike",
+    "KeyValuePairsBatch",
+    "KeyValuePairsLike",
     "KeypointId",
     "KeypointIdBatch",
     "LatLon",
@@ -198,16 +216,6 @@ __all__ = [
     "PinholeProjectionBatch",
     "Plane3D",
     "Plane3DBatch",
-    "PoseRotationAxisAngle",
-    "PoseRotationAxisAngleBatch",
-    "PoseRotationQuat",
-    "PoseRotationQuatBatch",
-    "PoseScale3D",
-    "PoseScale3DBatch",
-    "PoseTransformMat3x3",
-    "PoseTransformMat3x3Batch",
-    "PoseTranslation3D",
-    "PoseTranslation3DBatch",
     "Position2D",
     "Position2DBatch",
     "Position3D",
@@ -226,6 +234,8 @@ __all__ = [
     "ScalarBatch",
     "Scale3D",
     "Scale3DBatch",
+    "SchemaId",
+    "SchemaIdBatch",
     "SeriesVisible",
     "SeriesVisibleBatch",
     "ShowLabels",
@@ -248,6 +258,8 @@ __all__ = [
     "TextLogLevelBatch",
     "Timestamp",
     "TimestampBatch",
+    "TransformFrameId",
+    "TransformFrameIdBatch",
     "TransformMat3x3",
     "TransformMat3x3Batch",
     "TransformRelation",

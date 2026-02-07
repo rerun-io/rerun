@@ -1,16 +1,15 @@
-use std::{mem::size_of, ops::Range};
+use std::mem::size_of;
+use std::ops::Range;
 
 use ecolor::Rgba;
 use smallvec::{SmallVec, smallvec};
 
-use crate::{
-    RenderContext, Rgba32Unmul,
-    allocator::create_and_fill_uniform_buffer_batch,
-    debug_label::DebugLabel,
-    renderer::MeshRenderer,
-    resource_managers::GpuTexture2D,
-    wgpu_resources::{BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBuffer},
-};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::debug_label::DebugLabel;
+use crate::renderer::MeshRenderer;
+use crate::resource_managers::GpuTexture2D;
+use crate::wgpu_resources::{BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBuffer};
+use crate::{RenderContext, Rgba32Unmul};
 
 /// Defines how mesh vertices are built.
 pub mod mesh_vertices {
@@ -68,6 +67,9 @@ pub struct CpuMesh {
     pub vertex_texcoords: Vec<glam::Vec2>,
 
     pub materials: SmallVec<[Material; 1]>,
+
+    /// Object space bounding box.
+    pub bbox: macaw::BoundingBox,
 }
 
 impl CpuMesh {
@@ -83,6 +85,7 @@ impl CpuMesh {
             vertex_normals,
             vertex_texcoords,
             materials: _,
+            bbox,
         } = self;
 
         let num_pos = vertex_positions.len();
@@ -111,6 +114,10 @@ impl CpuMesh {
 
         if self.triangle_indices.is_empty() {
             return Err(MeshError::ZeroIndices);
+        }
+
+        if bbox.is_nan() || !bbox.is_finite() || bbox.is_nothing() {
+            return Err(MeshError::InvalidBbox(*bbox));
         }
 
         for indices in triangle_indices {
@@ -153,12 +160,20 @@ pub enum MeshError {
     #[error("Mesh has no triangle indices.")]
     ZeroIndices,
 
+    #[error("Mesh has an invalid bounding box {0:?}")]
+    InvalidBbox(macaw::BoundingBox),
+
     #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
     IndexOutOfBounds { num_pos: usize, index: u32 },
 
     #[error(transparent)]
     CpuWriteGpuReadError(#[from] crate::allocator::CpuWriteGpuReadError),
 }
+
+const _: () = assert!(
+    std::mem::size_of::<MeshError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 #[derive(Clone)]
 pub struct Material {
@@ -193,6 +208,18 @@ pub struct GpuMesh {
 
     /// Every mesh has at least one material.
     pub materials: SmallVec<[GpuMaterial; 1]>,
+
+    /// Object space bounding box.
+    ///
+    /// Needed for distance sorting.
+    pub bbox: macaw::BoundingBox,
+}
+
+impl GpuMesh {
+    /// Returns the byte size this `GpuMesh` uses in total.
+    pub fn gpu_byte_size(&self) -> u64 {
+        self.index_buffer.inner.size() + self.vertex_buffer_combined.size()
+    }
 }
 
 #[derive(Clone)]
@@ -201,17 +228,41 @@ pub struct GpuMaterial {
     pub index_range: Range<u32>,
 
     pub bind_group: GpuBindGroup,
+
+    /// Whether there's any transparency in this material.
+    pub has_transparency: bool,
 }
 
 pub(crate) mod gpu_data {
     use crate::wgpu_buffer_types;
 
+    /// Internally supported texture formats for our textures.
+    ///
+    /// Keep in sync with the `FORMAT_` constants in `instanced_mesh.wgsl`
+    #[repr(u32)]
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum TextureFormat {
+        Rgba = 0,
+        Grayscale = 1,
+    }
+
     /// Keep in sync with [`MaterialUniformBuffer`] in `instanced_mesh.wgsl`
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
-        pub albedo_factor: wgpu_buffer_types::Vec4,
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+        albedo_factor: ecolor::Rgba,
+        texture_format: wgpu_buffer_types::U32RowPadded,
+        end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
+    }
+
+    impl MaterialUniformBuffer {
+        pub fn new(albedo_factor: ecolor::Rgba, texture_format: TextureFormat) -> Self {
+            Self {
+                albedo_factor,
+                texture_format: (texture_format as u32).into(),
+                end_padding: Default::default(),
+            }
+        }
     }
 }
 
@@ -299,12 +350,16 @@ impl GpuMesh {
             let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
                 ctx,
                 format!("{} - material uniforms", data.label).into(),
-                data.materials
-                    .iter()
-                    .map(|material| gpu_data::MaterialUniformBuffer {
-                        albedo_factor: material.albedo_factor.into(),
-                        end_padding: Default::default(),
-                    }),
+                data.materials.iter().map(|material| {
+                    gpu_data::MaterialUniformBuffer::new(
+                        material.albedo_factor,
+                        if material.albedo.texture.format().components() == 1 {
+                            gpu_data::TextureFormat::Grayscale
+                        } else {
+                            gpu_data::TextureFormat::Rgba
+                        },
+                    )
+                }),
             );
 
             let mut materials = SmallVec::with_capacity(data.materials.len());
@@ -330,9 +385,13 @@ impl GpuMesh {
                     },
                 );
 
+                // TODO(#12223): handle texture transparency
+                let is_transparent = material.albedo_factor.a() < 1.0;
+
                 materials.push(GpuMaterial {
                     index_range: material.index_range.clone(),
                     bind_group,
+                    has_transparency: is_transparent,
                 });
             }
             materials
@@ -351,6 +410,7 @@ impl GpuMesh {
             vertex_buffer_texcoord_range: vb_texcoord_start..vb_combined_size,
             index_buffer_range: 0..index_buffer_size,
             materials,
+            bbox: data.bbox,
         })
     }
 }

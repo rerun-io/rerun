@@ -1,0 +1,9 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+translations: [[0.0, 0.0, 0.0]]
+rotation_axis_angles: [{axis: [1.0, 0.0, 0.0], angle: 0.0}]
+quaternions: [[0.0, 0.0, 0.0, 1.0]]
+scales: [[1.0, 1.0, 1.0]]
+mat3x3: [[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]]

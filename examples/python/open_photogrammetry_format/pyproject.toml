@@ -1,7 +1,7 @@
 [project]
 name = "open_photogrammetry_format"
 version = "0.1.0"
-requires-python = ">=3.10"                                                   # pyopf requirement
+requires-python = ">=3.10" # pyopf requirement
 readme = "README.md"
 dependencies = ["numpy", "pillow", "pyopf", "requests", "rerun-sdk", "tqdm"]
 

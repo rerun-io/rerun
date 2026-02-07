@@ -1,39 +1,39 @@
-use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
+use egui::emath::RectTransform;
+use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
-
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
+use re_renderer::ViewPickingConfiguration;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_types::blueprint::{
-    archetypes::{Background, NearClipPlane, VisualBounds2D},
-    components as blueprint_components,
-};
+use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_sdk_types::blueprint::components as blueprint_components;
+use re_sdk_types::{Archetype as _, archetypes};
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
-    ItemContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
-    ViewerContext, gpu_bridge,
+    ItemContext, QueryContext, ViewClass as _, ViewClassExt as _, ViewContext, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, gpu_bridge, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::{eye::Eye, ui::create_labels};
-use crate::{
-    Pinhole, SpatialView2D, ui::SpatialViewState, view_kind::SpatialViewKind,
-    visualizers::collect_ui_labels,
-};
-
+use super::eye::Eye;
+use super::ui::create_labels;
+use crate::contexts::TransformTreeContext;
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::collect_ui_labels;
+use crate::{Pinhole, SpatialView2D};
 // ---
 
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
     ctx: &ViewContext<'_>,
     response: &egui::Response,
-    view_class: &SpatialView2D,
     view_state: &mut SpatialViewState,
     bounds_property: &ViewProperty,
 ) -> RectTransform {
     let bounds: blueprint_components::VisualBounds2D = bounds_property
-        .component_or_fallback(ctx, view_class, &VisualBounds2D::descriptor_range())
+        .component_or_fallback(ctx, VisualBounds2D::descriptor_range().component)
         .ok_or_log_error()
         .unwrap_or_default();
     view_state.visual_bounds_2d = Some(bounds);
@@ -140,7 +140,7 @@ impl SpatialView2D {
         ui: &mut egui::Ui,
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
-        system_output: re_viewer_context::SystemExecutionOutput,
+        mut system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
@@ -148,20 +148,45 @@ impl SpatialView2D {
             return Ok(());
         }
 
-        // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
+        // TODO(andreas): Why don't we have this already?
+        let view_ctx = ViewContext {
+            viewer_ctx: ctx,
+            view_id: query.view_id,
+            view_class_identifier: Self::identifier(),
+            space_origin: query.space_origin,
+            view_state: state,
+            query_result: ctx.lookup_query_result(query.view_id),
+        };
 
-        // Note that we can't rely on the camera being part of scene.space_cameras since that requires
-        // the camera to be added to the scene!
-        //
-        // TODO(#6743): We don't have a data-result or the other pieces
-        // necessary to properly handle overrides, defaults, or fallbacks.
-        state.pinhole_at_origin =
-            crate::pinhole::query_pinhole_and_view_coordinates_from_store_without_blueprint(
-                ctx,
-                &ctx.current_query(),
-                query.space_origin,
-            )
-            .map(|(pinhole, _view_coordinates)| pinhole);
+        // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
+        let transforms = system_output
+            .context_systems
+            .get::<TransformTreeContext>()?;
+        state.pinhole_at_origin = transforms
+            .pinhole_tree_root_info(transforms.target_frame())
+            .map(|pinhole_at_root| {
+                let pinhole = &pinhole_at_root.pinhole_projection;
+
+                let query_ctx = QueryContext {
+                    view_ctx: &view_ctx,
+                    target_entity_path: query.space_origin,
+                    instruction_id: None,
+                    archetype_name: Some(archetypes::Pinhole::name()),
+                    query: &query.latest_at_query(),
+                };
+                Pinhole {
+                    image_from_camera: pinhole.image_from_camera.0.into(),
+                    resolution: pinhole
+                        .resolution
+                        .unwrap_or_else(|| {
+                            typed_fallback_for(
+                                &query_ctx,
+                                archetypes::Pinhole::descriptor_resolution().component,
+                            )
+                        })
+                        .into(),
+                }
+            });
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
@@ -179,22 +204,21 @@ impl SpatialView2D {
 
         // Convert ui coordinates to/from scene coordinates.
         let ui_from_scene = {
-            let view_ctx = self.view_context(ctx, query.view_id, state);
+            let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
             let mut new_state = state.clone();
             let ui_from_scene =
-                ui_from_scene(&view_ctx, &response, self, &mut new_state, &bounds_property);
+                ui_from_scene(&view_ctx, &response, &mut new_state, &bounds_property);
             *state = new_state;
 
             ui_from_scene
         };
         let scene_from_ui = ui_from_scene.inverse();
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
             .component_or_fallback(
                 &view_ctx,
-                self,
-                &NearClipPlane::descriptor_near_clip_plane(),
+                NearClipPlane::descriptor_near_clip_plane().component,
             )
             .ok_or_log_error()
             .unwrap_or_default();
@@ -208,18 +232,6 @@ impl SpatialView2D {
         // Don't let clipping plane become zero
         let near_clip_plane = f32::max(f32::MIN_POSITIVE, *near_clip_plane.0);
 
-        let scene_bounds = *scene_from_ui.to();
-        let Ok(target_config) = setup_target_config(
-            &painter,
-            scene_bounds,
-            near_clip_plane,
-            &query.space_origin.to_string(),
-            query.highlights.any_outlines(),
-            &state.pinhole_at_origin,
-        ) else {
-            return Ok(());
-        };
-
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
             collect_ui_labels(&system_output.view_systems),
@@ -230,34 +242,49 @@ impl SpatialView2D {
             SpatialViewKind::TwoD,
         );
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config);
-
-        if let Some(pointer_pos_ui) = response.hover_pos() {
+        let picking_config = if let Some(pointer_pos_ui) = response.hover_pos() {
             let picking_context = crate::picking::PickingContext::new(
                 pointer_pos_ui,
                 scene_from_ui,
                 ui.ctx().pixels_per_point(),
                 &eye,
             );
-            crate::picking_ui::picking(
+            let (_response, picking_config) = crate::picking_ui::picking(
                 ctx,
                 &picking_context,
                 ui,
                 response,
-                &mut view_builder,
                 state,
                 &system_output,
                 &ui_rects,
                 query,
                 SpatialViewKind::TwoD,
             )?;
+            picking_config
         } else {
             state.previous_picking_result = None;
-        }
-        let view_ctx = self.view_context(ctx, query.view_id, state); // Recreate view state to handle context editing during picking.
+            None
+        };
 
-        for draw_data in system_output.draw_data {
-            view_builder.queue_draw(draw_data);
+        let scene_bounds = *scene_from_ui.to();
+        let Ok(target_config) = setup_target_config(
+            ctx.render_mode(),
+            &painter,
+            scene_bounds,
+            near_clip_plane,
+            &query.space_origin.to_string(),
+            query.highlights.any_outlines(),
+            &state.pinhole_at_origin,
+            picking_config,
+        ) else {
+            return Ok(());
+        };
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
+
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin); // Recreate view state to handle context editing during picking.
+
+        for draw_data in system_output.drain_draw_data() {
+            view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
 
         let background = ViewProperty::from_archetype::<Background>(
@@ -266,9 +293,9 @@ impl SpatialView2D {
             query.view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(&view_ctx, &background, self)?;
+            crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {
-            view_builder.queue_draw(background_drawable);
+            view_builder.queue_draw(ctx.render_ctx(), background_drawable);
         }
 
         // ------------------------------------------------------------------------
@@ -311,13 +338,16 @@ impl SpatialView2D {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn setup_target_config(
+    render_mode: re_renderer::RenderMode,
     egui_painter: &egui::Painter,
     scene_bounds: Rect,
     near_clip_plane: f32,
     space_name: &str,
     any_outlines: bool,
     scene_pinhole: &Option<Pinhole>,
+    picking_config: Option<ViewPickingConfiguration>,
 ) -> anyhow::Result<TargetConfiguration> {
     // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.
 
@@ -402,6 +432,7 @@ fn setup_target_config(
         let name = space_name.into();
         TargetConfiguration {
             name,
+            render_mode,
             resolution_in_pixel,
             view_from_world,
             projection_from_view,
@@ -409,6 +440,7 @@ fn setup_target_config(
             pixels_per_point,
             outline_config: any_outlines.then(|| re_view::outline_config(egui_painter.ctx())),
             blend_with_background: false,
+            picking_config,
         }
     })
 }
@@ -452,7 +484,7 @@ fn show_projections_from_3d_space(
                 let text_color = ui.visuals().strong_text_color();
                 let text = format!("Depth: {:.3} m", pos_2d.z);
                 let font_id = egui::TextStyle::Body.resolve(ui.style());
-                let galley = ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
+                let galley = ui.fonts_mut(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
                 let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
                     pos_in_ui + vec2(0.0, 5.0),
                     galley.size(),

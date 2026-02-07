@@ -1,34 +1,32 @@
-use egui::{NumExt as _, TextBuffer};
+use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
-
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
-use re_data_ui::{
-    DataUi,
-    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
+use re_data_ui::DataUi;
+use re_data_ui::item_ui::{
+    self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity,
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
-use re_types::ComponentDescriptor;
-use re_ui::{
-    SyntaxHighlighting as _, UiExt as _, icons,
-    list_item::{self, PropertyContent},
-};
+use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
+use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::text_edit::autocomplete_text_edit;
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, UiLayout,
-    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizerType,
+    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
+    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
+use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::ui::show_add_view_or_container_modal;
 
-use crate::{
-    defaults_ui::view_components_defaults_section_ui,
-    item_heading_no_breadcrumbs::item_title_list_item,
-    item_heading_with_breadcrumbs::item_heading_with_breadcrumbs,
-    view_entity_picker::ViewEntityPicker,
-    visible_time_range_ui::{
-        visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
-    },
-    visualizer_ui::visualizer_ui,
+use crate::defaults_ui::view_components_defaults_section_ui;
+use crate::item_heading_no_breadcrumbs::item_title_list_item;
+use crate::item_heading_with_breadcrumbs::item_heading_with_breadcrumbs;
+use crate::view_entity_picker::ViewEntityPicker;
+use crate::visible_time_range_ui::{
+    visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
 };
+use crate::visualizer_ui::visualizer_ui;
 
 // ---
 fn default_selection_panel_width(screen_width: f32) -> f32 {
@@ -53,7 +51,7 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         expanded: bool,
     ) {
-        let screen_width = ui.ctx().screen_rect().width();
+        let screen_width = ui.ctx().content_rect().width();
 
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)
@@ -62,11 +60,19 @@ impl SelectionPanel {
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
+                inner_margin: egui::Margin {
+                    // TODO(emilk/egui#7749): This is a workaround to prevent flicker between
+                    // the time panel resize handle and our scroll bar.
+                    bottom: 4,
+                    ..Default::default()
+                },
                 ..Default::default()
             });
 
-        // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
+        if ctx.time_ctrl.highlighted_range.is_some() {
+            // Always reset the VH highlight, and let the UI re-set it if needed.
+            ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
+        }
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
@@ -79,7 +85,7 @@ impl SelectionPanel {
             // area
             ui.add_space(-ui.spacing().item_spacing.y);
 
-            egui::ScrollArea::both()
+            let r = egui::ScrollArea::both()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
@@ -87,13 +93,13 @@ impl SelectionPanel {
                         self.contents(ctx, viewport, view_states, ui);
                     });
                 });
+            r.state
         });
 
         // run modals (these are noop if the modals are not active)
         self.view_entity_modal.ui(ui.ctx(), ctx, viewport);
     }
 
-    #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -116,7 +122,7 @@ impl SelectionPanel {
 
         if selection.len() == 1 {
             for item in selection.iter_items() {
-                list_item::list_item_scope(ui, item, |ui| {
+                let res = list_item::list_item_scope(ui, item, |ui| {
                     item_heading_with_breadcrumbs(ctx, viewport, ui, item);
 
                     self.item_ui(
@@ -128,9 +134,12 @@ impl SelectionPanel {
                         UiLayout::SelectionPanel,
                     );
                 });
+                res.response.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
+                });
             }
         } else {
-            list_item::list_item_scope(ui, "selections_panel", |ui| {
+            let response = list_item::list_item_scope(ui, "selections_panel", |ui| {
                 ui.list_item()
                     .with_height(tokens.title_bar_height())
                     .interactive(false)
@@ -148,6 +157,9 @@ impl SelectionPanel {
                     item_title_list_item(ctx, viewport, ui, item);
                 }
             });
+            response.response.widget_info(|| {
+                WidgetInfo::labeled(egui::WidgetType::Panel, true, "_selection_panel")
+            });
         }
     }
 
@@ -161,18 +173,25 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
+        re_tracing::profile_function!();
+
         match item {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
                     entity_path,
-                    component_descriptor,
+                    component,
                 } = component_path;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let is_static = db
-                    .storage_engine()
+                let engine = db.storage_engine();
+                let component_descriptor = engine
                     .store()
-                    .entity_has_static_component(entity_path, component_descriptor);
+                    .entity_component_descriptor(entity_path, *component)
+                    .unwrap_or_else(|| ComponentDescriptor::partial(*component));
+
+                let is_static = engine
+                    .store()
+                    .entity_has_static_component(entity_path, component_descriptor.component);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {
@@ -226,7 +245,7 @@ impl SelectionPanel {
                                 if let Some(markdown) = ctx
                                     .reflection()
                                     .components
-                                    .get(component_type)
+                                    .get(&component_type)
                                     .map(|info| info.docstring_md)
                                 {
                                     ui.markdown_ui(markdown);
@@ -316,18 +335,20 @@ impl SelectionPanel {
                     let query_result = ctx.lookup_query_result(*view_id);
                     let data_result = query_result
                         .tree
-                        .lookup_result_by_path(entity_path)
+                        .lookup_result_by_path(entity_path.hash())
                         .cloned();
 
                     if let Some(data_result) = &data_result
                         && let Some(view) = viewport.view(view_id)
                     {
-                        visible_interactive_toggle_ui(
-                            &view.bundle_context_with_states(ctx, view_states),
-                            ui,
-                            ctx.lookup_query_result(*view_id),
-                            data_result,
-                        );
+                        let view_ctx = view.bundle_context_with_states(ctx, view_states);
+                        visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
+
+                        let is_spatial_view =
+                            view.class_identifier() == "3D" || view.class_identifier() == "2D";
+                        if is_spatial_view {
+                            coordinate_frame_ui(ui, &view_ctx, data_result);
+                        }
                     }
                 }
             }
@@ -427,17 +448,14 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
-                .button(
-                    list_item::ItemActionButton::new(
-                        &re_ui::icons::EDIT,
-                        "Add new entity…",
-                        || {
-                            self.view_entity_modal.open(*view_id);
-                        },
-                    )
-                    .hover_text("Modify the entity query using the editor"),
+                .with_action_button(
+                    &re_ui::icons::EDIT,
+                    "Modify the entity query using the editor",
+                    || {
+                        self.view_entity_modal.open(*view_id);
+                    },
                 )
-                .help_markdown(markdown)
+                .with_help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                     ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
@@ -488,10 +506,114 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 });
 
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
+
             view_components_defaults_section_ui(&view_ctx, ui, view);
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
+    }
+}
+
+/// Shows the active coordinate frame if it isn't the fallback frame.
+///
+/// This is not technically a visualizer, but it affects visualization, so we show it alongside.
+fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
+    use re_sdk_types::archetypes;
+    use re_view::latest_at_with_blueprint_resolved_data;
+
+    let component_descr = archetypes::CoordinateFrame::descriptor_frame();
+    let component = component_descr.component;
+    let query_result = latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [component],
+        None, // coordinate frames aren't associated with any particular visualizer
+    );
+
+    let override_path = data_result.override_base_path();
+
+    let result_override = query_result.overrides.get(component);
+    let raw_override = result_override
+        .and_then(|c| c.non_empty_component_batch_raw(component))
+        .map(|(_, array)| array);
+
+    let Some(frame_id_before) = query_result
+        .get_mono::<TransformFrameId>(component)
+        .map(|f| f.to_string())
+        .or_else(|| {
+            if raw_override.is_some() {
+                Some(String::new())
+            } else {
+                None
+            }
+        })
+    else {
+        return;
+    };
+
+    let mut frame_id = if raw_override.is_some() {
+        frame_id_before.clone()
+    } else {
+        String::new()
+    };
+
+    let property_content = list_item::PropertyContent::new("Coordinate frame")
+        .value_fn(|ui, _| {
+            // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
+            let suggestions = {
+                let caches = ctx.viewer_ctx.store_context.caches;
+                let frame_id_registry =
+                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                        c.frame_id_registry(ctx.viewer_ctx.recording())
+                    });
+
+                frame_id_registry
+                    .iter_frame_ids()
+                    .filter(|(_, id)| !id.is_entity_path_derived())
+                    .map(|(_, id)| id.to_string())
+                    .collect::<Vec<String>>()
+            };
+            autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
+        })
+        .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+            crate::visualizer_ui::reset_override_button(
+                ctx,
+                ui,
+                component_descr.clone(),
+                override_path,
+                &raw_override,
+            );
+        });
+
+    ui.list_item_flat_noninteractive(property_content)
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "The coordinate frame this entity is associated with.
+
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the manual.",
+            );
+        });
+
+    if raw_override.is_some() {
+        if frame_id.is_empty() {
+            ctx.clear_blueprint_component(override_path.clone(), component_descr);
+        } else if frame_id_before != frame_id {
+            // Save as blueprint override.
+            ctx.save_blueprint_component(
+                override_path.clone(),
+                &component_descr,
+                &TransformFrameId::new(&frame_id),
+            );
+        }
+    } else if !frame_id.is_empty() {
+        // Save as blueprint override.
+        ctx.save_blueprint_component(
+            override_path.clone(),
+            &component_descr,
+            &TransformFrameId::new(&frame_id),
+        );
     }
 }
 
@@ -502,9 +624,10 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
+    re_tracing::profile_function!();
+
     let mut property_entities = db
-        .entity_paths()
-        .into_iter()
+        .sorted_entity_paths()
         .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
     property_entities.sort();
@@ -548,12 +671,23 @@ fn entity_selection_ui(
     let query_result = ctx.lookup_query_result(*view_id);
     let data_result = query_result
         .tree
-        .lookup_result_by_path(entity_path)
+        .lookup_result_by_path(entity_path.hash())
         .cloned();
 
     if let Some(view) = viewport.view(view_id) {
-        let view_ctx = view.bundle_context_with_states(ctx, view_states);
-        visualizer_ui(&view_ctx, view, entity_path, ui);
+        let class = view.class(ctx.view_class_registry());
+        view_states.ensure_state_exists(*view_id, class);
+        let view_state = view_states
+            .get(*view_id)
+            .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
+        let view_ctx = view.bundle_context_with_state(ctx, view_state);
+
+        let empty_errors = PerVisualizerType::default();
+        let visualizer_errors = view_states
+            .per_visualizer_type_reports(*view_id)
+            .unwrap_or(&empty_errors);
+
+        visualizer_ui(&view_ctx, view, visualizer_errors, entity_path, ui);
     }
 
     if let Some(data_result) = &data_result {
@@ -571,7 +705,8 @@ fn clone_view_button_ui(
         list_item::ButtonContent::new("Clone this view")
             .on_click(|| {
                 if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
-                    ctx.selection_state().set_selection(Item::View(new_view_id));
+                    ctx.command_sender()
+                        .send_system(SystemCommand::set_selection(Item::View(new_view_id)));
                     viewport.mark_user_interaction(ctx);
                 }
             })
@@ -628,7 +763,7 @@ fn entity_path_filter_ui(
         let mut layout_job =
             syntax_highlight_entity_path_filter(ui.tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts(|f| f.layout_job(layout_job))
+        ui.fonts_mut(|f| f.layout_job(layout_job))
     }
 
     // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
@@ -675,10 +810,10 @@ fn entity_path_filter_ui(
 
     // Apply the edit.
     let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
-    if new_filter == filter.unresolved() {
-        None // no change
-    } else {
+    if response.changed() && new_filter != filter.unresolved() {
         Some(new_filter)
+    } else {
+        None // no change
     }
 }
 
@@ -708,11 +843,12 @@ fn container_children(
     };
 
     ui.section_collapsing_header("Contents")
-        .button(
-            list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
+        .with_action_button(
+            &re_ui::icons::ADD,
+            "Add a new view or container to this container",
+            || {
                 show_add_view_or_container_modal(*container_id);
-            })
-            .hover_text("Add a new view or container to this container"),
+            },
         )
         .show(ui, show_content);
 }
@@ -763,7 +899,8 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     instance_path: &InstancePath,
 ) {
-    let views_with_path = viewport.views_containing_entity_path(ctx, &instance_path.entity_path);
+    let views_with_path =
+        viewport.views_containing_entity_path(ctx, instance_path.entity_path.hash());
 
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
@@ -962,7 +1099,8 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
                 *in_out_kind = kind;
             }
         }
-    });
+    })
+    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "Container kind"));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
@@ -997,8 +1135,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }
@@ -1023,8 +1159,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }
@@ -1093,17 +1227,49 @@ fn visible_interactive_toggle_ui(
 mod tests {
     use re_chunk::{LatestAtQuery, RowId, TimePoint, Timeline};
     use re_log_types::TimeType;
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_sdk_types::archetypes;
     use re_test_context::TestContext;
-    use re_types::archetypes;
-    use re_viewer_context::blueprint_timeline;
+    use re_test_context::external::egui_kittest::kittest::Queryable as _;
+    use re_test_viewport::{TestContextExt as _, TestView};
+    use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
+    use re_viewport_blueprint::ViewBlueprint;
 
     use super::*;
 
     fn get_test_context() -> TestContext {
-        let mut test_context = TestContext::new();
+        let mut test_context = TestContext::new_with_store_info(
+            re_log_types::StoreInfo::testing_with_recording_id("test_recording"),
+        );
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
         test_context
+    }
+
+    fn selection_panel_ui(
+        test_context: &TestContext,
+        viewport_blueprint: &ViewportBlueprint,
+        ui: &mut egui::Ui,
+    ) {
+        test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+            ui.scope_builder(
+                // We need this to for `re_ui::is_in_resizable_panel` to return the correct thing…
+                egui::UiBuilder::new()
+                    .ui_stack_info(egui::UiStackInfo::new(egui::UiKind::RightPanel)),
+                |ui| {
+                    egui::Frame::new().inner_margin(8.0).show(ui, |ui| {
+                        SelectionPanel::default().contents(
+                            viewer_ctx,
+                            viewport_blueprint,
+                            &mut ViewStates::default(),
+                            ui,
+                        );
+                    });
+                },
+            );
+        });
+
+        test_context.handle_system_commands(ui.ctx());
     }
 
     /// Snapshot test for the selection panel when a recording is selected.
@@ -1124,22 +1290,56 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([600.0, 400.0])
-            .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands();
+            .setup_kittest_for_rendering_ui([600.0, 400.0])
+            .build_ui(move |ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
+
+        {
+            // Redact size estimation, since small changes to our code can change it slightly:
+            let mut recording_size_label = harness
+                .get_all_by_label_contains(" KiB")
+                .next()
+                .unwrap()
+                .rect();
+            recording_size_label.set_width(80.0); // Compensate for different number of digits
+            harness.mask(recording_size_label);
+        }
+
         harness.snapshot("selection_panel_recording");
+    }
+
+    /// Snapshot test for the selection panel when a recording is selected
+    /// and hovering on app id.
+    #[test]
+    fn selection_panel_recording_hover_app_id_snapshot() {
+        let mut test_context = get_test_context();
+
+        // Select recording:
+        let recording_id = test_context.active_store_id();
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::StoreId(recording_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([600.0, 400.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.get_by_label("test_app").hover();
+
+        harness.run_steps(5);
+
+        harness.snapshot("selection_panel_recording_hover_app_id");
     }
 
     /// Snapshot test for the selection panel when a static component is selected.
@@ -1156,10 +1356,9 @@ mod tests {
             )
         });
 
-        // Select component:
         let component_path = re_log_types::ComponentPath {
             entity_path,
-            component_descriptor: archetypes::Points2D::descriptor_positions(),
+            component: archetypes::Points2D::descriptor_positions().component,
         };
 
         test_context
@@ -1173,18 +1372,9 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands();
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1217,13 +1407,12 @@ mod tests {
                 )
         });
 
-        // Select component:
         test_context
             .selection_state
             .lock()
             .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
                 entity_path,
-                component_descriptor: archetypes::Points2D::descriptor_positions(),
+                component: archetypes::Points2D::descriptor_positions().component,
             }));
 
         let viewport_blueprint = ViewportBlueprint::from_db(
@@ -1232,18 +1421,9 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands();
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
@@ -1290,13 +1470,12 @@ mod tests {
             )
         });
 
-        // Select component:
         test_context
             .selection_state
             .lock()
             .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
                 entity_path,
-                component_descriptor: archetypes::Points2D::descriptor_positions(),
+                component: archetypes::Points2D::descriptor_positions().component,
             }));
 
         let viewport_blueprint = ViewportBlueprint::from_db(
@@ -1305,21 +1484,127 @@ mod tests {
         );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size([400.0, 350.0])
+            .setup_kittest_for_rendering_ui([400.0, 350.0])
             .build_ui(|ui| {
-                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                    SelectionPanel::default().contents(
-                        viewer_ctx,
-                        &viewport_blueprint,
-                        &mut ViewStates::default(),
-                        ui,
-                    );
-                });
-                test_context.handle_system_commands();
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
             });
 
         harness.run();
         harness.snapshot("selection_panel_component_hybrid_overwrite");
+    }
+
+    #[test]
+    fn selection_panel_view_snapshot() {
+        let mut test_context = get_test_context();
+        test_context.register_view_class::<TestView>();
+
+        let entity_path = EntityPath::from("static");
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &MyPoints::new([MyPoint::default()]),
+            )
+        });
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint
+                .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
+        });
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::View(view_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+
+        harness.snapshot("selection_panel_view");
+    }
+
+    #[test]
+    fn selection_panel_view_entity_no_visualizable_snapshot() {
+        let mut test_context = get_test_context();
+        test_context.register_view_class::<TestView>();
+
+        let entity_path = EntityPath::from("points2d");
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint
+                .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::View(view_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+
+        harness.snapshot("selection_panel_view_entity_no_visualizable");
+    }
+
+    #[test]
+    fn selection_panel_view_entity_no_match_snapshot() {
+        let mut test_context = get_test_context();
+        test_context.register_view_class::<TestView>();
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(
+                TestView::identifier(),
+                RecommendedView::new_single_entity("does_not_exist"),
+            ))
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::View(view_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 500.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+
+        harness.snapshot("selection_panel_view_entity_no_match");
     }
 }

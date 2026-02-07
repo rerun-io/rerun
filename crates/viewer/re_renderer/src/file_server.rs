@@ -92,12 +92,13 @@ pub use self::file_server_impl::FileServer;
 
 #[cfg(load_shaders_from_disk)]
 mod file_server_impl {
+    use std::path::{Path, PathBuf};
+
     use ahash::{HashMap, HashSet};
     use anyhow::Context as _;
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher as _};
     use parking_lot::RwLock;
-    use std::path::{Path, PathBuf};
 
     use crate::{FileResolver, FileSystem};
 
@@ -115,7 +116,7 @@ mod file_server_impl {
     // Private details
     impl FileServer {
         fn new() -> anyhow::Result<Self> {
-            let (events_tx, events_rx) = crossbeam::channel::unbounded();
+            let (events_tx, events_rx) = crossbeam::channel::bounded(32 * 1024);
 
             let watcher = notify::recommended_watcher(move |res| match res {
                 Ok(event) => {
@@ -233,7 +234,7 @@ mod file_server_impl {
                     }
                 }
                 std::collections::hash_map::Entry::Vacant(_) => {
-                    anyhow::bail!("The path {:?} was not or no longer watched", path);
+                    anyhow::bail!("The path {path:?} was not or no longer watched");
                 }
             }
 
@@ -256,15 +257,16 @@ mod file_server_impl {
                 .events_rx
                 .try_iter()
                 .flat_map(|ev| {
-                    #[allow(clippy::enum_glob_use)]
-                    use notify::EventKind::*;
+                    use notify::EventKind;
                     match ev.kind {
-                        Access(_) | Create(_) | Modify(_) | Any => ev
+                        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Any => ev
                             .paths
                             .into_iter()
                             .filter_map(canonicalize_opt)
                             .collect::<Vec<_>>(),
-                        Remove(_) | Other => Vec::new(),
+                        EventKind::Access(_) | EventKind::Remove(_) | EventKind::Other => {
+                            Vec::new()
+                        }
                     }
                 })
                 .collect();
@@ -287,8 +289,9 @@ mod file_server_impl {
 
 #[cfg(not(load_shaders_from_disk))]
 mod file_server_impl {
-    use ahash::HashSet;
     use std::path::PathBuf;
+
+    use ahash::HashSet;
 
     use crate::{FileResolver, FileSystem};
 
@@ -304,7 +307,7 @@ mod file_server_impl {
             f(&mut Self)
         }
 
-        #[allow(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
+        #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
         pub fn collect<Fs: FileSystem>(
             &mut self,
             _resolver: &FileResolver<Fs>,

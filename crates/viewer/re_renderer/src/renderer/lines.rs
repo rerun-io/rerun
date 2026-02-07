@@ -75,35 +75,35 @@
 //!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
 //!
 
-use std::{num::NonZeroU64, ops::Range};
+use std::num::NonZeroU64;
+use std::ops::Range;
 
 use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
 use re_tracing::profile_function;
 use smallvec::smallvec;
 
-use crate::{
-    DebugLabel, DepthOffset, LineDrawableBuilder, OutlineMaskPreference, PickingLayerObjectId,
-    PickingLayerProcessor,
-    allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_shader_module,
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc,
-    },
-};
-
 use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
+    RenderPipelineDesc,
+};
+use crate::{
+    DebugLabel, DepthOffset, DrawableCollector, LineDrawableBuilder, OutlineMaskPreference,
+    PickingLayerObjectId, PickingLayerProcessor, include_shader_module,
+};
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use crate::{Color32, PickingLayerObjectId, size::SizeHalf, wgpu_buffer_types};
-
     use super::LineStripFlags;
+    use crate::size::SizeHalf;
+    use crate::{Color32, PickingLayerObjectId, UnalignedColor32, wgpu_buffer_types};
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -130,7 +130,8 @@ pub mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripInfo {
-        pub color: Color32, // alpha unused right now
+        /// [`ecolor::Color32`] is `repr(align(4))` so we can't use it in `repr(packed)`.
+        pub color: UnalignedColor32, // alpha unused right now
         pub stippling: u8,
         pub flags: LineStripFlags,
         pub radius: SizeHalf,
@@ -141,7 +142,7 @@ pub mod gpu_data {
         fn default() -> Self {
             Self {
                 radius: crate::Size::new_ui_points(1.5).into(),
-                color: Color32::WHITE,
+                color: Color32::WHITE.into(),
                 stippling: 0,
                 flags: LineStripFlags::empty(),
             }
@@ -192,6 +193,26 @@ pub struct LineDrawData {
 
 impl DrawData for LineDrawData {
     type Renderer = LineRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
+        // TODO(#1025, #4787): Better handling of 2D objects.
+
+        for (batch_idx, batch) in self.batches.iter().enumerate() {
+            collector.add_drawable(
+                batch.active_phases,
+                DrawDataDrawable {
+                    // TODO(andreas): Don't have distance information yet. For now just always draw lines last since they're quite expensive.
+                    distance_sort_key: f32::MAX,
+                    draw_data_payload: batch_idx as _,
+                },
+            );
+        }
+    }
 }
 
 bitflags! {
@@ -559,14 +580,6 @@ impl LineRenderer {
 impl Renderer for LineRenderer {
     type RendererDrawData = LineDrawData;
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::Opaque,
-            DrawPhase::OutlineMask,
-            DrawPhase::PickingLayer,
-        ]
-    }
-
     fn create_renderer(ctx: &RenderContext) -> Self {
         profile_function!();
 
@@ -672,7 +685,7 @@ impl Renderer for LineRenderer {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
         let render_pipeline_color =
@@ -723,31 +736,39 @@ impl Renderer for LineRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
-        let (pipeline_handle, bind_group_all_lines) = match phase {
-            DrawPhase::OutlineMask => (
-                self.render_pipeline_outline_mask,
-                &draw_data.bind_group_all_lines_outline_mask,
-            ),
-            DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_lines),
-            DrawPhase::PickingLayer => (
-                self.render_pipeline_picking_layer,
-                &draw_data.bind_group_all_lines,
-            ),
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
-        let Some(bind_group_all_lines) = bind_group_all_lines else {
-            return Ok(()); // No lines submitted.
         };
 
         let pipeline = render_pipelines.get(pipeline_handle)?;
-
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group_all_lines, &[]);
 
-        for batch in &draw_data.batches {
-            if batch.active_phases.contains(phase) {
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            let bind_group_draw_data = match phase {
+                DrawPhase::OutlineMask => &draw_data.bind_group_all_lines_outline_mask,
+                DrawPhase::Opaque | DrawPhase::PickingLayer => &draw_data.bind_group_all_lines,
+                _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+            };
+            let Some(bind_group_draw_data) = bind_group_draw_data else {
+                debug_assert!(
+                    false,
+                    "Line data bind group for draw phase {phase:?} was not set despite being submitted for drawing."
+                );
+                continue;
+            };
+            pass.set_bind_group(1, bind_group_draw_data, &[]);
+
+            for drawable in *drawables {
+                let batch = &draw_data.batches[drawable.draw_data_payload as usize];
                 pass.set_bind_group(2, &batch.bind_group, &[]);
                 pass.draw(batch.vertex_range.clone(), 0..1);
             }
@@ -759,9 +780,9 @@ impl Renderer for LineRenderer {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Rgba, view_builder::TargetConfiguration};
-
     use super::*;
+    use crate::Rgba;
+    use crate::view_builder::TargetConfiguration;
 
     // Regression test for https://github.com/rerun-io/rerun/issues/8639
     #[test]
@@ -770,10 +791,10 @@ mod tests {
         re_log::PanicOnWarnScope::new();
 
         RenderContext::new_test().execute_test_frame(|ctx| {
-            let mut view = ViewBuilder::new(ctx, TargetConfiguration::default());
+            let mut view = ViewBuilder::new(ctx, TargetConfiguration::default()).unwrap();
 
             let empty = LineDrawableBuilder::new(ctx);
-            view.queue_draw(empty.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty.into_draw_data().unwrap());
 
             // This is the case that triggered
             // https://github.com/rerun-io/rerun/issues/8639
@@ -782,7 +803,7 @@ mod tests {
             empty_batch
                 .batch("empty batch")
                 .add_strip(std::iter::empty());
-            view.queue_draw(empty_batch.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty_batch.into_draw_data().unwrap());
 
             let mut empty_batch_between_non_empty = LineDrawableBuilder::new(ctx);
             empty_batch_between_non_empty
@@ -794,7 +815,7 @@ mod tests {
             empty_batch_between_non_empty
                 .batch("non-empty batch")
                 .add_strip([glam::Vec3::ZERO, glam::Vec3::ZERO].into_iter());
-            view.queue_draw(empty_batch_between_non_empty.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty_batch_between_non_empty.into_draw_data().unwrap());
 
             [view.draw(ctx, Rgba::BLACK).unwrap()]
         });

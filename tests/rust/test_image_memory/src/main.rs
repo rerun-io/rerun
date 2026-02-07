@@ -1,15 +1,12 @@
 //! Logs a bunch of big images to test Rerun memory usage.
 
 // Allow unwrap() in tests (allow-unwrap-in-tests doesn't apply)
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use mimalloc::MiMalloc;
-
 use re_memory::AccountingAllocator;
-use rerun::{
-    archetypes::Image,
-    external::{image, re_memory},
-};
+use rerun::archetypes::Image;
+use rerun::external::image;
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc);
@@ -39,7 +36,7 @@ fn log_images(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Er
         rec.log("image", &Image::from_image(image.clone())?)?;
     }
 
-    rec.flush_blocking();
+    rec.flush_blocking()?;
 
     eprintln!(
         "Logged {n} {w}x{h} RGBA images = {}",

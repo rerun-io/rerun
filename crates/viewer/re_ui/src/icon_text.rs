@@ -1,6 +1,7 @@
 use std::iter::once;
 
-use egui::{Atom, Atoms, IntoAtoms as _, ModifierNames, Modifiers, os::OperatingSystem};
+use egui::os::OperatingSystem;
+use egui::{Atom, Atoms, IntoAtoms as _, ModifierNames, Modifiers};
 
 use crate::icons;
 

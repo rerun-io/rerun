@@ -1,6 +1,7 @@
 //! This is a limited subset of arrow datatypes.
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::TypeRegistry;
 
@@ -112,6 +113,7 @@ impl std::fmt::Display for AtomicDataType {
 pub enum DataType {
     Atomic(AtomicDataType),
 
+    // 32-bit or 64-bit
     Binary,
 
     Utf8,
@@ -153,8 +155,12 @@ impl DataType {
 pub enum LazyDatatype {
     Atomic(AtomicDataType),
 
+    /// A list of bytes of arbitrary length.
+    ///
+    /// 32-bit or 64-bit
     Binary,
 
+    /// Utf8
     Utf8,
 
     /// Elements are non-nullable

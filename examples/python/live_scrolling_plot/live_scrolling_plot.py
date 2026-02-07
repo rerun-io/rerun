@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import argparse
 import time
-from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 def random_walk_generator() -> Iterator[float]:

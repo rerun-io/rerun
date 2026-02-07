@@ -13,6 +13,11 @@ Configures the legend of the plot.
 
 * `corner`: To what corner the legend is aligned.
 * `visible`: Whether the legend is shown at all.
+### `background`
+Configures the background of the plot.
+
+* `color`: Color used for the background.
+* `show_grid`: Should the grid be drawn?
 
 ## API reference links
  * 🐍 [Python API docs for `BarChartView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.BarChartView)
@@ -23,7 +28,7 @@ Configures the legend of the plot.
 
 snippet: views/bar_chart
 
-<picture data-inline-viewer="snippets/bar_chart">
+<picture data-inline-viewer="snippets/views/bar_chart">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1024w.png">

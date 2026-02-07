@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use slotmap::{SecondaryMap, SlotMap};
 
-use crate::{
-    RenderContext,
-    mesh::{CpuMesh, GpuMesh, MeshError},
-    renderer::GpuMeshInstance,
-};
+use crate::RenderContext;
+use crate::mesh::{CpuMesh, GpuMesh, MeshError};
+use crate::renderer::GpuMeshInstance;
 
 slotmap::new_key_type! {
     /// Key for identifying a cpu mesh in a model.
@@ -33,6 +31,7 @@ pub struct CpuMeshInstance {
 pub struct CpuModel {
     pub meshes: SlotMap<CpuModelMeshKey, CpuMesh>,
     pub instances: Vec<CpuMeshInstance>,
+    pub bbox: macaw::BoundingBox,
 }
 
 impl CpuModel {
@@ -45,26 +44,12 @@ impl CpuModel {
 
     /// Adds a new [`CpuMesh`] to the model, creating a single instance with identity transform.
     pub fn add_single_instance_mesh(&mut self, mesh: CpuMesh) {
+        self.bbox = self.bbox.union(mesh.bbox);
         let mesh_key = self.meshes.insert(mesh);
         self.instances.push(CpuMeshInstance {
             mesh: mesh_key,
             world_from_mesh: glam::Affine3A::IDENTITY,
         });
-    }
-
-    pub fn calculate_bounding_box(&self) -> macaw::BoundingBox {
-        macaw::BoundingBox::from_points(
-            self.instances
-                .iter()
-                .filter_map(|mesh_instance| {
-                    self.meshes.get(mesh_instance.mesh).map(|mesh| {
-                        mesh.vertex_positions
-                            .iter()
-                            .map(|p| mesh_instance.world_from_mesh.transform_point3(*p))
-                    })
-                })
-                .flatten(),
-        )
     }
 
     /// Converts the entire model into a serious of mesh instances that can be rendered.

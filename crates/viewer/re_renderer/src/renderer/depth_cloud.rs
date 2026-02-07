@@ -9,33 +9,31 @@
 //! This is a pretty heavy shader though, so the overhead is minimal.
 //!
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
-//! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
+//! behaves pretty much exactly like our point cloud renderer (see [`crate::renderer::point_cloud`]).
 
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
-use crate::{
-    Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
-    allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_shader_module,
-    resource_managers::GpuTexture2D,
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
-
 use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::resource_managers::GpuTexture2D;
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{
+    Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerObjectId,
+    PickingLayerProcessor, include_shader_module,
+};
 
 // ---
 
 mod gpu_data {
-    use crate::{PickingLayerObjectId, wgpu_buffer_types};
-
     use super::DepthCloudDrawDataError;
+    use crate::{PickingLayerObjectId, wgpu_buffer_types};
 
     // Keep in sync with mirror in `depth_cloud.wgsl.`
 
@@ -207,6 +205,8 @@ pub struct DepthClouds {
 
 #[derive(Clone)]
 struct DepthCloudDrawInstance {
+    sorting_world_position: glam::Vec3A,
+
     bind_group_opaque: GpuBindGroup,
     bind_group_outline: GpuBindGroup,
     num_points: u32,
@@ -220,6 +220,25 @@ pub struct DepthCloudDrawData {
 
 impl DrawData for DepthCloudDrawData {
     type Renderer = DepthCloudRenderer;
+
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        for (index, instance) in self.instances.iter().enumerate() {
+            let drawable = DrawDataDrawable::from_world_position(
+                view_info,
+                instance.sorting_world_position,
+                index as u32,
+            );
+
+            collector.add_drawable(DrawPhase::Opaque | DrawPhase::PickingLayer, drawable);
+            if instance.render_outline_mask {
+                collector.add_drawable(DrawPhase::OutlineMask, drawable);
+            }
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -316,6 +335,7 @@ impl DepthCloudDrawData {
             let bind_group_opaque = mk_bind_group("depth_cloud_opaque".into(), ubo_opaque);
 
             instances.push(DepthCloudDrawInstance {
+                sorting_world_position: depth_cloud.world_from_rdf.translation,
                 num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
                 bind_group_opaque,
                 bind_group_outline,
@@ -336,14 +356,6 @@ pub struct DepthCloudRenderer {
 
 impl Renderer for DepthCloudRenderer {
     type RendererDrawData = DepthCloudDrawData;
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-            DrawPhase::OutlineMask,
-        ]
-    }
 
     fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
@@ -431,7 +443,7 @@ impl Renderer for DepthCloudRenderer {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
         let render_pipeline_color =
@@ -473,12 +485,9 @@ impl Renderer for DepthCloudRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
-        if draw_data.instances.is_empty() {
-            return Ok(());
-        }
 
         let pipeline_handle = match phase {
             DrawPhase::Opaque => self.render_pipeline_color,
@@ -490,19 +499,23 @@ impl Renderer for DepthCloudRenderer {
 
         pass.set_pipeline(pipeline);
 
-        for instance in &draw_data.instances {
-            if phase == DrawPhase::OutlineMask && !instance.render_outline_mask {
-                continue;
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            for drawable in *drawables {
+                let instance = &draw_data.instances[drawable.draw_data_payload as usize];
+
+                let bind_group = match phase {
+                    DrawPhase::OutlineMask => &instance.bind_group_outline,
+                    DrawPhase::PickingLayer | DrawPhase::Opaque => &instance.bind_group_opaque,
+                    _ => unreachable!(),
+                };
+
+                pass.set_bind_group(1, bind_group, &[]);
+                pass.draw(0..instance.num_points * 6, 0..1);
             }
-
-            let bind_group = match phase {
-                DrawPhase::OutlineMask => &instance.bind_group_outline,
-                DrawPhase::PickingLayer | DrawPhase::Opaque => &instance.bind_group_opaque,
-                _ => unreachable!(),
-            };
-
-            pass.set_bind_group(1, bind_group, &[]);
-            pass.draw(0..instance.num_points * 6, 0..1);
         }
 
         Ok(())

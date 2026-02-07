@@ -1,28 +1,25 @@
 use std::sync::Arc;
 
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use arrow::array::RecordBatch;
+use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
-use datafusion::{
-    catalog::TableProvider,
-    error::{DataFusionError, Result as DataFusionResult},
-};
+use datafusion::catalog::TableProvider;
+use datafusion::error::{DataFusionError, Result as DataFusionResult};
+use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::{SearchDatasetRequest, SearchDatasetResponse};
+use re_protos::common::v1alpha1::ScanParameters;
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_redap_client::ConnectionClient;
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
-
-use re_grpc_client::ConnectionClient;
-use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::{
-    common::v1alpha1::ScanParameters, frontend::v1alpha1::SearchDatasetRequest,
-    manifest_registry::v1alpha1::SearchDatasetResponse,
-};
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 
 #[derive(Clone)]
 pub struct SearchResultsTableProvider {
-    //TODO(#10191): this should use a `ConnectionRegistryHandle` instead
     client: ConnectionClient,
+    dataset_id: EntryId,
     request: SearchDatasetRequest,
 }
 
@@ -37,6 +34,7 @@ impl std::fmt::Debug for SearchResultsTableProvider {
 impl SearchResultsTableProvider {
     pub fn new(
         client: ConnectionClient,
+        dataset_id: EntryId,
         request: SearchDatasetRequest,
     ) -> Result<Self, DataFusionError> {
         if request.scan_parameters.is_some() {
@@ -45,7 +43,11 @@ impl SearchResultsTableProvider {
             ));
         }
 
-        Ok(Self { client, request })
+        Ok(Self {
+            client,
+            dataset_id,
+            request,
+        })
     }
 
     /// This is a convenience function
@@ -67,12 +69,17 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         });
 
         let mut client = self.client.clone();
+        let dataset_id = self.dataset_id;
 
-        let schema = make_future_send(async move {
+        let rb: RecordBatch = make_future_send(async move {
             Ok::<_, DataFusionError>(
                 client
                     .inner()
-                    .search_dataset(request)
+                    .search_dataset(
+                        tonic::Request::new(request)
+                            .with_entry_id(dataset_id)
+                            .map_err(|err| DataFusionError::External(Box::new(err)))?,
+                    )
                     .await
                     .map_err(|err| DataFusionError::External(Box::new(err)))?
                     .into_inner()
@@ -89,18 +96,19 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
         .ok_or(DataFusionError::Execution(
             "Empty data from search results".to_owned(),
         ))?
-        .decode()
-        .map_err(|err| DataFusionError::External(Box::new(err)))?
-        .schema();
+        .try_into()
+        .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
-        Ok(schema)
+        Ok(rb.schema())
     }
 
     #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
-        let request = self.request.clone();
+        let request = tonic::Request::new(self.request.clone())
+            .with_entry_id(self.dataset_id)
+            .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
         let mut client = self.client.clone();
 
@@ -118,7 +126,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
             .ok_or(DataFusionError::Execution(
                 "DataFrame missing from SearchDataResponse response".to_owned(),
             ))?
-            .decode()
+            .try_into()
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 }

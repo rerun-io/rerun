@@ -39,6 +39,7 @@ uint32
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
+* [`Pinhole`](../archetypes/pinhole.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
 * [`SeriesLines`](../archetypes/series_lines.md)

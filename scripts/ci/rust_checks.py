@@ -3,7 +3,7 @@
 """
 Run various rust checks for CI.
 
-You can run the script via pixi which will make sure that the web build is around and up-to-date:
+You can run the script via pixi:
     pixi run rs-check
 
 Alternatively you can also run it directly via python:
@@ -28,8 +28,12 @@ import re
 import subprocess
 import sys
 import time
+from functools import partial
 from glob import glob
-from typing import Callable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Result:
@@ -49,13 +53,7 @@ def run_cargo(
     output_checks: Callable[[str], str | None] | None = None,
 ) -> Result:
     args = ["cargo", cargo_cmd]
-    if cargo_cmd not in ["deny", "fmt", "format", "nextest"]:
-        args.append("--quiet")
     args += cargo_args.split(" ")
-
-    if cargo_cmd == "nextest":
-        # Needs to go after `run`, so append it last.
-        args.append("--cargo-quiet")
 
     cmd_str = subprocess.list2cmdline(args)
     print(f"> {cmd_str} ", end="", flush=True)
@@ -69,16 +67,34 @@ def run_cargo(
 
     additional_env_vars["RUSTFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
     additional_env_vars["RUSTDOCFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
+
+    # We shouldn't require the web viewer .wasm to exist before running clippy, unit tests, etc:
+    additional_env_vars["RERUN_DISABLE_WEB_VIEWER_SERVER"] = "1"
+
+    # Disable TRACY to avoid macOS failure on CI, that looks like this:
+    # > Tracy Profiler initialization failure: CPU doesn't support invariant TSC.
+    # > Define TRACY_NO_INVARIANT_CHECK=1 to ignore this error, *if you know what you are doing*.
+    # > Alternatively you may rebuild the application with the TRACY_TIMER_FALLBACK define to use lower resolution timer.
+    additional_env_vars["TRACY_ENABLED"] = "0"
+    additional_env_vars["TRACY_NO_INVARIANT_CHECK"] = "1"
+
     if clippy_conf is not None:
         additional_env_vars["CLIPPY_CONF_DIR"] = (
             # Clippy has issues finding this directory on CI when we're not using an absolute path here.
             f"{os.getcwd()}/{clippy_conf}"
         )
 
+    # TODO(#11359): We don't capture output on mac runners to help debug random hangs.
+    # However, if output_checks is provided, we need to capture output even on macOS.
+    capture = sys.platform != "darwin" or output_checks is not None
+
     env = os.environ.copy()
     env.update(additional_env_vars)
 
-    result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
+    # Use encoding='utf-8' with errors='replace' to handle binary data in cargo/linker output on Windows
+    result = subprocess.run(
+        args, env=env, check=False, capture_output=capture, text=True, encoding="utf-8", errors="replace"
+    )
     success = result.returncode == 0
 
     if success:
@@ -119,6 +135,8 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
+    # On CI, we split these checks into groups to reduce the time it takes to run all of this.
+    # Make sure the `reusable_checks_rust` workflow stays up-to-date with this list.
     checks = [
         ("base_checks", base_checks),
         ("sdk_variations", sdk_variations),
@@ -229,7 +247,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
-    results.append(run_cargo("install", "--locked cargo-deny@^0.17"))
+    results.append(run_cargo("install", "--locked cargo-deny@^0.18"))
 
     for target in deny_targets:
         results.append(
@@ -251,6 +269,7 @@ def denied_sdk_deps(results: list[Result]) -> None:
     # They are ordered from "big to small" to make sure the bigger leaks are caught & reported first.
     # (e.g. `re_viewer` depends on `rfd` which is also disallowed, but if re_viewer is leaking, only report `re_viewer`)
     disallowed_dependencies = [
+        "eframe",
         "re_viewer",
         "wgpu",
         "egui",
@@ -261,25 +280,28 @@ def denied_sdk_deps(results: list[Result]) -> None:
         "wayland-sys",  # Linux windowing.
     ]
 
-    def check_sdk_tree_with_default_features(tree_output: str) -> str | None:
+    def check_sdk_tree_with_default_features(tree_output: str, features: str) -> str | None:
         for disallowed_dependency in disallowed_dependencies:
             if disallowed_dependency in tree_output:
                 return (
-                    f"{disallowed_dependency} showed up in the SDK's dependency tree when building with default features. "
-                    "This dependency should only ever show up if the `run` feature is enabled. "
+                    f"{disallowed_dependency} showed up in the SDK's dependency tree when building with features={features}"
+                    "This dependency should only ever show up if the `native_viewer` feature is enabled. "
                     f"Full dependency tree:\n{tree_output}"
                 )
 
         return None
 
-    for target in deny_targets:
-        result = run_cargo(
-            "tree",
-            f"-p rerun --target {target}",
-            output_checks=check_sdk_tree_with_default_features,
-        )
-        result.command = f"Check dependencies in `{result.command}`"
-        results.append(result)
+    for features in ["default", "default,auth,oss_server,perf_telemetry,web_viewer"]:
+        for target in deny_targets:
+            result = run_cargo(
+                "tree",
+                # -f '{lib}' is used here because otherwise cargo tree would print links to repositories of patched crates
+                # which would cause false positives e.g. when checking for egui.
+                f"-p rerun --target {target} -f '{{lib}}' -F {features}",
+                output_checks=partial(check_sdk_tree_with_default_features, features=features),
+            )
+            result.command = f"Check dependencies in `{result.command}`"
+            results.append(result)
 
 
 def wasm(results: list[Result]) -> None:
@@ -335,8 +357,8 @@ test_failure_message = 'See the "Upload test results" step for a link to the sna
 
 def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
-    results.append(run_cargo("test", "--all-targets --all-features --no-run", deny_warnings=False))
-    results.append(run_cargo("nextest", "run --all-targets --all-features", deny_warnings=False))
+    results.append(run_cargo("nextest", "run --all-targets --all-features --no-run", deny_warnings=False))
+    results.append(run_cargo("nextest", "run --all-targets --all-features --no-fail-fast", deny_warnings=False))
 
     if not results[-1].success:
         print(test_failure_message)
@@ -348,7 +370,7 @@ def tests(results: list[Result]) -> None:
 def tests_without_all_features(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
     results.append(run_cargo("test", "--all-targets --no-run", deny_warnings=False))
-    results.append(run_cargo("nextest", "run --all-targets", deny_warnings=False))
+    results.append(run_cargo("nextest", "run --all-targets --no-fail-fast", deny_warnings=False))
 
     if not results[-1].success:
         print(test_failure_message)

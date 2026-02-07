@@ -1,0 +1,103 @@
+[package]
+name = "re_sdk_types"
+authors.workspace = true
+description = "The built-in Rerun data types, component types, and archetypes."
+edition = "2024"
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = false
+no-default-features = true
+features = ["all"]
+
+
+[features]
+default = ["ecolor"]
+
+## All features except `testing`.
+all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde", "video"]
+
+## Enable color conversions.
+ecolor = ["dep:ecolor"]
+
+## Enable conversions to plot primitives
+egui_plot = ["dep:egui_plot"]
+
+## Add support for some math operations using [`glam`](https://crates.io/crates/glam/) and [`macaw`](https://crates.io/crates/macaw/).
+glam = ["dep:glam", "dep:macaw", "re_byte_size/glam"]
+
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG and TIFF support.
+image = ["dep:ecolor", "dep:image", "dep:tiff"]
+
+## Inspecting video data.
+video = ["dep:re_video"]
+
+## Enable (de)serialization using serde.
+serde = ["dep:serde", "glam/serde"]
+
+## Include testing archetypes/components/datatypes into the crate.
+## Only useful for testing purposes.
+testing = []
+
+
+[dependencies]
+# Rerun
+re_byte_size.workspace = true
+re_error.workspace = true
+re_rvl.workspace = true
+re_format.workspace = true
+re_log_types.workspace = true
+re_log.workspace = true
+re_tracing.workspace = true
+re_sorbet.workspace = true
+re_types_core.workspace = true
+re_video = { workspace = true, optional = true }
+
+# External
+anyhow.workspace = true # TODO(#1845): Use thiserror instead
+array-init.workspace = true
+arrow.workspace = true
+bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
+document-features.workspace = true
+emath.workspace = true
+half = { workspace = true, features = ["bytemuck"] }
+indexmap.workspace = true
+infer.workspace = true
+itertools.workspace = true
+mime_guess2.workspace = true
+ndarray.workspace = true
+nohash-hasher.workspace = true
+ply-rs-bw.workspace = true
+smallvec.workspace = true
+thiserror.workspace = true
+tiff = { workspace = true, optional = true }
+uuid = { workspace = true, features = ["serde", "v4", "js"] }
+
+# External (optional)
+ecolor = { workspace = true, optional = true }
+egui_plot = { workspace = true, optional = true }
+glam = { workspace = true, optional = true }
+image = { workspace = true, optional = true, default-features = false, features = ["jpeg"] }
+mint = { workspace = true, optional = true }
+macaw = { workspace = true, optional = true }
+serde = { workspace = true, optional = true, features = ["derive", "rc"] }
+
+
+[dev-dependencies]
+
+# External
+glam.workspace = true
+itertools.workspace = true
+mint.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
+similar-asserts.workspace = true

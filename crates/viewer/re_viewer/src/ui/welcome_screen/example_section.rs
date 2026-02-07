@@ -3,8 +3,11 @@ use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
+use crate::ui::CloudState;
+use crate::ui::welcome_screen::intro_section::intro_section;
+use crate::ui::welcome_screen::welcome_section::welcome_section_ui;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{CommandSender, DisplayMode, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::GlobalContext;
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -33,7 +36,6 @@ struct ExampleDesc {
 // TODO(ab): use design tokens
 pub(super) const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 337.0;
-const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 20.0;
 const AFTER_HEADER_VSPACE: f32 = 48.0;
 const TITLE_TO_GRID_VSPACE: f32 = 24.0;
@@ -245,36 +247,34 @@ impl ExampleSection {
     pub(super) fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        command_sender: &CommandSender,
-        header_ui: &impl Fn(&mut Ui),
-        is_history_enabled: bool,
+        ctx: &GlobalContext<'_>,
+        login_state: &CloudState,
     ) {
         let examples = self
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
+        let max_width = ui.available_width().at_most(1048.0);
+
         // vertical spacing isn't homogeneous so it's handled manually
         let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
-        let column_count = (((ui.available_width() + grid_spacing.x)
-            / (MIN_COLUMN_WIDTH + grid_spacing.x))
+        let column_count = (((max_width + grid_spacing.x) / (MIN_COLUMN_WIDTH + grid_spacing.x))
             .floor() as usize)
-            .clamp(1, MAX_COLUMN_COUNT);
-        let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
-            - grid_spacing.x)
+            .at_least(1);
+        let column_width = ((max_width + grid_spacing.x) / column_count as f32 - grid_spacing.x)
             .floor()
             .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
 
         ui.horizontal(|ui| {
             // this space is added on the left so that the grid is centered
-            let centering_hspace = (ui.available_width()
-                - column_count as f32 * column_width
-                - (column_count - 1) as f32 * grid_spacing.x)
-                .max(0.0)
-                / 2.0;
+            let centering_hspace = (ui.available_width() - max_width).max(0.0) / 2.0;
             ui.add_space(centering_hspace);
 
             ui.vertical(|ui| {
-                header_ui(ui);
+                ui.set_max_width(max_width);
+
+                welcome_section_ui(ui);
+                intro_section(ui, ctx, login_state);
 
                 ui.add_space(AFTER_HEADER_VSPACE);
 
@@ -353,12 +353,10 @@ impl ExampleSection {
                                     // panel to quit auto-zoom mode.
                                     ui.input_mut(|i| i.pointer = Default::default());
 
-                                    open_example_url(
-                                        ui.ctx(),
-                                        command_sender,
-                                        &example.desc.rrd_url,
-                                        is_history_enabled,
-                                    );
+                                    ui.ctx().open_url(egui::output::OpenUrl {
+                                        url: example.desc.rrd_url.clone(),
+                                        new_tab: false,
+                                    });
                                 }
 
                                 row_example_responses.push(response);
@@ -427,44 +425,6 @@ impl ExampleSection {
                     });
             });
         });
-    }
-}
-
-fn open_example_url(
-    _egui_ctx: &egui::Context,
-    command_sender: &CommandSender,
-    rrd_url: &str,
-    _is_history_enabled: bool,
-) {
-    let data_source = re_data_source::DataSource::RrdHttpUrl {
-        uri: rrd_url.to_owned(),
-        follow: false,
-    };
-
-    // If the user re-download an already open recording, clear it out first
-    command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-        re_smart_channel::SmartChannelSource::RrdHttpStream {
-            url: rrd_url.to_owned(),
-            follow: false,
-        },
-    ));
-
-    command_sender.send_system(SystemCommand::LoadDataSource(data_source));
-
-    // The welcome screen might be rendered from the redap browser ui
-    command_sender.send_system(SystemCommand::ChangeDisplayMode(
-        DisplayMode::LocalRecordings,
-    ));
-
-    #[cfg(target_arch = "wasm32")]
-    if _is_history_enabled {
-        use crate::history::{HistoryEntry, HistoryExt as _, history};
-        use crate::web_tools::JsResultExt as _;
-
-        if let Some(history) = history().ok_or_log_js_error() {
-            let entry = HistoryEntry::default().rrd_url(rrd_url.to_owned());
-            history.push_entry(entry).ok_or_log_js_error();
-        }
     }
 }
 

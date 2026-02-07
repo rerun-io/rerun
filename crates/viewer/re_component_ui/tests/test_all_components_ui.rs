@@ -1,28 +1,28 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
-use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
+use std::collections::HashSet;
+use std::fmt::Formatter;
+use std::fs;
+use std::sync::Arc;
 
-use arrow::{array::ArrayRef, datatypes::DataType};
-use egui::Vec2;
+use arrow::array::ArrayRef;
+use arrow::datatypes::DataType;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::blueprint::components::{ComponentColumnSelector, QueryExpression};
+use re_sdk_types::components::{self, GraphEdge, GraphNode, ImageFormat, Text};
+use re_sdk_types::datatypes::{ChannelDatatype, PixelFormat};
 use re_test_context::TestContext;
-use re_types::{
-    ComponentDescriptor,
-    blueprint::components::{ComponentColumnSelector, QueryExpression},
-    components::{self, GraphEdge, GraphNode, ImageFormat, Text},
-    datatypes::{ChannelDatatype, PixelFormat},
-};
-use re_types_core::{Component, ComponentBatch, ComponentType, reflection::Reflection};
+use re_types_core::reflection::Reflection;
+use re_types_core::{Component, ComponentBatch, ComponentType};
 use re_ui::{UiExt as _, list_item};
-use re_viewer_context::{
-    UiLayout, ViewerContext,
-    external::re_chunk_store::{LatestAtQuery, external::re_chunk},
-};
+use re_viewer_context::external::re_chunk_store::LatestAtQuery;
+use re_viewer_context::external::re_chunk_store::external::re_chunk;
+use re_viewer_context::{UiLayout, ViewerContext};
 
 /// Test case master list.
 ///
@@ -153,26 +153,26 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         // TODO(#6661): these components still have special treatment via `DataUi` and
         // `EntityDatatUi`. The hooks are registered by `re_data_ui::register_component_uis`, which
         // is not available here. So basically no point testing them here.
-        re_types::components::AnnotationContext::name(),
-        re_types::components::Blob::name(),
-        re_types::components::ClassId::name(),
-        re_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should get a custom ui first (it's using default ui right now).
-        re_types::components::KeypointId::name(),
-        re_types::components::TensorData::name(),
+        re_sdk_types::components::AnnotationContext::name(),
+        re_sdk_types::components::Blob::name(),
+        re_sdk_types::components::ClassId::name(),
+        re_sdk_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should get a custom ui first (it's using default ui right now).
+        re_sdk_types::components::KeypointId::name(),
+        re_sdk_types::components::TensorData::name(),
         //
         // no need to clutter the tests with these internal blueprint types
-        re_types::blueprint::components::ActiveTab::name(),
-        re_types::blueprint::components::AutoLayout::name(),
-        re_types::blueprint::components::AutoViews::name(),
-        re_types::blueprint::components::ColumnShare::name(),
-        re_types::blueprint::components::IncludedContent::name(),
-        re_types::blueprint::components::PanelState::name(),
-        re_types::blueprint::components::RootContainer::name(),
-        re_types::blueprint::components::RowShare::name(),
-        re_types::blueprint::components::ViewMaximized::name(),
-        re_types::blueprint::components::ViewOrigin::name(),
-        re_types::blueprint::components::ViewerRecommendationHash::name(),
-        re_types::blueprint::components::VisualizerOverride::name(),
+        re_sdk_types::blueprint::components::ActiveTab::name(),
+        re_sdk_types::blueprint::components::AutoLayout::name(),
+        re_sdk_types::blueprint::components::AutoViews::name(),
+        re_sdk_types::blueprint::components::ColumnShare::name(),
+        re_sdk_types::blueprint::components::IncludedContent::name(),
+        re_sdk_types::blueprint::components::PanelState::name(),
+        re_sdk_types::blueprint::components::RootContainer::name(),
+        re_sdk_types::blueprint::components::RowShare::name(),
+        re_sdk_types::blueprint::components::ViewMaximized::name(),
+        re_sdk_types::blueprint::components::ViewOrigin::name(),
+        re_sdk_types::blueprint::components::ViewerRecommendationHash::name(),
+        re_sdk_types::blueprint::components::VisualizerInstructionId::name(),
     ]
     .into_iter()
     // Exclude components that have custom test cases.
@@ -294,8 +294,7 @@ fn test_single_component_ui_as_list_item(
     };
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(ui_width, 40.0))
+        .setup_kittest_for_rendering_ui([ui_width, 40.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |ctx| {
                 ui.full_span_scope(ui.max_rect().x_range(), |ui| {
@@ -333,7 +332,7 @@ impl std::fmt::Display for TestCase {
 }
 
 impl TestCase {
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     fn from_component<C: Component>(component: C, label: &'static str) -> Self {
         let component_type = C::name();
         let component_data = ComponentBatch::to_arrow(&component).unwrap();
@@ -452,5 +451,5 @@ fn placeholder_for_component(
         None
     };
 
-    datatype.map(|datatype| re_types::reflection::generic_placeholder_for_datatype(&datatype))
+    datatype.map(|datatype| re_sdk_types::reflection::generic_placeholder_for_datatype(&datatype))
 }

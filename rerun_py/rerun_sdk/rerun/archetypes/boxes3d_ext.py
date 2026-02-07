@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .. import components, datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from .. import components, datatypes
 
 
 class Boxes3DExt:
@@ -45,17 +47,14 @@ class Boxes3DExt:
             Optional center positions of the boxes.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotations:
             Backwards compatible parameter for specifying rotations. Tries to infer the type of rotation from the input. Prefer using `quaternions` or `rotation_axis_angles`.
         colors:
@@ -104,18 +103,18 @@ class Boxes3DExt:
                     )
                 else:
                     try:
-                        from ..components import PoseRotationQuatBatch
+                        from ..components import RotationQuatBatch
 
-                        quaternions = PoseRotationQuatBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                        quaternions = RotationQuatBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
                         rotation_axis_angles = []
                     except Exception:
                         pass
 
                     if quaternions is None:
                         try:
-                            from ..components import PoseRotationAxisAngleBatch
+                            from ..components import RotationAxisAngleBatch
 
-                            rotation_axis_angles = PoseRotationAxisAngleBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                            rotation_axis_angles = RotationAxisAngleBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
                             quaternions = []
                         except Exception:
                             pass

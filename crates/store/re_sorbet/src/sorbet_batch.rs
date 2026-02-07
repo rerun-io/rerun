@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
-    },
-    datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
-    error::ArrowError,
+use arrow::array::{
+    Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
 };
-
+use arrow::datatypes::{Fields as ArrowFields, Schema as ArrowSchema};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 
@@ -40,9 +37,10 @@ impl SorbetBatch {
     ) -> Result<Self, ArrowError> {
         let arrow_columns = itertools::chain!(row_ids, index_arrays, data_arrays).collect();
 
-        let batch = ArrowRecordBatch::try_new(
+        let batch = ArrowRecordBatch::try_new_with_options(
             std::sync::Arc::new(schema.to_arrow(batch_type)),
             arrow_columns,
+            &RecordBatchOptions::default(),
         )?;
 
         Ok(Self { schema, batch })
@@ -68,6 +66,8 @@ impl SorbetBatch {
     /// The heap size of this batch in bytes, if known.
     #[inline]
     pub fn heap_size_bytes(&self) -> Option<u64> {
+        // NOTE: This is *not* the size of the schema, it's the value carried in the
+        // `rerun:heap_size_bytes` key of the header metadata.
         self.schema.heap_size_bytes
     }
 
@@ -128,7 +128,7 @@ impl SorbetBatch {
 impl std::fmt::Display for SorbetBatch {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        re_format_arrow::format_record_batch_with_width(self, f.width()).fmt(f)
+        re_arrow_util::format_record_batch_with_width(self, f.width(), f.sign_minus()).fmt(f)
     }
 }
 
@@ -177,7 +177,7 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         // First migrate the incoming batch to the latest format:
-        let batch = crate::migrations::migrate_record_batch(batch.clone());
+        let batch = crate::migrations::migrate_record_batch(batch.clone(), batch_type);
 
         let sorbet_schema =
             SorbetSchema::try_from_migrated_arrow_schema(batch.schema_ref().as_ref())?;
@@ -223,9 +223,8 @@ impl SorbetBatch {
 #[cfg(test)]
 mod tests {
 
-    use crate::{RowIdColumnDescriptor, sorbet_batch};
-
     use super::*;
+    use crate::{RowIdColumnDescriptor, sorbet_batch};
 
     /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
     ///

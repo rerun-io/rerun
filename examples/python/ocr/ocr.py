@@ -6,12 +6,11 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final, TypeAlias
 
-import cv2 as cv2
+import cv2
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -22,7 +21,9 @@ import rerun.blueprint as rrb
 import tqdm
 from paddleocr import PPStructure
 from paddleocr.ppstructure.recovery.recovery_to_doc import sorted_layout_boxes
-from typing_extensions import TypeAlias
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
@@ -126,7 +127,7 @@ Layout Class:
 
 class Layout:
     def __init__(self, page_number: int, show_unknown: bool = False) -> None:
-        self.counts = {layout_type: 0 for layout_type in LayoutType}
+        self.counts = dict.fromkeys(LayoutType, 0)
         self.records: dict[LayoutType, Any] = {layout_type: [] for layout_type in LayoutType}
         self.recovery = """"""
         self.page_number = page_number
@@ -136,9 +137,9 @@ class Layout:
         self,
         layout_type: LayoutType,
         bounding_box: list[int],
-        detections: Optional[Iterable[dict[str, Any]]] = None,
-        table: Optional[str] = None,
-        figure: Optional[dict[str, Any]] = None,
+        detections: Iterable[dict[str, Any]] | None = None,
+        table: str | None = None,
+        img: dict[str, Any] | None = None,  # noqa: ARG002 - TODO(#6517): log img
     ) -> None:
         if layout_type in LayoutType:
             self.counts[layout_type] += 1
@@ -154,7 +155,6 @@ class Layout:
             if layout_type != LayoutType.UNKNOWN or self.show_unknown:  # Discards the unknown layout types detections
                 path = f"recording://page_{self.page_number}/Image/{layout_type.type.title()}/{name.title()}"
                 self.recovery += f"\n\n## [{name.title()}]({path})\n\n"  # Log Type as Heading
-                # Enhancement - Logged image for Figure type TODO(#6517)
                 if layout_type == LayoutType.TABLE:
                     if table:
                         self.recovery += table  # Log details (table)
@@ -192,7 +192,7 @@ class Layout:
             img = line.get("img")  # Currently not in use
         else:
             detections = self.get_detections(line)
-        self.add(layout_type, box, detections=detections, table=table, figure=img)
+        self.add(layout_type, box, detections=detections, table=table, img=img)
 
     @staticmethod
     def get_detections(line: dict[str, Any]) -> list[dict[str, Any]]:
@@ -225,7 +225,7 @@ class Layout:
             return markdown_table  # type: ignore[no-any-return]
 
         except Exception as e:
-            return f"Error processing the table: {str(e)}"
+            return f"Error processing the table: {e!s}"
 
 
 def process_layout_records(layout: Layout, page_path: str) -> LayoutStructure:
@@ -310,7 +310,7 @@ def update_zoom_paths(
         # Add to zoom paths
         view = rrb.Spatial2DView(
             name=record["name"].title(),
-            contents=[f"{page_path}/Image/**"] + current_paths,
+            contents=[f"{page_path}/Image/**", *current_paths],
             visual_bounds=bounds,
         )
         zoom_paths.append(view)
@@ -329,7 +329,7 @@ def generate_blueprint(
     processed_layouts: list[LayoutStructure],
 ) -> rrb.Blueprint:
     page_tabs = []
-    for layout, processed_layout in zip(layouts, processed_layouts):
+    for layout, processed_layout in zip(layouts, processed_layouts, strict=False):
         paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = processed_layout
 
         section_tabs = []
@@ -350,7 +350,7 @@ def generate_blueprint(
                     rrb.Spatial2DView(
                         name="Layout",
                         origin=f"{page_path}/Image/",
-                        contents=[f"{page_path}/Image/**"] + detections_paths,
+                        contents=[f"{page_path}/Image/**", *detections_paths],
                     ),
                     rrb.Spatial2DView(name="Detections", contents=[f"{page_path}/Image/**"]),
                     rrb.TextDocumentView(name="Recovery", contents=f"{page_path}/Recovery"),
@@ -382,7 +382,7 @@ def detect_and_log_layouts(file_path: str) -> None:
     layouts: list[Layout] = []
     page_numbers = [i + 1 for i in range(len(images))]
     processed_layouts: list[LayoutStructure] = []
-    for image, page_number in zip(images, page_numbers):
+    for image, page_number in zip(images, page_numbers, strict=False):
         layouts.append(detect_and_log_layout(image, page_number))
         page_path = f"page_{page_number}"
 
@@ -393,10 +393,10 @@ def detect_and_log_layouts(file_path: str) -> None:
                 page_path,
             ),
         )
-        logging.info("Sending blueprint...")
+        logging.info("Sending blueprint…")
         blueprint = generate_blueprint(layouts, processed_layouts)
         rr.send_blueprint(blueprint)
-        logging.info("Blueprint sent...")
+        logging.info("Blueprint sent…")
 
 
 def detect_and_log_layout(image_rgb: npt.NDArray[np.uint8], page_number: int) -> Layout:
@@ -414,17 +414,17 @@ def detect_and_log_layout(image_rgb: npt.NDArray[np.uint8], page_number: int) ->
     )
 
     # Paddle Model - Getting Predictions
-    logging.info("Start detection... (It usually takes more than 10-20 seconds per page)")
+    logging.info("Start detection… (It usually takes more than 10-20 seconds per page)")
     ocr_model_pp = PPStructure(show_log=False, recovery=True)
     logging.info("model loaded")
     result_pp = ocr_model_pp(image_rgb)
     _, w, _ = image_rgb.shape
     result_pp = sorted_layout_boxes(result_pp, w)
-    logging.info("Detection finished...")
+    logging.info("Detection finished…")
 
     # Add results to the layout
     layout.save_all_layouts(result_pp)
-    logging.info("All results are saved...")
+    logging.info("All results are saved…")
 
     # Recovery Text Document for the detected text
     rr.log(f"{page_path}/Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))

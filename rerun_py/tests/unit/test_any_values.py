@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pyarrow as pa
 import pytest
@@ -37,6 +39,7 @@ def test_bad_any_value() -> None:
     class Foo:
         pass
 
+    rr.set_strict_mode(False)
     with pytest.warns(RerunWarning) as warnings:
         values = rr.AnyValues(bad_data=[Foo()])
 
@@ -64,7 +67,7 @@ def test_bad_any_value() -> None:
 
         assert "Converting data for 'good_data':" in str(warnings[0].message)
 
-    with pytest.warns(RerunWarning, match="using keyword arguments"):
+    with pytest.warns(RerunWarning, match="using the components argument"):
         non_keyword_arg = 1
         rr.AnyValues(non_keyword_arg)  # type: ignore[arg-type]
 
@@ -74,6 +77,7 @@ def test_bad_any_value() -> None:
 
 
 def test_none_any_value() -> None:
+    rr.set_strict_mode(False)
     with pytest.warns(RerunWarning) as warnings:
         running_warning_count = 0
 
@@ -97,7 +101,7 @@ def test_none_any_value() -> None:
         assert len(warnings) == running_warning_count
 
         assert (
-            "Converting data for 'none_data': ValueError(Cannot convert None to arrow array. Type is unknown.)"
+            "Converting data for 'none_data': ValueError(Cannot convert None to arrow array without an explicit type)"
             in str(warnings[running_warning_count - 2].message)
         )
 
@@ -147,6 +151,30 @@ def test_iterable_any_value() -> None:
     assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES, LONG_BYTES], type=pa.binary())
 
 
+@pytest.mark.parametrize("container_type", [list, tuple, set, np.array])
+def test_empty_any_values(container_type: type[Any]) -> None:
+    values = rr.AnyValues(**{
+        f"int_array_{container_type.__name__}": container_type([]),
+        f"float_array_{container_type.__name__}": container_type([]),
+        f"str_array_{container_type.__name__}": container_type([]),
+    })
+    new_values = rr.AnyValues(**{
+        f"int_array_{container_type.__name__}": container_type([1]),
+        f"float_array_{container_type.__name__}": container_type([1.0]),
+        f"str_array_{container_type.__name__}": container_type(["str"]),
+    })
+
+    rr.set_strict_mode(False)
+    with pytest.warns(RerunWarning) as warnings:
+        batches = list(values.as_component_batches())
+        assert len(batches) == 0
+
+        assert "No valid component batches" in str(warnings[0].message)
+
+    batches = list(new_values.as_component_batches())
+    assert len(batches) == 3
+
+
 def test_any_values_numpy() -> None:
     # Test with numpy arrays
     values = rr.AnyValues(
@@ -164,9 +192,7 @@ def test_any_values_numpy() -> None:
 
 
 def test_any_values_with_field() -> None:
-    values = rr.AnyValues().with_field(
-        descriptor=rr.ComponentDescriptor("value"),
-        value=np.array([5], dtype=np.int64),
-    )
-    assert values.component_batches[0].component_descriptor() == rr.ComponentDescriptor("value")
-    assert values.component_batches[0].as_arrow_array().to_numpy() == np.array([5], dtype=np.int64)
+    rr.set_strict_mode(False)
+    values = rr.AnyValues().with_component_from_data(descriptor="value", value=np.array([5], dtype=np.int64))
+    assert values.as_component_batches()[0].component_descriptor() == rr.ComponentDescriptor("value")
+    assert values.as_component_batches()[0].as_arrow_array().to_numpy() == np.array([5], dtype=np.int64)

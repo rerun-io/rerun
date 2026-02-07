@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+ranges: [{timeline: log_time, range: {start: {Infinite=null}, end: {Infinite=null}}}]

@@ -26,7 +26,4 @@ re_log = { workspace = true, features = ["setup"] }
 
 # External
 camino.workspace = true
-tonic-build = { workspace = true, default-features = false, features = [
-  "prost",
-] }
-prost-build = { workspace = true }
+tonic-prost-build.workspace = true

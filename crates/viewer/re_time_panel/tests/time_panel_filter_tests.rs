@@ -1,14 +1,12 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_log_types::TimePoint;
+use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
-use re_time_panel::StreamsTreeData;
-use re_time_panel::{TimePanel, TimePanelSource};
-use re_types::archetypes::Points3D;
+use re_test_context::external::egui_kittest::SnapshotResults;
+use re_time_panel::{StreamsTreeData, TimePanel, TimePanelSource};
 use re_ui::filter_widget::FilterState;
 use re_viewer_context::blueprint_timeline;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -35,6 +33,7 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
 pub fn test_various_filter_ui_snapshot() {
     TimePanel::ensure_registered_subscribers();
 
+    let mut snapshot_results = SnapshotResults::new();
     for filter_query in filter_queries() {
         let test_context = prepare_test_context();
 
@@ -44,14 +43,15 @@ pub fn test_various_filter_ui_snapshot() {
         }
 
         run_time_panel_and_save_snapshot(
-            test_context,
+            &test_context,
             time_panel,
             &format!(
                 "various_filters-{}",
                 filter_query
                     .map(|s| s.replace(' ', ",").replace('/', "_"))
-                    .unwrap_or("none".to_owned())
+                    .unwrap_or_else(|| "none".to_owned())
             ),
+            &mut snapshot_results,
         );
     }
 }
@@ -79,7 +79,7 @@ pub fn test_various_filter_insta_snapshot() {
             "various_filters-{}",
             filter_query
                 .map(|s| s.replace(' ', ",").replace('/', "_"))
-                .unwrap_or("none".to_owned())
+                .unwrap_or_else(|| "none".to_owned())
         );
 
         let mut settings = insta::Settings::clone_current();
@@ -116,13 +116,13 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
 }
 
 fn run_time_panel_and_save_snapshot(
-    mut test_context: TestContext,
+    test_context: &TestContext,
     mut time_panel: TimePanel,
     snapshot_name: &str,
+    snapshot_results: &mut SnapshotResults,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(700.0, 700.0))
+        .setup_kittest_for_rendering_ui([700.0, 700.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let blueprint = ViewportBlueprint::from_db(
@@ -130,22 +130,25 @@ fn run_time_panel_and_save_snapshot(
                     &LatestAtQuery::latest(blueprint_timeline()),
                 );
 
-                let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
+                let mut time_commands = Vec::new();
 
                 time_panel.show_expanded_with_header(
                     viewer_ctx,
+                    viewer_ctx.time_ctrl,
                     &blueprint,
                     viewer_ctx.recording(),
-                    &mut time_ctrl,
                     ui,
+                    &mut time_commands,
                 );
 
-                *viewer_ctx.rec_cfg.time_ctrl.write() = time_ctrl;
+                test_context.send_time_commands(viewer_ctx.store_id().clone(), time_commands);
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();
     harness.snapshot(snapshot_name);
+
+    snapshot_results.extend_harness(&mut harness);
 }

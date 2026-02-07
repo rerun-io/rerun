@@ -21,8 +21,6 @@ FixedSizeList<3, float32>
 
 * [`HalfSize3D`](../components/half_size3d.md)
 * [`LineStrip3D`](../components/line_strip3d.md)
-* [`PoseScale3D`](../components/pose_scale3d.md)
-* [`PoseTranslation3D`](../components/pose_translation3d.md)
 * [`Position3D`](../components/position3d.md)
 * [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 * [`Scale3D`](../components/scale3d.md)

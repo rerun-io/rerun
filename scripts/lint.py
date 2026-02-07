@@ -14,8 +14,9 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
+import git
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
 
@@ -35,11 +36,28 @@ ellipsis_reference = re.compile(r"&\.\.\.")
 ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
+pyclass_start = re.compile(r"#\[pyclass\(")
+pymethods_start = re.compile(r"#\[pymethods\]")
 
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
 Frontmatter = dict[str, Any]
+
+
+def get_rerun_root() -> str:
+    # Search upward for .RERUN_ROOT sentinel file
+    # TODO(RR-3355): Use a shared utility for this
+    current = Path(__file__).resolve().parent
+    while current != current.parent:
+        # Look for sentinel file
+        if (current / ".RERUN_ROOT").exists():
+            return str(current)
+        # Break if we reach a git root
+        if (current / ".git").exists():
+            break
+        current = current.parent
+    raise FileNotFoundError(f"Could not find .RERUN_ROOT sentinel file in any parent directory under {current}")
 
 
 def is_valid_todo_part(part: str) -> bool:
@@ -50,6 +68,9 @@ def is_valid_todo_part(part: str) -> bool:
 
     if re.match(r"^[a-z][a-z0-9_]+$", part):
         return True  # user-name
+
+    if re.match(r"^RR-\d+$", part):
+        return True  # linear issue
 
     return False
 
@@ -88,6 +109,7 @@ def lint_url(url: str) -> str | None:
     ALLOW_LIST_URLS = {
         "https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml",
         "https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts",
+        "https://github.com/rerun-io/landing/blob/main/src/lib/lang.ts",  # if this file moves we should check the linked code.
         "https://github.com/rerun-io/rerun/blob/main/ARCHITECTURE.md",
         "https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md",
         "https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md",
@@ -142,7 +164,7 @@ def lint_line(
             return "It's 'GitHub', not 'github'"
 
     if re.search(r"[.a-zA-Z]  [a-zA-Z]", line):
-        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embeedded in a string
+        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embedded in a string
             return "Found double space"
 
     if double_the.search(line.lower()):
@@ -156,15 +178,24 @@ def lint_line(
         if err := lint_url(url):
             return err
 
-    if file_extension not in ("py", "txt"):
-        if (
-            ellipsis.search(line)
-            and not ellipsis_expression.search(line)
-            and not ellipsis_import.search(line)
-            and not ellipsis_bare.search(line)
-            and not ellipsis_reference.search(line)
-        ):
-            return "Use … instead of ..."
+    if file_extension != "":
+        # We lint against writing ellipsis using three dots for the sake of our UI:
+        # * We want it consistent
+        # * We want it beautiful (`…` looks different from `...`)
+        # * We don't want linebreaks in the middle of an ellipsis
+        #
+        # This lint is therefore most important in user-facing code, such as the UI,
+        # but we also care about beautiful docs, so at the moment this lint is quite "inclusive".
+        if ellipsis.search(line):
+            has_quote = '"' in line or "'" in line
+            if (has_quote and "Callable" not in line) or (
+                file_extension not in "py"
+                and not ellipsis_expression.search(line)
+                and not ellipsis_import.search(line)
+                and not ellipsis_bare.search(line)
+                and not ellipsis_reference.search(line)
+            ):
+                return "Use … instead of ... (on Mac it's option+;)"
 
     if "http" not in line:
         if re.search(r"\b2d\b", line):
@@ -237,6 +268,12 @@ def lint_line(
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
 
+    # Check for specific data platform phrases that should be capitalized
+    if re.search(r"(the\s+data\s+platform|Rerun\s+data\s+platform)", line) or re.search(
+        r"(?<!/)dataplatform(?!/)", line
+    ):
+        return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path)"
+
     if not is_in_docstring:
         if m := re.search(
             r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("([^"]*)',
@@ -251,12 +288,12 @@ def lint_line(
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "Deref/DerefMut impls should be marked #[inline]"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "as_ref/borrow implementations should be marked #[inline]"
 
     if any(
@@ -314,6 +351,7 @@ def test_lint_line() -> None:
         "anyhow::Result<()>",
         "The theme is great",
         "template <typename... Args>",
+        '_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])',
         'protoc_prebuilt::init("22.0")',
         'rr.init("rerun_example_app")',
         'rr.script_setup(args, "rerun_example_app")',
@@ -359,6 +397,10 @@ def test_lint_line() -> None:
 """,
         "fn ret_any() -> &dyn std::any::Any",
         "fn ret_any_mut() -> &mut dyn std::any::Any",
+        "Visit /dataplatform/docs for more info",
+        "The https://example.com/dataplatform/api endpoint",
+        "We need a data platform solution",
+        "Building data platform infrastructure",
     ]
 
     should_error = [
@@ -394,6 +436,9 @@ def test_lint_line() -> None:
         "Result<(), anyhow::Error>",
         "The the problem with double words",
         "More than meets the eye...",
+        're_log::trace!("Performing migrations...");',
+        'rr.log("/", rr.TextLog("Logging things..."))',
+        'logging.info("Detection finished...")',
         'RecordingStreamBuilder::new("missing_prefix")',
         'args.rerun.init("missing_prefix")',
         'RecordingStream("missing_prefix")',
@@ -409,6 +454,10 @@ def test_lint_line() -> None:
         "fn take_any_mut(thing: &mut dyn std::any::Any)",
         "fn take_any(thing: &dyn Any)",
         "fn take_any_mut(thing: &mut dyn Any)",
+        "The dataplatform is powerful",
+        "Using dataplatform for analytics",
+        "I love the data platform",
+        "The Rerun data platform is great",
     ]
 
     for test in should_pass:
@@ -566,88 +615,6 @@ def test_lint_vertical_spacing() -> None:
 # -----------------------------------------------------------------------------
 
 
-re_workspace_dep = re.compile(r"workspace\s*=\s*(true|false)")
-
-
-def lint_workspace_deps(lines_in: list[str]) -> tuple[list[str], list[str]]:
-    """Only for Cargo files."""
-
-    errors = []
-    lines_out = []
-
-    for line_nr, line in enumerate(lines_in):
-        line_nr = line_nr + 1
-
-        if re_workspace_dep.search(line):
-            errors.append(f"{line_nr}: Rust examples should never depend on workspace information (`{line.strip()}`)")
-            lines_out.append("\n")
-
-        lines_out.append(line)
-
-    return errors, lines_out
-
-
-def test_lint_workspace_deps() -> None:
-    assert re_workspace_dep.search("workspace=true")
-    assert re_workspace_dep.search("workspace=false")
-    assert re_workspace_dep.search('xxx = { xxx: "yyy", workspace = true }')
-    assert re_workspace_dep.search('xxx = { xxx: "yyy", workspace = false }')
-
-    should_pass = [
-        "hello world",
-        """
-        [package]
-        name = "clock"
-        version = "0.6.0-alpha.0"
-        edition = "2021"
-        rust-version = "1.88"
-        license = "MIT OR Apache-2.0"
-        publish = false
-
-        [dependencies]
-        rerun = { path = "../../../crates/top/rerun", features = ["web_viewer"] }
-
-        anyhow = "1.0"
-        clap = { version = "4.0", features = ["derive"] }
-        glam = "0.30"
-        """,
-    ]
-
-    should_fail = [
-        """
-        [package]
-        name = "objectron"
-        version.workspace = true
-        edition.workspace = true
-        rust-version.workspace = true
-        license.workspace = true
-        publish = false
-
-        [dependencies]
-        rerun = { workspace = true, features = ["web_viewer"] }
-
-        anyhow.workspace = true
-        clap = { workspace = true, features = ["derive"] }
-        glam.workspace = true
-        prost = "0.11"
-
-        [build-dependencies]
-        prost-build = "0.11"
-        """,
-    ]
-
-    for code in should_pass:
-        errors, _ = lint_workspace_deps(code.split("\n"))
-        assert len(errors) == 0, f"expected this to pass:\n{code}\ngot: {errors}"
-
-    for code in should_fail:
-        errors, _ = lint_workspace_deps(code.split("\n"))
-        assert len(errors) > 0, f"expected this to fail:\n{code}"
-
-
-# -----------------------------------------------------------------------------
-
-
 workspace_lints = re.compile(r"\[lints\]\nworkspace\s*=\s*true")
 
 
@@ -658,6 +625,289 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
         return None
     else:
         return "Non-example cargo files should have a [lints] section with workspace = true"
+
+
+# -----------------------------------------------------------------------------
+
+
+def lint_pyclass_requirements(lines_in: list[str]) -> tuple[list[str], list[int], list[str]]:
+    """Only for Rust files. Check that #[pyclass(...)] declarations include 'eq' and the correct module."""
+
+    errors: list[str] = []
+    error_linenumbers: list[int] = []
+    error_codes: list[str] = []
+
+    i = 0
+    while i < len(lines_in):
+        line = lines_in[i]
+        line_nr = i + 1
+
+        # Check if this line starts a pyclass declaration
+        if pyclass_start.search(line.strip()):
+            # Collect the entire pyclass declaration (it might span multiple lines)
+            pyclass_content = line
+            original_line_nr = line_nr
+
+            # Keep reading lines until we find the closing parenthesis
+            paren_count = line.count("(") - line.count(")")
+            j = i + 1
+
+            while paren_count > 0 and j < len(lines_in):
+                next_line = lines_in[j]
+                pyclass_content += next_line
+                paren_count += next_line.count("(") - next_line.count(")")
+                j += 1
+
+            # Check if 'eq' is present in the pyclass declaration
+            # Look for 'eq' as a standalone parameter (not part of another word)
+            # First remove comments to avoid false matches in comments
+            pyclass_content_no_comments = re.sub(r"//.*", "", pyclass_content)
+            if not re.search(r"\beq\b", pyclass_content_no_comments):
+                errors.append(
+                    f"{original_line_nr}: #[pyclass(...)] should include 'eq' parameter for Python equality support"
+                )
+                error_linenumbers.append(original_line_nr)
+                error_codes.append("py-cls-eq")
+
+            # Check if the correct module is specified
+            expected_module = 'module = "rerun_bindings.rerun_bindings"'
+            if expected_module not in pyclass_content:
+                errors.append(
+                    f"{original_line_nr}: #[pyclass(...)] should include 'module = \"rerun_bindings.rerun_bindings\"' parameter"
+                )
+                error_linenumbers.append(original_line_nr)
+                error_codes.append("py-cls-mod")
+
+            # Move the index to after the pyclass declaration
+            i = j
+        else:
+            i += 1
+
+    return errors, error_linenumbers, error_codes
+
+
+def lint_pymethods_requirements(lines_in: list[str]) -> tuple[list[str], list[int], list[str]]:
+    """Only for Rust files. Check that #[pymethods] blocks have a __str__ method."""
+
+    errors: list[str] = []
+    error_linenumbers: list[int] = []
+    error_codes: list[str] = []
+
+    i = 0
+    while i < len(lines_in):
+        line = lines_in[i]
+        line_nr = i + 1
+
+        # Check if this line starts a pymethods declaration
+        if pymethods_start.search(line.strip()):
+            # Find the corresponding impl block
+            j = i + 1
+            impl_start_line = None
+            class_name = None
+
+            # Look for the impl block that follows
+            while j < len(lines_in):
+                impl_line = lines_in[j].strip()
+                if impl_line.startswith("impl "):
+                    impl_start_line = j
+                    # Extract class name from "impl ClassName {"
+                    match = re.search(r"impl\s+(\w+)\s*\{", impl_line)
+                    if match:
+                        class_name = match.group(1)
+                    break
+                elif impl_line and not impl_line.startswith("//"):
+                    # If we hit any non-comment, non-empty line that's not impl, stop looking
+                    break
+                j += 1
+
+            if impl_start_line is None or class_name is None:
+                i += 1
+                continue
+
+            # Find the end of the impl block by counting braces
+            brace_count = 0
+            impl_content = ""
+            k = impl_start_line
+
+            while k < len(lines_in):
+                current_line = lines_in[k]
+                impl_content += current_line
+                brace_count += current_line.count("{") - current_line.count("}")
+
+                if brace_count == 0 and "{" in lines_in[impl_start_line]:
+                    # We've found the end of the impl block
+                    break
+                k += 1
+
+            # Check if __str__ or __repr__ is present in the impl content
+            # Remove comments to avoid false matches
+            impl_content_no_comments = re.sub(r"//.*", "", impl_content)
+
+            has_str = re.search(r"\b__str__\b", impl_content_no_comments)
+            has_repr = re.search(r"\b__repr__\b", impl_content_no_comments)
+
+            if not has_str and not has_repr:
+                errors.append(
+                    f"{line_nr}: #[pymethods] impl {class_name} should include a '__str__' method (or '__repr__' which serves as fallback)"
+                )
+                error_linenumbers.append(line_nr)
+                error_codes.append("py-mthd-str")
+
+            # Move the index to after the impl block
+            i = k + 1
+        else:
+            i += 1
+
+    return errors, error_linenumbers, error_codes
+
+
+def test_lint_pymethods_requirements() -> None:
+    """Test the lint_pymethods_requirements function with various pymethods declarations."""
+
+    should_pass = [
+        # pymethods with __str__
+        """#[pymethods]
+impl MyClass {
+    pub fn __str__(&self) -> String {
+        "test".to_string()
+    }
+}""",
+        # pymethods with __repr__ (serves as __str__ fallback)
+        """#[pymethods]
+impl MyClass {
+    fn __repr__(&self) -> String {
+        "test".to_string()
+    }
+}""",
+        # pymethods with both __str__ and __repr__
+        """#[pymethods]
+impl MyClass {
+    pub fn __str__(&self) -> String {
+        "str".to_string()
+    }
+    fn __repr__(&self) -> String {
+        "repr".to_string()
+    }
+}""",
+        # pymethods with other methods and __str__
+        """#[pymethods]
+impl MyClass {
+    #[new]
+    pub fn new() -> Self {
+        Self {}
+    }
+    pub fn __str__(&self) -> String {
+        "test".to_string()
+    }
+}""",
+    ]
+
+    should_error = [
+        # pymethods without __str__ or __repr__
+        """#[pymethods]
+impl MyClass {
+    #[new]
+    pub fn new() -> Self {
+        Self {}
+    }
+}""",
+        # pymethods with other methods but no __str__ or __repr__
+        """#[pymethods]
+impl MyClass {
+    pub fn other_method(&self) -> i32 {
+        42
+    }
+    pub fn another_method(&self) -> bool {
+        true
+    }
+}""",
+    ]
+
+    # Test cases that should pass (no errors)
+    for test_case in should_pass:
+        lines = test_case.split("\n")
+        errors, _, _ = lint_pymethods_requirements(lines)
+        assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
+
+    # Test cases that should fail (produce errors)
+    for test_case in should_error:
+        lines = test_case.split("\n")
+        errors, _, _ = lint_pymethods_requirements(lines)
+        assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
+
+
+def test_lint_pyclass_requirements() -> None:
+    """Test the lint_pyclass_requirements function with various pyclass declarations."""
+
+    should_pass = [
+        # Simple pyclass with eq and module
+        '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
+        # Multiple parameters including eq and module
+        '#[pyclass(frozen, eq, hash, module = "rerun_bindings.rerun_bindings")]',
+        # eq in different position
+        '#[pyclass(eq, frozen, module = "rerun_bindings.rerun_bindings")]',
+        # Multi-line pyclass with eq and module
+        '#[pyclass(\n    frozen,\n    eq,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
+        # eq at the end
+        '#[pyclass(frozen, hash, eq, module = "rerun_bindings.rerun_bindings")]',
+        # With module specification and eq
+        '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
+        # Complex real-world example
+        """#[pyclass(
+            frozen,
+            eq,
+            hash,
+            name = "IndexColumnDescriptor",
+            module = "rerun_bindings.rerun_bindings"
+        )]""",
+        # With name parameter
+        '#[pyclass(eq, name = "MyClass", module = "rerun_bindings.rerun_bindings")]',
+    ]
+
+    should_error = [
+        # Missing eq parameter
+        '#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")]',
+        # Multiple parameters but no eq
+        '#[pyclass(frozen, hash, module = "rerun_bindings.rerun_bindings")]',
+        # With module but no eq
+        '#[pyclass(module = "rerun_bindings.rerun_bindings")]',
+        # With eq but no module
+        "#[pyclass(eq, frozen)]",
+        # Missing both eq and module
+        "#[pyclass(frozen)]",
+        # Multi-line without eq
+        '#[pyclass(\n    frozen,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
+        # Multi-line without module
+        "#[pyclass(\n    frozen,\n    eq,\n    hash\n)]",
+        # Complex example without eq
+        """#[pyclass(
+            frozen,
+            hash,
+            name = "IndexColumnDescriptor",
+            module = "rerun_bindings.rerun_bindings"
+        )]""",
+        # Complex example without module
+        """#[pyclass(
+            frozen,
+            eq,
+            hash,
+            name = "IndexColumnDescriptor"
+        )]""",
+        # Wrong module name
+        '#[pyclass(eq, module = "wrong_module")]',
+    ]
+
+    # Test cases that should pass (no errors)
+    for test_case in should_pass:
+        lines = test_case.split("\n")
+        errors, _, _ = lint_pyclass_requirements(lines)
+        assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
+
+    # Test cases that should fail (produce errors)
+    for test_case in should_error:
+        lines = test_case.split("\n")
+        errors, _, _ = lint_pyclass_requirements(lines)
+        assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
 
 
 # -----------------------------------------------------------------------------
@@ -680,12 +930,14 @@ force_capitalized = [
     "gRPC",
     "GUI",
     "GUIs",
+    "Intel",
     "July",
     "Jupyter",
     "LeRobot",
     "Linux",
     "Mac",
     "macOS",
+    "Macs",
     "ML",
     "Numpy",
     "nuScenes",
@@ -716,6 +968,9 @@ allow_capitalized = [
     # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
     "Arrow",
     # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
+    "Data",
+    "Platform",
+    # In the context of "Data Platform" we want capitalization, but not for all mentions
 ]
 
 force_capitalized_as_lower = [word.lower() for word in force_capitalized]
@@ -835,6 +1090,16 @@ def fix_header_casing(s: str) -> str:
     return " ".join(new_words)
 
 
+def fix_dataplatform(s: str) -> str:
+    """Fix specific data platform phrases to proper capitalization unless it's part of a URL path."""
+    # Don't fix if it's in a URL path (has slashes before or after)
+    # Use negative lookbehind and lookahead to avoid URL paths
+    s = re.sub(r"the\s+data\s+platform", "the Data Platform", s)
+    s = re.sub(r"Rerun\s+data\s+platform", "Rerun Data Platform", s)
+    s = re.sub(r"(?<!/)dataplatform(?!/)", "Data Platform", s)
+    return s
+
+
 def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
@@ -916,6 +1181,14 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                     errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
                     line = new_line
 
+                # Fix dataplatform to Data Platform
+                new_line = fix_dataplatform(line)
+                if new_line != line:
+                    errors.append(
+                        f"{line_nr}: Use 'Data Platform' instead of 'dataplatform'. This should be '{new_line}'."
+                    )
+                    line = new_line
+
             if in_example_readme and not in_metadata:
                 # Check that <h1> is not used in example READMEs
                 if line.startswith("#") and not line.startswith("##"):
@@ -928,7 +1201,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
     return errors, lines_out
 
 
-def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
+def lint_example_description(filepath: str) -> list[str]:
     # only applies to examples' readme
 
     if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
@@ -945,15 +1218,11 @@ def lint_frontmatter(filepath: str, content: str) -> list[str]:
         return errors
 
     try:
-        fm = load_frontmatter(content)
+        load_frontmatter(content)
     except Exception as e:
         errors.append(f"Error parsing frontmatter: {e}")
-        return errors
 
-    if fm is None:
-        return []
-
-    errors += lint_example_description(filepath, fm)
+    errors += lint_example_description(filepath)
 
     return errors
 
@@ -981,17 +1250,45 @@ class SourceFile:
         self.content = "".join(self.lines)
 
         # gather lines with a `NOLINT` marker
-        self.nolints = set()
+        # nolints is a dict from code to set of line numbers
+        # None key is used for unqualified NOLINT
+        self.nolints: dict[str | None, set[int]] = {}
         is_in_nolint_block = False
         for i, line in enumerate(self.lines):
             if "NOLINT" in line:
-                self.nolints.add(i)
+                # Check for NOLINT: ignore[<code>] format
+                if "NOLINT: ignore[" in line:
+                    match = re.search(r"NOLINT: ignore\[([^\]]+)\]", line)
+                    if match:
+                        code = match.group(1)
+                        if code not in self.nolints:
+                            self.nolints[code] = set()
+                        self.nolints[code].add(i)
+                    else:
+                        # Fallback to unqualified NOLINT if parsing fails
+                        if None not in self.nolints:
+                            self.nolints[None] = set()
+                        self.nolints[None].add(i)
+                else:
+                    # Unqualified NOLINT
+                    if None not in self.nolints:
+                        self.nolints[None] = set()
+                    self.nolints[None].add(i)
 
             if "NOLINT_START" in line:
+                # Check if this is trying to use the ignore[code] format with NOLINT_START
+                if "NOLINT_START: ignore[" in line:
+                    raise NotImplementedError(
+                        f"NOLINT_START: ignore[<code>] format is not implemented yet. "
+                        f"Found at line {i + 1}: {line.strip()}"
+                    )
                 is_in_nolint_block = True
 
             if is_in_nolint_block:
-                self.nolints.add(i)
+                # NOLINT_START/END blocks are always unqualified
+                if None not in self.nolints:
+                    self.nolints[None] = set()
+                self.nolints[None].add(i)
                 if "NOLINT_END" in line:
                     is_in_nolint_block = False
 
@@ -1004,22 +1301,36 @@ class SourceFile:
             self._update_content()
             print(f"{self.path} fixed.")
 
-    def should_ignore(self, from_line: int, to_line: int | None = None) -> bool:
+    def should_ignore(self, from_line: int, to_line: int | None = None, code: str | None = None) -> bool:
         """
         Determines if we should ignore a violation.
 
         NOLINT might be on the same line(s) as the violation or the previous line.
+
+        Args:
+            from_line: Starting line number (1-based)
+            to_line: Ending line number (1-based), defaults to from_line
+            code: Specific error code to check for (e.g., 'py-cls-eq'),
+                  or None to check for unqualified NOLINT
+
         """
 
         if to_line is None:
             to_line = from_line
-        return any(i in self.nolints for i in range(from_line - 1, to_line + 1))
 
-    def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
+        line_range = range(from_line - 1, to_line + 1)
+
+        # Check for specific code if provided
+        if code in self.nolints:
+            return any(i in self.nolints[code] for i in line_range)
+        return False
+
+    def should_ignore_index(self, start_idx: int, end_idx: int | None = None, code: str | None = None) -> bool:
         """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
         return self.should_ignore(
             _index_to_line_nr(self.content, start_idx),
             _index_to_line_nr(self.content, end_idx) if end_idx is not None else None,
+            code,
         )
 
     def error(self, message: str, *, line_nr: int | None = None, index: int | None = None) -> str:
@@ -1068,6 +1379,33 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error))
         num_errors += len(errors)
 
+        # Check for pyclass requirements (eq and module) in rerun_py Rust files
+        if filepath.startswith("./rerun_py/") and filepath.endswith(".rs"):
+            pyclass_errors, error_lines, error_codes = lint_pyclass_requirements(source.lines)
+            valid_errors = 0
+            for error, line_number, error_code in zip(pyclass_errors, error_lines, error_codes, strict=True):
+                if not source.should_ignore(line_number, code=error_code):
+                    print(
+                        source.error(error)
+                        + f"\n\tUnqualified NOLINT not allowed for pyclass lints. Use `NOLINT: ignore[{error_code}]` instead."
+                    )
+                    valid_errors += 1
+            num_errors += valid_errors
+
+            # Check for pymethods requirements (__str__ method) in rerun_py Rust files
+            pymethods_errors, pymethods_error_lines, pymethods_error_codes = lint_pymethods_requirements(source.lines)
+            valid_pymethods_errors = 0
+            for error, line_number, error_code in zip(
+                pymethods_errors, pymethods_error_lines, pymethods_error_codes, strict=True
+            ):
+                if not source.should_ignore(line_number, code=error_code):
+                    print(
+                        source.error(error)
+                        + f"\n\tUnqualified NOLINT not allowed for pymethods lints. Use `NOLINT: ignore[{error_code}]` instead."
+                    )
+                    valid_pymethods_errors += 1
+            num_errors += valid_pymethods_errors
+
         if args.fix:
             source.rewrite(lines_out)
 
@@ -1082,16 +1420,6 @@ def lint_file(filepath: str, args: Any) -> int:
             source.rewrite(lines_out)
         elif 0 < num_errors:
             print(f"Run with --fix to automatically fix {num_errors} errors.")
-
-    if filepath.startswith("./examples/rust") and filepath.endswith("Cargo.toml"):
-        errors, lines_out = lint_workspace_deps(source.lines)
-
-        for error in errors:
-            print(source.error(error))
-        num_errors += len(errors)
-
-        if args.fix:
-            source.rewrite(lines_out)
 
     if not filepath.startswith("./examples/rust") and filepath != "./Cargo.toml" and filepath.endswith("Cargo.toml"):
         error = lint_workspace_lints(source.content)
@@ -1111,15 +1439,15 @@ def lint_file(filepath: str, args: Any) -> int:
     return num_errors
 
 
-def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
+def lint_crate_docs() -> int:
     """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
     crates_dir = Path("crates")
     architecture_md_file = Path("ARCHITECTURE.md")
 
-    architecture_md = architecture_md_file.read_text()
+    architecture_md = architecture_md_file.read_text("utf-8")
 
-    # extract all crate names ("re_...") from ARCHITECTURE.md to ensure they actually exist
+    # extract all crate names ("re_…") from ARCHITECTURE.md to ensure they actually exist
     listed_crates: dict[str, int] = {}
     for i, line in enumerate(architecture_md.split("\n"), start=1):
         for crate_name in re.findall(r"\bre_\w+", line):
@@ -1131,8 +1459,7 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
         crate = cargo_toml.parent
         crate_name = crate.name
 
-        if crate_name in listed_crates:
-            del listed_crates[crate_name]
+        listed_crates.pop(crate_name, None)
 
         if not re.search(r"\b" + crate_name + r"\b", architecture_md):
             print(f"{architecture_md_file}: missing documentation for crate {crate.name}")
@@ -1150,7 +1477,8 @@ def main() -> None:
     test_split_words()
     test_lint_line()
     test_lint_vertical_spacing()
-    test_lint_workspace_deps()
+    test_lint_pyclass_requirements()
+    test_lint_pymethods_requirements()
     test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
@@ -1207,6 +1535,7 @@ def main() -> None:
         "./crates/store/re_protos/proto/schema_snapshot.yaml",  # auto-generated
         "./crates/store/re_protos/src/v0",  # auto-generated
         "./crates/store/re_protos/src/v1alpha1",  # auto-generated
+        "./crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js",  # auto-generated by wasm_bindgen
         "./docs/content/concepts/app-model.md",  # this really needs custom letter casing
         "./docs/content/reference/cli.md",  # auto-generated
         "./docs/snippets/all/tutorials/custom-application-id.cpp",  # nuh-uh, I don't want rerun_example_ here
@@ -1220,13 +1549,14 @@ def main() -> None:
         "./rerun_cpp/docs/html",
         "./rerun_cpp/src/rerun/c/arrow_c_data_interface.h",  # Not our code
         "./rerun_cpp/src/rerun/third_party/cxxopts.hpp",  # vendored
+        "./rerun_js/docs/",  # auto-generated
         "./rerun_js/node_modules",
         "./rerun_js/web-viewer-react/node_modules",
         "./rerun_js/web-viewer/index.js",
         "./rerun_js/web-viewer/inlined.js",
         "./rerun_js/web-viewer/node_modules",
-        "./rerun_js/web-viewer/re_viewer.js",
         "./rerun_js/web-viewer/re_viewer_bg.js",  # auto-generated by wasm_bindgen
+        "./rerun_js/web-viewer/re_viewer.js",
         "./rerun_notebook/node_modules",
         "./rerun_notebook/src/rerun_notebook/static",
         "./rerun_py/.pytest_cache/",
@@ -1237,18 +1567,16 @@ def main() -> None:
         "./tests/assets/lerobot/apple_storage/README.md",  # not ours
         "./tests/python/gil_stress/main.py",
         "./tests/python/release_checklist/main.py",
-        "./web_viewer/re_viewer.js",  # auto-generated by wasm_bindgen
     )
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
 
-    script_dirpath = os.path.dirname(os.path.realpath(__file__))
-    root_dirpath = os.path.abspath(f"{script_dirpath}/..")
-    os.chdir(root_dirpath)
+    rerun_root = get_rerun_root()
+    os.chdir(rerun_root)
 
     if args.files:
         for filepath in args.files:
-            filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
+            filepath = os.path.join(".", os.path.relpath(filepath, rerun_root))
             filepath = str(filepath).replace("\\", "/")
             extension = filepath.split(".")[-1]
             if extension in extensions:
@@ -1256,21 +1584,26 @@ def main() -> None:
                     continue
                 num_errors += lint_file(filepath, args)
     else:
-        for root, dirs, files in os.walk(".", topdown=True):
-            dirs[:] = [d for d in dirs if not should_ignore(os.path.join(root, d))]
+        repo = git.Repo(".", search_parent_directories=True)
+        assert repo.working_tree_dir is not None, "Expected a non-bare git repository"
+        repo_root = Path(repo.working_tree_dir).resolve()
 
-            for filename in files:
-                extension = filename.split(".")[-1]
-                if extension in extensions:
-                    filepath = os.path.join(root, filename)
-                    filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
-                    filepath = str(filepath).replace("\\", "/")
-                    if should_ignore(filepath) or filepath.startswith(exclude_paths):
-                        continue
-                    num_errors += lint_file(filepath, args)
+        tracked_files = [item[1].path for item in repo.index.iter_blobs()]
+        for filepath in tracked_files:
+            # Filter to only files under rerun_root (for monorepo support)
+            full_path = repo_root / filepath
+            if not full_path.is_relative_to(rerun_root):
+                continue
+            filepath = "./" + str(full_path.relative_to(rerun_root))
+            filepath = filepath.replace("\\", "/")
+            extension = filepath.split(".")[-1]
+            if extension in extensions:
+                if filepath.startswith(exclude_paths):
+                    continue
+                num_errors += lint_file(filepath, args)
 
         # Since no files have been specified, we also run the global lints.
-        num_errors += lint_crate_docs(should_ignore)
+        num_errors += lint_crate_docs()
 
     if num_errors == 0:
         print(f"{sys.argv[0]} finished without error")

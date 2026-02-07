@@ -1,15 +1,14 @@
-use std::{collections::HashSet, io::IsTerminal as _};
+use std::collections::HashSet;
+use std::io::IsTerminal as _;
 
 use anyhow::Context as _;
-use arrow::{
-    array::RecordBatch as ArrowRecordBatch,
-    datatypes::{Field as ArrowField, Schema as ArrowSchema},
-};
+use arrow::array::{RecordBatch as ArrowRecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use itertools::Either;
-
 use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
-use re_sdk::{EntityPath, external::arrow};
+use re_sdk::EntityPath;
+use re_sdk::external::arrow;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -85,8 +84,8 @@ impl FilterCommand {
                 let mut encoder = {
                     // TODO(cmc): encoding options & version should match the original.
                     let version = CrateVersion::LOCAL;
-                    let options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-                    re_log_encoding::encoder::DroppableEncoder::new(version, options, &mut rrd_out)
+                    let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+                    re_log_encoding::Encoder::new_eager(version, options, &mut rrd_out)
                         .context("couldn't init encoder")?
                 };
 
@@ -110,7 +109,7 @@ impl FilterCommand {
                         re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
                             match re_sorbet::ChunkBatch::try_from(&msg.batch) {
                                 Ok(batch) => {
-                                    if !dropped_entity_paths.contains(batch.entity_path()) {
+                                    if dropped_entity_paths.contains(batch.entity_path()) {
                                         None
                                     } else {
                                         let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
@@ -123,14 +122,17 @@ impl FilterCommand {
                                         .map(|(field, col)| (field.clone(), col.clone()))
                                         .unzip();
 
-                                        if let Ok(new_batch) = ArrowRecordBatch::try_new(
-                                            ArrowSchema::new_with_metadata(
-                                                fields,
-                                                batch.schema().metadata().clone(),
+                                        if let Ok(new_batch) =
+                                            ArrowRecordBatch::try_new_with_options(
+                                                ArrowSchema::new_with_metadata(
+                                                    fields,
+                                                    batch.schema().metadata().clone(),
+                                                )
+                                                .into(),
+                                                columns,
+                                                &RecordBatchOptions::default(),
                                             )
-                                            .into(),
-                                            columns,
-                                        ) {
+                                        {
                                             msg.batch = new_batch;
                                             Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
                                         } else {
@@ -172,7 +174,7 @@ impl FilterCommand {
             .join()
             .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // NOLINT: there is no `Display` for this `err`
 
-        let rrds_in_size = rx_size_bytes.recv().ok();
+        let rrds_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
         let size_reduction =
             if let (Some(rrds_in_size), rrd_out_size) = (rrds_in_size, rrd_out_size) {
                 format!(

@@ -15,7 +15,7 @@ import sys
 import textwrap
 from inspect import Parameter, Signature
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import parso
 from colorama import Fore, Style, init as colorama_init
@@ -83,7 +83,7 @@ class APIDef:
             return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 
 
-TotalSignature = dict[str, Union[APIDef, dict[str, APIDef]]]
+TotalSignature = dict[str, APIDef | dict[str, APIDef]]
 
 
 def parse_function_signature(node: Any) -> APIDef:
@@ -98,26 +98,35 @@ def parse_function_signature(node: Any) -> APIDef:
                 found_star = True
             continue
         param_name = param.name.value
-        default = Parameter.empty
 
-        if param.default:
-            default = ast.literal_eval(param.default.get_code())
+        try:
+            default = Parameter.empty
 
-        # Determine kind of parameter (positional, keyword, etc.)
-        if param.star_count == 1:
-            kind: Any = Parameter.VAR_POSITIONAL  # *args
-            found_star = True
-        elif param.star_count == 2:
-            kind = Parameter.VAR_KEYWORD  # **kwargs
-        else:
-            if param_name == "self":
+            if param.default:
+                code = param.default.get_code()
+                try:
+                    default = ast.literal_eval(code)
+                except Exception as e:
+                    # TODO(emilk): When we update to Python 3.11, use e.add_note
+                    raise ValueError(f"code='{code}', {e}") from e
+
+            # Determine kind of parameter (positional, keyword, etc.)
+            if param.star_count == 1:
+                kind: Any = Parameter.VAR_POSITIONAL  # *args
+                found_star = True
+            elif param.star_count == 2:
+                kind = Parameter.VAR_KEYWORD  # **kwargs
+            elif param_name == "self":
                 kind = Parameter.POSITIONAL_ONLY
             elif found_star:
                 kind = Parameter.KEYWORD_ONLY
             else:
                 kind = Parameter.POSITIONAL_OR_KEYWORD
 
-        params.append(Parameter(name=param_name, kind=kind, default=default))
+            params.append(Parameter(name=param_name, kind=kind, default=default))
+        except Exception as e:
+            # TODO(emilk): When we update to Python 3.11, use e.add_note
+            raise ValueError(f"param_name='{param_name}', {e}") from e
 
     doc = None
     for child in node.children:
@@ -145,26 +154,35 @@ def load_stub_signatures(pyi_file: Path) -> TotalSignature:
 
         elif node.type == "classdef":
             class_name = node.name.value
-            class_def = {}
 
-            doc = None
-            for child in node.children:
-                if child.type == "suite":
-                    first_child = child.children[1]
-                    if first_child.type == "simple_stmt" and first_child.children[0].type == "string":
-                        doc = first_child.children[0].value.replace('"""', "")
-            if doc is not None:
-                class_def["__doc__"] = doc
+            try:
+                class_def = {}
 
-            # Extract methods within the class
-            for class_node in node.iter_funcdefs():
-                method_name = class_node.name.value
+                doc = None
+                for child in node.children:
+                    if child.type == "suite":
+                        first_child = child.children[1]
+                        if first_child.type == "simple_stmt" and first_child.children[0].type == "string":
+                            doc = first_child.children[0].value.replace('"""', "")
+                if doc is not None:
+                    class_def["__doc__"] = doc
 
-                method_signature = parse_function_signature(class_node)
+                # Extract methods within the class
+                for class_node in node.iter_funcdefs():
+                    method_name = class_node.name.value
 
-                class_def[method_name] = method_signature
+                    try:
+                        method_signature = parse_function_signature(class_node)
+                    except Exception as e:
+                        # TODO(emilk): When we update to Python 3.11, use e.add_note
+                        raise ValueError(f"method_name='{method_name}', {e}") from e
 
-            signatures[class_name] = class_def
+                    class_def[method_name] = method_signature
+
+                signatures[class_name] = class_def
+            except Exception as e:
+                # TODO(emilk): When we update to Python 3.11, use e.add_note
+                raise ValueError(f"class_name='{class_name}', {e}") from e
 
     return signatures
 

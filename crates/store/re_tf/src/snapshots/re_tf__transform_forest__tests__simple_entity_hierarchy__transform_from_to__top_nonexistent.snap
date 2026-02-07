@@ -1,0 +1,62 @@
+---
+source: crates/store/re_tf/src/transform_forest.rs
+expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
+---
+[
+    (
+        tf#/,
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+    (
+        tf#/top,
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+    (
+        tf#/top/pinhole,
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+    (
+        tf#/top/child3d,
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+    (
+        TransformFrameIdHash(D01893A02DC02A5F),
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+    (
+        tf#/top/pinhole/child2d,
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+    (
+        tf#/top/pure_leaf_pinhole,
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+]

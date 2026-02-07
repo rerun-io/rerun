@@ -1,7 +1,6 @@
 ---
 source: crates/viewer/re_blueprint_tree/tests/view_structure_test.rs
 expression: blueprint_tree_data
-snapshot_kind: text
 ---
 root_container:
   name:

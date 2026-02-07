@@ -7,11 +7,12 @@
 //! Also handles different file types: rrd, images, text files, 3D models, point clouds…
 
 mod data_source;
+mod stream_rrd_from_http;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod load_stdin;
 
-pub use self::data_source::{DataSource, DataSourceCommand, StreamSource};
+pub use self::data_source::{AuthErrorHandler, LogDataSource, LogDataSourceAnalytics};
 
 // ----------------------------------------------------------------------------
 
@@ -20,7 +21,7 @@ pub use self::data_source::{DataSource, DataSourceCommand, StreamSource};
 /// This is what you get when loading a file on Web, or when using drag-n-drop.
 //
 // TODO(#4554): drag-n-drop streaming support
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FileContents {
     pub name: String,
     pub bytes: std::sync::Arc<[u8]>,

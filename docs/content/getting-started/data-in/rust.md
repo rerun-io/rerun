@@ -19,7 +19,7 @@ To run the example from the repository, run `cargo run -p dna`.
 
 ## Prerequisites
 
-We assume you have a working Rust environment and have started a new project with the `rerun` dependency. If not, check out the [setup page](rust.md).
+We assume you have a working Rust environment and have started a new project with the `rerun` dependency. If not, check out the [installing rust](../../overview/installing-rerun/rust.md).
 
 For this example in particular, we're going to need all of these:
 
@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Among other things, a stable [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
-Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/apps-and-recordings.md).
+Check out the reference to learn more about how Rerun deals with [recordings and datasets](../../concepts/logging-and-ingestion/recordings.md).
 
 ## Logging our first points
 
@@ -112,7 +112,7 @@ Run your program with `cargo run` and you should now see this scene in the viewe
 </picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_Checkout the [Viewer Walkthrough](../navigating-the-viewer.md) and [viewer reference](../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
+_Checkout the [Viewer Walkthrough](../configure-the-viewer/navigating-the-viewer.md) and [viewer reference](../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
 ## Under the hood
 
@@ -122,7 +122,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 <!-- TODO(andreas): UPDATE DOC LINKS -->
 
-The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.10/struct.Points3D.html). Archetypes take care of building batches
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/struct.Points3D.html). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
@@ -131,26 +131,26 @@ Under the hood, the Rerun [Rust SDK](https://docs.rs/rerun) logs individual _com
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
-For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/entity-component.md).
+For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).
 
 Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method
 
 <!-- TODO(andreas): UPDATE DOC LINKS -->
 
 will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
-For more information on how to supply your own components see [Use custom data](../../howto/extend/custom-data.md).
+For more information on how to supply your own components see [Use custom data](../../howto/logging-and-ingestion/custom-data.md).
 
 ### Entities & hierarchies
 
 Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structure/right"`.
 
-These are [_entity paths_](../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
-[Entity paths typically form a hierarchy](../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
+These are [_entity paths_](../../concepts/logging-and-ingestion/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
+[Entity paths typically form a hierarchy](../../concepts/logging-and-ingestion/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
 ### Component batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
-[Component batches](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+[Component batches](../../concepts/logging-and-ingestion/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
 You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
@@ -179,8 +179,8 @@ rec.log(
 Which only leaves the beads:
 
 ```rust
-let mut rng = rand::thread_rng();
-let offsets = (0..NUM_POINTS).map(|_| rng.r#gen::<f32>()).collect_vec();
+let mut rng = rand::rng();
+let offsets = (0..NUM_POINTS).map(|_| rng.random::<f32>()).collect_vec();
 
 let beads = lines
     .iter()
@@ -215,7 +215,7 @@ Once again, although we are getting fancier and fancier with our iterator mappin
 
 ### Introducing time
 
-Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../concepts/timelines.md).
+Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../concepts/logging-and-ingestion/timelines.md).
 
 Even so, if you look at your [Timeline View](../../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
 
@@ -337,11 +337,16 @@ Rerun has you covered:
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 
-⚠️ [RRD files are not yet stable across different versions!](https://github.com/rerun-io/rerun/issues/6410) ⚠️
+### RRD file backwards compatibility
+
+RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
+For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
+
+⚠️ At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
 
 ### Spawning the Viewer from your process
 
-If the Rerun Viewer is [installed](../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over gRPC.
+If the Rerun Viewer is [installed](../../overview/installing-rerun.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over gRPC.
 If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 ```rust
@@ -386,4 +391,4 @@ The Viewer will block the main thread until it is closed.
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main data types.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, browse the [Types](../../reference/types.md) section for more simple examples of how to use the main data types, or dig deeper into [querying your logged data](../data-out.md).

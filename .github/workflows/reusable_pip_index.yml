@@ -21,7 +21,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -54,7 +54,8 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install deps
-        run: pip3 install google-cloud-storage Jinja2
+        # TOOD(googleapis/python-api-core#848): unpin google-api-core when this is issue is fixed.
+        run: pip3 install google-cloud-storage==3.4.1 Jinja2==3.1.6 google-api-core==2.27.0
 
       - name: Render pip index and upload to gcloud
         run: |

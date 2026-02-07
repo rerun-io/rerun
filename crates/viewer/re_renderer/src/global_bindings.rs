@@ -1,13 +1,11 @@
-use crate::{
-    wgpu_buffer_types,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
-    },
-};
-
 use bytemuck::{Pod, Zeroable};
 use smallvec::smallvec;
+
+use crate::wgpu_buffer_types;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
+};
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 ///
@@ -37,10 +35,17 @@ pub struct FrameUniformBuffer {
 
     /// `(tan(fov_y / 2) * aspect_ratio, tan(fov_y /2))`, i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
-    pub tan_half_fov: wgpu_buffer_types::Vec2RowPadded,
+    pub tan_half_fov: glam::Vec2,
 
     /// `re_renderer` defined device tier.
-    pub device_tier: wgpu_buffer_types::U32RowPadded,
+    pub device_tier: u32,
+
+    /// boolean (0/1): set to true for snapshot tests to minimize
+    /// GPU/driver-specific stuff like alpha-to-coverage.
+    pub deterministic_rendering: u32,
+
+    /// Screen resolution in pixels.
+    pub framebuffer_resolution: wgpu_buffer_types::Vec2RowPadded,
 }
 
 /// Global bindings which are always available on bind group 0 for all [`crate::renderer::Renderer`].

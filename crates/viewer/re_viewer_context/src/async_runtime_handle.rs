@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub trait WasmNotSend: Send {}
 
@@ -28,6 +30,12 @@ pub struct AsyncRuntimeHandle {
     tokio: tokio::runtime::Handle,
 }
 
+impl Debug for AsyncRuntimeHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AsyncRuntimeHandle").finish()
+    }
+}
+
 impl AsyncRuntimeHandle {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new_native(tokio: tokio::runtime::Handle) -> Self {
@@ -37,6 +45,11 @@ impl AsyncRuntimeHandle {
     #[cfg(target_arch = "wasm32")]
     pub fn new_web() -> Self {
         Self {}
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn inner(&self) -> &tokio::runtime::Handle {
+        &self.tokio
     }
 
     /// Create an `AsyncRuntime` from the current tokio runtime on native.

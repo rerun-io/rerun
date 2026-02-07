@@ -1,7 +1,8 @@
-use egui::{NumExt as _, Ui};
+use egui::{NumExt as _, Ui, Widget};
 
-use crate::UiExt as _;
+use crate::egui_ext::boxed_widget::{BoxedWidgetLocal, BoxedWidgetLocalExt as _};
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
+use crate::{OnResponseExt as _, UiExt as _};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]
@@ -27,7 +28,7 @@ pub struct CustomContent<'a> {
     desired_width: CustomContentDesiredWidth,
 
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    button: Option<Box<dyn super::ItemButton + 'a>>,
+    button: Option<BoxedWidgetLocal<'a>>,
 }
 
 impl<'a> CustomContent<'a> {
@@ -59,23 +60,23 @@ impl<'a> CustomContent<'a> {
         self
     }
 
-    /// Add a right-aligned [`super::ItemButton`].
+    /// Add a right-aligned button.
     ///
     /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(#6191): accept multiple calls for this function for multiple actions.
+    // TODO(ab): accept multiple calls for this function for multiple actions.
     #[inline]
-    pub fn button(mut self, button: impl super::ItemButton + 'a) -> Self {
-        // TODO(#6191): support multiple action buttons
+    pub fn button(mut self, button: impl Widget + 'a) -> Self {
+        // TODO(ab): support multiple action buttons
         assert!(
             self.button.is_none(),
             "Only one action button is supported right now"
         );
 
-        self.button = Some(Box::new(button));
+        self.button = Some(button.boxed_local());
         self
     }
 
-    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add a button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -91,7 +92,7 @@ impl<'a> CustomContent<'a> {
         self.action_button_with_enabled(icon, alt_text, true, on_click)
     }
 
-    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add an enabled/disabled button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -105,10 +106,18 @@ impl<'a> CustomContent<'a> {
         enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
+        let alt_text = alt_text.into();
+        self.button(move |ui: &mut Ui| {
+            ui.add(
+                ui.small_icon_button_widget(icon, &alt_text)
+                    .on_click(on_click)
+                    .enabled(enabled)
+                    .on_hover_text(alt_text),
+            )
+        })
     }
 
-    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    /// Helper to add a menu button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -121,7 +130,14 @@ impl<'a> CustomContent<'a> {
         alt_text: impl Into<String>,
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
-        self.button(super::ItemMenuButton::new(icon, alt_text, add_contents))
+        let alt_text = alt_text.into();
+        self.button(|ui: &mut egui::Ui| {
+            ui.add(
+                ui.small_icon_button_widget(icon, &alt_text)
+                    .on_menu(add_contents)
+                    .on_hover_text(alt_text),
+            )
+        })
     }
 }
 
@@ -152,6 +168,11 @@ impl ListItemContent for CustomContent<'_> {
                 .max_rect(content_rect)
                 .layout(egui::Layout::left_to_right(egui::Align::Center)),
             |ui| {
+                // When selected we override the text color so e.g. syntax highlighted code
+                // doesn't become unreadable
+                if context.visuals.selected {
+                    ui.visuals_mut().override_text_color = Some(context.visuals.text_color());
+                }
                 content_ui(ui, context);
             },
         );

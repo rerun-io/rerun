@@ -1,17 +1,16 @@
 use re_log_types::EntityPath;
-use re_renderer::{PickingLayerInstanceId, renderer::PointCloudDrawDataError};
-use re_types::{
-    archetypes::GeoPoints,
-    components::{Color, Radius},
-};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::PointCloudDrawDataError;
+use re_sdk_types::archetypes::GeoPoints;
+use re_sdk_types::components::Radius;
 use re_view::{
-    AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
-    process_color_slice,
+    AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults,
+    process_annotation_slices, process_color_slice,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -35,7 +34,10 @@ impl IdentifiedViewSystem for GeoPointsVisualizer {
 }
 
 impl VisualizerSystem for GeoPointsVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<GeoPoints>()
     }
 
@@ -44,27 +46,38 @@ impl VisualizerSystem for GeoPointsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
         let latest_at_query = view_query.latest_at_query();
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            let results = data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query);
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let results =
+                data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
+            let results = VisualizerInstructionQueryResults {
+                instruction_id: instruction.id,
+                query_results: &results,
+                output: &mut output,
+            };
+
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 
             let mut batch_data = GeoPointBatch::default();
 
             // gather all relevant chunks
-            let timeline = view_query.timeline;
-            let all_positions = results.iter_as(timeline, GeoPoints::descriptor_positions());
-            let all_colors = results.iter_as(timeline, GeoPoints::descriptor_colors());
-            let all_radii = results.iter_as(timeline, GeoPoints::descriptor_radii());
-            let all_class_ids = results.iter_as(timeline, GeoPoints::descriptor_class_ids());
+            let all_positions = results.iter_required(GeoPoints::descriptor_positions().component);
+            let all_colors = results.iter_optional(GeoPoints::descriptor_colors().component);
+            let all_radii = results.iter_optional(GeoPoints::descriptor_radii().component);
+            let all_class_ids = results.iter_optional(GeoPoints::descriptor_class_ids().component);
 
             // fallback component values
-            let query_context = ctx.query_context(data_result, &latest_at_query);
-            let fallback_radius: Radius =
-                self.fallback_for(&ctx.query_context(data_result, &latest_at_query));
+            let query_context = ctx.query_context(data_result, &latest_at_query, instruction.id);
+            let fallback_radius: Radius = typed_fallback_for(
+                &ctx.query_context(data_result, &latest_at_query, instruction.id),
+                GeoPoints::descriptor_radii().component,
+            );
 
             // iterate over each chunk and find all relevant component slices
             for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
@@ -87,7 +100,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 // optional components
                 let colors = process_color_slice(
                     &query_context,
-                    self,
+                    GeoPoints::descriptor_colors().component,
                     num_instances,
                     &annotation_infos,
                     colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -120,15 +133,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 .push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(Vec::new())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
+        Ok(output)
     }
 }
 
@@ -193,22 +198,8 @@ impl GeoPointsVisualizer {
             point_batch.add_points_2d(&positions, &radii, &batch.colors, &batch.instance_id);
         }
 
-        view_builder.queue_draw(points.into_draw_data()?);
+        view_builder.queue_draw(render_ctx, points.into_draw_data()?);
 
         Ok(())
     }
 }
-
-impl TypedComponentFallbackProvider<Color> for GeoPointsVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<Radius> for GeoPointsVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius::new_ui_points(5.0)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(GeoPointsVisualizer => [Color, Radius]);

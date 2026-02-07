@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
+from ._baseclasses import AsComponents  # noqa: TC001
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
-from .recording_stream import RecordingStream
+
+if TYPE_CHECKING:
+    import pyarrow as pa
+
+    from ._baseclasses import ComponentDescriptor, DescribedComponentBatch
+    from .recording_stream import RecordingStream
 
 
 @catch_and_log_exceptions()
@@ -19,7 +23,7 @@ def log(
     *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
     recording: RecordingStream | None = None,
-    strict: bool | None = None,
+    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
 ) -> None:
     r"""
     Log data to Rerun.
@@ -186,7 +190,7 @@ def _log_components(
 
     added = set()
 
-    for descr, array in zip(descriptors, arrow_arrays):
+    for descr, array in zip(descriptors, arrow_arrays, strict=False):
         # Array could be None if there was an error producing the empty array
         # Nothing we can do at this point other than ignore it. Some form of error
         # should have been logged.

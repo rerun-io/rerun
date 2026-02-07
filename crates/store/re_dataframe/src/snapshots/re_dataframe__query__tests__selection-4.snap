@@ -1,15 +1,15 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
-snapshot_kind: text
 ---
 ┌────────────────┬────────────────┬────────────────┬────────────────┬────────────────┬────────────────┬────────────────┬────────────────┬────────────────┬────────────────┬────────────────┐
 │ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ /this/that:exa │
 │ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ mple.MyPoints: │
-│ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ labels         │
-│ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ ---            │
-│ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ type:          │
-│ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ List[Utf8]     │
+│ type: nullable ┆ type: nullable ┆ type: nullable ┆ type: nullable ┆ type: nullable ┆ type: nullable ┆ type: nullable ┆ type: nullable ┆ type: nullable ┆ type: nullable ┆ labels         │
+│ i64            ┆ i64            ┆ i64            ┆ i64            ┆ i64            ┆ i64            ┆ i64            ┆ i64            ┆ i64            ┆ i64            ┆ ---            │
+│ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ type: nullable │
+│ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ List[nullable  │
+│ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ Utf8]          │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ archetype: exa │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ mple.MyPoints  │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ component: exa │

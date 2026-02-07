@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -36,7 +36,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -44,13 +44,14 @@ permissions:
 jobs:
   py-lints:
     name: Python lints (ruff, mypy, …)
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -58,24 +59,27 @@ jobs:
       - name: Lint Python
         run: pixi run py-lint
 
+      - name: Notebook strip check
+        run: pixi run nb-strip-check
+
   py-test-docs:
     name: Test Python Docs
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
-          environments: py-docs
+          pixi-version: v0.55.0
 
       - name: Build via mkdocs
-        shell: bash
         run: |
-          pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
+          pixi run uv run --group docs mkdocs build --strict -f rerun_py/mkdocs.yml
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes
+    timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     steps:
@@ -84,9 +88,9 @@ jobs:
       # PR introduces a new type and another PR changes the codegen.
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Codegen check
         run: pixi run codegen --force --check --warnings-as-errors
@@ -96,6 +100,7 @@ jobs:
 
   rs-lints:
     name: Rust lints (fmt, check, clippy, tests, doc)
+    timeout-minutes: 60
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     steps:
@@ -103,9 +108,9 @@ jobs:
         with:
           lfs: true
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
@@ -138,13 +143,14 @@ jobs:
 
   rerun-lints:
     name: Rerun lints
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -156,55 +162,60 @@ jobs:
 
   toml-format-check:
     name: Toml format check
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Toml format check
         run: pixi run toml-fmt-check
 
   check-too-large-files:
     name: Check for too large files
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Check for too large files
         run: pixi run check-large-files
 
   check-example-thumbnails:
-    name: Check Python example thumbnails
+    name: Check example thumbnails
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
-      - name: Check Python example thumbnails
-        run: pixi run ./scripts/ci/thumbnails.py check
+      - name: Check example thumbnails
+        run: pixi run uvpy ./scripts/ci/thumbnails.py check
 
   spell-check:
     name: Spell Check
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v4
 
       - name: Check spelling of entire workspace
-        uses: crate-ci/typos@v1.18.0
+        uses: crate-ci/typos@v1.37.3
 
   cpp-formatting:
     name: C++ formatting check
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -218,13 +229,14 @@ jobs:
 
   cpp-tests:
     name: C++ tests
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
           environments: cpp
 
       # TODO(emilk): make this work somehow. Right now this just results in

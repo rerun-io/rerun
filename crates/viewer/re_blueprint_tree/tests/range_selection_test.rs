@@ -1,15 +1,15 @@
 #![cfg(feature = "testing")]
 
-use egui::{Modifiers, Vec2};
-use egui_kittest::{OsThreshold, SnapshotOptions, kittest::Queryable as _};
+use egui::Modifiers;
+use egui_kittest::kittest::Queryable as _;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{Timeline, build_frame_nr};
+use re_log_types::build_frame_nr;
+use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::Points3D;
-use re_viewer_context::{Contents, ViewClass as _, VisitorControlFlow};
+use re_viewer_context::{Contents, TimeControlCommand, ViewClass as _, VisitorControlFlow};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
@@ -29,11 +29,13 @@ fn test_range_selection_in_blueprint_tree() {
     let mut blueprint_tree = BlueprintTree::default();
 
     // set the current timeline to the timeline where data was logged to
-    test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(400.0, 500.0))
+        .setup_kittest_for_rendering_ui([400.0, 500.0])
         .build(|ctx| {
             // We must create a side panel here (instead of the default central panel, as
             // `list_item::LabelContent`'s sizing behave differently there.
@@ -62,10 +64,15 @@ fn test_range_selection_in_blueprint_tree() {
                             true,
                         );
 
-                        blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                        blueprint_tree.show(
+                            viewer_ctx,
+                            &blueprint,
+                            ui,
+                            &test_context.view_states.lock(),
+                        );
                     });
 
-                    test_context.handle_system_commands();
+                    test_context.handle_system_commands(ui.ctx());
                 });
         });
 
@@ -88,14 +95,7 @@ fn test_range_selection_in_blueprint_tree() {
 
     harness.run();
 
-    harness.snapshot_options(
-        "range_selection_in_blueprint_tree",
-        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
-        // (Software Rasterizer on CI seems fine with the default).
-        &SnapshotOptions::new()
-            .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
-            .failed_pixel_count_threshold(OsThreshold::new(0).windows(10)),
-    );
+    harness.snapshot("range_selection_in_blueprint_tree");
 }
 
 fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {

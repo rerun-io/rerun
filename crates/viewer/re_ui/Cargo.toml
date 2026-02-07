@@ -32,22 +32,20 @@ default = []
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
-## UI for arrow data
-arrow = ["dep:arrow"]
-
+## Enable helpers for testing
+testing = ["dep:egui_kittest", "re_analytics/testing"]
 
 [dependencies]
 re_analytics = { workspace = true, optional = true }
-re_arrow_util.workspace = true
-re_entity_db.workspace = true                        # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
+re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_format.workspace = true
 re_log.workspace = true
-re_log_types.workspace = true                        # syntax-highlighting for EntityPath
+re_log_types.workspace = true # syntax-highlighting for EntityPath
+re_mutex.workspace = true
 re_tracing.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
-arrow = { workspace = true, optional = true }
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
@@ -56,6 +54,7 @@ egui.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
 jiff.workspace = true
+num-traits.workspace = true
 parking_lot.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -64,15 +63,25 @@ strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
 url.workspace = true
+web-time.workspace = true
+
+
+egui_kittest = { workspace = true, optional = true }
 
 # Native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify.workspace = true # Only used with the `hot_reload_design_tokens` feature
 
+# Mac-specific
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit.workspace = true
+raw-window-handle.workspace = true
+
+
 [dev-dependencies]
+crossbeam.workspace = true
 egui_kittest.workspace = true
-rand = { workspace = true, features = ["std"] }
-re_types.workspace = true
+rand = { workspace = true, features = ["std", "thread_rng"] }
 
 
 [build-dependencies]

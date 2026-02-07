@@ -11,17 +11,17 @@
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
-use smallvec::SmallVec;
-
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
     ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint};
+use smallvec::SmallVec;
 
 use crate::data_result_node_or_path::DataResultNodeOrPath;
 
@@ -261,6 +261,7 @@ impl ViewData {
         let projection_trees = projections
             .into_iter()
             .filter_map(|node| {
+                re_tracing::profile_scope!("from_data_result_and_filter");
                 let projection_tree = DataResultData::from_data_result_and_filter(
                     view_blueprint,
                     query_result,
@@ -346,6 +347,10 @@ pub struct DataResultData {
     pub entity_path: EntityPath,
     pub visible: bool,
 
+    // Exclude the id from serialization for snapshot tests. We could also do the redaction later, but `VisualizerInstructionId` doesn't implement `serde::Serialize` to begin with.
+    #[cfg_attr(feature = "testing", serde(skip))]
+    pub visualizer_instruction_ids: Vec<VisualizerInstructionId>,
+
     #[cfg_attr(feature = "testing", serde(skip))]
     pub view_id: ViewId,
 
@@ -359,7 +364,7 @@ pub struct DataResultData {
     pub highlight_sections: SmallVec<[Range<usize>; 1]>,
 
     pub default_open: bool,
-    pub children: Vec<DataResultData>,
+    pub children: Vec<Self>,
 }
 
 impl DataResultData {
@@ -372,7 +377,7 @@ impl DataResultData {
         hierarchy_highlights: &mut PathRanges,
         filter_matcher: &FilterMatcher,
     ) -> Option<Self> {
-        re_tracing::profile_function!();
+        // No profile scope on this recursive function
 
         let entity_path = data_result_or_path.path().clone();
         let data_result_node = data_result_or_path.data_result_node();
@@ -528,10 +533,21 @@ impl DataResultData {
                             .unwrap_or_default()
                     };
 
+                let visualizer_instruction_ids = data_result_node
+                    .map(|node| {
+                        node.data_result
+                            .visualizer_instructions
+                            .iter()
+                            .map(|instr| instr.id)
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
                 Self {
                     kind: node_info.kind,
                     entity_path,
                     visible,
+                    visualizer_instruction_ids,
                     view_id: view_blueprint.id,
                     label,
                     highlight_sections,
@@ -574,7 +590,7 @@ impl DataResultData {
     pub fn update_visibility(&self, ctx: &ViewerContext<'_>, visible: bool) {
         let query_result = ctx.lookup_query_result(self.view_id);
         let result_tree = &query_result.tree;
-        if let Some(data_result) = result_tree.lookup_result_by_path(&self.entity_path) {
+        if let Some(data_result) = result_tree.lookup_result_by_path(self.entity_path.hash()) {
             data_result.save_visible(ctx, &query_result.tree, visible);
         }
     }

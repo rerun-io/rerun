@@ -13,6 +13,7 @@
             "--proto_path=crates/store/re_protos/proto",
         ]
     },
+    "rust-analyzer.check.command": "clippy",
     // Whether `--workspace` should be passed to `cargo check`. If false, `-p <package>` will be passed instead.
     "rust-analyzer.check.workspace": false,
     "rust-analyzer.cargo.allTargets": true,
@@ -30,6 +31,7 @@
         "IS_IN_RERUN_WORKSPACE": "yes"
     },
     "rust-analyzer.diagnostics.enable": false, // False positives
+    "rust-analyzer.imports.granularity.group": "module", // Matches our .rustfmt.toml and CODE_STYLE.md
     "rust-analyzer.showUnlinkedFileNotification": false,
     // Uncomment the following options and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
     // Don't forget to put it in a comment again before committing.

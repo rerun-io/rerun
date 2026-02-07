@@ -4,9 +4,10 @@ tags = ["2D", "SAM", "Segmentation"]
 thumbnail = "https://static.rerun.io/segment-anything-model/36438df27a287e5eff3a673e2464af071e665fdf/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
+include_in_manifest = true
 -->
 
-Example of using Rerun to log and visualize the output of [Meta AI's Segment Anything model](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Meta AI's Segment Anything model](https://github.com/facebookresearch/segment-anything).
 
 <picture data-inline-viewer="examples/segment_anything_model">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/480w.png">
@@ -20,7 +21,7 @@ Example of using Rerun to log and visualize the output of [Meta AI's Segment Any
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d)
 
 ## Background
-This example showcases the visualization capabilities of [Meta AI's Segment Anything model](https://segment-anything.com/).
+This example showcases the visualization capabilities of [Meta AI's Segment Anything model](https://github.com/facebookresearch/segment-anything).
 The visualization provided in this example demonstrates the precise and accurate segmentation capabilities of the model, effectively distinguishing each object from the background and creating a transparent mask around them.
 
 ## Logging and visualizing with Rerun

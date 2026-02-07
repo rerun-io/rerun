@@ -38,8 +38,9 @@ impl DesignTokensPerTheme {
 
 #[cfg(not(hot_reload_design_tokens))]
 mod design_token_access {
-    use super::DesignTokensPerTheme;
     use std::sync::OnceLock;
+
+    use super::DesignTokensPerTheme;
 
     pub fn design_tokens_per_theme() -> &'static DesignTokensPerTheme {
         static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
@@ -50,10 +51,11 @@ mod design_token_access {
 
 #[cfg(hot_reload_design_tokens)]
 mod design_token_access {
-    use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
-    use parking_lot::{Mutex, RwLock};
     use std::sync::{OnceLock, mpsc};
     use std::thread;
+
+    use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
+    use parking_lot::{Mutex, RwLock};
 
     use super::DesignTokensPerTheme;
 
@@ -63,7 +65,7 @@ mod design_token_access {
         let design_tokens = match DesignTokensPerTheme::load() {
             Ok(design_tokens) => design_tokens,
             Err(err) => {
-                re_log::error!("Failed to reload design tokens: {err}");
+                re_log::error!("Failed to reload design tokens: {err:#}");
                 return;
             }
         };
@@ -101,6 +103,7 @@ mod design_token_access {
             thread::Builder::new()
                 .name("re_ui design token hot reloader".to_owned())
                 .spawn(|| {
+                    #[expect(clippy::disallowed_methods)] // Only used in dev builds
                     let (tx, rx) = mpsc::channel();
 
                     let mut watcher: RecommendedWatcher = match Watcher::new(

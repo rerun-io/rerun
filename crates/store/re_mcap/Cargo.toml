@@ -1,0 +1,41 @@
+[package]
+name = "re_mcap"
+description = "Convert MCAP into Rerun-compatible data"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+re_chunk.workspace = true
+re_log_types.workspace = true
+re_log.workspace = true
+re_ros_msg.workspace = true
+re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_tracing.workspace = true
+
+ahash.workspace = true
+anyhow.workspace = true
+arrow.workspace = true
+byteorder.workspace = true
+cdr-encoding.workspace = true
+mcap.workspace = true
+prost-reflect.workspace = true
+saturating_cast.workspace = true
+serde.workspace = true
+serde_bytes.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+crossbeam.workspace = true
+insta = { workspace = true, features = ["filters", "redactions"] }
+prost-reflect = { workspace = true, features = ["text-format"] }
+re_log = { workspace = true, features = ["setup"] }

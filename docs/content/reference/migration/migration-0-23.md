@@ -160,7 +160,7 @@ rec.spawn()
 
 These functions were [deprecated](migration-0-22.md#python-api-changes) in 0.22 and are no longer available.
 
-Calls to `rr.log_components()` API are now superseded by the new partial update API. See the [documentation](../../concepts/latest-at.md#partial-updates) and the [migration instructions](migration-0-22.md#partial-updates).
+Calls to `rr.log_components()` API are now superseded by the new partial update API. See the [documentation](../../concepts/logging-and-ingestion/latest-at.md#partial-updates) and the [migration instructions](migration-0-22.md#partial-updates).
 
 Calls to `rr.connect()` and `rr.connect_tcp()` must be changed to [`rr.connect_grpc()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.connect_grpc).
 
@@ -191,7 +191,7 @@ Just like with `send_columns` in the previous release, blueprint overrides and d
 Setting default & override for radius
 
 Before:
-```py
+```python
 rrb.Spatial2DView(
     name="Rect 1",
     origin="/",
@@ -201,7 +201,7 @@ rrb.Spatial2DView(
 )
 ```
 After:
-```py
+```python
 rrb.Spatial2DView(
     name="Rect 1",
     origin="/",
@@ -214,7 +214,7 @@ rrb.Spatial2DView(
 Setting up styles for a plot.
 
 Before:
-```py
+```python
 # …
 rrb.TimeSeriesView(
     name="Trig",
@@ -235,7 +235,7 @@ rrb.TimeSeriesView(
 # …
 ```
 After:
-```py
+```python
 # …
 rrb.TimeSeriesView(
     name="Trig",
@@ -271,7 +271,7 @@ Also, Viewer interaction [was hampered](https://github.com/rerun-io/rerun/issues
 Overrides for these two properties are now always recursive, and can be applied using the new `EntityBehavior` archetype.
 
 Before:
-```py
+```python
 rr.send_blueprint(
     rrb.Spatial2DView(
         overrides={"points": [rrb.components.Visible(False)]}
@@ -290,7 +290,7 @@ rr.send_blueprint(
 ```
 
 After:
-```py
+```python
 rr.send_blueprint(
     rrb.Spatial2DView(
         overrides={
@@ -307,7 +307,7 @@ rr.send_blueprint(
 (Note that this functionality broken in at least Rerun 0.21 and 0.22 but is fixed now. See [#8557](https://github.com/rerun-io/rerun/issues/8557))
 
 Before:
-```py
+```python
 # …
 overrides={
     "helix/structure/scaffolding/beads": [
@@ -322,7 +322,7 @@ overrides={
 ```
 
 After:
-```py
+```python
 # …
 overrides={
     "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges(
@@ -334,7 +334,7 @@ overrides={
 # …
 ```
 … or respectively for multiple timelines:
-```py
+```python
 # …
 overrides={
     "helix/structure/scaffolding/beads": rrb.VisibleTimeRanges([
@@ -361,7 +361,7 @@ scatter plots or lines on the same archetype.
 
 
 Before:
-```py
+```python
 rr.log("trig/sin", rr.SeriesLines(color=[s0, 255, 0], name="cos(0.01t)", width=4), static=True)
 
 for t in range(int(tau * 2 * 100.0)):
@@ -370,7 +370,7 @@ for t in range(int(tau * 2 * 100.0)):
 ```
 
 After:
-```py
+```python
 rr.log("trig/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2), static=True)
 
 for t in range(int(tau * 2 * 100.0)):

@@ -1,18 +1,18 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
-snapshot_kind: text
 ---
 ┌──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
 │ /this/that:example.MyPoints: ┆ /this/that:example.MyPoints: ┆ /non_existing_entity:example ┆ /this/that:MyPoints:AFieldTh ┆ /this/that:AFieldThatDoesntE ┆ /this/that:AArchetypeNameTha │
 │ points                       ┆ points                       ┆ .MyPoints:points             ┆ atDoesntExist                ┆ xist                         ┆ tDoesNotExist:positions      │
 │ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          ┆ ---                          │
-│ type: List[Struct[2]]        ┆ type: List[Struct[2]]        ┆ type: null                   ┆ type: null                   ┆ type: null                   ┆ type: null                   │
-│ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ component:                   ┆ component: MyPoints:AFieldTh ┆ component:                   ┆ component: AArchetypeNameTha │
-│ component:                   ┆ component:                   ┆ example.MyPoints:points      ┆ atDoesntExist                ┆ AFieldThatDoesntExist        ┆ tDoesNotExist:positions      │
-│ example.MyPoints:points      ┆ example.MyPoints:points      ┆ entity_path:                 ┆ entity_path: /this/that      ┆ entity_path: /this/that      ┆ entity_path: /this/that      │
-│ component_type:              ┆ component_type:              ┆ /non_existing_entity         ┆ kind: data                   ┆ kind: data                   ┆ kind: data                   │
-│ example.MyPoint              ┆ example.MyPoint              ┆ kind: data                   ┆                              ┆                              ┆                              │
+│ type: nullable List[nullable ┆ type: nullable List[nullable ┆ type: nullable null          ┆ type: nullable null          ┆ type: nullable null          ┆ type: nullable null          │
+│ Struct[2]]                   ┆ Struct[2]]                   ┆ component:                   ┆ component: MyPoints:AFieldTh ┆ component:                   ┆ component: AArchetypeNameTha │
+│ archetype: example.MyPoints  ┆ archetype: example.MyPoints  ┆ example.MyPoints:points      ┆ atDoesntExist                ┆ AFieldThatDoesntExist        ┆ tDoesNotExist:positions      │
+│ component:                   ┆ component:                   ┆ entity_path:                 ┆ entity_path: /this/that      ┆ entity_path: /this/that      ┆ entity_path: /this/that      │
+│ example.MyPoints:points      ┆ example.MyPoints:points      ┆ /non_existing_entity         ┆ kind: data                   ┆ kind: data                   ┆ kind: data                   │
+│ component_type:              ┆ component_type:              ┆ kind: data                   ┆                              ┆                              ┆                              │
+│ example.MyPoint              ┆ example.MyPoint              ┆                              ┆                              ┆                              ┆                              │
 │ entity_path: /this/that      ┆ entity_path: /this/that      ┆                              ┆                              ┆                              ┆                              │
 │ kind: data                   ┆ kind: data                   ┆                              ┆                              ┆                              ┆                              │
 ╞══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╪══════════════════════════════╡

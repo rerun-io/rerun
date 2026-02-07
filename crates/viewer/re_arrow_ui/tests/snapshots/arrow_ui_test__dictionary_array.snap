@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+["device_type_light_sensor", "device_type_accelerometer", "device_type_accelerometer"]

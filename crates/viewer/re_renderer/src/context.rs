@@ -1,21 +1,18 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
-use type_map::concurrent::{self, TypeMap};
+use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+use re_mutex::Mutex;
+use type_map::concurrent::TypeMap;
 
-use crate::{
-    FileServer, RecommendedFileResolver,
-    allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    device_caps::DeviceCaps,
-    error_handling::{ErrorTracker, WgpuErrorScope},
-    global_bindings::GlobalBindings,
-    renderer::Renderer,
-    resource_managers::TextureManager2D,
-    wgpu_resources::WgpuResourcePools,
-};
+use crate::allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt};
+use crate::device_caps::DeviceCaps;
+use crate::error_handling::{ErrorTracker, WgpuErrorScope};
+use crate::global_bindings::GlobalBindings;
+use crate::renderer::{Renderer, RendererExt};
+use crate::resource_managers::TextureManager2D;
+use crate::wgpu_resources::WgpuResourcePools;
+use crate::{FileServer, RecommendedFileResolver};
 
 /// Frame idx used before starting the first frame.
 const STARTUP_FRAME_IDX: u64 = u64::MAX;
@@ -85,7 +82,8 @@ impl RenderConfig {
     /// to keep image comparison thresholds low.
     pub fn testing() -> Self {
         Self {
-            msaa_mode: MsaaMode::Off,
+            // we use "testing" also for generating nice looking screenshots
+            msaa_mode: MsaaMode::Msaa4x,
         }
     }
 }
@@ -136,23 +134,92 @@ pub struct RenderContext {
 
 /// Struct owning *all* [`Renderer`].
 /// [`Renderer`] are created lazily and stay around indefinitely.
-pub(crate) struct Renderers {
-    renderers: concurrent::TypeMap,
+#[derive(Default)]
+pub struct Renderers {
+    renderers: TypeMap,
+    renderers_by_key: Vec<Arc<dyn RendererExt>>,
+}
+
+/// Unique identifier for a [`Renderer`] type.
+///
+/// We generally don't expect many different distinct types of renderers,
+/// therefore 255 should be more than enough.
+/// This limitation simplifies sorting of drawables a bit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RendererTypeId(u8);
+
+impl RendererTypeId {
+    #[inline]
+    pub const fn bits(&self) -> u8 {
+        self.0
+    }
+
+    #[inline]
+    pub const fn from_bits(bits: u8) -> Self {
+        Self(bits)
+    }
+}
+
+pub struct RendererWithKey<T: Renderer> {
+    renderer: Arc<T>,
+    key: RendererTypeId,
+}
+
+impl<T: Renderer> std::ops::Deref for RendererWithKey<T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.renderer.as_ref()
+    }
+}
+
+impl<T: Renderer> RendererWithKey<T> {
+    /// Returns the key of the renderer.
+    ///
+    /// The key is guaranteed to be unique and constant for the lifetime of the renderer.
+    /// It is kept as small as possible to aid with sorting drawables.
+    #[inline]
+    pub fn key(&self) -> RendererTypeId {
+        self.key
+    }
 }
 
 impl Renderers {
     pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
         &mut self,
         ctx: &RenderContext,
-    ) -> &R {
+    ) -> &RendererWithKey<R> {
         self.renderers.entry().or_insert_with(|| {
             re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
-            R::create_renderer(ctx)
+
+            let key = RendererTypeId(u8::try_from(self.renderers_by_key.len()).unwrap_or_else(
+                |_| {
+                    re_log::error!("Supporting at most {} distinct renderer types.", u8::MAX);
+                    u8::MAX
+                },
+            ));
+
+            let renderer = Arc::new(R::create_renderer(ctx));
+            self.renderers_by_key.push(renderer.clone());
+
+            RendererWithKey { renderer, key }
         })
     }
 
-    pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {
-        self.renderers.get::<R>()
+    pub fn get<R: 'static + Renderer>(&self) -> Option<&RendererWithKey<R>> {
+        self.renderers.get::<RendererWithKey<R>>()
+    }
+
+    /// Gets a renderer by its key.
+    ///
+    /// For this to succeed, the renderer must have been initialized prior.
+    /// (there would be no key otherwise anyways!)
+    /// The returned type is the type erased [`RendererExt`] rather than a concrete renderer type.
+    pub(crate) fn get_by_key(&self, key: RendererTypeId) -> Option<&dyn RendererExt> {
+        self.renderers_by_key
+            .get(key.0 as usize)
+            .map(|r| r.as_ref())
     }
 }
 
@@ -221,7 +288,7 @@ impl RenderContext {
             device.on_uncaptured_error({
                 let err_tracker = Arc::clone(&err_tracker);
                 let frame_index_for_uncaptured_errors = frame_index_for_uncaptured_errors.clone();
-                Box::new(move |err| {
+                Arc::new(move |err| {
                     err_tracker.handle_error(
                         err,
                         frame_index_for_uncaptured_errors.load(Ordering::Acquire),
@@ -276,9 +343,7 @@ impl RenderContext {
             config,
             output_format_color,
             global_bindings,
-            renderers: RwLock::new(Renderers {
-                renderers: TypeMap::new(),
-            }),
+            renderers: RwLock::new(Renderers::default()),
             resolver,
             top_level_error_tracker,
             texture_manager_2d,
@@ -310,9 +375,10 @@ impl RenderContext {
             // * On WebGPU poll is a no-op and we don't get here.
             // * On WebGL we'll just immediately timeout since we can't actually wait for frames.
             if !cfg!(target_arch = "wasm32")
-                && let Err(err) = self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
-                    newest_submission_to_wait_for,
-                ))
+                && let Err(err) = self.device.poll(wgpu::PollType::Wait {
+                    submission_index: Some(newest_submission_to_wait_for),
+                    timeout: None,
+                })
             {
                 re_log::warn_once!(
                     "Failed to limit number of in-flight GPU frames to {}: {:?}",
@@ -345,10 +411,12 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             self.before_submit();
         }
 
-        // Request write used staging buffer back.
-        // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
+        // Request write-staging buffers back.
+        // Ideally we'd do this as closely as possible to the last submission containing any cpu->gpu operations as possible.
         self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
-        // Map all read staging buffers.
+
+        // Schedule mapping for all read staging buffers.
+        // Ideally we'd do this as closely as possible to the last submission containing any gpu->cpu operations as possible.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
         // Close previous' frame error scope.
@@ -434,7 +502,8 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     pub fn before_submit(&mut self) {
         re_tracing::profile_function!();
 
-        // Unmap all write staging buffers.
+        // Unmap all write staging buffers, so we don't get validation errors about buffers still being mapped
+        // that the gpu wants to read from.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
         if let Some(command_encoder) = self
@@ -455,7 +524,9 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     }
 
     /// Gets a renderer with the specified type, initializing it if necessary.
-    pub fn renderer<R: 'static + Renderer + Send + Sync>(&self) -> MappedRwLockReadGuard<'_, R> {
+    pub fn renderer<R: 'static + Renderer + Send + Sync>(
+        &self,
+    ) -> MappedRwLockReadGuard<'_, RendererWithKey<R>> {
         // Most likely we already have the renderer. Take a read lock and return it.
         if let Ok(renderer) =
             parking_lot::RwLockReadGuard::try_map(self.renderers.read(), |r| r.get::<R>())

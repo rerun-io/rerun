@@ -4,8 +4,8 @@ use crate::{CError, CErrorCode};
 
 // ---
 
-#[allow(unsafe_code)]
-#[allow(clippy::result_large_err)]
+#[expect(unsafe_code)]
+#[expect(clippy::result_large_err)]
 pub fn try_ptr_as_ref<T>(ptr: *const T, argument_name: &str) -> Result<&T, CError> {
     let ptr = unsafe { ptr.as_ref() };
     if let Some(ptr) = ptr {
@@ -15,8 +15,8 @@ pub fn try_ptr_as_ref<T>(ptr: *const T, argument_name: &str) -> Result<&T, CErro
     }
 }
 
-#[allow(unsafe_code)]
-#[allow(clippy::result_large_err)]
+#[expect(unsafe_code)]
+#[expect(clippy::result_large_err)]
 pub fn try_ptr_as_slice<T>(
     ptr: *const T,
     length: u32,
@@ -27,8 +27,8 @@ pub fn try_ptr_as_slice<T>(
 }
 
 /// Tries to convert a [`c_char`] pointer to a string, raises an error if the pointer is null or it can't be converted to a string.
-#[allow(unsafe_code)]
-#[allow(clippy::result_large_err)]
+#[expect(unsafe_code)]
+#[expect(clippy::result_large_err)]
 pub fn try_char_ptr_as_str(
     ptr: *const c_char,
     string_length_in_bytes: u32,

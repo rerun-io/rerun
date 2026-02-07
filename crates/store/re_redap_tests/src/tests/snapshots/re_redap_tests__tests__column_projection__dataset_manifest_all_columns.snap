@@ -1,0 +1,18 @@
+---
+source: crates/store/re_redap_tests/src/tests/column_projection.rs
+expression: "&all_columns"
+---
+[
+    "rerun_layer_name",
+    "rerun_segment_id",
+    "rerun_storage_url",
+    "rerun_layer_type",
+    "rerun_registration_time",
+    "rerun_last_updated_at",
+    "rerun_num_chunks",
+    "rerun_size_bytes",
+    "rerun_schema_sha256",
+    "rerun_registration_status",
+    "property:points:Points2D:positions",
+    "property:text_log:TextLog:text",
+]

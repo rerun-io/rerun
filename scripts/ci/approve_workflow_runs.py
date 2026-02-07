@@ -12,10 +12,14 @@ This is expected to be run by the `auto_approve.yml` GitHub workflow.
 from __future__ import annotations
 
 import argparse
+from typing import TYPE_CHECKING
 
 import requests
 from github import Github
-from github.WorkflowRun import WorkflowRun
+from github.NamedUser import NamedUser
+
+if TYPE_CHECKING:
+    from github.WorkflowRun import WorkflowRun
 
 APPROVAL = "@rerun-bot approve"
 
@@ -47,16 +51,17 @@ def main() -> None:
         if APPROVAL not in comment.body:
             continue
 
+        user = comment.user
+        assert isinstance(user, NamedUser), f"Expected NamedUser, got {type(user)}"
+
         can_user_approve_workflows = (
-            repo.owner.login == comment.user.login
-            or repo.organization.has_in_members(comment.user)
-            or repo.has_in_collaborators(comment.user)
+            repo.owner.login == user.login or repo.organization.has_in_members(user) or repo.has_in_collaborators(user)
         )
         if not can_user_approve_workflows:
             continue
 
         print(f"found valid approval by {comment.user.login}")
-        for workflow_run in repo.get_workflow_runs(branch=repo.get_branch(pr.head.ref)):
+        for workflow_run in repo.get_workflow_runs(head_sha=pr.head.sha):
             if workflow_run.status == "action_required" or workflow_run.conclusion == "action_required":
                 approve(args.github_token, workflow_run)
 

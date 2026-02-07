@@ -9,10 +9,14 @@ mod storage_engine;
 pub mod clamped_zip;
 pub mod range_zip;
 
+use re_chunk::ComponentIdentifier;
+
 pub use self::cache::{QueryCache, QueryCacheHandle, QueryCacheKey};
 pub use self::cache_stats::{QueryCacheStats, QueryCachesStats};
 pub use self::clamped_zip::*;
+pub(crate) use self::latest_at::LatestAtCache;
 pub use self::latest_at::LatestAtResults;
+pub(crate) use self::range::RangeCache;
 pub use self::range::RangeResults;
 pub use self::range_zip::*;
 pub use self::storage_engine::{
@@ -20,12 +24,8 @@ pub use self::storage_engine::{
     StorageEngineWriteGuard,
 };
 
-pub(crate) use self::latest_at::LatestAtCache;
-pub(crate) use self::range::RangeCache;
-
 pub mod external {
-    pub use paste;
-    pub use seq_macro;
+    pub use {paste, seq_macro};
 }
 
 // ---
@@ -47,7 +47,7 @@ pub enum QueryError {
     BadAccess,
 
     #[error("Could not find primary component: {0}")]
-    PrimaryNotFound(re_types_core::ComponentDescriptor),
+    PrimaryNotFound(ComponentIdentifier),
 
     #[error(transparent)]
     ComponentNotFound(#[from] ComponentNotFoundError),
@@ -70,5 +70,10 @@ pub enum QueryError {
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
 }
+
+const _: () = assert!(
+    std::mem::size_of::<QueryError>() <= 80,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 pub type Result<T> = std::result::Result<T, QueryError>;

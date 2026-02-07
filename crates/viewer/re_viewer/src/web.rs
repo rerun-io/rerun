@@ -1,32 +1,29 @@
 //! Main entry-point of the web app.
 
-#![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
+#![allow(clippy::allow_attributes, clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use std::rc::Rc;
 use std::str::FromStr as _;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
+use re_log::ResultExt as _;
+use re_log_channel::LogSender;
+use re_log_types::{TableId, TableMsg};
+use re_memory::AccountingAllocator;
+use re_sdk_types::blueprint::components::PlayState;
+use re_viewer_context::{
+    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
+};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
-use re_log::ResultExt as _;
-use re_log_types::{TableId, TableMsg};
-use re_memory::AccountingAllocator;
-use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
-
-use crate::app_state::recording_config_entry;
-use crate::history::install_popstate_listener;
-use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray, url_to_receiver};
+use crate::web_history::install_popstate_listener;
+use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
-
-struct Channel {
-    log_tx: re_smart_channel::Sender<re_log_types::LogMsg>,
-    table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
-}
 
 #[wasm_bindgen]
 pub struct WebHandle {
@@ -36,28 +33,33 @@ pub struct WebHandle {
     ///
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
-    tx_channels: HashMap<String, Channel>,
+    log_senders: HashMap<String, LogSender>,
 
     /// The connection registry to use for the viewer.
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
 
     app_options: AppOptions,
 }
 
 #[wasm_bindgen]
 impl WebHandle {
-    #[allow(clippy::new_without_default, clippy::use_self)] // Can't use `Self` here because of `#[wasm_bindgen]`.
+    #[allow(
+        clippy::allow_attributes,
+        clippy::new_without_default,
+        clippy::use_self
+    )] // Can't use `Self` here because of `#[wasm_bindgen]`.
     #[wasm_bindgen(constructor)]
     pub fn new(app_options: JsValue) -> Result<WebHandle, JsValue> {
         re_log::setup_logging();
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+        let connection_registry =
+            re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
-            tx_channels: Default::default(),
+            log_senders: Default::default(),
             connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
@@ -197,20 +199,26 @@ impl WebHandle {
     /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
     pub fn add_receiver(&self, url: &str, follow_if_http: Option<bool>) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let follow_if_http = follow_if_http.unwrap_or(false);
-        if let Some(rx) = url_to_receiver(
-            &self.connection_registry,
-            app.egui_ctx.clone(),
-            follow_if_http,
-            url.to_owned(),
-            app.command_sender.clone(),
-        ) {
-            app.add_log_receiver(rx);
-            app.egui_ctx
-                .request_repaint_after(std::time::Duration::from_millis(10));
+
+        match url.parse::<open_url::ViewerOpenUrl>() {
+            Ok(url) => {
+                url.open(
+                    &app.egui_ctx,
+                    &open_url::OpenUrlOptions {
+                        // TODO(andreas): should follow_if_http be part of the fragments?
+                        follow_if_http: follow_if_http.unwrap_or(false),
+                        select_redap_source_when_loaded: true,
+                        show_loader: false,
+                    },
+                    &app.command_sender,
+                );
+            }
+            Err(err) => {
+                re_log::warn!("Failed to open URL {url:?}: {err}");
+            }
         }
     }
 
@@ -237,23 +245,17 @@ impl WebHandle {
             return;
         };
 
-        if self.tx_channels.contains_key(id) {
+        if self.log_senders.contains_key(id) {
             re_log::warn!("Channel with id '{}' already exists.", id);
             return;
         }
 
-        let (log_tx, log_rx) = re_smart_channel::smart_channel(
-            re_smart_channel::SmartMessageSource::JsChannelPush,
-            re_smart_channel::SmartChannelSource::JsChannel {
-                channel_name: channel_name.to_owned(),
-            },
-        );
-        let (table_tx, table_rx) = crossbeam::channel::unbounded();
+        let (log_tx, log_rx) = re_log_channel::log_channel(re_log_channel::LogSource::JsChannel {
+            channel_name: channel_name.to_owned(),
+        });
 
         app.add_log_receiver(log_rx);
-        app.add_table_receiver(table_rx);
-        self.tx_channels
-            .insert(id.to_owned(), Channel { log_tx, table_tx });
+        self.log_senders.insert(id.to_owned(), log_tx);
     }
 
     /// Close an existing channel for streaming data.
@@ -265,11 +267,10 @@ impl WebHandle {
             return;
         };
 
-        if let Some(Channel { log_tx, table_tx }) = self.tx_channels.remove(id) {
+        if let Some(log_tx) = self.log_senders.remove(id) {
             log_tx
                 .quit(None)
                 .warn_on_err_once("Failed to send quit marker");
-            drop(table_tx);
         }
 
         // Request a repaint since closing the channel may update the top bar.
@@ -280,13 +281,14 @@ impl WebHandle {
     /// Add an rrd to the viewer directly from a byte array.
     #[wasm_bindgen]
     pub fn send_rrd_to_channel(&self, id: &str, data: &[u8]) {
-        use std::{ops::ControlFlow, sync::Arc};
+        use std::ops::ControlFlow;
+        use std::sync::Arc;
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.get(id) {
-            let tx = channel.log_tx.clone();
+        if let Some(log_tx) = self.log_senders.get(id) {
+            let log_tx = log_tx.clone();
             let data: Vec<u8> = data.to_vec();
 
             let egui_ctx = app.egui_ctx.clone();
@@ -297,15 +299,15 @@ impl WebHandle {
                 egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
             });
 
-            re_log_encoding::stream_rrd_from_http::web_decode::decode_rrd(
+            re_log_encoding::rrd::stream_from_http::web_decode::decode_rrd(
                 data,
                 Arc::new({
                     move |msg| {
                         ui_waker();
-                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                        use re_log_encoding::rrd::stream_from_http::HttpMessage;
                         match msg {
                             HttpMessage::LogMsg(msg) => {
-                                if tx.send(msg).is_ok() {
+                                if log_tx.send(msg.into()).is_ok() {
                                     ControlFlow::Continue(())
                                 } else {
                                     re_log::info_once!("Failed to dispatch log message to viewer.");
@@ -315,7 +317,8 @@ impl WebHandle {
                             // TODO(jleibs): Unclear what we want to do here. More data is coming.
                             HttpMessage::Success => ControlFlow::Continue(()),
                             HttpMessage::Failure(err) => {
-                                tx.quit(Some(err))
+                                log_tx
+                                    .quit(Some(err))
                                     .warn_on_err_once("Failed to send quit marker");
                                 ControlFlow::Break(())
                             }
@@ -332,8 +335,8 @@ impl WebHandle {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.get(id) {
-            let tx = channel.table_tx.clone();
+        if let Some(log_tx) = self.log_senders.get(id) {
+            let log_tx = log_tx.clone();
 
             let cursor = std::io::Cursor::new(data);
             let stream_reader = match arrow::ipc::reader::StreamReader::try_new(cursor, None) {
@@ -359,7 +362,7 @@ impl WebHandle {
 
             let record_batch = batches.remove(0);
 
-            let msg = match from_arrow_encoded(record_batch) {
+            let msg = match table_msg_from_record_batch(record_batch) {
                 Ok(msg) => msg,
                 Err(err) => {
                     re_log::error_once!("Failed to decode Arrow message: {err}");
@@ -369,7 +372,7 @@ impl WebHandle {
 
             let egui_ctx = app.egui_ctx.clone();
 
-            match tx.send(msg) {
+            match log_tx.send(msg.into()) {
                 Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
                 Err(err) => {
                     re_log::info_once!("Failed to dispatch log message to viewer: {err}");
@@ -421,9 +424,8 @@ impl WebHandle {
         };
 
         let store_id = store_id_from_recording_id(hub, recording_id)?;
-        let rec_cfg = state.recording_config(&store_id)?;
-        let time_ctrl = rec_cfg.time_ctrl.read();
-        Some(time_ctrl.timeline().name().as_str().to_owned())
+        let time_ctrl = state.time_control(&store_id)?;
+        Some(time_ctrl.timeline_name().as_str().to_owned())
     }
 
     /// Set the active timeline.
@@ -432,35 +434,25 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
     pub fn set_active_timeline(&self, recording_id: &str, timeline_name: &str) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            egui_ctx,
-            ..
-        } = &mut *app
-        else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
-
-        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
+        let Some(hub) = &app.store_hub else {
             return;
         };
 
-        rec_cfg.time_ctrl.write().set_timeline(timeline);
+        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
+            return;
+        };
 
-        egui_ctx.request_repaint();
+        app.command_sender
+            .send_system(SystemCommand::TimeControlCommands {
+                store_id: recording_id,
+                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+            });
+
+        app.egui_ctx.request_repaint();
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -469,9 +461,8 @@ impl WebHandle {
         let app = self.runner.app_mut::<crate::App>()?;
 
         let store_id = store_id_from_recording_id(app.store_hub.as_ref()?, recording_id)?;
-        let rec_cfg = app.state.recording_config(&store_id)?;
+        let time_ctrl = app.state.time_control(&store_id)?;
 
-        let time_ctrl = rec_cfg.time_ctrl.read();
         time_ctrl
             .time_for_timeline(timeline_name.into())
             .map(|v| v.as_f64())
@@ -480,36 +471,28 @@ impl WebHandle {
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
     #[wasm_bindgen]
     pub fn set_time_for_timeline(&self, recording_id: &str, timeline_name: &str, time: f64) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-        let crate::App {
-            store_hub: Some(hub),
-            state,
-            egui_ctx,
-            ..
-        } = &mut *app
-        else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
-        let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
-            re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id:?}");
+        let Some(hub) = &app.store_hub else {
             return;
         };
 
-        rec_cfg
-            .time_ctrl
-            .write()
-            .set_timeline_and_time(timeline, time);
-        egui_ctx.request_repaint();
+        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
+            return;
+        };
+
+        app.command_sender
+            .send_system(SystemCommand::TimeControlCommands {
+                store_id: recording_id,
+                time_commands: vec![
+                    TimeControlCommand::SetActiveTimeline(timeline_name.into()),
+                    TimeControlCommand::SetTime(time.into()),
+                ],
+            });
+
+        app.egui_ctx.request_repaint();
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -564,10 +547,9 @@ impl WebHandle {
         if !hub.store_bundle().contains(&store_id) {
             return None;
         }
-        let rec_cfg = state.recording_config(&store_id)?;
+        let time_ctrl = state.time_control(&store_id)?;
 
-        let time_ctrl = rec_cfg.time_ctrl.read();
-        Some(time_ctrl.play_state() == re_viewer_context::PlayState::Playing)
+        Some(time_ctrl.play_state() == PlayState::Playing)
     }
 
     //TODO(#10737): we should refer to logical recordings using store id (recording id is ambibuous)
@@ -578,8 +560,8 @@ impl WebHandle {
         };
         let crate::App {
             store_hub,
-            state,
             egui_ctx,
+            command_sender,
             ..
         } = &mut *app;
 
@@ -589,21 +571,35 @@ impl WebHandle {
         let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
             return;
         };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return;
-        };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
 
         let play_state = if value {
-            re_viewer_context::PlayState::Playing
+            PlayState::Playing
         } else {
-            re_viewer_context::PlayState::Paused
+            PlayState::Paused
         };
 
-        rec_cfg
-            .time_ctrl
-            .write()
-            .set_play_state(recording.times_per_timeline(), play_state);
+        command_sender.send_system(SystemCommand::TimeControlCommands {
+            store_id: store_id.clone(),
+            time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
+        });
+        egui_ctx.request_repaint();
+    }
+
+    #[wasm_bindgen]
+    pub fn set_credentials(&self, access_token: &str, email: &str) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+        let crate::App {
+            command_sender,
+            egui_ctx,
+            ..
+        } = &mut *app;
+
+        command_sender.send_system(SystemCommand::SetAuthCredentials {
+            access_token: access_token.to_owned(),
+            email: email.to_owned(),
+        });
         egui_ctx.request_repaint();
     }
 }
@@ -642,7 +638,7 @@ enum PanelState {
     Expanded,
 }
 
-impl From<PanelState> for re_types::blueprint::components::PanelState {
+impl From<PanelState> for re_sdk_types::blueprint::components::PanelState {
     fn from(value: PanelState) -> Self {
         match value {
             PanelState::Hidden => Self::Hidden,
@@ -655,20 +651,24 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
-    url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
     video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
+    // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
+    enable_history: Option<bool>,
+    // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
+    // height: Option<String>,
+    fallback_token: Option<String>,
+
+    // Hidden `WebViewerOptions`
+    // ------------
+    viewer_base_url: Option<String>,
+    notebook: Option<bool>,
+    url: Option<StringOrStringArray>,
     panel_state_overrides: Option<PanelStateOverrides>,
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
-    enable_history: Option<bool>,
-
-    notebook: Option<bool>,
-    persist: Option<bool>,
-
-    fallback_token: Option<String>,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -703,15 +703,17 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
+
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
     };
 
     let AppOptions {
+        viewer_base_url,
         url,
         manifest_url,
         render_backend,
@@ -723,7 +725,6 @@ fn create_app(
         enable_history,
 
         notebook,
-        persist,
 
         fallback_token,
     } = app_options;
@@ -748,12 +749,10 @@ fn create_app(
     });
 
     let startup_options = crate::StartupOptions {
-        memory_limit: re_memory::MemoryLimit {
-            // On wasm32 we only have 4GB of memory to play around with.
-            max_bytes: Some(2_500_000_000),
-        },
+        // On wasm32 we only have 4GB of memory to play around with.
+        memory_limit: re_memory::MemoryLimit::from_bytes(2_500_000_000),
         location: Some(cc.integration_info.web_info.location.clone()),
-        persist_state: persist.unwrap_or(true),
+        persist_state: true,
         is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,
         force_wgpu_backend: render_backend.clone(),
@@ -775,6 +774,7 @@ fn create_app(
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 
         enable_history,
+        viewer_base_url,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -797,17 +797,22 @@ fn create_app(
     }
 
     if let Some(urls) = url {
-        let follow_if_http = false;
         for url in urls.into_inner() {
-            if let Some(receiver) = url_to_receiver(
-                app.connection_registry(),
-                cc.egui_ctx.clone(),
-                follow_if_http,
-                url,
-                app.command_sender.clone(),
-            ) {
-                app.command_sender
-                    .send_system(SystemCommand::AddReceiver(receiver));
+            match url.parse::<open_url::ViewerOpenUrl>() {
+                Ok(url) => {
+                    url.open(
+                        &app.egui_ctx,
+                        &open_url::OpenUrlOptions {
+                            follow_if_http: false,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
+                        &app.command_sender,
+                    );
+                }
+                Err(err) => {
+                    re_log::warn!("Failed to open URL {url:?}: {err}");
+                }
             }
         }
     }
@@ -821,18 +826,21 @@ fn create_app(
 /// This one just panics when it fails, as it's only ever really run
 /// by rerun employees manually in `app.rerun.io`.
 #[cfg(feature = "analytics")]
+#[allow(clippy::allow_attributes, clippy::unwrap_used)] // This is only run by rerun employees, so it's fine to panic
 #[wasm_bindgen]
-#[allow(clippy::unwrap_used)] // This is only run by rerun employees, so it's fine to panic
 pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
+
     config.save().unwrap();
 }
 
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
+fn table_msg_from_record_batch(
+    mut data: RecordBatch,
+) -> Result<TableMsg, Box<dyn std::error::Error>> {
     let id = data
         .schema_metadata_mut()
         .remove("__table_id")
@@ -846,8 +854,10 @@ pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::ArrowError;
+    use arrow::array::{RecordBatch, RecordBatchOptions};
+
+    use super::*;
 
     /// Returns the [`TableMsg`] encoded as a record batch.
     // This is required to send bytes to a viewer running in a notebook.
@@ -864,15 +874,17 @@ mod tests {
         ));
 
         // Create a new record batch with the same data but updated schema
-        RecordBatch::try_new(new_schema, table.data.columns().to_vec())
+        RecordBatch::try_new_with_options(
+            new_schema,
+            table.data.columns().to_vec(),
+            &RecordBatchOptions::default(),
+        )
     }
 
     #[test]
     fn table_msg_encoded_roundtrip() {
-        use arrow::{
-            array::{ArrayRef, StringArray, UInt64Array},
-            datatypes::{DataType, Field, Schema},
-        };
+        use arrow::array::{ArrayRef, StringArray, UInt64Array};
+        use arrow::datatypes::{DataType, Field, Schema};
 
         let data = {
             let schema = Arc::new(Schema::new_with_metadata(
@@ -902,7 +914,8 @@ mod tests {
             ];
 
             // Create a RecordBatch
-            ArrowRecordBatch::try_new(schema, arrays).unwrap()
+            ArrowRecordBatch::try_new_with_options(schema, arrays, &RecordBatchOptions::default())
+                .unwrap()
         };
 
         let msg = TableMsg {
@@ -911,7 +924,7 @@ mod tests {
         };
 
         let encoded = to_arrow_encoded(&msg).expect("to encoded failed");
-        let decoded = from_arrow_encoded(encoded).expect("from concatenated failed");
+        let decoded = table_msg_from_record_batch(encoded).expect("from concatenated failed");
 
         assert_eq!(msg, decoded);
     }

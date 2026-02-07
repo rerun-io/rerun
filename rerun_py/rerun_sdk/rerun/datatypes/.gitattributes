@@ -2,10 +2,12 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+absolute_time_range.py linguist-generated=true
 angle.py linguist-generated=true
 annotation_info.py linguist-generated=true
 blob.py linguist-generated=true
 bool.py linguist-generated=true
+channel_count_pair.py linguist-generated=true
 channel_datatype.py linguist-generated=true
 class_description.py linguist-generated=true
 class_description_map_elem.py linguist-generated=true

@@ -1,12 +1,35 @@
 # Builds rerun_c from source.
 
+# Determine build configuration (Debug or Release)
+string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
+
+if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
+    set(CARGO_BUILD_FLAG "")
+    set(RUST_BUILD_TYPE "debug")
+    message("Building DEBUG BUILD of Rerun C++ SDK")
+else()
+    message("Building RELEASE BUILD of Rerun C++ SDK")
+    set(CARGO_BUILD_FLAG "--release")
+    set(RUST_BUILD_TYPE "release")
+endif()
+
 # Determine Rust's librerun path.
+if(DEFINED ENV{CARGO_TARGET_DIR})
+    set(CARGO_TARGET_DIR $ENV{CARGO_TARGET_DIR})
+else()
+    set(CARGO_TARGET_DIR "target")
+endif()
+
+if(NOT IS_ABSOLUTE ${CARGO_TARGET_DIR})
+    set(CARGO_TARGET_DIR ${PROJECT_SOURCE_DIR}/${CARGO_TARGET_DIR})
+endif()
+
 if(APPLE)
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${CARGO_TARGET_DIR}/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/librerun_c.a)
 elseif(UNIX) # if(LINUX) # CMake 3.25
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${CARGO_TARGET_DIR}/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/librerun_c.a)
 elseif(WIN32)
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target/$ENV{CARGO_BUILD_TARGET}/release/rerun_c.lib)
+    set(RERUN_C_BUILD_ARTIFACT ${CARGO_TARGET_DIR}/$ENV{CARGO_BUILD_TARGET}/${RUST_BUILD_TYPE}/rerun_c.lib)
 else()
     message(FATAL_ERROR "Unsupported platform.")
 endif()
@@ -20,7 +43,7 @@ file(GLOB_RECURSE RERUN_C_SOURCES LIST_DIRECTORIES FALSE "${PROJECT_SOURCE_DIR}/
 add_custom_command(
     OUTPUT ${RERUN_C_BUILD_ARTIFACT}
     DEPENDS ${RERUN_C_SOURCES}
-    COMMAND cargo build --release -p rerun_c
+    COMMAND cargo build ${CARGO_BUILD_FLAG} -p rerun_c
     COMMENT "Building rerun_c from source"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )

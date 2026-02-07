@@ -115,10 +115,6 @@ const DETAILS: &str = "
     Find out its location by running `rerun analytics config`.
 ";
 
-pub fn print_details() {
-    let build_info = re_build_info::build_info!();
-    eprintln!(
-        "{}",
-        DETAILS.replace("GIT_HASH", &build_info.git_hash_or_tag())
-    );
+pub fn print_details(git_hash_or_tag: &str) {
+    eprintln!("{}", DETAILS.replace("GIT_HASH", git_hash_or_tag));
 }

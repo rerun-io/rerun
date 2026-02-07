@@ -1,11 +1,11 @@
-use super::{Channel, Example, wait_for_output};
-use indicatif::MultiProgress;
-use rayon::prelude::IntoParallelIterator as _;
-use rayon::prelude::ParallelIterator as _;
 use std::fs::create_dir_all;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use indicatif::MultiProgress;
+use rayon::prelude::{IntoParallelIterator as _, ParallelIterator as _};
+
+use super::{Channel, Example, Install, wait_for_output};
 
 /// Collect examples in the repository and run them to produce `.rrd` files.
 #[derive(argh::FromArgs)]
@@ -19,11 +19,22 @@ pub struct Rrd {
 
     #[argh(option, description = "run only these examples")]
     examples: Vec<String>,
+
+    #[argh(switch, description = "install examples before running")]
+    install: bool,
 }
 
 impl Rrd {
     pub fn run(self) -> anyhow::Result<()> {
         create_dir_all(&self.output_dir)?;
+
+        if self.install {
+            Install {
+                channel: self.channel,
+                examples: self.examples.clone(),
+            }
+            .run()?;
+        }
 
         let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
         let mut examples = if self.examples.is_empty() {

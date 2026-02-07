@@ -1,24 +1,23 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
-snapshot_kind: text
 ---
-┌──────────────────────┬──────────────────────┬────────────────────────────────────┬────────────────────────────────────┐
-│ frame_nr             ┆ log_time             ┆ /this/that:example.MyPoints:colors ┆ /this/that:example.MyPoints:labels │
-│ ---                  ┆ ---                  ┆ ---                                ┆ ---                                │
-│ type: i64            ┆ type: Timestamp(ns)  ┆ type: List[u32]                    ┆ type: List[Utf8]                   │
-│ index_name: frame_nr ┆ index_name: log_time ┆ archetype: example.MyPoints        ┆ archetype: example.MyPoints        │
-│ kind: index          ┆ kind: index          ┆ component: example.MyPoints:colors ┆ component: example.MyPoints:labels │
-│                      ┆                      ┆ component_type: example.MyColor    ┆ component_type: example.MyLabel    │
-│                      ┆                      ┆ entity_path: /this/that            ┆ entity_path: /this/that            │
-│                      ┆                      ┆ kind: data                         ┆ is_static: true                    │
-│                      ┆                      ┆                                    ┆ kind: data                         │
-╞══════════════════════╪══════════════════════╪════════════════════════════════════╪════════════════════════════════════╡
-│ 30                   ┆ null                 ┆ [2]                                ┆ [c]                                │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 40                   ┆ null                 ┆ [3]                                ┆ [c]                                │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 50                   ┆ null                 ┆ [4]                                ┆ [c]                                │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 70                   ┆ null                 ┆ [6]                                ┆ [c]                                │
-└──────────────────────┴──────────────────────┴────────────────────────────────────┴────────────────────────────────────┘
+┌──────────────────────┬──────────────────────────────┬────────────────────────────────────┬────────────────────────────────────┐
+│ frame_nr             ┆ log_time                     ┆ /this/that:example.MyPoints:colors ┆ /this/that:example.MyPoints:labels │
+│ ---                  ┆ ---                          ┆ ---                                ┆ ---                                │
+│ type: nullable i64   ┆ type: nullable Timestamp(ns) ┆ type: nullable List[nullable u32]  ┆ type: nullable List[nullable Utf8] │
+│ index_name: frame_nr ┆ index_name: log_time         ┆ archetype: example.MyPoints        ┆ archetype: example.MyPoints        │
+│ kind: index          ┆ kind: index                  ┆ component: example.MyPoints:colors ┆ component: example.MyPoints:labels │
+│                      ┆                              ┆ component_type: example.MyColor    ┆ component_type: example.MyLabel    │
+│                      ┆                              ┆ entity_path: /this/that            ┆ entity_path: /this/that            │
+│                      ┆                              ┆ kind: data                         ┆ is_static: true                    │
+│                      ┆                              ┆                                    ┆ kind: data                         │
+╞══════════════════════╪══════════════════════════════╪════════════════════════════════════╪════════════════════════════════════╡
+│ 30                   ┆ null                         ┆ [2]                                ┆ [c]                                │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 40                   ┆ null                         ┆ [3]                                ┆ [c]                                │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 50                   ┆ null                         ┆ [4]                                ┆ [c]                                │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 70                   ┆ null                         ┆ [6]                                ┆ [c]                                │
+└──────────────────────┴──────────────────────────────┴────────────────────────────────────┴────────────────────────────────────┘

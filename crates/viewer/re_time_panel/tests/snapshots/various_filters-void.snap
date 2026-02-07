@@ -1,7 +1,6 @@
 ---
 source: crates/viewer/re_time_panel/tests/time_panel_filter_tests.rs
 expression: streams_tree_data
-snapshot_kind: text
 ---
 children:
   - entity_path: []

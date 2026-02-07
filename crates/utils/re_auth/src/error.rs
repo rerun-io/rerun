@@ -12,4 +12,17 @@ pub enum Error {
 
     #[error("failed to parse token")]
     MalformedToken,
+
+    #[error("token verification failed")]
+    InvalidToken,
+
+    #[cfg(feature = "oauth")]
+    #[error("failed to fetch JWKS")]
+    JwksFetch(crate::oauth::api::Error),
+
+    #[cfg(feature = "oauth")]
+    #[error(
+        "no external provider configured, configure one using `RedapProvider::with_external_provider`"
+    )]
+    NoExternalProvider,
 }

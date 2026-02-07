@@ -1,34 +1,4 @@
-use crate::{AbsoluteTimeRange, TimeType, TimestampFormat};
-
-re_string_interner::declare_new_type!(
-    /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
-    ///
-    /// This uniquely identifies a timeline.
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
-    pub struct TimelineName;
-);
-
-impl TimelineName {
-    /// The log time timeline to which all API functions will always log.
-    ///
-    /// This timeline is automatically maintained by the SDKs and captures the wall-clock time at
-    /// which point the data was logged (according to the client's wall-clock).
-    #[inline]
-    pub fn log_time() -> Self {
-        Self::new("log_time")
-    }
-
-    /// The log tick timeline to which all API functions will always log.
-    ///
-    /// This timeline is automatically maintained by the SDKs and captures the logging tick at
-    /// which point the data was logged.
-    /// The logging tick is monotically incremented each time the client calls one of the logging
-    /// methods on a `RecordingStream`.
-    #[inline]
-    pub fn log_tick() -> Self {
-        Self::new("log_tick")
-    }
-}
+use crate::{AbsoluteTimeRange, TimeType, TimelineName, TimestampFormat};
 
 // ----------------------------------------------------------------------------
 
@@ -80,15 +50,6 @@ impl Timeline {
         }
     }
 
-    #[deprecated(
-        since = "0.23.0",
-        note = "Use `Timeline::new_duration` or `new_timestamp` instead"
-    )]
-    #[inline]
-    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
-        Self::new_duration(name)
-    }
-
     #[inline]
     pub fn name(&self) -> &TimelineName {
         &self.name
@@ -132,7 +93,7 @@ impl Timeline {
     /// Returns a formatted string of `time_range` on this `Timeline`.
     #[inline]
     pub fn format_time_range_utc(&self, time_range: &AbsoluteTimeRange) -> String {
-        self.format_time_range(time_range, TimestampFormat::Utc)
+        self.format_time_range(time_range, TimestampFormat::utc())
     }
 
     /// Returns the appropriate arrow datatype to represent this timeline.
@@ -144,22 +105,19 @@ impl Timeline {
 
 impl nohash_hasher::IsEnabled for Timeline {}
 
-impl re_byte_size::SizeBytes for TimelineName {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
 impl re_byte_size::SizeBytes for Timeline {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 // required for [`nohash_hasher`].
-#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

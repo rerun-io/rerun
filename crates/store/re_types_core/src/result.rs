@@ -1,4 +1,6 @@
-use std::{any, fmt::Display, ops::Deref};
+use std::any;
+use std::fmt::Display;
+use std::ops::Deref;
 
 // ---
 
@@ -9,27 +11,33 @@ pub type _Backtrace = std::backtrace::Backtrace;
 #[derive(thiserror::Error)]
 pub enum SerializationError {
     #[error("Failed to serialize {location:?}")]
-    Context {
-        location: String,
-        source: Box<SerializationError>,
-    },
+    Context { location: String, source: Box<Self> },
 
     #[error("Trying to serialize a field lacking extension metadata: {fqname:?}")]
     MissingExtensionMetadata {
         fqname: String,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
     #[error("{fqname} doesn't support Serialization: {reason}")]
     NotImplemented {
         fqname: String,
         reason: String,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
     /// E.g. too many values (overflows i32).
     #[error(transparent)]
     ArrowError(#[from] ArcArrowError),
+}
+
+#[test]
+fn test_serialization_error_size() {
+    assert!(
+        std::mem::size_of::<SerializationError>() <= 64,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<SerializationError>()
+    );
 }
 
 impl std::fmt::Debug for SerializationError {
@@ -47,7 +55,7 @@ impl SerializationError {
     pub fn missing_extension_metadata(fqname: impl AsRef<str>) -> Self {
         Self::MissingExtensionMetadata {
             fqname: fqname.as_ref().into(),
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -56,7 +64,7 @@ impl SerializationError {
         Self::NotImplemented {
             fqname: fqname.as_ref().into(),
             reason: reason.as_ref().into(),
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -121,23 +129,23 @@ pub enum DeserializationError {
     Context {
         location: String,
         #[source]
-        source: Box<DeserializationError>,
+        source: Box<Self>,
     },
 
     #[error("{fqname} doesn't support deserialization")]
     NotImplemented {
         fqname: String,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
     #[error("Expected non-nullable data but didn't find any")]
-    MissingData { backtrace: _Backtrace },
+    MissingData { backtrace: Box<_Backtrace> },
 
-    #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
+    #[error("Expected field {field_name:?} to be present in {datatype}")]
     MissingStructField {
         datatype: arrow::datatypes::DataType,
         field_name: String,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
     #[error(
@@ -148,29 +156,29 @@ pub enum DeserializationError {
         field1_length: usize,
         field2_name: String,
         field2_length: usize,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
-    #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype:#?}")]
+    #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype}")]
     MissingUnionArm {
         datatype: arrow::datatypes::DataType,
         arm_name: String,
         arm_index: usize,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
-    #[error("Expected {expected:#?} but found {got:#?} instead")]
+    #[error("Expected {expected} but found {got} instead")]
     DatatypeMismatch {
         expected: arrow::datatypes::DataType,
         got: arrow::datatypes::DataType,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
     #[error("Offset ouf of bounds: trying to read at offset #{offset} in an array of size {len}")]
     OffsetOutOfBounds {
         offset: usize,
         len: usize,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
     #[error(
@@ -180,17 +188,29 @@ pub enum DeserializationError {
         from: usize,
         to: usize,
         len: usize,
-        backtrace: _Backtrace,
+        backtrace: Box<_Backtrace>,
     },
 
     #[error("Downcast to {to} failed")]
-    DowncastError { to: String, backtrace: _Backtrace },
+    DowncastError {
+        to: String,
+        backtrace: Box<_Backtrace>,
+    },
 
     #[error("Datacell deserialization Failed: {0}")]
     DataCellError(String),
 
     #[error("Validation Error: {0}")]
     ValidationError(String),
+}
+
+#[test]
+fn test_derserialization_error_size() {
+    assert!(
+        std::mem::size_of::<DeserializationError>() <= 72,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<DeserializationError>()
+    );
 }
 
 impl std::fmt::Debug for DeserializationError {
@@ -207,7 +227,7 @@ impl DeserializationError {
     #[inline]
     pub fn missing_data() -> Self {
         Self::MissingData {
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -219,7 +239,7 @@ impl DeserializationError {
         Self::MissingStructField {
             datatype: datatype.into(),
             field_name: field_name.as_ref().into(),
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -235,7 +255,7 @@ impl DeserializationError {
             field1_length,
             field2_name: field2_name.as_ref().into(),
             field2_length,
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -249,7 +269,7 @@ impl DeserializationError {
             datatype: datatype.into(),
             arm_name: arm_name.as_ref().into(),
             arm_index,
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -261,7 +281,7 @@ impl DeserializationError {
         Self::DatatypeMismatch {
             expected: expected.into(),
             got: got.into(),
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -270,7 +290,7 @@ impl DeserializationError {
         Self::OffsetOutOfBounds {
             offset,
             len,
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -280,7 +300,7 @@ impl DeserializationError {
             from,
             to,
             len,
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 
@@ -288,7 +308,7 @@ impl DeserializationError {
     pub fn downcast_error<ToType>() -> Self {
         Self::DowncastError {
             to: any::type_name::<ToType>().to_owned(),
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }
 

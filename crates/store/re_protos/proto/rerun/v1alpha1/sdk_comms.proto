@@ -22,6 +22,8 @@ service MessageProxyService {
 
   rpc WriteTable(WriteTableRequest) returns (WriteTableResponse) {}
   rpc ReadTables(ReadTablesRequest) returns (stream ReadTablesResponse) {}
+
+  rpc SaveScreenshot(SaveScreenshotRequest) returns (SaveScreenshotResponse) {}
 }
 
 // WriteMessages
@@ -57,3 +59,16 @@ message ReadTablesResponse {
   rerun.common.v1alpha1.TableId id = 1;
   rerun.common.v1alpha1.DataframePart data = 2;
 }
+
+// SaveScreenshot
+
+message SaveScreenshotRequest {
+  // Optional view ID to screenshot. If omitted, screenshots the entire viewer.
+  optional string view_id = 1;
+
+  // Path at which the screenshot will be saved.
+  // This path is relative to the current working directory of the viewer process.
+  string file_path = 2;
+}
+
+message SaveScreenshotResponse {}

@@ -9,13 +9,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let any_values = rerun::AnyValues::default()
         // Using arbitrary Arrow data.
-        .with_field(
+        .with_component_from_data(
             "homepage",
             Arc::new(arrow::array::StringArray::from(vec![
                 "https://www.rerun.io",
             ])),
         )
-        .with_field(
+        .with_component_from_data(
             "repository",
             Arc::new(arrow::array::StringArray::from(vec![
                 "https://github.com/rerun-io/rerun",

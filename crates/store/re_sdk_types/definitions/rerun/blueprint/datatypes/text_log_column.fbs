@@ -1,0 +1,33 @@
+namespace rerun.blueprint.datatypes;
+
+/// A text log column kind.
+enum TextLogColumnKind: ubyte (
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Invalid value. Won't show up in generated types.
+  Invalid = 0,
+
+  /// Which entity path this was logged to.
+  EntityPath (default),
+
+  /// The log level, i.e INFO, WARN, ERROR.
+  LogLevel,
+
+  /// The text message the log has.
+  Body,
+}
+
+/// A text log column.
+table TextLogColumn (
+  "attr.python.aliases": "blueprint_datatypes.TextLogColumnKindLike",
+  "attr.rust.derive": "PartialEq, Eq, Hash",
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Is this column visible?
+  ///
+  /// Defaults to true.
+  visible: rerun.datatypes.Bool (order: 100);
+
+  /// What kind of column is this?
+  kind: TextLogColumnKind (order: 200);
+}

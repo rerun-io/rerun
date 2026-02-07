@@ -7,10 +7,9 @@ import argparse
 import json
 import logging
 import os
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import cv2
 import numpy as np
@@ -23,8 +22,8 @@ DESCRIPTION = """
 # Detect and track objects
 
 This is a more elaborate example applying simple object detection and segmentation on a video using the Huggingface
-`transformers` library. Tracking across frames is performed using [CSRT](https://arxiv.org/abs/1611.08461) from
-OpenCV. The results are visualized using Rerun.
+`transformers` library. Tracking across frames is performed using optical flow from OpenCV. The results are
+visualized using Rerun.
 
 The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/detect_and_track_objects).
@@ -48,6 +47,9 @@ from transformers import (  # noqa: E402 module level import not at top of file
     DetrForSegmentation,
     DetrImageProcessor,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass
@@ -122,7 +124,7 @@ class Detector:
         self.log_detections(boxes, class_ids, things)
 
         objects_to_track: list[Detection] = []
-        for idx, (class_id, is_thing) in enumerate(zip(class_ids, things)):
+        for idx, (class_id, is_thing) in enumerate(zip(class_ids, things, strict=False)):
             if is_thing:
                 x_min, y_min, x_max, y_max = boxes[idx, :]
                 bbox_xywh = [x_min, y_min, x_max - x_min, y_max - y_min]
@@ -166,7 +168,7 @@ class Detector:
 
 class Tracker:
     """
-    Each instance takes care of tracking a single object.
+    Each instance takes care of tracking a single object using optical flow.
 
     The factory class method `create_new_tracker` is used to give unique tracking id's per instance.
     """
@@ -179,11 +181,25 @@ class Tracker:
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        # TODO(nick): Figure out why this fails mpyp but imports locally
-        self.tracker = cv2.legacy.TrackerCSRT_create()  # type: ignore[attr-defined]
-        bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
-        self.tracker.init(bgr, bbox_xywh_rounded)
+        # Store the previous frame and points for optical flow tracking
+        self.prev_gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        self.is_active = True
+        self.prev_points: npt.NDArray[np.float32] = np.array([])  # Will be initialized below
+        self._init_tracking_points()
         self.log_tracked()
+
+    def _init_tracking_points(self) -> None:
+        """Initialize corner points within the bounding box for tracking."""
+        x, y, w, h = [int(v) for v in self.tracked.bbox_xywh]
+        # Create a grid of points within the bounding box
+        points = []
+        grid_size = 5
+        for i in range(grid_size):
+            for j in range(grid_size):
+                px = x + (w * (i + 1)) // (grid_size + 1)
+                py = y + (h * (j + 1)) // (grid_size + 1)
+                points.append([[px, py]])
+        self.prev_points = np.array(points, dtype=np.float32)
 
     @classmethod
     def create_new_tracker(cls, detection: Detection, bgr: cv2.typing.MatLike) -> Tracker:
@@ -194,17 +210,53 @@ class Tracker:
     def update(self, bgr: cv2.typing.MatLike) -> None:
         if not self.is_tracking:
             return
-        success, bbox_xywh = self.tracker.update(bgr)
 
-        if success:
-            self.tracked.bbox_xywh = clip_bbox_to_image(
-                bbox_xywh=bbox_xywh,
-                image_width=self.tracked.image_width,
-                image_height=self.tracked.image_height,
-            )
-        else:
-            logging.info("Tracker update failed for tracker with id #%d", self.tracking_id)
-            self.tracker = None
+        curr_gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+
+        # Calculate optical flow
+        next_points, status, _error = cv2.calcOpticalFlowPyrLK(  # type: ignore[call-overload]
+            self.prev_gray,
+            curr_gray,
+            self.prev_points,
+            None,
+            winSize=(15, 15),
+            maxLevel=2,
+        )
+
+        if next_points is None or status is None:
+            logging.info("Optical flow failed for tracker with id #%d", self.tracking_id)
+            self.is_active = False
+            self.log_tracked()
+            return
+
+        # Filter good points
+        status_mask = status.flatten() == 1
+        good_new = next_points[status_mask].reshape(-1, 2)
+        good_old = self.prev_points[status_mask].reshape(-1, 2)
+
+        if len(good_new) < 3:
+            logging.info("Too few points tracked for tracker with id #%d", self.tracking_id)
+            self.is_active = False
+            self.log_tracked()
+            return
+
+        # Calculate displacement to adjust bbox
+        displacement_x = np.median(good_new[:, 0] - good_old[:, 0])
+        displacement_y = np.median(good_new[:, 1] - good_old[:, 1])
+
+        x, y, w, h = self.tracked.bbox_xywh
+        new_x = x + displacement_x
+        new_y = y + displacement_y
+
+        self.tracked.bbox_xywh = clip_bbox_to_image(
+            bbox_xywh=[new_x, new_y, w, h],
+            image_width=self.tracked.image_width,
+            image_height=self.tracked.image_height,
+        )
+
+        # Update for next iteration
+        self.prev_gray = curr_gray.copy()
+        self.prev_points = good_new.reshape(-1, 1, 2)
 
         self.log_tracked()
 
@@ -224,10 +276,9 @@ class Tracker:
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        # TODO(nick): Figure out why this fails mypy but imports locally
-        self.tracker = cv2.legacy.TrackerCSRT_create()  # type: ignore[attr-defined]
-        bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
-        self.tracker.init(bgr, bbox_xywh_rounded)
+        self.prev_gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        self.is_active = True
+        self._init_tracking_points()
         self.log_tracked()
 
     def set_not_detected_in_frame(self) -> None:
@@ -239,12 +290,12 @@ class Tracker:
                 self.tracking_id,
                 self.num_recent_undetected_frames,
             )
-            self.tracker = None
+            self.is_active = False
             self.log_tracked()
 
     @property
     def is_tracking(self) -> bool:
-        return self.tracker is not None
+        return self.is_active
 
     def match_score(self, other: Detection) -> float:
         """Returns bbox IoU if classes match, otherwise 0."""
@@ -305,11 +356,12 @@ def update_trackers_with_detections(
     logging.debug("Updating %d trackers with %d new detections", len(trackers), len(detections))
     for detection in detections:
         top_match_score = 0.0
+        best_match_idx = -1
         if non_updated_trackers:
             scores = [tracker.match_score(detection) for tracker in non_updated_trackers]
-            best_match_idx = np.argmax(scores)
+            best_match_idx = int(np.argmax(scores))
             top_match_score = scores[best_match_idx]
-        if top_match_score > 0.0:
+        if top_match_score > 0.0 and best_match_idx >= 0:
             best_tracker = non_updated_trackers.pop(best_match_idx)
             best_tracker.update_with_detection(detection, bgr)
             updated_trackers.append(best_tracker)
@@ -400,8 +452,7 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
     with requests.get(source_path, stream=True) as req:
         req.raise_for_status()
         with open(destination_path, "wb") as f:
-            for chunk in req.iter_content(chunk_size=8192):
-                f.write(chunk)
+            f.writelines(req.iter_content(chunk_size=8192))
     return str(destination_path)
 
 

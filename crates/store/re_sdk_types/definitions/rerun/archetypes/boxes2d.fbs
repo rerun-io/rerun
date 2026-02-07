@@ -1,0 +1,61 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// 2D boxes with half-extents and optional center, colors etc.
+///
+/// \example archetypes/boxes2d_simple title="Simple 2D boxes" image="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1200w.png"
+table Boxes2D (
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Spatial 2D",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "Boxes2D",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate"
+) {
+  // --- Required ---
+
+  /// All half-extents that make up the batch of boxes.
+  half_sizes: [rerun.components.HalfSize2D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional center positions of the boxes.
+  centers: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // TODO(#3247): Add 2D rotation.
+  // Optional rotations of the boxes.
+  //rotations: [rerun.components.Rotation2D] ("attr.rerun.component_recommended", nullable, order: 2050);
+
+  /// Optional colors for the boxes.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// Optional radii for the lines that make up the boxes.
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 2500);
+
+  /// Optional text labels for the boxes.
+  ///
+  /// If there's a single label present, it will be placed at the center of the entity.
+  /// Otherwise, each instance will have its own label.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Whether the text labels should be shown.
+  ///
+  /// If not set, labels will automatically appear when there is exactly one label for this entity
+  /// or the number of instances on this entity is under a certain threshold.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3050);
+
+  /// An optional floating point value that specifies the 2D drawing order.
+  ///
+  /// Objects with higher values are drawn on top of those with lower values.
+  /// Defaults to `10.0`.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional [components.ClassId]s for the boxes.
+  ///
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+}

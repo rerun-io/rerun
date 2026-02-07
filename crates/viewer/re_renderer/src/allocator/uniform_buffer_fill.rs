@@ -1,6 +1,7 @@
 use re_log::ResultExt as _;
 
-use crate::{DebugLabel, RenderContext, wgpu_resources::BindGroupEntry};
+use crate::wgpu_resources::BindGroupEntry;
+use crate::{DebugLabel, RenderContext};
 
 struct UniformBufferSizeCheck<T> {
     pub _marker: std::marker::PhantomData<T>,
@@ -23,7 +24,7 @@ impl<T> UniformBufferSizeCheck<T> {
     /// But this leads to more unsafe code, harder to avoid holes in write combined memory access
     /// and potentially undefined values in the padding bytes on GPU.
     const CHECK: () = assert!(
-        std::mem::size_of::<T>() % 256 == 0 && std::mem::size_of::<T>() > 0,
+        std::mem::size_of::<T>().is_multiple_of(256) && std::mem::size_of::<T>() > 0,
         "Uniform buffers need to have a size that is a multiple of 256 bytes.
  Use types like `F32RowPadded` or `PaddingRow` to pad out as needed."
     );
@@ -32,8 +33,6 @@ impl<T> UniformBufferSizeCheck<T> {
 /// Utility for fast & efficient creation of uniform buffers from a series of structs.
 ///
 /// For subsequent frames, this will automatically not allocate any resources (thanks to our buffer pooling mechanism).
-///
-/// TODO(#1383): We could do this on a more complex stack allocator.
 pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
     ctx: &RenderContext,
     label: DebugLabel,
@@ -41,7 +40,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
 ) -> Vec<BindGroupEntry> {
     re_tracing::profile_function!(label.get().unwrap_or_default());
 
-    #[allow(clippy::let_unit_value)]
+    #[expect(clippy::let_unit_value)]
     let _ = UniformBufferSizeCheck::<T>::CHECK;
 
     if content.len() == 0 {

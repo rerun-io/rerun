@@ -15,11 +15,18 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+re_log_types.workspace = true
 re_test_context.workspace = true
+re_sdk_types.workspace = true
+re_ui.workspace = true
 re_viewer_context.workspace = true
-re_viewport_blueprint.workspace = true
 re_viewport.workspace = true
+re_viewport_blueprint.workspace = true
 
 # External dependencies
 ahash.workspace = true
 egui.workspace = true
+
+[dev-dependencies]
+re_chunk.workspace = true
+re_entity_db.workspace = true

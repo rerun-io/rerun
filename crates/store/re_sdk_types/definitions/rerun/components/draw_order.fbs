@@ -1,0 +1,19 @@
+
+namespace rerun.components;
+
+// ---
+
+/// Draw order of 2D elements. Higher values are drawn on top of lower values.
+///
+/// An entity can have only a single draw order component.
+/// Within an entity draw order is governed by the order of the components.
+///
+/// Draw order for entities with the same draw order is generally undefined.
+struct DrawOrder (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float | npt.NDArray[np.float32]",
+  "attr.rust.derive": "Copy",
+  "attr.rust.repr": "transparent"
+) {
+   value: rerun.datatypes.Float32 (order: 100);
+}

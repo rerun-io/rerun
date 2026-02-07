@@ -17,26 +17,37 @@ workspace = true
 
 [features]
 default = []
-testing = ["re_global_context/testing"]
+testing = []
 
 [dependencies]
+re_arrow_combinators.workspace = true
+re_arrow_ui.workspace = true
 re_arrow_util.workspace = true
 re_byte_size.workspace = true
+re_capabilities.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
+re_data_source.workspace = true
+re_rvl.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
+re_error.workspace = true
 re_format.workspace = true
-re_global_context.workspace = true
-re_log_types.workspace = true
+re_log_channel.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder", "encoder", "stream_from_http"] }
+re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true
+re_memory.workspace = true
+re_mutex.workspace = true
 re_query.workspace = true
+re_redap_client.workspace = true
 re_renderer = { workspace = true, features = ["serde"] }
-re_smart_channel.workspace = true
 re_string_interner.workspace = true
+re_tf.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_types_core.workspace = true
-re_ui = { workspace = true, features = ["arrow"] }
+re_ui.workspace = true
+re_uri.workspace = true
 re_video = { workspace = true, features = ["serde"] }
 
 ahash.workspace = true
@@ -45,8 +56,11 @@ arrow.workspace = true
 bit-vec.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
+camino.workspace = true
+cfg-if.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true
+directories.workspace = true
 egui_tiles.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
@@ -61,12 +75,17 @@ macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
 parking_lot = { workspace = true, features = ["serde"] }
+rayon.workspace = true
+rfd.workspace = true
 serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
+static_assertions.workspace = true
+strum_macros.workspace = true
 thiserror.workspace = true
-web-time.workspace = true
+uuid = { workspace = true, features = ["serde", "v4", "js"] }
 wgpu.workspace = true
+vec1.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -77,3 +96,6 @@ tokio.workspace = true
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = ["Window"] }
+
+[dev-dependencies]
+rand = { workspace = true, features = ["std_rng"] }

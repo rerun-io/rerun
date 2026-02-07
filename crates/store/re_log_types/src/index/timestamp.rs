@@ -1,9 +1,13 @@
-use crate::external::re_types_core;
+use std::ops::RangeInclusive;
 use std::str::FromStr as _;
 
 use super::{Duration, TimestampFormat};
+use crate::TimestampFormatKind;
+use crate::external::re_types_core;
 
 /// Encodes a timestamp in nanoseconds since unix epoch.
+///
+/// Can represent any time between the years 1678 - 2261 CE to nanosecond precision.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Timestamp(i64);
 
@@ -35,6 +39,11 @@ impl Timestamp {
     #[inline]
     pub fn nanos_since_epoch(self) -> i64 {
         self.0
+    }
+
+    #[inline]
+    pub fn elapsed(self) -> Duration {
+        Self::now() - self
     }
 }
 
@@ -122,6 +131,7 @@ impl std::str::FromStr for Timestamp {
     type Err = jiff::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = &re_format::remove_number_formatting(s);
         let jiff_timestamp = jiff::Timestamp::from_str(s)?;
         Ok(Self(jiff_timestamp.as_nanosecond() as i64))
     }
@@ -143,52 +153,79 @@ impl Timestamp {
     ///
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
-        let format_fractional_nanos = |ns: i32| {
-            let is_whole_sec = ns % 1_000_000_000 == 0;
-            let is_whole_ms = ns % 1_000_000 == 0;
+        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
+        self.format_opt(timestamp_format, subsecond_decimals)
+    }
 
-            if is_whole_sec {
-                String::new()
-            } else if is_whole_ms {
-                format!(".{:03}", ns / 1_000_000)
-            } else {
-                // NOTE: we currently ignore sub-microsecond
-                format!(".{:06}", ns / 1_000)
-            }
+    /// Human-readable timestamp.
+    ///
+    /// Omits the date of same-day timestamps.
+    ///
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
+    pub fn format_opt(
+        self,
+        timestamp_format: TimestampFormat,
+        subsecond_decimals: RangeInclusive<usize>,
+    ) -> String {
+        let format_fractional_nanos = move |ns: i32| {
+            re_format::DurationFormatOptions::default()
+                .with_always_sign(false)
+                .with_min_decimals(*subsecond_decimals.start())
+                .with_max_decimals(*subsecond_decimals.end())
+                .round_towards_zero()
+                .format_nanos(ns as _)
+                // Turn `0.123s` into `.123`:
+                .trim_start_matches('0')
+                .trim_end_matches('s')
+                .to_owned()
         };
 
         let timestamp = jiff::Timestamp::from(self);
 
-        match timestamp_format {
-            TimestampFormat::UnixEpoch => {
+        match timestamp_format.kind() {
+            TimestampFormatKind::SecondsSinceUnixEpoch => {
                 format!(
                     "{}{}",
-                    timestamp.as_second(),
+                    re_format::format_int(timestamp.as_second()),
                     format_fractional_nanos(timestamp.subsec_nanosecond())
                 )
             }
 
-            TimestampFormat::LocalTimezone | TimestampFormat::Utc => {
+            TimestampFormatKind::LocalTimezone
+            | TimestampFormatKind::LocalTimezoneImplicit
+            | TimestampFormatKind::Utc => {
                 let tz = timestamp_format.to_jiff_time_zone();
                 let zoned = timestamp.to_zoned(tz.clone());
 
-                let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz).date();
+                let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date();
 
-                let formatted = if is_today {
+                let formatted = if timestamp_format.short()
+                    || (timestamp_format.hide_today_date() && is_today)
+                {
                     zoned.strftime("%H:%M:%S").to_string()
                 } else {
                     zoned.strftime("%Y-%m-%d %H:%M:%S").to_string()
                 };
 
-                let suffix = match timestamp_format {
-                    TimestampFormat::LocalTimezone => "",
-                    TimestampFormat::Utc | TimestampFormat::UnixEpoch => "Z",
+                let nanos = if timestamp_format.short() {
+                    String::new()
+                } else {
+                    format_fractional_nanos(zoned.subsec_nanosecond())
                 };
 
-                format!(
-                    "{formatted}{}{suffix}",
-                    format_fractional_nanos(zoned.subsec_nanosecond())
-                )
+                let suffix = if timestamp_format.short() {
+                    String::new()
+                } else {
+                    match timestamp_format.kind() {
+                        TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
+                        TimestampFormatKind::LocalTimezoneImplicit => String::new(),
+                        TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
+                            "Z".to_owned()
+                        }
+                    }
+                };
+
+                format!("{formatted}{nanos}{suffix}",)
             }
         }
     }
@@ -198,8 +235,8 @@ impl Timestamp {
     /// Shows dates when zoomed out, shows times when zoomed in,
     /// shows relative millisecond when really zoomed in.
     pub fn format_time_compact(self, timestamp_format: TimestampFormat) -> String {
-        match timestamp_format {
-            TimestampFormat::UnixEpoch => {
+        match timestamp_format.kind() {
+            TimestampFormatKind::SecondsSinceUnixEpoch => {
                 let ns = self.nanos_since_epoch();
                 let fractional_nanos = ns % 1_000_000_000;
                 let is_whole_second = fractional_nanos == 0;
@@ -211,7 +248,9 @@ impl Timestamp {
                 }
             }
 
-            TimestampFormat::LocalTimezone | TimestampFormat::Utc => {
+            TimestampFormatKind::LocalTimezone
+            | TimestampFormatKind::LocalTimezoneImplicit
+            | TimestampFormatKind::Utc => {
                 let zoned = self.to_jiff_zoned(timestamp_format);
                 if zoned.time() == jiff::civil::Time::MIN {
                     // Exactly midnight - show only the date:
@@ -229,10 +268,12 @@ impl Timestamp {
         }
     }
 
-    /// Parse a timestamp,
+    /// Parse a timestamp.
     ///
     /// If it is missing a timezone specifier, the given timezone is assumed.
     pub fn parse_with_format(s: &str, timestamp_format: TimestampFormat) -> Option<Self> {
+        let s = &re_format::remove_number_formatting(s);
+
         if let Ok(utc) = Self::from_str(s) {
             // It has a `Z` suffix
             Some(utc)
@@ -244,9 +285,23 @@ impl Timestamp {
                 .to_zoned(timestamp_format.to_jiff_time_zone())
                 .ok()
                 .map(|zoned| zoned.into())
-        } else if timestamp_format == TimestampFormat::UnixEpoch {
-            let ns = re_format::parse_i64(s)?;
-            Some(Self::from_nanos_since_epoch(ns))
+        } else if timestamp_format.kind() == TimestampFormatKind::SecondsSinceUnixEpoch {
+            // Parse as seconds and convert to nanoseconds
+            let seconds = s.parse::<f64>().ok()?;
+            Some(Self::from_secs_since_epoch(seconds))
+        } else if timestamp_format.hide_today_date() {
+            // Maybe this is a naked timestamp without any date?
+
+            let tz = timestamp_format.to_jiff_time_zone();
+            let today = jiff::Timestamp::now().to_zoned(tz).date();
+            let today = today.strftime("%Y-%m-%d").to_string();
+
+            if s.starts_with(&today) {
+                None // prevent infinite recursion
+            } else {
+                let datetime_string = format!("{today}T{s}");
+                Self::parse_with_format(&datetime_string, timestamp_format)
+            }
         } else {
             None
         }
@@ -326,7 +381,7 @@ mod tests {
     fn test_formatting_whole_second_for_datetime() {
         let datetime = Timestamp::from_str("2022-02-28 22:35:42Z").unwrap();
         assert_eq!(
-            &datetime.format(TimestampFormat::Utc),
+            &datetime.format(TimestampFormat::utc()),
             "2022-02-28 22:35:42Z"
         );
     }
@@ -335,7 +390,7 @@ mod tests {
     fn test_formatting_whole_millisecond_for_datetime() {
         let datetime = Timestamp::from_str("2022-02-28 22:35:42.069Z").unwrap();
         assert_eq!(
-            &datetime.format(TimestampFormat::Utc),
+            &datetime.format(TimestampFormat::utc()),
             "2022-02-28 22:35:42.069Z"
         );
     }
@@ -344,8 +399,8 @@ mod tests {
     fn test_formatting_many_digits_for_datetime() {
         let datetime = Timestamp::from_str("2022-02-28 22:35:42.0690427Z").unwrap();
         assert_eq!(
-            &datetime.format(TimestampFormat::Utc),
-            "2022-02-28 22:35:42.069042Z"
+            &datetime.format(TimestampFormat::utc()),
+            "2022-02-28 22:35:42.069 042Z"
         ); // format function is not rounding
     }
 
@@ -361,7 +416,32 @@ mod tests {
             .build()
             .unwrap();
         let datetime = Timestamp::from(today);
-        assert_eq!(&datetime.format(TimestampFormat::Utc), "22:35:42Z");
+        assert_eq!(&datetime.format(TimestampFormat::utc()), "22:35:42Z");
+
+        assert_eq!(
+            Timestamp::parse_with_format("22:35:42Z", TimestampFormat::utc()),
+            Some(datetime)
+        );
+        assert_eq!(
+            Timestamp::parse_with_format("22:35:42", TimestampFormat::utc()),
+            Some(datetime)
+        );
+    }
+
+    #[test]
+    fn test_formatting_today_omit_date_disabled() {
+        let tz = jiff::tz::TimeZone::UTC;
+        let today = jiff::Timestamp::now()
+            .to_zoned(tz)
+            .with()
+            .time(jiff::civil::Time::new(22, 35, 42, 0).unwrap())
+            .build()
+            .unwrap();
+        let datetime = Timestamp::from(today.clone());
+        assert_eq!(
+            datetime.format(TimestampFormat::utc().with_hide_today_date(false)),
+            format!("{} 22:35:42Z", today.strftime("%Y-%m-%d"))
+        );
     }
 
     #[test]
@@ -374,7 +454,7 @@ mod tests {
             ("2022-01-01T00:00:00Z", "2022-01-01"),
         ] {
             let timestamp: Timestamp = input.parse().unwrap();
-            let formatted = timestamp.format_time_compact(TimestampFormat::Utc);
+            let formatted = timestamp.format_time_compact(TimestampFormat::utc());
             assert_eq!(formatted, expected);
         }
     }
@@ -386,21 +466,22 @@ mod tests {
         }
 
         let all_formats = [
-            TimestampFormat::Utc,
-            TimestampFormat::LocalTimezone,
-            TimestampFormat::UnixEpoch,
+            TimestampFormat::utc(),
+            TimestampFormat::local_timezone(),
+            TimestampFormat::local_timezone_implicit(),
+            TimestampFormat::unix_epoch(),
         ];
 
         // Full dates.
         // Fun fact: 1954-04-11 is by some considered the least eventful day in history!
         // Full date and time
         assert_eq!(
-            parse("1954-04-11 22:35:42", TimestampFormat::Utc),
+            parse("1954-04-11 22:35:42", TimestampFormat::utc()),
             Some(Timestamp::from_str("1954-04-11 22:35:42Z").unwrap())
         );
         // Full date and time with milliseconds
         assert_eq!(
-            parse("1954-04-11 22:35:42.069", TimestampFormat::Utc),
+            parse("1954-04-11 22:35:42.069", TimestampFormat::utc()),
             Some(Timestamp::from_str("1954-04-11 22:35:42.069Z").unwrap())
         );
 
@@ -424,7 +505,7 @@ mod tests {
         // Full date and time.
         if let Ok(tz) = jiff::tz::TimeZone::try_system() {
             assert_eq!(
-                parse("1954-04-11 22:35:42", TimestampFormat::LocalTimezone),
+                parse("1954-04-11 22:35:42", TimestampFormat::local_timezone()),
                 Some(Timestamp::from(
                     jiff::civil::DateTime::from_str("1954-04-11 22:35:42")
                         .unwrap()
@@ -434,9 +515,22 @@ mod tests {
             );
             // Full date and time with milliseconds
             assert_eq!(
-                parse("1954-04-11 22:35:42.069", TimestampFormat::LocalTimezone),
+                parse("1954-04-11 22:35:42.069", TimestampFormat::local_timezone()),
                 Some(Timestamp::from(
                     jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069")
+                        .unwrap()
+                        .to_zoned(tz.clone())
+                        .unwrap()
+                ))
+            );
+            // Full date and time with microseconds
+            assert_eq!(
+                parse(
+                    "1954-04-11 22:35:42.069 123 987",
+                    TimestampFormat::local_timezone()
+                ),
+                Some(Timestamp::from(
+                    jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069123987")
                         .unwrap()
                         .to_zoned(tz)
                         .unwrap()
@@ -445,8 +539,8 @@ mod tests {
         }
 
         // Test invalid formats
-        assert_eq!(parse("invalid", TimestampFormat::Utc), None);
-        assert_eq!(parse("2022-13-28", TimestampFormat::Utc), None); // Invalid month
-        assert_eq!(parse("2022-02-29", TimestampFormat::Utc), None); // Invalid day (not leap year)
+        assert_eq!(parse("invalid", TimestampFormat::utc()), None);
+        assert_eq!(parse("2022-13-28", TimestampFormat::utc()), None); // Invalid month
+        assert_eq!(parse("2022-02-29", TimestampFormat::utc()), None); // Invalid day (not leap year)
     }
 }

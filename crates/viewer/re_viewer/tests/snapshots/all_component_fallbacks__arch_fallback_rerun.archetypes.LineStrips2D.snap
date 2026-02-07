@@ -1,0 +1,11 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+strips: [[]]
+radii: [-1.5]
+colors: [3161148927]
+labels: []
+show_labels: [true]
+draw_order: [20.0]
+class_ids: [0]

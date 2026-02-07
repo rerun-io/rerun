@@ -2,16 +2,13 @@ use std::sync::Arc;
 
 use smallvec::SmallVec;
 
+use super::WgpuResourcePools;
+use super::bind_group_layout_pool::GpuBindGroupLayoutHandle;
+use super::buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool};
+use super::dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc};
+use super::sampler_pool::{GpuSamplerHandle, GpuSamplerPool};
+use super::texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool};
 use crate::debug_label::DebugLabel;
-
-use super::{
-    WgpuResourcePools,
-    bind_group_layout_pool::GpuBindGroupLayoutHandle,
-    buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool},
-    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
-    sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
-    texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
-};
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
 

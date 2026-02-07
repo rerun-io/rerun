@@ -41,13 +41,13 @@ def set_rerun_py_version(init_path: Path, version: semver.VersionInfo) -> None:
 
     version_info_line = f"__version_info__ = ({', '.join(version_info_items)})\n"
 
-    with init_path.open() as f:
+    with init_path.open(encoding="utf-8") as f:
         lines = f.readlines()
 
     new_lines = [update_python_line(line, version_line, version_info_line) for line in lines]
 
     if new_lines != lines:
-        with init_path.open("w") as f:
+        with init_path.open("w", encoding="utf-8") as f:
             f.writelines(new_lines)
     else:
         print(f"Version already set to {version} in {init_path}")
@@ -78,14 +78,14 @@ def set_rerun_c_version(init_path: Path, version: semver.VersionInfo) -> None:
     version_line_minor = f"#define RERUN_SDK_HEADER_VERSION_MINOR {version.minor}\n"
     version_line_patch = f"#define RERUN_SDK_HEADER_VERSION_PATCH {version.patch}\n"
 
-    with init_path.open() as f:
+    with init_path.open(encoding="utf-8") as f:
         lines = f.readlines()
 
     new_lines = [
         update_c_line(line, version_line, version_line_major, version_line_minor, version_line_patch) for line in lines
     ]
     if new_lines != lines:
-        with init_path.open("w") as f:
+        with init_path.open("w", encoding="utf-8") as f:
             f.writelines(new_lines)
     else:
         print(f"Version already set to {version} in {init_path}")

@@ -22,36 +22,39 @@ all-features = true
 [dependencies]
 re_auth.workspace = true
 re_component_ui.workspace = true
-re_data_ui.workspace = true
 re_dataframe_ui.workspace = true
 re_datafusion.workspace = true
-re_entity_db.workspace = true
-re_grpc_client.workspace = true
+re_redap_client.workspace = true
 re_log.workspace = true
-re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
-re_types.workspace = true
 re_ui.workspace = true
 re_uri.workspace = true
 re_viewer_context.workspace = true
 
 ahash.workspace = true
+cfg-if.workspace = true
+crossbeam.workspace = true
 datafusion.workspace = true
+egui_extras.workspace = true
 egui.workspace = true
 futures.workspace = true
 itertools.workspace = true
+serde_json.workspace = true
 serde.workspace = true
-thiserror.workspace = true
 url.workspace = true
+webbrowser.workspace = true
 
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-
-tonic = { workspace = true, default-features = false, features = ["transport"] }
-
-
-# Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tonic = { workspace = true, default-features = false }
+js-sys.workspace = true
+# TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
+#     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
+#     `crates/viewer/re_viewer/Cargo.toml`, and make sure that notebooks still work:
+#         See `rerun_notebook/README.md` for how to run notebooks.
+#         Try running a cell which starts a viewer, and then running it again.
+#         There should be no errors in the browser console.
+#     For details see https://github.com/rerun-io/rerun/issues/8766
+wasm-bindgen = "=0.2.100" # ⚠️ read above notice before touching this!
+web-sys = { workspace = true, features = ["Storage", "Window"] }
+uuid.workspace = true

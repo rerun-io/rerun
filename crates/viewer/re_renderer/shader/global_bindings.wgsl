@@ -21,10 +21,18 @@ struct FrameUniformBuffer {
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
     tan_half_fov: vec2f,
-    _padding: vec2f,
 
     /// re_renderer defined device tier.
     device_tier: u32,
+
+    /// boolean (0/1): set to true for snapshot tests to minimize
+    /// GPU/driver-specific stuff like alpha-to-coverage.
+    deterministic_rendering: u32,
+
+    /// Screen resolution in pixels.
+    framebuffer_resolution: vec2f,
+
+    _padding: vec2f,
 };
 
 @group(0) @binding(0)

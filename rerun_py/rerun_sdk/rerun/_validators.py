@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
-
-import numpy as np
-import numpy.typing as npt
+from typing import TYPE_CHECKING, Any
 
 from ._converters import to_np_float32, to_np_float64, to_np_uint32, to_np_uint64
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 
 # This code is a straight port from Rust.
@@ -90,7 +91,7 @@ def flat_np_array_from_array_like(array: npt.NDArray[Any], dimension: int) -> np
             f"Expected either a flat array with a length multiple of {dimension} elements, or an array with shape (`num_elements`, {dimension}). Shape of passed array was {array.shape}.",
         )
 
-    return array.reshape((-1,))
+    return array.ravel()
 
 
 if __name__ == "__main__":

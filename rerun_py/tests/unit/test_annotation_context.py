@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
@@ -16,6 +16,9 @@ from rerun.datatypes import (
     Rgba32,
     Utf8,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 ANNOTATION_INFO_INPUTS: list[AnnotationInfoLike] = [
     AnnotationInfo(1, "label", Rgba32([1, 2, 3])),
@@ -163,7 +166,8 @@ def test_annotation_context_component(ctx: Sequence[ClassDescriptionMapElem]) ->
 
 ANNOTATION_ARCH_INPUTS: Sequence[ClassDescriptionArrayLike] = [
     ClassDescription(info=(1, "label1", [1, 2, 3])),
-] + ANNOTATION_CONTEXT_INPUTS
+    *ANNOTATION_CONTEXT_INPUTS,
+]
 
 
 @pytest.mark.parametrize("ctx", ANNOTATION_ARCH_INPUTS)

@@ -39,7 +39,7 @@ impl ComponentTypeRegistry {
         id
     }
 
-    #[allow(clippy::result_large_err)]
+    #[expect(clippy::result_large_err)]
     pub fn get(&self, id: CComponentTypeHandle) -> Result<&ComponentType, CError> {
         self.types.get(id as usize).ok_or_else(|| {
             CError::new(

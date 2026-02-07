@@ -4,16 +4,13 @@
 use std::sync::Arc;
 
 use itertools::Itertools as _;
-
 use re_chunk::{RowId, TimelineName};
+use re_chunk_store::external::re_chunk::Chunk;
 use re_chunk_store::{
     AbsoluteTimeRange, ChunkStore, ChunkStoreSubscriber as _, RangeQuery, TimeInt,
-    external::re_chunk::Chunk,
 };
-use re_log_types::{
-    EntityPath, TimePoint, build_frame_nr,
-    example_components::{MyColor, MyPoint, MyPoints},
-};
+use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+use re_log_types::{EntityPath, TimePoint, build_frame_nr};
 use re_query::QueryCache;
 use re_types_core::{Archetype as _, ComponentBatch as _};
 
@@ -162,7 +159,7 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
     let row_id3_2 = RowId::new();
     let points3_2 = vec![MyPoint::new(11.0, 21.0), MyPoint::new(31.0, 41.0)];
     let points3_2_serialized = points3_2
-        .serialized(re_types::ComponentDescriptor {
+        .serialized(re_sdk_types::ComponentDescriptor {
             archetype: Some("MyPoints2".into()),
             component: "points2".into(),
             component_type: Some(<MyPoint as re_types_core::Component>::name()),
@@ -200,15 +197,15 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
     );
 
     // Check that we can also reach the other re-tagged component.
-    let descriptor = &points3_2_serialized.descriptor;
-    let cached = caches.range(&query, &entity_path, [descriptor]);
-    let all_points_chunks = cached.get_required(descriptor).unwrap();
+    let component = points3_2_serialized.descriptor.component;
+    let cached = caches.range(&query, &entity_path, [component]);
+    let all_points_chunks = cached.get_required(component).unwrap();
     let all_points_indexed = all_points_chunks
         .iter()
         .flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(query.timeline(), descriptor),
-                chunk.iter_component::<MyPoint>(descriptor)
+                chunk.iter_component_indices(*query.timeline(), component),
+                chunk.iter_component::<MyPoint>(component)
             )
         })
         .collect_vec();
@@ -1068,9 +1065,11 @@ fn concurrent_multitenant_edge_case() {
     eprintln!("{store}");
 
     {
-        let cached = caches.range(&query, &entity_path, MyPoints::all_components().iter());
+        let cached = caches.range(&query, &entity_path, MyPoints::all_component_identifiers());
 
-        let _cached_all_points = cached.get_required(&MyPoints::descriptor_points()).unwrap();
+        let _cached_all_points = cached
+            .get_required(MyPoints::descriptor_points().component)
+            .unwrap();
     }
 
     // --- Meanwhile, tenant #2 queries and deserializes the data ---
@@ -1142,18 +1141,22 @@ fn concurrent_multitenant_edge_case2() {
 
     let query1 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(123, 223));
     {
-        let cached = caches.range(&query1, &entity_path, MyPoints::all_components().iter());
+        let cached = caches.range(&query1, &entity_path, MyPoints::all_component_identifiers());
 
-        let _cached_all_points = cached.get_required(&MyPoints::descriptor_points()).unwrap();
+        let _cached_all_points = cached
+            .get_required(MyPoints::descriptor_points().component)
+            .unwrap();
     }
 
     // --- Tenant #2 queries the data at (423, 523), but doesn't cache the result in the deserialization cache ---
 
     let query2 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(423, 523));
     {
-        let cached = caches.range(&query2, &entity_path, MyPoints::all_components().iter());
+        let cached = caches.range(&query2, &entity_path, MyPoints::all_component_identifiers());
 
-        let _cached_all_points = cached.get_required(&MyPoints::descriptor_points()).unwrap();
+        let _cached_all_points = cached
+            .get_required(MyPoints::descriptor_points().component)
+            .unwrap();
     }
 
     // --- Tenant #2 queries the data at (223, 423) and deserializes it ---
@@ -1241,19 +1244,19 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let descriptor_points = MyPoints::descriptor_points();
-    let descriptor_colors = MyPoints::descriptor_colors();
+    let component_points = MyPoints::descriptor_points().component;
+    let component_colors = MyPoints::descriptor_colors().component;
 
     for _ in 0..3 {
-        let cached = caches.range(query, entity_path, MyPoints::all_components().iter());
+        let cached = caches.range(query, entity_path, [component_points, component_colors]);
 
-        let all_points_chunks = cached.get_required(&descriptor_points).unwrap();
+        let all_points_chunks = cached.get_required(component_points).unwrap();
         let all_points_indexed = all_points_chunks
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), &descriptor_points),
-                    chunk.iter_component::<MyPoint>(&descriptor_points)
+                    chunk.iter_component_indices(*query.timeline(), component_points),
+                    chunk.iter_component::<MyPoint>(component_points)
                 )
             })
             .collect_vec();
@@ -1263,13 +1266,13 @@ fn query_and_compare(
             .map(|(index, points)| (*index, points.as_slice()))
             .collect_vec();
 
-        let all_colors_chunks = cached.get(&descriptor_colors).unwrap_or_default();
+        let all_colors_chunks = cached.get(component_colors).unwrap_or_default();
         let all_colors_indexed = all_colors_chunks
             .iter()
             .flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), &descriptor_colors),
-                    chunk.iter_slices::<u32>(descriptor_colors.clone()),
+                    chunk.iter_component_indices(*query.timeline(), component_colors),
+                    chunk.iter_slices::<u32>(component_colors),
                 )
             })
             .collect_vec();

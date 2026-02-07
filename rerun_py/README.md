@@ -38,7 +38,7 @@ rr.log("points3d", rr.Points3D(positions, colors=colors))
 ## Resources
 * [Examples](https://www.rerun.io/examples)
 * [Python API docs](https://ref.rerun.io/docs/python)
-* [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
+* [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 * [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
@@ -61,16 +61,19 @@ Note that SDK and Viewer can run on different machines!
 
 # Building Rerun from source
 
-We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. See [here](https://github.com/casey/just#installation) for installation instructions.
+We use [`pixi`](https://pixi.sh/) for managing dev-tool versioning, download and task running. See [here](https://pixi.sh/latest/#installation) for installation instructions.
 
 ```sh
-pixi run py-build --release
+pixi run py-build
 ```
-To build SDK & Viewer for Python (or `pixi run py-build` for a debug build) and install it in the Pixi environment.
+This builds the SDK for Python (use `pixi run py-build --release` for a release build).
 
-You can then run examples from the repository, either by making the Pixi shell active with `pixi shell -e py` and then running Python or by using `pixi run -e py`, e.g. `pixi run -e py python examples/python/minimal/minimal.py`.
+You can then run examples via uv:
+```sh
+pixi run uv run examples/python/minimal/minimal.py
+```
 
-Respectively, to build a wheel instead for manual install use:
+To build a wheel instead for manual install use:
 ```sh
 pixi run py-build-wheel
 ```
@@ -87,10 +90,12 @@ While we try to keep the main branch usable at all times, it may be unstable occ
 
 # Running Python unit tests
 ```sh
-pixi run -e py py-build && pixi run -e py py-test
+pixi run py-test
 ```
+
+If you run into a problem, run `rm -rf .pixi .venv` and try again.
 
 # Running specific Python unit tests
 ```sh
-pixi run -e py py-build && pixi run -e py pytest rerun_py/tests/unit/test_tensor.py
+pixi run py-build && pixi run uvpy -m pytest rerun_py/tests/unit/test_tensor.py
 ```

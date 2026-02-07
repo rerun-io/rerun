@@ -1,16 +1,13 @@
-use std::{error::Error, result::Result, sync::Arc};
+use std::error::Error;
+use std::result::Result;
+use std::sync::Arc;
 
 use parking_lot::RwLock;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
-    net::{TcpListener, TcpSocket, TcpStream},
-    sync::{
-        Mutex,
-        mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
-    },
-};
-
 use rerun::external::{re_error, re_log};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
+use tokio::net::{TcpListener, TcpSocket, TcpStream};
+use tokio::sync::Mutex;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use super::protocol::Message;
 
@@ -62,7 +59,7 @@ impl ControlApp {
 
         tokio::spawn(async move {
             loop {
-                re_log::info!("Waiting for connection...");
+                re_log::info!("Waiting for connection…");
                 let app = app.clone();
                 match app.listener.accept().await {
                     Ok((socket, addr)) => {
@@ -87,6 +84,8 @@ impl ControlApp {
 
     async fn handle_connection(&self, socket: TcpStream) {
         let (read_half, write_half) = tokio::io::split(socket);
+
+        #[expect(clippy::disallowed_methods)] // an unbounded_channel is ok for this example
         let (tx, rx) = unbounded_channel();
 
         // Add the client to the list

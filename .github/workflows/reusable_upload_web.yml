@@ -33,7 +33,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "write"
@@ -53,7 +53,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: web_viewer
-          path: web_viewer
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
 
       # Upload the wasm, html etc to a Google cloud bucket:
       - id: "auth"
@@ -72,7 +72,7 @@ jobs:
         if: ${{ !inputs.NIGHTLY }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "web_viewer"
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}"
           parent: false
           process_gcloudignore: false
@@ -81,7 +81,7 @@ jobs:
         if: inputs.MARK_TAGGED_VERSION
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "web_viewer"
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
           parent: false
           process_gcloudignore: false
@@ -90,7 +90,7 @@ jobs:
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "web_viewer"
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
           process_gcloudignore: false
@@ -99,7 +99,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "web_viewer"
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/prerelease"
           parent: false
           process_gcloudignore: false
@@ -110,7 +110,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "web_viewer"
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/main"
           parent: false
           process_gcloudignore: false
@@ -121,7 +121,7 @@ jobs:
         if: ${{ inputs.PR_NUMBER != '' }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "web_viewer"
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
           parent: false
           process_gcloudignore: false
@@ -132,7 +132,7 @@ jobs:
         if: ${{ inputs.NIGHTLY }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "web_viewer"
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/nightly"
           parent: false
           process_gcloudignore: false
@@ -147,13 +147,13 @@ jobs:
           message-id: "web-viewer-build-status"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Web viewer built successfully. If applicable, you should also test it:
-
-            - [ ] I have tested the web viewer
+            Web viewer built successfully.
 
             | Result | Commit  | Link | Manifest |
             | ------ | ------- | ---- | -------- |
             | ✅ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
+
+            View image diff on [kitdiff](https://rerun-io.github.io/kitdiff/?url=${{github.event.pull_request.html_url}}).
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
@@ -170,5 +170,7 @@ jobs:
             | Result | Commit  | Link | Manifest |
             | ------ | ------- | ----- |
             | ❌ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} | [`+nightly`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) [`+main`](https://rerun.io/viewer/pr/${{ github.event.pull_request.number }}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) |
+
+            View image diff on [kitdiff](https://rerun-io.github.io/kitdiff/?url=${{github.event.pull_request.html_url}}).
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>

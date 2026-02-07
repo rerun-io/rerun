@@ -74,18 +74,18 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header(key, value)
         self.end_headers()
 
-    def log_message(self, format: str, *args: Any) -> None:
+    def log_message(self, format: str, *args: Any) -> None:  # noqa: ARG002 (intentionally unused args)
         # Disable logging
         return
 
 
 def serve_assets(
     bind_address: str = "localhost", port: int = 0, background: bool = False
-) -> socketserver._AfInetAddress:
+) -> socketserver._AfInetAddress | socketserver._AfInet6Address:
     print("Starting asset server due to RERUN_NOTEBOOK_ASSET=serve-local")
     global assets
     if assets is None:
-        print("Loading assets into memory...")
+        print("Loading assets into memory…")
         assets = {
             "widget.js": _Asset(WIDGET_PATH, "text/javascript"),
             "re_viewer_bg.wasm": _Asset(WASM_PATH, "application/wasm", encode_gzip=True),
@@ -93,7 +93,7 @@ def serve_assets(
 
     httpd = socketserver.TCPServer((bind_address, port), AssetHandler)
     bound_addr = httpd.server_address
-    print(f"Serving rerun notebook assets at http://{str(bound_addr[0])}:{str(bound_addr[1])}")
+    print(f"Serving rerun notebook assets at http://{bound_addr[0]!s}:{bound_addr[1]!s}")
 
     if background:
         import threading

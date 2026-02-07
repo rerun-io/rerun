@@ -1,0 +1,34 @@
+[package]
+authors.workspace = true
+description = "Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_arrow_ui"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+re_arrow_util.workspace = true
+re_format.workspace = true
+re_log_types.workspace = true
+re_tracing.workspace = true
+re_ui.workspace = true
+
+arrow.workspace = true
+jiff.workspace = true
+egui.workspace = true
+
+[dev-dependencies]
+re_sdk_types.workspace = true
+re_ui = { workspace = true, features = ["testing"] }
+
+egui_kittest.workspace = true
+insta.workspace = true

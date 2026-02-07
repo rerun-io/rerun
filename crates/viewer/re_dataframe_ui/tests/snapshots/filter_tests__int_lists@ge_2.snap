@@ -1,0 +1,103 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: test_results
+---
+TestResult {
+    filter: Int(
+        IntFilter {
+            operator: Ge,
+            rhs_value: Some(
+                2,
+            ),
+        },
+    ),
+    field: Field {
+        name: "column",
+        data_type: List(
+            Field {
+                name: "item",
+                data_type: Int64,
+                nullable: true,
+                dict_id: 0,
+                dict_is_ordered: false,
+                metadata: {},
+            },
+        ),
+        nullable: false,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
+    },
+    unfiltered: ListArray
+    [
+      PrimitiveArray<Int64>
+    [
+      1,
+      2,
+      3,
+    ],
+      PrimitiveArray<Int64>
+    [
+      2,
+    ],
+      PrimitiveArray<Int64>
+    [
+      2,
+      2,
+    ],
+      PrimitiveArray<Int64>
+    [
+      4,
+      5,
+      6,
+    ],
+      PrimitiveArray<Int64>
+    [
+      7,
+      4,
+      9,
+    ],
+      PrimitiveArray<Int64>
+    [
+      5,
+      2,
+      1,
+    ],
+    ],
+    filtered: ListArray
+    [
+      PrimitiveArray<Int64>
+    [
+      1,
+      2,
+      3,
+    ],
+      PrimitiveArray<Int64>
+    [
+      2,
+    ],
+      PrimitiveArray<Int64>
+    [
+      2,
+      2,
+    ],
+      PrimitiveArray<Int64>
+    [
+      4,
+      5,
+      6,
+    ],
+      PrimitiveArray<Int64>
+    [
+      7,
+      4,
+      9,
+    ],
+      PrimitiveArray<Int64>
+    [
+      5,
+      2,
+      1,
+    ],
+    ],
+}

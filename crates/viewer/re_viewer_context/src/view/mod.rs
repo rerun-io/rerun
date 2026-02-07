@@ -23,24 +23,34 @@ pub use highlights::{
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
-pub use system_execution_output::SystemExecutionOutput;
+pub use system_execution_output::{SystemExecutionOutput, VisualizerTypeReport};
 pub use view_class::{
-    ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState, ViewStateExt,
-    VisualizableFilterContext,
+    RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
+    ViewStateExt,
 };
+pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
 pub use view_context::ViewContext;
-pub use view_context_system::{ViewContextCollection, ViewContextSystem};
+pub use view_context_system::{
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+};
 pub use view_query::{
-    DataResult, OverridePath, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet,
-    ViewQuery,
+    DataResult, ViewQuery, VisualizerComponentMappings, VisualizerComponentSource,
+    VisualizerInstruction, VisualizerInstructionsPerType,
 };
 pub use view_states::ViewStates;
-pub use visualizer_entity_subscriber::DataBasedVisualizabilityFilter;
-pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, VisualizerSystem};
+pub use visualizer_system::{
+    AnyPhysicalDatatypeRequirement, RequiredComponents, VisualizerCollection,
+    VisualizerExecutionOutput, VisualizerInstructionReport, VisualizerQueryInfo,
+    VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
+};
 
 // ---------------------------------------------------------------------------
 
+/// A "catastrophic" view system execution error, making it impossible to produce any results at all.
+///
+/// Whenever possible, prefer [`VisualizerExecutionOutput::reports_per_instruction`] to report failures with
+/// individual entities rather than stopping visualization entirely.
 #[derive(Debug, thiserror::Error)]
 pub enum ViewSystemExecutionError {
     #[error("View context system {0} not found")]
@@ -50,13 +60,13 @@ pub enum ViewSystemExecutionError {
     VisualizerSystemNotFound(&'static str),
 
     #[error(transparent)]
-    QueryError2(#[from] re_query::QueryError),
+    QueryError(Box<re_query::QueryError>),
 
     #[error(transparent)]
-    DeserializationError(#[from] re_types::DeserializationError),
+    DeserializationError(Box<re_sdk_types::DeserializationError>),
 
     #[error("Failed to create draw data: {0}")]
-    DrawDataCreationError(Box<dyn std::error::Error>),
+    DrawDataCreationError(Box<dyn std::error::Error + Send + Sync>),
 
     #[error("Error accessing map view tiles.")]
     MapTilesError,
@@ -74,6 +84,11 @@ pub enum ViewSystemExecutionError {
     ViewBuilderError(#[from] re_renderer::view_builder::ViewBuilderError),
 }
 
+const _: () = assert!(
+    std::mem::size_of::<ViewSystemExecutionError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
 // Convenience conversions for some re_renderer error types since these are so frequent.
 
 impl From<re_renderer::renderer::LineDrawDataError> for ViewSystemExecutionError {
@@ -85,5 +100,11 @@ impl From<re_renderer::renderer::LineDrawDataError> for ViewSystemExecutionError
 impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutionError {
     fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
         Self::DrawDataCreationError(Box::new(val))
+    }
+}
+
+impl From<re_sdk_types::DeserializationError> for ViewSystemExecutionError {
+    fn from(val: re_sdk_types::DeserializationError) -> Self {
+        Self::DeserializationError(Box::new(val))
     }
 }

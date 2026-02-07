@@ -1,7 +1,6 @@
-use re_log_encoding::decoder::Decoder;
-
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
+use re_log_encoding::Decoder;
 use re_log_types::ApplicationId;
 
 use crate::{DataLoader as _, LoadedData};
@@ -22,16 +21,26 @@ impl crate::DataLoader for RrdLoader {
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         use anyhow::Context as _;
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let extension = crate::extension(&filepath);
+        let mut extension = crate::extension(&filepath);
         if !matches!(extension.as_str(), "rbl" | "rrd") {
-            // NOTE: blueprints and recordings has the same file format
-            return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
+            if filepath.is_file() || filepath.is_dir() {
+                // NOTE: blueprints and recordings have the same file format
+                return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
+            } else {
+                // NOTE(1): If this is some kind of virtual file (fifo, socket, pipe, etc), then we
+                // always assume it's an RRD stream by default.
+                //
+                // NOTE(2): Because waiting for an end-of-stream marker on a pipe doesn't make sense,
+                // we tag it as `rbl` instead of `rrd` (but really this just means: please don't block
+                // indefinitely).
+                extension = "rbl".to_owned();
+            }
         }
 
         re_log::debug!(
@@ -50,7 +59,7 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to open file {filepath:?}"))?;
                 let file = std::io::BufReader::new(file);
 
-                let decoder = Decoder::new(file)?;
+                let messages = Decoder::decode_eager(file)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -62,7 +71,7 @@ impl crate::DataLoader for RrdLoader {
                             decode_and_stream(
                                 &filepath,
                                 &tx,
-                                decoder,
+                                messages,
                                 settings
                                     .opened_store_id
                                     .as_ref()
@@ -81,7 +90,8 @@ impl crate::DataLoader for RrdLoader {
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
-                let decoder = Decoder::new(retryable_reader)?;
+                let wait_for_eos = true;
+                let messages = Decoder::decode_eager_with_opts(retryable_reader, wait_for_eos)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -90,7 +100,7 @@ impl crate::DataLoader for RrdLoader {
                         let filepath = filepath.clone();
                         move || {
                             decode_and_stream(
-                                &filepath, &tx, decoder,
+                                &filepath, &tx, messages,
                                 // Never use import semantics for .rrd files
                                 None, None,
                             );
@@ -109,7 +119,7 @@ impl crate::DataLoader for RrdLoader {
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<crate::LoadedData>,
+        tx: crossbeam::channel::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         re_tracing::profile_function!(filepath.display().to_string());
 
@@ -120,12 +130,14 @@ impl crate::DataLoader for RrdLoader {
         }
 
         let contents = std::io::Cursor::new(contents);
-        let decoder = match re_log_encoding::decoder::Decoder::new(contents) {
+        let messages = match Decoder::decode_eager(contents) {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
-                re_log_encoding::decoder::DecodeError::NotAnRrd
-                | re_log_encoding::decoder::DecodeError::Options(_) => return Ok(()),
+                re_log_encoding::DecodeError::Codec(
+                    re_log_encoding::rrd::CodecError::NotAnRrd(_)
+                    | re_log_encoding::rrd::CodecError::InvalidOptions(_),
+                ) => return Ok(()),
                 _ => return Err(err.into()),
             },
         };
@@ -145,7 +157,7 @@ impl crate::DataLoader for RrdLoader {
         decode_and_stream(
             &filepath,
             &tx,
-            decoder,
+            messages,
             forced_application_id,
             forced_recording_id,
         );
@@ -154,16 +166,16 @@ impl crate::DataLoader for RrdLoader {
     }
 }
 
-fn decode_and_stream<R: std::io::Read>(
+fn decode_and_stream(
     filepath: &std::path::Path,
-    tx: &std::sync::mpsc::Sender<crate::LoadedData>,
-    decoder: Decoder<R>,
+    tx: &crossbeam::channel::Sender<crate::LoadedData>,
+    msgs: impl Iterator<Item = Result<re_log_types::LogMsg, re_log_encoding::DecodeError>>,
     forced_application_id: Option<&ApplicationId>,
     forced_recording_id: Option<&String>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
-    for msg in decoder {
+    for msg in msgs {
         let msg = match msg {
             Ok(msg) => msg,
             Err(err) => {
@@ -204,7 +216,17 @@ fn decode_and_stream<R: std::io::Read>(
                 }
 
                 re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
-                    re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command)
+                    let mut blueprint_id = blueprint_activation_command.blueprint_id.clone();
+                    if let Some(forced_application_id) = forced_application_id {
+                        blueprint_id =
+                            blueprint_id.with_application_id(forced_application_id.clone());
+                    }
+                    re_log_types::LogMsg::BlueprintActivationCommand(
+                        re_log_types::BlueprintActivationCommand {
+                            blueprint_id,
+                            ..blueprint_activation_command
+                        },
+                    )
                 }
             }
         } else {
@@ -226,7 +248,7 @@ struct RetryableFileReader {
     rx_file_notifs: Receiver<notify::Result<notify::Event>>,
     rx_ticker: Receiver<std::time::Instant>,
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     watcher: notify::RecommendedWatcher,
 }
 
@@ -247,7 +269,7 @@ impl RetryableFileReader {
         // while not needlessly hammering the CPU.
         let rx_ticker = crossbeam::channel::tick(std::time::Duration::from_millis(50));
 
-        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::unbounded();
+        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::bounded(32 * 1024);
         let mut watcher = notify::recommended_watcher(tx_file_notifs)
             .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
 
@@ -286,6 +308,17 @@ impl std::io::Read for RetryableFileReader {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+impl std::io::BufRead for RetryableFileReader {
+    fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
+        self.reader.fill_buf()
+    }
+
+    fn consume(&mut self, amount: usize) {
+        self.reader.consume(amount);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
         loop {
@@ -318,9 +351,8 @@ impl RetryableFileReader {
 
 #[cfg(test)]
 mod tests {
-    use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_encoding::encoder::DroppableEncoder;
+    use re_log_encoding::Encoder;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use super::*;
@@ -349,9 +381,9 @@ mod tests {
             .open(rrd_file_path.to_str().unwrap())
             .unwrap();
 
-        let mut encoder = DroppableEncoder::new(
+        let mut encoder = Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,
-            re_log_encoding::EncodingOptions::PROTOBUF_UNCOMPRESSED,
+            re_log_encoding::rrd::EncodingOptions::PROTOBUF_UNCOMPRESSED,
             rrd_file,
         )
         .unwrap();
@@ -359,15 +391,13 @@ mod tests {
         fn new_message() -> LogMsg {
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
-                info: StoreInfo {
-                    store_id: StoreId::random(StoreKind::Recording, "test_app"),
-                    cloned_from: None,
-                    store_source: StoreSource::RustSdk {
+                info: StoreInfo::new(
+                    StoreId::random(StoreKind::Recording, "test_app"),
+                    StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),
                     },
-                    store_version: Some(CrateVersion::LOCAL),
-                },
+                ),
             })
         }
 
@@ -379,7 +409,8 @@ mod tests {
         encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
-        let mut decoder = Decoder::new(reader).unwrap();
+        let wait_for_eos = true;
+        let mut decoder = Decoder::decode_eager_with_opts(reader, wait_for_eos).unwrap();
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)

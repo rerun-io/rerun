@@ -19,4 +19,4 @@ try:
     while True:
         time.sleep(1)
 except KeyboardInterrupt:
-    print("\nShutting down server...")
+    print("\nShutting down server…")

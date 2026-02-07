@@ -1,16 +1,15 @@
 ---
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
-snapshot_kind: text
 ---
-┌────────────────────┬────────────────────┬────────────────────┐
-│ /test:baz          ┆ /test:foo          ┆ /test:yak          │
-│ ---                ┆ ---                ┆ ---                │
-│ type: List[u32]    ┆ type: List[Utf8]   ┆ type: List[Utf8]   │
-│ component: baz     ┆ component: foo     ┆ component: yak     │
-│ entity_path: /test ┆ entity_path: /test ┆ entity_path: /test │
-│ is_static: true    ┆ is_static: true    ┆ is_static: true    │
-│ kind: data         ┆ kind: data         ┆ kind: data         │
-╞════════════════════╪════════════════════╪════════════════════╡
-│ [42]               ┆ [bar]              ┆ [yuk]              │
-└────────────────────┴────────────────────┴────────────────────┘
+┌───────────────────────────────────┬────────────────────────────────────┬────────────────────────────────────┐
+│ /test:baz                         ┆ /test:foo                          ┆ /test:yak                          │
+│ ---                               ┆ ---                                ┆ ---                                │
+│ type: nullable List[nullable u32] ┆ type: nullable List[nullable Utf8] ┆ type: nullable List[nullable Utf8] │
+│ component: baz                    ┆ component: foo                     ┆ component: yak                     │
+│ entity_path: /test                ┆ entity_path: /test                 ┆ entity_path: /test                 │
+│ is_static: true                   ┆ is_static: true                    ┆ is_static: true                    │
+│ kind: data                        ┆ kind: data                         ┆ kind: data                         │
+╞═══════════════════════════════════╪════════════════════════════════════╪════════════════════════════════════╡
+│ [42]                              ┆ [bar]                              ┆ [yuk]                              │
+└───────────────────────────────────┴────────────────────────────────────┴────────────────────────────────────┘

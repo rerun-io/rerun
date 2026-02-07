@@ -1,12 +1,7 @@
-// TODO(#10460): At some point all these descriptors needs to be interned and have handles or
-// something. And of course they need to be codegen. But we'll get there once we're back to
-// natively tagged components.
-
 use arrow::datatypes::{
     DataType as ArrowDatatype, Field as ArrowField, FieldRef as ArrowFieldRef,
     Fields as ArrowFields,
 };
-
 use re_log_types::EntityPath;
 use re_types_core::{ArchetypeName, ComponentType};
 
@@ -71,6 +66,16 @@ impl ColumnDescriptor {
         match self {
             Self::RowId(_) | Self::Time(_) => None,
             Self::Component(descr) => descr.component_type.as_ref(),
+        }
+    }
+
+    /// Column name, used in record batches.
+    #[inline]
+    pub fn column_name(&self, batch_type: crate::BatchType) -> String {
+        match self {
+            Self::RowId(descr) => descr.column_name(),
+            Self::Time(descr) => descr.column_name().to_owned(),
+            Self::Component(descr) => descr.column_name(batch_type),
         }
     }
 
@@ -186,7 +191,7 @@ fn test_schema_over_ipc() {
     ));
     let ipc_bytes = crate::ipc_from_schema(&original_schema).unwrap();
 
-    let recovered_schema = crate::schema_from_ipc(&ipc_bytes).unwrap();
+    let recovered_schema = crate::raw_schema_from_ipc(&ipc_bytes).unwrap();
     assert_eq!(recovered_schema.as_ref(), &original_schema);
 
     let recovered_columns =

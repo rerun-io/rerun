@@ -1,0 +1,11 @@
+# serializer version: 1
+# name: test_table_upsert
+  '''
+  pyarrow.RecordBatch
+  id: int32
+  value: string
+  ----
+  id: [1,2,3,4]
+  value: ["A","B","c","D"]
+  '''
+# ---

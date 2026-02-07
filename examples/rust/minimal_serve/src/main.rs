@@ -1,12 +1,13 @@
 //! Demonstrates the most barebone usage of the Rerun SDK.
 
-use rerun::{demo_util::grid, external::glam};
+use rerun::demo_util::grid;
+use rerun::external::glam;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_serve").serve_grpc()?;
 
     rerun::serve_web_viewer(rerun::web_viewer::WebViewerConfig {
-        connect_to: Some("localhost/proxy".to_owned()),
+        connect_to: vec!["localhost/proxy".to_owned()],
         ..Default::default()
     })?
     .detach();

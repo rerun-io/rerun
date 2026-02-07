@@ -1,19 +1,17 @@
 use smallvec::smallvec;
 
-use crate::{
-    allocator::create_and_fill_uniform_buffer,
-    draw_phases::DrawPhase,
-    include_shader_module,
-    renderer::screen_triangle_vertex_shader,
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
-
 use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::draw_phases::DrawPhase;
+use crate::renderer::{
+    DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo, screen_triangle_vertex_shader,
+};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{DrawableCollector, include_shader_module};
 
 /// The type of generic skybox to render.
 ///
@@ -52,6 +50,20 @@ pub struct GenericSkyboxDrawData {
 
 impl DrawData for GenericSkyboxDrawData {
     type Renderer = GenericSkybox;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Background,
+            DrawDataDrawable {
+                distance_sort_key: 0.0,
+                draw_data_payload: 0,
+            },
+        );
+    }
 }
 
 impl GenericSkyboxDrawData {
@@ -154,20 +166,18 @@ impl Renderer for GenericSkybox {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
         let pipeline = render_pipelines.get(self.render_pipeline)?;
-
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, &draw_data.bind_group, &[]);
-        pass.draw(0..3, 0..1);
+
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            pass.set_bind_group(1, &draw_data.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+        }
 
         Ok(())
-    }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Background]
     }
 }

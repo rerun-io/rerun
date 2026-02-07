@@ -3,27 +3,27 @@
 mod views;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::iter;
+use std::ops::Deref;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools as _;
+use itertools::{Itertools as _, chain};
+use regex_lite::Regex;
 use unindent::unindent;
 
+use self::views::code_for_view;
+use super::Target;
+use super::common::ExampleInfo;
+use crate::codegen::common::{Example, collect_snippets_for_api_docs};
+use crate::codegen::{StringExt as _, autogen_warning};
+use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
+use crate::objects::{ObjectClass, State};
 use crate::{
     ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, CodeGenerator, Docs, ElementType,
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
-    codegen::{
-        StringExt as _, autogen_warning,
-        common::{Example, collect_snippets_for_api_docs},
-    },
-    data_type::{AtomicDataType, DataType, Field, UnionMode},
     format_path,
-    objects::{ObjectClass, State},
 };
-
-use self::views::code_for_view;
-
-use super::{Target, common::ExampleInfo};
 
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";
@@ -212,7 +212,7 @@ struct ExtensionClass {
 }
 
 impl ExtensionClass {
-    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object) -> Self {
+    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object, objects: &Objects) -> Self {
         let file_name = format!("{}_ext.py", obj.snake_case_name());
         let ext_filepath = base_path.join(file_name.clone());
         let module_name = ext_filepath.file_stem().unwrap().to_owned();
@@ -256,6 +256,11 @@ impl ExtensionClass {
                 .collect();
 
             let has_init = methods.contains(&INIT_METHOD);
+
+            // Verify that the __init__ method calls __attrs_init__ with all fields
+            if has_init {
+                check_ext_consistency(reporter, obj, objects, &contents, &ext_filepath);
+            }
             let has_array = methods.contains(&ARRAY_METHOD);
             let has_len = methods.contains(&LEN_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
@@ -267,7 +272,7 @@ impl ExtensionClass {
                 .collect();
 
             let valid_converter_overrides = if obj.is_union() {
-                itertools::Either::Left(std::iter::once("inner"))
+                itertools::Either::Left(iter::once("inner"))
             } else {
                 itertools::Either::Right(obj.fields.iter().map(|field| field.name.as_str()))
             }
@@ -315,6 +320,129 @@ impl ExtensionClass {
     }
 }
 
+fn check_ext_consistency(
+    reporter: &Reporter,
+    obj: &Object,
+    objects: &Objects,
+    contents: &str,
+    ext_filepath: &Utf8PathBuf,
+) {
+    // Collect expected field names - either direct fields or fields from referenced objects
+    let mut expected_fields = HashSet::new();
+
+    for field in &obj.fields {
+        if obj.kind == ObjectKind::Archetype || obj.kind == ObjectKind::Datatype {
+            // For archetypes/datatypes, always use the direct field names since they reference components
+            // and we want to use the component names directly, not look inside the components
+            expected_fields.insert(&field.name);
+        } else {
+            // For components and datatypes, check if this field references another rerun datatype
+            if let Type::Object { fqname } = &field.typ {
+                if let Some(referenced_obj) = objects.get(fqname) {
+                    // Only apply field indirection if referencing another datatype, not component
+                    if referenced_obj.kind == ObjectKind::Datatype {
+                        // Use the referenced datatype's fields instead of the direct field name
+                        for referenced_field in &referenced_obj.fields {
+                            expected_fields.insert(&referenced_field.name);
+                        }
+                    } else {
+                        // If referencing a component, use the direct field name
+                        expected_fields.insert(&field.name);
+                    }
+                } else {
+                    // Fallback to the direct field name if we can't find the referenced object
+                    expected_fields.insert(&field.name);
+                }
+            } else {
+                // For non-object types, use the direct field name
+                expected_fields.insert(&field.name);
+            }
+        }
+    }
+
+    // Look for __attrs_init__ call using Python indentation structure
+    if contents.contains("__attrs_init__") {
+        let lines: Vec<&str> = contents.lines().collect();
+        let mut attrs_init_section = String::new();
+        let mut found_attrs_init = false;
+        let mut base_indent = 0;
+
+        for line in lines {
+            if line.contains("__attrs_init__(") && !found_attrs_init {
+                found_attrs_init = true;
+                // Calculate the indentation of the __attrs_init__ line
+                base_indent = line.len() - line.trim_start().len();
+                attrs_init_section.push_str(line);
+                attrs_init_section.push('\n');
+
+                // Check if it's a single-line call (ends with ')' on the same line)
+                if line.trim_end().ends_with(')') {
+                    break;
+                }
+            } else if found_attrs_init {
+                attrs_init_section.push_str(line);
+                attrs_init_section.push('\n');
+
+                // Check if this line has a ')' at the same or lesser indentation level
+                let line_indent = line.len() - line.trim_start().len();
+                if line.trim_start().starts_with(')') && line_indent <= base_indent {
+                    break;
+                }
+            }
+        }
+
+        if found_attrs_init {
+            // Extract field names using regex to find field_name=… patterns
+            let mut found_fields = HashSet::new();
+            for field_name in &expected_fields {
+                let field_pattern = format!(r"\b{}\s*=", regex_lite::escape(field_name));
+                let field_regex = Regex::new(&field_pattern).unwrap();
+                if field_regex.is_match(&attrs_init_section) {
+                    found_fields.insert(field_name);
+                }
+            }
+
+            // Check if all expected fields are present
+            for field_name in &expected_fields {
+                if !found_fields.contains(field_name) {
+                    reporter.error(
+                        ext_filepath.as_str(),
+                        &obj.fqname,
+                        format!(
+                            "The __init__ method should call __attrs_init__ with field '{field_name}={field_name}' parameter",
+                        ),
+                    );
+                }
+            }
+        } else {
+            reporter.error(
+                ext_filepath.as_str(),
+                &obj.fqname,
+                "Could not find __attrs_init__ call".to_owned(),
+            );
+        }
+    } else {
+        reporter.error(
+            ext_filepath.as_str(),
+            &obj.fqname,
+            "The __init__ method should call __attrs_init__ with all available fields".to_owned(),
+        );
+    }
+}
+
+struct ExtensionClasses {
+    classes: BTreeMap<String, ExtensionClass>,
+}
+
+impl Deref for ExtensionClasses {
+    type Target = BTreeMap<String, ExtensionClass>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.classes
+    }
+}
+
 impl PythonCodeGenerator {
     fn generate_folder(
         &self,
@@ -331,6 +459,25 @@ impl PythonCodeGenerator {
         let mut mods = BTreeMap::<String, Vec<String>>::new();
         let mut scoped_mods = BTreeMap::<String, BTreeMap<String, Vec<String>>>::new();
         let mut test_mods = BTreeMap::<String, Vec<String>>::new();
+
+        let ext_classes = ExtensionClasses {
+            classes: objects
+                .objects_of_kind(object_kind)
+                .map(|obj| {
+                    let kind_path = if let Some(scope) = obj.scope() {
+                        self.pkg_path
+                            .join(scope)
+                            .join(object_kind.plural_snake_case())
+                    } else {
+                        kind_path.clone()
+                    };
+
+                    let ext_class = ExtensionClass::new(reporter, &kind_path, obj, objects);
+
+                    (obj.fqname.clone(), ext_class)
+                })
+                .collect(),
+        };
 
         // Generate folder contents:
         for obj in objects.objects_of_kind(object_kind) {
@@ -350,7 +497,9 @@ impl PythonCodeGenerator {
                 kind_path.join(format!("{}.py", obj.snake_case_name()))
             };
 
-            let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
+            let ext_class = ext_classes
+                .get(&obj.fqname)
+                .expect("We created this for every object");
 
             let names = match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
@@ -426,6 +575,7 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
+            from {rerun_path}_numpy_compatibility import asarray
             from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
@@ -467,6 +617,22 @@ impl PythonCodeGenerator {
                 );
             }
 
+            if obj
+                .try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER)
+                .is_some()
+            {
+                code.push_unindented(
+                    format!("from {rerun_path}blueprint import VisualizableArchetype, Visualizer"),
+                    1,
+                );
+                code.push_unindented(
+                    format!(
+                        "from {rerun_path}blueprint.datatypes import VisualizerComponentMappingLike"
+                    ),
+                    1,
+                );
+            }
+
             let import_clauses: HashSet<_> = obj
                 .fields
                 .iter()
@@ -489,17 +655,29 @@ impl PythonCodeGenerator {
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
                     if obj.kind == ObjectKind::View {
-                        code_for_view(reporter, objects, &ext_class, obj)
+                        code_for_view(reporter, objects, ext_class, obj)
                     } else {
-                        code_for_struct(reporter, type_registry, &ext_class, objects, obj)
+                        code_for_struct(
+                            reporter,
+                            type_registry,
+                            ext_class,
+                            objects,
+                            &ext_classes,
+                            obj,
+                        )
                     }
                 }
                 crate::objects::ObjectClass::Enum(_) => {
-                    code_for_enum(reporter, type_registry, &ext_class, objects, obj)
+                    code_for_enum(reporter, type_registry, ext_class, objects, obj)
                 }
-                crate::objects::ObjectClass::Union => {
-                    code_for_union(reporter, type_registry, &ext_class, objects, obj)
-                }
+                crate::objects::ObjectClass::Union => code_for_union(
+                    reporter,
+                    type_registry,
+                    ext_class,
+                    objects,
+                    &ext_classes,
+                    obj,
+                ),
             };
 
             code.push_indented(0, &obj_code, 1);
@@ -557,7 +735,7 @@ fn write_init_file(
     files_to_write.insert(path, code);
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn lib_source_code(archetype_names: &[String]) -> String {
     let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
@@ -587,6 +765,7 @@ fn code_for_struct(
     type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
+    ext_classes: &ExtensionClasses,
     obj: &Object,
 ) -> String {
     assert!(obj.is_struct());
@@ -604,7 +783,7 @@ fn code_for_struct(
     if !obj.is_delegating_component() {
         for field in fields {
             let (default_converter, converter_function) =
-                quote_field_converter_from_field(obj, objects, field);
+                quote_field_converter_from_field(obj, objects, ext_classes, field);
 
             let converter_override_name = format!("{}{FIELD_CONVERTER_SUFFIX}", field.name);
 
@@ -636,6 +815,11 @@ fn code_for_struct(
 
     if *kind == ObjectKind::Archetype {
         superclasses.push("Archetype".to_owned());
+    }
+
+    let visualizer_name = obj.try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER);
+    if visualizer_name.is_some() {
+        superclasses.push("VisualizableArchetype".to_owned());
     }
 
     // Delegating component inheritance comes after the `ExtensionClass`
@@ -812,6 +996,26 @@ fn code_for_struct(
                 "__repr__ = Archetype.__repr__ # type: ignore[assignment] ",
                 1,
             );
+
+            if let Some(visualizer_name) = visualizer_name {
+                // TODO(#10631): Marked as experimental
+                let docstring = r#""""
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """"#;
+                code.push_indented(1, "", 1);
+                code.push_indented(1, "def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:", 1);
+                code.push_indented(2, docstring, 1);
+                code.push_indented(2, format!(r#"return Visualizer("{visualizer_name}", overrides=self.as_component_batches(), mappings=mappings)"#), 1);
+            }
         }
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
@@ -880,7 +1084,6 @@ fn code_for_enum(
     if let Some(deprecation_summary) = obj.deprecation_summary() {
         code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
-
     let superclasses = {
         let mut superclasses = vec![];
         if ext_class.found {
@@ -987,16 +1190,22 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
         .join(", ")
     );
     code.push_unindented(
-        format!("{enum_name}Like = Union[{enum_name}, {variants}, int]"),
+        format!("{enum_name}Like = {enum_name} | {variants} | int"),
         1,
     );
     code.push_unindented(
         format!(
             r#"
-            {enum_name}ArrayLike = Union[
-                {enum_name}Like,
-                Sequence[{enum_name}Like]
-            ]
+            """A type alias for any {enum_name}-like object."""
+            "#,
+        ),
+        1,
+    );
+    code.push_unindented(
+        format!(
+            r#"
+            {enum_name}ArrayLike = {enum_name} | {variants} | int |Sequence[{enum_name}Like]
+            """A type alias for any {enum_name}-like array object."""
             "#,
         ),
         2,
@@ -1026,6 +1235,7 @@ fn code_for_union(
     type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
+    ext_classes: &ExtensionClasses,
     obj: &Object,
 ) -> String {
     assert_eq!(obj.class, ObjectClass::Union);
@@ -1105,13 +1315,13 @@ fn code_for_union(
 
     // provide a default converter if *all* arms are of the same type
     let default_converter = if field_types.len() == 1 {
-        quote_field_converter_from_field(obj, objects, &fields[0]).0
+        quote_field_converter_from_field(obj, objects, ext_classes, &fields[0]).0
     } else {
         String::new()
     };
 
     let inner_type = if field_types.len() > 1 {
-        format!("Union[{}]", field_types.iter().join(", "))
+        field_types.iter().join(" | ")
     } else {
         field_types.iter().next().unwrap().clone()
     };
@@ -1430,7 +1640,7 @@ fn quote_array_method_from_obj(
         "
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
+            return asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))
@@ -1518,16 +1728,20 @@ fn quote_aliases_from_object(obj: &Object) -> String {
             format!(
                 r#"
                 if TYPE_CHECKING:
-                    {name}Like = Union[
-                        {name},
-                        {aliases}
-                    ]
+                    {name}Like = {name}{aliases}
+                    """A type alias for any {name}-like object."""
                 else:
                     {name}Like = Any
                 "#,
+                aliases = format!(" | {aliases}").trim_end_matches(" | "),
             )
         } else {
-            format!("{name}Like = {name}")
+            format!(
+                r#"
+                {name}Like = {name}
+                """A type alias for any {name}-like object."""
+                "#,
+            )
         },
         1,
     );
@@ -1535,12 +1749,10 @@ fn quote_aliases_from_object(obj: &Object) -> String {
     code.push_unindented(
         format!(
             r#"
-            {name}ArrayLike = Union[
-                {name},
-                Sequence[{name}Like],
-                {array_aliases}
-            ]
+            {name}ArrayLike = {name} | Sequence[{name}Like]{array_aliases}
+            """A type alias for any {name}-like array object."""
             "#,
+            array_aliases = format!(" | {array_aliases}").trim_end_matches(" | "),
         ),
         0,
     );
@@ -1563,23 +1775,23 @@ fn quote_union_aliases_from_object<'a>(
 
     let name = &obj.name;
 
-    let union_fields = field_types.join(",");
+    let union_fields = field_types.join(" | ");
     let aliases = aliases.unwrap_or_default();
 
     unindent(&format!(
         r#"
             if TYPE_CHECKING:
-                {name}Like = Union[
-                    {name},{union_fields},{aliases}
-                ]
-                {name}ArrayLike = Union[
-                    {name},{union_fields},
-                    Sequence[{name}Like],{array_aliases}
-                ]
+                {name}Like = {name} | {union_fields}{aliases}
+                """A type alias for any {name}-like object."""
+
+                {name}ArrayLike = {name} | {union_fields} | Sequence[{name}Like]{array_aliases}
+                """A type alias for any {name}-like array object."""
             else:
                 {name}Like = Any
                 {name}ArrayLike = Any
             "#,
+        aliases = format!(" | {aliases}").trim_end_matches(" | "),
+        array_aliases = format!(" | {array_aliases}").trim_end_matches(" | ")
     ))
 }
 
@@ -1618,17 +1830,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
         if from.starts_with("rerun.datatypes") {
             "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            format!("from ...{scope} import datatypes as {scope}_datatypes")
+            format!("from ...{scope} import datatypes as {scope}_datatypes") // NOLINT
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
-            format!("from ...{scope} import components as {scope}_components")
+            format!("from ...{scope} import components as {scope}_components") // NOLINT
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
-            format!("from ...{scope} import archetypes as {scope}_archetypes")
+            format!("from ...{scope} import archetypes as {scope}_archetypes") // NOLINT
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {
@@ -1673,6 +1885,7 @@ fn quote_field_type_from_field(
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Array {
             elem_type,
@@ -1691,6 +1904,7 @@ fn quote_field_type_from_field(
             ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
+            ElementType::Binary => "list[bytes]".to_owned(),
             ElementType::String => "list[str]".to_owned(),
             ElementType::Object { .. } => {
                 let typ = quote_type_from_element_type(elem_type);
@@ -1716,6 +1930,7 @@ fn quote_field_type_from_field(
 fn quote_field_converter_from_field(
     obj: &Object,
     objects: &Objects,
+    ext_classes: &ExtensionClasses,
     field: &ObjectField,
 ) -> (String, String) {
     let mut function = String::new();
@@ -1752,6 +1967,13 @@ fn quote_field_converter_from_field(
                 "float".to_owned()
             }
         }
+        Type::Binary => {
+            if field.is_nullable {
+                "bytes_or_none".to_owned()
+            } else {
+                "bytes".to_owned()
+            }
+        }
         Type::String => {
             if field.is_nullable {
                 "str_or_none".to_owned()
@@ -1784,9 +2006,14 @@ fn quote_field_converter_from_field(
             });
             let field_obj = &objects[fqname];
 
-            // we generate a default converter only if the field's type can be constructed with a
-            // single argument
-            if field_obj.fields.len() == 1 || field_obj.is_union() {
+            // If the extension class has a custom init we don't know if we can
+            // pass a single argument to it.
+            //
+            // We generate a default converter only if the field's type can be constructed with a
+            // single argument.
+            if ext_classes.get(fqname).is_none_or(|c| !c.has_init)
+                && (field_obj.fields.len() == 1 || field_obj.is_union())
+            {
                 let converter_name = format!(
                     "_{}__{}__special_field_converter_override", // TODO(emilk): why does this have an underscore prefix?
                     obj.snake_case_name(),
@@ -1868,6 +2095,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Object { fqname } => fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
@@ -1935,6 +2163,7 @@ fn quote_arrow_support_from_obj(
         objects,
         obj,
         type_registry,
+        ext_class,
     ) {
         Ok(automatic_arrow_serialization) => {
             if ext_class.has_native_to_pa_array {
@@ -2026,6 +2255,7 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
         Type::Float32 => Some("np.float32"),
         Type::Float64 => Some("np.float64"),
         Type::Unit
+        | Type::Binary
         | Type::String
         | Type::Array { .. }
         | Type::Vector { .. }
@@ -2039,6 +2269,7 @@ fn quote_arrow_serialization(
     objects: &Objects,
     obj: &Object,
     type_registry: &TypeRegistry,
+    ext_class: &ExtensionClass,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
 
@@ -2055,7 +2286,7 @@ fn quote_arrow_serialization(
                     return Ok(unindent(
                         r##"
                             if isinstance(data, str):
-                                array: Union[list[str], npt.ArrayLike] = [data]
+                                array: list[str] | npt.ArrayLike = [data]
                             elif isinstance(data, Sequence):
                                 array = [str(datum) for datum in data]
                             elif isinstance(data, np.ndarray):
@@ -2088,20 +2319,42 @@ fn quote_arrow_serialization(
 
             let mut code = String::new();
 
+            // Would be more correct to also check if the init method has a single parameter here.
+            let convert_inner = ext_class.has_init
+                && obj
+                    .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
+                    .is_some_and(|s| !s.is_empty());
+
             code.push_indented(0, "from typing import cast", 1);
             code.push_indented(
                 0,
                 quote_local_batch_type_imports(&obj.fields, obj.is_testing()),
                 2,
             );
+
+            code.push_indented(0, format!("typed_data: Sequence[{name}]"), 2);
+
             code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
-            code.push_indented(1, "data = [data]", 2);
+            code.push_indented(1, "typed_data = [data]", 1);
+
+            code.push_indented(0, "else:", 1);
+            if convert_inner {
+                code.push_indented(
+                    1,
+                    format!(
+                        "typed_data = [x if isinstance(x, {name}) else {name}(x) for x in data]"
+                    ),
+                    2,
+                );
+            } else {
+                code.push_indented(1, "typed_data = data", 2);
+            }
 
             code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
             code.push_indented(1, "[", 1);
             for field in &obj.fields {
                 let field_name = &field.name;
-                let field_array = format!("[x.{field_name} for x in data]");
+                let field_array = format!("[x.{field_name} for x in typed_data]");
 
                 match &field.typ {
                     Type::UInt8
@@ -2122,7 +2375,11 @@ fn quote_arrow_serialization(
                         code.push_indented(2, &field_fwd, 1);
                     }
 
-                    Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } => {
+                    Type::Unit
+                    | Type::Binary
+                    | Type::String
+                    | Type::Array { .. }
+                    | Type::Vector { .. } => {
                         return Err(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
@@ -2249,6 +2506,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float16
                     | Type::Float32
                     | Type::Float64
+                    | Type::Binary
                     | Type::String => {
                         let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")
@@ -2267,10 +2525,10 @@ return pa.array(pa_data, type=data_type)
                 .into_iter()
                 .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
                 .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
-                .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
+                .filter(|typename| !typename.ends_with("Like")) // TODO(#10959): `xLike` types are union types and checking those is not supported until Python 3.10.
                 .map(|typename| {
                     if typename == "None" {
-                        "type(None)".to_owned() // `NoneType` requires Python 3.10.
+                        "type(None)".to_owned() // TODO(#10959): `NoneType` requires Python 3.10.
                     } else {
                         typename
                     }
@@ -2389,7 +2647,7 @@ fn quote_parameter_type_alias(
     }
 }
 
-fn quote_init_parameter_from_field(
+pub fn quote_init_parameter_from_field(
     field: &ObjectField,
     objects: &Objects,
     current_obj_fqname: &str,
@@ -2417,10 +2675,13 @@ fn compute_init_parameters(obj: &Object, objects: &Objects) -> Vec<String> {
     // If the type is fully transparent (single non-nullable field and not an archetype),
     // we have to use the "{obj.name}Like" type directly since the type of the field itself might be too narrow.
     // -> Whatever type aliases there are for this type, we need to pick them up.
-    if obj.kind != ObjectKind::Archetype && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
+    if obj.kind != ObjectKind::Archetype
+        && let [single_field] = obj.fields.as_slice()
+        && !single_field.is_nullable
+    {
         vec![format!(
             "{}: {}",
-            obj.fields[0].name,
+            single_field.name,
             quote_parameter_type_alias(&obj.fqname, &obj.fqname, objects, false)
         )]
     } else if obj.is_union() {
@@ -2443,17 +2704,19 @@ fn compute_init_parameters(obj: &Object, objects: &Objects) -> Vec<String> {
             .map(|field| quote_init_parameter_from_field(field, objects, &obj.fqname))
             .collect_vec();
 
-        if optional.is_empty() {
+        if 2 < required.len() {
+            // There's a lot of required arguments.
+            // Using positional arguments would make usage hard to read.
+            // better for force kw-args for ALL arguments:
+            chain!(std::iter::once("*".to_owned()), required, optional).collect()
+        } else if optional.is_empty() {
             required
-        } else if obj.kind == ObjectKind::Archetype {
-            // Force kw-args for all optional arguments:
-            required
-                .into_iter()
-                .chain(std::iter::once("*".to_owned()))
-                .chain(optional)
-                .collect()
+        } else if obj.name == "AnnotationInfo" {
+            // TODO(#6836): rewrite AnnotationContext
+            chain!(required, optional).collect()
         } else {
-            required.into_iter().chain(optional).collect()
+            // Force kw-args for all optional arguments:
+            chain!(required, std::iter::once("*".to_owned()), optional).collect()
         }
     }
 }
@@ -2497,10 +2760,9 @@ fn quote_init_method(
     ext_class: &ExtensionClass,
     objects: &Objects,
 ) -> String {
-    let parameters = compute_init_parameters(obj, objects);
     let head = format!(
         "def __init__(self: Any, {}) -> None:",
-        parameters.join(", ")
+        compute_init_parameters(obj, objects).join(", ")
     );
 
     let parameter_docs = compute_init_parameter_docs(reporter, obj, objects);
@@ -2806,7 +3068,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
         DataType::Atomic(AtomicDataType::Float32) => "pa.float32()".to_owned(),
         DataType::Atomic(AtomicDataType::Float64) => "pa.float64()".to_owned(),
 
-        DataType::Binary => "pa.binary()".to_owned(),
+        DataType::Binary => "pa.large_binary()".to_owned(),
 
         DataType::Utf8 => "pa.utf8()".to_owned(),
 

@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use re_viewer_context::{
-    AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier,
+    AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    ViewSystemIdentifier,
 };
 
 #[derive(Default)]
-pub struct AnnotationSceneContext(pub AnnotationMap);
+pub struct AnnotationSceneContext(pub Arc<AnnotationMap>);
 
 impl IdentifiedViewSystem for AnnotationSceneContext {
     fn identifier() -> ViewSystemIdentifier {
@@ -12,22 +15,29 @@ impl IdentifiedViewSystem for AnnotationSceneContext {
 }
 
 impl ViewContextSystem for AnnotationSceneContext {
-    fn execute(
-        &mut self,
-        ctx: &re_viewer_context::ViewContext<'_>,
-        query: &re_viewer_context::ViewQuery<'_>,
-    ) {
-        re_tracing::profile_function!();
-        // We create a list of *all* entities here, do not only iterate over those with annotation context.
-        // TODO(andreas): But knowing ahead of time where we have annotation contexts could be used for optimization.
-        self.0.load(
-            ctx.viewer_ctx,
-            &query.latest_at_query(),
-            query.iter_all_entities(),
-        );
+    fn execute_once_per_frame(
+        ctx: &re_viewer_context::ViewerContext<'_>,
+    ) -> ViewContextSystemOncePerFrameResult {
+        // Use static execution to load the annotation map for all entities.
+        // Alternatively, we could do this only for visible ones per View but this is actually a lot more expensive to do
+        // given that there's typically just one annotation map per recording anyways!
+        let mut annotation_map = AnnotationMap::default();
+        annotation_map.load(ctx, &ctx.current_query());
+
+        Box::new(Self(Arc::new(annotation_map)))
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+    fn execute(
+        &mut self,
+        _ctx: &re_viewer_context::ViewContext<'_>,
+        _query: &re_viewer_context::ViewQuery<'_>,
+        once_per_frame_result: &ViewContextSystemOncePerFrameResult,
+    ) {
+        // Take over the static result to make it available.
+        self.0 = once_per_frame_result
+            .downcast_ref::<Self>()
+            .expect("Unexpected static execution result type")
+            .0
+            .clone();
     }
 }

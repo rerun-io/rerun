@@ -3,22 +3,18 @@
 use core::f32;
 use std::f32::consts::{PI, TAU};
 
-use custom_callback::comms::{app::ControlApp, protocol::Message};
-
-use rerun::{
-    RecordingStream,
-    external::{glam::Vec3, re_log, tokio},
-};
+use custom_callback::comms::app::ControlApp;
+use custom_callback::comms::protocol::Message;
+use rerun::RecordingStream;
+use rerun::external::glam::Vec3;
+use rerun::external::{re_log, tokio};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = ControlApp::bind("127.0.0.1:8888").await?.run();
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_callback")
-        .connect_grpc_opts(
-            "rerun+http://127.0.0.1:9877/proxy",
-            rerun::default_flush_timeout(),
-        )?;
+        .connect_grpc_opts("rerun+http://127.0.0.1:9877/proxy")?;
 
     // Add a handler for incoming messages
     let add_rec = rec.clone();
@@ -26,7 +22,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // spawn a task to log a point every 100ms
     // we then use a channel to control the point's position and radius using the control panel
+    #[expect(clippy::disallowed_methods)] // an unbounded_channel is ok for this example
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
     let snake_handle = tokio::spawn(animated_snake(rx, rec));
 
     // Add a handler for dynamic updates

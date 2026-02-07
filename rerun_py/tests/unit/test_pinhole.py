@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import itertools
+from typing import TYPE_CHECKING
 
 import numpy as np
 import rerun as rr
 from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
-from rerun.datatypes import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
+
+if TYPE_CHECKING:
+    from rerun.datatypes import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
 
 
 def test_pinhole() -> None:
@@ -29,9 +32,9 @@ def test_pinhole() -> None:
 
         print(
             f"rr.Pinhole(\n"
-            f"    image_from_camera={str(image_from_camera)}\n"
-            f"    resolution={str(resolution)}\n"
-            f"    camera_xyz={str(camera_xyz)}\n"
+            f"    image_from_camera={image_from_camera!s}\n"
+            f"    resolution={resolution!s}\n"
+            f"    camera_xyz={camera_xyz!s}\n"
             f")",
         )
         arch = rr.Pinhole(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)

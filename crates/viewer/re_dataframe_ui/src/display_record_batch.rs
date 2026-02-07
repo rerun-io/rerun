@@ -3,42 +3,34 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
-        ListArray as ArrowListArray,
-    },
-    buffer::NullBuffer as ArrowNullBuffer,
-    buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::DataType as ArrowDataType,
+use arrow::array::{
+    Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
+    ListArray as ArrowListArray,
 };
-use thiserror::Error;
-
+use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
+use arrow::datatypes::DataType as ArrowDataType;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
 use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
-use re_types::ComponentDescriptor;
-use re_types::components::{Blob, MediaType};
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::components::{Blob, MediaType};
+use re_sorbet::ColumnDescriptorRef;
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, VariantName, ViewerContext};
 
 use crate::table_blueprint::ColumnBlueprint;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum DisplayRecordBatchError {
     #[error("Bad column for timeline '{timeline}': {error}")]
     BadTimeColumn {
         timeline: String,
         error: TimeColumnError,
     },
-
-    #[error("Unexpected column data type for component '{0}': {1:?}")]
-    UnexpectedComponentColumnDataType(ComponentDescriptor, ArrowDataType),
 
     #[error(transparent)]
     DeserializationError(#[from] DeserializationError),
@@ -55,21 +47,19 @@ enum ComponentData {
         dict: ArrowInt32DictionaryArray,
         values: ArrowListArray,
     },
+    Scalar(ArrowArrayRef),
 }
 
 impl ComponentData {
-    fn try_new(
-        descriptor: &ComponentColumnDescriptor,
-        column_data: &ArrowArrayRef,
-    ) -> Result<Self, DisplayRecordBatchError> {
+    fn new(column_data: &ArrowArrayRef) -> Self {
         match column_data.data_type() {
-            ArrowDataType::Null => Ok(Self::Null),
-            ArrowDataType::List(_) => Ok(Self::ListArray(
+            ArrowDataType::Null => Self::Null,
+            ArrowDataType::List(_) => Self::ListArray(
                 column_data
                     .downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone(),
-            )),
+            ),
             ArrowDataType::Dictionary(_, _) => {
                 let dict = column_data
                     .downcast_array_ref::<ArrowInt32DictionaryArray>()
@@ -80,12 +70,9 @@ impl ComponentData {
                     .downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
-                Ok(Self::DictionaryArray { dict, values })
+                Self::DictionaryArray { dict, values }
             }
-            _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
-                descriptor.component_descriptor(),
-                column_data.data_type().to_owned(),
-            )),
+            _ => Self::Scalar(Arc::clone(column_data)),
         }
     }
 
@@ -109,6 +96,7 @@ impl ComponentData {
                     0
                 }
             }
+            Self::Scalar(_) => 1,
         }
     }
 
@@ -121,11 +109,21 @@ impl ComponentData {
     fn row_data(&self, row_index: usize) -> Option<ArrowArrayRef> {
         match self {
             Self::Null => None,
+
             Self::ListArray(list_array) => list_array
                 .is_valid(row_index)
                 .then(|| list_array.value(row_index)),
+
             Self::DictionaryArray { dict, values } => {
                 dict.key(row_index).map(|key| values.value(key))
+            }
+
+            Self::Scalar(scalar_array) => {
+                if row_index < scalar_array.len() {
+                    Some(scalar_array.slice(row_index, 1))
+                } else {
+                    None
+                }
             }
         }
     }
@@ -138,8 +136,9 @@ impl ComponentData {
 /// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
 /// are hashed.
 fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
-    use ahash::AHasher;
     use std::hash::{Hash as _, Hasher as _};
+
+    use ahash::AHasher;
 
     re_tracing::profile_function!();
 
@@ -179,7 +178,7 @@ pub struct DisplayComponentColumn {
 
 impl DisplayComponentColumn {
     fn blobs(&self, row: usize) -> Option<Vec<Blob>> {
-        if self.component_descr.component_type != Some(re_types::components::Blob::name()) {
+        if self.component_descr.component_type != Some(re_sdk_types::components::Blob::name()) {
             return None;
         }
 
@@ -194,12 +193,20 @@ impl DisplayComponentColumn {
     }
 
     pub fn is_image(&self) -> bool {
-        self.component_descr.component_type == Some(re_types::components::Blob::name())
+        self.component_descr.component_type == Some(re_sdk_types::components::Blob::name())
             && self
                 .blobs(0)
                 .as_ref()
                 .and_then(|blobs| blobs.first())
                 .is_some_and(Self::is_blob_image)
+    }
+
+    pub fn string_value_at(&self, row: usize) -> Option<String> {
+        let data = self.component_data.row_data(row)?;
+
+        let string_component = data.downcast_array_ref::<arrow::array::StringArray>()?;
+
+        Some(string_component.value(0).to_owned())
     }
 
     fn data_ui(
@@ -339,7 +346,7 @@ impl DisplayColumn {
                 Ok(Self::Component(Box::new(DisplayComponentColumn {
                     entity_path: desc.entity_path.clone(),
                     component_descr: desc.component_descriptor(),
-                    component_data: ComponentData::try_new(desc, column_data)?,
+                    component_data: ComponentData::new(column_data),
                     row_ids: None,
                     variant_name: column_blueprint.variant_ui,
                 })))
@@ -400,7 +407,7 @@ impl DisplayColumn {
                     .as_ref()
                     .is_none_or(|nulls| nulls.is_valid(row_index));
 
-                if let (true, Some(value)) = (is_valid, time_data.get(row_index)) {
+                if is_valid && let Some(value) = time_data.get(row_index) {
                     match TimeInt::try_from(*value) {
                         Ok(timestamp) => {
                             ui.label(

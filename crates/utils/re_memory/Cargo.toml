@@ -25,9 +25,11 @@ re_log.workspace = true
 re_tracing.workspace = true
 
 ahash.workspace = true
+crossbeam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
+saturating_cast.workspace = true
 smallvec.workspace = true
 web-time.workspace = true
 

@@ -1,0 +1,23 @@
+namespace rerun.blueprint.components;
+
+// ---
+/// An individual query expression used to filter a set of [datatypes.EntityPath]s.
+///
+/// Each expression is either an inclusion or an exclusion expression.
+/// Inclusions start with an optional `+` and exclusions must start with a `-`.
+///
+/// Multiple expressions are combined together as part of [archetypes.ViewContents].
+///
+/// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
+/// (`/world/**` matches both `/world` and `/world/car/driver`).
+/// Other uses of `*` are not (yet) supported.
+table QueryExpression (
+  "attr.rerun.scope": "blueprint",
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  filter: rerun.datatypes.Utf8 (order: 100);
+}

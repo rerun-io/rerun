@@ -2,6 +2,23 @@ use std::collections::HashMap;
 
 use arrow::datatypes::Field as ArrowField;
 
+// The following constants are used as metadata keys. See also
+// [`re_types_core::component_descriptor`] for additional constants.
+
+/// The key used to identify the index name in field-level metadata.
+pub const SORBET_INDEX_NAME: &str = "rerun:index_name";
+
+/// The key used to identify the entity path in field-level metadata.
+pub const SORBET_ENTITY_PATH: &str = "rerun:entity_path";
+
+/// The key used to identify the [`crate::column_kind::ColumnKind`] in
+/// field-level metadata.
+pub const RERUN_KIND: &str = "rerun:kind";
+
+/// The key used to identify table columns in the Rerun server
+/// associated as a primary index.
+pub const SORBET_IS_TABLE_INDEX: &str = "rerun:is_table_index";
+
 /// Arrow metadata for an arrow record batch.
 pub type ArrowBatchMetadata = HashMap<String, String>;
 

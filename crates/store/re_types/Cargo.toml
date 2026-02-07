@@ -1,12 +1,12 @@
 [package]
 name = "re_types"
 authors.workspace = true
-description = "The built-in Rerun data types, component types, and archetypes."
-edition = "2021"                                                                # TODO(#9943): Update to 2024
+description = "The old name of re_sdk_types. USE re_sdk_types INSTEAD!"
+edition = "2024"
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-publish = true
+publish = false
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
@@ -15,105 +15,5 @@ version.workspace = true
 [lints]
 workspace = true
 
-[package.metadata.docs.rs]
-all-features = false
-no-default-features = true
-features = ["all"]
-
-
-[features]
-default = ["ecolor"]
-
-## All features except `testing`.
-all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde", "video"]
-
-## Enable color conversions.
-ecolor = ["dep:ecolor"]
-
-## Enable conversions to plot primitives
-egui_plot = ["dep:egui_plot"]
-
-## Add support for some math operations using [`glam`](https://crates.io/crates/glam/) and [`macaw`](https://crates.io/crates/macaw/).
-glam = ["dep:glam", "dep:macaw"]
-
-## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG and TIFF support.
-image = ["dep:ecolor", "dep:image", "dep:tiff"]
-
-## Inspecting video data.
-video = ["dep:re_video"]
-
-## Enable (de)serialization using serde.
-serde = ["dep:serde"]
-
-## Include testing archetypes/components/datatypes into the crate.
-## Only useful for testing purposes.
-testing = []
-
-
 [dependencies]
-# Rerun
-re_byte_size.workspace = true
-re_error.workspace = true
-re_format.workspace = true
-re_log_types.workspace = true
-re_log.workspace = true
-re_tracing.workspace = true
-re_sorbet.workspace = true
-re_types_core.workspace = true
-re_video = { workspace = true, optional = true }
-
-# External
-anyhow.workspace = true                                                      # TODO(#1845): Use thiserror instead
-array-init.workspace = true
-arrow.workspace = true
-bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
-document-features.workspace = true
-emath.workspace = true
-half = { workspace = true, features = ["bytemuck"] }
-infer.workspace = true
-itertools.workspace = true
-linked-hash-map.workspace = true
-mime_guess2.workspace = true
-ndarray.workspace = true
-nohash-hasher.workspace = true
-ply-rs.workspace = true
-smallvec.workspace = true
-thiserror.workspace = true
-tiff = { workspace = true, optional = true }
-uuid = { workspace = true, features = ["serde", "v4", "js"] }
-
-# External (optional)
-ecolor = { workspace = true, optional = true }
-egui_plot = { workspace = true, optional = true }
-glam = { workspace = true, optional = true }
-image = { workspace = true, optional = true, default-features = false, features = [
-  "jpeg",
-] }
-mint = { workspace = true, optional = true }
-macaw = { workspace = true, optional = true }
-serde = { workspace = true, optional = true, features = ["derive", "rc"] }
-
-
-[dev-dependencies]
-
-# External
-glam.workspace = true
-itertools.workspace = true
-mint.workspace = true
-rand = { workspace = true, features = ["std", "std_rng"] }
-similar-asserts.workspace = true
-
-[build-dependencies]
-
-# Rerun
-re_build_tools.workspace = true
-re_types_builder.workspace = true
-
-# External
-rayon.workspace = true
-
-# `machete` is not a fan of `build-dependencies`.
-
-
-[package.metadata.cargo-shear]
-ignored = ["rayon", "re_build_tools", "re_types_builder"]
+re_sdk_types.workspace = true

@@ -6,11 +6,9 @@
 //! $ cargo r -p custom_data_loader -- path/to/some/file
 //! ```
 
-use rerun::{
-    DataLoader as _, EntityPath, LoadedData, TimePoint,
-    external::{anyhow, re_build_info, re_data_loader, re_log},
-    log::{Chunk, RowId},
-};
+use rerun::external::{anyhow, re_build_info, re_data_loader, re_log};
+use rerun::log::{Chunk, RowId};
+use rerun::{DataLoader as _, EntityPath, LoadedData, TimePoint};
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
     let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
@@ -42,7 +40,7 @@ impl re_data_loader::DataLoader for HashLoader {
         &self,
         settings: &rerun::external::re_data_loader::DataLoaderSettings,
         path: std::path::PathBuf,
-        tx: std::sync::mpsc::Sender<re_data_loader::LoadedData>,
+        tx: crossbeam::channel::Sender<re_data_loader::LoadedData>,
     ) -> Result<(), re_data_loader::DataLoaderError> {
         let contents = std::fs::read(&path)?;
         if path.is_dir() {
@@ -56,7 +54,7 @@ impl re_data_loader::DataLoader for HashLoader {
         settings: &rerun::external::re_data_loader::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
-        tx: std::sync::mpsc::Sender<re_data_loader::LoadedData>,
+        tx: crossbeam::channel::Sender<re_data_loader::LoadedData>,
     ) -> Result<(), re_data_loader::DataLoaderError> {
         hash_and_log(settings, &tx, &filepath, &contents)
     }
@@ -64,7 +62,7 @@ impl re_data_loader::DataLoader for HashLoader {
 
 fn hash_and_log(
     settings: &rerun::external::re_data_loader::DataLoaderSettings,
-    tx: &std::sync::mpsc::Sender<re_data_loader::LoadedData>,
+    tx: &crossbeam::channel::Sender<re_data_loader::LoadedData>,
     filepath: &std::path::Path,
     contents: &[u8],
 ) -> Result<(), re_data_loader::DataLoaderError> {

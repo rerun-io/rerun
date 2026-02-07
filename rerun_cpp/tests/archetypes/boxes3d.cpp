@@ -30,14 +30,14 @@ SCENARIO(
                                      Boxes3D::Descriptor_half_sizes
         )
                                      .value_or_throw();
-        from_manual.centers = ComponentBatch::from_loggable<components::PoseTranslation3D>(
+        from_manual.centers = ComponentBatch::from_loggable<components::Translation3D>(
                                   {{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}},
                                   Boxes3D::Descriptor_centers
         )
                                   .value_or_throw();
         from_manual.quaternions =
             ComponentBatch::from_loggable(
-                components::PoseRotationQuat(Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f)),
+                components::RotationQuat(Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f)),
                 Boxes3D::Descriptor_quaternions
             )
                 .value_or_throw();
@@ -71,7 +71,7 @@ SCENARIO(
 
         Boxes3D from_manual;
         from_manual.centers = ComponentBatch::from_loggable(
-                                  components::PoseTranslation3D(1.f, 2.f, 3.f),
+                                  components::Translation3D(1.f, 2.f, 3.f),
                                   Boxes3D::Descriptor_centers
         )
                                   .value_or_throw();
@@ -102,7 +102,7 @@ SCENARIO(
 
         Boxes3D from_manual;
         from_manual.centers = ComponentBatch::from_loggable(
-                                  components::PoseTranslation3D(1.f, 2.f, 3.f),
+                                  components::Translation3D(1.f, 2.f, 3.f),
                                   Boxes3D::Descriptor_centers
         )
                                   .value_or_throw();
@@ -120,7 +120,7 @@ SCENARIO(
 
         Boxes3D from_manual;
         from_manual.centers = ComponentBatch::from_loggable(
-                                  components::PoseTranslation3D(0.f, 1.f, 0.f),
+                                  components::Translation3D(0.f, 1.f, 0.f),
                                   Boxes3D::Descriptor_centers
         )
                                   .value_or_throw();

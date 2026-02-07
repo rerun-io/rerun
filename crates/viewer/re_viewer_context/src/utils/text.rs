@@ -1,5 +1,5 @@
 use egui::RichText;
-use re_types::components::TextLogLevel;
+use re_sdk_types::components::TextLogLevel;
 use re_ui::UiExt as _;
 
 pub fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {

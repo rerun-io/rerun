@@ -6,9 +6,28 @@
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!
+//! ## Draw recording overview
+//!
+//! [`ViewBuilder`] are the main entry point for all draw operations.
+//! Each [`ViewBuilder`] represents a rectangular screen area that is composited into the target surface
+//! via [`ViewBuilder::composite`].
+//!
+//! A user supplies [`renderer::DrawData`]s to the [`ViewBuilder`].
+//! Upon submission, the [`ViewBuilder`] collects the [`Drawable`]s from the [`QueueableDrawData`] and
+//! adds them to the appropriate work queues of each draw phase.
+//! [`Drawable`]s map roughly 1:1 to wgpu draw calls and have a [`renderer::DrawData`] type specific payload
+//! that identifies them within their [`renderer::DrawData`].
+//!
+//! Depending on the [`DrawPhase`] sorting of drawables may occur:
+//! for instance [`DrawPhase::Transparent`] sorts far to near to facilitate blending, whereas other phases aggressively
+//! bundle by [`renderer::DrawData`] types to minimize state changes.
+//!
+//! Each [`renderer::DrawData`] is associated with a single [`renderer::Renderer`].
+//! These encapsulate the knowledge (i.e. renderpipelines etc.) of how to render a certain kind of primitive.
+//! Unlike [`renderer::DrawData`]s, [`renderer::Renderer`]s are immutable and long-lived.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+// TODO(#3408): remove unwrap()
+#![expect(clippy::unwrap_used)]
 
 mod allocator;
 pub mod device_caps;
@@ -51,26 +70,28 @@ mod workspace_shaders;
 // Exports
 
 use allocator::GpuReadbackBuffer;
-
 pub use allocator::{
     CpuWriteGpuReadError, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
     create_and_fill_uniform_buffer_batch,
 };
-pub use color::Rgba32Unmul;
+pub use color::{Rgba32Unmul, UnalignedColor32};
 pub use colormap::{
     Colormap, colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb,
     colormap_plasma_srgb, colormap_srgb, colormap_turbo_srgb, colormap_viridis_srgb,
     grayscale_srgb,
 };
 pub use context::{
-    MsaaMode, RenderConfig, RenderContext, RenderContextError, adapter_info_summary,
+    MsaaMode, RenderConfig, RenderContext, RenderContextError, RendererTypeId, adapter_info_summary,
 };
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
 pub use draw_phases::{
-    DrawPhase, OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor, PickingLayerId,
-    PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
+    DrawPhase, DrawPhaseManager, Drawable, DrawableCollector, OutlineConfig, OutlineMaskPreference,
+    OutlineMaskProcessor, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,
+    PickingLayerProcessor, ScreenshotProcessor,
 };
+// Re-export used color types directly.
+pub use ecolor::{Color32, Hsva, Rgba};
 pub use global_bindings::GlobalBindings;
 pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
@@ -80,33 +101,28 @@ pub use rect::{RectF32, RectInt};
 pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
-pub use view_builder::ViewBuilder;
+pub use view_builder::{RenderMode, ViewBuilder, ViewPickingConfiguration};
 pub use wgpu_resources::{
-    BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
     GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
     GpuRenderPipelinePoolAccessor, GpuShaderModuleHandle, GpuShaderModulePool, PipelineLayoutDesc,
     RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout, WgpuResourcePoolStatistics,
 };
-
-pub use self::file_system::{FileSystem, get_filesystem};
-#[allow(unused_imports)] // they can be handy from time to time
-use self::file_system::{MemFileSystem, OsFileSystem};
 
 pub use self::file_resolver::{
     FileResolver, ImportClause, RecommendedFileResolver, SearchPath,
     new_recommended as new_recommended_file_resolver,
 };
 pub use self::file_server::FileServer;
+#[allow(clippy::allow_attributes, unused_imports)] // they can be handy from time to time
+use self::file_system::MemFileSystem;
+pub use self::file_system::{FileSystem, get_filesystem};
 
-// Re-export used color types directly.
-pub use ecolor::{Color32, Hsva, Rgba};
+#[cfg(load_shaders_from_disk)]
+use self::file_system::OsFileSystem;
 
 pub mod external {
-    pub use anyhow;
-    pub use bytemuck;
-    pub use re_video;
-    pub use smallvec;
-    pub use wgpu;
+    pub use {anyhow, bytemuck, re_video, smallvec, wgpu};
 }
 
 // ---------------------------------------------------------------------------

@@ -20,15 +20,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     let other = rerun::AnyValues::default()
-        .with_field(
+        .with_component_from_data(
             "confidences",
             Arc::new(arrow::array::Float64Array::from(vec![0.3, 0.4, 0.5, 0.6])),
         )
-        .with_field(
+        .with_component_from_data(
             "traffic",
             Arc::new(arrow::array::StringArray::from(vec!["low"])),
         )
-        .with_field(
+        .with_component_from_data(
             "weather",
             Arc::new(arrow::array::StringArray::from(vec!["sunny"])),
         );

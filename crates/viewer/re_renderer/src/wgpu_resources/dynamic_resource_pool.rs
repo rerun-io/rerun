@@ -1,13 +1,12 @@
-use std::{
-    collections::{HashMap, hash_map::Entry},
-    fmt::Debug,
-    hash::Hash,
-    sync::{Arc, atomic::AtomicU64},
-};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
-use parking_lot::RwLock;
+use re_mutex::RwLock;
 use slotmap::{Key, SlotMap};
-
 use smallvec::SmallVec;
 
 use super::resource::PoolError;
@@ -241,7 +240,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{cell::Cell, sync::Arc};
+    use std::cell::Cell;
+    use std::sync::Arc;
 
     use super::{DynamicResourcePool, DynamicResourcesDesc};
 

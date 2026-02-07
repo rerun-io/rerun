@@ -8,3 +8,5 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
 The basic building blocks of the Rerun data types and tables.
+
+This contains the code-generated higher level Rerun archetypes and components.

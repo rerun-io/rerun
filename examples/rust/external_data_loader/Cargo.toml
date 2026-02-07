@@ -1,15 +1,13 @@
 [package]
 name = "rerun-loader-rust-file"
-version = "0.25.0-alpha.1+dev"
+version = "0.30.0-alpha.1+dev"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
-  "sdk",
-] }
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = ["sdk"] }
 
-anyhow = "1.0"
-argh = "0.1"
+anyhow.workspace = true
+argh.workspace = true

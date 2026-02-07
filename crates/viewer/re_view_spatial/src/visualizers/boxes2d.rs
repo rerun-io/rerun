@@ -1,27 +1,20 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Boxes2D,
-    components::{ClassId, Color, DrawOrder, HalfSize2D, Position2D, Radius, ShowLabels},
-};
-use re_view::{process_annotation_slices, process_color_slice};
+use re_sdk_types::archetypes::Boxes2D;
+use re_sdk_types::components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels};
+use re_sdk_types::{Archetype as _, ArrowString};
+use re_view::{clamped_or, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{UiLabelTarget, entity_iterator::clamped_or},
-};
-
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_2d_entities, process_radius_slice,
-    utilities::{LabeledBatch, process_labels},
-};
+use super::utilities::{LabeledBatch, process_labels};
+use super::{SpatialViewVisualizerData, process_radius_slice};
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::UiLabelTarget;
 
 // ---
 
@@ -45,7 +38,7 @@ impl Boxes2DVisualizer {
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         view_query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Boxes2DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -67,12 +60,18 @@ impl Boxes2DVisualizer {
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
-            let colors =
-                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
+            let colors = process_color_slice(
+                ctx,
+                Boxes2D::descriptor_colors().component,
+                num_instances,
+                &annotation_infos,
+                data.colors,
+            );
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, Boxes2D::name());
+                .single_transform_required_for_entity(entity_path, Boxes2D::name())
+                .as_affine3a();
 
             let mut line_batch = line_builder
                 .batch("boxes2d")
@@ -136,7 +135,9 @@ impl Boxes2DVisualizer {
                         }),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels.unwrap_or_else(|| {
+                        typed_fallback_for(ctx, Boxes2D::descriptor_show_labels().component)
+                    }),
                     annotation_infos: &annotation_infos,
                 },
                 std::convert::identity,
@@ -169,17 +170,11 @@ impl IdentifiedViewSystem for Boxes2DVisualizer {
 }
 
 impl VisualizerSystem for Boxes2DVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Boxes2D>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Boxes2D>()
     }
 
     fn execute(
@@ -187,27 +182,30 @@ impl VisualizerSystem for Boxes2DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Boxes2D, _>(
             ctx,
             view_query,
             context_systems,
+            &output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_half_size_chunks) =
-                    results.get_required_chunks(Boxes2D::descriptor_half_sizes())
-                else {
+                let all_half_sizes =
+                    results.iter_required(Boxes2D::descriptor_half_sizes().component);
+                if all_half_sizes.is_empty() {
                     return Ok(());
-                };
+                }
 
-                let num_boxes: usize = all_half_size_chunks
+                // TODO(andreas): Introduce a utility for this?
+                let num_boxes: usize = all_half_sizes
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
                     .map(|vectors| vectors.len())
@@ -220,18 +218,17 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 line_builder.reserve_strips(num_boxes)?;
                 line_builder.reserve_vertices(num_boxes * 5)?;
 
-                let timeline = ctx.query.timeline();
-                let all_half_sizes_indexed =
-                    iter_slices::<[f32; 2]>(&all_half_size_chunks, timeline);
-                let all_centers = results.iter_as(timeline, Boxes2D::descriptor_centers());
-                let all_colors = results.iter_as(timeline, Boxes2D::descriptor_colors());
-                let all_radii = results.iter_as(timeline, Boxes2D::descriptor_radii());
-                let all_labels = results.iter_as(timeline, Boxes2D::descriptor_labels());
-                let all_class_ids = results.iter_as(timeline, Boxes2D::descriptor_class_ids());
-                let all_show_labels = results.iter_as(timeline, Boxes2D::descriptor_show_labels());
+                let all_centers = results.iter_optional(Boxes2D::descriptor_centers().component);
+                let all_colors = results.iter_optional(Boxes2D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Boxes2D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Boxes2D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_optional(Boxes2D::descriptor_class_ids().component);
+                let all_show_labels =
+                    results.iter_optional(Boxes2D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
-                    all_half_sizes_indexed,
+                    all_half_sizes.slice::<[f32; 2]>(),
                     all_centers.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
@@ -271,42 +268,10 @@ impl VisualizerSystem for Boxes2DVisualizer {
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for Boxes2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for Boxes2DVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_BOX2D
-    }
-}
-
-impl TypedComponentFallbackProvider<ShowLabels> for Boxes2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback(
-            ctx,
-            &Boxes2D::descriptor_half_sizes(),
-            &Boxes2D::descriptor_labels(),
-        )
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => [Color, DrawOrder, ShowLabels]);

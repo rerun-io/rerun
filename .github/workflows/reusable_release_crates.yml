@@ -16,11 +16,12 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
   id-token: "write"
+  packages: "read"
 
 jobs:
   publish-crates:
@@ -32,9 +33,9 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release

@@ -1,0 +1,24 @@
+[package]
+description = "Handles registering various component fallbacks to `FallbackProviderRegistry`."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_component_fallbacks"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_log_types.workspace = true
+re_sdk_types.workspace = true
+re_viewer_context.workspace = true

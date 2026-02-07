@@ -1,7 +1,6 @@
 ---
 source: crates/utils/re_int_histogram/tests/memory_test.rs
 expression: "[format!(\"{:.1} B/entry, dense\", bytes_per_entry(N, 1)),\nformat!(\"{:.1} B/entry, spacing: 1M\", bytes_per_entry(N, 1_000_000)),\nformat!(\"{:.1} B/entry, spacing: 2M\", bytes_per_entry(N, 2_000_000)),\nformat!(\"{:.1} B/entry, spacing: 3M\", bytes_per_entry(N, 3_000_000)),\nformat!(\"{:.1} B/entry, spacing: 5M\", bytes_per_entry(N, 5_000_000)),\nformat!(\"{:.1} B/entry, spacing: 8M\", bytes_per_entry(N, 8_000_000)),\nformat!(\"{:.1} B/entry, spacing: 13M\", bytes_per_entry(N, 13_000_000)),]"
-snapshot_kind: text
 ---
 [
     "26.3 B/entry, dense",

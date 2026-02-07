@@ -28,7 +28,7 @@ This means that:
 
 ## Usage
 
-The entrypoint for this packages is the [`WebViewer`](https://ref.rerun.io/docs/js/0.24.0/web-viewer/classes/WebViewer.html) class.
+The entrypoint for this packages is the [`WebViewer`](https://ref.rerun.io/docs/js/0.29.0/web-viewer/classes/WebViewer.html) class.
 The web viewer is an object which manages a canvas element:
 
 ```js
@@ -44,7 +44,7 @@ viewer.stop();
 ```
 
 The `rrd` in the snippet above should be a URL pointing to either:
-- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.24.0/examples/dna.rrd>
+- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.29.0/examples/dna.rrd>
 - A gRPC connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API
 
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.
@@ -62,4 +62,4 @@ If your target browser does not support Wasm imports or top-level await, you may
 
 For more information about using the package, visit:
 - [Integration docs](https://rerun.io/docs/howto/integrations/embed-web#using-the-javascript-package).
-- [Package docs](https://ref.rerun.io/docs/js/0.24.0-alpha.1/web-viewer/index.html).
+- [Package docs](https://ref.rerun.io/docs/js/0.26.0/web-viewer/index.html).

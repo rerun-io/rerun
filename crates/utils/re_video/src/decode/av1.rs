@@ -2,13 +2,15 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{Time, VideoDataDescription};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
+use super::async_decoder_wrapper::SyncDecoder;
 use super::{
-    Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback, PixelFormat, Result,
-    YuvMatrixCoefficients, YuvPixelLayout, YuvRange, async_decoder_wrapper::SyncDecoder,
+    Chunk, DecodeError, Frame, FrameContent, FrameInfo, PixelFormat, Result, YuvMatrixCoefficients,
+    YuvPixelLayout, YuvRange,
 };
+use crate::decode::FrameResult;
+use crate::{Sender, Time, VideoDataDescription};
 
 pub struct SyncDav1dDecoder {
     decoder: dav1d::Decoder,
@@ -16,10 +18,15 @@ pub struct SyncDav1dDecoder {
 }
 
 impl SyncDecoder for SyncDav1dDecoder {
-    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback) {
+    fn submit_chunk(
+        &mut self,
+        should_stop: &AtomicBool,
+        chunk: Chunk,
+        output_sender: &Sender<FrameResult>,
+    ) {
         re_tracing::profile_function!();
-        self.submit_chunk(chunk, on_output);
-        self.output_frames(should_stop, on_output);
+        self.submit_chunk(chunk, output_sender);
+        self.output_frames(should_stop, output_sender);
     }
 
     /// Clear and reset everything
@@ -74,7 +81,7 @@ impl SyncDav1dDecoder {
         })
     }
 
-    fn submit_chunk(&mut self, chunk: Chunk, on_output: &OutputCallback) {
+    fn submit_chunk(&mut self, chunk: Chunk, output_sender: &Sender<FrameResult>) {
         re_tracing::profile_function!();
         econtext::econtext_function_data!(format!(
             "chunk timestamp: {:?}",
@@ -94,13 +101,17 @@ impl SyncDav1dDecoder {
                     err != dav1d::Error::Again,
                     "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away"
                 );
-                on_output(Err(DecodeError::Dav1d(err)));
+                output_sender.send(Err(DecodeError::Dav1d(err))).ok();
             }
         }
     }
 
     /// Returns the number of new frames.
-    fn output_frames(&mut self, should_stop: &AtomicBool, on_output: &OutputCallback) -> usize {
+    fn output_frames(
+        &mut self,
+        should_stop: &AtomicBool,
+        output_sender: &Sender<FrameResult>,
+    ) -> usize {
         re_tracing::profile_function!();
         let mut count = 0;
         while !should_stop.load(Ordering::SeqCst) {
@@ -111,7 +122,7 @@ impl SyncDav1dDecoder {
             match picture {
                 Ok(picture) => {
                     let frame = create_frame(&self.debug_name, &picture);
-                    on_output(frame);
+                    output_sender.send(frame).ok();
                     count += 1;
                 }
                 Err(dav1d::Error::Again) => {
@@ -119,7 +130,7 @@ impl SyncDav1dDecoder {
                     break;
                 }
                 Err(err) => {
-                    on_output(Err(DecodeError::Dav1d(err)));
+                    output_sender.send(Err(DecodeError::Dav1d(err))).ok();
                 }
             }
         }
@@ -127,12 +138,12 @@ impl SyncDav1dDecoder {
     }
 }
 
-fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
+fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> FrameResult {
     re_tracing::profile_function!();
 
     let bits_per_component = picture
         .bits_per_component()
-        .map_or(picture.bit_depth(), |bpc| bpc.0);
+        .map_or_else(|| picture.bit_depth(), |bpc| bpc.0);
 
     let bytes_per_component = if bits_per_component == 8 {
         1
@@ -272,7 +283,6 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
 
 fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {
     // Quotes are from https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
-    #[allow(clippy::match_same_arms)]
     match picture.matrix_coefficients() {
         dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
 
@@ -282,6 +292,7 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
         | dav1d::pixel::MatrixCoefficients::Reserved => {
             // This happens quite often. Don't issue a warning, that would be noise!
 
+            #[expect(clippy::branches_sharing_code)]
             if picture.transfer_characteristic() == dav1d::pixel::TransferCharacteristic::SRGB {
                 // If the transfer characteristic is sRGB, assume BT.709 primaries, would be quite odd otherwise.
                 // TODO(andreas): Other transfer characteristics may also hint at primaries.

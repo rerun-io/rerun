@@ -75,9 +75,60 @@ pub struct StartupOptions {
     /// viewers onto the same page, then it's better to turn this off.
     ///
     /// We use browser history in a limited way to track the currently
-    /// open example recording, see [`crate::history`].
+    /// open example or redap recording, see [`crate::history`].
     #[cfg(target_arch = "wasm32")]
     pub enable_history: bool,
+
+    /// The base viewer url that's used when sharing a link in this viewer.
+    ///
+    /// If not set:
+    /// * notebooks & native: use rerun.io/viewer with the crate's last known stable version
+    /// * web viewers: use the url of the page it is embedded in
+    pub viewer_base_url: Option<String>,
+}
+
+impl StartupOptions {
+    /// Returns `StartupOptions::enable_history` on web, and `false` on native.
+    #[allow(clippy::allow_attributes, clippy::unused_self)] // Only used on web.
+    pub fn web_history_enabled(&self) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.enable_history
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            false
+        }
+    }
+
+    /// The url to use for the web viewer when sharing links.
+    #[allow(clippy::allow_attributes, clippy::unused_self)] // Only used on web.
+    pub fn web_viewer_base_url(&self) -> Option<url::Url> {
+        // TODO(RR-1878): Would be great to grab this from the Data Platform when available.
+
+        if let Some(url) = &self.viewer_base_url
+            && let Ok(url) = url.parse::<url::Url>()
+        {
+            Some(url)
+        } else if self.is_in_notebook || cfg!(not(target_arch = "wasm32")) {
+            // Notebooks behave like native viewers here because just like on native,
+            // there's no useful base url in the address bar to use.
+            let version = re_build_info::build_info!().version.latest_stable();
+
+            url::Url::parse(&format!("https://rerun.io/viewer/version/{version}")).ok()
+        } else {
+            #[cfg(target_arch = "wasm32")]
+            {
+                crate::web_tools::current_base_url().ok()
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                None
+            }
+        }
+    }
 }
 
 impl Default for StartupOptions {
@@ -114,6 +165,8 @@ impl Default for StartupOptions {
 
             #[cfg(target_arch = "wasm32")]
             enable_history: false,
+
+            viewer_base_url: None,
         }
     }
 }

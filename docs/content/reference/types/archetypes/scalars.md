@@ -34,7 +34,7 @@ the plot-specific archetypes through the blueprint.
 
 snippet: archetypes/scalars_simple
 
-<picture data-inline-viewer="snippets/scalars_simple">
+<picture data-inline-viewer="snippets/archetypes/scalars_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1024w.png">
@@ -46,7 +46,7 @@ snippet: archetypes/scalars_simple
 
 snippet: archetypes/scalars_multiple_plots
 
-<picture data-inline-viewer="snippets/scalars_multiple_plots">
+<picture data-inline-viewer="snippets/archetypes/scalars_multiple_plots">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1024w.png">
@@ -58,7 +58,7 @@ snippet: archetypes/scalars_multiple_plots
 
 snippet: archetypes/scalars_row_updates
 
-<picture data-inline-viewer="snippets/scalars_row_updates">
+<picture data-inline-viewer="snippets/archetypes/scalars_row_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">
@@ -70,7 +70,7 @@ snippet: archetypes/scalars_row_updates
 
 snippet: archetypes/scalars_column_updates
 
-<picture data-inline-viewer="snippets/scalars_column_updates">
+<picture data-inline-viewer="snippets/archetypes/scalars_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">

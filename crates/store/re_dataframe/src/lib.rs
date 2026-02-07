@@ -2,10 +2,9 @@
 
 mod engine;
 mod query;
+pub mod utils;
 
 pub use self::engine::QueryEngine;
-pub use self::query::QueryHandle;
-
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
     ChunkStoreConfig, ChunkStoreHandle, Index, IndexRange, IndexValue, QueryExpression,
@@ -18,16 +17,10 @@ pub use self::external::re_log_types::{
 };
 #[doc(no_inline)]
 pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};
-
 #[doc(no_inline)]
 pub use self::external::re_types_core::{ComponentDescriptor, ComponentType};
+pub use self::query::QueryHandle;
 
 pub mod external {
-    pub use re_chunk;
-    pub use re_chunk_store;
-    pub use re_log_types;
-    pub use re_query;
-    pub use re_types_core;
-
-    pub use arrow;
+    pub use {arrow, re_chunk, re_chunk_store, re_log_types, re_query, re_types_core};
 }

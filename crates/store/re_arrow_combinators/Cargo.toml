@@ -1,0 +1,30 @@
+[package]
+name = "re_arrow_combinators"
+authors.workspace = true
+description = "Type-safe, composable transformations for Arrow arrays."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+re_arrow_util.workspace = true
+
+arrow.workspace = true
+thiserror.workspace = true
+vec1.workspace = true
+
+[dev-dependencies]
+insta.workspace = true

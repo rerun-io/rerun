@@ -1,17 +1,16 @@
 //! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Write as _,
-};
+use std::collections::{BTreeMap, HashMap};
+use std::fmt::Write as _;
 
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 
+use crate::codegen::common::ExampleInfo;
+use crate::codegen::{Target, autogen_warning};
+use crate::objects::{FieldKind, ViewReference};
 use crate::{
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    codegen::{Target, autogen_warning, common::ExampleInfo},
-    objects::{FieldKind, ViewReference},
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
@@ -91,8 +90,8 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Archetype,
                 1,
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
-built-in support. See [Entities and Components](../../concepts/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
+built-in support. See [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md) and
+[Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.",
                 &archetypes,
@@ -106,7 +105,7 @@ An entity can only ever contain a single array of any given component type.
 If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../../concepts/entity-component.md).",
+on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).",
                 &components,
             ),
             (
@@ -414,6 +413,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
             Type::Float16 => atomic("float16"),
             Type::Float32 => atomic("float32"),
             Type::Float64 => atomic("float64"),
+            Type::Binary => atomic("binary"),
             Type::String => atomic("utf8"),
 
             Type::Array { elem_type, length } => {
@@ -763,7 +763,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o, "snippet: {path}");
         if let Some(image_url) = image {
             putln!(o);
-            for line in image_url.image_stack().snippet_id(name).finish() {
+            for line in image_url.image_stack().snippet_id(path).finish() {
                 putln!(o, "{line}");
             }
         }

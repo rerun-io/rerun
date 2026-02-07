@@ -1,0 +1,34 @@
+---
+source: crates/viewer/re_recording_panel/tests/snapshot_tests.rs
+expression: data
+---
+servers: []
+local_apps:
+  - app_id: local_app_id
+    is_active: false
+    is_selected: false
+    loaded_recordings:
+      - entity_db:
+          kind: Recording
+          application_id: local_app_id
+          recording_id: local_rec_id
+  - app_id: test_app
+    is_active: false
+    is_selected: false
+    loaded_recordings:
+      - entity_db:
+          kind: Recording
+          application_id: test_app
+          recording_id: test_recording
+local_tables: []
+example_apps:
+  - app_id: rerun_example_dna
+    is_active: false
+    is_selected: false
+    loaded_recordings:
+      - entity_db:
+          kind: Recording
+          application_id: rerun_example_dna
+          recording_id: dna_rec_id
+show_example_section: true
+loading_receivers: []

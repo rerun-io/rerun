@@ -20,8 +20,8 @@ pub fn test_draw_order() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Image::from_color_model_and_tensor(
-                    re_types::datatypes::ColorModel::RGB,
+                &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
+                    re_sdk_types::datatypes::ColorModel::RGB,
                     image,
                 )
                 .unwrap()
@@ -42,8 +42,8 @@ pub fn test_draw_order() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Image::from_color_model_and_tensor(
-                    re_types::datatypes::ColorModel::RGB,
+                &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
+                    re_sdk_types::datatypes::ColorModel::RGB,
                     image,
                 )
                 .unwrap()
@@ -59,8 +59,8 @@ pub fn test_draw_order() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Image::from_color_model_and_tensor(
-                    re_types::datatypes::ColorModel::RGB,
+                &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
+                    re_sdk_types::datatypes::ColorModel::RGB,
                     image,
                 )
                 .unwrap()
@@ -72,7 +72,7 @@ pub fn test_draw_order() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::LineStrips2D::new(std::iter::once(
+                &re_sdk_types::archetypes::LineStrips2D::new(std::iter::once(
                     (0..20)
                         .map(|i| i as f32)
                         .map(|i| (i * 20.0, i % 2.0 * 100.0 + 70.0)),
@@ -86,7 +86,7 @@ pub fn test_draw_order() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Boxes2D::from_mins_and_sizes(
+                &re_sdk_types::archetypes::Boxes2D::from_mins_and_sizes(
                     [(64.0, 32.0)],
                     [(256.0, 128.0)],
                 )
@@ -99,7 +99,7 @@ pub fn test_draw_order() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Points2D::new((0..16 * 16).map(|i| i as f32).map(|i| {
+                &re_sdk_types::archetypes::Points2D::new((0..16 * 16).map(|i| i as f32).map(|i| {
                     (
                         32.0 + (i as i32 / 16) as f32 * 16.0,
                         32.0 + (i as i32 % 16) as f32 * 16.0,
@@ -117,8 +117,8 @@ pub fn test_draw_order() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Image::from_color_model_and_tensor(
-                    re_types::datatypes::ColorModel::RGB,
+                &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
+                    re_sdk_types::datatypes::ColorModel::RGB,
                     image,
                 )
                 .unwrap()
@@ -126,12 +126,12 @@ pub fn test_draw_order() {
             )
         });
 
-        // 2D arrow sandwitched across
+        // 2D arrow sandwiched across
         test_context.log_entity("2d_layering/arrow2d_between", |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Arrows2D::from_vectors([(200.0, 200.0)])
+                &re_sdk_types::archetypes::Arrows2D::from_vectors([(200.0, 200.0)])
                     .with_origins([(10.0, 10.0)])
                     .with_radii([5.0])
                     .with_colors([0xFF00FFFF])
@@ -146,7 +146,7 @@ pub fn test_draw_order() {
         ))
     });
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "draw_order",
         egui::vec2(300.0, 150.0) * 2.0,
@@ -154,14 +154,13 @@ pub fn test_draw_order() {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });

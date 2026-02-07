@@ -13,6 +13,8 @@ int main() {
         rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
             .with_image_plane_distance(0.1f)
+            .with_color(rerun::Color(255, 128, 0))
+            .with_line_width(0.003f)
     );
 
     rec.log(

@@ -1,0 +1,42 @@
+[package]
+name = "re_quota_channel"
+authors.workspace = true
+description = "A channel that applies backpressure based on byte size."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = []
+
+## Enable async (tokio-based) channels.
+tokio = ["dep:tokio"]
+
+
+[dependencies]
+re_byte_size.workspace = true
+re_format.workspace = true
+re_log.workspace = true
+
+crossbeam.workspace = true
+parking_lot.workspace = true
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, optional = true, features = ["sync", "rt", "time", "macros"] }
+
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "time"] }

@@ -1,14 +1,11 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
-use std::{rc::Rc, sync::Arc};
+use std::rc::Rc;
+use std::sync::Arc;
 
-use rerun::external::{
-    eframe, egui,
-    parking_lot::Mutex,
-    re_crash_handler, re_grpc_server, re_log, re_memory,
-    re_viewer::{self, ViewerEvent, ViewerEventKind},
-    tokio,
-};
+use rerun::external::parking_lot::Mutex;
+use rerun::external::re_viewer::{self, ViewerEvent, ViewerEventKind};
+use rerun::external::{eframe, egui, re_crash_handler, re_grpc_server, re_log, re_memory, tokio};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -29,10 +26,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
-    // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let (rx, _) = re_grpc_server::spawn_with_recv(
+    // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
+    let rx = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
-        "75%".parse()?,
+        Default::default(),
         re_grpc_server::shutdown::never(),
     );
 

@@ -1,6 +1,7 @@
+use egui::{InnerResponse, Response, Ui, Vec2};
+
 use crate::design_tokens::AlertVisuals;
 use crate::{Icon, UiExt as _, icons};
-use egui::{InnerResponse, Response, Ui, Vec2};
 
 enum AlertKind {
     Info,
@@ -26,6 +27,18 @@ impl AlertKind {
             Self::Warning => icons::WARNING,
             Self::Error => icons::ERROR,
         }
+    }
+}
+
+pub struct AlertText {
+    alert: Alert,
+    visible_text: String,
+    full_text: Option<String>,
+}
+
+impl egui::Widget for AlertText {
+    fn ui(self, ui: &mut Ui) -> Response {
+        self.alert.show_text(ui, self.visible_text, self.full_text)
     }
 }
 
@@ -55,7 +68,7 @@ impl Alert {
         Self { kind }
     }
 
-    fn frame(&self, ui: &Ui) -> egui::Frame {
+    pub fn frame(&self, ui: &Ui) -> egui::Frame {
         let colors = self.kind.colors(ui);
 
         egui::Frame::new()
@@ -63,7 +76,7 @@ impl Alert {
             .fill(colors.fill)
             .corner_radius(6)
             .inner_margin(6.0)
-            .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk/egui#4019): remove clip_rect_margin
+            .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk/egui#5605): remove clip_rect_margin
     }
 
     pub fn show<T>(self, ui: &mut Ui, content: impl FnOnce(&mut Ui) -> T) -> InnerResponse<T> {
@@ -100,12 +113,25 @@ impl Alert {
         })
         .response
     }
+
+    pub fn text_widget(
+        self,
+        visible_text: impl Into<String>,
+        full_text: Option<String>,
+    ) -> AlertText {
+        AlertText {
+            alert: self,
+            visible_text: visible_text.into(),
+            full_text,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::UiExt as _;
     use egui_kittest::Harness;
+
+    use crate::UiExt as _;
 
     #[test]
     fn test_alert() {

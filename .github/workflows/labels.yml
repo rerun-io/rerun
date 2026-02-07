@@ -39,7 +39,9 @@ jobs:
         with:
           mode: minimum
           count: 1
-          labels: "📊 analytics, 🟦 blueprint, 🪳 bug, 🌊 C++ API, CLI, codegen/idl, 🧑‍💻 dev experience, dependencies, 📖 documentation, 💬 discussion, examples, exclude from changelog, 🪵 Log & send APIs, 📉 performance, 🐍 Python API, ⛃ re_datastore, 🔍 re_query, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🦀 Rust API, 🔨 testing, ui, 🕸️ web"
+          #NOLINT_START: skip lint rules on labels (dataplatform)
+          labels: "📊 analytics, 🟦 blueprint, 🪳 bug, CLI, codegen/idl, 🧑‍💻 dev experience, dependencies, 📖 documentation, 💬 discussion, examples, exclude from changelog, 🪵 Log & send APIs, 📉 performance, sdk-python, sdk-cpp, sdk-rust, ⛃ re_datastore, 🔍 re_query, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🔨 testing, ui, 🕸️ web, 🧢 MCAP, OSS-server, dataplatform"
+          #NOLINT_END
 
   wasm-bindgen-check:
     name: Check wasm-bindgen version
@@ -51,9 +53,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Get current wasm-bindgen version
         id: current-version

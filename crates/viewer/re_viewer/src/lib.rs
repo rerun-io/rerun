@@ -7,13 +7,18 @@
 
 mod app;
 mod app_blueprint;
+mod app_blueprint_ctx;
 mod app_state;
 mod background_tasks;
 mod default_views;
 mod docker_detection;
 pub mod env_vars;
 pub mod event;
+mod history;
+mod latency_tracker;
 mod navigation;
+mod open_url_description;
+mod prefetch_chunks;
 mod saving;
 mod screenshotter;
 mod startup_options;
@@ -21,6 +26,10 @@ mod ui;
 
 #[cfg(feature = "analytics")]
 mod viewer_analytics;
+
+#[cfg(feature = "testing")]
+#[cfg(not(target_arch = "wasm32"))]
+pub mod viewer_test_utils;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
@@ -32,28 +41,26 @@ mod loading;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-pub(crate) use {app_state::AppState, ui::memory_panel};
-
-pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
-
 pub use app::App;
-pub use startup_options::StartupOptions;
-
+pub(crate) use app_state::AppState;
+pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 pub use re_capabilities::MainThreadToken;
-
 pub use re_viewer_context::{
     AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
     command_channel,
 };
+pub use startup_options::StartupOptions;
+pub(crate) use ui::memory_panel;
 
 pub mod external {
-    pub use parking_lot;
-    pub use {eframe, egui};
+    pub use re_chunk::external::*;
+    pub use re_chunk_store::external::*;
+    pub use re_viewer_context::external::*;
+    pub use re_viewport::external::*;
     pub use {
-        re_chunk, re_chunk::external::*, re_chunk_store, re_chunk_store::external::*, re_data_ui,
-        re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_smart_channel, re_types,
-        re_ui, re_view_spatial, re_viewer_context, re_viewer_context::external::*, re_viewport,
-        re_viewport::external::*,
+        eframe, egui, parking_lot, re_chunk, re_chunk_store, re_data_ui, re_entity_db, re_log,
+        re_log_channel, re_log_types, re_memory, re_renderer, re_sdk_types, re_ui, re_view_spatial,
+        re_viewer_context, re_viewport,
     };
 }
 
@@ -63,7 +70,7 @@ pub mod external {
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native;
 #[cfg(not(target_arch = "wasm32"))]
-pub use native::{run_native_app, run_native_viewer_with_messages};
+pub use native::run_native_app;
 
 // ----------------------------------------------------------------------------
 // When compiling for Android:
@@ -81,7 +88,7 @@ mod web;
 mod web_tools;
 
 #[cfg(target_arch = "wasm32")]
-mod history;
+mod web_history;
 
 // ---------------------------------------------------------------------------
 
@@ -119,6 +126,9 @@ pub enum AppEnvironment {
 
     /// Some custom application wrapping `re_viewer`.
     Custom(String),
+
+    /// Running as part of a test.
+    Test,
 }
 
 impl AppEnvironment {
@@ -162,14 +172,19 @@ impl AppEnvironment {
             Self::RerunCli { .. } => "rerun_cli",
             Self::Web { .. } => "web_viewer",
             Self::Custom(_) => "custom",
+            Self::Test => "test",
         }
     }
 
     pub fn url(&self) -> Option<&String> {
         match self {
-            Self::Web { url } => Some(url),
+            Self::Web { url, .. } => Some(url),
             _ => None,
         }
+    }
+
+    pub fn is_test(&self) -> bool {
+        matches!(self, Self::Test)
     }
 }
 
@@ -177,6 +192,9 @@ impl AppEnvironment {
 
 pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
+
+    let instance_descriptor = re_renderer::device_caps::instance_descriptor(force_wgpu_backend);
+    let backends = instance_descriptor.backends;
 
     egui_wgpu::WgpuConfiguration {
             // When running wgpu on native debug builds, we want some extra control over how
@@ -199,13 +217,14 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
             }),
 
             wgpu_setup: egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew {
-                instance_descriptor: re_renderer::device_caps::instance_descriptor(force_wgpu_backend),
+                instance_descriptor,
 
-                // TODO(#8475): Install custom native adapter selector with more extensive logging and the ability to pick adapter by name
+                // TODO(#8475): Add the ability to pick adapter by name.
                 // (user may e.g. request "nvidia" or "intel" and it should just work!)
-                // ideally producing structured reasoning of why which one was picked in the process.
-                // This should live in re_renderer::config so that we can reuse it in tests & re_renderer examples.
-                native_adapter_selector: None,
+                // Should ideally produce structured reasoning of why which one was picked in the process.
+                native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface|
+                    re_renderer::device_caps::select_adapter(adapters, backends, surface)
+                )),
                 device_descriptor: std::sync::Arc::new(|adapter| re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter).device_descriptor()),
 
                 ..Default::default()
@@ -242,62 +261,9 @@ pub fn customize_eframe_and_setup_renderer(
 
 // ---------------------------------------------------------------------------
 
-/// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: re_smart_channel::Receiver<T>,
-    ctx: egui::Context,
-) -> re_smart_channel::Receiver<T> {
-    // We need to intercept messages to wake up the ui thread.
-    // For that, we need a new channel.
-    // However, we want to make sure the channel latency numbers are from the start
-    // of the first channel, to the end of the second.
-    // For that we need to use `chained_channel`, `recv_with_send_time` and `send_at`.
-    let (tx, new_rx) = rx.chained_channel();
-    std::thread::Builder::new()
-        .name("ui_waker".to_owned())
-        .spawn(move || {
-            while let Ok(msg) = rx.recv_with_send_time() {
-                if tx.send_at(msg.time, msg.source, msg.payload).is_ok() {
-                    ctx.request_repaint();
-                } else {
-                    break;
-                }
-            }
-            re_log::trace!("Shutting down ui_waker thread");
-        })
-        .expect("Failed to spawn UI waker thread");
-    new_rx
-}
-
-/// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn wake_up_ui_thread_on_each_msg_crossbeam<T: Send + 'static>(
-    rx: crossbeam::channel::Receiver<T>,
-    ctx: egui::Context,
-) -> crossbeam::channel::Receiver<T> {
-    // We need to intercept messages to wake up the ui thread.
-    // For that, we need a new channel.
-    let (tx, new_rx) = crossbeam::channel::unbounded();
-    std::thread::Builder::new()
-        .name("ui_waker".to_owned())
-        .spawn(move || {
-            while let Ok(msg) = rx.recv() {
-                if tx.send(msg).is_ok() {
-                    ctx.request_repaint();
-                } else {
-                    break;
-                }
-            }
-            re_log::trace!("Shutting down ui_waker thread");
-        })
-        .expect("Failed to spawn UI waker thread");
-    new_rx
-}
-
 /// Reset the viewer state as stored on disk and local storage,
 /// keeping only the analytics state.
-#[allow(clippy::unnecessary_wraps)] // wasm only
+#[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // wasm only
 pub fn reset_viewer_persistence() -> anyhow::Result<()> {
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -357,7 +323,7 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
 
 /// Hook into [`re_log`] to receive copies of text log messages on a channel,
 /// which we will then show in the notification panel.
-pub fn register_text_log_receiver() -> std::sync::mpsc::Receiver<re_log::LogMsg> {
+pub fn register_text_log_receiver() -> crossbeam::channel::Receiver<re_log::LogMsg> {
     let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
     if re_log::add_boxed_logger(Box::new(logger)).is_err() {
         // This can happen when users wrap re_viewer in their own eframe app.

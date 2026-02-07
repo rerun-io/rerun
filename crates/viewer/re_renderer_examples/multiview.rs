@@ -7,17 +7,19 @@ use glam::Vec3;
 use itertools::Itertools as _;
 use macaw::IsoTransform;
 use rand::Rng as _;
-
+use re_renderer::renderer::{
+    GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
+    TestTriangleDrawData,
+};
+use re_renderer::view_builder::{
+    OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder,
+};
 use re_renderer::{
     Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
     Rgba, ScreenshotProcessor, Size,
-    renderer::{
-        GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
-        TestTriangleDrawData,
-    },
-    view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
 };
-use winit::{event::ElementState, keyboard};
+use winit::event::ElementState;
+use winit::keyboard;
 
 mod framework;
 
@@ -163,9 +165,9 @@ struct Multiview {
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     Hsva {
-        h: rnd.r#gen::<f32>(),
-        s: rnd.r#gen::<f32>() * 0.5 + 0.5,
-        v: rnd.r#gen::<f32>() * 0.5 + 0.5,
+        h: rnd.random::<f32>(),
+        s: rnd.random::<f32>() * 0.5 + 0.5,
+        v: rnd.random::<f32>() * 0.5 + 0.5,
         a: 1.0,
     }
     .into()
@@ -219,7 +221,7 @@ impl Multiview {
         draw_data: D,
         index: u32,
     ) -> anyhow::Result<(ViewBuilder, wgpu::CommandBuffer)> {
-        let mut view_builder = ViewBuilder::new(re_ctx, target_cfg);
+        let mut view_builder = ViewBuilder::new(re_ctx, target_cfg)?;
 
         if self
             .take_screenshot_next_frame_for_view
@@ -230,8 +232,8 @@ impl Multiview {
         }
 
         let command_buffer = view_builder
-            .queue_draw(skybox)
-            .queue_draw(draw_data)
+            .queue_draw(re_ctx, skybox)
+            .queue_draw(re_ctx, draw_data)
             .draw(re_ctx, Rgba::TRANSPARENT)?;
 
         Ok((view_builder, command_buffer))
@@ -254,14 +256,14 @@ impl Example for Multiview {
         let random_points_positions = (0..point_count)
             .map(|_| {
                 glam::vec3(
-                    rnd.gen_range(random_point_range.clone()),
-                    rnd.gen_range(random_point_range.clone()),
-                    rnd.gen_range(random_point_range.clone()),
+                    rnd.random_range(random_point_range.clone()),
+                    rnd.random_range(random_point_range.clone()),
+                    rnd.random_range(random_point_range.clone()),
                 )
             })
             .collect_vec();
         let random_points_radii = (0..point_count)
-            .map(|_| Size::new_scene_units(rnd.gen_range(0.005..0.05)))
+            .map(|_| Size::new_scene_units(rnd.random_range(0.005..0.05)))
             .collect_vec();
         let random_points_colors = (0..point_count)
             .map(|_| random_color(&mut rnd))
@@ -274,7 +276,7 @@ impl Example for Multiview {
             .iter()
             .flat_map(|p| {
                 model_mesh_instances.iter().map(|_| {
-                    let mut rnd = rand::thread_rng();
+                    let mut rnd = rand::rng();
                     (*p, random_color(&mut rnd))
                 })
             })
@@ -313,7 +315,7 @@ impl Example for Multiview {
 
         let secs_since_startup = time.secs_since_startup();
         let view_from_world = IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y)
-            .ok_or(anyhow::format_err!("invalid camera"))?;
+            .ok_or_else(|| anyhow::format_err!("invalid camera"))?;
         let triangle = TestTriangleDrawData::new(re_ctx);
         let skybox = GenericSkyboxDrawData::new(re_ctx, Default::default());
         let lines = build_lines(re_ctx, secs_since_startup)?;

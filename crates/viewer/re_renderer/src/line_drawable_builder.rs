@@ -2,14 +2,12 @@ use std::ops::Range;
 
 use re_log::ResultExt as _;
 
+use crate::allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError};
+use crate::renderer::gpu_data::{LineStripInfo, LineVertex};
+use crate::renderer::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 use crate::{
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
     PickingLayerObjectId, RenderContext, Size,
-    allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError},
-    renderer::{
-        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
-        gpu_data::{LineStripInfo, LineVertex},
-    },
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
@@ -282,7 +280,7 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         &mut self,
         segments: impl ExactSizeIterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_, 'ctx> {
-        #![allow(clippy::tuple_array_conversions)] // false positive
+        #![expect(clippy::tuple_array_conversions)] // false positive
 
         let old_strip_count = self.0.strips_buffer.len();
         let mut strip_index = old_strip_count as u32;
@@ -506,7 +504,7 @@ impl<'a, 'ctx> LineStripBuilder<'a, 'ctx> {
 
     #[inline]
     pub fn color(mut self, color: Color32) -> Self {
-        self.strip.color = color;
+        self.strip.color = color.into();
         self
     }
 

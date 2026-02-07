@@ -1,5 +1,5 @@
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+// TODO(#3408): remove unwrap()
+#![expect(clippy::unwrap_used)]
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Target {
@@ -32,7 +32,6 @@ pub trait CodeGenerator {
 // ---
 
 mod macros {
-    #![allow(unused_macros)]
     macro_rules! autogen_warning {
         () => {
             format!(

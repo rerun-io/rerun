@@ -4,8 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
@@ -16,6 +15,9 @@ from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
 from .download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 DESCRIPTION = """
 # ARKitScenes
@@ -208,9 +210,9 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     rr.log(
         "world/mesh",
         rr.Mesh3D(
-            vertex_positions=mesh.vertices,
-            vertex_colors=mesh.visual.vertex_colors,
-            triangle_indices=mesh.faces,
+            vertex_positions=mesh.vertices,  # type: ignore[attr-defined]
+            vertex_colors=mesh.visual.vertex_colors,  # type: ignore[attr-defined]
+            triangle_indices=mesh.faces,  # type: ignore[attr-defined]
         ),
         static=True,
     )

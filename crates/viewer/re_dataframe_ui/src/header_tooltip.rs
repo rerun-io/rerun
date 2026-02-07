@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use arrow::datatypes::Field;
-
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 
 pub fn column_header_tooltip_ui(
@@ -160,13 +159,14 @@ fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes
                 .add(
                     egui::Button::image_and_text(
                         re_ui::icons::COPY.as_image(),
+                        // TODO(#11071): use re_arrow_ui to format the datatype here
                         egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace(),
                     )
                     .image_tint_follows_text_color(true),
                 )
                 .clicked()
             {
-                ui.ctx().copy_text(format!("{datatype:#?}"));
+                ui.ctx().copy_text(format!("{datatype:#?}")); // TODO(apache/arrow-rs#8351): use Display once arrow 57 is released
                 re_log::info!("Copied full datatype of column `{column_name}` to clipboard");
             }
         },

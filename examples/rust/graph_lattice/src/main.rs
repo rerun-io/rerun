@@ -6,7 +6,8 @@
 //! ```
 
 use itertools::Itertools as _;
-use rerun::{Color, GraphEdges, GraphNodes, external::re_log};
+use rerun::external::re_log;
+use rerun::{Color, GraphEdges, GraphNodes};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

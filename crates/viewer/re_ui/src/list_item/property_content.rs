@@ -1,10 +1,14 @@
+use std::fmt::Display;
 use std::sync::Arc;
 
-use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
+use egui::text::TextWrapping;
+use egui::{Align, Align2, NumExt as _, Ui};
 
+use super::{
+    ContentContext, DesiredWidth, ItemButtons, LayoutInfoStack, ListItemContent,
+    ListItemContentButtonsExt, ListVisuals,
+};
 use crate::{Icon, UiExt as _};
-
-use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent, ListVisuals};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
@@ -24,7 +28,7 @@ pub struct PropertyContent<'a> {
     show_only_when_collapsed: bool,
     value_fn: Option<Box<PropertyValueFn<'a>>>,
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    button: Option<Box<dyn super::ItemButton + 'a>>,
+    buttons: ItemButtons<'a>,
     /**/
     //TODO(ab): icon styling? link icon right of label? clickable label?
 }
@@ -40,7 +44,7 @@ impl<'a> PropertyContent<'a> {
             icon_fn: None,
             show_only_when_collapsed: true,
             value_fn: None,
-            button: None,
+            buttons: ItemButtons::default(),
         }
     }
 
@@ -70,71 +74,6 @@ impl<'a> PropertyContent<'a> {
     {
         self.icon_fn = Some(Box::new(icon_fn));
         self
-    }
-
-    /// Add a right-aligned [`super::ItemButton`].
-    ///
-    /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(#6191): accept multiple calls for this function for multiple actions.
-    #[inline]
-    pub fn button(mut self, button: impl super::ItemButton + 'a) -> Self {
-        // TODO(#6191): support multiple action buttons
-        assert!(
-            self.button.is_none(),
-            "Only one action button is supported right now"
-        );
-
-        self.button = Some(Box::new(button));
-        self
-    }
-
-    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
-    ///
-    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
-    /// and is also how we can query the button in tests.
-    ///
-    /// See [`Self::button`] for more information.
-    #[inline]
-    pub fn action_button(
-        self,
-        icon: &'static crate::icons::Icon,
-        alt_text: impl Into<String>,
-        on_click: impl FnOnce() + 'a,
-    ) -> Self {
-        self.action_button_with_enabled(icon, alt_text, true, on_click)
-    }
-
-    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
-    ///
-    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
-    /// and is also how we can query the button in tests.
-    ///
-    /// See [`Self::button`] for more information.
-    #[inline]
-    pub fn action_button_with_enabled(
-        self,
-        icon: &'static crate::icons::Icon,
-        alt_text: impl Into<String>,
-        enabled: bool,
-        on_click: impl FnOnce() + 'a,
-    ) -> Self {
-        self.button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
-    }
-
-    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
-    ///
-    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
-    /// and is also how we can query the button in tests.
-    ///
-    /// See [`Self::button`] for more information.
-    #[inline]
-    pub fn menu_button(
-        self,
-        icon: &'static crate::icons::Icon,
-        alt_text: impl Into<String>,
-        add_contents: impl FnOnce(&mut egui::Ui) + 'a,
-    ) -> Self {
-        self.button(super::ItemMenuButton::new(icon, alt_text, add_contents))
     }
 
     /// Display value only for leaf or collapsed items.
@@ -193,6 +132,15 @@ impl<'a> PropertyContent<'a> {
         })
     }
 
+    /// Show a number, nicely formatted.
+    #[inline]
+    pub fn value_uint<Uint>(self, number: Uint) -> Self
+    where
+        Uint: Display + num_traits::Unsigned,
+    {
+        self.value_text(re_format::format_uint(number))
+    }
+
     /// Show an editable text in the value column.
     #[inline]
     pub fn value_text_mut(self, text: &'a mut String) -> Self {
@@ -226,13 +174,15 @@ impl<'a> PropertyContent<'a> {
 
 impl ListItemContent for PropertyContent<'_> {
     fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) {
+        ui.sanity_check();
+
         let Self {
             label,
             min_desired_width: _,
             icon_fn,
             show_only_when_collapsed,
             value_fn,
-            button,
+            buttons,
         } = *self;
 
         let tokens = ui.tokens();
@@ -271,27 +221,17 @@ impl ListItemContent for PropertyContent<'_> {
             0.0
         };
 
-        // Based on egui::ImageButton::ui()
-        let action_button_dimension =
-            tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
-        let reserve_action_button_space =
-            button.is_some() || context.layout_info.reserve_action_button_space;
-        let action_button_extra = if reserve_action_button_space {
-            action_button_dimension + tokens.text_to_icon_padding()
-        } else {
-            0.0
-        };
-
         let label_rect = egui::Rect::from_x_y_ranges(
             (content_left_x + icon_extra)..=(mid_point_x - Self::COLUMN_SPACING / 2.0),
             context.rect.y_range(),
         );
 
-        let value_rect = egui::Rect::from_x_y_ranges(
-            (mid_point_x + Self::COLUMN_SPACING / 2.0)
-                ..=(context.rect.right() - action_button_extra),
+        let mut value_rect = egui::Rect::from_x_y_ranges(
+            (mid_point_x + Self::COLUMN_SPACING / 2.0)..=context.rect.right(),
             context.rect.y_range(),
         );
+
+        buttons.show_and_shrink_rect(ui, context, &mut value_rect);
 
         let visuals = context.visuals;
 
@@ -312,23 +252,20 @@ impl ListItemContent for PropertyContent<'_> {
             egui::FontSelection::Default,
             Align::LEFT,
         ));
-        let desired_galley = ui.fonts(|fonts| fonts.layout_job(layout_job.clone()));
+        let desired_galley = ui.fonts_mut(|fonts| fonts.layout_job(layout_job.clone()));
         let desired_width =
             (content_indent + icon_extra + desired_galley.size().x + Self::COLUMN_SPACING / 2.0)
                 .ceil();
 
         context
             .layout_info
-            .register_desired_left_column_width(ui.ctx(), desired_width);
-        context
-            .layout_info
-            .reserve_action_button_space(ui.ctx(), button.is_some());
+            .register_desired_left_column_width(ui, desired_width);
 
         let galley = if desired_galley.size().x <= label_rect.width() {
             desired_galley
         } else {
             layout_job.wrap = TextWrapping::truncate_at_width(label_rect.width());
-            ui.fonts(|fonts| fonts.layout_job(layout_job))
+            ui.fonts_mut(|fonts| fonts.layout_job(layout_job))
         };
 
         // this happens here to avoid cloning the text
@@ -369,55 +306,54 @@ impl ListItemContent for PropertyContent<'_> {
                     .max_rect(value_rect)
                     .layout(egui::Layout::left_to_right(egui::Align::Center)),
             );
-            child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+            // This sets the default text color for e.g. ui.label, but syntax highlighted
+            // text won't be overridden
+            child_ui
+                .visuals_mut()
+                .widgets
+                .noninteractive
+                .fg_stroke
+                .color = visuals_for_value.text_color();
+            // When selected we override the text color so e.g. syntax highlighted code
+            // doesn't become unreadable
+            if context.visuals.selected {
+                child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+            }
+
+            child_ui.sanity_check();
             value_fn(&mut child_ui, visuals_for_value);
+            child_ui.sanity_check();
 
             context.layout_info.register_property_content_max_width(
-                child_ui.ctx(),
+                &child_ui,
                 child_ui.min_rect().right() - context.layout_info.left_x,
             );
-        }
-
-        // Draw action button
-        if let Some(button) = button {
-            let action_button_rect = egui::Rect::from_center_size(
-                context.rect.right_center() - egui::vec2(action_button_dimension / 2.0, 0.0),
-                egui::Vec2::splat(action_button_dimension),
-            );
-
-            // the right to left layout is used to mimic LabelContent's buttons behavior and get a
-            // better alignment
-            let mut child_ui = ui.new_child(
-                egui::UiBuilder::new()
-                    .max_rect(action_button_rect)
-                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
-            );
-
-            button.ui(&mut child_ui);
         }
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
+        ui.sanity_check();
+
         let layout_info = LayoutInfoStack::top(ui.ctx());
-        let tokens = ui.tokens();
 
         if crate::is_in_resizable_panel(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
         } else if let Some(max_width) = layout_info.property_content_max_width {
-            let mut desired_width = max_width + layout_info.left_x - ui.max_rect().left();
-
-            // TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
-            let action_button_dimension =
-                tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
-            let reserve_action_button_space =
-                self.button.is_some() || layout_info.reserve_action_button_space;
-            if reserve_action_button_space {
-                desired_width += action_button_dimension + tokens.text_to_icon_padding();
-            }
+            let desired_width = max_width + layout_info.left_x - ui.max_rect().left();
 
             DesiredWidth::AtLeast(desired_width.ceil())
         } else {
             DesiredWidth::AtLeast(self.min_desired_width)
         }
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for PropertyContent<'a> {
+    fn buttons(&self) -> &ItemButtons<'a> {
+        &self.buttons
+    }
+
+    fn buttons_mut(&mut self) -> &mut ItemButtons<'a> {
+        &mut self.buttons
     }
 }

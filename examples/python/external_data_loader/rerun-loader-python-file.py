@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 
 import rerun as rr  # pip install rerun-sdk
 
@@ -63,7 +64,7 @@ def main() -> None:
 
     # Inform the Rerun Viewer that we do not support that kind of file.
     if not is_file or not is_python_file:
-        exit(rr.EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE)
+        sys.exit(rr.EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE)
 
     app_id = "rerun_example_external_data_loader"
     if args.application_id is not None:

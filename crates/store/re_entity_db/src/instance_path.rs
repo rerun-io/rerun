@@ -1,4 +1,5 @@
-use std::{hash::Hash, str::FromStr};
+use std::hash::Hash;
+use std::str::FromStr;
 
 use re_chunk::RowId;
 use re_log_types::{DataPath, EntityPath, EntityPathHash, Instance, PathParseError};
@@ -31,9 +32,9 @@ impl InstancePath {
     ///
     /// For example: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn entity_all(entity_path: EntityPath) -> Self {
+    pub fn entity_all(entity_path: impl Into<EntityPath>) -> Self {
         Self {
-            entity_path,
+            entity_path: entity_path.into(),
             instance: Instance::ALL,
         }
     }
@@ -41,10 +42,10 @@ impl InstancePath {
     /// Indicate a specific instance of the entity,
     /// e.g. a specific point in a point cloud entity.
     #[inline]
-    pub fn instance(entity_path: EntityPath, instance: Instance) -> Self {
+    pub fn instance(entity_path: impl Into<EntityPath>, instance: impl Into<Instance>) -> Self {
         Self {
-            entity_path,
-            instance,
+            entity_path: entity_path.into(),
+            instance: instance.into(),
         }
     }
 
@@ -100,13 +101,11 @@ impl FromStr for InstancePath {
         let DataPath {
             entity_path,
             instance,
-            component_descriptor,
+            component,
         } = DataPath::from_str(s)?;
 
-        if let Some(component_descriptor) = component_descriptor {
-            return Err(PathParseError::UnexpectedComponentDescriptor(
-                component_descriptor,
-            ));
+        if let Some(component) = component {
+            return Err(PathParseError::UnexpectedComponent(component));
         }
 
         let instance = instance.unwrap_or(Instance::ALL);

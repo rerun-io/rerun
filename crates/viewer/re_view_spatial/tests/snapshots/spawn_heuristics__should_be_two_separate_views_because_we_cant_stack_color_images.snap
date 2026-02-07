@@ -1,21 +1,31 @@
 ---
 source: crates/viewer/re_view_spatial/tests/spawn_heuristics.rs
 expression: recommended_views
-snapshot_kind: text
 ---
-ViewSpawnHeuristics {
-    recommended_views: [
-        RecommendedView {
-            origin: /image/a,
-            query_filter: [
-                "+ $origin/**",
+RecommendedViews {
+    views_2d: Some(
+        ViewSpawnHeuristics {
+            recommended_views: [
+                RecommendedView {
+                    origin: /image/a,
+                    query_filter: [
+                        "+ $origin/**",
+                    ],
+                },
+                RecommendedView {
+                    origin: /image/b,
+                    query_filter: [
+                        "+ $origin/**",
+                    ],
+                },
             ],
+            max_views_spawned: 8,
         },
-        RecommendedView {
-            origin: /image/b,
-            query_filter: [
-                "+ $origin/**",
-            ],
+    ),
+    views_3d: Some(
+        ViewSpawnHeuristics {
+            recommended_views: [],
+            max_views_spawned: 8,
         },
-    ],
+    ),
 }

@@ -1,9 +1,7 @@
 use smallvec::smallvec;
 
-use crate::{
-    CpuModel, RenderContext, Rgba32Unmul,
-    mesh::{CpuMesh, Material, MeshError},
-};
+use crate::mesh::{CpuMesh, Material, MeshError};
+use crate::{CpuModel, RenderContext, Rgba32Unmul};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ObjImportError {
@@ -43,6 +41,7 @@ pub fn load_obj_from_buffer(
             .chunks_exact(3)
             .map(|p| glam::vec3(p[0], p[1], p[2]))
             .collect();
+        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
 
         let triangle_indices = mesh
             .indices
@@ -87,6 +86,7 @@ pub fn load_obj_from_buffer(
             vertex_colors,
             vertex_normals,
             vertex_texcoords,
+            bbox,
 
             // TODO(andreas): proper material loading
             materials: smallvec![Material {

@@ -1,4 +1,4 @@
-//! Server implementation of an in-memory Storage Node ("proxy").
+//! Server for the legacy `StoreHub` API.
 
 pub mod shutdown;
 
@@ -7,47 +7,79 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
-use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
+use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::TableMsg;
-use re_protos::sdk_comms::v1alpha1::ReadTablesRequest;
-use re_protos::sdk_comms::v1alpha1::ReadTablesResponse;
-use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
-use re_protos::sdk_comms::v1alpha1::WriteTableRequest;
-use re_protos::sdk_comms::v1alpha1::WriteTableResponse;
+use re_protos::common::v1alpha1::{
+    DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
+};
+use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
+use re_protos::sdk_comms::v1alpha1::{
+    ReadMessagesRequest, ReadMessagesResponse, ReadTablesRequest, ReadTablesResponse,
+    SaveScreenshotRequest, SaveScreenshotResponse, WriteMessagesRequest, WriteMessagesResponse,
+    WriteTableRequest, WriteTableResponse, message_proxy_service_server,
+};
+use re_quota_channel::{async_broadcast_channel, async_mpsc_channel};
+use std::task::{Context, Poll};
 use tokio::net::TcpListener;
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tokio_stream::Stream;
-use tokio_stream::StreamExt as _;
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::{Stream, StreamExt as _};
 use tonic::transport::Server;
 use tonic::transport::server::TcpIncoming;
 use tower_http::cors::CorsLayer;
 
-use re_memory::MemoryLimit;
-use re_protos::{
-    common::v1alpha1::{
-        DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
-    },
-    log_msg::v1alpha1::LogMsg as LogMsgProto,
-    sdk_comms::v1alpha1::{
-        ReadMessagesRequest, ReadMessagesResponse, WriteMessagesResponse,
-        message_proxy_service_server,
-    },
-};
+use crate::priority_stream::PriorityMerge;
+
+mod priority_stream;
+
+pub use re_memory::MemoryLimit;
 
 /// Default port of the OSS /proxy server.
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
-pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
 pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 
-// Channel capacity is completely arbitrary, e just want something large enough
-// to handle bursts of messages. This is roughly 16 MiB of `Msg` (excluding their contents).
-const MESSAGE_QUEUE_CAPACITY: usize =
-    (16 * 1024 * 1024 / std::mem::size_of::<Msg>()).next_power_of_two();
+/// Options for the gRPC Proxy Server
+#[derive(Clone, Copy, Debug)]
+pub struct ServerOptions {
+    /// When a client connect, should they be sent the oldest data first, or the newest?
+    pub playback_behavior: PlaybackBehavior,
+
+    /// Start garbage collecting old data when we reach this.
+    pub memory_limit: MemoryLimit,
+}
+
+impl Default for ServerOptions {
+    fn default() -> Self {
+        Self {
+            playback_behavior: PlaybackBehavior::OldestFirst,
+            memory_limit: MemoryLimit::from_bytes(1024 * 1024 * 1024), // Be very conservative by default
+        }
+    }
+}
+
+/// What happens when a client connects to a gRPC server?
+#[derive(Clone, Copy, Debug)]
+pub enum PlaybackBehavior {
+    /// Start playing back all the old data first,
+    /// and only after start sending anything that happened since.
+    OldestFirst,
+
+    /// Prioritize the newest arriving messages,
+    /// replaying the history later, starting with the newest.
+    NewestFirst,
+}
+
+impl PlaybackBehavior {
+    pub fn from_newest_first(newest_first: bool) -> Self {
+        if newest_first {
+            Self::NewestFirst
+        } else {
+            Self::OldestFirst
+        }
+    }
+}
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
@@ -103,28 +135,66 @@ impl From<tonic::Status> for TonicStatusError {
 /// to the open `ReadMessages` stream.
 pub async fn serve(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
-    serve_impl(addr, MessageProxy::new(memory_limit), shutdown).await
+    serve_impl(addr, options, MessageProxy::new(options), shutdown).await
 }
 
 async fn serve_impl(
     addr: SocketAddr,
+    options: ServerOptions,
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
-    let tcp_listener = TcpListener::bind(addr).await?;
-    let incoming = TcpIncoming::from(tcp_listener).with_nodelay(Some(true));
+    // TODO(rust-lang/rust#130668): When listening on `::` we want to listen to both ipv6 `::` and ipv4 `0.0.0.0`
+    // On Mac & Linux this happens automatically since all sockets are dual-stack by default.
+    // On Windows, the dual stack behavior is opt-in, but `TcpListener::bind` does not expose the option.
+    // To work around this, we explicitly listen on both ipv4 & ipv6 if an unspecified ipv6 address is used.
+    let dual_stack_windows = cfg!(target_os = "windows")
+        && matches!(addr.ip(), std::net::IpAddr::V6(ipv6) if ipv6.is_unspecified());
 
-    let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
-        format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
+    let incoming: Pin<Box<dyn Stream<Item = _> + Send>> = if dual_stack_windows {
+        let ipv6_addr = addr;
+        let ipv4_addr = SocketAddr::V4(std::net::SocketAddrV4::new(
+            std::net::Ipv4Addr::UNSPECIFIED,
+            addr.port(),
+        ));
+
+        let tcp_listener_ipv6 = TcpListener::bind(ipv6_addr).await?;
+        let tcp_listener_ipv4 = TcpListener::bind(ipv4_addr).await?;
+
+        let incoming_ipv6 = TcpIncoming::from(tcp_listener_ipv6).with_nodelay(Some(true));
+        let incoming_ipv4 = TcpIncoming::from(tcp_listener_ipv4).with_nodelay(Some(true));
+
+        // Merge both streams into a single stream
+        let merged = tokio_stream::StreamExt::merge(incoming_ipv6, incoming_ipv4);
+
+        let connect_addr = format!("rerun+http://127.0.0.1:{}/proxy", addr.port());
+
+        re_log::info!(
+            "Listening for gRPC connections on {ipv6_addr} and {ipv4_addr}. Connect by running `rerun --connect {connect_addr}`",
+        );
+
+        Box::pin(merged)
     } else {
-        format!("rerun+http://{addr}/proxy")
+        let tcp_listener = TcpListener::bind(addr).await?;
+        let incoming = TcpIncoming::from(tcp_listener).with_nodelay(Some(true));
+
+        let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
+            format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
+        } else {
+            format!("rerun+http://{addr}/proxy")
+        };
+
+        re_log::info!(
+            "Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`",
+        );
+
+        Box::pin(incoming)
     };
-    re_log::info!(
-        "Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`"
-    );
+
+    re_log::debug!("Server memory limit set at {}", options.memory_limit);
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();
@@ -164,19 +234,19 @@ async fn serve_impl(
 /// See [`serve`] for more information about what a Rerun server is.
 pub async fn serve_from_channel(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    channel_rx: re_smart_channel::Receiver<re_log_types::LogMsg>,
+    channel_rx: re_log_channel::LogReceiver,
 ) {
-    let message_proxy = MessageProxy::new(memory_limit);
+    let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
 
-    tokio::spawn(async move {
-        use re_smart_channel::SmartMessagePayload;
+    tokio::task::spawn_blocking(move || {
+        use re_log_channel::SmartMessagePayload;
 
         loop {
-            let msg = match channel_rx.try_recv() {
-                Ok(msg) => match msg.payload {
+            let msg = if let Ok(msg) = channel_rx.recv() {
+                match msg.payload {
                     SmartMessagePayload::Msg(msg) => msg,
                     SmartMessagePayload::Flush { on_flush_done } => {
                         on_flush_done(); // we don't buffer
@@ -190,44 +260,48 @@ pub async fn serve_from_channel(
                         }
                         break;
                     }
-                },
-                Err(re_smart_channel::TryRecvError::Disconnected) => {
-                    re_log::debug!("smart channel sender closed, closing receiver");
-                    break;
                 }
-                Err(re_smart_channel::TryRecvError::Empty) => {
-                    // Let other tokio tasks run:
-                    tokio::task::yield_now().await;
-                    continue;
-                }
-            };
-
-            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
-                msg,
-                re_log_encoding::Compression::LZ4,
-            ) {
-                Ok(msg) => msg,
-                Err(err) => {
-                    re_log::error!("failed to encode message: {err}");
-                    continue;
-                }
-            };
-
-            if event_tx.send(Event::Message(msg)).await.is_err() {
-                re_log::debug!("shut down, closing sender");
+            } else {
+                re_log::debug!("smart channel sender closed, closing receiver");
                 break;
+            };
+
+            match msg {
+                DataSourceMessage::LogMsg(msg) => {
+                    let msg = match msg.to_transport(re_log_encoding::rrd::Compression::LZ4) {
+                        Ok(msg) => msg,
+                        Err(err) => {
+                            re_log::error!("failed to encode message: {err}");
+                            continue;
+                        }
+                    };
+
+                    if event_tx
+                        .blocking_send(Event::Message(LogOrTableMsgProto::LogMsg(msg.into())))
+                        .is_err()
+                    {
+                        re_log::debug!("shut down, closing sender");
+                        break;
+                    }
+                }
+                unsupported => {
+                    re_log::error_once!(
+                        "Not implemented: re_grpc_server support for {}",
+                        unsupported.variant_name()
+                    );
+                }
             }
         }
     });
 
-    if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+    if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
         re_log::error!("message proxy server crashed: {err}");
     }
 }
 
 /// Start a Rerun server, listening on `addr`.
 ///
-/// This function additionally accepts a `ReceiveSet`, from which the
+/// This function additionally accepts a [`re_log_channel::LogReceiverSet`], from which the
 /// server will read all messages. It is similar to creating a client
 /// and sending messages through `WriteMessages`, but without the overhead
 /// of a localhost connection.
@@ -235,46 +309,75 @@ pub async fn serve_from_channel(
 /// See [`serve`] for more information about what a Rerun server is.
 pub fn spawn_from_rx_set(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    rxs: re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+    rxs: re_log_channel::LogReceiverSet,
 ) {
-    let message_proxy = MessageProxy::new(memory_limit);
+    let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::spawn(async move {
-        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+        if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
             re_log::error!("message proxy server crashed: {err}");
         }
     });
 
-    tokio::spawn(async move {
+    tokio::task::spawn_blocking(move || {
+        use re_log_channel::SmartMessagePayload;
+
         loop {
-            let Some(msg) = rxs.try_recv().and_then(|(_, m)| m.into_data()) else {
+            let msg = if let Ok(msg) = rxs.recv() {
+                match msg.payload {
+                    SmartMessagePayload::Msg(msg) => msg,
+                    SmartMessagePayload::Flush { on_flush_done } => {
+                        on_flush_done(); // we don't buffer
+                        continue;
+                    }
+                    SmartMessagePayload::Quit(err) => {
+                        if let Some(err) = err {
+                            re_log::debug!("smart channel sender quit: {err}");
+                        } else {
+                            re_log::debug!("smart channel sender quit");
+                        }
+                        if rxs.is_empty() {
+                            // We won't ever receive more data:
+                            break;
+                        }
+                        continue;
+                    }
+                }
+            } else {
                 if rxs.is_empty() {
                     // We won't ever receive more data:
                     break;
                 }
-                // Because `try_recv` is blocking, we should give other tasks
-                // a chance to run before we continue
-                tokio::task::yield_now().await;
                 continue;
             };
 
-            let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
-                msg,
-                re_log_encoding::Compression::LZ4,
-            ) {
-                Ok(msg) => msg,
-                Err(err) => {
-                    re_log::error!("failed to encode message: {err}");
-                    continue;
-                }
-            };
+            match msg {
+                DataSourceMessage::LogMsg(msg) => {
+                    let msg = match msg.to_transport(re_log_encoding::rrd::Compression::LZ4) {
+                        Ok(msg) => msg,
+                        Err(err) => {
+                            re_log::error!("failed to encode message: {err}");
+                            continue;
+                        }
+                    };
 
-            if event_tx.send(Event::Message(msg)).await.is_err() {
-                re_log::debug!("shut down, closing sender");
-                break;
+                    if event_tx
+                        .blocking_send(Event::Message(LogOrTableMsgProto::LogMsg(msg.into())))
+                        .is_err()
+                    {
+                        re_log::debug!("shut down, closing sender");
+                        break;
+                    }
+                }
+                unsupported => {
+                    re_log::error_once!(
+                        "gRPC proxy server cannot forward {}",
+                        unsupported.variant_name()
+                    );
+                }
             }
         }
     });
@@ -293,58 +396,76 @@ pub fn spawn_from_rx_set(
 /// See [`serve`] for more information about what a Rerun server is.
 pub fn spawn_with_recv(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
-) -> (
-    re_smart_channel::Receiver<re_log_types::LogMsg>,
-    crossbeam::channel::Receiver<re_log_types::TableMsg>,
-) {
+) -> re_log_channel::LogReceiver {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
         addr,
     ));
-    let (channel_log_tx, channel_log_rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
-        re_smart_channel::SmartChannelSource::MessageProxy(uri),
-    );
-    let (channel_table_tx, channel_table_rx) = crossbeam::channel::unbounded();
-    let (message_proxy, mut broadcast_log_rx, mut broadcast_table_rx) =
-        MessageProxy::new_with_recv(memory_limit);
+
+    let (channel_log_tx, channel_log_rx) =
+        re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri));
+
+    let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options);
+
     tokio::spawn(async move {
-        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+        if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
             re_log::error!("message proxy server crashed: {err}");
         }
     });
+
     tokio::spawn(async move {
         let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
 
         loop {
-            let msg = match broadcast_log_rx.recv().await {
-                Ok(msg) => re_log_encoding::protobuf_conversions::log_msg_from_proto(
-                    &mut app_id_cache,
-                    msg,
-                ),
-                Err(broadcast::error::RecvError::Closed) => {
+            let msg: anyhow::Result<DataSourceMessage> = match broadcast_log_rx.recv().await {
+                Ok(inner) => match inner {
+                    LogOrTableMsgProto::LogMsg(msg) => match msg.msg {
+                        Some(msg) => msg
+                            .to_application((&mut app_id_cache, None))
+                            .map(DataSourceMessage::LogMsg)
+                            .map_err(|err| err.into()),
+                        None => Err(re_protos::missing_field!(
+                            re_protos::log_msg::v1alpha1::LogMsg,
+                            "msg"
+                        )
+                        .into()),
+                    },
+
+                    LogOrTableMsgProto::Table(msg) => match msg.data.try_into() {
+                        Ok(data) => Ok(DataSourceMessage::TableMsg(TableMsg {
+                            id: msg.id.into(),
+                            data,
+                        })),
+                        Err(err) => {
+                            re_log::error!("Dropping LogMsg::Table due to failed decode: {err}");
+                            continue;
+                        }
+                    },
+
+                    LogOrTableMsgProto::UiCommand(cmd) => Ok(DataSourceMessage::UiCommand(cmd)),
+                },
+
+                Err(async_broadcast_channel::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
                     channel_log_tx.quit(None).ok();
                     break;
                 }
-                Err(broadcast::error::RecvError::Lagged(n)) => {
-                    re_log::warn!(
-                        "message proxy receiver dropped {n} messages due to backpressure"
-                    );
-                    continue;
-                }
             };
             match msg {
                 Ok(mut log_msg) => {
-                    // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
-                    // Note that this function is only called by the viewer
-                    // (that's what the message-receiver is connected to).
-                    log_msg.insert_arrow_record_batch_metadata(
-                        re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
-                        re_sorbet::timestamp_metadata::now_timestamp(),
-                    );
+                    if let Some(metadata_key) =
+                        re_sorbet::TimestampLocation::IPCDecode.metadata_key()
+                    {
+                        // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
+                        // Note that this function is only called by the viewer
+                        // (that's what the message-receiver is connected to).
+                        log_msg.insert_arrow_record_batch_metadata(
+                            metadata_key.to_owned(),
+                            re_sorbet::timestamp_metadata::now_timestamp(),
+                        );
+                    }
 
                     if channel_log_tx.send(log_msg).is_err() {
                         re_log::debug!(
@@ -359,58 +480,21 @@ pub fn spawn_with_recv(
             }
         }
     });
-    tokio::spawn(async move {
-        loop {
-            let msg = match broadcast_table_rx.recv().await {
-                Ok(msg) => msg.data.decode().map(|data| TableMsg {
-                    id: msg.id.into(),
-                    data,
-                }),
-                Err(broadcast::error::RecvError::Closed) => {
-                    re_log::debug!("message proxy server shut down, closing receiver");
-                    // `crossbeam` does not have a `quit` method, so we're done here.
-                    break;
-                }
-                Err(broadcast::error::RecvError::Lagged(n)) => {
-                    re_log::warn!(
-                        "message proxy receiver dropped {n} messages due to backpressure"
-                    );
-                    continue;
-                }
-            };
-            match msg {
-                Ok(msg) => {
-                    if channel_table_tx.send(msg).is_err() {
-                        re_log::debug!(
-                            "message proxy smart channel receiver closed, closing sender"
-                        );
-                        break;
-                    }
-                }
-                Err(err) => {
-                    re_log::error!("dropping table due to failed decode: {err}");
-                }
-            }
-        }
-    });
-    (channel_log_rx, channel_table_rx)
+
+    channel_log_rx
 }
 
 enum Event {
     /// New client connected, requesting full history and subscribing to new messages.
     NewClient(
         oneshot::Sender<(
-            Vec<Msg>,
-            broadcast::Receiver<LogMsgProto>,
-            broadcast::Receiver<TableMsgProto>,
+            Vec<LogOrTableMsgProto>,
+            async_broadcast_channel::Receiver<LogOrTableMsgProto>,
         )>,
     ),
 
     /// A client sent a message.
-    Message(LogMsgProto),
-
-    /// A client sent a table.
-    Table(TableMsgProto),
+    Message(LogOrTableMsgProto),
 }
 
 #[derive(Clone)]
@@ -418,124 +502,157 @@ struct TableMsgProto {
     id: TableIdProto,
     data: DataframePartProto,
 }
+// -----------------------------------------------------------------------------------
 
 #[derive(Clone)]
-enum Msg {
+enum LogOrTableMsgProto {
     LogMsg(LogMsgProto),
     Table(TableMsgProto),
+    UiCommand(DataSourceUiCommand),
 }
 
-impl Msg {
-    fn total_size_bytes(&self) -> u64 {
+impl SizeBytes for LogOrTableMsgProto {
+    fn heap_size_bytes(&self) -> u64 {
         match self {
-            Self::LogMsg(log_msg) => log_msg.total_size_bytes(),
-            Self::Table(table) => table.total_size_bytes(),
+            Self::LogMsg(log_msg) => log_msg.heap_size_bytes(),
+            Self::Table(table) => table.heap_size_bytes(),
+            Self::UiCommand(cmd) => cmd.heap_size_bytes(),
         }
     }
 }
 
-impl From<LogMsgProto> for Msg {
+impl From<LogMsgProto> for LogOrTableMsgProto {
     fn from(value: LogMsgProto) -> Self {
         Self::LogMsg(value)
     }
 }
 
-impl From<TableMsgProto> for Msg {
+impl From<TableMsgProto> for LogOrTableMsgProto {
     fn from(value: TableMsgProto) -> Self {
         Self::Table(value)
     }
 }
 
-/// Main event loop for the server, which runs in its own task.
-///
-/// Handles message history, and broadcasts messages to clients.
-struct EventLoop {
-    server_memory_limit: MemoryLimit,
-
-    /// New log messages are broadcast to all clients.
-    broadcast_log_tx: broadcast::Sender<LogMsgProto>,
-
-    /// New table messages are broadcast to all clients.
-    broadcast_table_tx: broadcast::Sender<TableMsgProto>,
-
-    /// Channel for incoming events.
-    event_rx: mpsc::Receiver<Event>,
-
-    /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
-    ordered_message_queue: VecDeque<Msg>,
-
-    /// Total size of `ordered_message_queue` in bytes.
-    ordered_message_bytes: u64,
-
-    /// Messages potentially out of order with the rest of the message stream. These are never garbage collected.
-    persistent_message_queue: VecDeque<LogMsgProto>,
+impl From<DataSourceUiCommand> for LogOrTableMsgProto {
+    fn from(value: DataSourceUiCommand) -> Self {
+        Self::UiCommand(value)
+    }
 }
 
-impl EventLoop {
-    fn new(
-        server_memory_limit: MemoryLimit,
-        event_rx: mpsc::Receiver<Event>,
-        broadcast_log_tx: broadcast::Sender<LogMsgProto>,
-        broadcast_table_tx: broadcast::Sender<TableMsgProto>,
-    ) -> Self {
-        Self {
-            server_memory_limit,
-            broadcast_log_tx,
-            broadcast_table_tx,
-            event_rx,
-            ordered_message_queue: Default::default(),
-            ordered_message_bytes: 0,
-            persistent_message_queue: Default::default(),
+// -----------------------------------------------------------------------------------
+
+#[derive(Default)]
+struct MsgQueue {
+    /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
+    queue: VecDeque<LogOrTableMsgProto>,
+
+    /// Total size of [`Self::queue`] in bytes.
+    size_bytes: u64,
+}
+
+impl MsgQueue {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &LogOrTableMsgProto> {
+        self.queue.iter()
+    }
+
+    pub fn push_back(&mut self, msg: LogOrTableMsgProto) {
+        self.size_bytes += msg.total_size_bytes();
+        self.queue.push_back(msg);
+    }
+
+    pub fn pop_front(&mut self) -> Option<LogOrTableMsgProto> {
+        if let Some(msg) = self.queue.pop_front() {
+            self.size_bytes -= msg.total_size_bytes();
+            Some(msg)
+        } else {
+            None
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------------
+
+/// Contains all messages received so far,
+/// minus some that are garbage collected when needed.
+#[derive(Default)]
+struct MessageBuffer {
+    /// Normal data messages.
+    ///
+    /// First to be garbage collected if we run into the memory limit.
+    disposable: MsgQueue,
+
+    /// "Static" (non-temporal) data messages.
+    ///
+    /// Our chunk-store already keeps static messages forever,
+    /// and it makes sense: you usually log them once,
+    /// and then expect them to stay around.
+    ///
+    /// We keep the static messages for as long as we can, but if [`Self::disposable`]
+    /// is empty and we're still over our memory budget, we start throwing
+    /// away the oldest messages from here too.
+    /// This is because some users use static logging for camera images,
+    /// which adds up very quickly.
+    ///
+    /// Ideally we would keep exactly one static message per entity/component stream
+    /// (like the `ChunkStore` does), but we'll save that for:
+    /// TODO(#5531): replace this with `ChunkStore`
+    static_: MsgQueue,
+
+    /// These are never garbage collected.
+    persistent: MsgQueue,
+}
+
+impl MessageBuffer {
+    fn size_bytes(&self) -> u64 {
+        let Self {
+            disposable,
+            static_,
+            persistent,
+        } = self;
+        disposable.size_bytes + static_.size_bytes + persistent.size_bytes
+    }
+
+    fn all(&self, playback_behavior: PlaybackBehavior) -> Vec<LogOrTableMsgProto> {
+        re_tracing::profile_function!();
+
+        let Self {
+            disposable,
+            static_,
+            persistent,
+        } = self;
+
+        // Note: we ALWAYS send the persistent and static data before the disposable,
+        // regardless of PlaybackBehavior!
+
+        match playback_behavior {
+            PlaybackBehavior::OldestFirst => {
+                itertools::chain!(persistent.iter(), static_.iter(), disposable.iter())
+                    .cloned()
+                    .collect()
+            }
+            PlaybackBehavior::NewestFirst => itertools::chain!(
+                persistent.iter().rev(),
+                static_.iter().rev(),
+                disposable.iter().rev()
+            )
+            .cloned()
+            .collect(),
         }
     }
 
-    async fn run_in_place(mut self) {
-        loop {
-            let Some(event) = self.event_rx.recv().await else {
-                break;
-            };
-
-            match event {
-                Event::NewClient(channel) => self.handle_new_client(channel),
-                Event::Message(msg) => self.handle_msg(msg),
-                Event::Table(table) => self.handle_table(table),
+    fn add_msg(&mut self, msg: LogOrTableMsgProto) {
+        match msg {
+            LogOrTableMsgProto::LogMsg(msg) => self.add_log_msg(msg),
+            LogOrTableMsgProto::Table(msg) => {
+                self.disposable.push_back(msg.into());
+            }
+            LogOrTableMsgProto::UiCommand(msg) => {
+                self.disposable.push_back(msg.into());
             }
         }
     }
 
-    fn handle_new_client(
-        &self,
-        channel: oneshot::Sender<(
-            Vec<Msg>,
-            broadcast::Receiver<LogMsgProto>,
-            broadcast::Receiver<TableMsgProto>,
-        )>,
-    ) {
-        channel
-            .send((
-                // static messages come first
-                self.persistent_message_queue
-                    .iter()
-                    .cloned()
-                    .map(Msg::from)
-                    .chain(self.ordered_message_queue.iter().cloned())
-                    .collect(),
-                self.broadcast_log_tx.subscribe(),
-                self.broadcast_table_tx.subscribe(),
-            ))
-            .ok();
-    }
-
-    fn handle_msg(&mut self, msg: LogMsgProto) {
-        self.broadcast_log_tx.send(msg.clone()).ok();
-
-        if self.is_history_disabled() {
-            // no need to gc or maintain history
-            return;
-        }
-
-        self.gc_if_using_too_much_ram();
-
+    fn add_log_msg(&mut self, msg: LogMsgProto) {
         let Some(inner) = &msg.msg else {
             re_log::error!(
                 "{}",
@@ -550,87 +667,184 @@ impl EventLoop {
         match inner {
             // Store info, blueprint activation commands
             Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
-                self.persistent_message_queue.push_back(msg);
+                self.persistent.push_back(msg.into());
             }
 
-            // Blueprint data
-            Msg::ArrowMsg(inner)
-                if inner
+            Msg::ArrowMsg(inner) => {
+                let is_blueprint = inner
                     .store_id
                     .as_ref()
-                    .is_some_and(|id| id.kind() == StoreKindProto::Blueprint) =>
-            {
-                self.persistent_message_queue.push_back(msg);
-            }
+                    .is_some_and(|id| id.kind() == StoreKindProto::Blueprint);
 
-            // Recording data
-            Msg::ArrowMsg(..) => {
-                let approx_size_bytes = msg.total_size_bytes();
-                self.ordered_message_bytes += approx_size_bytes;
-                self.ordered_message_queue.push_back(msg.into());
+                if is_blueprint {
+                    // Persist blueprint messages forever.
+                    self.persistent.push_back(msg.into());
+                } else if inner.is_static == Some(true) {
+                    self.static_.push_back(msg.into());
+                } else {
+                    // Recording data
+                    self.disposable.push_back(msg.into());
+                }
             }
         }
     }
 
-    fn handle_table(&mut self, table: TableMsgProto) {
-        self.broadcast_table_tx.send(table.clone()).ok();
+    pub fn gc(&mut self, max_bytes: u64) {
+        if self.size_bytes() <= max_bytes {
+            // We're not using too much memory.
+            return;
+        }
 
-        if self.is_history_disabled() {
+        re_tracing::profile_scope!("Drop messages");
+        re_log::info_once!(
+            "Exceeded gRPC proxy server memory limit ({}). Dropping the oldest log messages. Clients connecting after this will not see the full history.",
+            re_format::format_bytes(max_bytes as _)
+        );
+
+        let start_size = self.size_bytes();
+        let mut messages_dropped = 0;
+
+        while self.disposable.pop_front().is_some() {
+            messages_dropped += 1;
+            if self.size_bytes() < max_bytes {
+                break;
+            }
+        }
+
+        if max_bytes < self.size_bytes() {
+            re_log::info_once!(
+                "Exceeded gRPC proxy server memory limit ({}). Dropping old *static* log messages as well. Clients connecting after this will no longer see the complete set of static data.",
+                re_format::format_bytes(max_bytes as _)
+            );
+            while self.static_.pop_front().is_some() {
+                messages_dropped += 1;
+                if self.size_bytes() < max_bytes {
+                    break;
+                }
+            }
+        }
+
+        let bytes_dropped = start_size - self.size_bytes();
+
+        re_log::trace!(
+            "Dropped {} bytes in {messages_dropped} message(s)",
+            re_format::format_bytes(bytes_dropped as _)
+        );
+
+        if max_bytes < self.size_bytes() {
+            re_log::warn_once!(
+                "The gRPC server is using more memory than the given memory limit ({}), despite having garbage-collected all non-persistent messages.",
+                re_format::format_bytes(max_bytes as _)
+            );
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------------
+
+/// A wrapper that converts an `async_broadcast_channel::Receiver` into a `Stream`.
+///
+/// This uses `async_stream` internally to bridge the async recv method to Stream.
+/// The stream yields the inner value (unwrapped from `Tracked`).
+struct BackPressureReceiverStream<T: Clone + SizeBytes + Send + Sync + 'static> {
+    inner: Pin<Box<dyn Stream<Item = Result<T, async_broadcast_channel::RecvError>> + Send>>,
+}
+
+impl<T: Clone + SizeBytes + Send + Sync + 'static> BackPressureReceiverStream<T> {
+    fn new(mut receiver: async_broadcast_channel::Receiver<T>) -> Self {
+        let stream = async_stream::stream! {
+            while let Ok(value) = receiver.recv().await {
+                yield Ok(value);
+            }
+        };
+        Self {
+            inner: Box::pin(stream),
+        }
+    }
+}
+
+impl<T: Clone + SizeBytes + Send + Sync + 'static> Stream for BackPressureReceiverStream<T> {
+    type Item = Result<T, async_broadcast_channel::RecvError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.inner.as_mut().poll_next(cx)
+    }
+}
+
+// -----------------------------------------------------------------------------------
+
+/// Main event loop for the server, which runs in its own task.
+///
+/// Handles message history, and broadcasts messages to clients.
+struct EventLoop {
+    options: ServerOptions,
+
+    /// New log messages are broadcast to all clients.
+    /// Uses a back-pressure channel that blocks senders when the byte limit is exceeded.
+    broadcast_log_tx: async_broadcast_channel::Sender<LogOrTableMsgProto>,
+
+    /// Channel for incoming events.
+    event_rx: async_mpsc_channel::Receiver<Event>,
+
+    /// All messages received so far, minus those that have been garbage collected.
+    history: MessageBuffer,
+}
+
+impl EventLoop {
+    fn new(
+        options: ServerOptions,
+        event_rx: async_mpsc_channel::Receiver<Event>,
+        broadcast_log_tx: async_broadcast_channel::Sender<LogOrTableMsgProto>,
+    ) -> Self {
+        Self {
+            options,
+            broadcast_log_tx,
+            event_rx,
+            history: Default::default(),
+        }
+    }
+
+    async fn run_in_place(mut self) {
+        loop {
+            let Some(event) = self.event_rx.recv().await else {
+                break;
+            };
+
+            match event {
+                Event::NewClient(channel) => {
+                    channel
+                        .send((
+                            self.history.all(self.options.playback_behavior),
+                            self.broadcast_log_tx.subscribe(),
+                        ))
+                        .ok();
+                }
+                Event::Message(msg) => self.handle_msg(msg).await,
+            }
+        }
+    }
+
+    async fn handle_msg(&mut self, msg: LogOrTableMsgProto) {
+        // This will block if the broadcast channel is full, applying back-pressure
+        self.broadcast_log_tx.send_async(msg.clone()).await.ok();
+
+        if !self.is_history_enabled() {
             // no need to gc or maintain history
             return;
         }
 
         self.gc_if_using_too_much_ram();
 
-        let approx_size_bytes = table.total_size_bytes();
-        self.ordered_message_bytes += approx_size_bytes;
-        self.ordered_message_queue.push_back(Msg::Table(table));
+        self.history.add_msg(msg);
     }
 
-    fn is_history_disabled(&self) -> bool {
-        self.server_memory_limit.max_bytes.is_some_and(|b| b == 0)
+    fn is_history_enabled(&self) -> bool {
+        self.options.memory_limit != MemoryLimit::ZERO
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
-        re_tracing::profile_function!();
-
-        let Some(max_bytes) = self.server_memory_limit.max_bytes else {
-            // Unlimited memory!
-            return;
-        };
-
-        let max_bytes = max_bytes as u64;
-        if max_bytes >= self.ordered_message_bytes {
-            // We're not using too much memory.
-            return;
-        }
-
-        {
-            re_tracing::profile_scope!("Drop messages");
-            re_log::info_once!(
-                "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
-                re_format::format_bytes(max_bytes as _)
-            );
-
-            let bytes_to_free = self.ordered_message_bytes - max_bytes;
-
-            let mut bytes_dropped = 0;
-            let mut messages_dropped = 0;
-
-            while bytes_dropped < bytes_to_free {
-                // only drop messages from temporal queue
-                if let Some(msg) = self.ordered_message_queue.pop_front() {
-                    bytes_dropped += msg.total_size_bytes();
-                    messages_dropped += 1;
-                } else {
-                    break;
-                }
-            }
-
-            re_log::trace!(
-                "Dropped {} bytes in {messages_dropped} message(s)",
-                re_format::format_bytes(bytes_dropped as _)
-            );
+        if self.options.memory_limit.is_limited() {
+            self.history.gc(self.options.memory_limit.as_bytes());
         }
     }
 }
@@ -643,62 +857,68 @@ impl SizeBytes for TableMsgProto {
 }
 
 pub struct MessageProxy {
+    options: ServerOptions,
     _queue_task_handle: tokio::task::JoinHandle<()>,
-    event_tx: mpsc::Sender<Event>,
+    event_tx: async_mpsc_channel::Sender<Event>,
 }
 
 impl MessageProxy {
-    pub fn new(server_memory_limit: MemoryLimit) -> Self {
-        Self::new_with_recv(server_memory_limit).0
+    pub fn new(options: ServerOptions) -> Self {
+        Self::new_with_recv(options).0
     }
 
     fn new_with_recv(
-        server_memory_limit: MemoryLimit,
-    ) -> (
-        Self,
-        broadcast::Receiver<LogMsgProto>,
-        broadcast::Receiver<TableMsgProto>,
-    ) {
-        let (event_tx, event_rx) = mpsc::channel(MESSAGE_QUEUE_CAPACITY);
-        let (broadcast_log_tx, broadcast_log_rx) = broadcast::channel(MESSAGE_QUEUE_CAPACITY);
-        let (broadcast_table_tx, broadcast_table_rx) = broadcast::channel(MESSAGE_QUEUE_CAPACITY);
+        mut options: ServerOptions,
+    ) -> (Self, async_broadcast_channel::Receiver<LogOrTableMsgProto>) {
+        // Divide up the memory budget:
+        let (broadcast_channel_memory_limit, rest_memory_limit) = options.memory_limit.split(0.25);
+        options.memory_limit = rest_memory_limit;
+
+        let (broadcast_log_tx, broadcast_log_rx) = async_broadcast_channel::channel(
+            "re_grpc_server broadcast",
+            4096,
+            broadcast_channel_memory_limit.as_bytes(),
+        );
+
+        let (event_tx, event_rx) = {
+            let message_queue_capacity = if options.memory_limit == MemoryLimit::ZERO {
+                1
+            } else {
+                16 // Apply backpressure early
+            };
+            // TODO(emilk): this could also use a size-based backpressure mechanism.
+
+            async_mpsc_channel::channel("re_grpc_server events", message_queue_capacity)
+        };
 
         let task_handle = tokio::spawn(async move {
-            EventLoop::new(
-                server_memory_limit,
-                event_rx,
-                broadcast_log_tx,
-                broadcast_table_tx,
-            )
-            .run_in_place()
-            .await;
+            EventLoop::new(options, event_rx, broadcast_log_tx)
+                .run_in_place()
+                .await;
         });
 
         (
             Self {
+                options,
                 _queue_task_handle: task_handle,
                 event_tx,
             },
             broadcast_log_rx,
-            broadcast_table_rx,
         )
     }
 
-    async fn push_msg(&self, msg: LogMsgProto) {
-        self.event_tx.send(Event::Message(msg)).await.ok();
+    async fn push_message(&self, message: impl Into<LogOrTableMsgProto>) {
+        let message = message.into();
+        self.event_tx.send(Event::Message(message)).await.ok();
     }
 
-    async fn push_table(&self, table: TableMsgProto) {
-        self.event_tx.send(Event::Table(table)).await.ok();
-    }
-
-    async fn new_client_message_stream(&self) -> ReadMessagesStream {
+    async fn new_client_message_stream(&self) -> ReadMsgStream {
         let (sender, receiver) = oneshot::channel();
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
         }
-        let (history, log_channel, _) = match receiver.await {
+        let (history, msg_channel) = match receiver.await {
             Ok(v) => v,
             Err(err) => {
                 re_log::error!("Error accepting new client: {err}");
@@ -709,78 +929,88 @@ impl MessageProxy {
         let history = tokio_stream::iter(
             history
                 .into_iter()
-                .filter_map(|log_msg| {
-                    if let Msg::LogMsg(log_msg) = log_msg {
-                        Some(ReadMessagesResponse {
-                            log_msg: Some(log_msg),
-                        })
-                    } else {
-                        None
-                    }
-                })
+                .map(ReadLogOrTableMsgResponse::from)
                 .map(Ok),
         );
-        let channel = BroadcastStream::new(log_channel).map(|result| {
-            result
-                .map(|log_msg| ReadMessagesResponse {
-                    log_msg: Some(log_msg),
-                })
-                .map_err(|err| {
-                    re_log::error!("Error reading message from broadcast channel: {err}");
-                    tonic::Status::internal("internal channel error")
-                })
+
+        // Convert our backpressure receiver into a Stream
+        let channel = BackPressureReceiverStream::new(msg_channel).map(|result| {
+            result.map(ReadLogOrTableMsgResponse::from).map_err(|err| {
+                re_log::error!("Error reading message from broadcast channel: {err}");
+                tonic::Status::internal(format!("internal channel error: {err}"))
+            })
         });
 
-        Box::pin(history.chain(channel))
+        match self.options.playback_behavior {
+            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)),
+            PlaybackBehavior::NewestFirst => Box::pin(PriorityMerge::new(channel, history)),
+        }
+    }
+
+    async fn new_client_log_stream(&self) -> ReadLogStream {
+        Box::pin(
+            self.new_client_message_stream()
+                .await
+                .filter_map(|msg| match msg {
+                    Ok(ReadLogOrTableMsgResponse::LogMsg(msg)) => Some(Ok(msg)),
+                    Ok(ReadLogOrTableMsgResponse::TableMsg(_)) => {
+                        re_log::warn_once!("A log stream got a TableMsg");
+                        None
+                    }
+                    Ok(ReadLogOrTableMsgResponse::UiCommand) => {
+                        re_log::warn_once!("A log stream got a UiCommandMsg");
+                        None
+                    }
+                    Err(err) => Some(Err(err)),
+                }),
+        )
     }
 
     async fn new_client_table_stream(&self) -> ReadTablesStream {
-        let (sender, receiver) = oneshot::channel();
-        if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
-            re_log::error!("Error accepting new client: {err}");
-            return Box::pin(tokio_stream::empty());
-        }
-        let (history, _, table_channel) = match receiver.await {
-            Ok(v) => v,
-            Err(err) => {
-                re_log::error!("Error accepting new client: {err}");
-                return Box::pin(tokio_stream::empty());
-            }
-        };
-
-        let history = tokio_stream::iter(
-            history
-                .into_iter()
-                .filter_map(|table| {
-                    if let Msg::Table(table) = table {
-                        Some(ReadTablesResponse {
-                            id: Some(table.id),
-                            data: Some(table.data),
-                        })
-                    } else {
+        Box::pin(
+            self.new_client_message_stream()
+                .await
+                .filter_map(|msg| match msg {
+                    Ok(ReadLogOrTableMsgResponse::LogMsg(_)) => {
+                        re_log::warn_once!("A table stream got a LogMsg");
                         None
                     }
-                })
-                .map(Ok),
-        );
-        let channel = BroadcastStream::new(table_channel).map(|result| {
-            result
-                .map(|table| ReadTablesResponse {
-                    id: Some(table.id),
-                    data: Some(table.data),
-                })
-                .map_err(|err| {
-                    re_log::error!("Error reading message from broadcast channel: {err}");
-                    tonic::Status::internal("internal channel error")
-                })
-        });
-
-        Box::pin(history.chain(channel))
+                    Ok(ReadLogOrTableMsgResponse::TableMsg(msg)) => Some(Ok(msg)),
+                    Ok(ReadLogOrTableMsgResponse::UiCommand) => {
+                        re_log::warn_once!("A log stream got a UiCommandMsg");
+                        None
+                    }
+                    Err(err) => Some(Err(err)),
+                }),
+        )
     }
 }
 
-type ReadMessagesStream = Pin<Box<dyn Stream<Item = tonic::Result<ReadMessagesResponse>> + Send>>;
+enum ReadLogOrTableMsgResponse {
+    LogMsg(ReadMessagesResponse),
+    TableMsg(ReadTablesResponse),
+    UiCommand,
+}
+
+impl From<LogOrTableMsgProto> for ReadLogOrTableMsgResponse {
+    fn from(proto: LogOrTableMsgProto) -> Self {
+        match proto {
+            LogOrTableMsgProto::LogMsg(log_msg) => Self::LogMsg(ReadMessagesResponse {
+                log_msg: Some(log_msg),
+            }),
+            LogOrTableMsgProto::Table(table_msg) => Self::TableMsg(ReadTablesResponse {
+                id: Some(table_msg.id),
+                data: Some(table_msg.data),
+            }),
+            LogOrTableMsgProto::UiCommand(_ui_command) => Self::UiCommand,
+        }
+    }
+}
+
+type ReadLogStream = Pin<Box<dyn Stream<Item = tonic::Result<ReadMessagesResponse>> + Send>>;
 type ReadTablesStream = Pin<Box<dyn Stream<Item = tonic::Result<ReadTablesResponse>> + Send>>;
+
+type ReadMsgStream = Pin<Box<dyn Stream<Item = tonic::Result<ReadLogOrTableMsgResponse>> + Send>>;
 
 #[tonic::async_trait]
 impl message_proxy_service_server::MessageProxyService for MessageProxy {
@@ -794,7 +1024,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
                 Ok(Some(WriteMessagesRequest {
                     log_msg: Some(log_msg),
                 })) => {
-                    self.push_msg(log_msg).await;
+                    self.push_message(log_msg).await;
                 }
 
                 Ok(Some(WriteMessagesRequest { log_msg: None })) => {
@@ -816,13 +1046,13 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         Ok(tonic::Response::new(WriteMessagesResponse {}))
     }
 
-    type ReadMessagesStream = ReadMessagesStream;
+    type ReadMessagesStream = ReadLogStream;
 
     async fn read_messages(
         &self,
         _: tonic::Request<ReadMessagesRequest>,
     ) -> tonic::Result<tonic::Response<Self::ReadMessagesStream>> {
-        Ok(tonic::Response::new(self.new_client_message_stream().await))
+        Ok(tonic::Response::new(self.new_client_log_stream().await))
     }
 
     type ReadTablesStream = ReadTablesStream;
@@ -836,7 +1066,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
             data: Some(data),
         } = request.into_inner()
         {
-            self.push_table(TableMsgProto { id, data }).await;
+            self.push_message(TableMsgProto { id, data }).await;
         } else {
             re_log::warn!("malformed `WriteTableRequest`");
         }
@@ -850,30 +1080,41 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
     ) -> tonic::Result<tonic::Response<Self::ReadTablesStream>> {
         Ok(tonic::Response::new(self.new_client_table_stream().await))
     }
+
+    async fn save_screenshot(
+        &self,
+        request: tonic::Request<SaveScreenshotRequest>,
+    ) -> tonic::Result<tonic::Response<SaveScreenshotResponse>> {
+        let SaveScreenshotRequest { view_id, file_path } = request.into_inner();
+        self.push_message(DataSourceUiCommand::SaveScreenshot {
+            file_path: file_path.into(),
+            view_id,
+        })
+        .await;
+
+        Ok(tonic::Response::new(SaveScreenshotResponse {}))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use re_build_info::CrateVersion;
-    use re_chunk::RowId;
-    use re_log_encoding::Compression;
-    use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
-    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
-    use re_protos::sdk_comms::v1alpha1::{
-        message_proxy_service_client::MessageProxyServiceClient,
-        message_proxy_service_server::MessageProxyServiceServer,
-    };
-    use similar_asserts::assert_eq;
     use std::net::SocketAddr;
     use std::sync::Arc;
     use std::time::Duration;
+
+    use itertools::{Itertools as _, chain};
+    use re_chunk::RowId;
+    use re_log_encoding::rrd::Compression;
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+    use re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer;
+    use similar_asserts::assert_eq;
     use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;
-    use tonic::transport::Channel;
-    use tonic::transport::Endpoint;
     use tonic::transport::server::TcpIncoming;
+    use tonic::transport::{Channel, Endpoint};
+
+    use super::*;
 
     #[derive(Clone)]
     struct Completion(Arc<CancellationToken>);
@@ -898,24 +1139,26 @@ mod tests {
         }
     }
 
+    fn set_store_info_msg(store_id: &StoreId) -> LogMsg {
+        LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *RowId::new(),
+            info: StoreInfo::new(
+                store_id.clone(),
+                StoreSource::RustSdk {
+                    rustc_version: String::new(),
+                    llvm_version: String::new(),
+                },
+            ),
+        })
+    }
+
     /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
     /// to exercise message ordering.
     fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
         let mut messages = Vec::new();
-        messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *RowId::new(),
-            info: StoreInfo {
-                store_id: store_id.clone(),
-                cloned_from: None,
-                store_source: StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
-                },
-                store_version: Some(CrateVersion::LOCAL),
-            },
-        }));
+        messages.push(set_store_info_msg(&store_id));
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
@@ -926,8 +1169,8 @@ mod tests {
                             re_log_types::Timeline::new_sequence("blueprint"),
                             re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                         ),
-                        &re_types::blueprint::archetypes::Background::new(
-                            re_types::blueprint::components::BackgroundKind::SolidColor,
+                        &re_sdk_types::blueprint::archetypes::Background::new(
+                            re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
                         )
                         .with_color([255, 0, 0]),
                     )
@@ -948,33 +1191,48 @@ mod tests {
         messages
     }
 
+    #[derive(Clone, Copy)]
+    enum Temporalness {
+        Static,
+        Temporal,
+    }
+
     fn fake_log_stream_recording(n: usize) -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
+        chain!(
+            [set_store_info_msg(&store_id)],
+            generate_log_messages(&store_id, n, Temporalness::Temporal)
+        )
+        .collect()
+    }
+
+    fn generate_log_messages(
+        store_id: &StoreId,
+        n: usize,
+        temporalness: Temporalness,
+    ) -> Vec<LogMsg> {
         let mut messages = Vec::new();
-        messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *RowId::new(),
-            info: StoreInfo {
-                store_id: store_id.clone(),
-                cloned_from: None,
-                store_source: StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
-                },
-                store_version: Some(CrateVersion::LOCAL),
-            },
-        }));
         for _ in 0..n {
+            let timepoint = match temporalness {
+                Temporalness::Static => re_log_types::TimePoint::STATIC,
+                Temporalness::Temporal => re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("log_time"),
+                    re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
+                ),
+            };
+
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
                 re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
-                        re_log_types::TimePoint::default().with(
-                            re_log_types::Timeline::new_sequence("log_time"),
-                            re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
-                        ),
-                        &re_types::archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]),
+                        timepoint,
+                        &re_sdk_types::archetypes::Points2D::new([
+                            (0.0, 0.0),
+                            (1.0, 1.0),
+                            (2.0, 2.0),
+                        ]),
                     )
                     .build()
                     .unwrap()
@@ -982,15 +1240,26 @@ mod tests {
                     .unwrap(),
             ));
         }
-
         messages
     }
 
     async fn setup() -> (Completion, SocketAddr) {
-        setup_with_memory_limit(MemoryLimit::UNLIMITED).await
+        setup_opt(ServerOptions {
+            playback_behavior: PlaybackBehavior::OldestFirst,
+            memory_limit: MemoryLimit::UNLIMITED,
+        })
+        .await
     }
 
     async fn setup_with_memory_limit(memory_limit: MemoryLimit) -> (Completion, SocketAddr) {
+        setup_opt(ServerOptions {
+            playback_behavior: PlaybackBehavior::OldestFirst,
+            memory_limit,
+        })
+        .await
+    }
+
+    async fn setup_opt(options: ServerOptions) -> (Completion, SocketAddr) {
         let completion = Completion::new();
 
         let tcp_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -1000,8 +1269,14 @@ mod tests {
             let completion = completion.clone();
             async move {
                 tonic::transport::Server::builder()
+                    // NOTE: This NODELAY very likely does nothing because of the call to
+                    // `serve_with_incoming_shutdown` below, but we better be on the defensive here so
+                    // we don't get surprised when things inevitably change.
+                    .tcp_nodelay(true)
+                    .accept_http1(true)
+                    .http2_adaptive_window(Some(true)) // Optimize for throughput
                     .add_service(
-                        MessageProxyServiceServer::new(super::MessageProxy::new(memory_limit))
+                        MessageProxyServiceServer::new(super::MessageProxy::new(options))
                             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
                             .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
                     )
@@ -1028,6 +1303,24 @@ mod tests {
         .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE)
     }
 
+    async fn write_messages(
+        client: &mut MessageProxyServiceClient<Channel>,
+        messages: Vec<LogMsg>,
+    ) {
+        client
+            .write_messages(tokio_stream::iter(
+                messages
+                    .clone()
+                    .into_iter()
+                    .map(|msg| msg.to_transport(Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest {
+                        log_msg: Some(msg.into()),
+                    }),
+            ))
+            .await
+            .unwrap();
+    }
+
     async fn read_log_stream(
         log_stream: &mut tonic::Response<tonic::Streaming<ReadMessagesResponse>>,
         n: usize,
@@ -1035,7 +1328,8 @@ mod tests {
         let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
 
         let mut stream_ref = log_stream.get_mut().map(|result| {
-            log_msg_from_proto(&mut app_id_cache, result.unwrap().log_msg.unwrap()).unwrap()
+            let msg = result.unwrap().log_msg.unwrap().msg.unwrap();
+            msg.to_application((&mut app_id_cache, None)).unwrap()
         });
 
         let mut messages = Vec::new();
@@ -1054,17 +1348,7 @@ mod tests {
         // start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
-        // write a few messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // the messages should be echoed to us
         let actual = read_log_stream(&mut log_stream, messages.len()).await;
@@ -1088,17 +1372,7 @@ mod tests {
 
         // don't read anything yet - these messages should be sent to us as part of history when we call `read_messages` later
 
-        // Write a few messages:
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading now - we should receive full history at this point:
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1127,17 +1401,7 @@ mod tests {
             );
         }
 
-        // Write a few messages using our single producer:
-        producer
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut producer, messages.clone()).await;
 
         // Each consumer should've received them:
         for log_stream in &mut log_streams {
@@ -1168,16 +1432,7 @@ mod tests {
 
         // Write a few messages using each producer:
         for producer in &mut producers {
-            producer
-                .write_messages(tokio_stream::iter(
-                    messages
-                        .clone()
-                        .into_iter()
-                        .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                        .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-                ))
-                .await
-                .unwrap();
+            write_messages(producer, messages.clone()).await;
         }
 
         let expected = [messages.clone(), messages.clone()].concat();
@@ -1201,17 +1456,7 @@ mod tests {
         let mut client = make_client(addr).await;
         let messages = fake_log_stream_recording(3);
 
-        // Write some messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1223,10 +1468,8 @@ mod tests {
             let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(
-                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
-                            .unwrap(),
-                    );
+                    let msg = value.unwrap().log_msg.unwrap().msg.unwrap();
+                    actual.push(msg.to_application((&mut app_id_cache, None)).unwrap());
                 }
 
                 // Stream closed | Timed out
@@ -1234,7 +1477,7 @@ mod tests {
             }
         }
 
-        // The GC runs _before_ a message is stored, so we should see the static message, and the last message sent.
+        // The GC runs _before_ a message is stored, so we should see the persistent message, and the last message sent.
         assert_eq!(actual.len(), 2);
         assert_eq!(&actual[0], &messages[0]);
         assert_eq!(&actual[1], messages.last().unwrap());
@@ -1250,16 +1493,7 @@ mod tests {
         let messages = fake_log_stream_blueprint(3);
 
         // Write some messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1271,10 +1505,8 @@ mod tests {
             let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(
-                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
-                            .unwrap(),
-                    );
+                    let msg = value.unwrap().log_msg.unwrap().msg.unwrap();
+                    actual.push(msg.to_application((&mut app_id_cache, None)).unwrap());
                 }
 
                 // Stream closed | Timed out
@@ -1291,29 +1523,94 @@ mod tests {
 
     #[tokio::test]
     async fn memory_limit_does_not_interrupt_stream() {
-        // Use an absurdly low memory limit to force all messages to be dropped immediately from history
-        let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
-        let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream_blueprint(3);
+        let memory_limits = [
+            0, // Will actually disable the message buffer and GC logic. Good to test that!
+            1, // An absurdly low memory limit to force all messages to be dropped immediately from history
+        ];
 
-        // Start reading
+        for memory_limit in memory_limits {
+            let (completion, addr) =
+                setup_with_memory_limit(MemoryLimit::from_bytes(memory_limit)).await;
+            let mut client = make_client(addr).await; // We use the same client for both producing and consuming
+            let messages = fake_log_stream_blueprint(3);
+
+            // Start reading
+            let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+
+            write_messages(&mut client, messages.clone()).await;
+
+            // The messages should be echoed to us, even though none of them will be stored in history
+            let actual = read_log_stream(&mut log_stream, messages.len()).await;
+            assert_eq!(messages, actual);
+
+            completion.finish();
+        }
+    }
+
+    #[tokio::test]
+    async fn static_data_is_returned_first() {
+        let (completion, addr) = setup_with_memory_limit(MemoryLimit::UNLIMITED).await;
+        let mut client = make_client(addr).await;
+
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+
+        let set_store_info = vec![set_store_info_msg(&store_id)];
+        let first_static = generate_log_messages(&store_id, 3, Temporalness::Static);
+        let first_temporal = generate_log_messages(&store_id, 3, Temporalness::Temporal);
+        let second_static = generate_log_messages(&store_id, 3, Temporalness::Static);
+
+        write_messages(&mut client, set_store_info.clone()).await;
+        write_messages(&mut client, first_static.clone()).await;
+        write_messages(&mut client, first_temporal.clone()).await;
+        write_messages(&mut client, second_static.clone()).await;
+
+        // All static data should always come before temporal data:
+        let expected =
+            itertools::chain!(set_store_info, first_static, second_static, first_temporal)
+                .collect_vec();
+
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+        let actual = read_log_stream(&mut log_stream, expected.len()).await;
 
-        // Write a few messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        assert_eq!(actual, expected);
 
-        // The messages should be echoed to us, even though none of them will be stored in history
-        let actual = read_log_stream(&mut log_stream, messages.len()).await;
-        assert_eq!(messages, actual);
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn playback_newest_first() {
+        let (completion, addr) = setup_opt(ServerOptions {
+            playback_behavior: PlaybackBehavior::NewestFirst, // this is what we want to test
+            memory_limit: MemoryLimit::UNLIMITED,
+        })
+        .await;
+        let mut client = make_client(addr).await;
+
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+
+        let set_store_info = vec![set_store_info_msg(&store_id)];
+        let first_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
+        let temporals = generate_log_messages(&store_id, 3, Temporalness::Temporal);
+        let second_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
+
+        write_messages(&mut client, set_store_info.clone()).await;
+        write_messages(&mut client, first_statics.clone()).await;
+        write_messages(&mut client, temporals.clone()).await;
+        write_messages(&mut client, second_statics.clone()).await;
+
+        // All static data should always come before temporal data:
+        let expected = itertools::chain!(
+            set_store_info.into_iter().rev(),
+            second_statics.into_iter().rev(),
+            first_statics.into_iter().rev(),
+            temporals.into_iter().rev()
+        )
+        .collect_vec();
+
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+        let actual = read_log_stream(&mut log_stream, expected.len()).await;
+
+        assert_eq!(actual, expected);
 
         completion.finish();
     }

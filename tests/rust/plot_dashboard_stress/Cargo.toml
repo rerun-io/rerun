@@ -17,7 +17,7 @@ workspace = true
 re_log = { workspace = true, features = ["setup"] }
 rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
-anyhow = "1.0"
-clap = { version = "4.0", features = ["derive"] }
-rand = "0.8"
-rand_distr = "0.4"
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+rand = { workspace = true, features = ["std", "thread_rng"] }
+rand_distr.workspace = true

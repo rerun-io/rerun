@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // For your own code remove it and enable the `web_viewer` feature on the `rerun` crate.
     #[cfg(feature = "web_viewer")]
     let _server_guard = rerun::serve_web_viewer(rerun::web_viewer::WebViewerConfig {
-        connect_to: Some("rerun+http://localhost/proxy".to_owned()),
+        connect_to: vec!["rerun+http://localhost/proxy".to_owned()],
         ..Default::default()
     })?;
 

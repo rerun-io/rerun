@@ -18,17 +18,19 @@ workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
+re_component_fallbacks.workspace = true
 re_entity_db.workspace = true
-re_global_context.workspace = true
-re_grpc_client.workspace = true
+re_redap_client.workspace = true
 re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
+re_memory.workspace = true
 re_renderer.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 re_types_core.workspace = true
-re_ui.workspace = true
+re_ui = { workspace = true, features = ["testing"] }
+re_uri.workspace = true
 re_viewer_context.workspace = true
 
 # External dependencies

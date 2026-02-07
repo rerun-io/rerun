@@ -32,7 +32,7 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
     found_builds = []
     wheels_bucket = gcs_client.bucket("rerun-builds")
 
-    print(f'Checking path: "gs://rerun-builds/{dir}"...')
+    print(f'Checking path: "gs://rerun-builds/{dir}"…')
 
     found: dict[str, Any] = {}
 
@@ -60,6 +60,8 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
 
     if upload:
         upload_blob = wheels_bucket.blob(f"{dir}/index.html")
+        # Set no-cache to avoid CDN caching issues when rebuilding for the same commit
+        upload_blob.cache_control = "no-cache, max-age=0"
         print(f"Uploading results to {upload_blob.name}")
         upload_blob.upload_from_file(buffer, content_type="text/html")
 

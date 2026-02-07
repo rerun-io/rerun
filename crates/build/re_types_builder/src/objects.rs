@@ -9,11 +9,12 @@ use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 
+use crate::data_type::LazyDatatype;
 use crate::{
     ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED,
     ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE,
     ATTR_RERUN_STATE, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, data_type::LazyDatatype, root_as_schema,
+    FbsSchema, FbsType, Reporter, root_as_schema,
 };
 
 // ---
@@ -91,7 +92,7 @@ impl Objects {
                         }
                         ObjectKind::Archetype => {
                             if field_obj.kind != ObjectKind::Component {
-                                reporter.error(virtpath, field_type_fqname, "Is part of an archetypes but is not a component. Only components are allowed as fields on an archetype.");
+                                reporter.error(virtpath, field_type_fqname, "Is part of an archetype but is not a component. Only components are allowed as fields on an archetype.");
                             }
 
                             validate_archetype_field_attributes(reporter, obj);
@@ -116,6 +117,39 @@ impl Objects {
                         &obj.fqname,
                         "Nullable fields on unions are not supported.",
                     );
+                }
+
+                // Validate whether someone is using a type we use for non-nullable arrays to describe some nullable field.
+                if field.is_nullable
+                    && (obj.kind == ObjectKind::Datatype || obj.kind == ObjectKind::Component)
+                    && let Some(field_type_fqname) = field.typ.fqname()
+                    // TODO(andreas): This is a hack, here because introducing this warning, I really don't want to touch annotation info right now.
+                    && obj.name != "AnnotationInfo"
+                {
+                    let field_obj = &this[field_type_fqname];
+                    if field_obj.is_arrow_transparent() {
+                        let suggestion = if field_obj.name == "Utf8" {
+                            "Use `string (nullable)` instead of `rerun.datatypes.Utf8 (nullable)`."
+                                .to_owned()
+                        } else {
+                            format!(
+                                "Consider using a primitive type instead of nullable transparent wrapper `{}`.",
+                                field_obj.name
+                            )
+                        };
+
+                        reporter.warn(
+                                virtpath,
+                                field_type_fqname,
+                                format!(
+                                    "Nullable transparent wrapper type detected. {} \
+                                     Transparent wrapper types like '{}' don't handle None internally, \
+                                     which can cause serialization issues.",
+                                    suggestion,
+                                    field_obj.name
+                                ),
+                            );
+                    }
                 }
             }
         }
@@ -799,7 +833,7 @@ impl Object {
     /// Returns the crate name of an object, accounting for overrides.
     pub fn crate_name(&self) -> String {
         self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
-            .unwrap_or_else(|| "re_types".to_owned())
+            .unwrap_or_else(|| "re_sdk_types".to_owned())
     }
 
     /// Returns the module name of an object.
@@ -948,11 +982,10 @@ impl ObjectField {
         field: &FbsField<'_>,
     ) -> Self {
         let fqname = format!("{}#{}", obj.name(), field.name());
-        let (pkg_name, name) = fqname
-            .rsplit_once('#')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
+            || (String::new(), fqname.clone()),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = obj
             .declaration_file()
@@ -960,6 +993,10 @@ impl ObjectField {
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
+
+        if field.required() {
+            reporter.error(&virtpath, &fqname, "required fields should not be used");
+        }
 
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
@@ -1021,11 +1058,10 @@ impl ObjectField {
         val: &FbsEnumVal<'_>,
     ) -> Self {
         let fqname = format!("{}#{}", enm.name(), val.name());
-        let (pkg_name, name) = fqname
-            .rsplit_once('#')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
+            || (String::new(), fqname.clone()),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = enm
             .declaration_file()
@@ -1190,7 +1226,15 @@ pub enum Type {
     Float16,
     Float32,
     Float64,
+
+    /// A list of bytes of arbitrary length.
+    ///
+    /// 32-bit or 64-bit
+    Binary,
+
+    /// Utf8
     String,
+
     Array {
         elem_type: ElementType,
         length: usize,
@@ -1218,6 +1262,7 @@ impl From<ElementType> for Type {
             ElementType::Float16 => Self::Float16,
             ElementType::Float32 => Self::Float32,
             ElementType::Float64 => Self::Float64,
+            ElementType::Binary => Self::Binary,
             ElementType::String => Self::String,
             ElementType::Object { fqname } => Self::Object { fqname },
         }
@@ -1236,14 +1281,28 @@ impl Type {
         let typ = field_type.base_type();
 
         if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
-            match (typ, type_override.as_str()) {
-                (FbsBaseType::UShort, "float16") => {
-                    return Self::Float16;
+            match type_override.as_str() {
+                "binary" => {
+                    if typ == FbsBaseType::Vector && field_type.element() == FbsBaseType::UByte {
+                        return Self::Binary;
+                    } else {
+                        panic!("{fqname}: 'binary' can only be used on '[ubyte]', got {typ:?}")
+                    }
                 }
-                (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
-                _ => unreachable!(
-                    "UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"
-                ),
+                "float16" => {
+                    if matches!(typ, FbsBaseType::Array | FbsBaseType::Vector) {
+                        // Array of float16 handled later
+                    } else if typ == FbsBaseType::UShort {
+                        return Self::Float16;
+                    } else {
+                        panic!(
+                            "{fqname}: 'float16' can only be used on 'ushort' or `[ushort]`, got {typ:?}"
+                        )
+                    }
+                }
+                _ => {
+                    panic!("{fqname}: Unknown {ATTR_RERUN_OVERRIDE_TYPE:?}: {type_override:?}");
+                }
             }
         }
 
@@ -1358,6 +1417,9 @@ impl Type {
             Self::Float64 => Some(Self::Vector {
                 elem_type: ElementType::Float64,
             }),
+            Self::Binary => Some(Self::Vector {
+                elem_type: ElementType::Binary,
+            }),
             Self::String => Some(Self::Vector {
                 elem_type: ElementType::String,
             }),
@@ -1398,6 +1460,7 @@ impl Type {
             | Self::Float16
             | Self::Float32
             | Self::Float64
+            | Self::Binary
             | Self::String
             | Self::Object { .. } => None,
         }
@@ -1438,7 +1501,7 @@ impl Type {
             | Self::Float32
             | Self::Float64 => true,
 
-            Self::String | Self::Vector { .. } => false,
+            Self::Binary | Self::String | Self::Vector { .. } => false,
 
             Self::Array { elem_type, .. } => elem_type.has_default_destructor(objects),
 
@@ -1523,8 +1586,18 @@ pub enum ElementType {
     Float16,
     Float32,
     Float64,
+
+    /// A list of bytes of arbitrary length.
+    ///
+    /// 32-bit or 64-bit
+    Binary,
+
+    /// Utf8
     String,
-    Object { fqname: String },
+
+    Object {
+        fqname: String,
+    },
 }
 
 impl ElementType {
@@ -1555,7 +1628,6 @@ impl ElementType {
             }
         }
 
-        #[allow(clippy::match_same_arms)]
         match inner_type {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -1615,7 +1687,7 @@ impl ElementType {
             | Self::Float32
             | Self::Float64 => true,
 
-            Self::String => false,
+            Self::Binary | Self::String => false,
 
             Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
         }
@@ -1637,7 +1709,7 @@ impl ElementType {
             | Self::Float16
             | Self::Float32
             | Self::Float64 => true,
-            Self::Bool | Self::Object { .. } | Self::String => false,
+            Self::Bool | Self::Binary | Self::String | Self::Object { .. } => false,
         }
     }
 

@@ -24,27 +24,43 @@ include = [
   "web_viewer/re_viewer_bg.wasm",
   "web_viewer/re_viewer.js",
   "web_viewer/sw.js",
+  "src/signed-in.html",
 ]
 
 [lints]
 workspace = true
 
 [package.metadata.docs.rs]
-all-features = true
+all-features = true # Will also enable the `__disable_server` feature, meaning the docs will build even without a .wasm binary
 
 
 [features]
-## This crate requires `web_viewer` to be built. You must build the `.wasm` before building the crate, using `pixi run rerun-build-web-release`.
+## This crate embeds the web viewer `.wasm`, and so before building this crate you must build the `.wasm` using `pixi run rerun-build-web-release`.
 ##
-## If for some reason you need to build this crate _without_ the `web_viewer` being built, and you do not actually need to run it,
-## then you can set either `--cfg disable_web_viewer_server` via the `RUSTFLAGS` env var, or `--features __ci` before building this crate.
-## When set, the crate builds despite the `.wasm` being missing, but will panic at runtime.
-## For instance: when the CI builds the docs for all crates, it uses `--all-features`, which means
+## If for some reason you need to build this crate _without_ the `.wasm` being built, then you can do so in one of two ways:
+## * Use `--features __disable_server` when building this crate (or `--all-features`).
+## * Compile with the env-var `RERUN_DISABLE_WEB_VIEWER_SERVER=1`
+##
+## This will cause this crate to build despite the `.wasm` being missing, BUT it will panic at runtime!
+## For instance: when rustdoc builds the docs for this crates, it uses `--all-features`, which means
 ## it can build the docs for this crate without having to build the web-viewer first.
-## We support `--feature __ci`, because it's more convenient to use via `cargo`,
-## and also `--cfg disable_web_viewer_server`, because it allows us to disable the web viewer server on
-## CI without propagating the `__ci` feature throughout the entire set of crates that depend on it.
-__ci = []
+## Similarly, our CI will enable `RERUN_DISABLE_WEB_VIEWER_SERVER=1` before building unit tests,
+## because none of the unit tests actually rely on us serving the `.wasm` file.
+__disable_server = []
+
+## Build the binary to expect web viewer assets in trailing data.
+## This can be enabled in two ways:
+## * Compile with the env-var `RERUN_TRAILING_WEB_VIEWER=1`
+## * Use `--features __trailing_web_viewer` when building this crate
+##
+## When enabled, the binary will NOT include the web viewer assets at compile time.
+## Instead, it expects them to be appended as a zip archive via a post-processing step
+## using `scripts/append_web_viewer.py`. This allows parallel building of CLI and web viewer
+## in CI, which are then combined later.
+##
+## WARNING: Binaries built this way CANNOT serve the web viewer until the post-processing
+## step is completed. Attempting to do so will result in a panic.
+__trailing_web_viewer = []
 
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
@@ -55,6 +71,10 @@ re_log = { workspace = true, features = ["setup"] }
 document-features.workspace = true
 tiny_http.workspace = true
 thiserror.workspace = true
+zip.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
+
+[build-dependencies]
+re_build_tools.workspace = true

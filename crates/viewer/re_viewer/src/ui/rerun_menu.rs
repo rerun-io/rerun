@@ -5,7 +5,7 @@ use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::{Button, NumExt as _, ScrollArea};
 use re_ui::menu::menu_style;
-use re_ui::{UICommand, UiExt as _};
+use re_ui::{UICommand, UICommandSender as _, UiExt as _};
 use re_viewer_context::StoreContext;
 
 use crate::App;
@@ -32,18 +32,45 @@ impl App {
         let image = re_ui::icons::RERUN_MENU
             .as_image()
             .max_height(desired_icon_height)
-            .tint(ui.tokens().strong_fg_color);
+            .tint(ui.tokens().strong_fg_color)
+            .alt_text("Menu");
 
         MenuButton::from_button(Button::image(image))
             .config(MenuConfig::new().style(menu_style()))
             .ui(ui, |ui| {
-                ui.set_max_height(ui.ctx().screen_rect().height());
+                ui.set_max_height(ui.ctx().content_rect().height());
                 ScrollArea::vertical()
-                    .max_height(ui.ctx().screen_rect().height() - 16.0)
+                    .max_height(ui.ctx().content_rect().height() - 16.0)
                     .show(ui, |ui| {
                         self.rerun_menu_ui(ui, render_state, _store_context);
                     });
             });
+    }
+
+    pub fn navigation_buttons(&mut self, ui: &mut egui::Ui) {
+        let history = &mut self.state.history;
+
+        if ui
+            .add_enabled(
+                history.has_back(),
+                ui.small_icon_button_widget(&re_ui::icons::ARROW_LEFT, "go back"),
+            )
+            .on_hover_ui(|ui| UICommand::NavigateBack.tooltip_ui(ui))
+            .clicked()
+        {
+            self.command_sender.send_ui(UICommand::NavigateBack);
+        }
+
+        if ui
+            .add_enabled(
+                history.has_forward(),
+                ui.small_icon_button_widget(&re_ui::icons::ARROW_RIGHT, "go forward"),
+            )
+            .on_hover_ui(|ui| UICommand::NavigateForward.tooltip_ui(ui))
+            .clicked()
+        {
+            self.command_sender.send_ui(UICommand::NavigateForward);
+        }
     }
 
     fn rerun_menu_ui(
@@ -67,13 +94,18 @@ impl App {
         ui.add_space(SPACING);
 
         UICommand::Open.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenUrl.menu_button_ui(ui, &self.command_sender);
+        UICommand::AddRedapServer.menu_button_ui(ui, &self.command_sender);
         UICommand::Import.menu_button_ui(ui, &self.command_sender);
 
         self.save_buttons_ui(ui, _store_context);
 
         UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
 
-        UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+        let has_recording = _store_context.is_some_and(|ctx| !ctx.recording.is_empty());
+        ui.add_enabled_ui(has_recording, |ui| {
+            UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+        });
 
         ui.add_space(SPACING);
 
@@ -161,6 +193,7 @@ impl App {
             is_in_rerun_workspace: _,
             target_triple,
             datetime,
+            is_debug_build,
         } = self.build_info();
 
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -172,8 +205,10 @@ impl App {
             format!("({short_git_hash})")
         };
 
+        let debug_label = if *is_debug_build { " (debug)" } else { "" };
+
         let mut label = format!(
-            "{crate_name} {version} {git_hash_suffix}\n\
+            "{crate_name} {version} {git_hash_suffix}{debug_label}\n\
             {target_triple}"
         );
 
@@ -407,6 +442,11 @@ fn debug_menu_options_ui(
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        ui.horizontal(|ui| {
+            ui.label("Command line:");
+            ui.monospace(std::env::args().collect::<Vec<_>>().join(" "));
+        });
+
         if ui.button("Mobile size").clicked() {
             // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
             let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen
@@ -440,7 +480,7 @@ fn debug_menu_options_ui(
     );
 
     ui.menu_button("Crash", |ui| {
-        #[allow(clippy::manual_assert)]
+        #[expect(clippy::manual_assert)]
         if ui.button("panic!").clicked() {
             panic!("Intentional panic");
         }
@@ -470,7 +510,7 @@ fn debug_menu_options_ui(
             pub const SEGFAULT_ADDRESS: u32 = 0x42;
 
             let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             // SAFETY: this is not safe. We are _trying_ to crash.
             unsafe {
                 std::ptr::write_volatile(bad_ptr, 1);

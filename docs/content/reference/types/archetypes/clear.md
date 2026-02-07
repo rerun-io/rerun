@@ -37,7 +37,7 @@ data (i.e. discontinuous lines).
 
 snippet: archetypes/clear_simple
 
-<picture data-inline-viewer="snippets/clear_simple">
+<picture data-inline-viewer="snippets/archetypes/clear_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1024w.png">

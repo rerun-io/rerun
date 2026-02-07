@@ -1,0 +1,19 @@
+[package]
+name = "re_rvl"
+description = "Support for compressed depth data using the RVL format."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+byteorder.workspace = true
+thiserror.workspace = true

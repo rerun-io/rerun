@@ -50,3 +50,9 @@ impl std::ops::Deref for Utf8 {
         self.as_str()
     }
 }
+
+impl std::fmt::Debug for Utf8 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.as_str())
+    }
+}

@@ -16,7 +16,6 @@ mod time_ranges_ui;
 mod time_selection_ui;
 
 pub use time_panel::TimePanel;
-
 #[cfg(feature = "testing")]
 pub use {streams_tree_data::StreamsTreeData, time_panel::TimePanelSource};
 
@@ -26,3 +25,10 @@ pub mod __bench {
     pub use crate::time_panel::TimePanelItem;
     pub use crate::time_ranges_ui::TimeRangesUi;
 }
+
+/// Indicate moving the time cursor.
+const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;
+
+/// Indicate creating a new time loop selection.
+const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::Default;
+// const CREATE_TIME_LOOP_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeHorizontal;   // TODO(rust-windowing/winit#4390)

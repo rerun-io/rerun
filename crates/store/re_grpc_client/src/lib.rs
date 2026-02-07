@@ -1,25 +1,41 @@
-//! Communications with an Rerun Data Platform gRPC server.
+//! Client for the legacy `StoreHub` API (`re_grpc_server`).
 
-mod connection_client;
-mod connection_registry;
-pub mod message_proxy;
-mod redap;
+pub mod read;
+pub use read::stream;
 
-pub use self::{
-    connection_client::GenericConnectionClient,
-    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
-    redap::{
-        Command, ConnectionError, RedapClient, channel,
-        get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
-        stream_dataset_from_redap,
-    },
-};
+#[cfg(not(target_arch = "wasm32"))]
+pub mod write;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use write::Client;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod write_table;
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
-pub struct TonicStatusError(pub tonic::Status);
+pub struct TonicStatusError(Box<tonic::Status>);
+
+const _: () = assert!(
+    std::mem::size_of::<TonicStatusError>() <= 32,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
+impl AsRef<tonic::Status> for TonicStatusError {
+    #[inline]
+    fn as_ref(&self) -> &tonic::Status {
+        &self.0
+    }
+}
+
+impl TonicStatusError {
+    /// Returns the inner [`tonic::Status`].
+    pub fn into_inner(self) -> tonic::Status {
+        *self.0
+    }
+}
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -47,7 +63,7 @@ impl std::fmt::Display for TonicStatusError {
 
 impl From<tonic::Status> for TonicStatusError {
     fn from(value: tonic::Status) -> Self {
-        Self(value)
+        Self(Box::new(value))
     }
 }
 
@@ -65,44 +81,16 @@ pub enum StreamError {
     Transport(#[from] tonic::transport::Error),
 
     #[error(transparent)]
-    ConnectionError(#[from] redap::ConnectionError),
-
-    #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
 
     #[error(transparent)]
-    Tokio(#[from] tokio::task::JoinError),
-
-    #[error(transparent)]
-    CodecError(#[from] re_log_encoding::codec::CodecError),
-
-    #[error(transparent)]
-    ChunkError(#[from] re_chunk::ChunkError),
-
-    #[error(transparent)]
-    DecodeError(#[from] re_log_encoding::decoder::DecodeError),
-
-    #[error("Invalid URI: {0}")]
-    InvalidUri(String),
-
-    #[error(transparent)]
-    InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
-
-    #[error(transparent)]
-    TypeConversionError(#[from] re_protos::TypeConversionError),
-
-    #[error("Chunk data missing in response")]
-    MissingChunkData,
-
-    #[error("Column '{0}' is missing from the dataframe")]
-    MissingDataframeColumn(String),
-
-    #[error("{0}")]
-    MissingData(String),
-
-    #[error("arrow error: {0}")]
-    ArrowError(#[from] arrow::error::ArrowError),
+    Codec(#[from] re_log_encoding::rrd::CodecError),
 }
+
+const _: () = assert!(
+    std::mem::size_of::<StreamError>() <= 80,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl From<tonic::Status> for StreamError {
     fn from(value: tonic::Status) -> Self {

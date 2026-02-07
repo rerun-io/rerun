@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main scripts/clippy_wasm/clippy.toml:
 
-msrv = "1.88"
+msrv = "1.90"
 
 allow-unwrap-in-tests = true
 
@@ -13,7 +13,7 @@ avoid-breaking-exported-api = false
 
 excessive-nesting-threshold = 16 # TODO(emilk): lower this
 
-max-fn-params-bools = 2 # TODO(emilk): decrease this to 1
+max-fn-params-bools = 1
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#/large_include_file
 max-include-file-size = 1000000
@@ -42,21 +42,12 @@ disallowed-macros = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
-  { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
-  { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
-  { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
-  { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
-  { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
-  { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
-  { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
-  { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
-  { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
-
+  { path = "arrow_array::record_batch::RecordBatch::try_new", reason = "Use `arrow_array::record_batch::RecordBatch::try_new_with_options` instead. There is a corner case for empty batches that require the length specified." },
   { path = "arrow::compute::concat", reason = "Use `re_arrow_util::arrow_util::concat_arrays` instead, which has better memory management" },
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },
   { path = "arrow::compute::take", reason = "Use `re_arrow_util::arrow_util::take_array` instead" },
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
-
+  { path = "crossbeam::channel::unbounded", reason = "Use bounded channels (like re_quota_channel) to apply backpressure." },
   { path = "ecolor::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Color32::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
@@ -71,6 +62,19 @@ disallowed-methods = [
   { path = "ecolor::Rgba::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Rgba::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Rgba::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
+  { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
+  { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
+  { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
+  { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
+  { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
+  { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
+  { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
+  { path = "std::sync::mpsc::channel", reason = "Use bounded channels (like re_quota_channel) to apply backpressure." },
+  { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
+  { path = "std::time::Duration::from_secs_f32", reason = "Use try_from_secs_f32 instead to avoid panics" },
+  { path = "std::time::Duration::from_secs_f64", reason = "Use try_from_secs_f64 instead to avoid panics" },
+  { path = "tokio::sync::mpsc::unbounded_channel", reason = "Use bounded channels to apply backpressure." },
 
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)
@@ -95,12 +99,17 @@ disallowed-types = [
 doc-valid-idents = [
   # You must also update the same list in `scripts/clippy_wasm/clippy.toml`!
   "AOMedia",
+  "DataFusion",
+  "GiB",
   "GitHub",
   "GLB",
   "GLTF",
   "iOS",
+  "IPv4",
+  "IPv6",
   "macOS",
   "MessagePack",
+  "MiB",
   "MiMalloc",
   "NaN",
   "OBJ",

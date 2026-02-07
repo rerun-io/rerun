@@ -1,7 +1,7 @@
 [package]
 name = "snippets"
 version.workspace = true
-edition = "2021"              # TODO(#9943): Update to 2024
+edition = "2024"
 rust-version.workspace = true
 license.workspace = true
 publish = false
@@ -20,6 +20,7 @@ web_viewer = ["rerun/web_viewer"]
 [dependencies]
 rerun = { path = "../../crates/top/rerun" }
 
+crossbeam.workspace = true
 itertools.workspace = true
 ndarray.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
@@ -31,16 +32,8 @@ similar-asserts.workspace = true
 re_build_tools.workspace = true
 
 itertools.workspace = true
-rust-format.workspace = true # TODO(#9943): Update or remove
 
 
 [package.metadata.cargo-shear]
 # false positives because they aren't used until codegen is run:
-ignored = [
-  "itertools",
-  "ndarray",
-  "rand",
-  "rand_distr",
-  "rerun",
-  "similar-asserts",
-]
+ignored = ["itertools", "ndarray", "rand", "rand_distr", "rerun", "similar-asserts"]

@@ -20,5 +20,7 @@ all-features = true
 
 
 [dependencies]
+half.workspace = true
+itertools.workspace = true
 num-traits.workspace = true
 # Do NOT add any complex dependencies here. Keep this crate lightweight!

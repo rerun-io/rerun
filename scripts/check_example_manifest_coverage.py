@@ -4,10 +4,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomli
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def gather_example_in_repo() -> Iterable[Path]:
@@ -21,9 +25,12 @@ def gather_example_in_repo() -> Iterable[Path]:
                 yield child
 
 
+def manifest_path() -> Path:
+    return Path(__file__).parent.parent / "examples" / "manifest.toml"
+
+
 def gather_example_in_manifest() -> Iterable[str]:
-    manifest_path = Path(__file__).parent.parent / "examples" / "manifest.toml"
-    manifest = tomli.loads(manifest_path.read_text())
+    manifest = tomli.loads(manifest_path().read_text())
     for cat in manifest["categories"].values():
         yield from cat["examples"]
 
@@ -49,7 +56,8 @@ def main() -> None:
         print("Unlisted examples:")
         for example_path in unlisted_examples:
             print(f"- {example_path.parent.name}/{example_path.name}")
-        exit(1)
+        print(f"Please add them to {manifest_path()}")
+        sys.exit(1)
     else:
         print("all ok")
 

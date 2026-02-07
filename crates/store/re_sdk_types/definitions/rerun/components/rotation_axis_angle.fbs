@@ -1,0 +1,12 @@
+namespace rerun.components;
+
+/// 3D rotation represented by a rotation around a given axis.
+///
+/// If normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the
+/// angle is zero in which case it is treated as an identity.
+table RotationAxisAngle (
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  rotation: rerun.datatypes.RotationAxisAngle (order: 100);
+}

@@ -5,10 +5,13 @@ import inspect
 import os
 import threading
 import warnings
-from types import TracebackType
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from .recording_stream import RecordingStream
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from .recording_stream import RecordingStream
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
@@ -159,6 +162,7 @@ class catch_and_log_exceptions:
     def __init__(
         self,
         context: str | None = None,
+        *,
         depth_to_user_code: int = 1,
         exception_return_value: Any = None,
         strict: bool | None = None,
@@ -195,7 +199,7 @@ class catch_and_log_exceptions:
             # If there was an exception before returning from func
             return self.exception_return_value
 
-        return cast(_TFunc, wrapper)
+        return cast("_TFunc", wrapper)
 
     def __exit__(
         self,
@@ -264,17 +268,29 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
         # Preserve the original signature
         wrapper.__signature__ = sig  # type: ignore[attr-defined]
 
-        return cast(T, wrapper)
+        return cast("T", wrapper)
 
     return decorator
 
 
-class RerunOptionalDependencyError(ImportError):
+class RerunMissingDependencyError(ImportError):
     """Raised when an optional dependency is not installed."""
 
     def __init__(self, package: str, optional_dep: str) -> None:
         super().__init__(
             f"'{package}' could not be imported. "
-            f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
+            f"Please install it, or install rerun as rerun-sdk[{optional_dep}]/rerun-sdk[all] "
             "to use this functionality."
+        )
+
+
+class RerunIncompatibleDependencyVersionError(ImportError):
+    """Raised when a dependency has an incompatible version."""
+
+    def __init__(self, package: str, actual_version: str, compatible_versions: list[int]) -> None:
+        super().__init__(
+            f"'{package}' version {actual_version} is incompatible with rerun. "
+            f"Please install rerun as rerun-sdk[{package}]/rerun-sdk[all] "
+            f"to use this functionality. "
+            f"Compatible major version(s): {', '.join(map(str, compatible_versions))}"
         )

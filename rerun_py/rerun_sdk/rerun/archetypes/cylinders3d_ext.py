@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .. import components, datatypes
 from ..error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from .. import components, datatypes
 
 
 class Cylinders3DExt:
@@ -41,12 +43,10 @@ class Cylinders3DExt:
             Rotations via axis + angle.
 
             If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the cylinders.
         line_radii:

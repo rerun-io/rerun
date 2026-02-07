@@ -1,26 +1,22 @@
 use egui::{Context, Modifiers, NumExt as _, Rect, Response};
-use re_view::AnnotationSceneContext;
-use walkers::{HttpTiles, Map, MapMemory, Tiles};
-
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
-use re_renderer::{RenderContext, ViewBuilder};
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{MapBackground, MapZoom},
-        components::{MapProvider, ZoomLevel},
-    },
-};
+use re_renderer::view_builder::ViewBuilderError;
+use re_renderer::{RenderContext, ViewBuilder, ViewPickingConfiguration};
+use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
+use re_sdk_types::blueprint::components::{MapProvider, ZoomLevel};
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
+use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, gpu_bridge,
+    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
+    SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
+use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use crate::map_overlays;
 use crate::visualizers::{GeoLineStringsVisualizer, GeoPointsVisualizer, update_span};
@@ -86,7 +82,7 @@ impl ViewState for MapViewState {
 #[derive(Default)]
 pub struct MapView;
 
-type ViewType = re_types::blueprint::views::MapView;
+type ViewType = re_sdk_types::blueprint::views::MapView;
 
 impl ViewClass for MapView {
     fn identifier() -> ViewClassIdentifier {
@@ -120,6 +116,7 @@ impl ViewClass for MapView {
         system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
 
         system_registry.register_context_system::<AnnotationSceneContext>()?;
+        re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle(); // Needed by `AnnotationSceneContext`
 
         Ok(())
     }
@@ -173,13 +170,13 @@ impl ViewClass for MapView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
-            re_view::view_property_ui::<MapZoom>(&ctx, ui, self);
-            re_view::view_property_ui::<MapBackground>(&ctx, ui, self);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
+            re_view::view_property_ui::<MapZoom>(&ctx, ui);
+            re_view::view_property_ui::<MapBackground>(&ctx, ui);
         });
 
         Ok(())
@@ -215,12 +212,9 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
-        let map_provider = map_background.component_or_fallback(
-            &view_ctx,
-            self,
-            &MapBackground::descriptor_provider(),
-        )?;
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let map_provider = map_background
+            .component_or_fallback(&view_ctx, MapBackground::descriptor_provider().component)?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
@@ -252,7 +246,7 @@ impl ViewClass for MapView {
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
-            .component_or_empty::<ZoomLevel>(&MapZoom::descriptor_zoom())?
+            .component_or_empty::<ZoomLevel>(MapZoom::descriptor_zoom().component)?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
             span.zoom_for_screen_size(
@@ -301,7 +295,7 @@ impl ViewClass for MapView {
             map_zoom.save_blueprint_component(
                 ctx,
                 &MapZoom::descriptor_zoom(),
-                &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
+                &ZoomLevel(re_sdk_types::datatypes::Float64(map_memory.zoom())),
             );
         }
 
@@ -309,8 +303,18 @@ impl ViewClass for MapView {
         // Draw all objects using re_renderer
         //
 
+        let picking_config = handle_picking_and_ui_interactions(
+            ctx,
+            ctx.render_ctx(),
+            ui.ctx(),
+            query,
+            state,
+            map_response,
+            map_rect,
+        );
+
         let mut view_builder =
-            create_view_builder(ctx.render_ctx(), ui.ctx(), map_rect, &query.highlights);
+            create_view_builder(ctx, ui.ctx(), map_rect, &query.highlights, picking_config)?;
 
         geo_line_strings_visualizers.queue_draw_data(
             ctx.render_ctx(),
@@ -323,17 +327,6 @@ impl ViewClass for MapView {
             &mut view_builder,
             &projector,
             &query.highlights,
-        )?;
-
-        handle_picking_and_ui_interactions(
-            ctx,
-            ctx.render_ctx(),
-            ui.ctx(),
-            &mut view_builder,
-            query,
-            state,
-            map_response,
-            map_rect,
         )?;
 
         ui.painter().add(gpu_bridge::new_renderer_callback(
@@ -357,19 +350,21 @@ impl ViewClass for MapView {
 /// The scene coordinates are 1:1 mapped to egui UI points.
 //TODO(ab): this utility potentially has more general usefulness.
 fn create_view_builder(
-    render_ctx: &RenderContext,
+    ctx: &ViewerContext<'_>,
     egui_ctx: &egui::Context,
     view_rect: Rect,
     highlights: &ViewHighlights,
-) -> ViewBuilder {
+    picking_config: Option<ViewPickingConfiguration>,
+) -> Result<ViewBuilder, ViewBuilderError> {
     let pixels_per_point = egui_ctx.pixels_per_point();
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(view_rect, pixels_per_point);
 
     re_renderer::ViewBuilder::new(
-        render_ctx,
+        ctx.render_ctx(),
         re_renderer::view_builder::TargetConfiguration {
             name: "MapView".into(),
+            render_mode: ctx.render_mode(),
             resolution_in_pixel,
 
             // Camera looking at a ui coordinate world.
@@ -393,22 +388,22 @@ fn create_view_builder(
 
             // Make sure the map in the background is not completely overwritten
             blend_with_background: true,
+
+            picking_config,
         },
     )
 }
 
 /// Handle picking and related ui interactions.
-#[allow(clippy::too_many_arguments)]
 fn handle_picking_and_ui_interactions(
     ctx: &ViewerContext<'_>,
     render_ctx: &RenderContext,
     egui_ctx: &egui::Context,
-    view_builder: &mut ViewBuilder,
     query: &ViewQuery<'_>,
     state: &mut MapViewState,
     map_response: Response,
     map_rect: Rect,
-) -> Result<(), ViewSystemExecutionError> {
+) -> Option<ViewPickingConfiguration> {
     let picking_readback_identifier = query.view_id.hash();
 
     if let Some(pointer_in_ui) = map_response.hover_pos() {
@@ -443,21 +438,19 @@ fn handle_picking_and_ui_interactions(
             .at_most(128.0) as u32;
         // ------
 
-        view_builder.schedule_picking_rect(
-            render_ctx,
-            re_renderer::RectInt::from_middle_and_extent(
+        Some(ViewPickingConfiguration {
+            picking_rect: re_renderer::RectInt::from_middle_and_extent(
                 glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
                 glam::uvec2(picking_rect_size, picking_rect_size),
             ),
-            picking_readback_identifier,
-            (),
-            ctx.app_options().show_picking_debug_overlay,
-        )?;
+            readback_identifier: picking_readback_identifier,
+            show_debug_view: ctx.app_options().show_picking_debug_overlay,
+        })
     } else {
         // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
         state.last_gpu_picking_result = None;
+        None
     }
-    Ok(())
 }
 
 /// Handle all UI interactions based on the currently picked instance (if any).
@@ -492,15 +485,16 @@ fn handle_ui_interactions(
         // double click selects the entire entity
         if map_response.double_clicked() {
             // Select the entire entity
-            ctx.selection_state().set_selection(Item::DataResult(
-                query.view_id,
-                instance_path.entity_path.clone().into(),
-            ));
+            ctx.command_sender()
+                .send_system(SystemCommand::set_selection(Item::DataResult(
+                    query.view_id,
+                    instance_path.entity_path.clone().into(),
+                )));
         }
     } else if map_response.clicked() {
         // clicked elsewhere, select the view
-        ctx.selection_state()
-            .set_selection(Item::View(query.view_id));
+        ctx.command_sender()
+            .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
     } else if map_response.hovered() {
         ctx.selection_state().set_hovered(Item::View(query.view_id));
     }
@@ -562,10 +556,17 @@ fn get_tile_manager(
             options,
             egui_ctx.clone(),
         ),
+        MapProvider::MapboxLight => HttpTiles::with_options(
+            walkers::sources::Mapbox {
+                style: walkers::sources::MapboxStyle::Light,
+                access_token: mapbox_access_token.clone(),
+                high_resolution: false,
+            },
+            options,
+            egui_ctx.clone(),
+        ),
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(MapView => []);
 
 // TODO(ab, andreas): this is a partial copy past of re_view_spatial::picking_gpu. Should be
 // turned into a utility function.
@@ -577,10 +578,8 @@ fn picking_gpu(
 ) -> Option<InstancePathHash> {
     re_tracing::profile_function!();
 
-    let gpu_picking_result = re_renderer::PickingLayerProcessor::readback_result::<()>(
-        render_ctx,
-        gpu_readback_identifier,
-    );
+    let gpu_picking_result =
+        re_renderer::PickingLayerProcessor::readback_result(render_ctx, gpu_readback_identifier);
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // TODO(ab, andreas): the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)

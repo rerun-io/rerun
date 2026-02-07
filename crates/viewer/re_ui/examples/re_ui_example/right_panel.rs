@@ -1,5 +1,5 @@
 use egui::Ui;
-
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, list_item};
 
 use crate::{drag_and_drop, hierarchical_drag_and_drop};
@@ -195,8 +195,8 @@ impl RightPanel {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons").with_buttons(|ui| {
-                        ui.small_icon_button(&re_ui::icons::ADD, "Add")
-                            | ui.small_icon_button(&re_ui::icons::REMOVE, "Remove")
+                        ui.small_icon_button(&re_ui::icons::ADD, "Add");
+                        ui.small_icon_button(&re_ui::icons::REMOVE, "Remove");
                     }),
                 );
 
@@ -204,10 +204,10 @@ impl RightPanel {
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons (always shown)")
                         .with_buttons(|ui| {
-                            ui.small_icon_button(&re_ui::icons::ADD, "Add")
-                                | ui.small_icon_button(&re_ui::icons::REMOVE, "Remove")
+                            ui.small_icon_button(&re_ui::icons::ADD, "Add");
+                            ui.small_icon_button(&re_ui::icons::REMOVE, "Remove");
                         })
-                        .always_show_buttons(true),
+                        .with_always_show_buttons(true),
                 );
             },
         );
@@ -248,20 +248,22 @@ impl RightPanel {
                         ui,
                         list_item::PropertyContent::new("Color")
                             .with_icon(&re_ui::icons::VIEW_TEXT)
-                            .action_button(&re_ui::icons::ADD, "Add", || {
+                            .with_action_button(&re_ui::icons::ADD, "Add", || {
                                 re_log::warn!("Add button clicked");
                             })
-                            .value_color(&self.color),
+                            .value_color(&self.color)
+                            .with_always_show_buttons(true),
                     );
 
                     ui.list_item().show_hierarchical(
                         ui,
                         list_item::PropertyContent::new("Color (editable)")
                             .with_icon(&re_ui::icons::VIEW_TEXT)
-                            .action_button(&re_ui::icons::ADD, "Add", || {
+                            .with_action_button(&re_ui::icons::ADD, "Add", || {
                                 re_log::warn!("Add button clicked");
                             })
-                            .value_color_mut(&mut self.color),
+                            .value_color_mut(&mut self.color)
+                            .with_always_show_buttons(true),
                     );
                 });
             },
@@ -296,7 +298,7 @@ impl RightPanel {
 
                     let mut content = list_item::PropertyContent::new("Use action button");
                     if self.use_action_button {
-                        content = content.action_button(&re_ui::icons::ADD, "Add", || {
+                        content = content.with_action_button(&re_ui::icons::ADD, "Add", || {
                             re_log::warn!("Add button clicked");
                         });
                     }

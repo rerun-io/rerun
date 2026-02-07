@@ -20,19 +20,15 @@ use std::f32::consts::TAU;
 use glam::Vec3;
 use itertools::Itertools as _;
 use macaw::IsoTransform;
-use re_renderer::{
-    Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size,
-    renderer::{
-        ColormappedTexture, DepthCloud, DepthCloudDrawData, DepthClouds, DrawData,
-        GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
-    },
-    resource_managers::{GpuTexture2D, ImageDataDesc},
-    view_builder::{self, Projection, ViewBuilder},
+use re_renderer::renderer::{
+    ColormappedTexture, DepthCloud, DepthCloudDrawData, DepthClouds, DrawData,
+    GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
 };
-use winit::{
-    event::ElementState,
-    keyboard::{self},
-};
+use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
+use re_renderer::view_builder::{self, Projection, ViewBuilder};
+use re_renderer::{Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size};
+use winit::event::ElementState;
+use winit::keyboard;
 
 mod framework;
 
@@ -118,7 +114,7 @@ impl RenderDepthClouds {
                     Vec3::ZERO,
                     Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
@@ -127,13 +123,16 @@ impl RenderDepthClouds {
                 pixels_per_point,
                 ..Default::default()
             },
-        );
+        )?;
 
         let command_buffer = view_builder
-            .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))
-            .queue_draw(point_cloud_draw_data)
-            .queue_draw(frame_draw_data)
-            .queue_draw(image_draw_data)
+            .queue_draw(
+                re_ctx,
+                GenericSkyboxDrawData::new(re_ctx, Default::default()),
+            )
+            .queue_draw(re_ctx, point_cloud_draw_data)
+            .queue_draw(re_ctx, frame_draw_data)
+            .queue_draw(re_ctx, image_draw_data)
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
         Ok(framework::ViewDrawResult {
@@ -196,7 +195,7 @@ impl RenderDepthClouds {
                     Vec3::ZERO,
                     Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
@@ -205,13 +204,16 @@ impl RenderDepthClouds {
                 pixels_per_point,
                 ..Default::default()
             },
-        );
+        )?;
 
         let command_buffer = view_builder
-            .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))
-            .queue_draw(depth_cloud_draw_data)
-            .queue_draw(frame_draw_data)
-            .queue_draw(image_draw_data)
+            .queue_draw(
+                re_ctx,
+                GenericSkyboxDrawData::new(re_ctx, Default::default()),
+            )
+            .queue_draw(re_ctx, depth_cloud_draw_data)
+            .queue_draw(re_ctx, frame_draw_data)
+            .queue_draw(re_ctx, image_draw_data)
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
         Ok(framework::ViewDrawResult {
@@ -342,7 +344,7 @@ impl framework::Example for RenderDepthClouds {
     }
 
     fn on_key_event(&mut self, input: winit::event::KeyEvent) {
-        #![allow(clippy::single_match)]
+        #![expect(clippy::single_match)]
         match (input.state, input.logical_key) {
             (ElementState::Released, keyboard::Key::Named(keyboard::NamedKey::Space)) => {
                 self.camera_control = match self.camera_control {
@@ -468,7 +470,7 @@ impl AlbedoTexture {
         }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn get(&self, x: u32, y: u32) -> [u8; 4] {
         let p = &self.rgba8[(x + y * self.dimensions.x) as usize * 4..];
         [p[0], p[1], p[2], p[3]]

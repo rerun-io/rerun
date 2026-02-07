@@ -4,7 +4,6 @@ use arrow::array::RecordBatch;
 use datafusion::common::DataFusionError;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::SessionContext;
-
 use re_chunk::external::re_byte_size::SizeBytes as _;
 use re_log_types::TableId;
 

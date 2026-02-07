@@ -2,6 +2,8 @@ use re_chunk::ChunkBatcherConfig;
 use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
+use crate::log_sink::SinkFlushError;
+
 // ----------------------------------------------------------------------------
 
 /// Failure to host a web viewer and/or Rerun server.
@@ -23,7 +25,7 @@ struct WebViewerSink {
     open_browser: bool,
 
     /// Sender to send messages to the gRPC server.
-    sender: re_smart_channel::Sender<LogMsg>,
+    sender: re_log_channel::LogSender,
 
     /// The gRPC server thread.
     _server_handle: std::thread::JoinHandle<()>,
@@ -42,19 +44,12 @@ impl WebViewerSink {
         bind_ip: &str,
         web_port: WebViewerServerPort,
         grpc_port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> Result<Self, WebViewerSinkError> {
         let (server_shutdown_signal, shutdown) = re_grpc_server::shutdown::shutdown();
 
         let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
-        let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
-            re_uri::Scheme::RerunHttp,
-            grpc_server_addr,
-        ));
-        let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
-            re_smart_channel::SmartMessageSource::MessageProxy(uri),
-            re_smart_channel::SmartChannelSource::Sdk,
-        );
+        let (channel_tx, channel_rx) = re_log_channel::log_channel(re_log_channel::LogSource::Sdk);
         let server_handle = std::thread::Builder::new()
             .name("message_proxy_server".to_owned())
             .spawn(move || {
@@ -64,7 +59,7 @@ impl WebViewerSink {
 
                 rt.block_on(re_grpc_server::serve_from_channel(
                     grpc_server_addr,
-                    server_memory_limit,
+                    server_options,
                     shutdown,
                     channel_rx,
                 ));
@@ -98,25 +93,26 @@ impl WebViewerSink {
 
 impl crate::sink::LogSink for WebViewerSink {
     fn send(&self, msg: LogMsg) {
-        if let Err(err) = self.sender.send(msg) {
+        if let Err(err) = self.sender.send(msg.into()) {
             re_log::error_once!("Failed to send log message to web server: {err}");
         }
     }
 
     #[inline]
-    fn flush_blocking(&self) {
-        if let Err(err) = self.sender.flush_blocking() {
-            re_log::error_once!("Failed to flush: {err}");
-        }
+    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), SinkFlushError> {
+        self.sender
+            .flush_blocking(timeout)
+            .map_err(|err| match err {
+                re_log_channel::FlushError::Closed => {
+                    SinkFlushError::failed("The viewer is no longer subscribed")
+                }
+                re_log_channel::FlushError::Timeout => SinkFlushError::Timeout,
+            })
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
         // The GRPC sink is typically used for live streams.
         ChunkBatcherConfig::LOW_LATENCY
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 
@@ -149,11 +145,11 @@ pub struct WebViewerConfig {
     /// Defaults to [`WebViewerServerPort::AUTO`].
     pub web_port: WebViewerServerPort,
 
-    /// The url to which any spawned webviewer should connect.
+    /// The urls to which any spawned webviewer should connect.
     ///
-    /// This url is a hosted RRD file that we retrieve via the message proxy.
+    /// This url is a redap uri or a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub connect_to: Option<String>,
+    pub connect_to: Vec<String>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
@@ -177,7 +173,7 @@ impl Default for WebViewerConfig {
         Self {
             bind_ip: "0.0.0.0".to_owned(),
             web_port: WebViewerServerPort::AUTO,
-            connect_to: None,
+            connect_to: Vec::new(),
             force_wgpu_backend: None,
             video_decoder: None,
             open_browser: true,
@@ -220,7 +216,7 @@ impl WebViewerConfig {
             viewer_url = format!("{viewer_url}{arg_delimiter}{arg}");
         };
 
-        if let Some(source_url) = connect_to {
+        for source_url in connect_to {
             // TODO(jan): remove after we change from `rerun+http` to `rerun-http`
             let source_url = percent_encoding::utf8_percent_encode(
                 &source_url,
@@ -262,14 +258,14 @@ pub fn new_sink(
     bind_ip: &str,
     web_port: WebViewerServerPort,
     grpc_port: u16,
-    server_memory_limit: re_memory::MemoryLimit,
+    server_options: re_grpc_server::ServerOptions,
 ) -> Result<Box<dyn crate::sink::LogSink>, WebViewerSinkError> {
     Ok(Box::new(WebViewerSink::new(
         open_browser,
         bind_ip,
         web_port,
         grpc_port,
-        server_memory_limit,
+        server_options,
     )?))
 }
 

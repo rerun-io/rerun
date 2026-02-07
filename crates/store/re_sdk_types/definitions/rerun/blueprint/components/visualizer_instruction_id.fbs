@@ -1,0 +1,16 @@
+namespace rerun.blueprint.components;
+
+/// ID for a visualizer instruction.
+///
+/// IDs are only guaranteed to be unique in the scope of a view.
+/// For details see [archetypes.ActiveVisualizers].
+table VisualizerInstructionId (
+  "attr.python.aliases": "str | list[str]",
+  "attr.python.array_aliases": "str",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq, Default, Hash, Copy",
+  "attr.rust.repr": "transparent"
+) {
+  /// IDs of a single visualizer instruction.
+  visualizer: rerun.datatypes.Uuid (order: 100);
+}

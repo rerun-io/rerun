@@ -7,33 +7,58 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
 
-use std::{
-    fmt::Display,
-    str::FromStr,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicU64, Ordering},
-    },
-};
+use std::fmt::Display;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
-// See `Cargo.toml` docs for the `__ci` feature for more information about the `disable_web_viewer_server` cfg:
-#[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
+// See `Cargo.toml` for docs about the `disable_web_viewer_server` and `trailing_web_viewer` cfgs:
+#[cfg(all(not(disable_web_viewer_server), not(trailing_web_viewer)))]
 mod data {
-    #![allow(clippy::large_include_file)]
+    #![expect(clippy::large_include_file)]
 
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
-    pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index.html");
-    pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
-    pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
-    pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
-    pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
+    #[inline]
+    pub fn index_html() -> &'static [u8] {
+        include_bytes!("../web_viewer/index.html")
+    }
+
+    #[inline]
+    pub fn favicon() -> &'static [u8] {
+        include_bytes!("../web_viewer/favicon.svg")
+    }
+
+    #[inline]
+    pub fn sw_js() -> &'static [u8] {
+        include_bytes!("../web_viewer/sw.js")
+    }
+
+    #[inline]
+    pub fn viewer_js() -> &'static [u8] {
+        include_bytes!("../web_viewer/re_viewer.js")
+    }
+
+    #[inline]
+    pub fn viewer_wasm() -> &'static [u8] {
+        include_bytes!("../web_viewer/re_viewer_bg.wasm")
+    }
+
+    #[inline]
+    pub fn signed_in_html() -> &'static [u8] {
+        include_bytes!("./signed-in.html")
+    }
 }
+
+#[cfg(all(not(disable_web_viewer_server), trailing_web_viewer))]
+mod trailing_data;
+
+#[cfg(all(not(disable_web_viewer_server), trailing_web_viewer))]
+use trailing_data as data;
 
 /// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
-#[allow(clippy::enum_variant_names)]
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
@@ -91,11 +116,6 @@ struct WebViewerServerInner {
     server: tiny_http::Server,
     shutdown: AtomicBool,
     num_wasm_served: AtomicU64,
-
-    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
-    // while at the same time opting-out of analytics at run-time.
-    #[cfg(feature = "analytics")]
-    analytics: Option<&'static re_analytics::Analytics>,
 }
 
 impl WebViewerServer {
@@ -115,7 +135,7 @@ impl WebViewerServer {
     /// # Ok(()) }
     /// ```
     pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
-        let bind_addr: std::net::SocketAddr = format!("{bind_ip}:{port}").parse()?;
+        let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 
         let server = tiny_http::Server::http(bind_addr)
             .map_err(|err| WebViewerServerError::CreateServerFailed(bind_addr.to_string(), err))?;
@@ -125,9 +145,6 @@ impl WebViewerServer {
             server,
             shutdown,
             num_wasm_served: Default::default(),
-
-            #[cfg(feature = "analytics")]
-            analytics: re_analytics::Analytics::global_or_init(),
         });
 
         let inner_copy = inner.clone();
@@ -151,7 +168,7 @@ impl WebViewerServer {
         if let Some(local_addr) = local_addr.clone().to_ip()
             && local_addr.ip().is_unspecified()
         {
-            return format!("http://localhost:{}", local_addr.port());
+            return format!("http://127.0.0.1:{}", local_addr.port());
         }
         format!("http://{local_addr}")
     }
@@ -215,38 +232,36 @@ impl WebViewerServerInner {
         self.num_wasm_served.fetch_add(1, Ordering::Relaxed);
 
         #[cfg(feature = "analytics")]
-        if let Some(analytics) = &self.analytics {
-            analytics.record(re_analytics::event::ServeWasm);
-        }
+        re_analytics::record(|| re_analytics::event::ServeWasm);
     }
 
-    #[cfg(any(disable_web_viewer_server, feature = "__ci"))]
-    #[allow(clippy::needless_pass_by_value)]
+    #[cfg(disable_web_viewer_server)]
     fn send_response(&self, _request: tiny_http::Request) -> Result<(), std::io::Error> {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
         panic!(
-            "web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!"
+            "re_web_viewer_server compiled without .wasm, because of '__disable_server' feature, `--all-features`, or 'RERUN_DISABLE_WEB_VIEWER_SERVER=1'. DON'T DO THAT! It's only meant for tests and docs!"
         );
     }
 
-    #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
+    #[cfg(not(disable_web_viewer_server))]
     fn send_response(&self, request: tiny_http::Request) -> Result<(), std::io::Error> {
         // Strip arguments from url so we get the actual path.
         let url = request.url();
         let path = url.split('?').next().unwrap_or(url);
 
-        let (mime, bytes) = match path {
-            "/" | "/index.html" => ("text/html", data::INDEX_HTML),
-            "/favicon.svg" => ("image/svg+xml", data::FAVICON),
-            "/favicon.ico" => ("image/x-icon", data::FAVICON),
-            "/sw.js" => ("text/javascript", data::SW_JS),
-            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS),
+        let (mime, bytes): (&str, &[u8]) = match path {
+            "/" | "/index.html" => ("text/html", data::index_html()),
+            "/favicon.svg" => ("image/svg+xml", data::favicon()),
+            "/favicon.ico" => ("image/x-icon", data::favicon()),
+            "/sw.js" => ("text/javascript", data::sw_js()),
+            "/re_viewer.js" => ("text/javascript", data::viewer_js()),
             "/re_viewer_bg.wasm" => {
                 self.on_serve_wasm();
-                ("application/wasm", data::VIEWER_WASM)
+                ("application/wasm", data::viewer_wasm())
             }
+            "/signed-in" => ("text/html", data::signed_in_html()),
             _ => {
                 re_log::warn!("404 path: {}", path);
                 return request.respond(tiny_http::Response::empty(404));
@@ -261,7 +276,7 @@ impl WebViewerServerInner {
                 .expect("Invalid http header"),
         );
 
-        // The wasm files are pretty large, so they'll be sent chunked (ideally we'd gzip them...).
+        // The wasm files are pretty large, so they'll be sent chunked (ideally we'd gzip them…).
         // (tiny_http will do so automatically if the data is above a certain threshold.
         // It is configurable, but we don't know all the implications of that.)
         // Unfortunately `Transfer-Encoding: chunked` means that no size is transmitted.

@@ -1,46 +1,28 @@
 use nohash_hasher::{IntMap, IntSet};
-
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
-};
+use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
     RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableFilterContext,
 };
 
-use crate::{
-    contexts::register_spatial_contexts,
-    heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::{ImageTypes, MaxDimensions},
-    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::register_2d_spatial_visualizers,
-};
-
-#[derive(Default)]
-pub struct VisualizableFilterContext2D {
-    // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
-    pub entities_in_main_2d_space: IntSet<EntityPath>,
-    pub reprojectable_3d_entities: IntSet<EntityPath>,
-}
-
-impl VisualizableFilterContext for VisualizableFilterContext2D {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
+use crate::contexts::register_spatial_contexts;
+use crate::heuristics::IndicatedVisualizableEntities;
+use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
+use crate::shared_fallbacks;
+use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::register_2d_spatial_visualizers;
 
 #[derive(Default)]
 pub struct SpatialView2D;
 
-type ViewType = re_types::blueprint::views::Spatial2DView;
+type ViewType = re_sdk_types::blueprint::views::Spatial2DView;
 
 impl ViewClass for SpatialView2D {
     fn identifier() -> ViewClassIdentifier {
@@ -63,9 +45,49 @@ impl ViewClass for SpatialView2D {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(Background::descriptor_kind().component, |_| {
+            re_sdk_types::blueprint::components::BackgroundKind::SolidColor
+        });
+
+        fn valid_bound(rect: &egui::Rect) -> bool {
+            rect.is_finite() && rect.is_positive()
+        }
+
+        system_registry.register_fallback_provider(
+            VisualBounds2D::descriptor_range().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    return re_sdk_types::blueprint::components::VisualBounds2D::default();
+                };
+
+                // TODO(andreas): It makes sense that we query the bounding box from the view_state,
+                // but the pinhole should be an ad-hoc query instead. For this we need a little bit more state information on the QueryContext.
+                let default_scene_rect = view_state
+                    .pinhole_at_origin
+                    .as_ref()
+                    .map(|pinhole| pinhole.resolution_rect())
+                    .unwrap_or_else(|| {
+                        // TODO(emilk): if there is a single image in this view, use that as the default bounds
+                        let scene_rect_smoothed = view_state.bounding_boxes.smoothed;
+                        egui::Rect::from_min_max(
+                            scene_rect_smoothed.min.truncate().to_array().into(),
+                            scene_rect_smoothed.max.truncate().to_array().into(),
+                        )
+                    });
+
+                if valid_bound(&default_scene_rect) {
+                    default_scene_rect.into()
+                } else {
+                    // Nothing in scene, probably.
+                    re_sdk_types::blueprint::components::VisualBounds2D::default()
+                }
+            },
+        );
+
+        shared_fallbacks::register_fallbacks(system_registry);
+
         // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
-        crate::transform_cache::TransformCacheStoreSubscriber::subscription_handle();
         crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
@@ -122,50 +144,6 @@ impl ViewClass for SpatialView2D {
         })
     }
 
-    fn visualizable_filter_context(
-        &self,
-        space_origin: &EntityPath,
-        entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn VisualizableFilterContext> {
-        re_tracing::profile_function!();
-
-        // TODO(andreas): The `VisualizableFilterContext` depends entirely on the spatial topology.
-        // If the topology hasn't changed, we don't need to recompute any of this.
-        // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
-
-        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
-            let primary_space = topo.subspace_for_entity(space_origin);
-            if !primary_space.supports_2d_content() {
-                // If this is strict 3D space, only display the origin entity itself.
-                // Everything else we have to assume requires some form of transformation.
-                return VisualizableFilterContext2D {
-                    entities_in_main_2d_space: std::iter::once(space_origin.clone()).collect(),
-                    reprojectable_3d_entities: Default::default(),
-                };
-            }
-
-            // All space are visualizable + the parent space if it is connected via a pinhole.
-            // For the moment we don't allow going down pinholes again.
-            let reprojectable_3d_entities = if primary_space
-                .connection_to_parent
-                .contains(SubSpaceConnectionFlags::Pinhole)
-            {
-                topo.subspace_for_subspace_origin(primary_space.parent_space)
-                    .map(|parent_space| parent_space.entities.clone())
-                    .unwrap_or_default()
-            } else {
-                Default::default()
-            };
-
-            VisualizableFilterContext2D {
-                entities_in_main_2d_space: primary_space.entities.clone(),
-                reprojectable_3d_entities,
-            }
-        });
-
-        Box::new(context.unwrap_or_default())
-    }
-
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
@@ -173,11 +151,15 @@ impl ViewClass for SpatialView2D {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let indicated_entities = default_visualized_entities_for_visualizer_kind(
+        let IndicatedVisualizableEntities {
+            indicated_entities,
+            excluded_entities,
+        } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,
             include_entity,
+            |_| {},
         );
 
         let image_dimensions =
@@ -233,6 +215,15 @@ impl ViewClass for SpatialView2D {
                     recommended_views.push(RecommendedView::new_subtree(recommended_root));
                 }
 
+                // Since we don't track the transform frames created by explicit
+                // coordinate frames, we can't make assumptions about the tree if
+                // there are any explicit coordinate frames.
+                if !topo.has_explicit_coordinate_frame() {
+                    for recommended_view in &mut recommended_views {
+                        recommended_view.exclude_entities(&excluded_entities);
+                    }
+                }
+
                 recommended_views
             }))
         })
@@ -244,7 +235,7 @@ impl ViewClass for SpatialView2D {
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialViewState>()?;
@@ -254,10 +245,10 @@ impl ViewClass for SpatialView2D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state);
-            view_property_ui::<VisualBounds2D>(&view_ctx, ui, self);
-            view_property_ui::<NearClipPlane>(&view_ctx, ui, self);
-            view_property_ui::<Background>(&view_ctx, ui, self);
+            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<VisualBounds2D>(&view_ctx, ui);
+            view_property_ui::<NearClipPlane>(&view_ctx, ui);
+            view_property_ui::<Background>(&view_ctx, ui);
         });
 
         Ok(())
@@ -307,7 +298,8 @@ impl NonNestedImageCounts {
             + dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize
             + dims.image_types.contains(ImageTypes::VIDEO_ASSET) as usize
             + dims.image_types.contains(ImageTypes::VIDEO_STREAM) as usize;
-        self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
+        self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize
+            + dims.image_types.contains(ImageTypes::ENCODED_DEPTH_IMAGE) as usize;
         self.segmentation += dims.image_types.contains(ImageTypes::SEGMENTATION_IMAGE) as usize;
     }
 }

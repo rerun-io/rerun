@@ -32,7 +32,7 @@ where
     <f32 as Mul<T>>::Output: Add,
 {
     let tf = t.fract();
-    if t as u32 % 2 == 0 {
+    if (t as u32).is_multiple_of(2) {
         (1.0 - tf) * a + tf * b
     } else {
         tf * a + (1.0 - tf) * b
@@ -103,7 +103,7 @@ pub fn color_spiral(
 
 /// Returns sRGB polynomial approximation from Turbo color map, assuming `t` is normalized.
 fn colormap_turbo_srgb(t: f32) -> [u8; 4] {
-    #![allow(clippy::excessive_precision)]
+    #![expect(clippy::excessive_precision)]
     use glam::{Vec2, Vec4, Vec4Swizzles as _};
 
     const R4: Vec4 = Vec4::new(0.13572138, 4.61539260, -42.66032258, 132.13108234);

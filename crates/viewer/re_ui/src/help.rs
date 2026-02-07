@@ -1,4 +1,4 @@
-use egui::{AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
+use egui::{AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, TextStyle, Ui};
 
 use crate::{UiExt as _, icons};
 
@@ -8,6 +8,7 @@ pub struct Help {
     title: Option<String>,
     docs_link: Option<String>,
     sections: Vec<HelpSection>,
+    horizontal_spacing: f32,
 }
 
 /// A single section, separated by a [`egui::Separator`].
@@ -26,10 +27,9 @@ pub struct ControlRow {
 
 impl ControlRow {
     /// Create a new control row.
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn new(text: impl ToString, items: Atoms<'static>) -> Self {
+    pub fn new(text: impl Into<String>, items: Atoms<'static>) -> Self {
         Self {
-            text: text.to_string(),
+            text: text.into(),
             items,
         }
     }
@@ -41,39 +41,42 @@ impl Help {
     }
 
     /// Create a new help popup.
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn new(title: impl ToString) -> Self {
+    pub fn new(title: impl Into<String>) -> Self {
         Self {
-            title: Some(title.to_string()),
+            title: Some(title.into()),
             docs_link: None,
             sections: Vec::new(),
+            horizontal_spacing: 12.0,
         }
     }
 
     /// Create a new help popup.
-    #[allow(clippy::needless_pass_by_value)]
     pub fn new_without_title() -> Self {
         Self {
             title: None,
             docs_link: None,
             sections: Vec::new(),
+            horizontal_spacing: 12.0,
         }
     }
 
+    /// Minimum distance between key and value
+    pub fn horizontal_spacing(mut self, horizontal_spacing: f32) -> Self {
+        self.horizontal_spacing = horizontal_spacing;
+        self
+    }
+
     /// Add a docs link, to be shown in the top right corner.
-    #[allow(clippy::needless_pass_by_value)]
     #[inline]
-    pub fn docs_link(mut self, docs_link: impl ToString) -> Self {
-        self.docs_link = Some(docs_link.to_string());
+    pub fn docs_link(mut self, docs_link: impl Into<String>) -> Self {
+        self.docs_link = Some(docs_link.into());
         self
     }
 
     /// Add a markdown section.
-    #[allow(clippy::needless_pass_by_value)]
     #[inline]
-    pub fn markdown(mut self, markdown: impl ToString) -> Self {
-        self.sections
-            .push(HelpSection::Markdown(markdown.to_string()));
+    pub fn markdown(mut self, markdown: impl Into<String>) -> Self {
+        self.sections.push(HelpSection::Markdown(markdown.into()));
         self
     }
 
@@ -90,9 +93,8 @@ impl Help {
     /// ```rust
     /// re_ui::Help::new("Example").control("Pan", ("click", "+", "drag"));
     /// ```
-    #[allow(clippy::needless_pass_by_value)]
     #[inline]
-    pub fn control(mut self, label: impl ToString, items: impl IntoAtoms<'static>) -> Self {
+    pub fn control(mut self, label: impl Into<String>, items: impl IntoAtoms<'static>) -> Self {
         if let Some(HelpSection::Controls(controls)) = self.sections.last_mut() {
             controls.push(ControlRow::new(label, items.into_atoms()));
         } else {
@@ -130,6 +132,7 @@ impl Help {
             title,
             docs_link,
             sections,
+            horizontal_spacing,
         } = self;
 
         let show_heading = title.is_some() || docs_link.is_some();
@@ -144,24 +147,14 @@ impl Help {
                 },
                 |ui| {
                     if let Some(docs_link) = &docs_link {
-                        // Since we are in rtl layout, we need to make our own link since the
-                        // re_ui link icon would be reversed.
-                        let response = ui
-                            .scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
-                                ui.spacing_mut().item_spacing.x = 2.0;
-                                let hovered = ui.response().hovered();
-
-                                let tint = if hovered {
-                                    ui.visuals().widgets.hovered.text_color()
-                                } else {
-                                    ui.visuals().widgets.inactive.text_color()
-                                };
-
-                                ui.label(RichText::new("Docs").color(tint).size(11.0));
-
-                                ui.small_icon(&icons::EXTERNAL_LINK, Some(tint));
-                            })
-                            .response;
+                        let response = ui.add(
+                            egui::Button::image_and_text(
+                                &icons::EXTERNAL_LINK,
+                                RichText::new("Docs").size(11.0),
+                            )
+                            .image_tint_follows_text_color(true)
+                            .frame(false),
+                        );
 
                         if response.clicked() {
                             ui.ctx().open_url(OpenUrl::new_tab(docs_link));
@@ -176,12 +169,12 @@ impl Help {
                 Self::separator(ui);
             }
 
-            section_ui(ui, section);
+            section_ui(ui, section, horizontal_spacing);
         }
     }
 }
 
-fn section_ui(ui: &mut Ui, section: HelpSection) {
+fn section_ui(ui: &mut Ui, section: HelpSection, horizontal_spacing: f32) {
     let tokens = ui.tokens();
 
     match section {
@@ -190,7 +183,7 @@ fn section_ui(ui: &mut Ui, section: HelpSection) {
         }
         HelpSection::Controls(controls) => {
             for mut row in controls {
-                egui::Sides::new().spacing(12.0).show(
+                egui::Sides::new().spacing(horizontal_spacing).show(
                     ui,
                     |ui| {
                         ui.strong(RichText::new(&row.text).size(11.0));

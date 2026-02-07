@@ -6,15 +6,17 @@ import logging
 import os
 import pathlib
 import time
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import uuid4
 
 import anywidget
 import jupyter_ui_poll
 import traitlets
 from ipywidgets import HTML
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
 
 try:
     __version__ = importlib.metadata.version("rerun_notebook")
@@ -198,7 +200,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         if fallback_token:
             self._fallback_token = fallback_token
 
-        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
+        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:  # noqa: ARG001
             if isinstance(content, str):
                 if content == "ready":
                     self._on_ready()
@@ -266,6 +268,13 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
     def close_url(self, url: str) -> None:
         self.send({"type": "close_url", "url": url})
+
+    def set_credentials(self, access_token: str, email: str) -> None:
+        self.send({
+            "type": "set_credentials",
+            "access_token": access_token,
+            "email": email,
+        })
 
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""

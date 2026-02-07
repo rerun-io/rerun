@@ -12,16 +12,14 @@ mod timeline;
 mod timestamp;
 mod timestamp_format;
 
-pub use self::{
-    absolute_time_range::{AbsoluteTimeRange, AbsoluteTimeRangeF},
-    duration::Duration,
-    non_min_i64::{NonMinI64, TryFromIntError},
-    time_cell::TimeCell,
-    time_int::TimeInt,
-    time_point::TimePoint,
-    time_real::TimeReal,
-    time_type::TimeType,
-    timeline::{Timeline, TimelineName},
-    timestamp::Timestamp,
-    timestamp_format::TimestampFormat,
-};
+pub use self::absolute_time_range::{AbsoluteTimeRange, AbsoluteTimeRangeF};
+pub use self::duration::Duration;
+pub use self::non_min_i64::{NonMinI64, TryFromIntError};
+pub use self::time_cell::TimeCell;
+pub use self::time_int::TimeInt;
+pub use self::time_point::TimePoint;
+pub use self::time_real::TimeReal;
+pub use self::time_type::TimeType;
+pub use self::timeline::Timeline;
+pub use self::timestamp::Timestamp;
+pub use self::timestamp_format::{TimestampFormat, TimestampFormatKind};

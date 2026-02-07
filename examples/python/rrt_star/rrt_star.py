@@ -15,13 +15,15 @@ or in the following medium article: https://theclassytim.medium.com/robotic-path
 from __future__ import annotations
 
 import argparse
-from collections.abc import Generator
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 import numpy.typing as npt
 import rerun as rr
 import rerun.blueprint as rrb
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 DESCRIPTION = """
 Visualizes the path finding algorithm RRT* in a simple environment.
@@ -174,7 +176,7 @@ def rrt(
     max_step_size: float,
     neighborhood_size: float,
     num_iter: int | None,
-) -> list[tuple[Point2D, Point2D]] | None:
+) -> list[Point2D] | None:
     tree = RRTTree(start)
 
     path = None
@@ -221,7 +223,7 @@ def rrt(
             min_node = min(
                 filter(
                     lambda node: not mp.intersects_obstacle(node.pos, new_point),
-                    close_nodes + [closest_node],
+                    [*close_nodes, closest_node],
                 ),
                 key=lambda node: node.cost + distance(node.pos, new_point),
             )

@@ -1,16 +1,15 @@
 #![expect(clippy::unwrap_used)]
 
-use std::{
-    collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
-};
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
-use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId, camino::Utf8Path};
+use cargo_metadata::camino::Utf8Path;
+use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 
 use crate::should_output_cargo_build_instructions;
 
 fn should_run() -> bool {
-    #![allow(clippy::match_same_arms)]
+    #![expect(clippy::match_same_arms)]
     use super::Environment;
 
     match Environment::detect() {
@@ -124,7 +123,7 @@ pub fn rerun_if_changed_glob(path: impl AsRef<Path>, files_to_watch: &mut HashSe
 /// This prevents recursive feedback loops where one generates source files from build.rs, which in
 /// turn triggers `cargo`'s implicit `rerun-if-changed=src/**` clause.
 //
-// TODO(cmc): use the same source tracking system as re_types* instead
+// TODO(cmc): use the same source tracking system as re_sdk_types* instead
 pub fn write_file_if_necessary(
     path: impl AsRef<std::path::Path>,
     content: &[u8],

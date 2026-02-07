@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
-
-from rerun.datatypes.range1d import Range1DLike
 
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from rerun.datatypes.range1d import Range1DLike
+
     from ..datatypes import TensorDataLike
     from ..datatypes.tensor_data_ext import TensorLike
 

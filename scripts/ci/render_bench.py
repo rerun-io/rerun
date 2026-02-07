@@ -28,15 +28,17 @@ import json
 import os
 import re
 import textwrap
-from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from google.cloud import storage
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
 
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 DATE_FORMAT = "%Y-%m-%d"
@@ -198,7 +200,7 @@ def get_size_benchmark_data(gcs: storage.Client, commits: list[CommitWithDate]) 
 
 
 BYTE_UNITS = ["b", "kb", "kib", "mb", "mib", "gb", "gib", "tb", "tib"]
-VALID_CONVERSIONS = {unit: BYTE_UNITS for unit in BYTE_UNITS}
+VALID_CONVERSIONS = dict.fromkeys(BYTE_UNITS, BYTE_UNITS)
 
 UNITS = {
     "b": 1,
@@ -229,10 +231,8 @@ def min_and_max(data: list[float]) -> tuple[float, float]:
     min_value = float("inf")
     max_value = float("-inf")
     for value in data:
-        if value < min_value:
-            min_value = value
-        if value > max_value:
-            max_value = value
+        min_value = min(min_value, value)
+        max_value = max(max_value, value)
     return (min_value, max_value)
 
 

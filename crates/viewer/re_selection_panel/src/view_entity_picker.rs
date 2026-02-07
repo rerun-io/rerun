@@ -2,8 +2,6 @@ use std::ops::Range;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use smallvec::SmallVec;
-
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
@@ -13,6 +11,7 @@ use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
     CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint, create_entity_add_info,
 };
+use smallvec::SmallVec;
 
 /// Window for adding/removing entities from a view.
 ///
@@ -31,7 +30,6 @@ impl ViewEntityPicker {
         self.modal_handler.open();
     }
 
-    #[allow(clippy::unused_self)]
     pub fn ui(
         &mut self,
         egui_ctx: &egui::Context,
@@ -42,7 +40,7 @@ impl ViewEntityPicker {
             egui_ctx,
             || {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
-                    .min_height(f32::min(160.0, egui_ctx.screen_rect().height() * 0.8))
+                    .min_height(f32::min(160.0, egui_ctx.content_rect().height() * 0.8))
                     .full_span_content(true)
                     // we set the scroll area ourselves
                     .set_side_margin(false)
@@ -50,7 +48,7 @@ impl ViewEntityPicker {
             },
             |ui| {
                 // 80%, never more than 500px
-                ui.set_max_height(f32::min(ui.ctx().screen_rect().height() * 0.8, 500.0));
+                ui.set_max_height(f32::min(ui.ctx().content_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     ui.close();
                     return;
@@ -63,7 +61,7 @@ impl ViewEntityPicker {
 
                 ui.add_space(5.0);
                 ui.panel_content(|ui| {
-                    self.filter_state.search_field_ui(ui);
+                    self.filter_state.search_field_ui(ui, "Search for entity…");
                 });
                 ui.add_space(5.0);
 
@@ -120,7 +118,7 @@ fn add_entities_ui(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn add_entities_tree_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -178,7 +176,6 @@ fn add_entities_tree_ui(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn add_entities_line_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -194,8 +191,11 @@ fn add_entities_line_ui(
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
-    #[allow(clippy::unwrap_used)]
-    let add_info = entities_add_info.get(entity_path).unwrap();
+    let Some(add_info) = entities_add_info.get(entity_path) else {
+        // No add info implies that there can't be an add line ui, shouldn't get here.
+        debug_assert!(false, "No add info for entity path: {entity_path:?}");
+        return;
+    };
 
     let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
     let is_explicitly_included = entity_path_filter.is_explicitly_included(entity_path);
@@ -326,7 +326,7 @@ struct EntityPickerEntryData {
     pub entity_path: EntityPath,
     pub label: String,
     pub highlight_sections: SmallVec<[Range<usize>; 1]>,
-    pub children: Vec<EntityPickerEntryData>,
+    pub children: Vec<Self>,
 }
 
 impl EntityPickerEntryData {
@@ -341,7 +341,9 @@ impl EntityPickerEntryData {
             .path
             .last()
             .map(|entity_part| entity_part.ui_string());
-        let mut label = entity_part_ui_string.clone().unwrap_or("/".to_owned());
+        let mut label = entity_part_ui_string
+            .clone()
+            .unwrap_or_else(|| "/".to_owned());
 
         let must_pop = if let Some(part) = &entity_part_ui_string {
             hierarchy.push(part.clone());
@@ -420,15 +422,13 @@ impl EntityPickerEntryData {
                 .map(Iterator::collect)
                 .unwrap_or_default();
 
+            if !node_info.is_leaf && !entity_tree.path.is_root() {
+                // Indicate that we have children
+                label.push('/');
+            }
             Self {
                 entity_path: entity_tree.path.clone(),
-                label: if node_info.is_leaf || entity_tree.path.is_root() {
-                    label
-                } else {
-                    // Indicate that we have children
-                    label.push('/');
-                    label
-                },
+                label,
                 highlight_sections,
                 children: node_info.children,
             }

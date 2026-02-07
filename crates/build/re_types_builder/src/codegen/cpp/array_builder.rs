@@ -1,9 +1,8 @@
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
 
-use crate::{Object, ObjectClass, Objects, Type};
-
 use super::forward_decl::{ForwardDecl, ForwardDecls};
+use crate::{Object, ObjectClass, Objects, Type};
 
 pub fn arrow_array_builder_type(typ: &Type, objects: &Objects) -> Ident {
     arrow_array_builder_type_and_declaration(typ, objects, &mut ForwardDecls::default())
@@ -64,6 +63,11 @@ fn arrow_array_builder_type_and_declaration(
                     to: quote!(NumericBuilder<#klass_type>),
                 },
             );
+            ident
+        }
+        Type::Binary => {
+            let ident = format_ident!("LargeBinaryBuilder");
+            declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }
         Type::String => {

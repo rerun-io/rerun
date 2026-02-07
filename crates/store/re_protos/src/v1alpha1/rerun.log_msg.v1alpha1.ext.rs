@@ -2,6 +2,12 @@ use prost::bytes::Bytes;
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 
+impl From<crate::log_msg::v1alpha1::log_msg::Msg> for crate::log_msg::v1alpha1::LogMsg {
+    fn from(msg: crate::log_msg::v1alpha1::log_msg::Msg) -> Self {
+        Self { msg: Some(msg) }
+    }
+}
+
 impl From<re_log_types::StoreSource> for crate::log_msg::v1alpha1::StoreSource {
     #[inline]
     fn from(value: re_log_types::StoreSource) -> Self {
@@ -304,6 +310,16 @@ impl From<re_log_types::BlueprintActivationCommand>
     }
 }
 
+impl crate::log_msg::v1alpha1::log_msg::Msg {
+    pub fn byte_size_uncompressed(&self) -> u64 {
+        match self {
+            Self::SetStoreInfo(_) => 0,
+            Self::ArrowMsg(msg) => msg.uncompressed_size,
+            Self::BlueprintActivationCommand(_) => 0,
+        }
+    }
+}
+
 // IMPORTANT: TryFrom<crate::log_msg::v1alpha1::BlueprintActivationCommand> for
 // re_log_types::BlueprintActivationCommand is not tricky because of the `ApplicationId` in
 // `StoreId`, so we don't implement it here.
@@ -335,21 +351,20 @@ mod tests {
 
     #[test]
     fn store_info_conversion() {
-        let store_info = re_log_types::StoreInfo {
-            store_id: re_log_types::StoreId::new(
+        let store_info = re_log_types::StoreInfo::new_unversioned(
+            re_log_types::StoreId::new(
                 re_log_types::StoreKind::Recording,
                 "test_app_id",
                 "test_recording_id",
             ),
-            cloned_from: None,
-            store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
+            re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                 major: 3,
                 minor: 8,
                 patch: 0,
                 suffix: "a".to_owned(),
             }),
-            store_version: None,
-        };
+        );
+
         let proto_store_info: crate::log_msg::v1alpha1::StoreInfo = store_info.clone().into();
         let store_info2: re_log_types::StoreInfo = proto_store_info.try_into().unwrap();
         assert_eq!(store_info, store_info2);
@@ -359,21 +374,19 @@ mod tests {
     fn set_store_info_conversion() {
         let set_store_info = re_log_types::SetStoreInfo {
             row_id: re_tuid::Tuid::new(),
-            info: re_log_types::StoreInfo {
-                store_id: re_log_types::StoreId::new(
+            info: re_log_types::StoreInfo::new_unversioned(
+                re_log_types::StoreId::new(
                     re_log_types::StoreKind::Recording,
                     "test_app_id",
                     "test_recording_id",
                 ),
-                cloned_from: None,
-                store_source: re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
+                re_log_types::StoreSource::PythonSdk(re_log_types::PythonVersion {
                     major: 3,
                     minor: 8,
                     patch: 0,
                     suffix: "a".to_owned(),
                 }),
-                store_version: None,
-            },
+            ),
         };
         let proto_set_store_info: crate::log_msg::v1alpha1::SetStoreInfo =
             set_store_info.clone().into();

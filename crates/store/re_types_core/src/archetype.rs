@@ -1,7 +1,6 @@
-use crate::{ComponentDescriptor, DeserializationResult};
-
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Component, Loggable};
+use crate::{ComponentDescriptor, DeserializationResult};
 
 // ---
 
@@ -29,7 +28,6 @@ pub trait Archetype {
     /// Returns all component descriptors that _should_ be provided by the user when constructing this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
-        // TODO(#10512): Maybe add the "marker" component back here?
         std::borrow::Cow::Owned(vec![])
     }
 
@@ -57,6 +55,21 @@ pub trait Archetype {
         .flatten()
         .collect::<Vec<_>>()
         .into()
+    }
+
+    /// Utility method based on [`Self::all_components`] to return all component identifiers.
+    #[inline]
+    fn all_component_identifiers() -> impl Iterator<Item = ComponentIdentifier> {
+        match Self::all_components() {
+            // Need to resolve the Cow to work around borrow checker not being able to take ownership of it otherwise.
+            std::borrow::Cow::Borrowed(components) => {
+                itertools::Either::Left(components.iter().map(|c| c.component))
+            }
+
+            std::borrow::Cow::Owned(components) => {
+                itertools::Either::Right(components.into_iter().map(|c| c.component))
+            }
+        }
     }
 
     // ---
@@ -94,7 +107,7 @@ pub trait Archetype {
         _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets
         Err(crate::DeserializationError::NotImplemented {
             fqname: Self::name().to_string(),
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         })
     }
 }
@@ -165,13 +178,6 @@ impl ArchetypeName {
     }
 }
 
-impl re_byte_size::SizeBytes for ArchetypeName {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
 // ---
 
 re_string_interner::declare_new_type!(
@@ -179,10 +185,3 @@ re_string_interner::declare_new_type!(
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ComponentIdentifier;
 );
-
-impl re_byte_size::SizeBytes for ComponentIdentifier {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}

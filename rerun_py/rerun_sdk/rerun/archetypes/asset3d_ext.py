@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from .. import datatypes
 
 
 class Asset3DExt:

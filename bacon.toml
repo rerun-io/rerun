@@ -6,13 +6,7 @@ default_job = "clippy"
 [jobs]
 
 [jobs.clippy]
-command = [
-  "cargo",
-  "clippy",
-  "--all-targets",
-  "--all-features",
-  "--color=always",
-]
+command = ["cargo", "clippy", "--all-targets", "--all-features", "--color=always"]
 need_stdout = false
 watch = ["tests", "benches", "examples"]
 
@@ -35,13 +29,7 @@ need_stdout = false
 watch = ["tests", "benches", "examples"]
 
 [jobs.check]
-command = [
-  "cargo",
-  "check",
-  "--all-targets",
-  "--all-features",
-  "--color=always",
-]
+command = ["cargo", "check", "--all-targets", "--all-features", "--color=always"]
 need_stdout = false
 watch = ["tests", "benches", "examples"]
 
@@ -70,14 +58,7 @@ need_stdout = false
 # if the doc compiles, then it opens in your browser and bacon switches
 # to the previous job
 [jobs.doc-open]
-command = [
-  "cargo",
-  "doc",
-  "--color=always",
-  "--all-features",
-  "--no-deps",
-  "--open",
-]
+command = ["cargo", "doc", "--color=always", "--all-features", "--no-deps", "--open"]
 need_stdout = false
 on_success = "back" # so that we don't open the browser at each change
 

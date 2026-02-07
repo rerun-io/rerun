@@ -1,4 +1,5 @@
 name: Release
+run-name: Release (${{ inputs.release-type }})
 
 on:
   workflow_dispatch:
@@ -18,10 +19,14 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 # wants to push commits and create a PR
-permissions: write-all
+permissions:
+  contents: write # Allow pushing commits
+  pull-requests: write # Allow creating PRs
+  packages: read # Allow reading packages
+  id-token: "write"
 
 jobs:
   # Re-entrancy:
@@ -38,6 +43,7 @@ jobs:
   #   except that uploads are done to GCS instead of PyPI.
 
   checks:
+    timeout-minutes: 60
     name: "Checks"
     runs-on: ubuntu-latest
 
@@ -86,9 +92,9 @@ jobs:
         with:
           node-version: "22.x"
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Update crate versions
         id: versioning
@@ -97,7 +103,7 @@ jobs:
           pixi run python scripts/ci/crates.py check-git-branch-name
 
           echo Parse the release version from the branch name…
-          #   `release-0.8.1-meta.N` -> `0.8.1`
+          #   `prepare-release-0.8.1-meta.N` -> `0.8.1`
           release_version=$(pixi run python scripts/ci/crates.py get-version --from git --finalize)
 
           echo "release_version: $release_version"
@@ -166,6 +172,9 @@ jobs:
 
       - run: pixi run toml-fmt
 
+      # We must re-sync uv after bumping the version
+      - run: pixi run uv lock
+
       - name: Commit new version
         id: commit
         if: steps.versioning.outputs.previous != steps.versioning.outputs.current
@@ -181,21 +190,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
-          set +e
           pr=$(gh pr view --json headRefName 2>/dev/null || echo "{}")
-          if echo "$pr" | jq '. | has("headRefName")' | grep -q 'true'; then
+          if echo "$pr" | jq -e '.headRefName' >/dev/null 2>&1; then
             echo "PR already exists"
             exit 0
           fi
-          set -e
 
           echo "PR does not exist, creating…"
 
-          cat <<EOF > pr-body.txt
+          cat <<'EOF' > pr-body.txt
           ### Next steps
           - Test the release
-          - If this is an 'alpha' release, you can just merge the pull request.
-          - Otherwise:
+          - For alpha releases:
+            - [ ] If a GH release should be published for this alpha (give extra love to alphas deployed to Rerun Cloud or when external testing is required):
+                - [ ] Create the GitHub release manually from the UI
+                - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclaimer:
+                      **DISCLAIMER**: This is an unreviewed, automatically generated changelog. We only provide fully reviewed changelogs for final releases.
+            - [ ] Merge or close the release PR
+              - **IFF** the release job succeeds and the link checker is happy, you may merge the PR.
+              - Otherwise, close the PR without merging. Cherrypick any interesting commit to `main`, but *not* the version bump one (it would introduce bad links).
+          - For non-alpha releases:
             - For any added commits, run the release workflow in 'rc' mode again
             - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Then:
@@ -210,13 +224,9 @@ jobs:
                 - Click `Publish release`
                 - Once published, the release assets will sync to it automatically.
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
-              - [ ] Update landing's version of the web viewer (@jprochazk)
               - [ ] Release a new version of gradio (@oxkitsune, @jprochazk)
-              - [ ] Merge the Release PR
-
-          A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
-          [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls).
-          Make sure Jeremy is on top of it!
+              - [ ] Create a new branch from the prepare-release branch, rebase that one on main and sync it to reality so it can be merged.
+              - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine, Nick and/or Jeremy in necessary)
 
           - [ ] Tests
             - [ ] Windows
@@ -232,6 +242,23 @@ jobs:
             --label "exclude from changelog" \
             --fill \
             --body-file pr-body.txt
+
+  uv-lock-check:
+    name: "Check uv.lock"
+    needs: [version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.release-commit }}
+
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
+      - name: Check uv.lock is up-to-date
+        run: pixi run uv-lock-check
 
   update-docs:
     name: "Update Docs"
@@ -249,7 +276,7 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_release_crates.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
@@ -258,7 +285,7 @@ jobs:
 
   publish-rerun_c:
     name: "Build and Publish C/C++ SDKs"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_publish_rerun_c.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -268,7 +295,7 @@ jobs:
 
   publish-rerun-cli:
     name: "Publish rerun-cli"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_publish_rerun_cli.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -300,7 +327,7 @@ jobs:
 
   publish-js:
     name: "Publish JS"
-    needs: [version]
+    needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_publish_js.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -342,9 +369,8 @@ jobs:
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/docs-latest
 
-  github-release:
-    name: "GitHub Release"
-    if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+  tag-release:
+    name: "Tag Release"
     needs:
       [
         version,
@@ -371,17 +397,27 @@ jobs:
           version="${{ needs.version.outputs.git_tag }}"
           commit="${{ needs.version.outputs.release-commit }}"
 
+          git tag $version $commit
+          git push origin $version
+
+      - name: Create GH release
+        if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          version="${{ needs.version.outputs.git_tag }}"
+          commit="${{ needs.version.outputs.release-commit }}"
+
           if [ ${{ inputs.release-type }} = "final" ]; then
             pre_arg=""
           else
             pre_arg="--prerelease"
           fi
 
-          git tag $version $commit
-          git push origin $version
           gh release create $version --verify-tag --draft --title $version $pre_arg
 
       - name: Create comment
+        if: inputs.release-type == 'rc' || inputs.release-type == 'final'
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
@@ -392,6 +428,7 @@ jobs:
           GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
 
           Add a description, changelog, and a nice header video/picture, then click 'Publish release'.
+          EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
 
@@ -424,9 +461,9 @@ jobs:
         with:
           node-version: "22.x"
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: git config
         run: |
@@ -455,6 +492,9 @@ jobs:
           pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.crates.outputs.version }}"
 
       - run: pixi run toml-fmt
+
+      # We must re-sync uv after bumping the version
+      - run: pixi run uv lock
 
       - name: Commit new version
         run: |

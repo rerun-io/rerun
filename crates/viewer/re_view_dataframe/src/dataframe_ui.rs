@@ -5,17 +5,16 @@ use anyhow::Context as _;
 use arrow::array::ArrayRef;
 use egui::{NumExt as _, RichText};
 use itertools::Itertools as _;
-
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
-use re_dataframe_ui::table_utils::{apply_table_style_fixes, cell_ui, header_ui};
+use re_dataframe_ui::re_table_utils::{apply_table_style_fixes, cell_ui, header_ui};
 use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
-use re_types::ComponentDescriptor;
-use re_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
-use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
+use re_viewer_context::{TimeControlCommand, ViewId, ViewerContext};
 
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
@@ -341,7 +340,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             false // Can't select "RowId" as a concept
                         }
                         ColumnDescriptor::Time(descr) => {
-                            &descr.timeline() == self.ctx.rec_cfg.time_ctrl.read().timeline()
+                            descr.timeline().name() == self.ctx.time_ctrl.timeline_name()
                         }
                         ColumnDescriptor::Component(component_column_descriptor) => self
                             .ctx
@@ -372,13 +371,9 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         ColumnDescriptor::RowId(_) => {}
                         ColumnDescriptor::Time(descr) => {
                             if response.clicked() {
-                                self.ctx.command_sender().send_system(
-                                    re_viewer_context::SystemCommand::SetActiveTime {
-                                        store_id: self.ctx.store_id().clone(),
-                                        timeline: descr.timeline(),
-                                        time: None,
-                                    },
-                                );
+                                self.ctx.send_time_commands([
+                                    TimeControlCommand::SetActiveTimeline(*descr.timeline().name()),
+                                ]);
                             }
                         }
                         ColumnDescriptor::Component(component_column_descriptor) => {
@@ -678,7 +673,7 @@ fn column_groups_for_entity(
     if columns.is_empty() {
         (vec![], vec![])
     } else if columns.len() == 1 {
-        #[allow(clippy::single_range_in_vec_init)]
+        #[expect(clippy::single_range_in_vec_init)]
         (vec![0..1], vec![columns[0].entity_path().cloned()])
     } else {
         let mut groups = vec![];

@@ -10,7 +10,6 @@
 
 pub mod external {
     pub use nohash_hasher;
-
     #[cfg(feature = "serde")]
     pub use serde;
 }
@@ -94,7 +93,7 @@ impl nohash_hasher::IsEnabled for InternedString {}
 impl std::cmp::PartialOrd for InternedString {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.string.cmp(other.string))
+        Some(self.cmp(other))
     }
 }
 
@@ -157,7 +156,7 @@ struct StringInterner {
 }
 
 impl StringInterner {
-    #[allow(dead_code)] // used in tests
+    #[cfg_attr(not(test), expect(dead_code))] // only used in tests
     pub fn len(&self) -> usize {
         self.map.len()
     }
@@ -295,6 +294,18 @@ macro_rules! declare_new_type {
                 *self == other.as_str()
             }
         }
+
+        impl re_byte_size::SizeBytes for $StructName {
+            #[inline]
+            fn heap_size_bytes(&self) -> u64 {
+                0
+            }
+
+            #[inline]
+            fn is_pod() -> bool {
+                true
+            }
+        }
     };
 }
 
@@ -337,8 +348,6 @@ fn test_interner() {
 
 #[test]
 fn test_newtype_macro() {
-    #![allow(dead_code)]
-
     declare_new_type!(
         /// My typesafe string
         pub struct MyString;

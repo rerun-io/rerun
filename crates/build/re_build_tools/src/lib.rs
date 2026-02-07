@@ -1,29 +1,34 @@
 #![expect(clippy::unwrap_used)]
-#![allow(clippy::disallowed_methods, clippy::disallowed_types)] // False positives for using files on Wasm
+#![allow(
+    clippy::allow_attributes,
+    clippy::disallowed_methods,
+    clippy::disallowed_types
+)] // False positives for using files on Wasm
 #![warn(missing_docs)]
 
 //! This crate is to be used from `build.rs` build scripts.
 
-use anyhow::Context as _;
-
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+use anyhow::Context as _;
 
 mod git;
 mod hashing;
 mod rebuild_detector;
-
-pub(crate) use self::rebuild_detector::Packages;
+mod rustfmt;
 
 pub use self::git::{git_branch, git_commit_hash, git_commit_short_hash};
 pub use self::hashing::{
     compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_file_hash,
     compute_strings_hash, iter_dir, read_versioning_hash, write_versioning_hash,
 };
+pub(crate) use self::rebuild_detector::Packages;
 pub use self::rebuild_detector::{
     get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
     rerun_if_changed_glob, rerun_if_changed_or_doesnt_exist, write_file_if_necessary,
 };
+pub use self::rustfmt::rustfmt_str;
 
 // ------------------
 
@@ -144,7 +149,13 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         Environment::UsedAsDependency | Environment::CondaBuild => false,
     };
 
-    if export_datetime {
+    if export_datetime && is_tracked_env_var_set("DATETIME") {
+        // set externally:
+        set_env(
+            "RE_BUILD_DATETIME",
+            &std::env::var("DATETIME").unwrap_or_default(),
+        );
+    } else if export_datetime {
         set_env("RE_BUILD_DATETIME", &date_time());
 
         // The only way to make sure the build datetime is up-to-date is to run
@@ -155,7 +166,18 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         set_env("RE_BUILD_DATETIME", "");
     }
 
-    if export_git_info {
+    if export_git_info && is_tracked_env_var_set("GIT_HASH") && is_tracked_env_var_set("GIT_BRANCH")
+    {
+        // set externally:
+        set_env(
+            "RE_BUILD_GIT_HASH",
+            &std::env::var("GIT_HASH").unwrap_or_default(),
+        );
+        set_env(
+            "RE_BUILD_GIT_BRANCH",
+            &std::env::var("GIT_BRANCH").unwrap_or_default(),
+        );
+    } else if export_git_info {
         set_env(
             "RE_BUILD_GIT_HASH",
             &git::git_commit_hash().unwrap_or_default(),
@@ -249,7 +271,7 @@ fn run_command(cmd: &str, args: &[&str]) -> anyhow::Result<String> {
 /// Defaults to `"unknown"` if, for whatever reason, the output from `rustc -vV` did not contain
 /// version information and/or the output format underwent breaking changes.
 fn rust_llvm_versions() -> anyhow::Result<(String, String)> {
-    let cmd = std::env::var("RUSTC").unwrap_or("rustc".into());
+    let cmd = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".into());
     let args = &["-vV"];
 
     // $ rustc -vV
@@ -309,7 +331,7 @@ pub fn enabled_features_of(crate_name: &str) -> anyhow::Result<Vec<String>> {
 
     let mut features = vec![];
     for package in &metadata.packages {
-        if package.name == crate_name {
+        if package.name.as_str() == crate_name {
             for feature in package.features.keys() {
                 println!("Checking if feature is enabled: {feature:?}");
                 let feature_in_screaming_snake_case =

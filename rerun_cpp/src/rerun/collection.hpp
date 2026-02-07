@@ -185,7 +185,7 @@ namespace rerun {
         /// Borrows binary compatible data into the collection from a vector.
         ///
         /// Borrowed data must outlive the collection!
-        /// The referenced vector must not be resized and musn't be temporary.
+        /// The referenced vector must not be resized and mustn't be temporary.
         ///
         /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
         /// any function or operation taking on a `rerun::Collection`.
@@ -466,7 +466,7 @@ namespace rerun {
     /// Borrows binary data into the collection from a vector.
     ///
     /// Borrowed data must outlive the collection!
-    /// The referenced vector must not be resized and musn't be temporary.
+    /// The referenced vector must not be resized and mustn't be temporary.
     ///
     /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
     /// any function or operation taking on a `rerun::Collection`.

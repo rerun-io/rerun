@@ -24,25 +24,31 @@ all-features = true
 nasm = ["re_video/nasm"]
 
 [dependencies]
+
+re_arrow_util.workspace = true
 re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_data_ui.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
-re_log_types.workspace = true
 re_log.workspace = true
+re_log_types.workspace = true
+re_mp4.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, features = [
   "import-gltf",
   "import-obj",
   "import-stl",
+  "import-dae",
 ] }
-re_view.workspace = true
+re_rvl.workspace = true
+re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_tf.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_ui.workspace = true
 re_video.workspace = true
+re_view.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
@@ -61,18 +67,20 @@ itertools.workspace = true
 macaw = { workspace = true, features = ["serde"] }
 nohash-hasher.workspace = true
 ordered-float.workspace = true
+saturating_cast.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
-vec1 = { workspace = true, features = ["smallvec-v1"] }
-web-time.workspace = true
+vec1.workspace = true
 
 
 [dev-dependencies]
 re_component_ui.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
+re_viewport.workspace = true
 
+half.workspace = true
 insta.workspace = true
 ndarray.workspace = true
 

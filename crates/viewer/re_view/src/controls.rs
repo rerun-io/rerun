@@ -1,6 +1,7 @@
 //! For zooming and panning we use the modifiers in the default [`egui::InputOptions`].
 
-use egui::{Key, KeyboardShortcut, Modifiers, PointerButton, os::OperatingSystem};
+use egui::os::OperatingSystem;
+use egui::{Key, KeyboardShortcut, Modifiers, PointerButton};
 
 /// Which mouse button to drag for panning a 2D view.
 pub const DRAG_PAN2D_BUTTON: PointerButton = PointerButton::Primary;
@@ -11,7 +12,7 @@ pub const SELECTION_RECT_ZOOM_BUTTON: PointerButton = PointerButton::Secondary;
 /// Clicking this button moves the timeline to where the cursor is.
 pub const MOVE_TIME_CURSOR_BUTTON: PointerButton = PointerButton::Secondary;
 
-/// Which mouse button to drag for panning a 2D view.
+/// Which mouse button to drag for panning a 3D view.
 pub const DRAG_PAN3D_BUTTON: PointerButton = PointerButton::Secondary;
 
 /// Which mouse button to drag for rotating a 3D view.

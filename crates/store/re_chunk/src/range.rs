@@ -1,5 +1,5 @@
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
-use re_types_core::ComponentDescriptor;
+use re_types_core::ComponentIdentifier;
 
 use crate::Chunk;
 
@@ -193,7 +193,7 @@ impl Chunk {
     //
     // TODO(apache/arrow-rs#5375): Since we don't have access to arrow's ListView yet, we must actually clone the
     // data if the chunk requires sorting.
-    pub fn range(&self, query: &RangeQuery, component_descr: &ComponentDescriptor) -> Self {
+    pub fn range(&self, query: &RangeQuery, component: ComponentIdentifier) -> Self {
         if self.is_empty() {
             return self.clone();
         }
@@ -215,7 +215,7 @@ impl Chunk {
             Cow::Borrowed(self)
         };
         let chunk = if !keep_extra_components {
-            Cow::Owned(chunk.component_sliced(component_descr))
+            Cow::Owned(chunk.component_sliced(component))
         } else {
             chunk
         };
@@ -226,7 +226,7 @@ impl Chunk {
             // equivalent to just running a latest-at query.
             chunk.latest_at(
                 &crate::LatestAtQuery::new(*query.timeline(), TimeInt::MAX),
-                component_descr,
+                component,
             )
         } else {
             let Some(is_sorted_by_time) = chunk
@@ -237,7 +237,7 @@ impl Chunk {
                 return chunk.emptied();
             };
 
-            let chunk = chunk.densified(component_descr);
+            let (chunk, _densified) = chunk.densified(component);
 
             let chunk = if is_sorted_by_time {
                 // Temporal, row-sorted, time-sorted chunk
@@ -265,7 +265,7 @@ impl Chunk {
                 end_index = usize::min(self.num_rows(), end_index.saturating_add(1));
             }
 
-            chunk.row_sliced(start_index, end_index.saturating_sub(start_index))
+            chunk.row_sliced_shallow(start_index, end_index.saturating_sub(start_index))
         }
     }
 }

@@ -1,13 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashMap;
-
 use re_log_types::EntityPathHash;
-use re_types::{Loggable as _, components::DrawOrder};
+use re_sdk_types::components::DrawOrder;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContextSystem, ViewSystemIdentifier,
 };
+use saturating_cast::SaturatingCast as _;
 
 use crate::visualizers::visualizers_processing_draw_order;
 
@@ -29,6 +29,7 @@ impl ViewContextSystem for EntityDepthOffsets {
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
+        _once_per_frame_result: &re_viewer_context::ViewContextSystemOncePerFrameResult,
     ) {
         let mut entities_per_draw_order = BTreeMap::new();
         for (visualizer, draw_order_descriptor) in visualizers_processing_draw_order() {
@@ -52,22 +53,19 @@ impl ViewContextSystem for EntityDepthOffsets {
             .values()
             .map(|entities| entities.len())
             .sum();
-        let mut depth_offset = -((num_entities_with_draw_order / 2) as re_renderer::DepthOffset);
+        let mut depth_offset =
+            -(num_entities_with_draw_order / 2).saturating_cast::<re_renderer::DepthOffset>();
         self.per_entity_and_visualizer = entities_per_draw_order
             .into_values()
             .flat_map(|keys| {
                 keys.into_iter()
                     .map(|key| {
-                        depth_offset += 1;
+                        depth_offset = depth_offset.saturating_add(1);
                         (key, depth_offset)
                     })
                     .collect::<Vec<_>>()
             })
             .collect();
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }
 
@@ -75,7 +73,7 @@ fn collect_draw_order_per_visualizer(
     ctx: &re_viewer_context::ViewContext<'_>,
     query: &re_viewer_context::ViewQuery<'_>,
     visualizer_identifier: ViewSystemIdentifier,
-    draw_order_descriptor: &re_types::ComponentDescriptor,
+    draw_order_descriptor: &re_sdk_types::ComponentDescriptor,
     entities_per_draw_order: &mut BTreeMap<
         DrawOrder,
         BTreeSet<(ViewSystemIdentifier, EntityPathHash)>,
@@ -84,21 +82,20 @@ fn collect_draw_order_per_visualizer(
     let latest_at_query = ctx.current_query();
     let mut default_draw_order = None; // determined lazily
 
-    for data_result in query.iter_visible_data_results(visualizer_identifier) {
-        let query_shadowed_components = false;
+    for (data_result, instruction) in query.iter_visualizer_instruction_for(visualizer_identifier) {
         let draw_order = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             &latest_at_query,
             data_result,
-            [draw_order_descriptor],
-            query_shadowed_components,
+            [draw_order_descriptor.component],
+            Some(instruction),
         )
-        .get_mono::<DrawOrder>(draw_order_descriptor)
+        .get_mono::<DrawOrder>(draw_order_descriptor.component)
         .unwrap_or_else(|| {
             *default_draw_order.get_or_insert_with(|| {
-                let ctx = ctx.query_context(data_result, &latest_at_query);
-                determine_default_draworder(&ctx, visualizer_identifier, draw_order_descriptor)
+                let ctx = ctx.query_context(data_result, &latest_at_query, instruction.id);
+                determine_default_draworder(&ctx, draw_order_descriptor.component)
             })
         });
 
@@ -111,22 +108,7 @@ fn collect_draw_order_per_visualizer(
 
 fn determine_default_draworder(
     ctx: &QueryContext<'_>,
-    visualizer_identifier: ViewSystemIdentifier,
-    draw_order_descriptor: &re_types::ComponentDescriptor,
+    draw_order_component: re_sdk_types::ComponentIdentifier,
 ) -> DrawOrder {
-    let Some(visualizer) = ctx
-        .viewer_ctx()
-        .view_class_registry()
-        .instantiate_visualizer(visualizer_identifier)
-    else {
-        return DrawOrder::default();
-    };
-
-    let draw_order_array = visualizer
-        .fallback_provider()
-        .fallback_for(ctx, draw_order_descriptor);
-    let draw_order_array = DrawOrder::from_arrow(&draw_order_array)
-        .ok()
-        .unwrap_or_default();
-    draw_order_array.first().copied().unwrap_or_default()
+    re_viewer_context::typed_fallback_for(ctx, draw_order_component)
 }

@@ -72,6 +72,20 @@ def bool_or_none(data: bool | None) -> bool | None:
 
 
 @overload
+def bytes_or_none(data: None) -> None: ...
+
+
+@overload
+def bytes_or_none(data: bytes) -> bytes: ...
+
+
+def bytes_or_none(data: bytes | None) -> bytes | None:
+    if data is None:
+        return None
+    return bytes(data)
+
+
+@overload
 def str_or_none(data: None) -> None: ...
 
 
@@ -95,7 +109,7 @@ def to_np_uint8(data: npt.ArrayLike | bytes | Sequence[bytes]) -> npt.NDArray[np
     if isinstance(data, bytes):
         return np.frombuffer(data, dtype=np.uint8)
     elif isinstance(data, Sequence) and len(data) > 0 and isinstance(data[0], bytes):
-        data = cast(Sequence[bytes], data)
+        data = cast("Sequence[bytes]", data)
         return np.frombuffer(b"".join(data), dtype=np.uint8)
     else:
         return np.asarray(data, dtype=np.uint8)

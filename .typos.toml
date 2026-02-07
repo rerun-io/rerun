@@ -8,7 +8,7 @@ extend-exclude = [
   "*.snap",
   "crates/viewer/re_ui/src/design_tokens.rs",
   "examples/assets",
-  "rerun_cpp/src/rerun/archetypes/image.hpp",     # TODO(emilk): remove once we remove from_greyscale8
+  "rerun_cpp/src/rerun/archetypes/image.hpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/archetypes/image_ext.cpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
   "*.png",
@@ -17,12 +17,17 @@ extend-exclude = [
 ]
 
 [default.extend-words]
-lod = "lod"     # level-of-detail
-ND = "ND"       # np.NDArray
+FUL = "FUL" # forward-up-left coordinate system
+Isse = "Isse" # It's a name
+lod = "lod" # level-of-detail
+ND = "ND" # np.NDArray
+opf = "opf" # Open Photogrammetry Format (OPF) file
 somes = "somes" # many `Some`
-teh = "teh"     # part of @teh-cmc
-trak = "trak"   # mp4 crate spelling
-typ = "typ"     # We cannot write "type" in rust
+teh = "teh" # part of @teh-cmc
+trak = "trak" # mp4 crate spelling
+typ = "typ" # We cannot write "type" in rust
+ws = "ws" # web-sockets, as in "ws://…"
+Yoh = "Yoh" # Part of @YohDeadfall
 
 # Use the more common spelling
 adaptor = "adapter"
@@ -34,16 +39,12 @@ analogue = "analog"
 analyse = "analyze"
 appetiser = "appetizer"
 arbour = "arbor"
-ardour = "arbor"
 armour = "armor"
 artefact = "artifact"
 authorise = "authorize"
 behaviour = "behavior"
-behavioural = "behavioral"
-British = "American"
 calibre = "caliber"
-# allow 'cancelled' since Arrow uses it.
-#cancelled = "canceled"
+#cancelled = "canceled" # allow 'cancelled' since Arrow uses it.
 candour = "candor"
 capitalise = "capitalize"
 catalogue = "catalog"
@@ -119,7 +120,6 @@ saviour = "savior"
 savour = "savor"
 sceptical = "skeptical"
 sceptre = "scepter"
-FUL = "FUL"                       # forward-up-left coordinate system
 sepulchre = "sepulcher"
 serialisation = "serialization"
 serialise = "serialize"
@@ -138,10 +138,9 @@ tonne = "ton"
 travelogue = "travelog"
 tumour = "tumor"
 valour = "valor"
-opf = "opf"                       #  Open Photogrammetry Format (OPF) file
 vaporise = "vaporize"
 vigour = "vigor"
-ws = "ws"                         # web-sockets, as in "ws://…"
+# End of American English section
 
 # null-terminated is the name of the wikipedia article!
 # https://en.wikipedia.org/wiki/Null-terminated_string
@@ -160,9 +159,9 @@ extend-ignore-re = [
   "_[a-f0-9]{16}",
 
 
-  "np.arange",        # numpy spells "arrange" wrong
+  "np.arange", # Stands for "array range" and isn't a misspelling of "arrange".
   "phc_[a-zA-Z0-9]*", # Posthog public key
-  "PNG.?",            # Workaround for https://github.com/crate-ci/typos/issues/967
+  "PNG.?", # Workaround for https://github.com/crate-ci/typos/issues/967
 
   "_LEVL_", # Used in air_traffic_data.py
 
@@ -170,5 +169,17 @@ extend-ignore-re = [
 
   "notify_seeked", # Used in the `mcap` crate.
 
+  # There's a crate with this name.
+  "cros_codecs",
+  "cros-codecs",
+
+  "Secur32", # Referring to `Secur32.dll` on Windows.
+
   "muh_scalars", # Weird name introduced in `crates/viewer/re_view_time_series/tests/basic.rs` introduced in https://github.com/rerun-io/rerun/pull/10713
+
+  "isse", # Name
+
+  "@[a-zA-Z]+", # GitHub user names
+
+  "\\[[a-f0-9]{7}\\]\\(https://github\\.com/rerun-io/rerun/commit/", # Commit SHA links in changelog
 ]

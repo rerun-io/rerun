@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch,
-        RecordBatchOptions,
-    },
-    datatypes::{FieldRef as ArrowFieldRef, Schema as ArrowSchema},
+use arrow::array::{
+    ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch,
+    RecordBatchOptions,
 };
-
+use arrow::datatypes::{FieldRef as ArrowFieldRef, Schema as ArrowSchema};
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_log::ResultExt as _;
 
@@ -27,6 +24,7 @@ pub fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecor
         .iter()
         .filter(is_component_column)
         .any(|field| !matches!(field.data_type(), arrow::datatypes::DataType::List(_)));
+
     if !needs_migration {
         return batch.clone();
     }

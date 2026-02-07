@@ -3,6 +3,8 @@ use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::UiExt as _;
 use re_viewer_context::VariantName;
 
+use crate::filters::ColumnFilter;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
     Ascending,
@@ -25,18 +27,14 @@ impl SortDirection {
         }
     }
 
-    pub fn menu_button(&self, ui: &mut egui::Ui) -> egui::Response {
-        let tokens = ui.tokens();
-        ui.add(egui::Button::image_and_text(
-            self.icon()
-                .as_image()
-                .tint(tokens.label_button_icon_color)
-                .fit_to_exact_size(tokens.small_icon_size),
+    pub fn menu_item_ui(&self, ui: &mut egui::Ui) -> egui::Response {
+        ui.icon_and_text_menu_item(
+            self.icon(),
             match self {
                 Self::Ascending => "Ascending",
                 Self::Descending => "Descending",
             },
-        ))
+        )
     }
 }
 
@@ -46,14 +44,30 @@ pub struct SortBy {
     pub direction: SortDirection,
 }
 
-/// Information required to generate a partition link column.
+impl SortBy {
+    pub fn ascending(col_name: impl Into<String>) -> Self {
+        Self {
+            column_physical_name: col_name.into(),
+            direction: SortDirection::Ascending,
+        }
+    }
+
+    pub fn descending(col_name: impl Into<String>) -> Self {
+        Self {
+            column_physical_name: col_name.into(),
+            direction: SortDirection::Descending,
+        }
+    }
+}
+
+/// Information required to generate a segment link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PartitionLinksSpec {
+pub struct SegmentLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
-    pub partition_id_column_name: String,
+    /// Name of the existing column containing the segment id.
+    pub segment_id_column_name: String,
 
     /// Origin to use for the links.
     pub origin: re_uri::Origin,
@@ -62,13 +76,13 @@ pub struct PartitionLinksSpec {
     pub dataset_id: EntryId,
 }
 
-/// Information required to generate a partition link column.
+/// Information required to generate an entry link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EntryLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
+    /// Name of the existing column containing the entry id.
     pub entry_id_column_name: String,
 
     /// Origin to use for the links.
@@ -79,9 +93,16 @@ pub struct EntryLinksSpec {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
-    pub partition_links: Option<PartitionLinksSpec>,
+    pub segment_links: Option<SegmentLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
-    pub filter: Option<datafusion::prelude::Expr>,
+
+    /// Always-on filter specified by calling code.
+    ///
+    /// For example, exclude blueprint dataset from the entries table.
+    pub prefilter: Option<datafusion::logical_expr::Expr>,
+
+    /// Filters specified by the user in the UI.
+    pub column_filters: Vec<ColumnFilter>,
 }
 
 /// The blueprint for a specific column.

@@ -1,8 +1,8 @@
 !Cargo.lock
 .DS_Store
+pyo3-build.cfg
 rerun_sdk/rerun_cli/rerun
 rerun_sdk/rerun_cli/rerun.exe
 site/
-target/
 venv/
 wheels/

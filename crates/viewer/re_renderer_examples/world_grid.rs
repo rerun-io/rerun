@@ -5,10 +5,8 @@
 //! - G: Toggle camera mode
 // TODO(#1426): unify camera logic between examples and add a free camera.
 
-use re_renderer::{
-    renderer::GpuMeshInstance,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
-};
+use re_renderer::renderer::GpuMeshInstance;
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use winit::event::ElementState;
 
 mod framework;
@@ -75,7 +73,7 @@ impl framework::Example for Outlines {
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
@@ -85,26 +83,29 @@ impl framework::Example for Outlines {
                 outline_config: None,
                 ..Default::default()
             },
-        );
+        )?;
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+        view_builder.queue_draw(
             re_ctx,
-            Default::default(),
-        ));
-        view_builder.queue_draw(re_renderer::renderer::WorldGridDrawData::new(
+            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default()),
+        );
+        view_builder.queue_draw(
             re_ctx,
-            &re_renderer::renderer::WorldGridConfiguration {
-                #[expect(clippy::disallowed_methods)]
-                color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
-                spacing: 0.1,
-                thickness_ui: 1.0,
-                plane: macaw::Plane3::ZX,
-            },
-        ));
-        view_builder.queue_draw(re_renderer::renderer::MeshDrawData::new(
+            re_renderer::renderer::WorldGridDrawData::new(
+                re_ctx,
+                &re_renderer::renderer::WorldGridConfiguration {
+                    #[expect(clippy::disallowed_methods)]
+                    color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
+                    spacing: 0.1,
+                    thickness_ui: 1.0,
+                    plane: macaw::Plane3::ZX,
+                },
+            ),
+        );
+        view_builder.queue_draw(
             re_ctx,
-            &self.model_mesh_instances,
-        )?);
+            re_renderer::renderer::MeshDrawData::new(re_ctx, &self.model_mesh_instances)?,
+        );
 
         let command_buffer = view_builder.draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 

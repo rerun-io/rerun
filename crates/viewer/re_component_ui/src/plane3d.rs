@@ -1,11 +1,10 @@
-use re_types::{components, external::glam};
+use re_sdk_types::components;
+use re_sdk_types::external::glam;
 use re_ui::UiExt as _;
 use re_viewer_context::MaybeMutRef;
 
-use crate::{
-    datatype_uis::{edit_f32_float_raw, edit_or_view_vec3d_raw},
-    response_utils::response_with_changes_of_inner,
-};
+use crate::datatype_uis::{edit_f32_float_raw, edit_or_view_vec3d_raw};
+use crate::response_utils::response_with_changes_of_inner;
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 enum AxisDirection {
@@ -93,7 +92,7 @@ pub fn edit_or_view_plane3d(
                 .height(250.0)
                 .show_ui(ui, |ui| {
                     let mut variants = AxisDirection::VARIANTS.iter();
-                    #[allow(clippy::unwrap_used)] // We know there's more than zero variants.
+                    #[expect(clippy::unwrap_used)] // We know there's more than zero variants.
                     let variant = variants.next().unwrap();
 
                     let mut response =

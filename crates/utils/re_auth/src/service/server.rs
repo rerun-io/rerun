@@ -1,16 +1,28 @@
-use tonic::{
-    Request, Status,
-    metadata::{Ascii, MetadataValue},
-    service::Interceptor,
-};
-
-use crate::{Error, Jwt, RedapProvider, provider::VerificationOptions};
+use tonic::metadata::{Ascii, MetadataValue};
+use tonic::service::Interceptor;
+use tonic::{Request, Status};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
+use crate::provider::VerificationOptions;
+use crate::{Error, Jwt, Permission, RedapProvider};
 
 #[derive(Debug, Clone)]
 pub struct UserContext {
     pub user_id: String,
+
+    pub permissions: Vec<Permission>,
+}
+
+impl UserContext {
+    pub fn has_read_permission(&self) -> bool {
+        self.permissions
+            .iter()
+            .any(|p| p == &Permission::Read || p == &Permission::ReadWrite)
+    }
+
+    pub fn has_write_permission(&self) -> bool {
+        self.permissions.iter().any(|p| p == &Permission::ReadWrite)
+    }
 }
 
 impl TryFrom<&MetadataValue<Ascii>> for Jwt {
@@ -20,7 +32,8 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
         let token = value.to_str().map_err(|_err| Error::MalformedToken)?;
         let token = token
             .strip_prefix(TOKEN_PREFIX)
-            .ok_or(Error::MalformedToken)?;
+            .ok_or(Error::MalformedToken)?
+            .trim();
         Ok(Self(token.to_owned()))
     }
 }
@@ -28,13 +41,14 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
 /// A basic authenticator that checks for a valid auth token.
 #[derive(Clone)]
 pub struct Authenticator {
-    secret_key: RedapProvider,
+    provider: RedapProvider,
 }
 
 impl Authenticator {
-    /// Creates a new [`Authenticator`] with the given secret key and scope.
-    pub fn new(secret_key: RedapProvider) -> Self {
-        Self { secret_key }
+    /// Creates a new [`Authenticator`] with the given provider,
+    /// which holds the keys used for verification.
+    pub fn new(provider: RedapProvider) -> Self {
+        Self { provider }
     }
 }
 
@@ -48,14 +62,16 @@ impl Interceptor for Authenticator {
             })?;
 
             let claims = self
-                .secret_key
+                .provider
                 .verify(&token, VerificationOptions::default())
                 .map_err(|_err| {
                     Status::unauthenticated(crate::ERROR_MESSAGE_INVALID_CREDENTIALS)
                 })?;
 
             req.extensions_mut().insert(UserContext {
-                user_id: claims.sub,
+                user_id: claims.sub().to_owned(),
+
+                permissions: claims.permissions().to_vec(),
             });
         }
 

@@ -1,11 +1,10 @@
-use re_capabilities::MainThreadToken;
-use re_log_types::LogMsg;
-use re_viewer_context::AsyncRuntimeHandle;
-
 /// Used by `eframe` to decide where to store the app state.
 pub const APP_ID: &str = "rerun";
 
-type AppCreator = Box<dyn FnOnce(&eframe::CreationContext<'_>) -> Box<dyn eframe::App>>;
+type DynError = Box<dyn std::error::Error + Send + Sync>;
+
+type AppCreator =
+    Box<dyn FnOnce(&eframe::CreationContext<'_>) -> Result<Box<dyn eframe::App>, DynError>>;
 
 // NOTE: the name of this function is hard-coded in `crates/top/rerun/src/crash_handler.rs`!
 pub fn run_native_app(
@@ -29,40 +28,26 @@ pub fn run_native_app(
         native_options,
         Box::new(move |cc| {
             crate::customize_eframe_and_setup_renderer(cc)?;
-            Ok(app_creator(cc))
+            app_creator(cc)
         }),
     )
 }
 
 pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions {
     re_tracing::profile_function!();
-
-    let mut viewport = egui::ViewportBuilder::default()
-        .with_app_id(APP_ID) // Controls where on disk the app state is persisted
-        .with_min_inner_size([320.0, 450.0]); // Should be high enough to fit the rerun menu
-
-    // Desktop-specific window chrome and sizing
-    #[cfg(not(target_os = "android"))]
-    {
-        viewport = viewport
+    let os = egui::os::OperatingSystem::default();
+    eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_app_id(APP_ID) // Controls where on disk the app state is persisted
             .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
-            .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
+            .with_fullsize_content_view(re_ui::fullsize_content(os))
             .with_icon(icon_data())
             .with_inner_size([1600.0, 1200.0])
-            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_min_inner_size([320.0, 450.0]) // Should be high enough to fit the rerun menu
+            .with_title_shown(!re_ui::fullsize_content(os))
             .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
-            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
-            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS); // To have rounded corners without decorations we need transparency
-    }
-
-    // Android: fullscreen, no decorations
-    #[cfg(target_os = "android")]
-    {
-        viewport = viewport.with_decorations(false).with_fullscreen(true);
-    }
-
-    eframe::NativeOptions {
-        viewport,
+            .with_titlebar_shown(!re_ui::fullsize_content(os))
+            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: crate::wgpu_options(force_wgpu_backend),
@@ -73,8 +58,6 @@ pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions
     }
 }
 
-#[cfg(not(target_os = "android"))]
-#[allow(clippy::unnecessary_wraps)]
 fn icon_data() -> egui::IconData {
     re_tracing::profile_function!();
 
@@ -103,41 +86,4 @@ fn icon_data() -> egui::IconData {
             }
         }
     }
-}
-
-pub fn run_native_viewer_with_messages(
-    main_thread_token: MainThreadToken,
-    build_info: re_build_info::BuildInfo,
-    app_env: crate::AppEnvironment,
-    startup_options: crate::StartupOptions,
-    log_messages: Vec<LogMsg>,
-    connection_registry: Option<re_grpc_client::ConnectionRegistryHandle>,
-    async_runtime: AsyncRuntimeHandle,
-) -> eframe::Result {
-    let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::Sdk,
-        re_smart_channel::SmartChannelSource::Sdk,
-    );
-    for log_msg in log_messages {
-        tx.send(log_msg).ok();
-    }
-
-    let force_wgpu_backend = startup_options.force_wgpu_backend.clone();
-    run_native_app(
-        main_thread_token,
-        Box::new(move |cc| {
-            let mut app = crate::App::new(
-                main_thread_token,
-                build_info,
-                app_env,
-                startup_options,
-                cc,
-                connection_registry,
-                async_runtime,
-            );
-            app.add_log_receiver(rx);
-            Box::new(app)
-        }),
-        force_wgpu_backend.as_deref(),
-    )
 }

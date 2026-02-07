@@ -1,0 +1,93 @@
+[package]
+name = "re_server"
+authors.workspace = true
+description = "A Rerun server implementation backed by an in-memory store"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+# TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
+## Enable reading in LanceDB files.
+lance = ["dep:lance", "dep:lance-index", "dep:lance-linalg"]
+
+[dependencies]
+
+# Rerun
+re_arrow_util.workspace = true
+re_build_info.workspace = true
+re_byte_size.workspace = true
+re_chunk_store.workspace = true
+re_entity_db.workspace = true
+re_grpc_server.workspace = true
+re_log = { workspace = true, features = ["setup"] }
+re_log_encoding.workspace = true
+re_log_types.workspace = true
+re_protos.workspace = true
+re_sorbet.workspace = true
+re_span.workspace = true
+re_tuid.workspace = true
+re_types_core.workspace = true
+
+# External
+ahash.workspace = true
+anyhow.workspace = true
+arrow.workspace = true
+axum.workspace = true
+bincode.workspace = true
+cfg-if.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["derive", "env"] }
+datafusion.workspace = true
+futures.workspace = true
+http.workspace = true
+itertools.workspace = true
+jiff.workspace = true
+nohash-hasher.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+tokio-stream.workspace = true
+tokio-util.workspace = true
+tonic-web.workspace = true
+tonic.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tower-service.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+
+# Optional dependencies:
+# TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
+lance = { workspace = true, optional = true }
+lance-index = { workspace = true, optional = true }
+lance-linalg = { workspace = true, optional = true }
+
+
+[dev-dependencies]
+re_chunk_store.workspace = true
+re_redap_tests.workspace = true
+ehttp = { workspace = true, features = ["native-async"] }
+
+
+[build-dependencies]
+re_build_tools.workspace = true

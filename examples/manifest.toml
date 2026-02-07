@@ -34,19 +34,22 @@ examples = [
   # display order, most interesting first
   "droid_dataset",
   "animated_urdf",
+  "rerun_export",
   "ros_node",
   "chess_robby_fischer",
   "nuscenes_dataset",
   "ros2_bridge",
   "ros_bridge",
   "kiss-icp",
-  "urdf_loader",
   "live_depth_sensor",
   "lidar",
   "rrt_star",
   "rgbd",
   "nv12",
   "imu_signals",
+  "mcap",
+  "eye_control",
+  "ros_tf",
 ]
 
 [categories.generative-vision]
@@ -58,7 +61,6 @@ Examples using machine learning and generative AI methods such as diffusion and 
 examples = [
   # display order, most interesting first
   "controlnet",
-  "depth_guided_stable_diffusion",
   "vista",
   "mcc",
   "lerobot",
@@ -80,15 +82,15 @@ examples = [
   "detect_and_track_objects",
   "face_tracking",
   "annotation_gradio",
+  "sam3d_body",
   "prompt_depth_anything",
   "sam2_depthanything",
-  "human_pose_tracking",
-  "gesture_detection",
   "ocr",
   "live_camera_edge_detection",
   "segment_anything_model",
   "tapir",
   "ml_depth_pro",
+  "egoexo_forge",
 ]
 
 [categories.3d-reconstruction] # NOLINT
@@ -109,6 +111,7 @@ examples = [
   "hloc_glomap",
   "instant_splat",
   "raw_mesh",
+  "vistadream",
 ]
 
 [categories.integrations]
@@ -124,7 +127,7 @@ examples = [
   "ros_bridge",
   "notebook",
   "notebook_neural_field_2d",
-  "urdf_loader",
+  "lerobot_loader",
   "vrs",
   "revy",
   "tfrecord_loader",
@@ -133,6 +136,8 @@ examples = [
   "blueprint_stocks",
   "arflow",
   "air_traffic_data",
+  "mcap",
+  "ros_tf",
 ]
 
 [categories.feature-showcase]
@@ -144,11 +149,14 @@ Showcase basic usage and specific features of Rerun.
 examples = [
   # display order, most interesting first
   "notebook",
+  "notebook_viewer",
+  "notebook_callbacks",
   "clock",
   "dna",
   "graphs",
   "camera_video_stream",
   "log_file",
+  "lenses",
   "openstreetmap_data",
   "minimal",
   "multiprocess_logging",
@@ -158,6 +166,7 @@ examples = [
   "raw_mesh",
   "air_traffic_data",
   "imu_signals",
+  "eye_control",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included
@@ -166,6 +175,7 @@ examples = [
 examples = [
   "_empty_rerun_sdk",
   "all_examples",
+  "blueprint", # Not very pretty
   "custom_callback",
   "custom_collection_adapter",
   "custom_data_loader",
@@ -177,10 +187,17 @@ examples = [
   "external_data_loader",
   "graph_lattice",
   "incremental_logging",
+  "lenses",
   "minimal_serve",
+  "server_tables",
   "shared_recording",
   "spawn_viewer",
   "stdio",
+  "table_zoo",
   "template",
   "viewer_callbacks",
+
+  # TODO(jleibs): We want to bring them back once opentelemtry is fixed
+  "human_pose_tracking",
+  "gesture_detection",
 ]

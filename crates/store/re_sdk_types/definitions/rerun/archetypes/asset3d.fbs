@@ -1,0 +1,46 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
+///
+/// See also [archetypes.Mesh3D].
+///
+/// If there are multiple [archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
+/// an instance of the mesh will be drawn for each transform.
+///
+/// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
+table Asset3D (
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "Asset3D",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// The asset's bytes.
+  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// The Media Type of the asset.
+  ///
+  /// Supported values:
+  /// * `model/gltf-binary`
+  /// * `model/gltf+json`
+  /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+  /// * `model/stl`
+  ///
+  /// If omitted, the viewer will try to guess from the data blob.
+  /// If it cannot guess, it won't be able to render the asset.
+  media_type: rerun.components.MediaType  ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// A color multiplier applied to the whole asset.
+  ///
+  /// For mesh who already have `albedo_factor` in materials,
+  /// it will be overwritten by actual `albedo_factor` of [archetypes.Asset3D] (if specified).
+  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3100);
+}

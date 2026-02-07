@@ -1,0 +1,13 @@
+namespace rerun.components;
+
+// ---
+
+/// The length of an axis in local units of the space.
+struct AxisLength (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float | npt.ArrayLike",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.repr": "transparent"
+) {
+  length: rerun.datatypes.Float32 (order: 100);
+}

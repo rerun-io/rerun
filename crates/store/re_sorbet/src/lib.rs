@@ -21,7 +21,7 @@ mod component_column_descriptor;
 mod error;
 mod index_column_descriptor;
 mod ipc;
-mod metadata;
+pub mod metadata;
 mod migrations;
 mod row_id_column_descriptor;
 mod schema_builder;
@@ -31,31 +31,31 @@ mod sorbet_columns;
 mod sorbet_schema;
 pub mod timestamp_metadata;
 
-pub use self::{
-    chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
-    chunk_columns::ChunkColumnDescriptors,
-    chunk_schema::ChunkSchema,
-    column_descriptor::{ColumnDescriptor, ColumnError},
-    column_descriptor_ref::ColumnDescriptorRef,
-    column_kind::{ColumnKind, UnknownColumnKind},
-    component_column_descriptor::ComponentColumnDescriptor,
-    error::SorbetError,
-    index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType},
-    ipc::{ipc_from_schema, schema_from_ipc},
-    metadata::{
-        ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata,
-        MissingMetadataKey,
-    },
-    row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
-    schema_builder::SchemaBuilder,
-    selectors::{
-        ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
-    },
-    sorbet_batch::SorbetBatch,
-    sorbet_columns::{ColumnSelectorResolveError, SorbetColumnDescriptors},
-    sorbet_schema::SorbetSchema,
-    timestamp_metadata::TimestampMetadata,
+use arrow::array::RecordBatch;
+
+pub use self::chunk_batch::{ChunkBatch, MismatchedChunkSchemaError};
+pub use self::chunk_columns::ChunkColumnDescriptors;
+pub use self::chunk_schema::ChunkSchema;
+pub use self::column_descriptor::{ColumnDescriptor, ColumnError};
+pub use self::column_descriptor_ref::ColumnDescriptorRef;
+pub use self::column_kind::{ColumnKind, UnknownColumnKind};
+pub use self::component_column_descriptor::ComponentColumnDescriptor;
+pub use self::error::SorbetError;
+pub use self::index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType};
+pub use self::ipc::{ipc_from_schema, migrated_schema_from_ipc, raw_schema_from_ipc};
+pub use self::metadata::{
+    ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata, MissingMetadataKey,
 };
+pub use self::migrations::{migrate_record_batch, migrate_schema_ref};
+pub use self::row_id_column_descriptor::RowIdColumnDescriptor;
+pub use self::schema_builder::SchemaBuilder;
+pub use self::selectors::{
+    ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
+};
+pub use self::sorbet_batch::SorbetBatch;
+pub use self::sorbet_columns::{ColumnSelectorResolveError, SorbetColumnDescriptors};
+pub use self::sorbet_schema::SorbetSchema;
+pub use self::timestamp_metadata::{TimestampLocation, TimestampMetadata};
 
 /// The type of [`SorbetBatch`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,4 +91,13 @@ pub fn chunk_id_of_schema(
     } else {
         Err(SorbetError::MissingChunkId)
     }
+}
+
+/// If this is a [`ChunkBatch`]: does it contain static data?
+// TODO(#10343): remove this
+pub fn is_static_chunk(batch: &RecordBatch) -> Option<bool> {
+    re_tracing::profile_function!();
+    ChunkBatch::try_from(batch)
+        .ok()
+        .map(|chunk| chunk.is_static())
 }
