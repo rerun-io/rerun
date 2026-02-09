@@ -386,7 +386,7 @@ fn try_convert_time_column(
     } else {
         Err(LensError::InvalidTimeColumn {
             timeline_name,
-            actual_type: list_array.values().data_type().clone(),
+            actual_type: list_array.values().data_type().clone().into(),
         })
     }
 }

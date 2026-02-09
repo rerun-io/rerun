@@ -65,8 +65,8 @@ fn transform_chunk(
         if let Some(dt) = target_datatype {
             cast_list_array_values(&transformed, dt).map_err(|err| {
                 ComponentMappingError::CastFailed {
-                    source_datatype: transformed.data_type().clone(),
-                    target_datatype: dt.clone(),
+                    source_datatype: transformed.data_type().clone().into(),
+                    target_datatype: dt.clone().into(),
                     err: Arc::new(err),
                 }
             })
