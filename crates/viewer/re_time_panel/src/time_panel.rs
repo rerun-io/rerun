@@ -432,6 +432,18 @@ impl TimePanel {
                     let text = format!("Waiting for timeline: {}", time_ctrl.timeline_name());
                     ui.label(egui::RichText::from(text).heading().strong());
 
+                    let timeline_count = entity_db.timelines().len();
+
+                    match timeline_count {
+                        0 => {}
+                        1 => {
+                            ui.label("One other timeline has data");
+                        }
+                        c => {
+                            ui.label(format!("{c} other timelines have data"));
+                        }
+                    }
+
                     if ui
                         .button(
                             egui::RichText::new("Go to default timeline")
