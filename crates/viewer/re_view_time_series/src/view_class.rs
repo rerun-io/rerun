@@ -1,6 +1,7 @@
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
+use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
@@ -224,7 +225,7 @@ impl ViewClass for TimeSeriesView {
             }
 
             view_property_ui::<ScalarAxis>(&ctx, ui);
-            visualizers_ui(viewer_ctx, ui, view_id);
+            visualizers_ui(&ctx, ui);
 
             Ok::<(), ViewSystemExecutionError>(())
         })
@@ -1304,33 +1305,10 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-/// Shows the list of visualizers used in this view.
-fn visualizers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: ViewId) {
+fn visualizers_ui(ctx: &re_viewer_context::ViewContext<'_>, ui: &mut egui::Ui) {
     re_tracing::profile_function!();
 
-    let query_result = ctx.lookup_query_result(view_id);
-
-    // Collect all visualizer instructions with their entity paths
-    let mut visualizers: Vec<(EntityPath, ViewSystemIdentifier)> = Vec::new();
-
-    #[expect(clippy::iter_over_hash_type)] // we'll sort by entity path later
-    for (instruction_id, handle) in &query_result.tree.data_results_by_visualizer_instruction {
-        if let Some(node) = query_result.tree.data_results.get(*handle)
-            && let Some(instruction) = node
-                .data_result
-                .visualizer_instructions
-                .iter()
-                .find(|i| i.id == *instruction_id)
-        {
-            visualizers.push((
-                node.data_result.entity_path.clone(),
-                instruction.visualizer_type,
-            ));
-        }
-    }
-
-    // Sort by entity path for consistent display
-    visualizers.sort_by(|a, b| a.0.cmp(&b.0));
+    let query_result = ctx.query_result;
 
     let markdown = "# Visualizers
 
@@ -1340,63 +1318,130 @@ type and the entity path it visualizes.";
     ui.section_collapsing_header("Visualizers")
         .with_help_markdown(markdown)
         .show(ui, |ui| {
-            for (entity_path, visualizer_type) in &visualizers {
-                // Get the entity name (last segment of the path)
-                let entity_name = entity_path
-                    .last()
-                    .map(|part| part.ui_string())
-                    .unwrap_or_else(|| "/".to_owned());
+            let handles = query_result.tree.data_results_by_path.values().sorted();
+            for handle in handles {
+                let Some(node) = query_result.tree.data_results.get(*handle) else {
+                    continue;
+                };
+                for instruction in &node.data_result.visualizer_instructions {
+                    ui.add_space(10.0);
 
-                // Get the full path without the leading slash for display
-                let full_path = entity_path
-                    .to_string()
-                    .strip_prefix('/')
-                    .map(|s| s.to_owned())
-                    .unwrap_or_else(|| entity_path.to_string());
+                    let entity_path = &node.data_result.entity_path;
 
-                // Create a rounded pill with toned-down background
-                let response = egui::Frame::new()
-                    .fill(ui.visuals().faint_bg_color)
-                    .corner_radius(6.0)
-                    .inner_margin(egui::Margin::symmetric(8, 4))
-                    .show(ui, |ui| {
+                    let full_path = entity_path
+                        .to_string()
+                        .strip_prefix('/')
+                        .map(|s| s.to_owned())
+                        .unwrap_or_else(|| entity_path.to_string());
+
+                    let series_color = get_time_series_color(ctx, &node.data_result, instruction);
+
+                    // Use series name if available, otherwise fall back to entity name
+                    let display_name = entity_path
+                        .last()
+                        .map(|part| part.ui_string())
+                        .unwrap_or_else(|| "/".to_owned());
+
+                    // Calculate pill rect and interact.
+                    let mut frame = egui::Frame::default()
+                        .inner_margin(4.0)
+                        .fill(ui.tokens().visualizer_list_pill_bg_color)
+                        .corner_radius(4.0)
+                        .inner_margin(egui::Margin::symmetric(8, 6))
+                        .begin(ui);
+                    {
+                        let ui = &mut frame.content_ui;
                         ui.set_width(ui.available_width());
-                        ui.vertical(|ui| {
-                            // Visualizer name
-                            ui.label(
-                                egui::RichText::new(&entity_name)
-                                    .color(ui.tokens().visualizer_list_title_text_color),
-                            );
-                            // Entity path
-                            ui.label(
-                                egui::RichText::new(&full_path)
-                                    .size(11.0)
-                                    .color(ui.tokens().visualizer_list_path_text_color),
-                            );
+
+                        // Disable text selection so hovering the text only hovers the pill
+                        ui.style_mut().interaction.selectable_labels = false;
+                        ui.horizontal(|ui| {
+                            ui.vertical(|ui| {
+                                // Visualizer name
+                                ui.label(
+                                    egui::RichText::new(&display_name)
+                                        .color(ui.tokens().visualizer_list_title_text_color),
+                                );
+                                // Entity path
+                                ui.label(
+                                    egui::RichText::new(&full_path)
+                                        .size(10.5)
+                                        .color(ui.tokens().visualizer_list_path_text_color),
+                                );
+                            });
+
+                            // Right side: color box for time series visualizers
+                            if let Some(series_color) = series_color {
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        let size = ui.tokens().visualizer_list_color_box_size;
+                                        let color_box_size = egui::vec2(size, size);
+                                        let (rect, _response) = ui.allocate_exact_size(
+                                            color_box_size,
+                                            egui::Sense::hover(),
+                                        );
+                                        ui.painter().rect(
+                                            rect,
+                                            3.0,
+                                            series_color,
+                                            ui.tokens().visualizer_list_color_box_stroke,
+                                            egui::StrokeKind::Outside,
+                                        );
+                                    },
+                                );
+                            }
                         });
-                    });
-
-                // Make the pill clickable to select the entity
-                let response = ui
-                    .interact(
-                        response.response.rect,
-                        ui.id().with((entity_path, visualizer_type)),
-                        egui::Sense::click(),
-                    )
-                    .on_hover_cursor(egui::CursorIcon::PointingHand);
-                if response.clicked() {
-                    let instance_path = InstancePath::from(entity_path.clone());
-                    ctx.command_sender().send_system(
-                        re_viewer_context::SystemCommand::set_selection(Item::DataResult(
-                            view_id,
-                            instance_path,
-                        )),
-                    );
+                    }
+                    let response = frame
+                        .allocate_space(ui)
+                        .interact(egui::Sense::click())
+                        .on_hover_cursor(egui::CursorIcon::PointingHand);
+                    if response.hovered() {
+                        frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
+                    }
+                    if response.clicked() {
+                        let instance_path = InstancePath::from(entity_path.clone());
+                        ctx.viewer_ctx.command_sender().send_system(
+                            re_viewer_context::SystemCommand::set_selection(Item::DataResult(
+                                ctx.view_id,
+                                instance_path,
+                            )),
+                        );
+                    }
+                    frame.paint(ui);
                 }
-
-                ui.add_space(4.0);
             }
         });
+}
+
+/// Returns the color for a time series visualizer based on the specific visualizer type.
+fn get_time_series_color(
+    ctx: &re_viewer_context::ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    instruction: &re_viewer_context::VisualizerInstruction,
+) -> Option<egui::Color32> {
+    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
+        SeriesLines::descriptor_colors().component
+    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
+        SeriesPoints::descriptor_colors().component
+    } else {
+        return None;
+    };
+
+    let query_result = re_view::latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [component],
+        Some(instruction),
+    );
+    Some(
+        query_result
+            .get_mono_with_fallback::<Color>(component)
+            .into(),
+    )
 }
 
 #[test]

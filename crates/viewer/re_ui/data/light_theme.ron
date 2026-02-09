@@ -3,6 +3,7 @@
   "large_button_icon_size": 12,
   "large_button_corner_radius": 6,
   "small_icon_size": 14,
+  "visualizer_list_color_box_size": 14,
   "modal_button_width": 50,
   "default_modal_width": 400,
 
@@ -298,6 +299,16 @@
     },
     "visualizer_list_path_text_color": {
       "color": "{Gray.500}"
+    },
+    "visualizer_list_color_box_stroke": {
+      "color": "{Gray.0}",
+      "width": 1
+    },
+    "visualizer_list_pill_bg_color": {
+      "color": "{Gray.850}"
+    },
+    "visualizer_list_pill_bg_color_hovered": {
+      "color": "{Gray.800}"
     },
     "code_index_color": {
       "color": "#894783"

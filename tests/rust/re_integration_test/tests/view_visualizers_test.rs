@@ -116,6 +116,7 @@ pub async fn test_view_visualizers_section() {
 
         // Add both SeriesLines AND SeriesPoints visualizers to the sin_line entity
         // This demonstrates that one entity can have multiple visualizers
+        // Also demonstrates name overrides - the SeriesPoints visualizer has an overridden name
         ctx.save_visualizers(
             &EntityPath::from("plots/sin_line"),
             view_1.id,
@@ -126,9 +127,21 @@ pub async fn test_view_visualizers_section() {
                     .visualizer(),
                 archetypes::SeriesPoints::new()
                     .with_colors([[255, 100, 100]])
+                    .with_names(["Sine Points (Override)"])
                     .with_marker_sizes([3.0])
                     .visualizer(),
             ],
+        );
+
+        // Override the name for the cos_points entity
+        ctx.save_visualizers(
+            &EntityPath::from("plots/cos_points"),
+            view_1.id,
+            [archetypes::SeriesPoints::new()
+                .with_colors([[0, 255, 0]])
+                .with_names(["Cosine (Override)"])
+                .with_marker_sizes([4.0])
+                .visualizer()],
         );
     });
 
