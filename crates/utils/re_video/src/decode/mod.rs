@@ -77,10 +77,15 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(with_dav1d)]
+#[cfg(any(with_dav1d, with_mediacodec))]
 mod async_decoder_wrapper;
 #[cfg(with_dav1d)]
 mod av1;
+
+#[cfg(with_mediacodec)]
+mod android_mediacodec;
+#[cfg(with_mediacodec)]
+mod ndk_media_codec;
 
 #[cfg(with_ffmpeg)]
 mod ffmpeg_cli;
@@ -229,6 +234,23 @@ pub fn new_decoder(
         decode_settings.hw_acceleration,
         output_sender,
     )?));
+
+    // On Android, use MediaCodec for H.264 and H.265.
+    #[cfg(with_mediacodec)]
+    match video.codec {
+        crate::VideoCodec::H264 | crate::VideoCodec::H265 => {
+            re_log::trace!("Decoding {:?} via Android MediaCodec…", video.codec);
+            return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+                debug_name.to_owned(),
+                Box::new(
+                    android_mediacodec::MediaCodecDecoder::new(debug_name.to_owned(), video)
+                        .map_err(|e| DecodeError::UnsupportedCodec(e.to_string()))?,
+                ),
+                output_sender,
+            )));
+        }
+        _ => {} // fall through to dav1d for AV1, etc.
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     match video.codec {

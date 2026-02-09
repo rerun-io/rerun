@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Internet access for gRPC data streaming and network connections -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Require Vulkan 1.1 support (used by wgpu) -->
+    <uses-feature
+        android:name="android.hardware.vulkan.level"
+        android:version="1"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.vulkan.version"
+        android:version="0x00401000"
+        android:required="true" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:hasCode="true"
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.RerunViewer">
+
+        <!--
+            The GameActivity serves as the entry point for the native Rust application.
+            The android.app.lib_name metadata tells GameActivity which native library to load.
+            This must match the library name produced by cargo (lib<name>.so -> "re_viewer").
+        -->
+        <activity
+            android:name="io.rerun.viewer.RerunActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density"
+            android:launchMode="singleTask">
+
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="re_viewer" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep link support for rerun:// URIs -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rerun" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

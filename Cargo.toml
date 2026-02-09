@@ -15,7 +15,11 @@ members = [
   "tests/rust/re_integration_test",
   "tests/rust/test_*",
 ]
-exclude = ["examples/rust/revy", "examples/rust/chess_robby_fischer"]
+exclude = [
+  "crates/viewer/re_viewer_android",
+  "examples/rust/revy",
+  "examples/rust/chess_robby_fischer",
+]
 
 [workspace.package]
 authors = ["rerun.io <opensource@rerun.io>"]
@@ -188,6 +192,7 @@ walkers = "0.50.0"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
+android_logger = "0.14"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.13"
 array-init = "2.1"

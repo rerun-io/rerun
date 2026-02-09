@@ -44,20 +44,36 @@ impl Profiler {
 
 fn start_puffin_viewer() {
     crate::profile_function!();
-    let url = format!("127.0.0.1:{PORT}"); // Connect to localhost.
-    let child = std::process::Command::new("puffin_viewer")
-        .arg("--url")
-        .arg(&url)
-        .spawn();
 
-    if let Err(err) = child {
-        let cmd = format!("cargo install puffin_viewer && puffin_viewer --url {url}",);
-        re_log::warn!("Failed to start puffin_viewer: {err}. Try connecting manually with:  {cmd}");
+    // On Android, we can't spawn child processes or show native file dialogs.
+    // Just log the server URL so the user can connect externally.
+    #[cfg(target_os = "android")]
+    {
+        let url = format!("127.0.0.1:{PORT}");
+        re_log::info!(
+            "Puffin profiling server running. Connect from desktop with:  puffin_viewer --url {url}"
+        );
+    }
 
-        rfd::MessageDialog::new()
-            .set_level(rfd::MessageLevel::Info)
-            .set_title("puffin_viewer required")
-            .set_description(format!("To view the profiling data, run the following command:\n\n{cmd}\n\n(it has been copied to your clipboard)"))
-            .show();
+    #[cfg(not(target_os = "android"))]
+    {
+        let url = format!("127.0.0.1:{PORT}"); // Connect to localhost.
+        let child = std::process::Command::new("puffin_viewer")
+            .arg("--url")
+            .arg(&url)
+            .spawn();
+
+        if let Err(err) = child {
+            let cmd = format!("cargo install puffin_viewer && puffin_viewer --url {url}",);
+            re_log::warn!(
+                "Failed to start puffin_viewer: {err}. Try connecting manually with:  {cmd}"
+            );
+
+            rfd::MessageDialog::new()
+                .set_level(rfd::MessageLevel::Info)
+                .set_title("puffin_viewer required")
+                .set_description(format!("To view the profiling data, run the following command:\n\n{cmd}\n\n(it has been copied to your clipboard)"))
+                .show();
+        }
     }
 }

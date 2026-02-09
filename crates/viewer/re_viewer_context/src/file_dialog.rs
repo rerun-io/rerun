@@ -37,9 +37,9 @@ impl CommandSender {
             });
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
         {
-            // Native
+            // Native desktop
             let path = {
                 re_tracing::profile_scope!("file_dialog");
                 rfd::FileDialog::new()
@@ -54,6 +54,12 @@ impl CommandSender {
                     Ok(path)
                 })));
             }
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            let _ = (file_name, title, data);
+            re_log::warn!("File save dialog is not yet supported on Android.");
         }
     }
 }
