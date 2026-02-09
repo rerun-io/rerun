@@ -105,7 +105,7 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
-    pub rrd_manifest_index: RrdManifestIndex,
+    rrd_manifest_index: RrdManifestIndex,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
@@ -304,12 +304,17 @@ impl EntityDb {
         &mut self.rrd_manifest_index
     }
 
-    /// Are we currently in the process of downloading the RRD Manifest?
-    pub fn is_currently_downloading_manifest(&self) -> bool {
+    /// Are we connected to redap, and can fetch missing chunks?
+    pub fn can_fetch_chunks_from_redap(&self) -> bool {
+        // TODO(emilk): Check that connection is healthy
         self.data_source
             .as_ref()
             .is_some_and(|source| source.is_redap())
-            && !self.rrd_manifest_index.has_manifest()
+    }
+
+    /// Are we currently in the process of downloading the RRD Manifest?
+    pub fn is_currently_downloading_manifest(&self) -> bool {
+        self.can_fetch_chunks_from_redap() && !self.rrd_manifest_index.has_manifest()
     }
 
     #[inline]
@@ -795,7 +800,7 @@ impl EntityDb {
             time_budget: DEFAULT_GC_TIME_BUDGET,
 
             #[expect(clippy::bool_to_int_with_if)]
-            protect_latest: if self.rrd_manifest_index.has_manifest() {
+            protect_latest: if self.can_fetch_chunks_from_redap() {
                 // We can redownload data, so we are free to drop anything.
                 // This makes the GC faster.
                 // Also, if it is important, then chunk is already in the `protected_chunks` set,
@@ -811,8 +816,8 @@ impl EntityDb {
 
             protected_chunks,
 
-            furthest_from: if self.rrd_manifest_index.has_manifest() {
-                // If we have an RRD manifest, it means we can download chunks on-demand.
+            furthest_from: if self.can_fetch_chunks_from_redap() {
+                // We can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:
                 time_cursor.map(|tc| (tc.name, tc.time))
             } else {

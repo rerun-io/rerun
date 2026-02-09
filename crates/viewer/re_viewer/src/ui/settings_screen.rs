@@ -331,7 +331,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, options: &VideoOptions) {
 
     match FFmpegVersion::for_executable_poll(path) {
         Poll::Pending => {
-            ui.spinner();
+            ui.loading_indicator();
         }
 
         Poll::Ready(Ok(version)) => {

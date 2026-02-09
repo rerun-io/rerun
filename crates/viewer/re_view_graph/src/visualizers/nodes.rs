@@ -73,7 +73,7 @@ impl VisualizerSystem for NodeVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
@@ -88,11 +88,7 @@ impl VisualizerSystem for NodeVisualizer {
                 timeline_query.clone(),
                 latest_at_results,
             ));
-            let results = VisualizerInstructionQueryResults {
-                instruction_id: instruction.id,
-                query_results: &results,
-                output: &mut output,
-            };
+            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
             let all_nodes = results.iter_required(GraphNodes::descriptor_node_ids().component);
             let all_colors = results.iter_optional(GraphNodes::descriptor_colors().component);

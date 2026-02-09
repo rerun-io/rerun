@@ -205,7 +205,6 @@ impl VisualizerInstructionReport {
 }
 
 /// Result of running [`VisualizerSystem::execute`].
-#[derive(Default)]
 pub struct VisualizerExecutionOutput {
     /// Draw data produced by the visualizer.
     ///
@@ -221,6 +220,10 @@ pub struct VisualizerExecutionOutput {
     /// It's mutex protected to make it easier to append errors while processing instructions in parallel.
     pub reports_per_instruction:
         Mutex<HashMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>>,
+
+    /// Set to true if the visualizer encountered missing chunks during execution.
+    /// This is atomic to make it easier to set from parallel visualizer instruction processing.
+    any_missing_chunks: std::sync::atomic::AtomicBool,
     //
     // TODO(andreas): We should put other output here as well instead of passing around visualizer
     // structs themselves which is rather surprising.
@@ -228,7 +231,31 @@ pub struct VisualizerExecutionOutput {
     // This mechanism could easily replace `VisualizerSystem::data`!
 }
 
+impl Default for VisualizerExecutionOutput {
+    fn default() -> Self {
+        Self {
+            draw_data: Vec::new(),
+            reports_per_instruction: Mutex::new(HashMap::default()),
+            any_missing_chunks: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+}
+
 impl VisualizerExecutionOutput {
+    /// Indicate that the view should show a loading indicator because data is missing.
+    pub fn set_missing_chunks(&self) {
+        self.any_missing_chunks
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Were any required chunks missing?
+    ///
+    /// If so, we should probably show a loading indicator.
+    pub fn has_missing_chunks(&self) -> bool {
+        self.any_missing_chunks
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
     /// Marks the given visualizer instruction as having encountered an error during visualization.
     pub fn report_error_for(
         &self,

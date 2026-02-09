@@ -44,7 +44,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -54,11 +54,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 view_query,
                 instruction,
             );
-            let results = VisualizerInstructionQueryResults {
-                instruction_id: instruction.id,
-                query_results: &results,
-                output: &mut output,
-            };
+            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
             let mut batch_data = GeoLineStringsBatch::default();
 

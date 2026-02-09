@@ -428,8 +428,8 @@ impl SpatialView3D {
             clear_color,
         ));
 
-        // Add egui-rendered spinners/loaders on top of re_renderer content:
-        crate::ui::paint_loading_spinners(
+        // Add egui-rendered loading indicators on top of re_renderer content:
+        crate::ui::paint_loading_indicators(
             ui,
             RectTransform::from_to(ui_rect, ui_rect),
             &eye,

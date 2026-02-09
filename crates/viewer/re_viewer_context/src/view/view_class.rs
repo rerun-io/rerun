@@ -175,6 +175,7 @@ pub trait ViewClass: Send + Sync {
     ) -> ViewSpawnHeuristics;
 
     /// Ui shown when the user selects a view of this class.
+    #[doc(alias = "settings_ui")]
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
@@ -209,6 +210,8 @@ pub trait ViewClass: Send + Sync {
     /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
     ///              In the future, we likely want to move view builder handling to `re_viewport` with
     ///              minimal configuration options exposed via [`crate::ViewClass`].
+    #[doc(alias = "paint")]
+    #[doc(alias = "render")]
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,

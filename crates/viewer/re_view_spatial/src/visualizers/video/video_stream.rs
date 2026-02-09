@@ -103,11 +103,11 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     Some(instruction),
                 ),
             );
-            let opacity_result = re_view::VisualizerInstructionQueryResults {
-                instruction_id: instruction.id,
-                query_results: &opacity_result_wrapped,
-                output: &output,
-            };
+            let opacity_result = re_view::VisualizerInstructionQueryResults::new(
+                instruction.id,
+                &opacity_result_wrapped,
+                &output,
+            );
 
             let all_opacities =
                 opacity_result.iter_optional(VideoStream::descriptor_opacity().component);
@@ -174,7 +174,12 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 let get_chunk_array = |id| {
                     let chunk = storage_engine
                         .store()
-                        .use_physical_chunk_or_report_missing(&id)?;
+                        .use_physical_chunk_or_report_missing(&id);
+
+                    let Some(chunk) = chunk else {
+                        output.set_missing_chunks(); // Make sure we show a view-wide loading indicator
+                        return None;
+                    };
 
                     let sample_component = VideoStream::descriptor_sample().component;
 

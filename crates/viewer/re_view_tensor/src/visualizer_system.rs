@@ -42,7 +42,7 @@ impl VisualizerSystem for TensorSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
@@ -59,11 +59,8 @@ impl VisualizerSystem for TensorSystem {
             );
             let results =
                 re_view::BlueprintResolvedResults::from((timeline_query, latest_at_results));
-            let results = re_view::VisualizerInstructionQueryResults {
-                instruction_id: instruction.id,
-                query_results: &results,
-                output: &mut output,
-            };
+            let results =
+                re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
             let all_tensor_chunks = results.iter_required(Tensor::descriptor_data().component);
             if all_tensor_chunks.is_empty() {

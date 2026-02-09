@@ -9827,6 +9827,7 @@ dependencies = [
  "re_component_fallbacks",
  "re_entity_db",
  "re_log",
+ "re_log_channel",
  "re_log_encoding",
  "re_log_types",
  "re_memory",

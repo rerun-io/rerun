@@ -63,11 +63,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
                 [rerun::Points3D::descriptor_colors().component],
                 instruction,
             );
-            let results = VisualizerInstructionQueryResults {
-                instruction_id: instruction.id,
-                query_results: &results,
-                output: &output,
-            };
+            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
             // From the query result, get all the color arrays as `[u32]` slices.
             // For latest-at queries should be only a single slice`,

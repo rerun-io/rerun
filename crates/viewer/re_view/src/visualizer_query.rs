@@ -11,12 +11,28 @@ use crate::{
 
 /// Utility for processing queries while executing a visualizer instruction and reporting errors/warnings as they arise.
 pub struct VisualizerInstructionQueryResults<'a> {
-    pub instruction_id: VisualizerInstructionId,
-    pub query_results: &'a BlueprintResolvedResults<'a>,
-    pub output: &'a re_viewer_context::VisualizerExecutionOutput,
+    instruction_id: VisualizerInstructionId,
+    query_results: &'a BlueprintResolvedResults<'a>,
+    output: &'a re_viewer_context::VisualizerExecutionOutput,
 }
 
 impl<'a> VisualizerInstructionQueryResults<'a> {
+    /// Create a new query results wrapper.
+    pub fn new(
+        instruction_id: VisualizerInstructionId,
+        query_results: &'a BlueprintResolvedResults<'a>,
+        output: &'a re_viewer_context::VisualizerExecutionOutput,
+    ) -> Self {
+        if query_results.any_missing_chunks() {
+            output.set_missing_chunks();
+        }
+        Self {
+            instruction_id,
+            query_results,
+            output,
+        }
+    }
+
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
     ///
     /// Reports an error if there's no chunks for the given component.

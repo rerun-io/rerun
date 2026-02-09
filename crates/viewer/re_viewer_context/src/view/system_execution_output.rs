@@ -25,6 +25,17 @@ pub struct SystemExecutionOutput {
 }
 
 impl SystemExecutionOutput {
+    /// Were any required chunks missing?
+    ///
+    /// If so, we should probably show a loading indicator.
+    pub fn has_missing_chunks(&self) -> bool {
+        self.visualizer_execution_output
+            .per_visualizer
+            .values()
+            .filter_map(|result| result.as_ref().ok())
+            .any(|output| output.has_missing_chunks())
+    }
+
     /// Removes & returns all successfully created draw data from all visualizer executions.
     pub fn drain_draw_data(&mut self) -> impl Iterator<Item = re_renderer::QueueableDrawData> {
         self.visualizer_execution_output

@@ -3223,12 +3223,12 @@ impl App {
         for store_id in store_ids {
             let db = store_hub.entity_db_mut(&store_id);
 
-            if db.rrd_manifest_index.has_manifest() {
+            if db.can_fetch_chunks_from_redap() {
                 re_tracing::profile_scope!("recording");
 
                 let mut store_events = Vec::new();
                 for chunk in db
-                    .rrd_manifest_index
+                    .rrd_manifest_index_mut()
                     .chunk_requests_mut()
                     .receive_finished(self.egui_ctx.time())
                 {
@@ -3252,10 +3252,10 @@ impl App {
 
                 // We cancel right after resoliving (above), so that
                 // we give each fetch as much time as possible to finish.
-                db.rrd_manifest_index
+                db.rrd_manifest_index_mut()
                     .cancel_outdated_requests(self.egui_ctx.time());
 
-                if db.rrd_manifest_index.chunk_requests().has_pending() {
+                if db.rrd_manifest_index_mut().chunk_requests().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more
                 }
             }
@@ -3820,7 +3820,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
                 .auto_sized()
                 .show(egui_ctx, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spinner();
+                        ui.loading_indicator();
                         ui.label("Writing file to disk…");
                     })
                 });

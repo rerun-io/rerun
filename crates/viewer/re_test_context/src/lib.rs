@@ -483,6 +483,12 @@ impl TestContext {
         let store_hub = self.store_hub.get_mut();
         let active_recording = store_hub.active_recording_mut().unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);
+
+        // Pretend like we are connected to a real redap server:
+        active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
+            uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+            select_when_loaded: true,
+        });
     }
 
     /// Register a view class.
@@ -504,7 +510,7 @@ impl TestContext {
         store_hub.begin_frame_caches();
 
         if let Some(db) = store_hub.active_recording_mut()
-            && db.rrd_manifest_index().has_manifest()
+            && db.can_fetch_chunks_from_redap()
             && let Some(timeline) = self.time_ctrl.read().timeline()
         {
             let (rrd_manifest, storage_engine) = db.rrd_manifest_index_mut_and_storage_engine();

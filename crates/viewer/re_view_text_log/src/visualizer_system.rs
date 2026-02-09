@@ -93,11 +93,8 @@ impl TextLogSystem {
 
         // Convert to HybridResults for unified access
         let results = re_view::BlueprintResolvedResults::from((query.clone(), range_results));
-        let results = re_view::VisualizerInstructionQueryResults {
-            instruction_id: instruction.id,
-            query_results: &results,
-            output,
-        };
+        let results =
+            re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, output);
 
         let all_texts = results.iter_required(TextLog::descriptor_text().component);
         if all_texts.is_empty() {

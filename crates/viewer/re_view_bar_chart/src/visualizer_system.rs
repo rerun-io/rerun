@@ -52,7 +52,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -80,11 +80,8 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 // TODO(andreas): use this all the way.
                 let results =
                     BlueprintResolvedResults::LatestAt(timeline_query.clone(), latest_at_results);
-                let results = VisualizerInstructionQueryResults {
-                    instruction_id: instruction.id,
-                    query_results: &results,
-                    output: &mut output,
-                };
+                let results =
+                    VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
                 let widths = results.iter_optional(BarChart::descriptor_widths().component);
                 let widths: &[f32] = widths

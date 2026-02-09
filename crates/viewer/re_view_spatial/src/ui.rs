@@ -333,7 +333,7 @@ pub fn create_labels(
     (label_shapes, ui_rects)
 }
 
-pub fn paint_loading_spinners(
+pub fn paint_loading_indicators(
     ui: &egui::Ui,
     ui_from_scene: egui::emath::RectTransform,
     eye3d: &Eye,
@@ -344,11 +344,11 @@ pub fn paint_loading_spinners(
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
     for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
-        for &crate::visualizers::LoadingSpinner {
+        for &crate::visualizers::LoadingIndicator {
             center,
             half_extent_u,
             half_extent_v,
-        } in &data.loading_spinners
+        } in &data.loading_indicators
         {
             // Transform to ui coordinates:
             let center_unprojected = ui_from_world_3d * center.extend(1.0);
@@ -378,7 +378,11 @@ pub fn paint_loading_spinners(
 
             let rect = ui_from_scene.transform_rect(rect);
 
-            egui::Spinner::new().paint_at(ui, rect);
+            re_ui::loading_indicator::paint_loading_indicator_inside(
+                ui,
+                egui::Align2::CENTER_CENTER,
+                rect,
+            );
         }
     }
 }

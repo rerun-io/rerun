@@ -53,7 +53,7 @@ impl VisualizerSystem for EdgesVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         // TODO(cmc): could we (improve and then) use reflection for this?
         re_sdk_types::static_assert_struct_has_fields!(
@@ -77,11 +77,7 @@ impl VisualizerSystem for EdgesVisualizer {
                 timeline_query.clone(),
                 latest_at_results,
             ));
-            let results = VisualizerInstructionQueryResults {
-                instruction_id: instruction.id,
-                query_results: &results,
-                output: &mut output,
-            };
+            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
             let all_edges = results.iter_required(GraphEdges::descriptor_edges().component);
             let graph_type = results

@@ -118,7 +118,7 @@ pub enum DecoderDelayState {
     /// we signal the end of the video (after which we have to restart the decoder).
     ///
     /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
-    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading spinner.
+    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading indicator.
     ///
     /// The tolerance value used for this is the sum of
     /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
@@ -165,8 +165,8 @@ pub struct VideoFrameTexture {
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub decoder_delay_state: DecoderDelayState,
 
-    /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
-    pub show_spinner: bool,
+    /// If true, this texture is so out-dated that it should have a loading indicator on top of it.
+    pub show_loading_indicator: bool,
 
     /// Format information about the original data from the video decoder.
     ///

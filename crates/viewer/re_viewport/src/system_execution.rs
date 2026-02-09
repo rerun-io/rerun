@@ -36,12 +36,12 @@ fn run_view_systems(
         context_systems
             .systems
             .par_iter_mut()
-            .for_each(|(name, system)| {
+            .for_each(|(name, view_ctx_system)| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", name.as_str());
                 let once_per_frame_result = context_system_once_per_frame_results
                     .get(name)
                     .expect("Context system execution result didn't occur");
-                system.execute(&view_ctx, query, once_per_frame_result);
+                view_ctx_system.execute(&view_ctx, query, once_per_frame_result);
             });
     };
 
@@ -49,9 +49,9 @@ fn run_view_systems(
     let per_visualizer_type_results = view_systems
         .systems
         .par_iter_mut()
-        .map(|(name, part)| {
+        .map(|(name, vis_system)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            let result = part.execute(&view_ctx, query, context_systems);
+            let result = vis_system.execute(&view_ctx, query, context_systems);
             (*name, result.map_err(Arc::new))
         })
         .collect();

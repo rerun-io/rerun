@@ -195,6 +195,8 @@ impl eframe::App for ExampleApp {
                             Lorem ipsum sit dolor amet."
                     );
                 }
+
+                ui.loading_indicator();
             });
         };
 

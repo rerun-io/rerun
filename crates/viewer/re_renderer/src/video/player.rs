@@ -17,7 +17,7 @@ pub struct PlayerConfiguration {
     /// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
     /// transient errors without flickering.
     ///
-    /// Same with showing a spinner: if we show it too fast, it is annoying.
+    /// Same with showing a loading indicator: if we show it too fast, it is annoying.
     ///
     /// This is wallclock time and independent of how fast a video is being played back.
     pub decoding_grace_delay_before_reporting: Duration,
@@ -390,14 +390,14 @@ impl VideoPlayer {
             };
         }
 
-        // Decide whether to show a spinner or even error out.
-        let show_spinner = match self.decoder_delay_state {
+        // Decide whether to show a loading indicator or even error out.
+        let show_loading_indicator = match self.decoder_delay_state {
             DecoderDelayState::UpToDate => {
                 self.last_time_caught_up = Some(Instant::now());
                 false
             }
 
-            // Haven't caught up, but intentionally don't show a spinner.
+            // Haven't caught up, but intentionally don't show a loading indicator.
             DecoderDelayState::UpToDateToleratedEdgeOfLiveStream => false,
 
             DecoderDelayState::UpToDateWithinTolerance | DecoderDelayState::Behind => {
@@ -426,7 +426,7 @@ impl VideoPlayer {
         Ok(VideoFrameTexture {
             texture: self.video_texture.texture.clone(),
             decoder_delay_state: self.decoder_delay_state,
-            show_spinner,
+            show_loading_indicator,
             frame_info: self.video_texture.frame_info.clone(),
             source_pixel_format: self.video_texture.source_pixel_format,
         })
@@ -793,7 +793,7 @@ impl VideoPlayer {
         }
 
         // If we're streaming in live video, we're a bit more relaxed about what counts as "catching up" for newly incoming frames:
-        // * we don't want to show the spinner too eagerly and rather give the impression of a delayed stream
+        // * we don't want to show the loading indicator too eagerly and rather give the impression of a delayed stream
         // * some decoders need a certain amount of samples in the queue to produce a frame.
         //   See AsyncDecoder::min_num_samples_to_enqueue_ahead for more details about decoder peculiarities.
         if treat_video_as_live_stream(&self.config, video_description) {

@@ -47,7 +47,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
         let latest_at_query = view_query.latest_at_query();
 
@@ -56,11 +56,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         {
             let results =
                 data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
-            let results = VisualizerInstructionQueryResults {
-                instruction_id: instruction.id,
-                query_results: &results,
-                output: &mut output,
-            };
+            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 

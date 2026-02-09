@@ -48,7 +48,7 @@ impl LoginFlow {
                 }
                 None
             } else {
-                // Show spinner while waiting
+                // Show loading indicator while waiting
                 self.state.ui(ui);
                 self.done(ui, cmd)
             }

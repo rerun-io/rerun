@@ -259,7 +259,6 @@ impl ViewClass for SpatialView2D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {

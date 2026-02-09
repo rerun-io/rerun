@@ -28,10 +28,9 @@ pub fn prefetch_chunks_for_active_recording(
         re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
     };
     let start_time = TimeInt::new_temporal(current_time.saturating_sub(before_margin));
-
     let time_cursor = TimelinePoint::from((timeline, start_time));
 
-    if !recording.rrd_manifest_index.has_manifest() {
+    if !recording.can_fetch_chunks_from_redap() {
         return None;
     }
 

@@ -37,7 +37,7 @@ pub use utilities::{
 ///
 /// Represents a 2D rectangle, oriented somewhere in scene coordinates.
 #[derive(Clone, Copy, Debug)]
-pub struct LoadingSpinner {
+pub struct LoadingIndicator {
     pub center: glam::Vec3,
 
     /// The "radius" along one local axis.

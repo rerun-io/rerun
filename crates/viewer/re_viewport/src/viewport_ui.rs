@@ -399,6 +399,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let class = view_blueprint.class(self.ctx.view_class_registry());
         let view_state = self.view_states.get_mut_or_create(*view_id, class);
 
+        let has_missing_chunks = system_output.has_missing_chunks();
+
         let response = ui.scope(|ui| {
             class
                 .ui(self.ctx, ui, view_state, &query, system_output)
@@ -422,6 +424,16 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     );
             });
         });
+
+        if has_missing_chunks && self.ctx.recording().can_fetch_chunks_from_redap() {
+            let view_rect = response.response.rect;
+            re_ui::loading_indicator::paint_loading_indicator_inside(
+                ui,
+                egui::Align2::RIGHT_TOP,
+                view_rect,
+            );
+        }
+
         response.response.widget_info(|| {
             let mut info = egui::WidgetInfo::new(egui::WidgetType::Panel);
             info.label = Some(view_blueprint.display_name_or_default().as_ref().to_owned());

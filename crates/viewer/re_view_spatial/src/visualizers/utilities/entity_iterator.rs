@@ -77,11 +77,8 @@ where
         let results =
             data_result.query_archetype_with_history::<A>(ctx, query, visualizer_instruction);
 
-        let visualizer_instruction_result = VisualizerInstructionQueryResults {
-            instruction_id: visualizer_instruction.id,
-            query_results: &results,
-            output,
-        };
+        let visualizer_instruction_result =
+            VisualizerInstructionQueryResults::new(visualizer_instruction.id, &results, output);
 
         let mut query_ctx = ctx.query_context(data_result, &latest_at, visualizer_instruction.id);
         query_ctx.archetype_name = Some(A::name());

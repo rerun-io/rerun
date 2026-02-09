@@ -329,7 +329,7 @@ fn decoded_frame_ui<'a>(
         Ok(VideoFrameTexture {
             texture,
             decoder_delay_state,
-            show_spinner,
+            show_loading_indicator,
             frame_info,
             source_pixel_format,
         }) => {
@@ -387,14 +387,12 @@ fn decoded_frame_ui<'a>(
                 ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
             }
 
-            if show_spinner {
-                // Shrink slightly:
-                let smaller_rect = egui::Rect::from_center_size(
-                    response.rect.center(),
-                    0.75 * response.rect.size(),
+            if show_loading_indicator {
+                re_ui::loading_indicator::paint_loading_indicator_inside(
+                    ui,
+                    egui::Align2::CENTER_CENTER,
+                    response.rect,
                 );
-
-                egui::Spinner::new().paint_at(ui, smaller_rect);
             }
         }
 

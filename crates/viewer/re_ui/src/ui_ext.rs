@@ -58,6 +58,15 @@ pub trait UiExt {
         self.ui().layer_id().order == egui::Order::Tooltip
     }
 
+    /// Show an animated loading indicator.
+    ///
+    /// This will also cause the UI to re-render every frame,
+    /// so only use this when you actually have something loading and expect it to finish!
+    #[doc(alias = "spinner")]
+    fn loading_indicator(&mut self) {
+        crate::loading_indicator::loading_indicator_ui(self.ui_mut());
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
@@ -905,9 +914,9 @@ pub trait UiExt {
     fn loading_screen_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
         let ui = self.ui_mut();
         ui.set_min_height(ui.available_height());
-        ui.center("loading spinner", |ui| {
+        ui.center("loading indicator", |ui| {
             ui.vertical_centered(|ui| {
-                ui.spinner();
+                ui.loading_indicator();
                 add_contents(ui)
             })
             .inner

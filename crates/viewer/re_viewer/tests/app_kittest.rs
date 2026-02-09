@@ -26,7 +26,7 @@ async fn settings_screen() {
     harness.get_by_label("Menu").click();
     harness.run_ok();
     harness.get_by_label_contains("Settings…").click();
-    // Wait for the FFmpeg-check loading spinner to disappear.
+    // Wait for the FFmpeg-check loading indicator to disappear.
     viewer_test_utils::step_until(
         "Settings screen shows up with FFMpeg binary not found error",
         &mut harness,

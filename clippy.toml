@@ -65,6 +65,7 @@ disallowed-methods = [
   { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
   { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
+  { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
@@ -87,6 +88,7 @@ disallowed-names = []
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
+  { path = "egui::Spinner", reason = "Use re_ui::loading_indicator" },
   { path = "once_cell::sync::OnceCell", reason = "Use `std::sync::OnceLock` instead" },
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
   { path = "std::sync::Mutex", reason = "Use parking_lot instead" },

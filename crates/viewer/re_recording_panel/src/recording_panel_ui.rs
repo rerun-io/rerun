@@ -349,9 +349,11 @@ fn server_entries_ui(
 ) {
     match entries_data {
         ServerEntriesData::Loading => {
-            ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new("Loading entries…").italics(true),
-            );
+            ui.list_item_flat_noninteractive(list_item::CustomContent::new(|ui, _| {
+                // TODO(emilk): ideally we should show this loading indicator left of the server name,
+                // instead of the expand-chevron.
+                ui.loading_indicator();
+            }));
         }
 
         ServerEntriesData::Error(error_string) => {
@@ -673,7 +675,11 @@ fn receiver_ui(
 
     let label_content = re_ui::list_item::LabelContent::new(&name)
         .with_icon_fn(|ui, rect, _| {
-            ui.put(rect, egui::Spinner::new());
+            re_ui::loading_indicator::paint_loading_indicator_inside(
+                ui,
+                egui::Align2::CENTER_CENTER,
+                rect,
+            );
         })
         .with_buttons(|ui| {
             let resp = ui

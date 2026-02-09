@@ -38,6 +38,15 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
     pub component_indices_hash: Hash64,
 }
 
+impl BlueprintResolvedLatestAtResults<'_> {
+    /// Are there any chunks that need to be fetched from a remote store?
+    pub fn any_missing_chunks(&self) -> bool {
+        0 < self.overrides.missing_virtual.len()
+            + self.store_results.missing_virtual.len()
+            + self.view_defaults.missing_virtual.len()
+    }
+}
+
 /// Wrapper that contains the results of a range query with possible overrides.
 ///
 /// Although overrides are never temporal, when accessed via the [`crate::BlueprintResolvedResultsExt`] trait
@@ -57,6 +66,13 @@ pub struct BlueprintResolvedRangeResults<'a> {
 }
 
 impl BlueprintResolvedRangeResults<'_> {
+    /// Are there any chunks that need to be fetched from a remote store?
+    fn any_missing_chunks(&self) -> bool {
+        0 < self.overrides.missing_virtual.len()
+            + self.store_results.missing_virtual.len()
+            + self.view_defaults.missing_virtual.len()
+    }
+
     /// Merges bootstrapped data from a latest-at query into this range query result.
     ///
     /// Latest-at bootstrapping is used for optional/recommended components (like colors, radii,
@@ -177,8 +193,16 @@ pub enum BlueprintResolvedResults<'a> {
 impl BlueprintResolvedResults<'_> {
     pub fn timeline(&self) -> re_log_types::TimelineName {
         match self {
-            BlueprintResolvedResults::LatestAt(query, _) => query.timeline(),
-            BlueprintResolvedResults::Range(query, _) => *query.timeline(),
+            Self::LatestAt(query, _) => query.timeline(),
+            Self::Range(query, _) => *query.timeline(),
+        }
+    }
+
+    /// Are there any chunks that need to be fetched from a remote store?
+    pub fn any_missing_chunks(&self) -> bool {
+        match self {
+            Self::LatestAt(_, results) => results.any_missing_chunks(),
+            Self::Range(_, results) => results.any_missing_chunks(),
         }
     }
 

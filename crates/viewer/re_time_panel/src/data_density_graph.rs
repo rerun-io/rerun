@@ -434,7 +434,7 @@ pub fn paint_loaded_indicator_bar(
     let Some(timeline) = time_ctrl.timeline() else {
         return;
     };
-    if !db.rrd_manifest_index().has_manifest() {
+    if !db.can_fetch_chunks_from_redap() {
         return;
     }
 
