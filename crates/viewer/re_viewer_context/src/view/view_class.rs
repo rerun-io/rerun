@@ -61,6 +61,13 @@ pub trait ViewClass: Send + Sync {
     where
         Self: Sized;
 
+    /// Ordering hint for view class recommendations. Lower values are recommended *more*.
+    ///
+    /// If tied, the display name is used as a tiebreaker in lexicographical order.
+    fn recommendation_order(&self) -> i32 {
+        0
+    }
+
     /// User-facing name of this view class.
     ///
     /// Used for UI display.

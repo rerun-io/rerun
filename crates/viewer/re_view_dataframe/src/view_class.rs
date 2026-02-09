@@ -43,6 +43,11 @@ impl ViewClass for DataframeView {
         "Dataframe".into()
     }
 
+    fn recommendation_order(&self) -> i32 {
+        // Put the dataframe view last in recommendations since it is a bit of a catch-all view!
+        i32::MAX
+    }
+
     fn display_name(&self) -> &'static str {
         "Dataframe"
     }

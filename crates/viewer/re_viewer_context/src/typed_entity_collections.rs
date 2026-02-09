@@ -77,28 +77,6 @@ pub enum VisualizableReason {
 }
 
 impl VisualizableReason {
-    /// Returns true if this reason includes a match with native semantics.
-    ///
-    /// The component identifier of the match may not be equal to the one the visualizer's associated archetype expects.
-    /// To ensure that, use [`Self::full_native_match`].
-    /// This distinction is only ever relevant if we want to distinguish with the component name as well.
-    ///
-    /// Example:
-    /// `SeriesLines` visualizer expects a component named "Scalars:scalars" with component (semantic) type "rerun.components.Scalars".
-    /// For an incoming entity with a component named "OtherScalars:scalars" with component type "rerun.components.Scalars",
-    /// [`Self::any_match_with_native_semantics`] would return true, but [`Self::full_native_match`] would return false.
-    //
-    // TODO(andreas): We'll likely move into a direction where semantic match will always be sufficient and emits a mapping to the
-    // component if needed (not needed == full_native_match) which should be preferred when possible.
-    pub fn any_match_with_native_semantics(&self) -> bool {
-        match self {
-            Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
-            Self::DatatypeMatchAny { matches } => matches
-                .values()
-                .any(|info| matches!(info, DatatypeMatch::NativeSemantics { .. })),
-        }
-    }
-
     /// Returns true if this match reason is a perfect match for the given component identifier.
     pub fn full_native_match(&self, component_identifier: ComponentIdentifier) -> bool {
         match self {
