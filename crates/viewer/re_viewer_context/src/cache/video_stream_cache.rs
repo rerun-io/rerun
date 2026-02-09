@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui::NumExt as _;
 use parking_lot::RwLock;
+use re_arrow_util::DisplayDataType;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, Timeline, TimelineName};
 use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent};
@@ -93,8 +94,8 @@ pub enum VideoStreamProcessingError {
     #[error("No video samples.")]
     NoVideoSamplesFound,
 
-    #[error("Unexpected arrow type for video sample {0:?}")]
-    InvalidVideoSampleType(arrow::datatypes::DataType),
+    #[error("Unexpected arrow type for video sample {0}")]
+    InvalidVideoSampleType(DisplayDataType),
 
     #[error("No codec specified.")]
     MissingCodec,
@@ -887,7 +888,7 @@ fn read_samples_from_known_chunk(
     };
 
     let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
-        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone().into()),
     )?;
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
@@ -1142,7 +1143,7 @@ fn read_samples_from_new_chunk(
     }
 
     let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
-        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone().into()),
     )?;
 
     let lengths = offsets.lengths().collect::<Vec<_>>();

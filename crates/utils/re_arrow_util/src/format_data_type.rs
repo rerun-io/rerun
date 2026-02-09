@@ -1,14 +1,38 @@
 //! `arrow` has `ToString` implemented, but it is way too verbose.
+//!
+//! TODO(emilk): all this can go away once we update to Arrow 57.
 
 use std::fmt::Formatter;
 
 use arrow::datatypes::{DataType, Field, IntervalUnit, TimeUnit};
 
-/// Compact format of an arrow data type.
+/// A wrapper around `DataType` that implements `Display` with a nice format.
 ///
-/// TODO(emilk): upstream this to `arrow` instead.
+/// For use in error messages etc
+#[derive(Clone)]
+pub struct DisplayDataType(pub DataType);
+
+impl std::fmt::Display for DisplayDataType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        DisplayDataTypeRef(&self.0).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for DisplayDataType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
+impl From<DataType> for DisplayDataType {
+    fn from(data_type: DataType) -> Self {
+        Self(data_type)
+    }
+}
+
+/// Compact format of an arrow data type.
 pub fn format_data_type(data_type: &DataType) -> String {
-    DisplayDatatype(data_type).to_string()
+    DisplayDataTypeRef(data_type).to_string()
 }
 
 /// Format the datatype of a field (column) with optional nullability
@@ -52,9 +76,9 @@ impl std::fmt::Display for DisplayIntervalUnit {
 
 // arrow has `ToString` implemented, but it is way too verbose.
 #[repr(transparent)]
-struct DisplayDatatype<'a>(&'a DataType);
+struct DisplayDataTypeRef<'a>(&'a DataType);
 
-impl std::fmt::Display for DisplayDatatype<'_> {
+impl std::fmt::Display for DisplayDataTypeRef<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match &self.0 {
             DataType::Null => "null",
@@ -140,7 +164,7 @@ impl std::fmt::Display for DisplayDatatype<'_> {
 }
 
 fn format_inner_field(field: &Field) -> String {
-    let datatype_display = DisplayDatatype(field.data_type());
+    let datatype_display = DisplayDataTypeRef(field.data_type());
     if field.is_nullable() {
         format!("nullable {datatype_display}")
     } else {

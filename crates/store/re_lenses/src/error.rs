@@ -1,3 +1,4 @@
+use re_arrow_util::DisplayDataType;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::EntityPathFilter;
 
@@ -46,7 +47,7 @@ pub enum LensError {
     )]
     InvalidTimeColumn {
         timeline_name: TimelineName,
-        actual_type: arrow::datatypes::DataType,
+        actual_type: DisplayDataType,
     },
 
     #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]

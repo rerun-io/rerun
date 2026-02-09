@@ -2,6 +2,8 @@ use std::any;
 use std::fmt::Display;
 use std::ops::Deref;
 
+use re_arrow_util::DisplayDataType;
+
 // ---
 
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
@@ -143,7 +145,7 @@ pub enum DeserializationError {
 
     #[error("Expected field {field_name:?} to be present in {datatype}")]
     MissingStructField {
-        datatype: arrow::datatypes::DataType,
+        datatype: DisplayDataType,
         field_name: String,
         backtrace: Box<_Backtrace>,
     },
@@ -161,7 +163,7 @@ pub enum DeserializationError {
 
     #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype}")]
     MissingUnionArm {
-        datatype: arrow::datatypes::DataType,
+        datatype: DisplayDataType,
         arm_name: String,
         arm_index: usize,
         backtrace: Box<_Backtrace>,
@@ -169,8 +171,8 @@ pub enum DeserializationError {
 
     #[error("Expected {expected} but found {got} instead")]
     DatatypeMismatch {
-        expected: arrow::datatypes::DataType,
-        got: arrow::datatypes::DataType,
+        expected: DisplayDataType,
+        got: DisplayDataType,
         backtrace: Box<_Backtrace>,
     },
 
@@ -237,7 +239,7 @@ impl DeserializationError {
         field_name: impl AsRef<str>,
     ) -> Self {
         Self::MissingStructField {
-            datatype: datatype.into(),
+            datatype: datatype.into().into(),
             field_name: field_name.as_ref().into(),
             backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
@@ -266,7 +268,7 @@ impl DeserializationError {
         arm_index: usize,
     ) -> Self {
         Self::MissingUnionArm {
-            datatype: datatype.into(),
+            datatype: datatype.into().into(),
             arm_name: arm_name.as_ref().into(),
             arm_index,
             backtrace: Box::new(std::backtrace::Backtrace::capture()),
@@ -279,8 +281,8 @@ impl DeserializationError {
         got: impl Into<arrow::datatypes::DataType>,
     ) -> Self {
         Self::DatatypeMismatch {
-            expected: expected.into(),
-            got: got.into(),
+            expected: expected.into().into(),
+            got: got.into().into(),
             backtrace: Box::new(std::backtrace::Backtrace::capture()),
         }
     }

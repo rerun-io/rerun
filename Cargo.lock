@@ -9027,6 +9027,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "re_arrow_combinators",
+ "re_arrow_util",
  "re_chunk",
  "re_log_types",
  "re_sdk_types",
