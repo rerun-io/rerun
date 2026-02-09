@@ -1,7 +1,7 @@
 use ahash::HashSet;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::emath::GuiRounding as _;
-use egui::{Button, Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
+use egui::{Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
 pub const CELL_SEPARATOR_STROKE_OFFSET: f32 = 0.5;
@@ -281,13 +281,10 @@ impl TableConfig {
     }
 
     pub fn button_ui(&mut self, ui: &mut egui::Ui) {
-        MenuButton::from_button(Button::image_and_text(
-            icons::SETTINGS.as_image(),
-            "Columns",
-        ))
-        .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
-        .ui(ui, |ui| {
-            self.ui(ui);
-        });
+        MenuButton::from_button(icons::SETTINGS.as_button_with_label(ui.tokens(), "Columns"))
+            .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
+            .ui(ui, |ui| {
+                self.ui(ui);
+            });
     }
 }
