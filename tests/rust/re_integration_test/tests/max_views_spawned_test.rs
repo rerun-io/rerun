@@ -74,12 +74,10 @@ pub async fn test_time_series_max_views_spawned() {
     // We logged 12 entities, but the default max is 8, so we should have at most 8 views
     assert_eq!(
         time_series_view_descriptions.len(),
-        8,
-        "Expected exactly 8 TimeSeriesViews to be spawned (respecting DEFAULT_MAX_VIEWS_SPAWNED)"
+        6,
+        "Expected exactly 6 TimeSeriesViews to be spawned (respecting DEFAULT_MAX_VIEWS_SPAWNED)"
     );
     insta::assert_snapshot!(time_series_view_descriptions.join("\n"), @r#"
-    origin: /custom_6, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")
-    origin: /custom_7, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")
     origin: /native_0, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")
     origin: /native_1, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")
     origin: /native_2, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")

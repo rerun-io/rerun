@@ -49,6 +49,13 @@ impl DatatypeMatch {
             | Self::NativeSemantics { component_type, .. } => component_type,
         }
     }
+
+    pub fn arrow_datatype(&self) -> &arrow::datatypes::DataType {
+        match self {
+            Self::PhysicalDatatypeOnly { arrow_datatype, .. }
+            | Self::NativeSemantics { arrow_datatype, .. } => arrow_datatype,
+        }
+    }
 }
 
 /// Describes why a given entity was marked as visualizable.

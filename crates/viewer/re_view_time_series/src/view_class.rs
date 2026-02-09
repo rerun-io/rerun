@@ -1,10 +1,11 @@
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
-use itertools::Itertools as _;
+use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
+use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
@@ -13,7 +14,7 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
+use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
@@ -249,51 +250,23 @@ impl ViewClass for TimeSeriesView {
             return ViewSpawnHeuristics::empty();
         };
 
-        // Collect entities with their match priority for sorting.
-        // We want things to be sorted for a) determinism and b) preferring important entities over less important ones in case we hit the max number
-        let mut entities_with_priority: Vec<(&EntityPath, ScalarMatchPriorityKey)> =
+        let entities_with_exact_match =
             visualizable_entities
                 .iter()
                 .filter_map(|(entity_path, reason)| {
                     if !include_entity(entity_path) {
                         return None;
                     }
+                    reason
+                        .full_native_match(Scalars::descriptor_scalars().component)
+                        .then_some(entity_path)
+                });
 
-                    if let re_viewer_context::VisualizableReason::DatatypeMatchAny { matches } =
-                        reason
-                    {
-                        // Calculate the best match priority for this entity
-                        let priority = matches
-                            .iter()
-                            .filter(|(_, match_info)| {
-                                // Skip Rerun types without native semantics (like Color, LinearSpeed etc.) so we
-                                // don't spawn views for those.
-                                match match_info {
-                                    DatatypeMatch::NativeSemantics { .. } => true,
-                                    DatatypeMatch::PhysicalDatatypeOnly {
-                                        component_type, ..
-                                    } => component_type.is_none_or(|t| !t.is_rerun_type()),
-                                }
-                            })
-                            .map(|(source_component, match_info)| {
-                                scalar_match_priority(*source_component, match_info)
-                            })
-                            .min()?;
-
-                        Some((entity_path, priority))
-                    } else {
-                        // No need to check other matches since that's the only type or reason we're using.
-                        None
-                    }
-                })
-                .collect();
-
-        // Sort by priority: best matches first, entity path as tie breaker.
-        entities_with_priority.sort_by_key(|(entity_path, priority)| (*priority, *entity_path));
-
-        ViewSpawnHeuristics::new_with_order_preserved(entities_with_priority.into_iter().map(
-            |(entity_path, _priority)| RecommendedView::new_single_entity(entity_path.clone()),
-        ))
+        ViewSpawnHeuristics::new_with_order_preserved(
+            entities_with_exact_match
+                .into_iter()
+                .map(|entity_path| RecommendedView::new_single_entity(entity_path.clone())),
+        )
     }
 
     /// Auto picked visualizers for an entity if there was not explicit selection.
@@ -791,6 +764,7 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
         DataType::Float64 => 0,
         DataType::Float32 => 1,
         DataType::Float16 => 2,
+        // Note: We can visualize the following datatype but don't recommend them.
         DataType::Int64 => 3,
         DataType::Int32 => 5,
         DataType::Int16 => 7,
@@ -804,70 +778,9 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
     }
 }
 
-type ScalarMatchPriorityKey = (u32, bool, u32, ComponentIdentifier);
+const RECOMMENDED_DATATYPES: &[DataType] =
+    &[DataType::Float64, DataType::Float32, DataType::Float16];
 
-/// Calculate a priority key for sorting datatype matches for scalar.
-/// Lower values mean that a mapping is preferred.
-fn scalar_match_priority(
-    source_component: ComponentIdentifier,
-    match_info: &DatatypeMatch,
-) -> ScalarMatchPriorityKey {
-    // Sorting priorities:
-    // 1. Match kind: Full native (identity) > Native semantics > Physical datatype only
-    // 2. Component type: unknown/custom > known Rerun type
-    //    - Rationale: When expecting Scalars, prefer raw numeric data over components with
-    //      different known semantics (e.g., Color, LinearSpeed)
-    // 3. Datatype preference: f64 > f32 > int64 > int32 > ... (see `scalar_datatype_priority`)
-    //    - For nested types, use the best selector's datatype
-    // 4. Alphabetical order as final tiebreaker
-
-    let target_component = Scalars::descriptor_scalars().component;
-    let is_rerun_native_type = match_info
-        .component_type()
-        .is_some_and(|t| t.is_rerun_type());
-
-    let (primary_match_order, best_datatype) = match match_info {
-        DatatypeMatch::NativeSemantics { arrow_datatype, .. } => {
-            let order = u32::from(source_component != target_component);
-            (order, arrow_datatype)
-        }
-        DatatypeMatch::PhysicalDatatypeOnly {
-            arrow_datatype,
-            selectors,
-            ..
-        } => {
-            let order = if source_component == target_component {
-                0
-            } else {
-                2
-            };
-
-            let best_datatype = if selectors.is_empty() {
-                arrow_datatype
-            } else {
-                selectors
-                    .iter()
-                    .map(|(_, dt)| dt)
-                    .min_by_key(|dt| scalar_datatype_priority(dt))
-                    .unwrap_or(arrow_datatype)
-            };
-
-            (order, best_datatype)
-        }
-    };
-
-    let datatype_order = scalar_datatype_priority(best_datatype);
-
-    (
-        primary_match_order,
-        is_rerun_native_type, // custom types (false) sort before Rerun types (true)
-        datatype_order,
-        source_component,
-    )
-}
-
-// TODO(RR-3565): We should unify this code with `scalar_match_priority`. One is used for `spawn_heuristics`,
-// the other is used for `recommended_visualizers_for_entity`.
 fn scalar_mapping_selector(
     reason_opt: Option<&VisualizableReason>,
 ) -> Option<VisualizerComponentSource> {
@@ -899,14 +812,14 @@ fn scalar_mapping_selector(
 
         match match_info {
             DatatypeMatch::NativeSemantics { arrow_datatype, .. } => {
-                itertools::Either::Left(std::iter::once((
+                Either::Left(Either::Left(std::iter::once((
                     primary_match_order,
                     is_rerun_native_type,
                     scalar_datatype_priority(arrow_datatype),
                     *source_component,
                     0usize,
                     String::new(),
-                )))
+                ))))
             }
             DatatypeMatch::PhysicalDatatypeOnly {
                 arrow_datatype,
@@ -914,26 +827,30 @@ fn scalar_mapping_selector(
                 ..
             } => {
                 if selectors.is_empty() {
-                    itertools::Either::Left(std::iter::once((
-                        primary_match_order,
-                        is_rerun_native_type,
-                        scalar_datatype_priority(arrow_datatype),
-                        *source_component,
-                        0usize,
-                        String::new(),
-                    )))
+                    if RECOMMENDED_DATATYPES.contains(match_info.arrow_datatype()) {
+                        Either::Left(Either::Left(std::iter::once((
+                            primary_match_order,
+                            is_rerun_native_type,
+                            scalar_datatype_priority(arrow_datatype),
+                            *source_component,
+                            0usize,
+                            String::new(),
+                        ))))
+                    } else {
+                        Either::Left(Either::Right(std::iter::empty()))
+                    }
                 } else {
                     // Nested field access: selector_index preserves field definition order.
-                    itertools::Either::Right(selectors.iter().enumerate().map(
+                    Either::Right(selectors.iter().enumerate().filter_map(
                         move |(selector_index, (selector, datatype))| {
-                            (
+                            RECOMMENDED_DATATYPES.contains(datatype).then_some((
                                 primary_match_order,
                                 is_rerun_native_type,
                                 scalar_datatype_priority(datatype),
                                 *source_component,
                                 selector_index,
                                 selector.to_string(),
-                            )
+                            ))
                         },
                     ))
                 }

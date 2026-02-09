@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use re_log_types::external::arrow::array::{
-    Array as _, Float64Array, ListArray, StringArray, StructArray,
+    Array as _, Float64Array, Int32Array, ListArray, StringArray, StructArray,
 };
 use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
@@ -442,11 +442,15 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
         // Struct(
         //   single Float64,
         //   multiple List(Float64),
+        //   step Int32,
         //   properties Struct(
         //     color List(UInt32),
         //     name Utf8))
         // )
         // ```
+
+        // Int32 step function to test casting - transitions halfway through (0 -> 1)
+        let step_value = i32::from(i > MAX_TIME / 2);
 
         let name_array =
             Arc::new(StringArray::from(vec!["my-sigmoid"])) as Arc<dyn arrow::array::Array>;
@@ -480,6 +484,10 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
                 Arc::new(list_array) as Arc<dyn arrow::array::Array>,
             ),
             (
+                Arc::new(Field::new("step", DataType::Int32, false)),
+                Arc::new(Int32Array::from(vec![step_value])) as Arc<dyn arrow::array::Array>,
+            ),
+            (
                 Arc::new(Field::new(
                     "properties",
                     properties_struct.data_type().clone(),
@@ -493,7 +501,7 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
             builder.with_archetype_auto_row(
                 timepoint,
                 &DynamicArchetype::new("custom")
-                    .with_component_from_data("sigmoid_data", Arc::new(struct_array)),
+                    .with_component_from_data("data", Arc::new(struct_array)),
             )
         });
     }
@@ -507,39 +515,49 @@ fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) 
 
         // Multiple visualizers for the `plots/sigmoids` entity:
         // * Points (for .single field):
-        //    * scalar - map to sigmoid_data.single
+        //    * scalar - map to data.single
         //    * marker - use Circle markers
-        //    * color - map to sigmoid_data.properties.color[]
-        //    * name - map to sigmoid_data.properties.name
+        //    * color - map to data.properties.color[]
+        //    * name - map to data.properties.name
         // * Lines (for .multiple[] field elements):
-        //    * scalar - map to sigmoid_data.multiple[]
+        //    * scalar - map to data.multiple[]
         //    * no explicit styling (auto)
+        // * Lines (for .step field):
+        //    * scalar - map to data.step (Int32, tests casting)
+        //    * explicit red color, step function transitions halfway
         let single_mapping = VisualizerComponentMapping {
             target: Scalars::descriptor_scalars().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
-            source_component: Some("custom:sigmoid_data".into()),
+            source_component: Some("custom:data".into()),
             selector: Some(".single".into()),
         };
 
         let color_mapping = VisualizerComponentMapping {
             target: SeriesPoints::descriptor_colors().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
-            source_component: Some("custom:sigmoid_data".into()),
+            source_component: Some("custom:data".into()),
             selector: Some(".properties.color[]".into()),
         };
 
         let name_mapping = VisualizerComponentMapping {
             target: SeriesPoints::descriptor_names().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
-            source_component: Some("custom:sigmoid_data".into()),
+            source_component: Some("custom:data".into()),
             selector: Some(".properties.name".into()),
         };
 
         let multiple_mapping = VisualizerComponentMapping {
             target: Scalars::descriptor_scalars().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
-            source_component: Some("custom:sigmoid_data".into()),
+            source_component: Some("custom:data".into()),
             selector: Some(".multiple[]".into()),
+        };
+
+        let step_mapping = VisualizerComponentMapping {
+            target: Scalars::descriptor_scalars().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:data".into()),
+            selector: Some(".step".into()),
         };
 
         let visualizers = vec![
@@ -554,6 +572,12 @@ fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) 
             SeriesLines::new().visualizer().with_mappings([
                 blueprint::components::VisualizerComponentMapping(multiple_mapping),
             ]),
+            SeriesLines::new()
+                .with_colors([components::Color::from_rgb(255, 0, 0)])
+                .visualizer()
+                .with_mappings([blueprint::components::VisualizerComponentMapping(
+                    step_mapping,
+                )]),
         ];
 
         ctx.save_visualizers(&EntityPath::from("plots/sigmoids"), view.id, visualizers);
