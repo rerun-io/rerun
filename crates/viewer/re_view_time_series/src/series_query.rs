@@ -12,7 +12,7 @@ use re_sdk_types::{
     Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
 };
 use re_view::clamped_or_nothing;
-use re_viewer_context::{QueryContext, typed_fallback_for};
+use re_viewer_context::QueryContext;
 
 use crate::{PlotPoint, PlotSeriesKind};
 
@@ -237,6 +237,22 @@ pub fn collect_colors(
     }
 }
 
+/// Expands names to match `num_series`, adding indices for additional series.
+/// For selectors like `data[]`, strips the `[]` suffix before adding indices.
+fn expand_series_names(names: &[String], num_series: usize) -> Vec<String> {
+    let name_count = names.len();
+    (0..num_series)
+        .zip(clamped_or_nothing(names, num_series))
+        .map(|(i, name)| {
+            if i < name_count {
+                name.clone()
+            } else {
+                format!("{name}[{i}]")
+            }
+        })
+        .collect()
+}
+
 /// Collects series names for the series into pre-allocated plot points.
 pub fn collect_series_name(
     query_ctx: &QueryContext<'_>,
@@ -248,27 +264,48 @@ pub fn collect_series_name(
 
     let name_iter = query_results.iter_optional(name_descriptor.component);
     let all_name_chunks = name_iter.chunks().iter().collect_vec();
-    let mut series_names: Vec<String> = all_name_chunks
+
+    if let Some(slice) = all_name_chunks
         .iter()
         .find(|chunk| !chunk.chunk.is_empty())
         .and_then(|chunk| chunk.iter_slices::<String>().next())
-        .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
-        .unwrap_or_default();
+        .filter(|slice| !slice.is_empty())
+    {
+        re_tracing::profile_scope!("logged names");
+        let names: Vec<String> = slice.iter().map(|s| s.to_string()).collect();
+        expand_series_names(&names, num_series)
+    } else {
+        re_tracing::profile_scope!("fallback names");
 
-    if series_names.len() < num_series {
-        let fallback_name: String =
-            typed_fallback_for::<components::Name>(query_ctx, name_descriptor.component)
-                .to_string();
-        if num_series == 1 {
-            series_names.push(fallback_name);
+        let fallback_array = query_ctx
+            .viewer_ctx()
+            .component_fallback_registry
+            .fallback_for(
+                name_descriptor.component,
+                name_descriptor.component_type,
+                query_ctx,
+            );
+
+        if let Some(string_array) = fallback_array.as_any().downcast_ref::<array::StringArray>() {
+            let fallback_names: Vec<_> = string_array
+                .iter()
+                .flatten()
+                .map(|s| s.to_owned())
+                .collect();
+
+            if fallback_names.is_empty() {
+                re_log::error_once!("Failed to retrieve fallback names");
+                vec![]
+            } else {
+                // Due to the frame delay, we might end up with too few fallbacks here too, so we always
+                // expand the array of names.
+                expand_series_names(&fallback_names, num_series)
+            }
         } else {
-            // Repeating a name never makes sense, so we fill up the remaining names with made up ones instead.
-            series_names
-                .extend((series_names.len()..num_series).map(|i| format!("{fallback_name}/{i}")));
+            re_log::error_once!("Failed to cast builtin name fallback to StringArray");
+            vec![]
         }
     }
-
-    series_names
 }
 
 /// Collects `radius_ui` for the series into pre-allocated plot points.

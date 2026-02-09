@@ -14,25 +14,53 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
         SeriesLines::descriptor_names().component,
         SeriesPoints::descriptor_names().component,
     ] {
-        system_registry.register_fallback_provider::<re_sdk_types::components::Name>(
+        system_registry.register_array_fallback_provider::<re_sdk_types::components::Name, _>(
             component,
             |ctx| {
-                let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
-
-                state
-                    .ok()
-                    .and_then(|state| {
-                        state
-                            .default_names_for_entities
-                            .get(ctx.target_entity_path)
-                            .map(|name| name.clone().into())
-                    })
-                    .or_else(|| {
+                // If no instruction_id, fall back to entity name (e.g., for UI queries)
+                let (Ok(state), Some(instruction_id)) = (
+                    ctx.view_state().downcast_ref::<TimeSeriesViewState>(),
+                    ctx.instruction_id,
+                ) else {
+                    return vec![
                         ctx.target_entity_path
                             .last()
                             .map(|part| part.ui_string().into())
-                    })
-                    .unwrap_or_default()
+                            .unwrap_or_default(),
+                    ];
+                };
+
+                let Some(fallback_name) = state.default_series_name_formats.get(&instruction_id)
+                else {
+                    return vec![
+                        ctx.target_entity_path
+                            .last()
+                            .map(|part| part.ui_string().into())
+                            .unwrap_or_default(),
+                    ];
+                };
+
+                let num_series = ctx
+                    .instruction_id
+                    .and_then(|id| state.num_time_series_last_frame_per_instruction.get(&id))
+                    .map_or(1, |set| set.len().max(1));
+
+                let mut series_names = Vec::new();
+
+                if num_series == 1 {
+                    series_names.push(fallback_name.clone().into());
+                } else {
+                    // Repeating a name never makes sense, so we fill up the remaining names with made up ones instead.
+                    // Selectors that return a `ListArray` end with `[]`. In those cases we inject the series number.
+                    let fallback_name = fallback_name.strip_suffix("[]").unwrap_or(fallback_name);
+
+                    series_names.extend(
+                        (series_names.len()..num_series)
+                            .map(|i| format!("{fallback_name}[{i}]").into()),
+                    );
+                }
+
+                series_names
             },
         );
     }
@@ -51,10 +79,9 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                     )];
                 };
 
-                // TODO(andreas): This isn't quite right, we want a different fallback for every visualizer id.
-                let num_series = state
-                    .num_time_series_last_frame_per_entity
-                    .get(ctx.target_entity_path)
+                let num_series = ctx
+                    .instruction_id
+                    .and_then(|id| state.num_time_series_last_frame_per_instruction.get(&id))
                     .map_or(1, |set| set.len().max(1));
 
                 (0..num_series)
@@ -90,13 +117,16 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         return itertools::Either::Left(std::iter::once(true.into()));
                     };
 
-                    // It's important to us to have the right count here at least for the simple case
-                    // of a single visualizer on the entity, so that we don't show too many booleans
-                    // (it does in fact not get the numbers right if we have multiple visualizers on the same entity)
-                    let num_series = time_series_state
-                        .num_time_series_last_frame_per_entity
-                        .get(ctx.target_entity_path)
+                    // Get the number of series for this specific instruction
+                    let num_series = ctx
+                        .instruction_id
+                        .and_then(|id| {
+                            time_series_state
+                                .num_time_series_last_frame_per_instruction
+                                .get(&id)
+                        })
                         .map_or(0, |set| set.len());
+
                     let num_shown = num_series.min(MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT);
                     let num_hidden = num_series.saturating_sub(num_shown);
 
@@ -137,7 +167,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             // Don't show the plot legend if there's too many time series.
             // TODO(RR-2933): Once we can scroll it though it would be nice to show more!
             let total_num_series = time_series_state
-                .num_time_series_last_frame_per_entity
+                .num_time_series_last_frame_per_instruction
                 .values()
                 .map(|set| set.len())
                 .sum::<usize>();

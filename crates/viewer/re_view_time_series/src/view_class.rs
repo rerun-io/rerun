@@ -34,6 +34,7 @@ use smallvec::SmallVec;
 
 use crate::PlotSeriesKind;
 use crate::line_visualizer_system::SeriesLinesSystem;
+use crate::naming::{SeriesInfo, SeriesNamesContext};
 use crate::point_visualizer_system::SeriesPointsSystem;
 
 // ---
@@ -52,18 +53,15 @@ pub struct TimeSeriesViewState {
     /// to work properly.
     pub(crate) time_offset: i64,
 
-    /// Default names for entities, used when no label is provided.
-    ///
-    /// This is here because it must be computed with full knowledge of all entities in the plot
-    /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
-    /// forwarded to the default providers.
-    pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
+    /// Cached disambiguated names for visualizers, used when no label is provided.
+    pub(crate) default_series_name_formats: HashMap<VisualizerInstructionId, String>,
 
-    /// The number of time series rendered emitted by visualizers last frame.
+    /// The number of time series rendered by each visualizer instruction last frame.
     ///
     /// We track egui-ids here because the number of "series" passed to egui can actually be much higher
     /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
-    pub(crate) num_time_series_last_frame_per_entity: HashMap<EntityPath, IntSet<egui::Id>>,
+    pub(crate) num_time_series_last_frame_per_instruction:
+        HashMap<VisualizerInstructionId, IntSet<egui::Id>>,
 }
 
 impl Default for TimeSeriesViewState {
@@ -72,8 +70,8 @@ impl Default for TimeSeriesViewState {
             scalar_range: [0.0, 0.0].into(),
             max_time_view_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
-            default_names_for_entities: Default::default(),
-            num_time_series_last_frame_per_entity: Default::default(),
+            default_series_name_formats: Default::default(),
+            num_time_series_last_frame_per_instruction: Default::default(),
         }
     }
 }
@@ -345,14 +343,55 @@ impl ViewClass for TimeSeriesView {
             .chain(point_series.all_series.iter())
             .collect();
 
-        state.num_time_series_last_frame_per_entity.clear();
-        for series in &all_plot_series {
-            state
-                .num_time_series_last_frame_per_entity
-                .entry(series.instance_path.entity_path.clone())
-                .or_default()
-                .insert(series.id());
+        state.num_time_series_last_frame_per_instruction.clear();
+
+        let view_query_result = ctx.lookup_query_result(query.view_id);
+        let scalar_component = Scalars::descriptor_scalars().component;
+
+        let mut series_names = SeriesNamesContext::default();
+
+        {
+            re_tracing::profile_scope!("iterate all_plot_series");
+
+            for series in &all_plot_series {
+                let instruction_id = series.visualizer_instruction_id;
+
+                if let Some(data_result) = view_query_result
+                    .tree
+                    .lookup_result_by_visualizer_instruction(instruction_id)
+                    && let Some(instruction) = data_result
+                        .visualizer_instructions
+                        .iter()
+                        .find(|instr| instr.id == instruction_id)
+                {
+                    let (component, selector) = instruction
+                        .component_mappings
+                        .get(&scalar_component)
+                        .and_then(|mapping| match mapping {
+                            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                                source_component,
+                                selector,
+                            } => Some((*source_component, selector.clone())),
+                            _ => None,
+                        })
+                        .unwrap_or((scalar_component, String::new()));
+
+                    series_names.insert(
+                        instruction_id,
+                        SeriesInfo::new(data_result.entity_path.clone(), component, &selector),
+                    );
+                }
+
+                state
+                    .num_time_series_last_frame_per_instruction
+                    .entry(instruction_id)
+                    .or_default()
+                    .insert(series.id());
+            }
         }
+
+        // Compute disambiguated names after all series are collected
+        state.default_series_name_formats = series_names.dissambiguated_names();
 
         // Note that a several plot items can point to the same entity path and in some cases even to the same instance path!
         // (e.g. when plotting both lines & points with the same entity/instance path)
@@ -637,15 +676,6 @@ impl ViewClass for TimeSeriesView {
                 // Let the user pick x and y ranges from the blueprint:
                 plot_ui.set_plot_bounds_y(y_range);
                 plot_ui.set_plot_bounds_x(x_range);
-
-                // Needed by for the visualizers' fallback provider.
-                state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
-                    all_plot_series
-                        .iter()
-                        .map(|series| series.instance_path.entity_path.clone())
-                        // `short_names_with_disambiguation` expects no duplicate entities
-                        .collect::<nohash_hasher::IntSet<_>>(),
-                );
 
                 add_series_to_plot(
                     plot_ui,
@@ -994,10 +1024,6 @@ fn update_series_visibility_overrides_from_plot(
 
         let visible_new = !hidden_items.contains(&series.id());
 
-        // TODO(RR-3551): Figure out interaction between selectors and series visibility.
-        // When selectors are used to access nested fields, we need to determine how visibility
-        // should work - should each selector create a separately hideable series, or should they
-        // share visibility state? How should instance indexing work with selectors?
         let instance = series.instance_path.instance;
         let index = instance.specific_index().map_or(0, |i| i.get() as usize);
         if entity_visibility_flags.len() <= index {

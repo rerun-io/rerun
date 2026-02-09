@@ -7,6 +7,7 @@
 mod aggregation;
 mod fallbacks;
 mod line_visualizer_system;
+mod naming;
 mod point_visualizer_system;
 mod series_query;
 mod util;
