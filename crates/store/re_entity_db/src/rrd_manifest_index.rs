@@ -8,8 +8,10 @@ use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_encoding::RrdManifest;
-use re_log_types::{AbsoluteTimeRange, StoreKind};
+use re_log_types::{AbsoluteTimeRange, StoreKind, TimelinePoint};
+use re_mutex::Mutex;
 
+use crate::chunk_requests::ChunkBatchRequest;
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
 
 mod chunk_prioritizer;
@@ -447,6 +449,7 @@ impl RrdManifestIndex {
         &mut self,
         store: &ChunkStore,
         options: &ChunkPrefetchOptions,
+        time_cursor: TimelinePoint,
         load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
     ) -> Result<(), PrefetchError> {
         re_tracing::profile_function!();
@@ -454,14 +457,32 @@ impl RrdManifestIndex {
         let used_and_missing = store.take_tracked_chunk_ids(); // Note: this mutates the store (kind of).
 
         if let Some(manifest) = &self.manifest {
-            self.chunk_prioritizer.prioritize_and_prefetch(
+            let to_load = self.chunk_prioritizer.prioritize_and_prefetch(
                 store,
                 used_and_missing,
                 options,
-                load_chunks,
+                time_cursor,
                 manifest,
-                &mut self.root_chunks,
-            )
+                &self.root_chunks,
+            )?;
+
+            // Start loading all batches we prepared:
+            for (rb, batch_info) in to_load {
+                for root_chunk_id in &batch_info.root_chunk_ids {
+                    if let Some(root_chunk) = self.root_chunks.get_mut(root_chunk_id) {
+                        root_chunk.state = LoadState::InTransit;
+                    }
+                }
+
+                let promise = load_chunks(rb);
+                let batch = ChunkBatchRequest {
+                    promise: Mutex::new(Some(promise)),
+                    info: batch_info.into(),
+                };
+                self.chunk_prioritizer.chunk_requests_mut().add(batch);
+            }
+
+            Ok(())
         } else {
             Err(PrefetchError::NoManifest)
         }

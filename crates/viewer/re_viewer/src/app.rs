@@ -14,7 +14,9 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_channel::{
     DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
 };
-use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
+use re_log_types::{
+    ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg, TimelinePoint,
+};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
@@ -2867,11 +2869,10 @@ impl App {
                 );
             }
 
-            let time_cursor_for =
-                |store_id: &StoreId| -> Option<(re_log_types::Timeline, re_log_types::TimeInt)> {
-                    let time_ctrl = self.state.time_controls.get(store_id)?;
-                    Some((*time_ctrl.timeline()?, time_ctrl.time_int()?))
-                };
+            let time_cursor_for = |store_id: &StoreId| -> Option<TimelinePoint> {
+                let time_ctrl = self.state.time_controls.get(store_id)?;
+                Some((*time_ctrl.timeline()?, time_ctrl.time_int()?).into())
+            };
             store_hub.purge_fraction_of_ram(fraction_to_purge, &time_cursor_for);
 
             let mem_use_after = MemoryUse::capture();

@@ -12,7 +12,7 @@ use re_chunk_store::{
 };
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_channel::LogSource;
-use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
+use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId, TimelinePoint};
 use re_query::QueryCachesStats;
 use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
@@ -829,10 +829,7 @@ impl StoreHub {
     pub fn purge_fraction_of_ram(
         &mut self,
         fraction_to_purge: f32,
-        time_cursor_for: &dyn Fn(
-            &StoreId,
-        )
-            -> Option<(re_log_types::Timeline, re_log_types::TimeInt)>,
+        time_cursor_for: &dyn Fn(&StoreId) -> Option<TimelinePoint>,
     ) -> u64 {
         re_tracing::profile_function!();
 
@@ -880,7 +877,7 @@ impl StoreHub {
         &mut self,
         fraction_to_purge: f32,
         store_id: &StoreId,
-        time_cursor: Option<(re_log_types::Timeline, re_log_types::TimeInt)>,
+        time_cursor: Option<TimelinePoint>,
     ) -> u64 {
         re_tracing::profile_function!();
         let is_active_recording = Some(store_id) == self.active_store_id();

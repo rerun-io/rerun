@@ -9,6 +9,7 @@ mod time_point;
 mod time_real;
 mod time_type;
 mod timeline;
+mod timeline_point;
 mod timestamp;
 mod timestamp_format;
 
@@ -21,5 +22,6 @@ pub use self::time_point::TimePoint;
 pub use self::time_real::TimeReal;
 pub use self::time_type::TimeType;
 pub use self::timeline::Timeline;
+pub use self::timeline_point::TimelinePoint;
 pub use self::timestamp::Timestamp;
 pub use self::timestamp_format::{TimestampFormat, TimestampFormatKind};

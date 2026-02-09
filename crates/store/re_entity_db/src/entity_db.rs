@@ -20,7 +20,7 @@ use re_log_channel::LogSource;
 use re_log_encoding::RrdManifest;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
-    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType, TimelinePoint,
 };
 use re_mutex::Mutex;
 use re_query::{
@@ -778,7 +778,7 @@ impl EntityDb {
     pub fn purge_fraction_of_ram(
         &mut self,
         fraction_to_purge: f32,
-        time_cursor: Option<(Timeline, TimeInt)>,
+        time_cursor: Option<TimelinePoint>,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -814,7 +814,7 @@ impl EntityDb {
             furthest_from: if self.rrd_manifest_index.has_manifest() {
                 // If we have an RRD manifest, it means we can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:
-                time_cursor.map(|(timeline, time)| (*timeline.name(), time))
+                time_cursor.map(|tc| (tc.name, tc.time))
             } else {
                 // If we don't have an RRD manifest, then we can't redownload data,
                 // and we GC the oldest data instead.

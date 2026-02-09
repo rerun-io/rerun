@@ -8,11 +8,11 @@ use std::sync::atomic::AtomicBool;
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-use re_chunk::{Chunk, ChunkBuilder};
+use re_chunk::{Chunk, ChunkBuilder, TimeInt};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
+use re_log_types::{TimelinePoint, external::re_tuid::Tuid};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
@@ -511,12 +511,10 @@ impl TestContext {
             let _err = rrd_manifest.prefetch_chunks(
                 storage_engine.store(),
                 &re_entity_db::ChunkPrefetchOptions {
-                    timeline: *timeline,
-                    start_time: re_chunk::TimeInt::ZERO,
-                    max_on_wire_bytes_per_batch: 0,
                     total_uncompressed_byte_budget: 0,
-                    max_bytes_on_wire_at_once: 0,
+                    ..Default::default()
                 },
+                TimelinePoint::from((*timeline, TimeInt::ZERO)),
                 &|_| panic!("We have 0 bytes allowed memory"),
             );
         }

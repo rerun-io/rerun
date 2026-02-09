@@ -42,7 +42,8 @@ pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::entry_id::{EntryId, EntryIdOrName};
 pub use self::index::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
-    TimeReal, TimeType, Timeline, Timestamp, TimestampFormat, TimestampFormatKind, TryFromIntError,
+    TimeReal, TimeType, Timeline, TimelinePoint, Timestamp, TimestampFormat, TimestampFormatKind,
+    TryFromIntError,
 };
 pub use self::instance::Instance;
 pub use self::path::*;

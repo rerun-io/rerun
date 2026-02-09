@@ -9,12 +9,11 @@ use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_log_encoding::RrdManifest;
-use re_log_types::{AbsoluteTimeRange, EntityPathHash};
-use re_mutex::Mutex;
+use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
 use re_tracing::profile_scope;
 
 use crate::{
-    chunk_requests::{ChunkBatchRequest, ChunkPromise, ChunkRequests, RequestInfo},
+    chunk_requests::{ChunkRequests, RequestInfo},
     rrd_manifest_index::{LoadState, RootChunkInfo},
     sorted_range_map::SortedRangeMap,
 };
@@ -38,12 +37,6 @@ pub enum PrefetchError {
 /// How to calculate which chunks to prefetch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChunkPrefetchOptions {
-    pub timeline: Timeline,
-
-    /// Start loading chunks from this time onwards,
-    /// before looping back to the start.
-    pub start_time: TimeInt,
-
     /// Batch together requests until we reach this size.
     pub max_on_wire_bytes_per_batch: u64,
 
@@ -52,6 +45,22 @@ pub struct ChunkPrefetchOptions {
 
     /// Maximum number of bytes in transit at once.
     pub max_bytes_on_wire_at_once: u64,
+}
+
+impl Default for ChunkPrefetchOptions {
+    fn default() -> Self {
+        Self {
+            total_uncompressed_byte_budget: u64::MAX,
+
+            // Batch small chunks together.
+            max_on_wire_bytes_per_batch: 256 * 1024,
+
+            // A high value -> better theoretical bandwidth
+            // Low value -> better responsiveness (e.g. when moving time cursor).
+            // In practice, this is a limit on how many bytes we can download _every frame_.
+            max_bytes_on_wire_at_once: 4_000_000,
+        }
+    }
 }
 
 /// Special chunks for which we need the entire history, not just the latest-at value.
@@ -65,16 +74,12 @@ struct HighPrioChunks {
 
 impl HighPrioChunks {
     /// All static chunks, plus all temporal chunks on this timeline before the given time.
-    fn all_before(
-        &self,
-        timeline: TimelineName,
-        time: TimeInt,
-    ) -> impl Iterator<Item = ChunkId> + '_ {
+    fn all_before(&self, timeline_point: TimelinePoint) -> impl Iterator<Item = ChunkId> + '_ {
         self.temporal_chunks
-            .get(&timeline)
+            .get(timeline_point.name())
             .into_iter()
             .flat_map(|chunks| chunks.iter())
-            .filter(move |chunk| chunk.time_range.min <= time)
+            .filter(move |chunk| chunk.time_range.min <= timeline_point.time)
             .map(|chunk| chunk.chunk_id)
     }
 }
@@ -215,7 +220,7 @@ impl<'a> ChunkRequestBatcher<'a> {
         Ok(true)
     }
 
-    /// Return all batches that should be loaded
+    /// Returns all batches that should be loaded
     #[must_use = "Load the returned batches"]
     pub fn finish(mut self) -> Result<Vec<(RecordBatch, RequestInfo)>, PrefetchError> {
         self.finish_batch()?;
@@ -434,8 +439,7 @@ impl ChunkPrioritizer {
         high_priority_chunks: &'a HighPrioChunks,
         store: &'a ChunkStore,
         used_and_missing: QueriedChunkIdTracker,
-        timeline: TimelineName,
-        time_cursor: TimeInt,
+        time_cursor: TimelinePoint,
         root_chunks_on_timeline: &'a SortedRangeMap<TimeInt, ChunkId>,
     ) -> impl Iterator<Item = PrioritizedChunk> + use<'a> {
         re_tracing::profile_function!();
@@ -455,19 +459,18 @@ impl ChunkPrioritizer {
 
         let chunks_ids_after_time_cursor = move || {
             root_chunks_on_timeline
-                .query(time_cursor..=TimeInt::MAX)
+                .query(time_cursor.time..=TimeInt::MAX)
                 .map(|(_, chunk_id)| *chunk_id)
         };
         let chunks_ids_before_time_cursor = move || {
             root_chunks_on_timeline
-                .query(TimeInt::MIN..=time_cursor.saturating_sub(1))
+                .query(TimeInt::MIN..=time_cursor.time.saturating_sub(1))
                 .map(|(_, chunk_id)| *chunk_id)
         };
 
         // Note: we do NOT take `entities_of_interest` for high-priority transform chunks,
         // because that seems to cause bugs for unknown reasons.
-        let high_prio_chunks_before_time_cursor =
-            high_priority_chunks.all_before(timeline, time_cursor);
+        let high_prio_chunks_before_time_cursor = high_priority_chunks.all_before(time_cursor);
 
         // Chunks that are required for the current view.
         let required_chunks = chain!(
@@ -524,17 +527,20 @@ impl ChunkPrioritizer {
     ///
     /// We go through these chunks until we hit [`ChunkPrefetchOptions::total_uncompressed_byte_budget`]
     /// and prefetch missing chunks until we hit [`ChunkPrefetchOptions::max_bytes_on_wire_at_once`].
+    /// Returns all batches that should be loaded
+    #[must_use = "Load the returned batches"]
     pub fn prioritize_and_prefetch(
         &mut self,
         store: &ChunkStore,
         used_and_missing: QueriedChunkIdTracker,
         options: &ChunkPrefetchOptions,
-        load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
+        time_cursor: TimelinePoint,
         manifest: &RrdManifest,
-        root_chunks: &mut HashMap<ChunkId, RootChunkInfo>,
-    ) -> Result<(), PrefetchError> {
-        let Some(root_chunks_on_timeline) = self.root_chunk_intervals.get(&options.timeline) else {
-            return Err(PrefetchError::UnknownTimeline(options.timeline));
+        root_chunks: &HashMap<ChunkId, RootChunkInfo>,
+    ) -> Result<Vec<(RecordBatch, RequestInfo)>, PrefetchError> {
+        let Some(root_chunks_on_timeline) = self.root_chunk_intervals.get(&time_cursor.timeline())
+        else {
+            return Err(PrefetchError::UnknownTimeline(time_cursor.timeline()));
         };
 
         self.had_missing_chunks = !used_and_missing.missing_virtual.is_empty();
@@ -560,7 +566,7 @@ impl ChunkPrioritizer {
                 self.desired_physical_chunks.insert(physical_chunk_id);
             }
 
-            return Ok(());
+            return Ok(vec![]);
         }
 
         // Basically: what entities are currently being viewed by the user?
@@ -595,8 +601,7 @@ impl ChunkPrioritizer {
             &self.high_priority_chunks,
             store,
             used_and_missing,
-            *options.timeline.name(),
-            options.start_time,
+            time_cursor,
             root_chunks_on_timeline,
         );
 
@@ -643,7 +648,7 @@ impl ChunkPrioritizer {
                 }
             };
 
-            match root_chunks.get_mut(&chunk_id) {
+            match root_chunks.get(&chunk_id) {
                 Some(
                     root_chunk @ RootChunkInfo {
                         state: LoadState::Unloaded | LoadState::InTransit,
@@ -739,23 +744,7 @@ impl ChunkPrioritizer {
             }
         }
 
-        // Start loading all batches we prepared:
-        for (rb, batch_info) in chunk_batcher.finish()? {
-            for root_chunk_id in &batch_info.root_chunk_ids {
-                if let Some(root_chunk) = root_chunks.get_mut(root_chunk_id) {
-                    root_chunk.state = LoadState::InTransit;
-                }
-            }
-
-            let promise = load_chunks(rb);
-            let batch = ChunkBatchRequest {
-                promise: Mutex::new(Some(promise)),
-                info: batch_info.into(),
-            };
-            self.chunk_requests.add(batch);
-        }
-
-        Ok(())
+        chunk_batcher.finish()
     }
 
     /// Cancel all fetches of things that are not currently needed.
