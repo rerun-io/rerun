@@ -224,7 +224,8 @@ impl ViewClass for TimeSeriesView {
             }
 
             view_property_ui::<ScalarAxis>(&ctx, ui);
-            visualizers_ui(&ctx, ui);
+
+            visualizers_ui(&ctx, ui, state);
 
             Ok::<(), ViewSystemExecutionError>(())
         })
@@ -1248,15 +1249,19 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-fn visualizers_ui(ctx: &re_viewer_context::ViewContext<'_>, ui: &mut egui::Ui) {
+/// Shows the list of visualizers used in this time series view.
+fn visualizers_ui(
+    ctx: &re_viewer_context::ViewContext<'_>,
+    ui: &mut egui::Ui,
+    state: &TimeSeriesViewState,
+) {
     re_tracing::profile_function!();
 
     let query_result = ctx.query_result;
 
     let markdown = "# Visualizers
 
-This section lists all active visualizers in this view. Each visualizer is displayed with its \
-type and the entity path it visualizes.";
+This section lists all active visualizers in this view. Each visualizer shows the series name as it appears in the legend.";
 
     ui.section_collapsing_header("Visualizers")
         .with_help_markdown(markdown)
@@ -1279,11 +1284,18 @@ type and the entity path it visualizes.";
 
                     let series_color = get_time_series_color(ctx, &node.data_result, instruction);
 
-                    // Use series name if available, otherwise fall back to entity name
-                    let display_name = entity_path
-                        .last()
-                        .map(|part| part.ui_string())
-                        .unwrap_or_else(|| "/".to_owned());
+                    // Use the cached format from state if available (includes disambiguation),
+                    // otherwise fall back to entity name
+                    let display_name = state
+                        .default_series_name_formats
+                        .get(&instruction.id)
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            entity_path
+                                .last()
+                                .map(|part| part.ui_string())
+                                .unwrap_or_else(|| "/".to_owned())
+                        });
 
                     // Calculate pill rect and interact.
                     let mut frame = egui::Frame::default()
