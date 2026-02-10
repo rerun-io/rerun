@@ -65,9 +65,6 @@ impl MessageParser for JoyMessageParser {
             mut frame_ids,
         } = *self;
 
-        // Create axis names for labeling - we need to know the max size
-        // Since we've already built the arrays, we'll create generic names
-        // The actual size will be determined by the data
         let axes_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone() / "axes",
