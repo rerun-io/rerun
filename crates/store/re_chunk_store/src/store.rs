@@ -487,17 +487,6 @@ pub struct ChunkStore {
     /// See also [`Self::time_column_type`].
     pub(crate) time_type_registry: IntMap<TimelineName, TimeType>,
 
-    /// Keeps track of the _latest_ datatype information for all component types that have been written
-    /// to the store so far.
-    ///
-    /// This index is purely additive: it is never affected by garbage collection in any way.
-    ///
-    /// See also [`Self::lookup_datatype`].
-    //
-    // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
-    // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentType, ArrowDataType>,
-
     // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
     pub(crate) per_column_metadata: IntMap<
         EntityPath,
@@ -669,7 +658,6 @@ impl Clone for ChunkStore {
             id: self.id.clone(),
             config: self.config.clone(),
             time_type_registry: self.time_type_registry.clone(),
-            type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
             chunks_lineage: self.chunks_lineage.clone(),
@@ -697,7 +685,6 @@ impl std::fmt::Display for ChunkStore {
             id,
             config,
             time_type_registry: _,
-            type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
@@ -780,7 +767,6 @@ impl ChunkStore {
             id,
             config,
             time_type_registry: Default::default(),
-            type_registry: Default::default(),
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
             chunks_lineage: Default::default(),
@@ -869,12 +855,6 @@ impl ChunkStore {
         self.time_type_registry.get(timeline_name).copied()
     }
 
-    /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
-    #[inline]
-    pub fn lookup_datatype(&self, component_type: &ComponentType) -> Option<ArrowDataType> {
-        self.type_registry.get(component_type).cloned()
-    }
-
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
     pub fn lookup_column_metadata(
         &self,
@@ -917,6 +897,27 @@ impl ChunkStore {
             .get(entity_path)
             .and_then(|per_identifier| per_identifier.get(&component))?;
         Some((component_descr.component_type, datatype.clone()))
+    }
+
+    /// Checks whether any column in the store with the given [`ComponentType`] has a datatype
+    /// that differs from `expected_datatype`.
+    ///
+    /// This iterates over all entities, so it should not be called in a hot path.
+    pub fn has_mismatched_datatype_for_component_type(
+        &self,
+        component_type: &ComponentType,
+        expected_datatype: &ArrowDataType,
+    ) -> Option<&ArrowDataType> {
+        for per_component in self.per_column_metadata.values() {
+            for (descr, _, datatype) in per_component.values() {
+                if descr.component_type.as_ref() == Some(component_type)
+                    && datatype != expected_datatype
+                {
+                    return Some(datatype);
+                }
+            }
+        }
+        None
     }
 
     /// Returns and iterator over [`ChunkId`]s that were detected as

@@ -498,7 +498,6 @@ impl ChunkStore {
             id: _,
             config: _,
             time_type_registry: _,       // purely additive
-            type_registry: _,            // purely additive
             per_column_metadata: _,      // purely additive
             chunks_per_chunk_id: _,      // handled by shallow impl
             chunk_ids_per_min_row_id: _, // handled by shallow impl
@@ -662,7 +661,6 @@ impl ChunkStore {
             id: _,
             config: _,
             time_type_registry: _,  // purely additive
-            type_registry: _,       // purely additive
             per_column_metadata: _, // purely additive
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,

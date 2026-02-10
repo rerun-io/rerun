@@ -226,24 +226,15 @@ impl EntityDb {
             };
             for component in components {
                 let component_indent = "  ".repeat(depth + 1);
-                if let Some(component_descr) =
-                    store.entity_component_descriptor(entity_path, component)
-                    && let Some(component_type) = &component_descr.component_type
+                if let Some((component_type, datatype)) =
+                    store.lookup_component_type(entity_path, component)
                 {
-                    if let Some(datatype) = store.lookup_datatype(component_type) {
-                        text.push_str(&format!(
-                            "{}{}: {}\n",
-                            component_indent,
-                            component_type.short_name(),
-                            re_arrow_util::format_data_type(&datatype)
-                        ));
-                    } else {
-                        text.push_str(&format!(
-                            "{}{}\n",
-                            component_indent,
-                            component_type.short_name()
-                        ));
-                    }
+                    let name = component_type
+                        .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
+                    text.push_str(&format!(
+                        "{component_indent}{name}: {}\n",
+                        re_arrow_util::format_data_type(&datatype)
+                    ));
                 } else {
                     // Fallback to component identifier
                     text.push_str(&format!("{component_indent}{component}\n"));
