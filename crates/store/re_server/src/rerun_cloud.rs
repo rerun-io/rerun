@@ -14,7 +14,7 @@ use tonic::{Code, Request, Response, Status};
 
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{
-    Chunk, ChunkStore, ChunkStoreHandle, LatestAtQuery, OnMissingChunk, RangeQuery,
+    Chunk, ChunkStore, ChunkStoreHandle, ChunkTrackingMode, LatestAtQuery, RangeQuery,
 };
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
@@ -1804,7 +1804,7 @@ fn get_chunks_for_query(
                     let read_lock = store_handle.read();
                     let mut latest_at = read_lock
                         .latest_at_relevant_chunks_for_all_components(
-                            OnMissingChunk::Report,
+                            ChunkTrackingMode::Report,
                             &latest_at,
                             entity_path,
                             true,
@@ -1812,7 +1812,7 @@ fn get_chunks_for_query(
                         .chunks;
                     let mut range = read_lock
                         .range_relevant_chunks_for_all_components(
-                            OnMissingChunk::Report,
+                            ChunkTrackingMode::Report,
                             &range.clone(),
                             entity_path,
                             true,
@@ -1835,7 +1835,7 @@ fn get_chunks_for_query(
                     store_handle
                         .read()
                         .latest_at_relevant_chunks_for_all_components(
-                            OnMissingChunk::Report,
+                            ChunkTrackingMode::Report,
                             &latest_at.clone(),
                             entity_path,
                             true,
@@ -1852,7 +1852,7 @@ fn get_chunks_for_query(
                     store_handle
                         .read()
                         .range_relevant_chunks_for_all_components(
-                            OnMissingChunk::Report,
+                            ChunkTrackingMode::Report,
                             &range.clone(),
                             entity_path,
                             true,

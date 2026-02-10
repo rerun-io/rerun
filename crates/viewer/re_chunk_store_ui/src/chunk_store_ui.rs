@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
-use re_chunk_store::{ChunkStore, LatestAtQuery, OnMissingChunk, RangeQuery};
+use re_chunk_store::{ChunkStore, ChunkTrackingMode, LatestAtQuery, RangeQuery};
 use re_log_types::{
     AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
@@ -150,7 +150,7 @@ impl DatastoreUi {
             } => Either::Right(
                 chunk_store
                     .latest_at_relevant_chunks(
-                        OnMissingChunk::Report,
+                        ChunkTrackingMode::Report,
                         &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
                         *component,
@@ -167,7 +167,7 @@ impl DatastoreUi {
             } => Either::Right(
                 chunk_store
                     .range_relevant_chunks(
-                        OnMissingChunk::Report,
+                        ChunkTrackingMode::Report,
                         &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
                         *component,

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use egui::epaint::Vertex;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
-use re_chunk_store::{OnMissingChunk, RangeQuery};
+use re_chunk_store::{ChunkTrackingMode, RangeQuery};
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
@@ -604,7 +604,7 @@ pub fn build_density_graph<'a>(
                 store
                     .range_relevant_chunks(
                         // Don't cause chunks to be downloaded just to show the density graph
-                        OnMissingChunk::Ignore,
+                        ChunkTrackingMode::Ignore,
                         &query,
                         &item.entity_path,
                         component,

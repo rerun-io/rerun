@@ -6,7 +6,8 @@ use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
 };
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, OnMissingChunk,
+    ChunkStore, ChunkStoreConfig, ChunkTrackingMode, GarbageCollectionOptions,
+    GarbageCollectionTarget,
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time};
@@ -27,7 +28,7 @@ fn query_latest_array(
         // Purposefully ignoring missing chunks.
         // We know there's going to be missing chunks: it's the whole point of these tests to be
         // removing chunks.
-        .latest_at_relevant_chunks(OnMissingChunk::Ignore, query, entity_path, component)
+        .latest_at_relevant_chunks(ChunkTrackingMode::Ignore, query, entity_path, component)
         .chunks
         .into_iter()
         .filter_map(|chunk| {

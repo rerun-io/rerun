@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier};
-use re_chunk_store::{ChunkStore, OnMissingChunk, RangeQuery, TimeInt};
+use re_chunk_store::{ChunkStore, ChunkTrackingMode, RangeQuery, TimeInt};
 use re_log_types::{AbsoluteTimeRange, EntityPath};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -312,7 +312,7 @@ impl RangeCache {
         // cache them.
 
         let results =
-            store.range_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
+            store.range_relevant_chunks(ChunkTrackingMode::Report, query, entity_path, component);
         // It is perfectly safe to cache partial range results, since missing data (if any), cannot
         // possibly affect what's already cached, it can only augment it.
         // Therefore, we do not even check for partial results here.

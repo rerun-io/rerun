@@ -3,7 +3,9 @@
 use glam::DAffine3;
 use itertools::{Either, Itertools as _};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::{Chunk, LatestAtQuery, MissingChunkReporter, OnMissingChunk, UnitChunkShared};
+use re_chunk_store::{
+    Chunk, ChunkTrackingMode, LatestAtQuery, MissingChunkReporter, UnitChunkShared,
+};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::archetypes::{self, InstancePoses3D};
@@ -73,7 +75,7 @@ fn atomic_latest_at_query(
     let store = storage_engine.store();
     let include_static = true;
     let chunks = store.latest_at_relevant_chunks_for_all_components(
-        OnMissingChunk::Report,
+        ChunkTrackingMode::Report,
         query,
         entity_path,
         include_static,
