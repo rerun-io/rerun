@@ -349,6 +349,25 @@ impl TimePanel {
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
+        re_tracing::profile_function!();
+
+        let loading_text = if entity_db.is_currently_downloading_manifest() {
+            Some("Downloading meta-data")
+        } else if time_ctrl.is_pending() {
+            Some("Waiting for timeline")
+        } else {
+            None
+        };
+
+        if let Some(loading_text) = loading_text {
+            ui.horizontal(|ui| {
+                ui.centered_and_justified(|ui| {
+                    ui.loading_indicator().on_hover_text(loading_text);
+                });
+            });
+            return;
+        }
+
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
         let time_range = entity_db.time_range_for(time_ctrl.timeline_name());
@@ -423,36 +442,40 @@ impl TimePanel {
     ) {
         re_tracing::profile_function!();
 
+        if entity_db.is_currently_downloading_manifest() {
+            ui.loading_screen_ui(|ui| {
+                let text = "Downloading meta-data";
+                ui.label(egui::RichText::from(text).heading().strong());
+            });
+
+            return;
+        }
+
         if time_ctrl.is_pending() {
             ui.loading_screen_ui(|ui| {
-                if entity_db.is_currently_downloading_manifest() {
-                    let text = "Downloading meta-data";
-                    ui.label(egui::RichText::from(text).heading().strong());
-                } else {
-                    let text = format!("Waiting for timeline: {}", time_ctrl.timeline_name());
-                    ui.label(egui::RichText::from(text).heading().strong());
+                let text = format!("Waiting for timeline: {}", time_ctrl.timeline_name());
+                ui.label(egui::RichText::from(text).heading().strong());
 
-                    let timeline_count = entity_db.timelines().len();
+                let timeline_count = entity_db.timelines().len();
 
-                    match timeline_count {
-                        0 => {}
-                        1 => {
-                            ui.label("One other timeline has data");
-                        }
-                        c => {
-                            ui.label(format!("{c} other timelines have data"));
-                        }
+                match timeline_count {
+                    0 => {}
+                    1 => {
+                        ui.label("One other timeline has data");
                     }
-
-                    if ui
-                        .button(
-                            egui::RichText::new("Go to default timeline")
-                                .color(ui.style().visuals.weak_text_color()),
-                        )
-                        .clicked()
-                    {
-                        time_commands.push(TimeControlCommand::ResetActiveTimeline);
+                    c => {
+                        ui.label(format!("{c} other timelines have data"));
                     }
+                }
+
+                if ui
+                    .button(
+                        egui::RichText::new("Go to default timeline")
+                            .color(ui.style().visuals.weak_text_color()),
+                    )
+                    .clicked()
+                {
+                    time_commands.push(TimeControlCommand::ResetActiveTimeline);
                 }
             });
 

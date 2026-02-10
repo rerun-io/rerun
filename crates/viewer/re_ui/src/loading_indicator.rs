@@ -28,11 +28,12 @@ const DEFAULT_DOT_RADIUS: f32 = 3.0;
 
 /// A loading indicator widget.
 #[doc(alias = "spinner")]
-pub fn loading_indicator_ui(ui: &mut egui::Ui) {
+pub fn loading_indicator_ui(ui: &mut egui::Ui) -> egui::Response {
     let r = calc_radius(ui.available_size_before_wrap());
     let size = r * Vec2::new(WIDTH_IN_R, HEIGHT_IN_R);
-    let (rect, _response) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
     paint_loading_indicator_inside(ui, Align2::CENTER_CENTER, rect);
+    response
 }
 
 pub fn calc_radius(available_space: Vec2) -> f32 {

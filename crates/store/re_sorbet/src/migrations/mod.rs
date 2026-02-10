@@ -57,6 +57,11 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             err,
         })
     } else {
+        // The record batch does not have a sorbet version metadata.
+        // Rerun cloud schemas currently come without metadata,
+        // so we need to run the full migration just in case.
+        // TODO(RR-2175): Always include version metadata in redap
+
         // This means earlier than Rerun `v0.24`.
         re_log::debug_once!("Encountered batch without 'sorbet:version' metadata.");
 
@@ -77,9 +82,6 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             // The migration code from `v0.0.2` to `v0.1.0` should be able handle this.
             Ok(semver::Version::new(0, 0, 2))
         } else {
-            // Rerun cloud schemas currently come without metadata,
-            // so we need to run the full migration just in case.
-            // TODO(rerun-io/dataplatform#1605): Always include version
             Ok(semver::Version::new(0, 0, 1))
         }
     }

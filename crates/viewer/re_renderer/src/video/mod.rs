@@ -239,7 +239,7 @@ impl re_byte_size::SizeBytes for Video {
 
 impl Drop for Video {
     fn drop(&mut self) {
-        re_log::debug!("Dropping Video {:?}", self.debug_name);
+        re_log::trace!("Dropping Video {:?}", self.debug_name);
     }
 }
 

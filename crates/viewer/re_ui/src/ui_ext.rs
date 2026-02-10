@@ -63,8 +63,8 @@ pub trait UiExt {
     /// This will also cause the UI to re-render every frame,
     /// so only use this when you actually have something loading and expect it to finish!
     #[doc(alias = "spinner")]
-    fn loading_indicator(&mut self) {
-        crate::loading_indicator::loading_indicator_ui(self.ui_mut());
+    fn loading_indicator(&mut self) -> egui::Response {
+        crate::loading_indicator::loading_indicator_ui(self.ui_mut())
     }
 
     /// Shows a success label with a large border.
