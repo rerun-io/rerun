@@ -249,6 +249,7 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as re
     transform_collectors: dict[str, ColumnCollector] = {}
     dynamic_collectors: dict[str, ColumnCollector] = {}
 
+    # region: conversion_loop
     with open(path_to_mcap, "rb") as f:
         reader = make_reader(f, decoder_factories=[DecoderFactory()])
         for _schema, channel, message, proto_msg in reader.iter_decoded_messages():
@@ -302,3 +303,4 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as re
 
     # Send all collected time-series data using columnar API
     send_collected_columns(rec, video_collectors, transform_collectors, dynamic_collectors)
+# endregion: conversion_loop
