@@ -182,6 +182,20 @@ pub trait ViewClass: Send + Sync {
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics;
 
+    /// Ui for quickly navigating the (active) visualizers for a view.
+    ///
+    /// Each view can opt-in to using this feature.
+    #[expect(clippy::type_complexity)]
+    fn visualizers_ui<'a>(
+        &'a self,
+        _ctx: &'a ViewerContext<'a>,
+        _view_id: ViewId,
+        _state: &'a mut dyn ViewState,
+        _space_origin: &'a EntityPath,
+    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
+        None
+    }
+
     /// Ui shown when the user selects a view of this class.
     #[doc(alias = "settings_ui")]
     fn selection_ui(

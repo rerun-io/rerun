@@ -483,6 +483,24 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             let view_class = view.class(ctx.view_class_registry());
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
+            if let Some(visualizers_ui) =
+                view_class.visualizers_ui(ctx, *view_id, view_state, &view.space_origin)
+            {
+                let markdown = "# Visualizers
+
+This section lists all active visualizers in this view. Each visualizer is displayed with its \
+type and the entity path it visualizes.";
+
+                ui.section_collapsing_header("Visualizers")
+                    .with_help_markdown(markdown)
+                    .show(ui, |ui| {
+                        // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
+                        visualizers_ui(ui);
+                    });
+            }
+
             ui.section_collapsing_header("View properties")
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
