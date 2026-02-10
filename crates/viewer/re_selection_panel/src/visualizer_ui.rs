@@ -301,11 +301,9 @@ fn visualizer_components(
         let _todo_handle_errors = mapping_error;
 
         let value_fn = |ui: &mut egui::Ui, _style| {
-            // Edit ui can only handle a single value.
             let multiline = false;
-            if raw_current_value_array.len() == 1
-                // TODO(andreas): We can handle only a single value with edit ui right now.
-                && let TryShowEditUiResult::Shown { edited_value } = ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
+            if let TryShowEditUiResult::Shown { edited_value } =
+                ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
                     re_viewer_context::EditTarget {
