@@ -377,9 +377,9 @@ impl Args {
 
             let any_subcommands = cmd.get_subcommands().any(|cmd| cmd.get_name() != "help");
             let any_positional_args = cmd.get_arguments().any(|arg| arg.is_positional());
-            let any_floating_args = cmd
-                .get_arguments()
-                .any(|arg| !arg.is_positional() && arg.get_long() != Some("help"));
+            let any_floating_args = cmd.get_arguments().any(|arg| {
+                !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
+            });
 
             let full_name = full_name
                 .into_iter()
@@ -478,7 +478,9 @@ impl Args {
             let floatings = any_floating_args.then(|| {
                 let options = cmd
                     .get_arguments()
-                    .filter(|arg| !arg.is_positional() && arg.get_long() != Some("help"))
+                    .filter(|arg| {
+                        !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
+                    })
                     .map(generate_arg_doc)
                     .collect_vec()
                     .join("\n\n");

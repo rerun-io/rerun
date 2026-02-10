@@ -23,6 +23,7 @@ fn generate_read_only_token_with_duration() {
             "re_auth_test",
             "test@rerun.io",
             re_auth::Permission::ReadWrite,
+            None,
         )
         .unwrap();
 
@@ -46,6 +47,7 @@ fn expired_token() {
             "re_auth_test",
             "test@rerun.io",
             re_auth::Permission::ReadWrite,
+            None,
         )
         .unwrap();
 

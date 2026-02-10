@@ -10,6 +10,9 @@ use crate::{OauthLoginFlow, Permission, oauth};
 pub struct LoginOptions {
     pub open_browser: bool,
     pub force_login: bool,
+
+    /// If set, switch to this `WorkOS` organization after login.
+    pub org_id: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -45,44 +48,55 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
     // Login process:
 
     // 1. Start web server listening for token
-    let login_flow = match OauthLoginFlow::init(options.force_login).await? {
+    let mut credentials = match OauthLoginFlow::init(options.force_login).await? {
         OauthLoginFlowState::AlreadyLoggedIn(credentials) => {
-            println!("You're already logged in as: {}", credentials.user().email);
-            println!("Note: We've refreshed your credentials.");
-            println!("Note: Run `rerun auth login --force` to login again.");
-            return Ok(());
+            if options.org_id.is_none() {
+                println!("You're already logged in as: {}", credentials.user().email);
+                println!("Note: We've refreshed your credentials.");
+                println!("Note: Run `rerun auth login --force` to login again.");
+                return Ok(());
+            }
+            credentials
         }
-        OauthLoginFlowState::LoginFlowStarted(login_flow) => login_flow,
+        OauthLoginFlowState::LoginFlowStarted(login_flow) => {
+            let progress_bar = ProgressBar::new_spinner();
+
+            // 2. Open authorization URL in browser
+            let login_url = login_flow.get_login_url();
+            if options.open_browser {
+                progress_bar.println("Opening login page in your browser.");
+                progress_bar.println("Once you've logged in, the process will continue here.");
+                progress_bar.println(format!(
+                    "Alternatively, manually open this url: {login_url}"
+                ));
+                webbrowser::open(login_url).ok(); // Ok to ignore error here. The user can just open the above url themselves.
+            } else {
+                progress_bar.println("Open the following page in your browser:");
+                progress_bar.println(login_url);
+            }
+            progress_bar.inc(1);
+
+            // 3. Wait for login to finish
+            progress_bar.set_message("Waiting for browser…");
+            let credentials = loop {
+                if let Some(code) = login_flow.poll().await? {
+                    break code;
+                }
+                progress_bar.inc(1);
+                std::thread::sleep(Duration::from_millis(10));
+            };
+
+            progress_bar.finish_and_clear();
+            credentials
+        }
     };
 
-    let progress_bar = ProgressBar::new_spinner();
-
-    // 2. Open authorization URL in browser
-    let login_url = login_flow.get_login_url();
-    if options.open_browser {
-        progress_bar.println("Opening login page in your browser.");
-        progress_bar.println("Once you've logged in, the process will continue here.");
-        progress_bar.println(format!(
-            "Alternatively, manually open this url: {login_url}"
-        ));
-        webbrowser::open(login_url).ok(); // Ok to ignore error here. The user can just open the above url themselves.
-    } else {
-        progress_bar.println("Open the following page in your browser:");
-        progress_bar.println(login_url);
+    // 4. If an org was specified, switch to it via a refresh
+    if let Some(org_id) = &options.org_id {
+        credentials = oauth::refresh_credentials_with_org(credentials, Some(org_id))
+            .await
+            .map_err(|err| Error::Generic(err.into()))?;
     }
-    progress_bar.inc(1);
-
-    // 3. Wait for login to finish
-    progress_bar.set_message("Waiting for browser…");
-    let credentials = loop {
-        if let Some(code) = login_flow.poll().await? {
-            break code;
-        }
-        progress_bar.inc(1);
-        std::thread::sleep(Duration::from_millis(10));
-    };
-
-    progress_bar.finish_and_clear();
 
     println!(
         "Success! You are now logged in as {}",
@@ -111,9 +125,19 @@ pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> 
         }
     };
 
+    let jwt = credentials.access_token().jwt();
+    let server_url = url::Url::parse(&options.server.ascii_serialization())
+        .map_err(|err| Error::Generic(err.into()))?;
+    let server_host = server_url
+        .host_str()
+        .ok_or_else(|| Error::Generic("server URL has no host".into()))?;
+    let token = jwt
+        .for_host(server_host)
+        .map_err(|err| Error::Generic(err.into()))?;
+
     let res = send_async(GenerateToken {
         server: options.server,
-        token: credentials.access_token().as_str(),
+        token,
         expiration: options.expiration,
         permission: options.permission,
     })

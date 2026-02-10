@@ -2,8 +2,9 @@ use std::borrow::Cow;
 
 use uuid::Uuid;
 
+use crate::oauth::CredentialsStoreError;
 use crate::oauth::api::{Pkce, authorization_url};
-use crate::oauth::{CredentialsStoreError, MalformedTokenError};
+use crate::token::JwtDecodeError;
 
 pub struct OauthCallbackServer {
     server: tiny_http::Server,
@@ -94,7 +95,7 @@ pub enum Error {
     Generic(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 
     #[error("{0}")]
-    MalformedToken(#[from] MalformedTokenError),
+    MalformedToken(#[from] JwtDecodeError),
 
     #[error("{0}")]
     Store(#[from] CredentialsStoreError),

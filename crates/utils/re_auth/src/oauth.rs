@@ -1,7 +1,6 @@
-use base64::Engine as _;
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use serde::{Deserialize, Serialize};
 
+use crate::token::JwtDecodeError;
 use crate::{Jwt, Permission};
 
 pub mod api;
@@ -69,7 +68,7 @@ pub enum CredentialsRefreshError {
     Store(#[from] storage::StoreError),
 
     #[error("failed to deserialize credentials: {0}")]
-    MalformedToken(#[from] MalformedTokenError),
+    MalformedToken(#[from] JwtDecodeError),
 
     #[error("no refresh token available")]
     NoRefreshToken,
@@ -79,8 +78,19 @@ pub enum CredentialsRefreshError {
 pub async fn refresh_credentials(
     credentials: Credentials,
 ) -> Result<Credentials, CredentialsRefreshError> {
-    // Don't refresh unless the access token has expired
-    if !credentials.access_token().is_expired() {
+    refresh_credentials_with_org(credentials, None).await
+}
+
+/// Refresh credentials, optionally switching to a different organization.
+///
+/// If `organization_id` is `Some`, a refresh is always performed (even if the
+/// token hasn't expired) to obtain a token scoped to the specified org.
+pub async fn refresh_credentials_with_org(
+    credentials: Credentials,
+    organization_id: Option<&str>,
+) -> Result<Credentials, CredentialsRefreshError> {
+    // If no org switch is requested, don't refresh unless the access token has expired
+    if organization_id.is_none() && !credentials.access_token().is_expired() {
         re_log::debug!(
             "skipping credentials refresh: credentials expire in {} seconds",
             credentials.access_token().remaining_duration_secs()
@@ -88,16 +98,18 @@ pub async fn refresh_credentials(
         return Ok(credentials);
     }
 
-    re_log::debug!(
-        "expired {} seconds ago",
-        -credentials.access_token().remaining_duration_secs()
-    );
+    if organization_id.is_none() {
+        re_log::debug!(
+            "expired {} seconds ago",
+            -credentials.access_token().remaining_duration_secs()
+        );
+    }
 
     let Some(refresh_token) = &credentials.refresh_token else {
         return Err(CredentialsRefreshError::NoRefreshToken);
     };
 
-    let response = api::refresh(refresh_token).await?;
+    let response = api::refresh(refresh_token, organization_id).await?;
     let credentials = Credentials::from_auth_response(response)?
         .ensure_stored()
         .map_err(|err| CredentialsRefreshError::Store(err.0))?;
@@ -167,20 +179,8 @@ impl RerunCloudClaims {
     pub const REQUIRED: &'static [&'static str] =
         &["iss", "sub", "org_id", "permissions", "exp", "iat"];
 
-    pub fn try_from_unverified_jwt(jwt: &Jwt) -> Result<Self, MalformedTokenError> {
-        // TODO(aedm): check signature of the JWT token
-        let (_header, rest) = jwt
-            .as_str()
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingHeaderPayloadSeparator)?;
-        let (payload, _signature) = rest
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingPayloadSignatureSeparator)?;
-        let payload = BASE64_URL_SAFE_NO_PAD
-            .decode(payload)
-            .map_err(MalformedTokenError::Base64)?;
-        let claims = serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
-        Ok(claims)
+    pub fn try_from_unverified_jwt(jwt: &Jwt) -> Result<Self, JwtDecodeError> {
+        jwt.decode_claims()
     }
 }
 
@@ -263,7 +263,7 @@ impl Credentials {
     /// as the authentication API.
     pub fn from_auth_response(
         res: api::RefreshResponse,
-    ) -> Result<InMemoryCredentials, MalformedTokenError> {
+    ) -> Result<InMemoryCredentials, JwtDecodeError> {
         let jwt = Jwt(res.access_token);
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
@@ -282,7 +282,7 @@ impl Credentials {
         access_token: String,
         refresh_token: Option<String>,
         email: String,
-    ) -> Result<InMemoryCredentials, MalformedTokenError> {
+    ) -> Result<InMemoryCredentials, JwtDecodeError> {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&Jwt(access_token.clone()))?;
 
         let user = User {
@@ -352,7 +352,7 @@ impl AccessToken {
     /// Construct an [`AccessToken`] without verifying it.
     ///
     /// The token should come from a trusted source, like the Rerun auth API.
-    pub(crate) fn try_from_unverified_jwt(jwt: Jwt) -> Result<Self, MalformedTokenError> {
+    pub(crate) fn try_from_unverified_jwt(jwt: Jwt) -> Result<Self, JwtDecodeError> {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         Ok(Self {
             token: jwt.0,
@@ -368,21 +368,6 @@ impl std::fmt::Debug for AccessToken {
             .field("expires_at", &self.expires_at)
             .finish()
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum MalformedTokenError {
-    #[error("missing `.` separator between header and payload")]
-    MissingHeaderPayloadSeparator,
-
-    #[error("missing `.` separator between payload and signature")]
-    MissingPayloadSignatureSeparator,
-
-    #[error("failed to decode base64 payload: {0}")]
-    Base64(base64::DecodeError),
-
-    #[error("failed to deserialize payload: {0}")]
-    Serde(serde_json::Error),
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

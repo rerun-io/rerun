@@ -37,6 +37,14 @@ pub struct LoginCommand {
     /// Trigger the full login flow even if valid credentials already exist.
     #[clap(long, default_value = "false")]
     force: bool,
+
+    /// `WorkOS` organization ID to log in to.
+    ///
+    /// If you belong to multiple organizations, this selects which one
+    /// to use. Without this flag, the browser will prompt you to choose
+    /// (or reuse the previous selection).
+    #[clap(long, hide = true)]
+    org_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -68,6 +76,7 @@ impl AuthCommands {
                 let options = re_auth::cli::LoginOptions {
                     open_browser: !args.no_open_browser,
                     force_login: args.force,
+                    org_id: args.org_id,
                 };
                 runtime.block_on(re_auth::cli::login(options))
             }

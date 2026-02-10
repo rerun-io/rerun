@@ -125,6 +125,9 @@ pub struct AuthenticateWithRefresh<'a> {
     grant_type: &'a str,
     client_id: &'a str,
     refresh_token: &'a str,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    organization_id: Option<&'a str>,
 }
 
 impl IntoRequest for AuthenticateWithRefresh<'_> {
@@ -147,11 +150,15 @@ pub struct RefreshResponse {
     pub refresh_token: String,
 }
 
-pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<RefreshResponse, Error> {
+pub(crate) async fn refresh(
+    refresh_token: &RefreshToken,
+    organization_id: Option<&str>,
+) -> Result<RefreshResponse, Error> {
     send_async(AuthenticateWithRefresh {
         grant_type: "refresh_token",
         client_id: &OAUTH_CLIENT_ID,
         refresh_token: &refresh_token.0,
+        organization_id,
     })
     .await
 }

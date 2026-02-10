@@ -24,16 +24,7 @@ workspace = true
 [features]
 cli = ["dep:indicatif", "dep:webbrowser", "oauth"]
 
-oauth = [
-  "dep:directories",
-  "dep:ehttp",
-  "dep:getrandom",
-  "dep:serde_json",
-  "dep:sha2",
-  "dep:tiny_http",
-  "dep:url",
-  "dep:uuid",
-]
+oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:sha2", "dep:tiny_http", "dep:uuid"]
 
 [dependencies]
 re_analytics.workspace = true
@@ -47,17 +38,17 @@ jsonwebtoken.workspace = true
 parking_lot.workspace = true
 saturating_cast.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["time"] }
 tonic.workspace = true
 tower.workspace = true
+url.workspace = true
 
 ## Optional dependencies
 getrandom = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
 sha2 = { workspace = true, optional = true }
-url = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true, features = ["v4"] }
 webbrowser = { workspace = true, optional = true }
 
@@ -77,4 +68,3 @@ web-sys = { workspace = true, features = ["Storage", "Window"] }
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }
-serde_json.workspace = true

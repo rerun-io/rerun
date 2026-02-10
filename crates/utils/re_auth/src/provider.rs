@@ -84,9 +84,9 @@ pub struct RedapClaims {
     /// The subject (user) of the token.
     pub sub: String,
 
-    /// The audience of the token, i.e. who should consume it.
+    /// The `aud` claim, identifying the intended consumer of the token.
     ///
-    /// Most of the time this will be the storage node.
+    /// Typically set to `"redap"` for Rerun storage-node tokens.
     /// Per RFC 7519, this can be either a single string or an array of strings.
     #[serde(
         deserialize_with = "deser_string_or_vec",
@@ -102,6 +102,12 @@ pub struct RedapClaims {
 
     #[serde(default)]
     pub permissions: Vec<Permission>,
+
+    /// Host patterns this token is allowed to be sent to.
+    ///
+    /// Uses the same domain-matching semantics as [`crate::host_matches_pattern`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allowed_hosts: Vec<String>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -267,14 +273,20 @@ impl RedapProvider {
     ///
     /// If `duration` is `None`, the token will be valid forever. `scope` can be
     /// used to restrict the token to a specific context.
+    ///
+    /// If `allowed_host` is provided, it is set as the `allowed_hosts` claim
+    /// so the token can be restricted to a specific server hostname.
     pub fn token(
         &self,
         duration: Duration,
         issuer: impl Into<String>,
         subject: impl Into<String>,
         permission: Permission,
+        allowed_host: Option<&str>,
     ) -> Result<Jwt, Error> {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
+
+        let allowed_hosts = allowed_host.map(|h| vec![h.to_owned()]).unwrap_or_default();
 
         let claims = Claims::Redap(RedapClaims {
             iss: issuer.into(),
@@ -283,6 +295,7 @@ impl RedapProvider {
             exp: (now + duration).as_secs(),
             iat: now.as_secs(),
             permissions: vec![permission],
+            allowed_hosts,
         });
 
         let token = encode(
@@ -391,7 +404,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_audience_deserialize_single_string() {
+    fn test_aud_deserialize_single_string() {
         let json = r#"{
             "iss": "test",
             "sub": "user123",
@@ -402,10 +415,11 @@ mod tests {
 
         let claims: RedapClaims = serde_json::from_str(json).unwrap();
         assert_eq!(claims.aud, vec!["redap"]);
+        assert!(claims.allowed_hosts.is_empty());
     }
 
     #[test]
-    fn test_audience_deserialize_array() {
+    fn test_aud_deserialize_array() {
         let json = r#"{
             "iss": "test",
             "sub": "user123",
@@ -419,7 +433,7 @@ mod tests {
     }
 
     #[test]
-    fn test_audience_deserialize_empty_array() {
+    fn test_aud_deserialize_empty_array() {
         let json = r#"{
             "iss": "test",
             "sub": "user123",
@@ -433,7 +447,23 @@ mod tests {
     }
 
     #[test]
-    fn test_audience_serialize_single() {
+    fn test_allowed_hosts_deserialize() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": "redap",
+            "exp": 1234567890,
+            "iat": 1234567890,
+            "allowed_hosts": ["api.acme.cloud.rerun.io"]
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, vec!["redap"]);
+        assert_eq!(claims.allowed_hosts, vec!["api.acme.cloud.rerun.io"]);
+    }
+
+    #[test]
+    fn test_aud_serialize_single() {
         let claims = RedapClaims {
             iss: "test".to_owned(),
             sub: "user123".to_owned(),
@@ -441,15 +471,18 @@ mod tests {
             exp: 1234567890,
             iat: 1234567890,
             permissions: vec![],
+            allowed_hosts: vec![],
         };
 
         let json = serde_json::to_value(&claims).unwrap();
-        // When there's exactly one audience, it should serialize as a string
+        // When there's exactly one aud value, it should serialize as a string
         assert_eq!(json["aud"], serde_json::json!("redap"));
+        // Empty allowed_hosts should not appear in JSON
+        assert!(json.get("allowed_hosts").is_none());
     }
 
     #[test]
-    fn test_audience_serialize_multiple() {
+    fn test_aud_serialize_multiple() {
         let claims = RedapClaims {
             iss: "test".to_owned(),
             sub: "user123".to_owned(),
@@ -457,10 +490,30 @@ mod tests {
             exp: 1234567890,
             iat: 1234567890,
             permissions: vec![],
+            allowed_hosts: vec![],
         };
 
         let json = serde_json::to_value(&claims).unwrap();
-        // When there are multiple audiences, it should serialize as an array
+        // When there are multiple aud values, it should serialize as an array
         assert_eq!(json["aud"], serde_json::json!(["redap", "other"]));
+    }
+
+    #[test]
+    fn test_allowed_hosts_serialize() {
+        let claims = RedapClaims {
+            iss: "test".to_owned(),
+            sub: "user123".to_owned(),
+            aud: vec!["redap".to_owned()],
+            exp: 1234567890,
+            iat: 1234567890,
+            permissions: vec![],
+            allowed_hosts: vec!["api.acme.cloud.rerun.io".to_owned()],
+        };
+
+        let json = serde_json::to_value(&claims).unwrap();
+        assert_eq!(
+            json["allowed_hosts"],
+            serde_json::json!(["api.acme.cloud.rerun.io"])
+        );
     }
 }

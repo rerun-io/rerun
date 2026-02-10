@@ -105,6 +105,9 @@ pub enum ClientCredentialsError {
         status: TonicStatusError,
         credentials: SourcedCredentials,
     },
+
+    #[error("{0}")]
+    HostMismatch(re_auth::HostMismatchError),
 }
 
 /// Registry of all tokens and connections to the redap servers.
@@ -134,6 +137,16 @@ pub enum CredentialSource {
     PerOrigin,
     Fallback,
     EnvVar,
+}
+
+impl std::fmt::Display for CredentialSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PerOrigin => f.write_str("per-origin"),
+            Self::Fallback => f.write_str("fallback"),
+            Self::EnvVar => f.write_str("env-var"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -322,12 +335,35 @@ impl ConnectionRegistryHandle {
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,
     ) -> ApiResult<RedapClient> {
+        // Check the token's allowed hosts before wrapping it in a provider that
+        // would blindly attach it to every outgoing request. If the host
+        // doesn't match, return a credentials error so the caller can skip
+        // this credential and try the next one.
+        let host = origin.host.to_string();
         let provider: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>> =
             match credentials.as_ref().map(|c| &c.credentials) {
-                Some(Credentials::Token(token)) => Some(Arc::new(
-                    re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
-                )),
+                Some(Credentials::Token(token)) => {
+                    token.for_host(&host).map_err(|err| {
+                        ApiError::credentials_with_source(
+                            ClientCredentialsError::HostMismatch(err),
+                            format!("token not allowed for host '{host}'"),
+                        )
+                    })?;
+                    Some(Arc::new(
+                        re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
+                    ))
+                }
                 Some(Credentials::Stored) => {
+                    // For stored credentials, load the token to check its allowed hosts
+                    // before committing to using it.
+                    if let Ok(Some(c)) = re_auth::oauth::load_credentials() {
+                        c.access_token().jwt().for_host(&host).map_err(|err| {
+                            ApiError::credentials_with_source(
+                                ClientCredentialsError::HostMismatch(err),
+                                format!("stored token not allowed for host '{host}'"),
+                            )
+                        })?;
+                    }
                     Some(Arc::new(re_auth::credentials::CliCredentialsProvider::new()))
                 }
                 None => None,

@@ -67,7 +67,10 @@ pub use provider::{Claims, RedapProvider, SecretKey, VerificationOptions};
 pub use service::client;
 #[cfg(not(target_arch = "wasm32"))]
 pub use service::server;
-pub use token::{Jwt, TokenError};
+pub use token::{
+    DEFAULT_ALLOWED_HOSTS, HostMismatchError, INSECURE_SKIP_HOST_CHECK_ENV, Jwt, JwtDecodeError,
+    TokenError, host_matches_pattern, token_allowed_for_host,
+};
 
 /// The error message in Tonic's gRPC status when the token is malformed or invalid in some way.
 ///
