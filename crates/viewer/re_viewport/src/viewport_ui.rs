@@ -735,7 +735,6 @@ impl TilesDelegate<'_, '_> {
 
         let mut grouped_reports: BTreeMap<Item, Vec<_>> = BTreeMap::new();
 
-        #[expect(clippy::iter_over_hash_type)] // It's building up a btreemap map so that's fine.
         for report in per_visualizer_type_reports.values() {
             match report {
                 re_viewer_context::VisualizerTypeReport::OverallError(error) => {

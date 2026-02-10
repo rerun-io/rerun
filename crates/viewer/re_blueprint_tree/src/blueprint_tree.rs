@@ -9,9 +9,9 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, PerVisualizerType, SystemCommand, SystemCommandSender as _,
-    ViewId, ViewStates, ViewerContext, VisitorControlFlow, VisualizerReportSeverity,
-    VisualizerTypeReport, contents_name_style, icon_for_container_kind,
+    Item, ItemCollection, ItemContext, SystemCommand, SystemCommandSender as _, ViewId, ViewStates,
+    ViewerContext, VisitorControlFlow, VisualizerReportSeverity, VisualizerViewReport,
+    contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -408,7 +408,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         view_data: &ViewData,
         container_visible: bool,
-        errors: Option<&PerVisualizerType<VisualizerTypeReport>>,
+        errors: Option<&VisualizerViewReport>,
     ) {
         re_tracing::profile_function!();
 
@@ -531,7 +531,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         data_result_data: &DataResultData,
         view_visible: bool,
-        visualizer_reports: Option<&PerVisualizerType<VisualizerTypeReport>>,
+        visualizer_reports: Option<&VisualizerViewReport>,
     ) {
         let item = Item::DataResult(
             data_result_data.view_id,

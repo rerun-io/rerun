@@ -1,13 +1,13 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use ahash::HashMap;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use vec1::Vec1;
 
 use super::{VisualizerInstructionReport, VisualizerReportSeverity};
 use crate::{
     PerVisualizerTypeInViewClass, ViewContextCollection, ViewSystemExecutionError,
-    VisualizerCollection, VisualizerExecutionOutput, VisualizerReportContext,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionOutput, VisualizerReportContext,
 };
 
 /// Output of view system execution.
@@ -51,6 +51,11 @@ impl SystemExecutionOutput {
     }
 }
 
+/// Visualizer errors, grouped by view system.
+///
+/// In a `BTreeMap` to ensure stable sorting.
+pub type VisualizerViewReport = BTreeMap<ViewSystemIdentifier, VisualizerTypeReport>;
+
 /// Errors that occurred during the execution of a visualizer.
 ///
 /// For convenience, the actual execution method of visualizer is using a `Result` type,
@@ -61,7 +66,7 @@ pub enum VisualizerTypeReport {
     OverallError(VisualizerInstructionReport),
 
     /// The visualizer executed, but had per-instruction reports (errors and warnings).
-    PerInstructionReport(HashMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>),
+    PerInstructionReport(BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>),
 }
 
 impl re_byte_size::SizeBytes for VisualizerTypeReport {

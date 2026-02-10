@@ -5,9 +5,8 @@
 
 use ahash::HashMap;
 
-use crate::{
-    PerVisualizerType, SystemExecutionOutput, ViewClass, ViewId, ViewState, VisualizerTypeReport,
-};
+use crate::view::system_execution_output::VisualizerViewReport;
+use crate::{SystemExecutionOutput, ViewClass, ViewId, ViewState, VisualizerTypeReport};
 
 /// State for the `View`s that persists across frames but otherwise
 /// is not saved.
@@ -20,7 +19,7 @@ pub struct ViewStates {
     /// This is cleared out each frame and populated after all visualizers have been executed.
     // TODO(andreas): Would be nice to bundle this with `ViewState` by making `ViewState` a struct containing errors & generic data.
     // But at point of writing this causes too much needless churn.
-    visualizer_reports: HashMap<ViewId, PerVisualizerType<VisualizerTypeReport>>,
+    visualizer_reports: HashMap<ViewId, VisualizerViewReport>,
 }
 
 impl re_byte_size::SizeBytes for ViewStates {
@@ -70,7 +69,7 @@ impl ViewStates {
         view_id: ViewId,
         system_output: &SystemExecutionOutput,
     ) {
-        let per_visualizer_reports = &mut self.visualizer_reports.entry(view_id).or_default().0;
+        let per_visualizer_reports = self.visualizer_reports.entry(view_id).or_default();
 
         per_visualizer_reports.extend(system_output.visualizer_execution_output.iter().filter_map(
             |(id, result)| VisualizerTypeReport::from_result(result).map(|error| (*id, error)),
@@ -78,10 +77,7 @@ impl ViewStates {
     }
 
     /// Access latest visualizer reports (warnings and errors) for a given view.
-    pub fn per_visualizer_type_reports(
-        &self,
-        view_id: ViewId,
-    ) -> Option<&PerVisualizerType<VisualizerTypeReport>> {
+    pub fn per_visualizer_type_reports(&self, view_id: ViewId) -> Option<&VisualizerViewReport> {
         self.visualizer_reports.get(&view_id)
     }
 }

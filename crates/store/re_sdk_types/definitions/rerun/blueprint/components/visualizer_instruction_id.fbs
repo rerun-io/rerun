@@ -8,7 +8,7 @@ table VisualizerInstructionId (
   "attr.python.aliases": "str | list[str]",
   "attr.python.array_aliases": "str",
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "PartialEq, Eq, Default, Hash, Copy",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default, Hash, Copy",
   "attr.rust.repr": "transparent"
 ) {
   /// IDs of a single visualizer instruction.

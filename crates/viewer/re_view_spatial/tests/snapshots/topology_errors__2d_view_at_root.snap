@@ -2,7 +2,7 @@
 source: crates/viewer/re_view_spatial/tests/topology_errors.rs
 expression: snapshot_content
 ---
-"Points3D": /points3d_entity: 3D visualizers require a pinhole at the origin of the 2D view.
-"Ellipsoids3D": /disconnected_entity: No transform path from "disconnected" to the view's origin frame ("world").
 "Boxes3D": /misplaced_boxes3d_entity: Can't visualize 3D content that is under a pinhole projection.
+"Ellipsoids3D": /disconnected_entity: No transform path from "disconnected" to the view's origin frame ("world").
 "Points2D": /points2d_entity: Can't visualize 2D content with a pinhole ancestor that's embedded within the 2D view. This applies a 3D → 2D projection to a space that's already regarded 2D.
+"Points3D": /points3d_entity: 3D visualizers require a pinhole at the origin of the 2D view.

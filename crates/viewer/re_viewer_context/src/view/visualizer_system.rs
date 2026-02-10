@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
 use parking_lot::Mutex;
 use re_chunk_store::MissingChunkReporter;
 use vec1::Vec1;
@@ -221,7 +220,7 @@ pub struct VisualizerExecutionOutput {
     ///
     /// It's mutex protected to make it easier to append errors while processing instructions in parallel.
     pub reports_per_instruction:
-        Mutex<HashMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>>,
+        Mutex<BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>>,
 
     /// Used to indicate that some chunks were missing
     missing_chunk_reporter: MissingChunkReporter,

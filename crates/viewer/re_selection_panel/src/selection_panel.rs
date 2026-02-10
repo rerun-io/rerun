@@ -12,9 +12,9 @@ use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizerType,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
+    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewerContext, VisualizerViewReport, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -700,7 +700,7 @@ fn entity_selection_ui(
             .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
         let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
-        let empty_errors = PerVisualizerType::default();
+        let empty_errors = VisualizerViewReport::default();
         let visualizer_errors = view_states
             .per_visualizer_type_reports(*view_id)
             .unwrap_or(&empty_errors);

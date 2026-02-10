@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// For details see [`archetypes::ActiveVisualizers`][crate::blueprint::archetypes::ActiveVisualizers].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, Default, Hash, Copy)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Copy)]
 #[repr(transparent)]
 pub struct VisualizerInstructionId(
     /// IDs of a single visualizer instruction.

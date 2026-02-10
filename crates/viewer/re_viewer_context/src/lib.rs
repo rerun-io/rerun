@@ -125,7 +125,7 @@ pub use self::view::{
     VisualizerCollection, VisualizerComponentMappings, VisualizerComponentSource,
     VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionReport,
     VisualizerInstructionsPerType, VisualizerQueryInfo, VisualizerReportContext,
-    VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport,
+    VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport, VisualizerViewReport,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

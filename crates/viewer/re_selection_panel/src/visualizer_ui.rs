@@ -15,17 +15,16 @@ use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, PerVisualizerType,
-    TryShowEditUiResult, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
-    VisualizerComponentSource, VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
-    VisualizerTypeReport,
+    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, TryShowEditUiResult,
+    UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection, VisualizerComponentSource,
+    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem, VisualizerViewReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
     view: &ViewBlueprint,
-    visualizer_errors: &PerVisualizerType<VisualizerTypeReport>,
+    visualizer_errors: &VisualizerViewReport,
     entity_path: &EntityPath,
     ui: &mut egui::Ui,
 ) {
@@ -101,7 +100,7 @@ pub fn visualizer_ui_impl(
     data_result: &DataResult,
     active_visualizers: &[VisualizerInstruction],
     all_visualizers: &VisualizerCollection,
-    per_type_visualizer_reports: &PerVisualizerType<VisualizerTypeReport>,
+    per_type_visualizer_reports: &VisualizerViewReport,
 ) {
     let override_base_path = data_result.override_base_path();
 
