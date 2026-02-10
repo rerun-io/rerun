@@ -63,9 +63,9 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 Some(instruction),
             );
 
-            let Some(tensor) = latest_at_results.get_required_mono::<components::TensorData>(
-                BarChart::descriptor_values().component,
-            ) else {
+            let Some(tensor) = latest_at_results
+                .get_mono::<components::TensorData>(BarChart::descriptor_values().component)
+            else {
                 continue;
             };
 

@@ -257,7 +257,7 @@ impl VisualizerSystem for CamerasVisualizer {
             // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the
             // pinhole information from the transform tree instead, which already has this and other properties queried.
             if query_results
-                .get_required_mono::<components::PinholeProjection>(
+                .get_mono::<components::PinholeProjection>(
                     Pinhole::descriptor_image_from_camera().component,
                 )
                 .is_none()

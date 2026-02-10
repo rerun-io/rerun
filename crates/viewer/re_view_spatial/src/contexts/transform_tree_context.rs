@@ -638,7 +638,7 @@ impl EntityTransformIdMapping {
                     fallback
                 },
                 |frame_id| {
-                    let is_mono = results.store_results.component_mono_raw_quiet(transform_frame_id_component).is_some();
+                    let is_mono = results.get_raw_cell(transform_frame_id_component).is_some_and(|array| array.len() == 1);
                     if !is_mono {
                         re_log::warn_once!(
                             "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",

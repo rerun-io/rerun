@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use re_chunk_store::{LatestAtQuery, RangeQuery};
+use re_chunk_store::external::re_chunk::external::arrow::array::ArrayRef;
+use re_chunk_store::{LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
@@ -23,7 +24,7 @@ use crate::{
 /// they will be merged into the results appropriately.
 pub struct BlueprintResolvedLatestAtResults<'a> {
     pub overrides: LatestAtResults,
-    pub store_results: LatestAtResults,
+    pub(crate) store_results: LatestAtResults,
     pub view_defaults: &'a LatestAtResults,
     pub(crate) instruction_id: Option<VisualizerInstructionId>,
 
@@ -31,19 +32,71 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
     pub query: LatestAtQuery,
     pub data_result: &'a DataResult,
 
-    pub component_sources:
+    pub(crate) component_sources:
         IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
 
     /// Hash of mappings applied to [`Self::store_results`].
-    pub component_indices_hash: Hash64,
+    pub(crate) component_indices_hash: Hash64,
 }
 
-impl BlueprintResolvedLatestAtResults<'_> {
+impl<'a> BlueprintResolvedLatestAtResults<'a> {
     /// Are there any chunks that need to be fetched from a remote store?
     pub fn any_missing_chunks(&self) -> bool {
         0 < self.overrides.missing_virtual.len()
             + self.store_results.missing_virtual.len()
             + self.view_defaults.missing_virtual.len()
+    }
+
+    /// Returns the [`UnitChunkShared`] for the given component, respecting overrides, store results, and defaults.
+    ///
+    /// `force_preserve_store_row_ids`: If true, preserves row IDs from store data.
+    /// If false, results are re-indexed to static with zeroed row IDs to allow range zipping.
+    /// Blueprint data (overrides/defaults) is **always** re-indexed regardless of this setting.
+    pub fn get_unit_chunk(
+        &'a self,
+        component: ComponentIdentifier,
+        force_preserve_store_row_ids: bool,
+    ) -> Result<Option<Cow<'a, UnitChunkShared>>, ComponentMappingError> {
+        let Some(source) = self.component_sources.get(&component) else {
+            return Ok(None);
+        };
+        let source = source.clone()?;
+
+        let blueprint_unit_chunk = match source {
+            ComponentSourceKind::SourceComponent => {
+                if let Some(unit_chunk) = self.store_results.get(component) {
+                    let unit_chunk = if force_preserve_store_row_ids {
+                        Cow::Borrowed(unit_chunk)
+                    } else {
+                        let chunk: re_chunk::Chunk = (**unit_chunk).clone();
+                        let chunk = chunk.into_static().zeroed();
+                        Cow::Owned(chunk.into_unit().expect(
+                            "This was a unit chunk to begin with, so converting it back can't fail",
+                        ))
+                    };
+                    return Ok(Some(unit_chunk));
+                } else {
+                    None
+                }
+            }
+            ComponentSourceKind::Override => self.overrides.get(component),
+            ComponentSourceKind::Default => self.view_defaults.get(component),
+        };
+
+        if let Some(unit_chunk) = blueprint_unit_chunk {
+            // Because this is an override or default from the blueprint we always re-index the data as static
+            let chunk: re_chunk::Chunk = (**unit_chunk).clone();
+            let chunk = chunk.into_static().zeroed();
+
+            let unit_chunk =
+                Cow::Owned(chunk.into_unit().expect(
+                    "This was a unit chunk to begin with, so converting it back can't fail",
+                ));
+
+            Ok(Some(unit_chunk))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -116,31 +169,39 @@ impl BlueprintResolvedRangeResults<'_> {
 }
 
 impl BlueprintResolvedLatestAtResults<'_> {
-    /// Utility for retrieving the first instance of a component, ignoring defaults.
-    #[inline]
-    pub fn get_required_mono<C: re_types_core::Component>(
-        &self,
-        component: ComponentIdentifier,
-    ) -> Option<C> {
-        self.get_required_instance(0, component)
-    }
-
     /// Utility for retrieving the first instance of a component.
+    ///
+    /// This operates on a single component at a time and does not handle
+    /// required vs. optional component semantics needed when zipping multiple components together.
+    /// For multi-component zipping, see [`crate::VisualizerInstructionQueryResults`] which properly handles
+    /// required vs. optional distinction.
     #[inline]
     pub fn get_mono<C: re_types_core::Component>(
         &self,
         component: ComponentIdentifier,
     ) -> Option<C> {
-        self.get_instance(0, component)
+        // We don't care about row ids here, but preserving means less overhead!
+        let force_preserve_store_row_ids = true;
+        let unit_chunk = self
+            .get_unit_chunk(component, force_preserve_store_row_ids)
+            .ok()??;
+
+        let deserialized_row = unit_chunk.iter_component::<C>(component).next()?;
+        deserialized_row.as_slice().first().cloned()
     }
 
-    /// Utility for retrieving the first instance of a component.
+    /// Utility for retrieving the first instance of a component, falling back to the registered fallback value.
+    ///
+    /// This operates on a single component at a time and does not handle
+    /// required vs. optional component semantics needed when zipping multiple components together.
+    /// For multi-component zipping, see [`crate::VisualizerInstructionQueryResults`] which properly handles
+    /// required vs. optional distinction.
     #[inline]
     pub fn get_mono_with_fallback<C: re_types_core::Component>(
         &self,
         component: ComponentIdentifier,
     ) -> C {
-        self.get_instance::<C>(0, component).unwrap_or_else(|| {
+        self.get_mono::<C>(component).unwrap_or_else(|| {
             let query_context = if let Some(instruction_id) = self.instruction_id {
                 self.ctx
                     .query_context(self.data_result, &self.query, instruction_id)
@@ -152,35 +213,21 @@ impl BlueprintResolvedLatestAtResults<'_> {
         })
     }
 
-    /// Utility for retrieving a single instance of a component, not checking for defaults.
+    /// Returns the raw arrow array for the given component's single cell.
     ///
-    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
+    /// This operates on a single component at a time and does not handle
+    /// required vs. optional component semantics needed when zipping multiple components together.
+    /// For multi-component zipping, see [`crate::VisualizerInstructionQueryResults`] which properly handles
+    /// required vs. optional distinction.
     #[inline]
-    pub fn get_required_instance<C: re_types_core::Component>(
-        &self,
-        index: usize,
-        component: ComponentIdentifier,
-    ) -> Option<C> {
-        self.overrides
-            .component_instance::<C>(index, component)
-            .or_else(||
-                // No override -> try recording store instead
-                self.store_results.component_instance::<C>(index, component))
-    }
+    pub fn get_raw_cell(&self, component: ComponentIdentifier) -> Option<ArrayRef> {
+        // We don't care about row ids here, but preserving means less overhead!
+        let force_preserve_store_row_ids = true;
+        let unit_chunk = self
+            .get_unit_chunk(component, force_preserve_store_row_ids)
+            .ok()??;
 
-    /// Utility for retrieving a single instance of a component.
-    ///
-    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
-    #[inline]
-    pub fn get_instance<C: re_types_core::Component>(
-        &self,
-        index: usize,
-        component: ComponentIdentifier,
-    ) -> Option<C> {
-        self.get_required_instance(index, component).or_else(|| {
-            // No override & no store -> try default instead
-            self.view_defaults.component_instance::<C>(index, component)
-        })
+        unit_chunk.component_batch_raw(component)
     }
 }
 
@@ -480,47 +527,19 @@ impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedLatestAtResults<'_
         component: ComponentIdentifier,
         force_preserve_store_row_ids: bool,
     ) -> MaybeChunksWithComponent<'a> {
-        let source = match self.component_sources.get(&component) {
-            Some(Ok(source)) => source,
-            // TODO(grtlr,andreas): Not all of our errors implement clone (looking at you `ArrowError`)!
-            Some(Err(err)) => return MaybeChunksWithComponent::error(component, err.clone()),
-            None => return MaybeChunksWithComponent::empty(component),
-        };
+        match self.get_unit_chunk(component, force_preserve_store_row_ids) {
+            Ok(None) => MaybeChunksWithComponent::empty(component),
 
-        let unit_chunk = match source {
-            ComponentSourceKind::SourceComponent => {
-                let chunks = self.store_results.get(component).cloned().map_or_else(
-                    || Cow::Owned(vec![]),
-                    |chunk| {
-                        let mut chunk = Arc::unwrap_or_clone(chunk.into_chunk());
-                        if !force_preserve_store_row_ids {
-                            chunk = chunk.into_static().zeroed();
-                        }
-                        Cow::Owned(vec![chunk])
-                    },
-                );
-                return MaybeChunksWithComponent {
-                    maybe_chunks: Ok(chunks),
-                    component,
-                };
-            }
-            ComponentSourceKind::Override => self.overrides.get(component),
-            ComponentSourceKind::Default => self.view_defaults.get(component),
-        };
-
-        if let Some(unit_chunk) = unit_chunk {
-            // Because this is an override or default from the blueprint we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit_chunk.clone().into_chunk())
-                .into_static()
-                .zeroed();
-
-            MaybeChunksWithComponent {
-                maybe_chunks: Ok(Cow::Owned(vec![chunk])),
-
+            Ok(Some(unit_chunk)) => MaybeChunksWithComponent {
+                maybe_chunks: Ok(match unit_chunk {
+                    Cow::Borrowed(unit_chunk) => Cow::Borrowed(std::slice::from_ref(unit_chunk)),
+                    // TODO(andreas): Would be nice to get rid of the extra clone and vec allocation here.
+                    Cow::Owned(unit_chunk) => Cow::Owned(vec![(*unit_chunk.into_chunk()).clone()]),
+                }),
                 component,
-            }
-        } else {
-            MaybeChunksWithComponent::empty(component)
+            },
+
+            Err(err) => MaybeChunksWithComponent::error(component, err),
         }
     }
 }

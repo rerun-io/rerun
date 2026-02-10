@@ -52,8 +52,8 @@ impl VisualizerSystem for TextDocumentSystem {
                 Some(instruction),
             );
 
-            let Some(text) = results
-                .get_required_mono::<components::Text>(TextDocument::descriptor_text().component)
+            let Some(text) =
+                results.get_mono::<components::Text>(TextDocument::descriptor_text().component)
             else {
                 continue;
             };
