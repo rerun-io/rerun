@@ -73,22 +73,26 @@ fn atomic_latest_at_query(
 ) -> Option<UnitChunkShared> {
     let storage_engine = entity_db.storage_engine();
     let store = storage_engine.store();
-    let include_static = true;
-    let chunks = store.latest_at_relevant_chunks_for_all_components(
-        ChunkTrackingMode::Report,
-        query,
-        entity_path,
-        include_static,
-    );
+    let chunks = atomic_component_set
+        .iter()
+        .flat_map(|comp| {
+            let re_chunk_store::QueryResults {
+                chunks,
+                missing_virtual,
+            } = store.latest_at_relevant_chunks(
+                ChunkTrackingMode::Report,
+                query,
+                entity_path,
+                *comp,
+            );
+            if !missing_virtual.is_empty() {
+                missing_chunk_reporter.report_missing_chunk();
+            }
 
-    let re_chunk_store::QueryResults {
-        chunks,
-        missing_virtual,
-    } = chunks;
-
-    if !missing_virtual.is_empty() {
-        missing_chunk_reporter.report_missing_chunk();
-    }
+            chunks
+        })
+        // An optimization to avoid duplicates early.
+        .unique_by(|c| c.id());
 
     let entity_path_derived_frame_id = TransformFrameIdHash::from_entity_path(entity_path);
 
