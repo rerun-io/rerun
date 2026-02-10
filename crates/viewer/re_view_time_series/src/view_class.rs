@@ -8,7 +8,9 @@ use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
-use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
+use re_sdk_types::blueprint::archetypes::{
+    ActiveVisualizers, PlotBackground, PlotLegend, ScalarAxis, TimeAxis,
+};
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
@@ -804,6 +806,7 @@ impl ViewClass for TimeSeriesView {
                     let Some(node) = query_result.tree.data_results.get(*handle) else {
                         continue;
                     };
+                    let pill_margin = egui::Margin::symmetric(8, 6);
                     for instruction in &node.data_result.visualizer_instructions {
                         ui.add_space(10.0);
 
@@ -824,74 +827,109 @@ impl ViewClass for TimeSeriesView {
                             .map(|part| part.ui_string())
                             .unwrap_or_else(|| "/".to_owned());
 
-                        // Calculate pill rect and interact.
-                        let mut frame = egui::Frame::default()
-                            .inner_margin(4.0)
-                            .fill(ui.tokens().visualizer_list_pill_bg_color)
-                            .corner_radius(4.0)
-                            .inner_margin(egui::Margin::symmetric(8, 6))
-                            .begin(ui);
-                        {
-                            let ui = &mut frame.content_ui;
-                            ui.set_width(ui.available_width());
+                        // Estimate the pill height so Sides can vertically center
+                        // both sides (pill on the left, trash button on the right).
+                        let pill_height = 2.0 * ui.text_style_height(&egui::TextStyle::Body)
+                            + ui.spacing().item_spacing.y
+                            + pill_margin.sum().y;
 
-                            // Disable text selection so hovering the text only hovers the pill
-                            ui.style_mut().interaction.selectable_labels = false;
-                            ui.horizontal(|ui| {
-                                ui.vertical(|ui| {
-                                    // Visualizer name
-                                    ui.label(
-                                        egui::RichText::new(&display_name)
-                                            .color(ui.tokens().visualizer_list_title_text_color),
-                                    );
-                                    // Entity path
-                                    ui.label(
-                                        egui::RichText::new(&full_path)
-                                            .size(10.5)
-                                            .color(ui.tokens().visualizer_list_path_text_color),
-                                    );
-                                });
+                        egui::Sides::new().height(pill_height).shrink_left().show(
+                            ui,
+                            |ui| {
+                                let mut frame = egui::Frame::default()
+                                    .fill(ui.tokens().visualizer_list_pill_bg_color)
+                                    .corner_radius(4.0)
+                                    .inner_margin(pill_margin)
+                                    .begin(ui);
+                                {
+                                    let ui = &mut frame.content_ui;
+                                    ui.set_width(ui.available_width());
 
-                                // Right side: color box for time series visualizers
-                                if let Some(series_color) = series_color {
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Center),
-                                        |ui| {
-                                            let size = ui.tokens().visualizer_list_color_box_size;
-                                            let color_box_size = egui::vec2(size, size);
-                                            let (rect, _response) = ui.allocate_exact_size(
-                                                color_box_size,
-                                                egui::Sense::hover(),
+                                    // Disable text selection so hovering the text only hovers the pill
+                                    ui.style_mut().interaction.selectable_labels = false;
+
+                                    // Visualizer name and entity path
+                                    let labels =
+                                        ui.vertical(|ui| {
+                                            ui.label(egui::RichText::new(&display_name).color(
+                                                ui.tokens().visualizer_list_title_text_color,
+                                            ));
+                                            ui.label(
+                                                egui::RichText::new(&full_path).size(10.5).color(
+                                                    ui.tokens().visualizer_list_path_text_color,
+                                                ),
                                             );
-                                            ui.painter().rect(
-                                                rect,
-                                                3.0,
-                                                series_color,
-                                                ui.tokens().visualizer_list_color_box_stroke,
-                                                egui::StrokeKind::Outside,
-                                            );
-                                        },
+                                        });
+
+                                    // Color box on the right, vertically centered on the labels.
+                                    if let Some(series_color) = series_color {
+                                        let size = ui.tokens().visualizer_list_color_box_size;
+                                        let rect = egui::Rect::from_center_size(
+                                            egui::pos2(
+                                                ui.max_rect().right() - size / 2.0,
+                                                labels.response.rect.center().y,
+                                            ),
+                                            egui::vec2(size, size),
+                                        );
+                                        ui.painter().rect(
+                                            rect,
+                                            3.0,
+                                            series_color,
+                                            ui.tokens().visualizer_list_color_box_stroke,
+                                            egui::StrokeKind::Outside,
+                                        );
+                                    }
+                                }
+                                let response = frame
+                                    .allocate_space(ui)
+                                    .interact(egui::Sense::click())
+                                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+                                if response.hovered() {
+                                    frame.frame.fill =
+                                        ui.tokens().visualizer_list_pill_bg_color_hovered;
+                                }
+                                if response.clicked() {
+                                    let instance_path = InstancePath::from(entity_path.clone());
+                                    ctx.viewer_ctx.command_sender().send_system(
+                                        re_viewer_context::SystemCommand::set_selection(
+                                            Item::DataResult(ctx.view_id, instance_path),
+                                        ),
                                     );
                                 }
-                            });
-                        }
-                        let response = frame
-                            .allocate_space(ui)
-                            .interact(egui::Sense::click())
-                            .on_hover_cursor(egui::CursorIcon::PointingHand);
-                        if response.hovered() {
-                            frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                        }
-                        if response.clicked() {
-                            let instance_path = InstancePath::from(entity_path.clone());
-                            ctx.viewer_ctx.command_sender().send_system(
-                                re_viewer_context::SystemCommand::set_selection(Item::DataResult(
-                                    ctx.view_id,
-                                    instance_path,
-                                )),
-                            );
-                        }
-                        frame.paint(ui);
+                                frame.paint(ui);
+                            },
+                            |ui| {
+                                // Trashcan button to remove this visualizer.
+                                let remove_response =
+                                    ui.small_icon_button(&re_ui::icons::TRASH, "Remove visualizer");
+                                if remove_response.clicked() {
+                                    let override_base_path = &node.data_result.override_base_path;
+
+                                    let active_visualizers = node
+                                        .data_result
+                                        .visualizer_instructions
+                                        .iter()
+                                        .filter(|v| v.id != instruction.id)
+                                        .collect::<Vec<_>>();
+
+                                    let archetype = ActiveVisualizers::new(
+                                        active_visualizers.iter().map(|v| v.id.0),
+                                    );
+
+                                    ctx.save_blueprint_archetype(
+                                        override_base_path.clone(),
+                                        &archetype,
+                                    );
+
+                                    // Ensure the remaining instructions are persisted so that their
+                                    // types and mappings are available on the next frame.
+                                    for visualizer_instruction in active_visualizers {
+                                        visualizer_instruction
+                                            .write_instruction_to_blueprint(ctx.viewer_ctx);
+                                    }
+                                }
+                            },
+                        );
                     }
                 }
             });
