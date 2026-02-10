@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 
@@ -203,6 +203,7 @@ impl TreeTransformsForChildFrame {
     pub fn latest_at_transform(
         &self,
         entity_db: &EntityDb,
+        missing_chunk_reporter: &MissingChunkReporter,
         query: &LatestAtQuery,
     ) -> Option<ParentFromChildTransform> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
@@ -218,9 +219,10 @@ impl TreeTransformsForChildFrame {
                     // Separate check to work around borrow checker issues.
                     if frame_transform == &CachedTransformValue::Invalidated {
                         let transform = query_and_resolve_tree_transform_at_entity(
+                            entity_db,
+                            missing_chunk_reporter,
                             self.associated_entity_path(*time_of_last_update_to_this_frame),
                             self.child_frame,
-                            entity_db,
                             // Do NOT use the original query time since that may give us information about a different child frame!
                             &LatestAtQuery::new(
                                 query.timeline(),
@@ -263,6 +265,7 @@ impl TreeTransformsForChildFrame {
     pub fn latest_at_pinhole(
         &self,
         entity_db: &EntityDb,
+        missing_chunk_reporter: &MissingChunkReporter,
         query: &LatestAtQuery,
     ) -> Option<ResolvedPinholeProjection> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
@@ -278,9 +281,10 @@ impl TreeTransformsForChildFrame {
                     // Separate check to work around borrow checker issues.
                     if pinhole_projection == &CachedTransformValue::Invalidated {
                         let transform = query_and_resolve_pinhole_projection_at_entity(
+                            entity_db,
+                            missing_chunk_reporter,
                             self.associated_entity_path(*time_of_last_update_to_this_frame),
                             self.child_frame,
-                            entity_db,
                             // Do NOT use the original query time since that may give us information about a different child frame!
                             &LatestAtQuery::new(
                                 query.timeline(),

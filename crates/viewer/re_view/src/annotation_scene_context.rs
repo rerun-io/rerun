@@ -30,6 +30,7 @@ impl ViewContextSystem for AnnotationSceneContext {
     fn execute(
         &mut self,
         _ctx: &re_viewer_context::ViewContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         _query: &re_viewer_context::ViewQuery<'_>,
         once_per_frame_result: &ViewContextSystemOncePerFrameResult,
     ) {

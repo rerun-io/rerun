@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
-use re_chunk_store::{Chunk, ChunkStoreEvent};
+use re_chunk_store::{Chunk, ChunkStoreEvent, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, TimelineName};
 use re_sdk_types::{RowId, archetypes};
@@ -90,9 +90,12 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
             |cold_cache| {
                 let timeline_transforms = cold_cache.transforms_for_timeline(query.timeline());
                 let frame_transforms = timeline_transforms.frame_transforms(queried_frame).unwrap();
-                frame_transforms
-                    .latest_at_transform(&entity_db, &query)
-                    .unwrap()
+                let missing_chunk_reporter = MissingChunkReporter::default();
+                let result = frame_transforms
+                    .latest_at_transform(&entity_db, &missing_chunk_reporter, &query)
+                    .unwrap();
+                assert!(missing_chunk_reporter.is_empty());
+                result
             },
             criterion::BatchSize::PerIteration,
         );
@@ -100,18 +103,23 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
 
     let warm_cache = create_cache_with_all_timelines();
     let timeline_transforms = warm_cache.transforms_for_timeline(query.timeline());
+    let missing_chunk_reporter = MissingChunkReporter::default();
     timeline_transforms
         .frame_transforms(queried_frame)
         .unwrap()
-        .latest_at_transform(&entity_db, &query);
+        .latest_at_transform(&entity_db, &missing_chunk_reporter, &query);
+    assert!(missing_chunk_reporter.is_empty());
 
     c.bench_function("query_cached_frame", |b| {
         b.iter(|| {
             let timeline_transforms = warm_cache.transforms_for_timeline(query.timeline());
             let frame_transforms = timeline_transforms.frame_transforms(queried_frame).unwrap();
-            frame_transforms
-                .latest_at_transform(&entity_db, &query)
-                .unwrap()
+            let missing_chunk_reporter = MissingChunkReporter::default();
+            let result = frame_transforms
+                .latest_at_transform(&entity_db, &missing_chunk_reporter, &query)
+                .unwrap();
+            assert!(missing_chunk_reporter.is_empty());
+            result
         });
     });
 

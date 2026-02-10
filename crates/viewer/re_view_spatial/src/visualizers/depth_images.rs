@@ -246,7 +246,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         let output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
 
         process_archetype::<Self, DepthImage, _>(
             ctx,

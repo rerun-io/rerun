@@ -19,6 +19,7 @@ mod drop_time_range;
 mod events;
 mod gc;
 mod lineage;
+mod missing_chunk_reporter;
 mod properties;
 mod query;
 mod stats;
@@ -47,6 +48,7 @@ pub use self::events::{
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
+pub use self::missing_chunk_reporter::MissingChunkReporter;
 pub use self::properties::ExtractPropertiesError;
 pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};

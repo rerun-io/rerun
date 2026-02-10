@@ -1,8 +1,5 @@
-use std::collections::BTreeMap;
-
 use egui::RichText;
 use itertools::Itertools as _;
-use nohash_hasher::IntSet;
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::{InstancePath, external::re_query::LatestAtResults};
@@ -15,7 +12,7 @@ use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 
 use super::DataUi;
-use crate::extra_data_ui::ExtraDataUi;
+use crate::{ArchetypeComponentMap, extra_data_ui::ExtraDataUi};
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -33,23 +30,12 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        // NOTE: the passed in `db` is usually the recording; NOT the blueprint.
-        let component = if ctx.recording().is_known_entity(entity_path) {
-            // We are looking at an entity in the recording
-            ctx.recording_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else if ctx.blueprint_db().is_known_entity(entity_path) {
-            // We are looking at an entity in the blueprint
-            ctx.blueprint_db()
-                .storage_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else {
-            ui.error_label(format!("Unknown entity: {entity_path:?}"));
-            return;
-        };
-        let Some(unordered_components) = component else {
+        let components = db
+            .storage_engine()
+            .store()
+            .all_components_on_timeline(&query.timeline(), entity_path);
+
+        let Some(unordered_components) = components else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
@@ -61,16 +47,20 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components_by_archetype = {
-            let recording_engine = ctx.recording_engine();
-            let store = recording_engine.store();
-            crate::sorted_component_list_by_archetype_for_ui(
-                ctx.reflection(),
-                unordered_components
-                    .iter()
-                    .filter_map(|c| store.entity_component_descriptor(entity_path, *c)),
-            )
+        let component_descriptors: Vec<ComponentDescriptor> = {
+            let storage_engine = db.storage_engine();
+            let store = storage_engine.store();
+            unordered_components
+                .iter()
+                .filter_map(|c| store.entity_component_descriptor(entity_path, *c))
+                .sorted()
+                .collect_vec()
         };
+
+        let components_by_archetype = crate::sorted_component_list_by_archetype_for_ui(
+            ctx.reflection(),
+            component_descriptors.iter().cloned(),
+        );
 
         let query_results = db.storage_engine().cache().latest_at(
             query,
@@ -78,21 +68,7 @@ impl DataUi for InstancePath {
             unordered_components.iter().copied(),
         );
 
-        let components_by_archetype =
-            group_components_by_archetype(query_results, components_by_archetype);
-
-        if components_by_archetype.is_empty() {
-            let typ = db.timeline_type(&query.timeline());
-            ui_layout.label(
-                ui,
-                format!(
-                    "Nothing logged at {} = {}",
-                    query.timeline(),
-                    typ.format(query.at(), ctx.app_options().timestamp_format),
-                ),
-            );
-            return;
-        }
+        let any_missing_chunks = !query_results.missing_virtual.is_empty();
 
         instance_path_ui(
             self,
@@ -103,18 +79,20 @@ impl DataUi for InstancePath {
             db,
             entity_path,
             instance,
-            &unordered_components,
-            components_by_archetype.clone(),
+            &components_by_archetype,
+            &query_results,
         );
 
         if instance.is_all() {
             // There are some examples where we need to combine several archetypes for a single preview.
             // For instance `VideoFrameReference` and `VideoAsset` are used together for a single preview.
-            let all_components = components_by_archetype
-                .values()
-                .flatten()
-                .cloned()
-                .collect::<Vec<_>>();
+            let all_components = component_descriptors
+                .iter()
+                .filter_map(|descr| {
+                    let chunk = query_results.components.get(&descr.component)?;
+                    Some((descr.clone(), chunk.clone()))
+                })
+                .collect_vec();
 
             for (descr, shared) in &all_components {
                 if let Some(data) = ExtraDataUi::from_components(
@@ -129,6 +107,11 @@ impl DataUi for InstancePath {
                 }
             }
         }
+
+        if any_missing_chunks && db.can_fetch_chunks_from_redap() {
+            // TODO(RR-3670): figure out how to handle missing chunks
+            ui.loading_indicator();
+        }
     }
 }
 
@@ -142,14 +125,16 @@ fn instance_path_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    unordered_components: &IntSet<re_sdk_types::ComponentIdentifier>,
-    mut components_by_archetype: BTreeMap<
-        Option<ArchetypeName>,
-        Vec<(ComponentDescriptor, UnitChunkShared)>,
-    >,
+    components_by_archetype: &ArchetypeComponentMap,
+    query_results: &LatestAtResults,
 ) {
     // Showing more than this takes up too much space
     const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
+
+    let num_components = components_by_archetype
+        .values()
+        .map(|v| v.len())
+        .sum::<usize>();
 
     if ui_layout.is_single_line() {
         ui_layout.label(
@@ -157,27 +142,27 @@ fn instance_path_ui(
             format!(
                 "{} with {}",
                 format_plural_s(components_by_archetype.len(), "archetype"),
-                format_plural_s(unordered_components.len(), "total component")
+                format_plural_s(num_components, "total component")
             ),
         );
-    } else if ui_layout == UiLayout::Tooltip
-        && MAX_COMPONENTS_IN_TOOLTIP < unordered_components.len()
-    {
+    } else if ui_layout == UiLayout::Tooltip && MAX_COMPONENTS_IN_TOOLTIP < num_components {
         // Too many to show all in a tooltip.
 
         let mut show_only_instanced = false;
 
         if !instance_path.is_all() {
             // Focus on the components that have different values per instance (non-splatted components):
-            let instanced_components_by_archetype: BTreeMap<
-                Option<ArchetypeName>,
-                Vec<(ComponentDescriptor, UnitChunkShared)>,
-            > = components_by_archetype
+            let instanced_components_by_archetype: ArchetypeComponentMap = components_by_archetype
                 .iter()
                 .filter_map(|(archetype_name, archetype_components)| {
                     let instanced_archetype_components = archetype_components
                         .iter()
-                        .filter(|(descr, unit)| unit.num_instances(descr.component) > 1)
+                        .filter(|descr| {
+                            query_results
+                                .components
+                                .get(&descr.component)
+                                .is_some_and(|unit| unit.num_instances(descr.component) > 1)
+                        })
                         .cloned()
                         .collect_vec();
                     if instanced_archetype_components.is_empty() {
@@ -205,9 +190,10 @@ fn instance_path_ui(
                     entity_path,
                     instance,
                     &instanced_components_by_archetype,
+                    query_results,
                 );
 
-                let num_skipped = unordered_components.len() - num_instanced_components;
+                let num_skipped = num_components - num_instanced_components;
                 ui.label(format!(
                     "…plus {num_skipped} more {}",
                     if num_skipped == 1 {
@@ -222,7 +208,7 @@ fn instance_path_ui(
         if !show_only_instanced {
             // Show just a rough summary:
 
-            ui.list_item_label(format_plural_s(unordered_components.len(), "component"));
+            ui.list_item_label(format_plural_s(num_components, "component"));
 
             let archetype_count = components_by_archetype.len();
             ui.list_item_label(format!(
@@ -250,9 +236,10 @@ fn instance_path_ui(
         // unlike with meshes it's very easy to hover & select individual nodes.
         // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
         // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
+        let mut components_by_archetype = components_by_archetype.clone();
         if !instance_path.is_all() {
             for components in components_by_archetype.values_mut() {
-                components.retain(|(component, _chunk)| {
+                components.retain(|component| {
                     component.component_type != Some(components::GraphEdge::name())
                 });
             }
@@ -267,32 +254,9 @@ fn instance_path_ui(
             entity_path,
             instance,
             &components_by_archetype,
+            query_results,
         );
     }
-}
-
-fn group_components_by_archetype(
-    mut query_results: LatestAtResults,
-    components_by_archetype: BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>,
-) -> BTreeMap<Option<ArchetypeName>, Vec<(ComponentDescriptor, UnitChunkShared)>> {
-    // Keep previously established order.
-    components_by_archetype
-        .into_iter()
-        .map(|(archetype, components)| {
-            (
-                archetype,
-                components
-                    .into_iter()
-                    .filter_map(|c| {
-                        query_results
-                            .components
-                            .remove(&c.component)
-                            .map(|chunk| (c, chunk))
-                    })
-                    .collect(),
-            )
-        })
-        .collect()
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -304,10 +268,8 @@ fn component_list_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components_by_archetype: &BTreeMap<
-        Option<ArchetypeName>,
-        Vec<(ComponentDescriptor, UnitChunkShared)>,
-    >,
+    components_by_archetype: &ArchetypeComponentMap,
+    query_results: &LatestAtResults,
 ) {
     re_ui::list_item::list_item_scope(
         ui,
@@ -320,19 +282,47 @@ fn component_list_ui(
                     archetype_label_list_item_ui(ui, archetype);
                 }
 
-                for (component_descr, unit) in archetype_components {
-                    component_ui(
-                        ctx,
-                        ui,
-                        ui_layout,
-                        query,
-                        db,
-                        entity_path,
-                        instance,
-                        archetype_components,
-                        component_descr,
-                        unit,
-                    );
+                let archetype_component_units: Vec<(ComponentDescriptor, UnitChunkShared)> =
+                    archetype_components
+                        .iter()
+                        .filter_map(|descr| {
+                            let unit = query_results.components.get(&descr.component)?;
+                            Some((descr.clone(), unit.clone()))
+                        })
+                        .collect();
+
+                let mut missing_units = false;
+
+                for component_descr in archetype_components {
+                    if let Some(unit) = query_results.components.get(&component_descr.component) {
+                        component_ui(
+                            ctx,
+                            ui,
+                            ui_layout,
+                            query,
+                            db,
+                            entity_path,
+                            instance,
+                            &archetype_component_units,
+                            component_descr,
+                            unit,
+                        );
+                    } else {
+                        missing_units = true;
+                    }
+                }
+
+                if missing_units {
+                    // No data found at the moment.
+                    // Maybe there is no data this early on the timeline.
+                    // Maybe there _were_ data, but it has been GCed.
+                    // Maybe there _will be_ data, once we have loaded it.
+                    let any_missing_chunks = !query_results.missing_virtual.is_empty();
+                    if any_missing_chunks && db.can_fetch_chunks_from_redap() {
+                        ui.loading_indicator();
+                    } else {
+                        ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
+                    }
                 }
             }
         },

@@ -1,6 +1,7 @@
 use egui::emath::RectTransform;
 use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
+use re_chunk_store::MissingChunkReporter;
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::ViewPickingConfiguration;
@@ -137,6 +138,7 @@ impl SpatialView2D {
     pub fn view_2d(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
@@ -161,7 +163,7 @@ impl SpatialView2D {
         // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
         let transforms = system_output
             .context_systems
-            .get::<TransformTreeContext>()?;
+            .get_and_report_missing::<TransformTreeContext>(missing_chunk_reporter)?;
         state.pinhole_at_origin = transforms
             .pinhole_tree_root_info(transforms.target_frame())
             .map(|pinhole_at_root| {
@@ -251,6 +253,7 @@ impl SpatialView2D {
             );
             let (_response, picking_config) = crate::picking_ui::picking(
                 ctx,
+                missing_chunk_reporter,
                 &picking_context,
                 ui,
                 response,

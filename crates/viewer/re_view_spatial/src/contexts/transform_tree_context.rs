@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::ImagePlaneDistance;
 use re_sdk_types::{ArchetypeName, archetypes, blueprint};
@@ -164,12 +164,8 @@ impl ViewContextSystem for TransformTreeContext {
 
         let caches = ctx.store_context.caches;
         let transform_forest = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.update_transform_forest(ctx.recording(), &ctx.current_query());
-            c.transform_forest()
+            c.update_transform_forest(ctx.recording(), &ctx.current_query())
         });
-
-        // We update this here so it should exist.
-        let transform_forest = transform_forest.unwrap_or_default();
 
         let frame_id_registry = caches
             .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
@@ -192,6 +188,7 @@ impl ViewContextSystem for TransformTreeContext {
     fn execute(
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
+        missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
@@ -202,6 +199,9 @@ impl ViewContextSystem for TransformTreeContext {
             .expect("Unexpected static execution result type");
 
         self.transform_forest = static_execution_result.transform_forest.clone();
+        if self.transform_forest.any_missing_chunks() {
+            missing_chunk_reporter.report_missing_chunk();
+        }
         self.frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
         let results = {
@@ -355,10 +355,12 @@ impl ViewContextSystem for TransformTreeContext {
                         .entity_transform_id_mapping
                         .transform_frame_id_to_entity_path
                         .get(&transform_frame_id_hash)?;
+                    let missing_chunk_reporter_ref = &missing_chunk_reporter;
                     let transform_infos =
                         entity_paths_for_frame.iter().map(move |entity_path_hash| {
                             let transform_info = map_tree_transform_to_transform_info(
                                 ctx,
+                                missing_chunk_reporter_ref,
                                 &tree_transform,
                                 transforms,
                                 latest_at_query,
@@ -386,6 +388,7 @@ impl ViewContextSystem for TransformTreeContext {
 
 fn map_tree_transform_to_transform_info(
     ctx: &ViewContext<'_>,
+    missing_chunk_reporter: &MissingChunkReporter,
     tree_transform: &Result<TreeTransform, re_tf::TransformFromToError>,
     transforms: &re_tf::CachedTransformsForTimeline,
     latest_at_query: &LatestAtQuery,
@@ -395,7 +398,11 @@ fn map_tree_transform_to_transform_info(
     let poses = transforms
         .pose_transforms(*entity_path_hash)
         .map(|pose_transforms| {
-            pose_transforms.latest_at_instance_poses(ctx.recording(), latest_at_query)
+            pose_transforms.latest_at_instance_poses(
+                ctx.recording(),
+                missing_chunk_reporter,
+                latest_at_query,
+            )
         })
         .unwrap_or_default();
 
@@ -658,6 +665,7 @@ impl EntityTransformIdMapping {
 
 #[cfg(test)]
 mod tests {
+    use re_chunk_store::MissingChunkReporter;
     use re_log_types::{EntityPath, TimePoint};
     use re_sdk_types::archetypes::CoordinateFrame;
     use re_test_context::TestContext;
@@ -790,7 +798,13 @@ mod tests {
 
                 let mut tree_context = TransformTreeContext::default();
                 let once_per_frame = TransformTreeContext::execute_once_per_frame(ctx);
-                tree_context.execute(&view_ctx, &view_query, &once_per_frame);
+                let missing_chunk_reporter = MissingChunkReporter::default();
+                tree_context.execute(
+                    &view_ctx,
+                    &missing_chunk_reporter,
+                    &view_query,
+                    &once_per_frame,
+                );
 
                 assert_eq!(
                     tree_context.target_frame(),
@@ -798,6 +812,8 @@ mod tests {
                     "View expected target frame {expected_target:?}, got {:?}",
                     tree_context.format_frame(tree_context.target_frame())
                 );
+
+                assert!(!missing_chunk_reporter.any_missing());
             }
         });
     }

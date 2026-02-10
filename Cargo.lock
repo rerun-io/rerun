@@ -8736,7 +8736,6 @@ dependencies = [
  "egui_plot",
  "itertools 0.14.0",
  "jiff",
- "nohash-hasher",
  "re_arrow_ui",
  "re_arrow_util",
  "re_byte_size",

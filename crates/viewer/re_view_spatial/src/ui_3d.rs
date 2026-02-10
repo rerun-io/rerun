@@ -2,6 +2,7 @@ use egui::emath::RectTransform;
 use egui::{Modifiers, NumExt as _};
 use glam::Vec3;
 use macaw::BoundingBox;
+use re_chunk_store::MissingChunkReporter;
 use re_log_types::Instance;
 use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{LineDrawableBuilder, Size};
@@ -120,6 +121,7 @@ impl SpatialView3D {
     pub fn view_3d(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
@@ -231,6 +233,7 @@ impl SpatialView3D {
             );
             crate::picking_ui::picking(
                 ctx,
+                missing_chunk_reporter,
                 &picking_context,
                 ui,
                 response,

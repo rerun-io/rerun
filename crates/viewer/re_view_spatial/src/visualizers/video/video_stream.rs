@@ -59,8 +59,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
         let viewer_ctx = ctx.viewer_ctx;
         let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
-        let transforms = context_systems.get::<TransformTreeContext>()?;
-        let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
+        let depth_offsets = context_systems.get::<EntityDepthOffsets>(&output)?;
         let latest_at = view_query.latest_at_query();
 
         for (data_result, instruction) in

@@ -49,6 +49,5 @@ egui_plot.workspace = true
 egui.workspace = true
 itertools.workspace = true
 jiff.workspace = true
-nohash-hasher.workspace = true
 rexif.workspace = true
 unindent.workspace = true

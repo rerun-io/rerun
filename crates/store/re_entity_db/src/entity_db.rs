@@ -297,7 +297,7 @@ impl EntityDb {
 
     /// Are we connected to redap, and can fetch missing chunks?
     pub fn can_fetch_chunks_from_redap(&self) -> bool {
-        // TODO(emilk): Check that connection is healthy
+        // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
         self.data_source
             .as_ref()
             .is_some_and(|source| source.is_redap())
@@ -461,11 +461,8 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component]);
+        let results = self.latest_at(query, entity_path, [component]);
+        // TODO(RR-3295): report missing chunks to caller
         results
             .component_mono(component)
             .map(|value| (results.max_index(), value))
@@ -486,12 +483,8 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component]);
-
+        let results = self.latest_at(query, entity_path, [component]);
+        // TODO(RR-3295): report missing chunks to caller
         results
             .component_mono_quiet(component)
             .map(|value| (results.max_index(), value))

@@ -7,12 +7,14 @@ use re_sdk_types::ViewClassIdentifier;
 
 use super::view_class_placeholder::ViewClassPlaceholder;
 use super::visualizer_entity_subscriber::VisualizerEntitySubscriber;
-use crate::component_fallbacks::FallbackProviderRegistry;
 use crate::view::view_context_system::ViewContextSystemOncePerFrameResult;
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, PerVisualizerType, QueryContext, ViewClass,
     ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizerCollection, VisualizerSystem,
+};
+use crate::{
+    component_fallbacks::FallbackProviderRegistry, view::view_context_system::ViewSystemState,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -428,7 +430,7 @@ impl ViewClassRegistry {
                 .filter_map(|name| {
                     self.context_systems.get(name).map(|entry| {
                         let system = (entry.factory_method)();
-                        (*name, system)
+                        (*name, (system, ViewSystemState::default()))
                     })
                 })
                 .collect(),

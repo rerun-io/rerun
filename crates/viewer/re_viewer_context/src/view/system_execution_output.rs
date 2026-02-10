@@ -28,12 +28,12 @@ impl SystemExecutionOutput {
     /// Were any required chunks missing?
     ///
     /// If so, we should probably show a loading indicator.
-    pub fn has_missing_chunks(&self) -> bool {
+    pub fn any_missing_chunks(&self) -> bool {
         self.visualizer_execution_output
             .per_visualizer
             .values()
             .filter_map(|result| result.as_ref().ok())
-            .any(|output| output.has_missing_chunks())
+            .any(|output| output.any_missing_chunks())
     }
 
     /// Removes & returns all successfully created draw data from all visualizer executions.

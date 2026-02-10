@@ -15,9 +15,9 @@ use re_ui::{
 };
 use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
-    Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo, SystemCommand,
-    SystemCommandSender as _, SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext,
-    icon_for_container_kind,
+    Contents, DragAndDropFeedback, DragAndDropPayload, Item, MissingChunkReporter,
+    PublishedViewInfo, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewId,
+    ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
 use re_viewport_blueprint::{
     ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
@@ -399,11 +399,18 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let class = view_blueprint.class(self.ctx.view_class_registry());
         let view_state = self.view_states.get_mut_or_create(*view_id, class);
 
-        let has_missing_chunks = system_output.has_missing_chunks();
+        let missing_chunk_reporter = MissingChunkReporter::new(system_output.any_missing_chunks());
 
         let response = ui.scope(|ui| {
             class
-                .ui(self.ctx, ui, view_state, &query, system_output)
+                .ui(
+                    self.ctx,
+                    &missing_chunk_reporter,
+                    ui,
+                    view_state,
+                    &query,
+                    system_output,
+                )
                 .unwrap_or_else(|err| {
                     re_log::error!(
                         "Error in view UI (class: {}, display name: {}): {err}",
@@ -425,7 +432,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             });
         });
 
-        if has_missing_chunks && self.ctx.recording().can_fetch_chunks_from_redap() {
+        if missing_chunk_reporter.any_missing()
+            && self.ctx.recording().can_fetch_chunks_from_redap()
+        {
             let view_rect = response.response.rect;
             re_ui::loading_indicator::paint_loading_indicator_inside(
                 ui,

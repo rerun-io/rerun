@@ -1,4 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
+use re_chunk_store::MissingChunkReporter;
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
@@ -257,6 +258,7 @@ impl ViewClass for SpatialView2D {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -267,7 +269,7 @@ impl ViewClass for SpatialView2D {
         let state = state.downcast_mut::<SpatialViewState>()?;
         state.update_frame_statistics(ui, &system_output, SpatialViewKind::TwoD);
 
-        self.view_2d(ctx, ui, state, query, system_output)
+        self.view_2d(ctx, missing_chunk_reporter, ui, state, query, system_output)
     }
 }
 

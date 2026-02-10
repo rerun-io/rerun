@@ -282,7 +282,7 @@ pub struct ChunkPrioritizer {
     desired_physical_chunks: HashSet<ChunkId>,
 
     /// Tracks whether the viewer was missing any chunks last time we prioritized chunks.
-    had_missing_chunks: bool,
+    any_missing_chunks: bool,
 
     /// Chunks that are in the progress of being downloaded.
     chunk_requests: ChunkRequests,
@@ -304,7 +304,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
         let Self {
             desired_root_chunks,
             desired_physical_chunks,
-            had_missing_chunks: _,
+            any_missing_chunks: _,
             chunk_requests: _, // not yet implemented
             root_chunk_intervals: virtual_chunk_intervals,
             static_chunk_ids,
@@ -336,8 +336,8 @@ impl ChunkPrioritizer {
     }
 
     /// Returns true if the chunk store had missing chunks last time we prioritized chunks.
-    pub fn had_missing_chunks(&self) -> bool {
-        self.had_missing_chunks
+    pub fn any_missing_chunks(&self) -> bool {
+        self.any_missing_chunks
     }
 
     /// Find all chunk IDs that contain components with the given prefix.
@@ -543,7 +543,7 @@ impl ChunkPrioritizer {
             return Err(PrefetchError::UnknownTimeline(time_cursor.timeline()));
         };
 
-        self.had_missing_chunks = !used_and_missing.missing_virtual.is_empty();
+        self.any_missing_chunks = !used_and_missing.missing_virtual.is_empty();
 
         let mut remaining_byte_budget = options.total_uncompressed_byte_budget;
 

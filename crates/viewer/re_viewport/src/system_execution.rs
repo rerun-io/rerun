@@ -5,10 +5,10 @@ use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
 use re_viewer_context::{
-    PerVisualizerTypeInViewClass, SystemExecutionOutput, ViewContextCollection,
-    ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizerCollection,
-    VisualizerExecutionOutput, VisualizerInstructionsPerType,
+    MissingChunkReporter, PerVisualizerTypeInViewClass, SystemExecutionOutput,
+    ViewContextCollection, ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState,
+    ViewStates, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemState, ViewerContext,
+    VisualizerCollection, VisualizerExecutionOutput, VisualizerInstructionsPerType,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -36,12 +36,21 @@ fn run_view_systems(
         context_systems
             .systems
             .par_iter_mut()
-            .for_each(|(name, view_ctx_system)| {
+            .for_each(|(name, (view_ctx_system, state))| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", name.as_str());
+                let missing_chunk_reporter = MissingChunkReporter::default();
                 let once_per_frame_result = context_system_once_per_frame_results
                     .get(name)
                     .expect("Context system execution result didn't occur");
-                view_ctx_system.execute(&view_ctx, query, once_per_frame_result);
+                view_ctx_system.execute(
+                    &view_ctx,
+                    &missing_chunk_reporter,
+                    query,
+                    once_per_frame_result,
+                );
+                *state = ViewSystemState {
+                    any_missing_chunks: missing_chunk_reporter.any_missing(),
+                };
             });
     };
 

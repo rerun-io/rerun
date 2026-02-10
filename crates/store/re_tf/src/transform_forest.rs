@@ -1,6 +1,6 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_byte_size::SizeBytes;
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_sdk_types::components::TransformFrameId;
 
@@ -193,6 +193,10 @@ impl SizeBytes for TransformTreeRootInfo {
 /// such that arbitrary transforms within the tree can be resolved (relatively) quickly.
 #[derive(Default, Clone)]
 pub struct TransformForest {
+    /// Are there any chunks missing from the chunk store,
+    /// leading to an incomplete forest?
+    missing_chunk_reporter: MissingChunkReporter,
+
     /// All known tree roots.
     roots: IntMap<TransformFrameIdHash, TransformTreeRootInfo>,
 
@@ -240,6 +244,7 @@ impl TransformForest {
             // Walk as long as we can until we hit something we already processed or end up in a dead end.
             walk_towards_parent(
                 entity_db,
+                &forest.missing_chunk_reporter,
                 query,
                 current_frame,
                 &frame_id_registry,
@@ -261,6 +266,12 @@ impl TransformForest {
         }
 
         forest
+    }
+
+    /// Were there any chunks missing from the chunk store,
+    /// leading to an incomplete forest?
+    pub fn any_missing_chunks(&self) -> bool {
+        self.missing_chunk_reporter.any_missing()
     }
 
     /// Adds a stack of transforms produced by [`walk_towards_parent`] to the forest.
@@ -396,6 +407,7 @@ impl SizeBytes for TransformForest {
         re_tracing::profile_function!();
 
         let Self {
+            missing_chunk_reporter: _,
             roots,
             root_from_frame,
         } = self;
@@ -409,6 +421,7 @@ impl re_byte_size::MemUsageTreeCapture for TransformForest {
         re_tracing::profile_function!();
 
         let Self {
+            missing_chunk_reporter: _,
             roots,
             root_from_frame,
         } = self;
@@ -425,8 +438,10 @@ static UNKNOWN_TRANSFORM_ID: std::sync::LazyLock<TransformFrameId> =
 
 /// Starting from a `current_frame`, walks towards the parent and accumulates transforms into `transform_stack`.
 /// Stops until not more connection is found or an already processed `frame_id` is hit.
+#[expect(clippy::too_many_arguments)]
 fn walk_towards_parent(
     entity_db: &EntityDb,
+    missing_chunk_reporter: &MissingChunkReporter,
     query: &LatestAtQuery,
     current_frame: TransformFrameIdHash,
     id_registry: &FrameIdRegistry,
@@ -446,7 +461,14 @@ fn walk_towards_parent(
         && unprocessed_frames.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let transforms = transforms_at(current_frame, entity_db, query, id_registry, transforms);
+        let transforms = transforms_at(
+            entity_db,
+            missing_chunk_reporter,
+            current_frame,
+            query,
+            id_registry,
+            transforms,
+        );
         next_frame = transforms.parent_frame;
 
         // No matter whether there's a next frame or not, we push the transform information we got about this frame onto the stack
@@ -757,8 +779,9 @@ struct ParentChildTransforms {
 }
 
 fn transforms_at(
-    child_frame: TransformFrameIdHash,
     entity_db: &EntityDb,
+    missing_chunk_reporter: &MissingChunkReporter,
+    child_frame: TransformFrameIdHash,
     query: &LatestAtQuery,
     id_registry: &FrameIdRegistry,
     transforms_for_timeline: &CachedTransformsForTimeline,
@@ -769,8 +792,10 @@ fn transforms_at(
     let pinhole_projection;
 
     if let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) {
-        parent_from_child = source_transforms.latest_at_transform(entity_db, query);
-        pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
+        parent_from_child =
+            source_transforms.latest_at_transform(entity_db, missing_chunk_reporter, query);
+        pinhole_projection =
+            source_transforms.latest_at_pinhole(entity_db, missing_chunk_reporter, query);
     } else {
         parent_from_child = None;
         pinhole_projection = None;
@@ -936,6 +961,7 @@ mod tests {
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+        assert!(!transform_forest.any_missing_chunks());
 
         // Check that we get the expected roots.
         {
@@ -1144,6 +1170,7 @@ mod tests {
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+        assert!(!transform_forest.any_missing_chunks());
 
         // Check that we get the expected roots.
         {
@@ -1274,6 +1301,7 @@ mod tests {
             let test_scene = EntityDb::new(StoreInfo::testing().store_id);
             let transform_cache = TransformResolutionCache::default();
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(!transform_forest.any_missing_chunks());
 
             assert_eq!(
                 transform_forest
@@ -1297,6 +1325,7 @@ mod tests {
             let transform_cache = TransformResolutionCache::default();
             let test_scene = simple_frame_hierarchy_test_scene(true)?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(!transform_forest.any_missing_chunks());
 
             // The forest doesn't know about any of the frames despite having seen the populated store.
             assert_eq!(
@@ -1338,6 +1367,7 @@ mod tests {
             ))?;
             // But the forest seen the scene with it.
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(!transform_forest.any_missing_chunks());
 
             // Forest doesn't know about the newly added `child2` frame.
             assert_eq!(
@@ -1390,6 +1420,7 @@ mod tests {
                     .build()?,
             ))?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(!transform_forest.any_missing_chunks());
 
             // Forest sees the new relationship despite not having it reported since the cold cache will pick it up.
             assert_eq!(
@@ -1465,6 +1496,7 @@ mod tests {
         transform_cache
             .ensure_timeline_is_initialized(entity_db.storage_engine().store(), query.timeline());
         let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+        assert!(!transform_forest.any_missing_chunks());
 
         // Child still connects up to the root.
         assert_eq!(

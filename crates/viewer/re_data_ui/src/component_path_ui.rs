@@ -27,9 +27,12 @@ impl DataUi for ComponentPath {
                 unit,
             }
             .data_ui(ctx, ui, ui_layout, query, db);
-        } else if ctx.recording().tree().subtree(entity_path).is_some() {
-            if !db.has_fully_loaded(entity_path, *component, query) {
-                ui.label("Loading…");
+        } else if db.tree().subtree(entity_path).is_some() {
+            let any_missing_chunks = !results.missing_virtual.is_empty();
+
+            // TODO(RR-3670): figure out how to handle missing chunks
+            if any_missing_chunks && db.can_fetch_chunks_from_redap() {
+                ui.loading_indicator();
             } else if engine.store().entity_has_component_on_timeline(
                 &query.timeline(),
                 entity_path,

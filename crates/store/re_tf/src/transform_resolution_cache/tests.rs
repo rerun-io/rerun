@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use glam::DAffine3;
 use re_chunk_store::{
     Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
-    LatestAtQuery, PerStoreChunkSubscriber,
+    LatestAtQuery, MissingChunkReporter, PerStoreChunkSubscriber,
 };
 use re_entity_db::EntityDb;
 use re_log_types::{
@@ -19,7 +19,54 @@ use re_sdk_types::{
 use crate::TransformFrameIdHash;
 use crate::convert;
 
+use super::pose_transform_for_entity::PoseTransformForEntity;
+use super::tree_transforms_for_child_frame::TreeTransformsForChildFrame;
 use super::{ParentFromChildTransform, ResolvedPinholeProjection, TransformResolutionCache};
+
+/// Test wrapper for [`TreeTransformsForChildFrame::latest_at_transform`] that asserts no chunks are missing.
+fn latest_at_transform_test(
+    transforms: &TreeTransformsForChildFrame,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<ParentFromChildTransform> {
+    let missing_chunk_reporter = MissingChunkReporter::default();
+    let result = transforms.latest_at_transform(entity_db, &missing_chunk_reporter, query);
+    assert!(
+        missing_chunk_reporter.is_empty(),
+        "Test expected no missing chunks, but some were missing."
+    );
+    result
+}
+
+/// Test wrapper for [`TreeTransformsForChildFrame::latest_at_pinhole`] that asserts no chunks are missing.
+fn latest_at_pinhole_test(
+    transforms: &TreeTransformsForChildFrame,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<ResolvedPinholeProjection> {
+    let missing_chunk_reporter = MissingChunkReporter::default();
+    let result = transforms.latest_at_pinhole(entity_db, &missing_chunk_reporter, query);
+    assert!(
+        missing_chunk_reporter.is_empty(),
+        "Test expected no missing chunks, but some were missing."
+    );
+    result
+}
+
+/// Test wrapper for [`PoseTransformForEntity::latest_at_instance_poses`] that asserts no chunks are missing.
+fn latest_at_instance_poses_test(
+    transforms: &PoseTransformForEntity,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Vec<glam::DAffine3> {
+    let missing_chunk_reporter = MissingChunkReporter::default();
+    let result = transforms.latest_at_instance_poses(entity_db, &missing_chunk_reporter, query);
+    assert!(
+        missing_chunk_reporter.is_empty(),
+        "Test expected no missing chunks, but some were missing."
+    );
+    result
+}
 
 #[derive(Debug, Clone, Copy)]
 enum StaticTestFlavor {
@@ -258,7 +305,8 @@ fn test_static_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap();
 
         assert_eq!(
-            transforms.latest_at_transform(
+            latest_at_transform_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
@@ -268,14 +316,23 @@ fn test_static_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
             })
         );
         assert_eq!(
-            transforms.latest_at_transform(
+            latest_at_transform_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 0)),
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 0)
+            ),
         );
         assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 1)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 // Due to atomic-latest-at, the translation is no longer visible despite being on the static chunk.
@@ -291,7 +348,8 @@ fn test_static_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
             )))
             .unwrap();
         assert_eq!(
-            transforms.latest_at_transform(
+            latest_at_transform_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(TimelineName::new("other"), 123)
             ),
@@ -348,7 +406,8 @@ fn test_static_pose_transforms() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap();
 
         assert_eq!(
-            transforms.latest_at_instance_poses(
+            latest_at_instance_poses_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
@@ -358,16 +417,23 @@ fn test_static_pose_transforms() -> Result<(), Box<dyn std::error::Error>> {
             ],
         );
         assert_eq!(
-            transforms.latest_at_instance_poses(
+            latest_at_instance_poses_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
-            transforms
-                .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 0)),
+            latest_at_instance_poses_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 0)
+            ),
         );
         assert_eq!(
-            transforms
-                .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
+            latest_at_instance_poses_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 1)
+            ),
             // Due to atomic-latest-at, the translation is no longer visible despite being on the static chunk.
             vec![DAffine3::from_scale(glam::dvec3(10.0, 20.0, 30.0)),]
         );
@@ -378,7 +444,8 @@ fn test_static_pose_transforms() -> Result<(), Box<dyn std::error::Error>> {
             .pose_transforms(EntityPath::from("my_entity").hash())
             .unwrap();
         assert_eq!(
-            transforms.latest_at_instance_poses(
+            latest_at_instance_poses_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(TimelineName::new("other"), 123)
             ),
@@ -440,7 +507,8 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap();
 
         assert_eq!(
-            transforms.latest_at_pinhole(
+            latest_at_pinhole_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
@@ -452,14 +520,23 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
             })
         );
         assert_eq!(
-            transforms.latest_at_pinhole(
+            latest_at_pinhole_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 0))
+            latest_at_pinhole_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 0)
+            )
         );
         assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
+            latest_at_pinhole_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 1)
+            ),
             Some(ResolvedPinholeProjection {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera: image_from_camera_final,
@@ -476,7 +553,8 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
             )))
             .unwrap();
         assert_eq!(
-            transforms.latest_at_pinhole(
+            latest_at_pinhole_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(TimelineName::new("other"), 123)
             ),
@@ -530,22 +608,32 @@ fn test_static_view_coordinates_projection() -> Result<(), Box<dyn std::error::E
 
         // There's view coordinates, but that doesn't show up.
         assert_eq!(
-            transforms.latest_at_pinhole(
+            latest_at_pinhole_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
             None
         );
         assert_eq!(
-            transforms.latest_at_pinhole(
+            latest_at_pinhole_test(
+                transforms,
                 &entity_db,
                 &LatestAtQuery::new(*timeline.name(), TimeInt::MIN)
             ),
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 0)),
+            latest_at_pinhole_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 0)
+            ),
         );
         // Once we get a pinhole camera, the view coordinates should be there.
         assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
+            latest_at_pinhole_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(*timeline.name(), 1)
+            ),
             Some(ResolvedPinholeProjection {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
@@ -617,7 +705,11 @@ fn test_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
         (123, Some(DAffine3::IDENTITY)), // Empty transform is treated as connected with identity.
     ] {
         assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, t)
+            ),
             expected.map(|transform| ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform,
@@ -701,7 +793,7 @@ fn test_pose_transforms_instance_poses() -> Result<(), Box<dyn std::error::Error
         (123, Vec::new()),
     ] {
         assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, t)),
+            latest_at_instance_poses_test(transforms, &entity_db, &LatestAtQuery::new(timeline, t)),
             poses,
             "Unexpected result at time {t}"
         );
@@ -747,7 +839,7 @@ fn test_pinhole_projections() -> Result<(), Box<dyn std::error::Error>> {
         (123, None),
     ] {
         assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, t)),
+            latest_at_pinhole_test(transforms, &entity_db, &LatestAtQuery::new(timeline, t)),
             pinhole_view_coordinates.map(|view_coordinates| ResolvedPinholeProjection {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 image_from_camera,
@@ -800,7 +892,7 @@ fn test_out_of_order_updates() -> Result<(), Box<dyn std::error::Error>> {
             (3, DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0))),
         ] {
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, t)),
+                latest_at_transform_test(transforms, &entity_db, &LatestAtQuery::new(timeline, t)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform,
@@ -837,7 +929,7 @@ fn test_out_of_order_updates() -> Result<(), Box<dyn std::error::Error>> {
         (3, DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0))),
     ] {
         assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, t)),
+            latest_at_transform_test(transforms, &entity_db, &LatestAtQuery::new(timeline, t)),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform,
@@ -889,16 +981,22 @@ fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
                     .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
                     .unwrap();
                 assert_eq!(
-                    transforms
-                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                    latest_at_transform_test(
+                        transforms,
+                        &entity_db,
+                        &LatestAtQuery::new(timeline_name, 1)
+                    ),
                     Some(ParentFromChildTransform {
                         parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                         transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                     })
                 );
                 assert_eq!(
-                    transforms
-                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
+                    latest_at_transform_test(
+                        transforms,
+                        &entity_db,
+                        &LatestAtQuery::new(timeline_name, 3)
+                    ),
                     Some(ParentFromChildTransform {
                         parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                         transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
@@ -937,18 +1035,30 @@ fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap();
 
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, 1)
+                ),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 })
             );
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, 2)
+                ),
                 None
             );
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, 3)
+                ),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
@@ -1018,14 +1128,14 @@ fn test_clear_recursive() -> Result<(), Box<dyn std::error::Error>> {
             println!("checking for correct transforms for path: {path:?}");
 
             assert_eq!(
-                transform.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
+                latest_at_transform_test(transform, &entity_db, &LatestAtQuery::new(timeline, 1)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::from_entity_path(&path.parent().unwrap()),
                     transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
                 })
             );
             assert_eq!(
-                transform.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
+                latest_at_transform_test(transform, &entity_db, &LatestAtQuery::new(timeline, 2)),
                 None
             );
         }
@@ -1111,8 +1221,11 @@ fn test_single_child_and_parent_over_time(
     // Nothing we add over time affects the implicit frame whose relationship is set at frame 1
     for t in [1, 2, 3, 4, 5] {
         assert_eq!(
-            transforms_implicit_frame
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+            latest_at_transform_test(
+                transforms_implicit_frame,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, t)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
@@ -1136,8 +1249,11 @@ fn test_single_child_and_parent_over_time(
         (0, None),
     ] {
         assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+            latest_at_transform_test(
+                transforms_frame0,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, t)
+            ),
             expected_translation_and_parent.map(|(x, parent)| ParentFromChildTransform {
                 parent,
                 transform: DAffine3::from_translation(glam::dvec3(x, 0.0, 0.0)),
@@ -1159,15 +1275,21 @@ fn test_single_child_and_parent_over_time(
         .unwrap();
     for t in [1, 2, 3] {
         assert_eq!(
-            transforms_frame2
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+            latest_at_transform_test(
+                transforms_frame2,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, t)
+            ),
             None
         );
     }
     for t in [4, 5] {
         assert_eq!(
-            transforms_frame2
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+            latest_at_transform_test(
+                transforms_frame2,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, t)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::from_str("frame3"),
                 transform: DAffine3::from_translation(glam::dvec3(4.0, 0.0, 0.0)),
@@ -1248,8 +1370,11 @@ fn test_static_child_frames() -> Result<(), Box<dyn std::error::Error>> {
             .frame_transforms(TransformFrameIdHash::from_str("frame0"))
             .unwrap();
         assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+            latest_at_transform_test(
+                transforms_frame0,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 0)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
@@ -1261,13 +1386,19 @@ fn test_static_child_frames() -> Result<(), Box<dyn std::error::Error>> {
             .frame_transforms(TransformFrameIdHash::from_str("frame1"))
             .unwrap();
         assert_eq!(
-            transforms_frame1
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+            latest_at_transform_test(
+                transforms_frame1,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 0)
+            ),
             None
         );
         assert_eq!(
-            transforms_frame1
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+            latest_at_transform_test(
+                transforms_frame1,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 1)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
@@ -1298,8 +1429,11 @@ fn test_static_child_frames() -> Result<(), Box<dyn std::error::Error>> {
             .frame_transforms(TransformFrameIdHash::from_str("frame0"))
             .unwrap();
         assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+            latest_at_transform_test(
+                transforms_frame0,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 0)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
@@ -1311,8 +1445,11 @@ fn test_static_child_frames() -> Result<(), Box<dyn std::error::Error>> {
             .frame_transforms(TransformFrameIdHash::from_str("frame2"))
             .unwrap();
         assert_eq!(
-            transforms_frame2
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+            latest_at_transform_test(
+                transforms_frame2,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 0)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                 transform: DAffine3::from_scale(glam::DVec3::splat(2.0)),
@@ -1387,8 +1524,16 @@ fn test_different_associated_paths_for_static_and_temporal()
             let transforms = transforms_per_timeline
                 .frame_transforms(child_frame)
                 .unwrap();
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0));
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1));
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 0),
+            );
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 1),
+            );
         }
 
         // Add extra chunk.
@@ -1413,7 +1558,11 @@ fn test_different_associated_paths_for_static_and_temporal()
 
         // At time 0, should see static data
         assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 0)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::from_str("parent_frame"),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
@@ -1422,7 +1571,11 @@ fn test_different_associated_paths_for_static_and_temporal()
         );
         // At time 1, should see temporal data (overriding static due to atomic-latest-at)
         assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, 1)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::from_str("parent_frame"),
                 transform: DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
@@ -1449,7 +1602,11 @@ fn test_different_associated_paths_for_static_and_temporal()
             .frame_transforms(child_frame)
             .unwrap();
         assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(other_timeline, 100)),
+            latest_at_transform_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(other_timeline, 100)
+            ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::from_str("parent_frame"),
                 transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
@@ -1593,7 +1750,11 @@ fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>>
     for t in [0, 1, 2, 3] {
         // Pinhole from child_frame->X exists at all times unchanged.
         assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+            latest_at_pinhole_test(
+                transforms,
+                &entity_db,
+                &LatestAtQuery::new(timeline_name, t)
+            ),
             Some(ResolvedPinholeProjection {
                 parent: TransformFrameIdHash::from_str("parent_frame"),
                 image_from_camera,
@@ -1606,13 +1767,21 @@ fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>>
         // After time 1 we have a transform on top
         if t == 0 {
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, t)
+                ),
                 None,
                 "Unexpected transform for child_frame at time t={t}"
             );
         } else {
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, t)
+                ),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::from_str("parent_frame"),
                     transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
@@ -1630,13 +1799,21 @@ fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>>
         // Pinhole from other_frame->X exists only at time t==3
         if t < 3 {
             assert_eq!(
-                transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                latest_at_pinhole_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, t)
+                ),
                 None,
                 "Unexpected pinhole for other_frame at time t={t}"
             );
         } else {
             assert_eq!(
-                transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                latest_at_pinhole_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, t)
+                ),
                 Some(ResolvedPinholeProjection {
                     parent: TransformFrameIdHash::from_str("parent_frame"),
                     image_from_camera,
@@ -1650,13 +1827,21 @@ fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>>
         // After time 2 we have a transform.
         if t < 2 {
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, t)
+                ),
                 None,
                 "Unexpected transform for other_frame at time t={t}"
             );
         } else {
             assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, t)
+                ),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::from_str("parent_frame"),
                     transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
@@ -1783,8 +1968,11 @@ fn test_cache_invalidation() -> Result<(), Box<dyn std::error::Error>> {
             (3, glam::dvec3(2.0, 0.0, 0.0)),
         ] {
             assert_eq!(
-                transforms
-                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, time)
+                ),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(expected_translation),
@@ -1823,8 +2011,11 @@ fn test_cache_invalidation() -> Result<(), Box<dyn std::error::Error>> {
             (5, glam::dvec3(5.0, 0.0, 0.0)),
         ] {
             assert_eq!(
-                transforms
-                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, time)
+                ),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(expected_translation),
@@ -1852,8 +2043,11 @@ fn test_cache_invalidation() -> Result<(), Box<dyn std::error::Error>> {
             (5, Some(glam::dvec3(5.0, 0.0, 0.0))),
         ] {
             assert_eq!(
-                transforms
-                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, time)
+                ),
                 expected_translation.map(|translation| ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(translation),
@@ -1884,8 +2078,11 @@ fn test_cache_invalidation() -> Result<(), Box<dyn std::error::Error>> {
             (5, Some(glam::dvec3(5.0, 0.0, 0.0))),
         ] {
             assert_eq!(
-                transforms
-                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                latest_at_transform_test(
+                    transforms,
+                    &entity_db,
+                    &LatestAtQuery::new(timeline_name, time)
+                ),
                 expected_translation.map(|translation| ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_translation(translation),

@@ -110,6 +110,43 @@ This is the last-resort log level, and mostly for debugging libraries or the use
 The distinction between `DEBUG` and `TRACE` is the least clear. Here we use a rule of thumb: if it generates a lot of continuous logging (e.g. each frame), it should go to `TRACE`.
 
 
+### Warning reporter pattern
+For reporting warnings (or partial-failures) up the call-stack, we like the _reporter pattern_:
+
+```rs
+struct WarningReporter {
+    reports: Mutex<Vec<Warning>>,
+}
+
+pub fn thing_that_can_produce_warnings(reporter: &WarningReporter, other_paramets: …) -> Result<…> {}
+```
+
+The important parts of this pattern is:
+* Accumulate warnings and then continue
+* Interior mutability, so we can share the reporter with child threads
+* Structured warnings (more than just a String!)
+
+We use this for _partial failures_, when something went wrong but we don't want to abort, but instead continue with best-effort.
+
+We prefer this pattern complex return types (`(Vec<Warning>, Object)`), because the reporter pattern is often a lot less syntactically noisy in Rust.
+It is also easy to ignore part of a return-type, but it is harder to ignore an extra parameter. Thus we force ourselves to handle warnings.
+
+This allows code like this:
+
+```rs
+fn some_panel_ui(ctx: &ViewerContext, ui: &mut Ui) {
+    let reporter = WarningReporter::default();
+    let object = do_some_query(&reporter, …)?;
+    object.ui(ui);
+    if reporter.is_missing_chunks() {
+        ui.loading_indicator();
+    }
+    if !reporter.warnings().is_empty() {
+        warnings_ui(reporter.warnings());
+    }
+}
+````
+
 ### Libraries
 We use [`thiserror`](https://crates.io/crates/thiserror) for errors in our libraries, and [`anyhow`](https://crates.io/crates/anyhow) for type-erased errors in applications.
 

@@ -5,7 +5,9 @@ mod test_view;
 use ahash::HashMap;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::{SnapshotOptions, SnapshotResult};
-use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
+use re_viewer_context::{
+    Contents, MissingChunkReporter, ViewId, ViewerContext, VisitorControlFlow,
+};
 use re_viewport::execute_systems_for_view;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
@@ -150,10 +152,22 @@ impl TestContextExt for TestContext {
         );
         view_states.add_visualizer_reports_from_output(view_id, &system_execution_output);
 
+        let missing_chunk_reporter =
+            MissingChunkReporter::new(system_execution_output.any_missing_chunks());
+
         let view_state = view_states.get_mut_or_create(view_id, view_class);
         view_class
-            .ui(ctx, ui, view_state, &view_query, system_execution_output)
+            .ui(
+                ctx,
+                &missing_chunk_reporter,
+                ui,
+                view_state,
+                &view_query,
+                system_execution_output,
+            )
             .expect("failed to run view ui");
+
+        // We intentionally ignore missing_chunk_reporter in this test… for now.
     }
 
     /// [`TestContext::run`] for a single view.

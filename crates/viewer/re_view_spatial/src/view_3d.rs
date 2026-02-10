@@ -2,6 +2,7 @@ use ahash::HashSet;
 use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+use re_chunk_store::MissingChunkReporter;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::{
@@ -539,9 +540,9 @@ impl ViewClass for SpatialView3D {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -550,7 +551,7 @@ impl ViewClass for SpatialView3D {
         let state = state.downcast_mut::<SpatialViewState>()?;
         state.update_frame_statistics(ui, &system_output, SpatialViewKind::ThreeD);
 
-        self.view_3d(ctx, ui, state, query, system_output)
+        self.view_3d(ctx, missing_chunk_reporter, ui, state, query, system_output)
     }
 }
 

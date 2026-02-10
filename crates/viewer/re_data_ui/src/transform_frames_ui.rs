@@ -1,4 +1,4 @@
-use re_chunk_store::UnitChunkShared;
+use re_chunk_store::{MissingChunkReporter, UnitChunkShared};
 use re_log_types::EntityPath;
 use re_sdk_types::components::{self, TransformFrameId};
 use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
@@ -22,6 +22,9 @@ struct TransformFrameInfo {
 }
 
 pub struct TransformFramesUi {
+    /// Some chunks were missing, leading to incomplete results.
+    missing_chunk_reporter: MissingChunkReporter,
+
     frames: Vec<TransformFrameInfo>,
 
     /// True if there are more transform frames than the ones shown here.
@@ -82,6 +85,8 @@ impl TransformFramesUi {
 
         let mut i = 0;
 
+        let missing_chunk_reporter = MissingChunkReporter::default();
+
         // Collect transform frame ancestors.
         let more = loop {
             let Some(frame_id) = frame_ids.lookup_frame_id(frame_id_hash) else {
@@ -102,7 +107,9 @@ impl TransformFramesUi {
                 source_entity: Some(frame.associated_entity_path(query.at()).clone()),
             });
 
-            let Some(transform) = frame.latest_at_transform(ctx.recording(), query) else {
+            let Some(transform) =
+                frame.latest_at_transform(ctx.recording(), &missing_chunk_reporter, query)
+            else {
                 break false;
             };
 
@@ -115,7 +122,11 @@ impl TransformFramesUi {
             }
         };
 
-        Some(Self { frames, more })
+        Some(Self {
+            missing_chunk_reporter,
+            frames,
+            more,
+        })
     }
 
     pub fn data_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, layout: UiLayout) {
@@ -142,27 +153,41 @@ impl TransformFramesUi {
     }
 
     fn show_transforms(&self, ctx: &ViewerContext<'_>, layout: UiLayout, ui: &mut egui::Ui) {
+        let Self {
+            missing_chunk_reporter,
+            frames,
+            more,
+        } = self;
+
+        if missing_chunk_reporter.any_missing() {
+            if ctx.recording().can_fetch_chunks_from_redap() {
+                ui.loading_indicator();
+            } else {
+                // TODO(RR-3670): figure out how to handle missing chunks
+            }
+        }
+
         ui.vertical_centered(|ui| {
             let show_amount = match layout {
                 UiLayout::Tooltip => MAX_SHOWN_ANCESTORS_TOOLTIP,
                 UiLayout::SelectionPanel | UiLayout::List => MAX_SHOWN_ANCESTORS,
             };
-            let more = self.more || self.frames.len() > show_amount;
+            let more = *more || frames.len() > show_amount;
 
             if more {
                 ui.add(egui::Label::new("…").selectable(false))
                     .on_hover_text("There are more frames not displayed here");
             }
 
-            for (idx, transform) in self.frames.iter().take(show_amount).enumerate().rev() {
-                if idx + 1 < self.frames.len() || more {
+            for (idx, transform) in frames.iter().take(show_amount).enumerate().rev() {
+                if idx + 1 < frames.len() || more {
                     let id = ui.next_auto_id();
                     let rect = ui.small_icon(&icons::ARROW_UP, Some(ui.visuals().text_color()));
                     ui.interact(rect, id, egui::Sense::hover())
                         .on_hover_text(format!(
                             "{} is a child frame of {}",
                             transform.frame_id,
-                            self.frames
+                            frames
                                 .get(idx + 1)
                                 .map(|transform| transform.frame_id.as_str())
                                 .unwrap_or("another frame")

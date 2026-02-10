@@ -121,11 +121,11 @@ pub use self::view::{
     ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
     ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
     ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
-    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionOutput,
-    VisualizerInstruction, VisualizerInstructionReport, VisualizerInstructionsPerType,
-    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
-    VisualizerTypeReport,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewSystemState,
+    VisualizerCollection, VisualizerComponentMappings, VisualizerComponentSource,
+    VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionReport,
+    VisualizerInstructionsPerType, VisualizerQueryInfo, VisualizerReportContext,
+    VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
@@ -135,6 +135,9 @@ pub mod external {
     pub use tokio;
     pub use {nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
 }
+
+// Re-export
+pub use re_chunk_store::MissingChunkReporter;
 
 // ---------------------------------------------------------------------------
 

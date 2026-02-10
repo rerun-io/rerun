@@ -1,4 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
+use re_chunk_store::MissingChunkReporter;
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 
@@ -222,6 +223,7 @@ pub trait ViewClass: Send + Sync {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,

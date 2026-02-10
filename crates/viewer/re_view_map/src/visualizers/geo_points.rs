@@ -48,7 +48,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let output = VisualizerExecutionOutput::default();
-        let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
+        let annotation_scene_context = context_systems.get::<AnnotationSceneContext>(&output)?;
         let latest_at_query = view_query.latest_at_query();
 
         for (data_result, instruction) in

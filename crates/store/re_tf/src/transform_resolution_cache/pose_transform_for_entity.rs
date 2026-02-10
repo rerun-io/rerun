@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use glam::DAffine3;
 use nohash_hasher::IntMap;
 use re_byte_size::{BookkeepingBTreeMap, SizeBytes};
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt};
 use re_mutex::Mutex;
@@ -84,6 +84,7 @@ impl PoseTransformForEntity {
     pub fn latest_at_instance_poses(
         &self,
         entity_db: &EntityDb,
+        missing_chunk_reporter: &MissingChunkReporter,
         query: &LatestAtQuery,
     ) -> Vec<DAffine3> {
         let mut poses_per_time = self.poses_per_time.lock();
@@ -94,8 +95,9 @@ impl PoseTransformForEntity {
                 if pose_transform == &CachedTransformValue::Invalidated {
                     *pose_transform =
                         CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
-                            &self.entity_path,
                             entity_db,
+                            missing_chunk_reporter,
+                            &self.entity_path,
                             query,
                         ));
                 }

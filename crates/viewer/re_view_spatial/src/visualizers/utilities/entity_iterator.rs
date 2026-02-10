@@ -37,9 +37,9 @@ where
     ) -> Result<(), ViewSystemExecutionError>,
 {
     let view_kind = super::spatial_view_kind_from_view_class(ctx.view_class_identifier);
-    let transforms = context_systems.get::<TransformTreeContext>()?;
-    let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
-    let annotations = context_systems.get::<AnnotationSceneContext>()?;
+    let transforms = context_systems.get::<TransformTreeContext>(output)?;
+    let depth_offsets = context_systems.get::<EntityDepthOffsets>(output)?;
+    let annotations = context_systems.get::<AnnotationSceneContext>(output)?;
 
     let latest_at = query.latest_at_query();
 

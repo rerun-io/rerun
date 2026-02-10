@@ -60,16 +60,24 @@ impl TransformDatabaseStoreCache {
         transform_cache.transforms_for_timeline(timeline)
     }
 
-    pub fn update_transform_forest(&mut self, entity_db: &EntityDb, query: &LatestAtQuery) {
+    pub fn update_transform_forest(
+        &mut self,
+        entity_db: &EntityDb,
+        query: &LatestAtQuery,
+    ) -> Arc<re_tf::TransformForest> {
+        re_tracing::profile_function!();
+
         let transform_cache = self
             .transform_cache
             .get_or_insert_with(|| TransformResolutionCache::new(entity_db));
 
-        self.transform_forest = Some(Arc::new(TransformForest::new(
-            entity_db,
-            transform_cache,
-            query,
-        )));
+        self.transform_forest
+            .insert(Arc::new(TransformForest::new(
+                entity_db,
+                transform_cache,
+                query,
+            )))
+            .clone()
     }
 
     pub fn transform_forest(&self) -> Option<Arc<re_tf::TransformForest>> {
