@@ -75,7 +75,7 @@ Note that `prepare-release-0.x` is _invalid_. Always specify the `y`, even if it
 The _base_ of the branch should depends on what kind of release it is:
 
 - For a _minor_ release, the branch is created from `main`.
-- For a _patch_ release, the branch is created from the previous release tag.
+- For a _patch_ release, the branch is created from `docs-latest` (:warning: branching off `docs-latest` instead of the latest release tag ensures that documentation patches will be included)
 - For an _alpha_ release, the branch is created from `main`.
 
 You can do this either using `git` on your command line, or through the UI:
@@ -93,19 +93,6 @@ Do this once you have prepared your patch-release branch and it's ready for test
 In GitHub we have a `consider-patch` label that we put on PRs that we might want to include in the release.
 
 When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
-
-:warning: Any commits between the last release's tag and the `docs-latest` branch should also be cherry-picked,
-otherwise these changes will be lost when `docs-latest` is updated.
-
-```
-# On branch `prepare-release-0.x.y`
-git fetch origin docs-latest:docs-latest
-git cherry-pick 0.x.z..docs-latest
-```
-
-Where `z` is the previous patch number.
-
-Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include, which is fine.
 
 After cherry-picking a commit into the patch, please make sure to remove the `consider-patch` label.
 
