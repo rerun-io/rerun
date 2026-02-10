@@ -102,10 +102,9 @@ features = [
     ],
   ],
   [
-    "Experimental Viewer client",
+    "Convert custom MCAP Protobuf",
     [
-      "howto/screenshot",
-      "howto/send_table",
+      "howto/convert_mcap_protobuf",
     ],
   ],
 ]
@@ -217,6 +216,10 @@ backwards_check = [
   "py", # TODO(#2353): Doesn't exist
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
+]
+"howto/convert_mcap_protobuf" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "howto/dataframe_operations" = [
   "cpp", # Not implemented
@@ -466,7 +469,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"howto/layers" = [ # Cloud examples don't generate rrds
+"howto/dataframe_performance" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
@@ -510,3 +513,4 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
+"howto/convert_mcap_protobuf" = ["$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap"]

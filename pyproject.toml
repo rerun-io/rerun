@@ -71,8 +71,9 @@ dev = [
   "polars>=1.0",
   "datafusion>=50.0",
   "jupyter>=1.0",
+  "types-protobuf", # Needed by mcap-protobuf-support
 ]
-snippets = ["rerun-sdk", "av", "pandas"]
+snippets = ["rerun-sdk", "av", "pandas", "mcap-protobuf-support"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
