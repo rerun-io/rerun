@@ -747,11 +747,36 @@ pub async fn register_intra_request_duplicates(service: impl RerunCloudService) 
             result.is_err(),
             "registration with intra-request duplicates should fail for {on_duplicate:?}"
         );
+
+        let err = result.unwrap_err();
         assert_eq!(
-            result.unwrap_err().code(),
+            err.code(),
             tonic::Code::InvalidArgument,
             "intra-request duplicates should return InvalidArgument error for {on_duplicate:?}"
         );
+
+        let msg = err.message().to_owned();
+        assert!(
+            msg.contains("duplicate segment layers in request"),
+            "error message should mention duplicate segment layers for {on_duplicate:?}: {msg}"
+        );
+        assert!(
+            msg.contains("segment id:"),
+            "error message should contain segment id for {on_duplicate:?}: {msg}"
+        );
+        assert!(
+            msg.contains("layer name:"),
+            "error message should contain layer name for {on_duplicate:?}: {msg}"
+        );
+
+        // Both URIs should be listed in the error message
+        for source in data_source_def.to_data_sources_ext() {
+            assert!(
+                msg.contains(source.storage_url.as_str()),
+                "error message should contain URI {url} for {on_duplicate:?}: {msg}",
+                url = source.storage_url,
+            );
+        }
     }
 }
 

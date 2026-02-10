@@ -474,6 +474,26 @@ def test_register_duplicate_replace_behavior(
     assert points == [[1.0, 1.0]], f"Expected [[1.0, 1.0]] (replaced data) but got {points}"
 
 
+@pytest.mark.local_only
+def test_register_intra_request_duplicates(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Test that intra-request duplicates (same segment in one call) always fail, regardless of on_duplicate mode."""
+    recording_id = "ccccdddd-cccc-dddd-cccc-ddddccccdddd"
+    uris = recording_factory([recording_id, recording_id])
+
+    for on_duplicate in OnDuplicateSegmentLayer:
+        ds = entry_factory.create_dataset(f"test_intra_dup_{on_duplicate.value}")
+
+        with pytest.raises(ValueError, match="duplicate segment layers in request") as exc_info:
+            ds.register(uris, on_duplicate=on_duplicate)
+
+        error_message = str(exc_info.value)
+        for uri in uris:
+            assert uri in error_message, f"Expected URI {uri} in error message: {error_message}"
+
+
 def _get_points_data(ds: DatasetEntry) -> list[list[float]]:
     """Helper to extract points data from a dataset."""
     import pyarrow as pa

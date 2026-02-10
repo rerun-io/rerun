@@ -624,27 +624,22 @@ impl RerunCloudService for RerunCloudHandler {
             ));
         }
 
-        // Phase 1: Load all RRDs and check for intra-request duplicates (early-out on duplicate)
+        // Phase 1: Extract store IDs cheaply and check for intra-request duplicates.
         //
-        // We load each RRD and collect (segment_id, layer) pairs. If any duplicate is found,
-        // we fail immediately without loading the remaining files.
+        // We extract store IDs from the RRD footer (fast) or by scanning messages
+        // for SetStoreInfo (fallback for older files without footers). This avoids
+        // full chunk loading on the unhappy path (duplicates found).
+        //
         // The `on_duplicate` flag only affects cross-request duplicates (conflicts with
         // already-registered segments), not intra-request duplicates.
-        //
-        // Note: we load the full RRD to obtain its recording ID. This is fine for the happy path
-        // because we use the loaded chunk stores anyways. However, it makes the unhappy path slower
-        // since we discard the loaded chunk stores. If this proves to be an issue, we can resort to
-        // just loading the RRD's store info (e.g. as in `RrdMapper::load_store_info`).
-        struct PendingRegistration {
-            segment_id: SegmentId,
-            layer: String,
+        struct ValidatedSource {
+            rrd_path: PathBuf,
+            layer_name: String,
             storage_url: url::Url,
-            chunk_store: ChunkStoreHandle,
         }
 
-        let mut seen: std::collections::HashSet<(String, String)> =
-            std::collections::HashSet::new();
-        let mut pending: Vec<PendingRegistration> = Vec::new();
+        let mut seen: BTreeMap<(String, String), Vec<url::Url>> = BTreeMap::new();
+        let mut validated_sources: Vec<ValidatedSource> = Vec::new();
 
         let store_kind = store.dataset(dataset_id)?.store_kind();
 
@@ -694,45 +689,55 @@ impl RerunCloudService for RerunCloudHandler {
                 )));
             }
 
-            // Load the RRD
-            re_log::info!("Loading RRD: {}", rrd_path.display());
-            let contents = ChunkStore::handle_from_rrd_filepath(
-                &InMemoryStore::chunk_store_config(),
-                &rrd_path,
-            )
-            .map_err(|err| tonic::Status::internal(format!("Failed to load RRD: {err:#}")))?;
-
             let layer = if layer.is_empty() {
                 DataSource::DEFAULT_LAYER.to_owned()
             } else {
                 layer
             };
 
-            for (store_id, chunk_store) in contents {
+            // Extract store IDs cheaply (footer or message scan, no chunk loading)
+            let store_ids = load_store_ids(&rrd_path)?;
+
+            for store_id in store_ids {
                 if store_id.kind() != store_kind {
                     continue;
                 }
 
                 let segment_id_str = store_id.recording_id().to_string();
-                let key = (segment_id_str.clone(), layer.clone());
+                let key = (segment_id_str, layer.clone());
 
-                // Early out on duplicate
-                if !seen.insert(key) {
-                    return Err(tonic::Status::invalid_argument(format!(
-                        "duplicate segment in request: ({segment_id_str}, {layer})"
-                    )));
-                }
-
-                pending.push(PendingRegistration {
-                    segment_id: SegmentId::new(segment_id_str),
-                    layer: layer.clone(),
-                    storage_url: storage_url.clone(),
-                    chunk_store,
-                });
+                seen.entry(key).or_default().push(storage_url.clone());
             }
+
+            validated_sources.push(ValidatedSource {
+                rrd_path,
+                layer_name: layer,
+                storage_url,
+            });
         }
 
-        // Phase 2: Register all loaded RRDs (no intra-request duplicates)
+        // Check for intra-request duplicates
+        let duplicates: Vec<_> = seen.iter().filter(|(_, urls)| urls.len() > 1).collect();
+
+        if !duplicates.is_empty() {
+            let details: Vec<String> = duplicates
+                .iter()
+                .map(|((segment_id, layer), urls)| {
+                    let uri_lines = urls
+                        .iter()
+                        .map(|u| format!("    {u}"))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    format!("  segment id: {segment_id}, layer name: {layer}\n{uri_lines}")
+                })
+                .collect();
+            return Err(tonic::Status::invalid_argument(format!(
+                "duplicate segment layers in request:\n{}",
+                details.join("\n")
+            )));
+        }
+
+        // Phase 2: Full load and register (no intra-request duplicates)
         let mut segment_ids: Vec<String> = vec![];
         let mut segment_layers: Vec<String> = vec![];
         let mut segment_types: Vec<String> = vec![];
@@ -743,39 +748,54 @@ impl RerunCloudService for RerunCloudHandler {
         {
             let dataset = store.dataset_mut(dataset_id)?;
 
-            for reg in pending {
-                let add_result = dataset
-                    .add_layer(
-                        reg.segment_id.clone(),
-                        reg.layer.clone(),
-                        reg.chunk_store,
-                        on_duplicate,
-                    )
-                    .await;
+            for source in validated_sources {
+                re_log::info!("Loading RRD: {}", source.rrd_path.display());
+                let contents = ChunkStore::handle_from_rrd_filepath(
+                    &InMemoryStore::chunk_store_config(),
+                    &source.rrd_path,
+                )
+                .map_err(|err| tonic::Status::internal(format!("Failed to load RRD: {err:#}")))?;
 
-                match add_result {
-                    Ok(()) => {
-                        segment_ids.push(reg.segment_id.to_string());
-                        segment_layers.push(reg.layer);
-                        segment_types.push("rrd".to_owned());
-                        storage_urls.push(reg.storage_url.to_string());
-                        task_ids.push(TASK_ID_SUCCESS.to_owned());
+                for (store_id, chunk_store) in contents {
+                    if store_id.kind() != store_kind {
+                        continue;
                     }
 
-                    Err(Error::SchemaConflict(msg)) => {
-                        // Capture the failure in the returned tasks, but do not fail the rpc call.
-                        segment_ids.push(String::new());
-                        segment_layers.push(reg.layer);
-                        segment_types.push("rrd".to_owned());
-                        storage_urls.push(reg.storage_url.to_string());
+                    let segment_id = SegmentId::new(store_id.recording_id().to_string());
 
-                        let task_id = TaskId::new();
-                        task_ids.push(task_id.id.clone());
-                        failed_task_results.push((task_id, TaskResult::failed(&msg)));
-                    }
+                    let add_result = dataset
+                        .add_layer(
+                            segment_id.clone(),
+                            source.layer_name.clone(),
+                            chunk_store,
+                            on_duplicate,
+                        )
+                        .await;
 
-                    Err(other_err) => {
-                        return Err(other_err.into());
+                    match add_result {
+                        Ok(()) => {
+                            segment_ids.push(segment_id.to_string());
+                            segment_layers.push(source.layer_name.clone());
+                            segment_types.push("rrd".to_owned());
+                            storage_urls.push(source.storage_url.to_string());
+                            task_ids.push(TASK_ID_SUCCESS.to_owned());
+                        }
+
+                        Err(Error::SchemaConflict(msg)) => {
+                            // Capture the failure in the returned tasks, but do not fail the rpc call.
+                            segment_ids.push(String::new());
+                            segment_layers.push(source.layer_name.clone());
+                            segment_types.push("rrd".to_owned());
+                            storage_urls.push(source.storage_url.to_string());
+
+                            let task_id = TaskId::new();
+                            task_ids.push(task_id.id.clone());
+                            failed_task_results.push((task_id, TaskResult::failed(&msg)));
+                        }
+
+                        Err(other_err) => {
+                            return Err(other_err.into());
+                        }
                     }
                 }
             }
@@ -1703,6 +1723,30 @@ impl RerunCloudService for RerunCloudHandler {
             CreateTableEntryResponse { table }.try_into()?,
         ))
     }
+}
+
+/// Extracts unique store IDs from an RRD file without loading chunk data.
+///
+/// Returns a deduplicated set because a single RRD can contain duplicate
+/// `SetStoreInfo` messages for the same store.
+fn load_store_ids(rrd_path: &std::path::Path) -> Result<BTreeSet<StoreId>, tonic::Status> {
+    let reader = std::io::BufReader::new(
+        std::fs::File::open(rrd_path)
+            .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?,
+    );
+    let decoder = re_log_encoding::DecoderApp::decode_lazy(reader);
+
+    let mut store_ids = BTreeSet::new();
+    for msg_result in decoder {
+        let msg = msg_result.map_err(|err| {
+            tonic::Status::internal(format!("Failed to decode RRD message: {err:#}"))
+        })?;
+        if let re_log_types::LogMsg::SetStoreInfo(info) = msg {
+            store_ids.insert(info.info.store_id);
+        }
+    }
+
+    Ok(store_ids)
 }
 
 /// Retrieves the entry ID based on HTTP headers.
