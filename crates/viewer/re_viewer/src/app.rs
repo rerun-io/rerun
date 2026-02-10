@@ -19,7 +19,6 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_sdk_types::external::uuid;
-use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
@@ -368,52 +367,30 @@ impl App {
         );
 
         {
-            // TODO(emilk/egui#7659): This is a workaround consuming the Space/Arrow keys so we can
-            // use them as timeline shortcuts. Egui's built in behavior is to interact with focus,
-            // and we don't want that.
-            // But of course text edits should still get it so we use this ugly hack to check if
-            // a text edit is focused.
+            // This is a workaround consuming the space and arrow keys so we can use them as timeline shortcuts.
+            // Egui's built in behavior is to interact with focus, and we don't want that.
+            // TODO(emilk/egui#7899): allow consuming events before egui uses them to move keyboard focus.
+            // TODO(emilk/egui#7659): allow disabling certain egui shortcuts.
             let command_sender = command_sender.clone();
             creation_context.egui_ctx.on_begin_pass(
-                "filter space key",
+                "rerun-kb-shortcuts",
                 Arc::new(move |ctx| {
-                    if !ctx.text_edit_focused() {
-                        let conflicting_commands = [
-                            UICommand::PlaybackTogglePlayPause,
-                            UICommand::PlaybackBeginning,
-                            UICommand::PlaybackEnd,
-                            UICommand::PlaybackForwardFast,
-                            UICommand::PlaybackBackFast,
-                            UICommand::PlaybackStepForward,
-                            UICommand::PlaybackStepBack,
-                            UICommand::PlaybackForward,
-                            UICommand::PlaybackBack,
-                        ];
+                    // egui has already listened for arrow keys before this point,
+                    // so in order for the arrow keys to NOT move the focus, we need to
+                    // undo that focus change here:
+                    let reset_focus_direction = ctx.input_mut(|i| {
+                        i.key_pressed(Key::ArrowLeft) || i.key_pressed(Key::ArrowRight)
+                    });
 
-                        let os = ctx.os();
-                        let mut reset_focus_direction = false;
-                        ctx.input_mut(|i| {
-                            for command in conflicting_commands {
-                                for shortcut in command.kb_shortcuts(os) {
-                                    if i.consume_shortcut(&shortcut) {
-                                        if shortcut.logical_key == Key::ArrowLeft
-                                            || shortcut.logical_key == Key::ArrowRight
-                                        {
-                                            reset_focus_direction = true;
-                                        }
-                                        command_sender.send_ui(command);
-                                    }
-                                }
-                            }
+                    if reset_focus_direction {
+                        ctx.memory_mut(|mem| {
+                            mem.move_focus(FocusDirection::None);
                         });
+                    }
 
-                        if reset_focus_direction {
-                            // Additionally, we need to revert the focus direction on ArrowLeft/Right
-                            // keys to prevent the focus change for timeline shortcuts
-                            ctx.memory_mut(|mem| {
-                                mem.move_focus(FocusDirection::None);
-                            });
-                        }
+                    // Consumes the used shortcut (including the "space" key):
+                    if let Some(cmd) = UICommand::listen_for_kb_shortcut(ctx) {
+                        command_sender.send_ui(cmd);
                     }
                 }),
             );
@@ -683,12 +660,6 @@ impl App {
 
     pub fn component_fallback_registry(&mut self) -> &mut FallbackProviderRegistry {
         &mut self.component_fallback_registry
-    }
-
-    fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
-        if let Some(cmd) = UICommand::listen_for_kb_shortcut(egui_ctx) {
-            self.command_sender.send_ui(cmd);
-        }
     }
 
     fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
@@ -3503,9 +3474,7 @@ impl eframe::App for App {
         self.memory_panel
             .update(&gpu_resource_stats, store_stats.as_ref());
 
-        self.check_keyboard_shortcuts(egui_ctx);
-
-        self.purge_memory_if_needed(&mut store_hub);
+        self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
 
         // In some (rare) circumstances we run two egui passes in a single frame.
         // This happens on call to `egui::Context::request_discard`.
