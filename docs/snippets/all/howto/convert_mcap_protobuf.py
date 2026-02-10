@@ -45,6 +45,7 @@ def convert_timestamp(secs: int, nanos: int) -> np.datetime64:
     return np.datetime64(epoch_nanos, "ns")
 
 
+# region: set_message_times
 def set_mcap_message_times(rec: rr.RecordingStream, msg: McapMessage) -> None:
     """
     Set both MCAP message timestamps on the recording stream.
@@ -54,6 +55,9 @@ def set_mcap_message_times(rec: rr.RecordingStream, msg: McapMessage) -> None:
     """
     rec.set_time(timeline="message_log_time", timestamp=np.datetime64(msg.log_time_ns, "ns"))
     rec.set_time(timeline="message_publish_time", timestamp=np.datetime64(msg.publish_time_ns, "ns"))
+
+
+# endregion: set_message_times
 
 
 def transform_msg(rec: rr.RecordingStream, msg: McapMessage) -> bool:
@@ -112,6 +116,7 @@ def camera_calibration(rec: rr.RecordingStream, msg: McapMessage) -> bool:
     return True
 
 
+# region: compressed_video
 def compressed_video(rec: rr.RecordingStream, msg: McapMessage) -> bool:
     """Convert CompressedVideo messages to Rerun VideoStream."""
     if msg.proto_msg.DESCRIPTOR.name != "CompressedVideo":
@@ -124,6 +129,9 @@ def compressed_video(rec: rr.RecordingStream, msg: McapMessage) -> bool:
     set_mcap_message_times(rec, msg)
     rec.log(msg.topic, video_blob)
     return True
+
+
+# endregion: compressed_video
 
 
 def implicit_convert(rec: rr.RecordingStream, msg: McapMessage) -> bool:
@@ -171,6 +179,7 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf") as rec:
             rec.log_file_from_path(urdf_path, static=True)
         rec.flush()  # Ensure URDFs finish loading before processing messages
 
+    # region: conversion_loop
     with open(path_to_mcap, "rb") as f:
         reader = make_reader(f, decoder_factories=[DecoderFactory()])
         for _schema, channel, message, proto_msg in reader.iter_decoded_messages():
@@ -189,3 +198,4 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf") as rec:
             if implicit_convert(rec, msg):
                 continue
             print(f"Unhandled message on topic {msg.topic} of type {msg.proto_msg.DESCRIPTOR.name}")
+# endregion: conversion_loop
