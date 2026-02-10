@@ -35,7 +35,7 @@ where
     type Target = ListArray;
 
     fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
-        let values = source.values();
+        let (field, offsets, values, nulls) = source.clone().into_parts();
         let downcast =
             values
                 .as_any()
@@ -46,14 +46,13 @@ where
                 })?;
 
         let transformed = self.transform.transform(downcast)?;
-        let new_field = Arc::new(Field::new_list_field(
-            transformed.data_type().clone(),
-            transformed.is_nullable(),
-        ));
 
-        let (_, offsets, _, nulls) = source.clone().into_parts();
+        let new_field = field
+            .as_ref()
+            .clone()
+            .with_data_type(transformed.data_type().clone());
         Ok(ListArray::new(
-            new_field,
+            new_field.into(),
             offsets,
             Arc::new(transformed),
             nulls,

@@ -28,7 +28,9 @@ pub mod fixtures {
     use std::sync::Arc;
 
     use arrow::{
-        array::{Array as _, ArrayData, Float64Array, ListArray, StringArray, StructArray},
+        array::{
+            Array as _, ArrayData, Float64Array, ListArray, StringArray, StructArray, UInt8Array,
+        },
         buffer::{Buffer, NullBuffer, OffsetBuffer},
         datatypes::{DataType, Field, Fields},
     };
@@ -331,6 +333,63 @@ pub mod fixtures {
             list_offsets,
             Arc::new(outer_struct),
             Some(list_nulls),
+        )
+    }
+
+    #[test]
+    fn example_list_not_nullable() {
+        let array = list_not_nullable();
+        insta::assert_snapshot!(format!("{}", super::DisplayRB(array)), @r"
+        ┌─────────────────────────┐
+        │ col                     │
+        │ ---                     │
+        │ type: nullable List[u8] │
+        ╞═════════════════════════╡
+        │ [1, 2]                  │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [3, 4, 5]               │
+        └─────────────────────────┘
+        ");
+    }
+
+    pub fn list_not_nullable() -> ListArray {
+        let values = UInt8Array::from(vec![1, 2, 3, 4, 5]);
+        let offsets = OffsetBuffer::from_lengths([2, 3]);
+
+        ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            offsets,
+            Arc::new(values),
+            None,
+        )
+    }
+
+    #[test]
+    fn example_list_with_nulls() {
+        let array = list_with_nulls();
+        insta::assert_snapshot!(format!("{}", super::DisplayRB(array)), @r"
+        ┌──────────────────────────────────┐
+        │ col                              │
+        │ ---                              │
+        │ type: nullable List[nullable u8] │
+        ╞══════════════════════════════════╡
+        │ [1, 2]                           │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ null                             │
+        └──────────────────────────────────┘
+        ");
+    }
+
+    pub fn list_with_nulls() -> ListArray {
+        let values = UInt8Array::from(vec![1, 2, 3, 4, 5]);
+        let offsets = OffsetBuffer::from_lengths([2, 3]);
+        let nulls = NullBuffer::from(vec![true, false]);
+
+        ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, true)),
+            offsets,
+            Arc::new(values),
+            Some(nulls),
         )
     }
 }
