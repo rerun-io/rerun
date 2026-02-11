@@ -7,6 +7,10 @@ use crate::oauth::api::{GenerateToken, send_async};
 use crate::oauth::login_flow::OauthLoginFlowState;
 use crate::{OauthLoginFlow, Permission, oauth};
 
+pub struct LogoutOptions {
+    pub open_browser: bool,
+}
+
 pub struct LoginOptions {
     pub open_browser: bool,
     pub force_login: bool,
@@ -105,6 +109,35 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
     println!("Rerun will automatically use the credentials stored on your machine.");
 
     Ok(())
+}
+
+/// Log out of Rerun by clearing stored credentials.
+pub fn logout(options: &LogoutOptions) -> Result<(), Error> {
+    match crate::oauth::clear_credentials() {
+        Ok(Some(outcome)) => {
+            if options.open_browser {
+                println!("Opening browser to end your session…");
+                webbrowser::open(&outcome.logout_url).ok();
+            } else {
+                println!("Open the following URL in your browser to end your session:");
+                println!("{}", outcome.logout_url);
+            }
+            println!("You have been logged out.");
+
+            // Wait for the callback server to serve the "logged out" page
+            // before the process exits.
+            if let Some(handle) = outcome.server_handle {
+                handle.join().ok();
+            }
+
+            Ok(())
+        }
+        Ok(None) => {
+            println!("No credentials found. You are already logged out.");
+            Ok(())
+        }
+        Err(err) => Err(Error::Generic(err.into())),
+    }
 }
 
 pub struct GenerateTokenOptions {

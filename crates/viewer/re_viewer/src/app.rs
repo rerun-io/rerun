@@ -1267,12 +1267,12 @@ impl App {
             }
             SystemCommand::Logout => {
                 match re_auth::oauth::clear_credentials() {
-                    Ok(Some(logout_url)) => {
+                    Ok(Some(outcome)) => {
                         // Open the WorkOS logout URL to also end the browser session.
                         // This opens in a new tab/window so the viewer state is preserved.
                         // WorkOS clears its session cookies and redirects to /signed-out.
                         egui_ctx.open_url(egui::output::OpenUrl {
-                            url: logout_url,
+                            url: outcome.logout_url,
                             new_tab: true,
                         });
                     }

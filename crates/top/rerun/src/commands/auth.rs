@@ -12,6 +12,12 @@ pub enum AuthCommands {
     /// To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
     Login(LoginCommand),
 
+    /// Log out of Rerun.
+    ///
+    /// This command clears the credentials stored on your machine
+    /// and ends your session.
+    Logout(LogoutCommand),
+
     /// Retrieve the stored access token.
     ///
     /// The access token is part of the credentials produced by `rerun auth login`,
@@ -48,6 +54,13 @@ pub struct LoginCommand {
 }
 
 #[derive(Debug, Clone, Parser)]
+pub struct LogoutCommand {
+    /// Post a link instead of directly opening in the browser.
+    #[clap(long, default_value = "false")]
+    no_open_browser: bool,
+}
+
+#[derive(Debug, Clone, Parser)]
 pub struct TokenCommand {}
 
 #[derive(Debug, Clone, Parser)]
@@ -79,6 +92,13 @@ impl AuthCommands {
                     org_id: args.org_id,
                 };
                 runtime.block_on(re_auth::cli::login(options))
+            }
+
+            Self::Logout(args) => {
+                let options = re_auth::cli::LogoutOptions {
+                    open_browser: !args.no_open_browser,
+                };
+                re_auth::cli::logout(&options)
             }
 
             Self::Token(_) => runtime.block_on(re_auth::cli::token()),

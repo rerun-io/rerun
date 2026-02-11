@@ -21,7 +21,9 @@ const PORT_RANGE: std::ops::RangeInclusive<u16> = 17340..=17349;
 ///
 /// The server is moved into a background thread that serves exactly one request
 /// and then shuts down.
-pub fn start_logout_server(session_id: &str) -> Result<String, Error> {
+pub fn start_logout_server(
+    session_id: &str,
+) -> Result<(String, std::thread::JoinHandle<()>), Error> {
     let server = PORT_RANGE
         .map(|port| tiny_http::Server::http(format!("127.0.0.1:{port}")))
         .find_map(Result::ok)
@@ -39,12 +41,13 @@ pub fn start_logout_server(session_id: &str) -> Result<String, Error> {
     let logout_url = crate::oauth::api::logout_url(session_id, Some(&return_to));
 
     // Serve a single request in a background thread, then drop the server.
-    std::thread::Builder::new()
+    let handle = std::thread::Builder::new()
         .name("logout-callback".into())
         .spawn(move || {
             // Wait up to 30 seconds for the redirect from WorkOS.
             let timeout = std::time::Duration::from_secs(30);
             if let Ok(Some(req)) = server.recv_timeout(timeout) {
+                eprintln!("{req:?}");
                 let data = include_str!("./status_page.html").replace(
                     "$MESSAGE$",
                     "Successfully logged out. You can close this page now.",
@@ -59,7 +62,7 @@ pub fn start_logout_server(session_id: &str) -> Result<String, Error> {
         })
         .map_err(|err| Error::Bind(std::io::Error::other(err)))?;
 
-    Ok(logout_url)
+    Ok((logout_url, handle))
 }
 
 impl OauthCallbackServer {

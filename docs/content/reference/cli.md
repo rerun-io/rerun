@@ -240,6 +240,7 @@ Authentication with the redap.
 **Commands**
 
 * `login`: Log into Rerun.
+* `logout`: Log out of Rerun.
 * `token`: Retrieve the stored access token.
 * `generate-token`: Generate a fresh access token.
 
@@ -264,6 +265,21 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 
 * `--force <FORCE>`
 > Trigger the full login flow even if valid credentials already exist.
+>
+> [Default: `false`]
+
+## rerun auth logout
+
+Log out of Rerun.
+
+This command clears the credentials stored on your machine and ends your session.
+
+**Usage**: `rerun auth logout [OPTIONS]`
+
+**Options**
+
+* `--no-open-browser <NO_OPEN_BROWSER>`
+> Post a link instead of directly opening in the browser.
 >
 > [Default: `false`]
 

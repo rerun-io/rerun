@@ -51,6 +51,19 @@ pub fn load_credentials() -> Result<Option<Credentials>, CredentialsLoadError> {
 #[error("failed to load credentials: {0}")]
 pub struct CredentialsClearError(#[from] storage::ClearError);
 
+/// Result of a successful [`clear_credentials`] call that had stored credentials.
+pub struct LogoutOutcome {
+    /// The `WorkOS` logout URL to open in the user's browser.
+    pub logout_url: String,
+
+    /// On native, a handle to the background callback server thread.
+    ///
+    /// Join this handle to keep the process alive until the browser has
+    /// loaded the "logged out" landing page (or the server times out).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub server_handle: Option<std::thread::JoinHandle<()>>,
+}
+
 /// Clear stored credentials and return the `WorkOS` logout URL, if available.
 ///
 /// On native, this also starts a local callback server so the browser has
@@ -59,18 +72,24 @@ pub struct CredentialsClearError(#[from] storage::ClearError);
 /// The logout URL should be opened in the user's browser to also end the
 /// `WorkOS` session. If no credentials were stored (or the session ID could
 /// not be determined), `Ok(None)` is returned.
-pub fn clear_credentials() -> Result<Option<String>, CredentialsClearError> {
+pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearError> {
     // Load credentials before clearing so we can extract the session ID.
-    let logout_url = storage::load().ok().flatten().map(|creds| {
+    let outcome = storage::load().ok().flatten().map(|creds| {
         #[cfg(not(target_arch = "wasm32"))]
         {
             // On native, start a local callback server so WorkOS can redirect
             // back to a "logged out" landing page.
             match crate::callback_server::start_logout_server(&creds.claims.sid) {
-                Ok(url) => url,
+                Ok((url, handle)) => LogoutOutcome {
+                    logout_url: url,
+                    server_handle: Some(handle),
+                },
                 Err(err) => {
                     re_log::warn!("Failed to start logout callback server: {err}");
-                    api::logout_url(&creds.claims.sid, None)
+                    LogoutOutcome {
+                        logout_url: api::logout_url(&creds.claims.sid, None),
+                        server_handle: None,
+                    }
                 }
             }
         }
@@ -81,7 +100,9 @@ pub fn clear_credentials() -> Result<Option<String>, CredentialsClearError> {
             let return_to = web_sys::window()
                 .and_then(|w| w.location().origin().ok())
                 .map(|origin| format!("{origin}/signed-out"));
-            api::logout_url(&creds.claims.sid, return_to.as_deref())
+            LogoutOutcome {
+                logout_url: api::logout_url(&creds.claims.sid, return_to.as_deref()),
+            }
         }
     });
 
@@ -89,7 +110,7 @@ pub fn clear_credentials() -> Result<Option<String>, CredentialsClearError> {
 
     crate::credentials::oauth::auth_update(None);
 
-    Ok(logout_url)
+    Ok(outcome)
 }
 
 #[derive(Debug, thiserror::Error)]
