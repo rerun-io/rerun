@@ -460,6 +460,12 @@ impl TransformTreeContext {
         Some(target_from_root * pinhole_root_info.parent_root_from_pinhole_root)
     }
 
+    /// The full transform forest
+    #[inline]
+    pub fn transform_forest(&self) -> &re_tf::TransformForest {
+        &self.transform_forest
+    }
+
     /// Returns the target frame, also known as the space origin.
     #[inline]
     pub fn target_frame(&self) -> TransformFrameIdHash {
