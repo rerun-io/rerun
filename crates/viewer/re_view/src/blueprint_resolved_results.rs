@@ -141,12 +141,41 @@ impl BlueprintResolvedRangeResults<'_> {
     /// are also merged into the component sources.
     // TODO(andreas): It's a bit overkill to do a full blueprint resolved query for both the range & latest-at part. This can be optimized!
     pub fn merge_bootstrapped_data(&mut self, bootstrapped: BlueprintResolvedLatestAtResults<'_>) {
-        // Copy component sources from bootstrap if they indicate errors.
+        // Merge component source from bootstrap into the range results.
         #[expect(clippy::iter_over_hash_type)] // Fills up another hash type.
-        for (component, source_result) in bootstrapped.component_sources {
-            if let Err(err) = source_result {
-                // If bootstrapping failed for a component, record the error (potentially overwriting an existing error)
-                self.component_sources.insert(component, Err(err));
+        for (component, bootstrap_source) in bootstrapped.component_sources {
+            match self.component_sources.entry(component) {
+                std::collections::hash_map::Entry::Occupied(mut range_query_source) => {
+                    #[expect(clippy::match_same_arms)]
+                    match bootstrap_source {
+                        Ok(_) => {
+                            // Don't override the source, let the range result take precedence.
+                        }
+
+                        Err(ComponentMappingError::ComponentNotFound(_)) => {
+                            // Component wasn't found in the bootstrap data.
+                            // Data may only exist within the range actual range, if not it has the error already!
+                        }
+
+                        Err(
+                            ComponentMappingError::SelectorParseFailed(_)
+                            | ComponentMappingError::SelectorExecutionFailed(_)
+                            | ComponentMappingError::CastFailed { .. },
+                        ) => {
+                            // All these errors are likely to occur in the range query as well.
+                            // However, in case they don't we treat it as-if we failed first and then never executed the range query.
+                            // I.e. override what's there!
+                            *range_query_source.get_mut() = bootstrap_source;
+                        }
+                    }
+                }
+
+                std::collections::hash_map::Entry::Vacant(vacant_entry) => {
+                    // Data showed up only in the target range result.
+                    // That's unusual since we'd expect the same query on bootstrapped & the target range result,
+                    // but sure enough we can just combine in the bootstrap!
+                    vacant_entry.insert(bootstrap_source);
+                }
             }
         }
 

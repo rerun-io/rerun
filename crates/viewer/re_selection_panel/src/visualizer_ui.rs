@@ -465,34 +465,37 @@ fn collect_source_component_options(
         std::iter::once(target_component_reflection.datatype.clone()).collect()
     };
 
-    // TODO(RR-3554): Provide a better structure/ordering that help user navigate the list.
+    // TODO(RR-3567): Provide a better structure/ordering that help user navigate the list.
     entity_components_with_datatype
         .iter()
-        .flat_map(|(component, datatype)| {
+        .flat_map(|(source_component, datatype)| {
             use itertools::Either;
 
-            // Nested struct
-            if is_required_component
-                && let Some(selectors) =
-                    re_arrow_combinators::extract_nested_fields(datatype, |dt| {
-                        allowed_physical_types.contains(dt)
-                    })
-            {
-                Either::Left(selectors.into_iter().map(move |(sel, _)| {
+            let source_component = *source_component;
+
+            // Direct match?
+            if allowed_physical_types.contains(datatype) {
+                Either::Left(Either::Left(std::iter::once(
                     VisualizerComponentSource::SourceComponent {
-                        source_component: *component,
-                        selector: sel.to_string(),
-                    }
-                }))
-            } else if allowed_physical_types.contains(datatype) {
-                Either::Right(itertools::Either::Left(std::iter::once(
-                    VisualizerComponentSource::SourceComponent {
-                        source_component: *component,
+                        source_component,
                         selector: String::new(),
                     },
                 )))
+            }
+            // Match fields in the struct?
+            else if let Some(selectors) =
+                re_arrow_combinators::extract_nested_fields(datatype, |dt| {
+                    allowed_physical_types.contains(dt)
+                })
+            {
+                Either::Left(Either::Right(selectors.into_iter().map(move |(sel, _)| {
+                    VisualizerComponentSource::SourceComponent {
+                        source_component,
+                        selector: sel.to_string(),
+                    }
+                })))
             } else {
-                Either::Right(Either::Right(std::iter::empty()))
+                Either::Right(std::iter::empty())
             }
         })
         .collect()
