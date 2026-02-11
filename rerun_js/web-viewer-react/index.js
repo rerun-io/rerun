@@ -172,10 +172,10 @@ function diff(prev, current) {
 function keysChanged(prev, curr, keys) {
   for (const key of keys) {
     if (prev[key] !== curr[key]) {
-      return false;
+      return true;
     }
   }
-  return true;
+  return false;
 }
 
 /**
