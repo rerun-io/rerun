@@ -84,7 +84,7 @@ impl DataLoader for McapLoader {
         path: std::path::PathBuf,
         tx: Sender<crate::LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        if !is_mcap_file(&path) {
+        if !path.is_file() || !has_mcap_extension(&path) {
             return Err(DataLoaderError::Incompatible(path)); // simply not interested
         }
 
@@ -126,7 +126,7 @@ impl DataLoader for McapLoader {
         _contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
-        if !is_mcap_file(&filepath) {
+        if !has_mcap_extension(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
 
@@ -169,7 +169,7 @@ impl DataLoader for McapLoader {
         contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> Result<(), DataLoaderError> {
-        if !is_mcap_file(&filepath) {
+        if !has_mcap_extension(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
 
@@ -300,11 +300,10 @@ fn store_info(store_id: StoreId) -> SetStoreInfo {
     }
 }
 
-/// Checks if a file is an MCAP file.
-fn is_mcap_file(filepath: &Path) -> bool {
-    filepath.is_file()
-        && filepath
-            .extension()
-            .map(|ext| ext.eq_ignore_ascii_case("mcap"))
-            .unwrap_or(false)
+/// Checks if a path has the `.mcap` extension.
+fn has_mcap_extension(filepath: &Path) -> bool {
+    filepath
+        .extension()
+        .map(|ext| ext.eq_ignore_ascii_case("mcap"))
+        .unwrap_or(false)
 }
