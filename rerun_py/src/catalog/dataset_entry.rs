@@ -348,6 +348,55 @@ impl PyDatasetEntryInternal {
         ))
     }
 
+    /// Unregisters segments and layers from the dataset.
+    ///
+    /// Excluding IO errors, this will always succeed as long the target dataset exists.
+    /// Corollary: unregistering data that doesn't exist is a no-op.
+    ///
+    /// This method acts as a *product* filter:
+    /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+    /// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+    /// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+    /// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+    ///
+    /// Parameters
+    /// ----------
+    /// segments_to_drop: list[str]
+    ///     The segment IDs to drop. All of them if empty.
+    ///     The final filter will be the *outer product* of this and `layers_to_drop`.
+    ///
+    /// layers_to_drop: list[str]
+    ///     The layer names to drop. All of them if empty.
+    ///     The final filter will be the *outer product* of this and `segments_to_drop`.
+    ///
+    /// force: bool
+    ///     If true, deletion will go through regardless of the segments/layers' current statuses.
+    ///     This is only useful in the very specific, catatrophic scenario where the contents of the
+    ///     task queue were lost and some tasks are now stuck in `status=pending` forever.
+    ///     Do not use this unless you know exactly what you're doing.
+    //
+    // NOTE: I'm purposefully making both parameters explicit and without default values. Deletion
+    // is a scary thing, end users should have to type every character of it.
+    #[pyo3(signature = (*, segments_to_drop, layers_to_drop, force=false))]
+    fn unregister(
+        self_: PyRef<'_, Self>,
+        segments_to_drop: Vec<String>,
+        layers_to_drop: Vec<String>,
+        force: bool,
+    ) -> PyResult<()> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+
+        let _results = connection.unregister_from_dataset(
+            self_.py(),
+            self_.entry_details.id,
+            segments_to_drop,
+            layers_to_drop,
+            force,
+        )?;
+
+        Ok(())
+    }
+
     /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
     ///
     /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).

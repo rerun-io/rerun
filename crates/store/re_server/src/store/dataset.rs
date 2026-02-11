@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -345,7 +345,39 @@ impl Dataset {
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
-        let row_count = self.inner.segments.values().map(|s| s.layer_count()).sum();
+        self.dataset_manifest_filtered(&Default::default(), &Default::default())
+    }
+
+    /// Like [`Self::dataset_manifest`] but filtered down to just the segments/layers of interest.
+    ///
+    /// This method acts as a *product* filter:
+    /// * empty `segments_of_interest` + empty `layers_of_interest`: everything
+    /// * empty `segments_of_interest` + non-empty `layers_of_interest`: return specified layers for *all* segments
+    /// * non-empty `segments_of_interest` + empty `layers_of_interest`: return *all* layers for specified segments
+    /// * non-empty `segments_of_interest` + non-empty `layers_of_interest`: return *all* specified layers for *all* specified segments
+    pub fn dataset_manifest_filtered(
+        &self,
+        segments_of_interest: &HashSet<&SegmentId>,
+        layers_of_interest: &HashSet<&str>,
+    ) -> Result<RecordBatch, Error> {
+        let row_count = self
+            .inner
+            .segments
+            .iter()
+            .filter(|(segment_id, _)| {
+                segments_of_interest.is_empty() || segments_of_interest.contains(segment_id)
+            })
+            .flat_map(|(segment_id, layers)| {
+                itertools::izip!(
+                    std::iter::repeat(segment_id),
+                    layers
+                        .layers()
+                        .keys()
+                        .filter(|layer| layers_of_interest.is_empty()
+                            || layers_of_interest.contains(layer.as_str()))
+                )
+            })
+            .count();
 
         let mut layer_names = Vec::with_capacity(row_count);
         let mut segment_ids = Vec::with_capacity(row_count);
@@ -360,17 +392,28 @@ impl Dataset {
 
         let mut properties = Vec::with_capacity(row_count);
 
-        for (layer_name, segment_id, layer) in
-            self.inner
-                .segments
-                .iter()
-                .flat_map(|(segment_id, segment)| {
-                    let segment_id = segment_id.to_string();
-                    segment
+        let layers = self
+            .inner
+            .segments
+            .iter()
+            .filter(|(segment_id, _)| {
+                segments_of_interest.is_empty() || segments_of_interest.contains(segment_id)
+            })
+            .flat_map(|(segment_id, layers)| {
+                itertools::izip!(
+                    std::iter::repeat(segment_id),
+                    layers
                         .iter_layers()
-                        .map(move |(layer_name, layer)| (layer_name, segment_id.clone(), layer))
-                })
-        {
+                        .filter(|(name, _layer)| layers_of_interest.is_empty()
+                            || layers_of_interest.contains(name))
+                )
+            })
+            .map(|(segment_id, (layer_name, layer))| {
+                let segment_id = segment_id.to_string();
+                (layer_name, segment_id, layer)
+            });
+
+        for (layer_name, segment_id, layer) in layers {
             layer_names.push(layer_name.to_owned());
             storage_urls.push(format!("memory:///{}/{segment_id}/{layer_name}", self.id));
             segment_ids.push(segment_id);
@@ -566,6 +609,54 @@ impl Dataset {
         let _ = overwritten;
 
         Ok(())
+    }
+
+    /// Unregisters segments and layers from the dataset.
+    ///
+    /// This method acts as a *product* filter:
+    /// * empty `segments_to_drop` + empty `layers_to_drop`: remove everything
+    /// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+    /// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+    /// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+    //
+    // we can't expect there are no async calls without the lance feature
+    #[allow(clippy::allow_attributes)]
+    #[allow(clippy::unused_async)]
+    pub async fn remove_layers(
+        &mut self,
+        segments_to_drop: &HashSet<&SegmentId>,
+        layers_to_drop: &HashSet<&str>,
+    ) -> Result<Vec<(SegmentId, String)>, Error> {
+        re_log::debug!(?segments_to_drop, ?layers_to_drop, "remove_layers");
+
+        let mut removed_layers = Vec::new();
+        {
+            let segments = &mut self.inner.modify().segments;
+
+            // TODO(cmc): we could have fast paths if segments.is_empty() or layers.is_empty() or both.
+            segments.retain(|segment_id, segment| {
+                if segments_to_drop.is_empty() || segments_to_drop.contains(segment_id) {
+                    segment.retain_layers(|layer_name, _layer| {
+                        if layers_to_drop.is_empty() || layers_to_drop.contains(layer_name.as_str())
+                        {
+                            removed_layers.push((segment_id.clone(), layer_name.clone()));
+                            false
+                        } else {
+                            true
+                        }
+                    });
+
+                    segment.layer_count() > 0
+                } else {
+                    true
+                }
+            });
+        }
+
+        #[cfg(feature = "lance")]
+        self.indexes().on_layers_removed(&removed_layers).await?;
+
+        Ok(removed_layers)
     }
 
     /// Load a RRD using its recording id as segment id.

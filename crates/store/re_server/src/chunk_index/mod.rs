@@ -235,9 +235,30 @@ impl DatasetChunkIndexes {
         }
 
         for (index, segment_id, layer_name, chunk) in worklist {
+            let checkout_latest = true;
             index
-                .store_chunks(vec![(segment_id.clone(), layer_name, chunk.clone())], true)
+                .store_chunks(
+                    vec![(segment_id.clone(), layer_name, chunk.clone())],
+                    checkout_latest,
+                )
                 .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn on_layers_removed(
+        &self,
+        removed_layers: &[(SegmentId, String)],
+    ) -> Result<(), StoreError> {
+        let indexes = self.indexes.write().await;
+
+        for index in indexes
+            .values()
+            .flat_map(|per_component| per_component.values())
+        {
+            let checkout_latest = true;
+            index.remove_layers(removed_layers, checkout_latest).await?;
         }
 
         Ok(())

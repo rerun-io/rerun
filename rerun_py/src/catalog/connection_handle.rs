@@ -337,6 +337,46 @@ impl ConnectionHandle {
         )
     }
 
+    /// Unregisters segments and layers from the dataset.
+    ///
+    /// Excluding IO errors, this will always succeed as long the target dataset exists.
+    /// Corollary: unregistering data that doesn't exist is a no-op.
+    ///
+    /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
+    /// also follow the schema returned by [`Self::get_dataset_manifest_schema`].
+    ///
+    /// This method acts as a *product* filter:
+    /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+    /// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+    /// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+    /// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+    ///
+    /// If `force`, deletion will go through regardless of the segments/layers' current statuses.
+    /// This is only useful in the very specific, catatrophic scenario where the contents of the
+    /// task queue were lost and some tasks are now stuck in `status=pending` forever.
+    /// Do not use this unless you know exactly what you're doing.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn unregister_from_dataset(
+        &self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        segments_to_drop: Vec<String>,
+        layers_to_drop: Vec<String>,
+        force: bool,
+    ) -> PyResult<Vec<RecordBatch>> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .unregister_from_dataset(dataset_id, segments_to_drop, layers_to_drop, force)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
     /// Initiate registration of all the recordings within provided object store prefix (aka directory)
     /// and return the corresponding task descriptors.
     ///

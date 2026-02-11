@@ -415,6 +415,54 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
         )
 
+    def unregister(
+        self,
+        *,
+        segments_to_drop: str | Sequence[str],
+        layers_to_drop: str | Sequence[str],
+        force: bool = False,
+    ) -> None:
+        """
+        Unregisters segments and layers from the dataset.
+
+        Excluding IO errors, this will always succeed as long the target dataset exists.
+        Corollary: unregistering data that doesn't exist is a no-op.
+
+        This method acts as a *product* filter:
+        * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+        * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+        * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+        * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+
+        Parameters
+        ----------
+        segments_to_drop: list[str]
+            The segment IDs to drop. All of them if empty.
+            The final filter will be the *outer product* of this and `layers_to_drop`.
+
+        layers_to_drop: list[str]
+            The layer names to drop. All of them if empty.
+            The final filter will be the *outer product* of this and `segments_to_drop`.
+
+        force: bool
+            If true, deletion will go through regardless of the segments/layers' current statuses.
+            This is only useful in the very specific, catatrophic scenario where the contents of the
+            task queue were lost and some tasks are now stuck in `status=pending` forever.
+            Do not use this unless you know exactly what you're doing.
+
+        """
+        if isinstance(segments_to_drop, str):
+            segments_to_drop = [segments_to_drop]
+        else:
+            segments_to_drop = list(segments_to_drop)
+
+        if isinstance(layers_to_drop, str):
+            layers_to_drop = [layers_to_drop]
+        else:
+            layers_to_drop = list(layers_to_drop)
+
+        self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
+
     def register_prefix(
         self,
         recordings_prefix: str,

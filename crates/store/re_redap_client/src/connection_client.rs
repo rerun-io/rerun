@@ -10,7 +10,8 @@ use re_protos::cloud::v1alpha1::ext::{
     QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
     RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry, TableInsertMode,
-    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+    UpdateEntryRequest, UpdateEntryResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::cloud::v1alpha1::{
@@ -19,8 +20,8 @@ use re_protos::cloud::v1alpha1::{
     GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentTableSchemaRequest,
     GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionResponse,
     QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-    RegisterWithDatasetResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, VersionRequest,
-    WriteTableRequest,
+    RegisterWithDatasetResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
+    UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -774,6 +775,77 @@ where
             })
         })
         .collect()
+    }
+
+    /// Unregisters segments and layers from the dataset.
+    ///
+    /// Excluding IO errors, this will always succeed as long the target dataset exists.
+    /// Corollary: unregistering data that doesn't exist is a no-op.
+    ///
+    /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
+    /// also follow the schema returned by [`Self::get_dataset_manifest_schema`].
+    ///
+    /// This method acts as a *product* filter:
+    /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+    /// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+    /// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+    /// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+    ///
+    /// If `force`, deletion will go through regardless of the segments/layers' current statuses.
+    /// This is only useful in the very specific, catatrophic scenario where the contents of the
+    /// task queue were lost and some tasks are now stuck in `status=pending` forever.
+    /// Do not use this unless you know exactly what you're doing.
+    pub async fn unregister_from_dataset(
+        &mut self,
+        dataset_id: EntryId,
+        segments_to_drop: Vec<String>,
+        layers_to_drop: Vec<String>,
+        force: bool,
+    ) -> ApiResult<Vec<RecordBatch>> {
+        let req = tonic::Request::new(
+            UnregisterFromDatasetRequest {
+                segments_to_drop: segments_to_drop.into_iter().map(Into::into).collect(),
+                layers_to_drop,
+                force,
+            }
+            .into(),
+        )
+        .with_entry_id(dataset_id)
+        .map_err(|err| ApiError::tonic(err, "failed building /UnregisterFromDataset request"))?;
+
+        use futures::TryStreamExt as _;
+        let responses: Vec<_> = self
+            .inner()
+            .unregister_from_dataset(req)
+            .await
+            .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?
+            .into_inner()
+            .try_collect()
+            .await
+            .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?;
+
+        let batches: ApiResult<Vec<RecordBatch>> = responses
+            .into_iter()
+            .map(|resp| {
+                resp.data
+                    .ok_or_else(|| {
+                        let err = missing_field!(UnregisterFromDatasetResponse, "data");
+                        ApiError::serialization_with_source(
+                            err,
+                            "missing field in /UnregisterFromDataset response",
+                        )
+                    })?
+                    .try_into()
+                    .map_err(|err| {
+                        ApiError::serialization_with_source(
+                            err,
+                            "failed decoding /UnregisterFromDataset response",
+                        )
+                    })
+            })
+            .collect();
+
+        batches
     }
 
     /// Register a foreign Lance table to a new table entry in the catalog.

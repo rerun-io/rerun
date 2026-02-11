@@ -45,6 +45,13 @@ pub trait RerunCloudServiceExt: RerunCloudService {
     );
 
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path);
+
+    async fn unregister_from_dataset_name(
+        &self,
+        dataset_name: &str,
+        segments_to_drop: &[&str],
+        layers_to_drop: &[&str],
+    ) -> tonic::Result<RecordBatch>;
 }
 
 #[async_trait]
@@ -91,6 +98,60 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         .expect("Failed to create a request");
 
         register_with_dataset_blocking(self, request).await;
+    }
+
+    /// Helper to fire an [`UnregisterFromDatasetRequest`].
+    ///
+    /// `segments_to_drop` and `layers_to_drop` are combined using an *outer product*.
+    /// Refer to [`UnregisterFromDatasetRequest`]'s to learn more about the semantics.
+    ///
+    /// [`UnregisterFromDatasetRequest`]: re_protos::cloud::v1alpha1::ext::UnregisterFromDatasetRequest
+    async fn unregister_from_dataset_name(
+        &self,
+        dataset_name: &str,
+        segments_to_drop: &[&str],
+        layers_to_drop: &[&str],
+    ) -> tonic::Result<RecordBatch> {
+        let request = re_protos::cloud::v1alpha1::ext::UnregisterFromDatasetRequest {
+            segments_to_drop: segments_to_drop
+                .iter()
+                .map(|id| (*id).to_owned().into())
+                .collect(),
+            layers_to_drop: layers_to_drop.iter().map(|s| (*s).to_owned()).collect(),
+            force: false,
+        };
+
+        let request = tonic::Request::new(request.into())
+            .with_entry_name(dataset_name)
+            .expect("Failed to create a request");
+
+        use futures::TryStreamExt as _;
+        let responses: Vec<_> = self
+            .unregister_from_dataset(request)
+            .await?
+            .into_inner()
+            .try_collect()
+            .await
+            .expect("could not collect responses");
+
+        let batches: Vec<RecordBatch> = responses
+            .into_iter()
+            .map(|resp| {
+                resp.data
+                    .expect("missing data in response")
+                    .try_into()
+                    .expect("could not convert response data to record batch")
+            })
+            .collect_vec();
+
+        Ok(arrow::compute::concat_batches(
+            batches
+                .first()
+                .expect("there should be at least one batch")
+                .schema_ref(),
+            &batches,
+        )
+        .expect("could not concatenate batches"))
     }
 
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {

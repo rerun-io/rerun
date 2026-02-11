@@ -17,7 +17,7 @@ use re_sorbet::ComponentColumnDescriptor;
 use crate::cloud::v1alpha1::{
     EntryKind, FetchChunksRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
     QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
-    ScanSegmentTableResponse, VectorDistanceMetric,
+    ScanSegmentTableResponse, UnregisterFromDatasetResponse, VectorDistanceMetric,
 };
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
@@ -36,29 +36,43 @@ macro_rules! lazy_field_ref {
 // --- SegmentRegistrationStatus ---
 
 /// Registration status for a segment/layer in the dataset manifest.
+//
+// TODO(cmc): not the greatest name I guess... (rename in follow up?)
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerRegistrationStatus {
+    /// Registration for this layer has started, i.e. the synchronous phase is over.
     Pending = 0,
-    /// Registration for this segment has completed successfully.
+
+    /// Registration for this layer has completed successfully.
     Done = 1,
-    /// Registration for this segment has failed.
+
+    /// Registration for this layer has failed.
     Error = 2,
+
+    /// This layer has been removed.
+    Deleted = 3,
 }
 
 impl LayerRegistrationStatus {
     const PENDING_STR: &str = "pending";
     const DONE_STR: &str = "done";
     const ERROR_STR: &str = "error";
+    const DELETED_STR: &str = "deleted";
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => Self::PENDING_STR,
+            Self::Done => Self::DONE_STR,
+            Self::Error => Self::ERROR_STR,
+            Self::Deleted => Self::DELETED_STR,
+        }
+    }
 }
 
 impl std::fmt::Display for LayerRegistrationStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Pending => f.write_str(Self::PENDING_STR),
-            Self::Done => f.write_str(Self::DONE_STR),
-            Self::Error => f.write_str(Self::ERROR_STR),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -70,6 +84,7 @@ impl std::str::FromStr for LayerRegistrationStatus {
             Self::PENDING_STR => Ok(Self::Pending),
             Self::DONE_STR => Ok(Self::Done),
             Self::ERROR_STR => Ok(Self::Error),
+            Self::DELETED_STR => Ok(Self::Deleted),
             _ => Err(crate::TypeConversionError::InvalidField {
                 package_name: "rerun.cloud.v1alpha1",
                 type_name: "SegmentRegistrationStatus",
@@ -88,6 +103,7 @@ impl TryFrom<u8> for LayerRegistrationStatus {
             0 => Ok(Self::Pending),
             1 => Ok(Self::Done),
             2 => Ok(Self::Error),
+            3 => Ok(Self::Deleted),
             _ => Err(crate::TypeConversionError::InvalidField {
                 package_name: "rerun.cloud.v1alpha1",
                 type_name: "SegmentRegistrationStatus",
@@ -156,6 +172,68 @@ impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDa
             on_duplicate: crate::common::v1alpha1::IfDuplicateBehavior::from(value.on_duplicate)
                 as i32,
         }
+    }
+}
+
+// --- UnregisterFromDatasetRequest ---
+
+#[derive(Debug)]
+pub struct UnregisterFromDatasetRequest {
+    pub segments_to_drop: Vec<SegmentId>,
+    pub layers_to_drop: Vec<String>,
+    pub force: bool,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::UnregisterFromDatasetRequest>
+    for UnregisterFromDatasetRequest
+{
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::UnregisterFromDatasetRequest,
+    ) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
+            segments_to_drop,
+            layers_to_drop,
+            force,
+        } = value;
+
+        Ok(Self {
+            segments_to_drop: segments_to_drop
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+            layers_to_drop,
+            force,
+        })
+    }
+}
+
+impl From<UnregisterFromDatasetRequest> for crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
+    fn from(value: UnregisterFromDatasetRequest) -> Self {
+        Self {
+            segments_to_drop: value.segments_to_drop.into_iter().map(Into::into).collect(),
+            layers_to_drop: value.layers_to_drop,
+            force: value.force,
+        }
+    }
+}
+
+impl crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
+    pub fn sanity_check(&self) -> tonic::Result<()> {
+        let Self {
+            segments_to_drop,
+            layers_to_drop,
+            force: _,
+        } = self;
+
+        if segments_to_drop.is_empty() && layers_to_drop.is_empty() {
+            return Err(tonic::Status::invalid_argument(
+                "must specify at least 1 segment ID or layer for removal",
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -1631,6 +1709,21 @@ pub struct RegisterWithDatasetTaskDescriptor {
     pub segment_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
+}
+
+// --- UnregisterFromDatasetResponse ---
+
+impl UnregisterFromDatasetResponse {
+    pub fn schema() -> Schema {
+        ScanDatasetManifestResponse::schema()
+    }
+
+    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self
+            .data
+            .as_ref()
+            .ok_or_else(|| missing_field!(Self, "data"))?)
+    }
 }
 
 // --- ScanSegmentTableResponse --

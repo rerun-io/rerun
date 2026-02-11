@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 import rerun as rr
+from inline_snapshot import snapshot as inline_snapshot
 from rerun.catalog import AlreadyExistsError, OnDuplicateSegmentLayer, SegmentRegistrationResult
 
 if TYPE_CHECKING:
@@ -137,6 +138,88 @@ def test_register_batch(
 
     assert len(result.segment_ids) == 3
     assert sorted(result.segment_ids) == sorted(recording_ids)
+
+
+@pytest.mark.local_only
+def test_register_unregister_batch(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Test registering multiple recordings in a single call, then unregistering some of them."""
+    recording_ids = [
+        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    ]
+    uris = recording_factory(recording_ids)
+
+    ds = entry_factory.create_dataset("test_register_unregister_batch")
+
+    handle = ds.register(uris)
+    result = handle.wait()
+
+    assert len(result.segment_ids) == 3
+    assert sorted(result.segment_ids) == sorted(recording_ids)
+
+    df = ds.segment_table()
+    assert df.count() == 3
+    table = df.to_arrow_table()
+    segment_ids = table.column("rerun_segment_id").to_pylist()
+    assert sorted(segment_ids) == sorted(recording_ids)
+
+    df = ds.filter_contents("/points").reader(index="log_time").sort("rerun_segment_id").drop("log_time")
+    assert str(df) == inline_snapshot("""\
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                                             │
+│ * version: 0.1.2                                                                                                      │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────────────────────────┬──────────────────────┬─────────────────────────────────────────────────────┐ │
+│ │ rerun_segment_id                     ┆ log_tick             ┆ /points:Points2D:positions                          │ │
+│ │ ---                                  ┆ ---                  ┆ ---                                                 │ │
+│ │ type: Utf8                           ┆ type: nullable i64   ┆ type: nullable List[nullable FixedSizeList[f32; 2]] │ │
+│ │                                      ┆ index_name: log_tick ┆ archetype: Points2D                                 │ │
+│ │                                      ┆ kind: index          ┆ component: Points2D:positions                       │ │
+│ │                                      ┆                      ┆ component_type: Position2D                          │ │
+│ │                                      ┆                      ┆ entity_path: /points                                │ │
+│ │                                      ┆                      ┆ kind: data                                          │ │
+│ ╞══════════════════════════════════════╪══════════════════════╪═════════════════════════════════════════════════════╡ │
+│ │ aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa ┆ 0                    ┆ [[0.0, 0.0]]                                        │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb ┆ 0                    ┆ [[1.0, 1.0]]                                        │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ cccccccc-cccc-cccc-cccc-cccccccccccc ┆ 0                    ┆ [[2.0, 2.0]]                                        │ │
+│ └──────────────────────────────────────┴──────────────────────┴─────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+    ds.unregister(segments_to_drop=[recording_ids[0], recording_ids[2]], layers_to_drop=[])
+
+    df = ds.segment_table()
+    assert df.count() == 1
+    table = df.to_arrow_table()
+    segment_ids = table.column("rerun_segment_id").to_pylist()
+    assert segment_ids == [recording_ids[1]]
+
+    df = ds.filter_contents("/points").reader(index="log_time").sort("rerun_segment_id").drop("log_time")
+    assert str(df) == inline_snapshot("""\
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                                             │
+│ * version: 0.1.2                                                                                                      │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────────────────────────┬──────────────────────┬─────────────────────────────────────────────────────┐ │
+│ │ rerun_segment_id                     ┆ log_tick             ┆ /points:Points2D:positions                          │ │
+│ │ ---                                  ┆ ---                  ┆ ---                                                 │ │
+│ │ type: Utf8                           ┆ type: nullable i64   ┆ type: nullable List[nullable FixedSizeList[f32; 2]] │ │
+│ │                                      ┆ index_name: log_tick ┆ archetype: Points2D                                 │ │
+│ │                                      ┆ kind: index          ┆ component: Points2D:positions                       │ │
+│ │                                      ┆                      ┆ component_type: Position2D                          │ │
+│ │                                      ┆                      ┆ entity_path: /points                                │ │
+│ │                                      ┆                      ┆ kind: data                                          │ │
+│ ╞══════════════════════════════════════╪══════════════════════╪═════════════════════════════════════════════════════╡ │
+│ │ bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb ┆ 0                    ┆ [[1.0, 1.0]]                                        │ │
+│ └──────────────────────────────────────┴──────────────────────┴─────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
 
 
 @pytest.mark.local_only

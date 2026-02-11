@@ -116,6 +116,61 @@ impl ::prost::Name for RegisterWithDatasetResponse {
         "/rerun.cloud.v1alpha1.RegisterWithDatasetResponse".into()
     }
 }
+/// This request acts as a *product* filter:
+/// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+/// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+/// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+/// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UnregisterFromDatasetRequest {
+    /// The segment IDs to drop. All of them if empty.
+    ///
+    /// The final filter will be the *outer product* of this and `layers_to_drop`.
+    #[prost(message, repeated, tag = "1")]
+    pub segments_to_drop: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
+    /// The layer names to drop. All of them if empty.
+    ///
+    /// The final filter will be the *outer product* of this and `segments_to_drop`.
+    #[prost(string, repeated, tag = "2")]
+    pub layers_to_drop: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// If true, deletion will go through regardless of the segments/layers' current statuses.
+    ///
+    /// This is only useful in the very specific, catatrophic scenario where the contents of the
+    /// task queue were lost and some tasks are now stuck in `status=pending` forever.
+    ///
+    /// Do not use this unless you know exactly what you're doing.
+    #[prost(bool, tag = "3")]
+    pub force: bool,
+}
+impl ::prost::Name for UnregisterFromDatasetRequest {
+    const NAME: &'static str = "UnregisterFromDatasetRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UnregisterFromDatasetRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UnregisterFromDatasetRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UnregisterFromDatasetResponse {
+    /// This contains all the information about the segments and layers that were actually removed.
+    ///
+    /// This dataframe is always guaranteed to be a subset of the one found in `ScanDatasetManifestResponse`.
+    /// They share the same semantics, schemas, etc.
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for UnregisterFromDatasetResponse {
+    const NAME: &'static str = "UnregisterFromDatasetResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UnregisterFromDatasetResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UnregisterFromDatasetResponse".into()
+    }
+}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct WriteChunksRequest {
     #[prost(message, optional, tag = "1")]
@@ -2139,6 +2194,36 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Unregisters segments and layers from the Dataset.
+        ///
+        /// Excluding IO errors, this will always succeed as long the target dataset exists.
+        /// Corollary: unregistering data that doesn't exist is a no-op.
+        ///
+        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
+        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn unregister_from_dataset(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UnregisterFromDatasetRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::UnregisterFromDatasetResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/UnregisterFromDataset",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "UnregisterFromDataset",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         /// Write chunks to one or more segments.
         ///
         /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
@@ -2702,6 +2787,24 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
+        /// Server streaming response type for the UnregisterFromDataset method.
+        type UnregisterFromDatasetStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::UnregisterFromDatasetResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Unregisters segments and layers from the Dataset.
+        ///
+        /// Excluding IO errors, this will always succeed as long the target dataset exists.
+        /// Corollary: unregistering data that doesn't exist is a no-op.
+        ///
+        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
+        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn unregister_from_dataset(
+            &self,
+            request: tonic::Request<super::UnregisterFromDatasetRequest>,
+        ) -> std::result::Result<tonic::Response<Self::UnregisterFromDatasetStream>, tonic::Status>;
         /// Write chunks to one or more segments.
         ///
         /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
@@ -3416,6 +3519,51 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/UnregisterFromDataset" => {
+                    #[allow(non_camel_case_types)]
+                    struct UnregisterFromDatasetSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::UnregisterFromDatasetRequest>
+                        for UnregisterFromDatasetSvc<T>
+                    {
+                        type Response = super::UnregisterFromDatasetResponse;
+                        type ResponseStream = T::UnregisterFromDatasetStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UnregisterFromDatasetRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::unregister_from_dataset(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UnregisterFromDatasetSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

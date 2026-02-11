@@ -129,6 +129,7 @@ exclude = [
   'file:///does/not/exist.rrd',
   'file://path/to/file.rrd',
   'file://somehost/file/path.rrd',
+  'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
 
   'https://redap.rerun.io',
   'http://wrong-scheme',

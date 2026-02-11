@@ -994,6 +994,13 @@ class DatasetEntryInternal:
     def register_prefix(
         self, recordings_prefix: str, layer_name: str, on_duplicate: str
     ) -> RegistrationHandleInternal: ...
+    def unregister(
+        self,
+        *,
+        segments_to_drop: list[str],
+        layers_to_drop: list[str],
+        force: bool = False,
+    ) -> None: ...
 
     # ---
 

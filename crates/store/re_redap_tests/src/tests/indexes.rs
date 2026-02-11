@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use arrow::array::RecordBatch;
+use re_arrow_util::concat_polymorphic_batches;
+use re_protos::cloud::v1alpha1::ext::UnregisterFromDatasetRequest;
 use re_protos::cloud::v1alpha1::index_properties::Props;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -126,6 +129,107 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
         let indexes = list_indexes(&service, dataset_name).await.unwrap();
         assert!(indexes.is_empty());
     }
+}
+
+pub async fn index_incremental(service: impl RerunCloudService) {
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::text("my_segment_id1").layer_name("text"), //
+        ],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    create_index(
+        &service,
+        dataset_name,
+        generate_create_index_requests()[1].clone(),
+    )
+    .await
+    .unwrap();
+
+    let results = search_dataset(
+        &service,
+        dataset_name,
+        generate_search_dataset_requests()[1].clone(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(2, results.num_rows());
+
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::text("my_segment_id2").layer_name("text"), //
+        ],
+    );
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    let results = search_dataset(
+        &service,
+        dataset_name,
+        generate_search_dataset_requests()[1].clone(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(4, results.num_rows());
+
+    service
+        .unregister_from_dataset(
+            tonic::Request::new(
+                UnregisterFromDatasetRequest {
+                    segments_to_drop: vec!["my_segment_id1".to_owned().into()],
+                    layers_to_drop: vec![],
+                    force: false,
+                }
+                .into(),
+            )
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let results = search_dataset(
+        &service,
+        dataset_name,
+        generate_search_dataset_requests()[1].clone(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(2, results.num_rows());
+
+    service
+        .unregister_from_dataset(
+            tonic::Request::new(
+                UnregisterFromDatasetRequest {
+                    segments_to_drop: vec!["my_segment_id2".to_owned().into()],
+                    layers_to_drop: vec![],
+                    force: false,
+                }
+                .into(),
+            )
+            .with_entry_name(dataset_name)
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let results = search_dataset(
+        &service,
+        dataset_name,
+        generate_search_dataset_requests()[1].clone(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(0, results.num_rows());
 }
 
 pub async fn dataset_doesnt_exist(service: impl RerunCloudService) {
@@ -467,14 +571,21 @@ async fn search_dataset(
     service: &impl RerunCloudService,
     dataset_name: &str,
     req: SearchDatasetRequest,
-) -> tonic::Result<()> {
-    let _res = service
+) -> tonic::Result<RecordBatch> {
+    let res = service
         .search_dataset(tonic::Request::new(req).with_entry_name(dataset_name)?)
         .await?;
 
-    // Results are ignored. This is not about testing the search itself, it's about testing the
-    // lifecycle of the underlying index.
-    Ok(())
+    use futures::StreamExt as _;
+    let batches = res
+        .into_inner()
+        .map(|r| r.unwrap().data.unwrap().try_into().unwrap())
+        .collect::<Vec<_>>()
+        .await;
+
+    let batch = concat_polymorphic_batches(&batches).unwrap();
+
+    Ok(batch)
 }
 
 async fn list_indexes(

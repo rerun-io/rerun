@@ -1,8 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use ahash::HashMap;
 use arrow::array::BinaryArray;
 use arrow::record_batch::RecordBatch;
 use cfg_if::cfg_if;
@@ -292,6 +291,7 @@ decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestRespo
 decl_stream!(ScanSegmentTableResponseStream<manifest:ScanSegmentTableResponse>);
 decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
+decl_stream!(UnregisterFromDatasetResponseStream<manifest:UnregisterFromDatasetResponse>);
 
 impl RerunCloudHandler {
     async fn find_datasets(
@@ -821,6 +821,46 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    type UnregisterFromDatasetStream = UnregisterFromDatasetResponseStream;
+
+    async fn unregister_from_dataset(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::UnregisterFromDatasetRequest>,
+    ) -> tonic::Result<Response<Self::UnregisterFromDatasetStream>, Status> {
+        let mut store = self.store.write().await;
+
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        request.get_ref().sanity_check()?;
+
+        let dataset = store.dataset_mut(entry_id)?;
+
+        let ext::UnregisterFromDatasetRequest {
+            segments_to_drop,
+            layers_to_drop,
+            force: _, // OSS doesn't even have statuses
+        } = request.into_inner().try_into()?;
+
+        let segments_to_drop = segments_to_drop.iter().collect();
+        let layers_to_drop = layers_to_drop.iter().map(|s| s.as_str()).collect();
+
+        let dataset_manifest_removed =
+            dataset.dataset_manifest_filtered(&segments_to_drop, &layers_to_drop)?;
+
+        _ = dataset
+            .remove_layers(&segments_to_drop, &layers_to_drop)
+            .await?;
+
+        let stream = futures::stream::once(async move {
+            Ok(re_protos::cloud::v1alpha1::UnregisterFromDatasetResponse {
+                data: Some(dataset_manifest_removed.into()),
+            })
+        });
+
+        Ok(tonic::Response::new(
+            Box::pin(stream) as Self::UnregisterFromDatasetStream
+        ))
+    }
+
     // TODO(RR-2017): This endpoint is in need of a deep redesign. For now it defaults to
     // overwriting the "base" layer.
     async fn write_chunks(
@@ -831,7 +871,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let mut request = request.into_inner();
 
-        let mut chunk_stores = HashMap::default();
+        let mut chunk_stores: HashMap<_, _> = HashMap::default();
 
         while let Some(chunk_msg) = request.next().await {
             let chunk_msg = chunk_msg?;
