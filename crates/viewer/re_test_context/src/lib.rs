@@ -114,11 +114,22 @@ impl TestContext {
     }
 
     pub fn new_with_store_info(store_info: StoreInfo) -> Self {
+        Self::new_with_store_info_and_config(
+            store_info,
+            re_chunk_store::ChunkStoreConfig::from_env().unwrap_or_default(),
+        )
+    }
+
+    pub fn new_with_store_info_and_config(
+        store_info: StoreInfo,
+        store_config: re_chunk_store::ChunkStoreConfig,
+    ) -> Self {
         re_log::setup_logging();
 
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
-        let mut recording_store = EntityDb::new(recording_store_id.clone());
+        let mut recording_store =
+            EntityDb::with_store_config(recording_store_id.clone(), true, store_config);
 
         recording_store.set_store_info(SetStoreInfo {
             row_id: Tuid::new(),

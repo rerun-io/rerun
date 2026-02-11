@@ -48,10 +48,10 @@ pub fn time_panel_two_sections() {
         TimePanel::default(),
         "time_panel_two_sections",
         &mut snapshot_results,
-        RunOptions {
+        &RunOptions {
             height: 300.0,
             expand_all: false,
-            mark_chunk_used_or_missing: None,
+            mark_chunks_used_or_missing: vec![],
         },
     );
 }
@@ -98,10 +98,10 @@ pub fn time_panel_dense_data() {
         TimePanel::default(),
         "time_panel_dense_data",
         &mut snapshot_results,
-        RunOptions {
+        &RunOptions {
             height: 300.0,
             expand_all: false,
-            mark_chunk_used_or_missing: None,
+            mark_chunks_used_or_missing: vec![],
         },
     );
 }
@@ -168,10 +168,10 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
         time_panel,
         snapshot_name,
         &mut snapshot_results,
-        RunOptions {
+        &RunOptions {
             height: 300.0,
             expand_all: false,
-            mark_chunk_used_or_missing: None,
+            mark_chunks_used_or_missing: vec![],
         },
     );
 }
@@ -211,10 +211,10 @@ pub fn test_various_entity_kinds_in_time_panel() {
                 time_panel,
                 &format!("various_entity_kinds_{timeline}_{time}"),
                 &mut snapshot_results,
-                RunOptions {
+                &RunOptions {
                     height: 1200.0,
                     expand_all: true,
-                    mark_chunk_used_or_missing: None,
+                    mark_chunks_used_or_missing: vec![],
                 },
             );
         }
@@ -245,10 +245,10 @@ pub fn test_focused_item_is_focused() {
         time_panel,
         "focused_item_is_focused",
         &mut snapshot_results,
-        RunOptions {
+        &RunOptions {
             height: 200.0,
             expand_all: false,
-            mark_chunk_used_or_missing: None,
+            mark_chunks_used_or_missing: vec![],
         },
     );
 }
@@ -257,7 +257,11 @@ pub fn test_focused_item_is_focused() {
 fn with_unloaded_chunks() {
     TimePanel::ensure_registered_subscribers();
 
-    let mut test_context = TestContext::new();
+    // Disable compaction so chunk IDs remain stable after insertion.
+    let mut test_context = TestContext::new_with_store_info_and_config(
+        re_log_types::StoreInfo::testing(),
+        re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
+    );
 
     test_context.send_time_commands(
         test_context.active_store_id(),
@@ -276,16 +280,17 @@ fn with_unloaded_chunks() {
 
     let mut snapshot_results = SnapshotResults::new();
 
-    let first_id = chunks[0].id();
+    let mut used_ids = chunks[..6].iter().map(|c| c.id()).collect::<Vec<_>>();
+
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
         "time_panel_only_unloaded_chunks",
         &mut snapshot_results,
-        RunOptions {
+        &RunOptions {
             height: 250.0,
             expand_all: false,
-            mark_chunk_used_or_missing: Some(first_id),
+            mark_chunks_used_or_missing: used_ids.clone(),
         },
     );
 
@@ -297,11 +302,11 @@ fn with_unloaded_chunks() {
         TimePanel::default(),
         "time_panel_partially_unloaded_chunks",
         &mut snapshot_results,
-        RunOptions {
+        &RunOptions {
             height: 250.0,
             expand_all: false,
             // Should now be loaded.
-            mark_chunk_used_or_missing: Some(first_id),
+            mark_chunks_used_or_missing: used_ids.clone(),
         },
     );
 
@@ -310,15 +315,17 @@ fn with_unloaded_chunks() {
         [TimeControlCommand::SetTime(TimeReal::from(5))],
     );
 
+    used_ids.push(chunks[0].id());
+
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
         "time_panel_loading_unloaded_chunks",
         &mut snapshot_results,
-        RunOptions {
+        &RunOptions {
             height: 250.0,
             expand_all: false,
-            mark_chunk_used_or_missing: Some(chunks[0].id()),
+            mark_chunks_used_or_missing: used_ids,
         },
     );
 }
@@ -353,12 +360,12 @@ fn create_chunks() -> Vec<Chunk> {
         create_chunk("/parent_with_data/of/unloaded0", timeline_a, [0]),
         create_chunk("/some_entity", timeline_a, [1, 2]),
         create_chunk("/parent_with_data/of/unloaded1", timeline_a, 2..=10),
-        create_chunk("/parent_with_data/of/unloaded3", timeline_a, [5]),
+        create_chunk("/parent_with_data/of/unloaded2", timeline_a, [5]),
         create_chunk("/timeline_a_only", timeline_a, [5, 8]),
         create_chunk("/some_entity", timeline_a, [5, 6]),
         // will stay unloaded
-        create_chunk("/parent_with_data/of/unloaded2", timeline_a, 4..=6),
-        create_chunk("/parent_with_data/of/unloaded4", timeline_a, [10]),
+        create_chunk("/parent_with_data/of/unloaded1", timeline_a, 4..=6),
+        create_chunk("/parent_with_data/of/unloaded2", timeline_a, [10]),
         create_chunk("/timeline_b_only", timeline_b, [5, 8]),
         create_chunk("/some_entity", timeline_a, [9, 10]),
     ]
@@ -429,7 +436,7 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
     });
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct RunOptions {
     height: f32,
     expand_all: bool,
@@ -437,7 +444,7 @@ struct RunOptions {
     /// Marks the given chunks as missing, to cause the time-panel to
     /// indicate that something is loading. This has to be a chunk coming
     /// with a root in the rrd manifest.
-    mark_chunk_used_or_missing: Option<re_chunk::ChunkId>,
+    mark_chunks_used_or_missing: Vec<re_chunk::ChunkId>,
 }
 
 fn run_time_panel_and_save_snapshot(
@@ -445,18 +452,18 @@ fn run_time_panel_and_save_snapshot(
     mut time_panel: TimePanel,
     snapshot_name: &str,
     snapshot_results: &mut SnapshotResults,
-    options: RunOptions,
+    options: &RunOptions,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([700.0, options.height])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                if let Some(chunk_id) = options.mark_chunk_used_or_missing {
+                for chunk_id in &options.mark_chunks_used_or_missing {
                     viewer_ctx
                         .recording()
                         .storage_engine()
                         .store()
-                        .use_physical_chunk_or_report_missing(&chunk_id);
+                        .use_physical_chunk_or_report_missing(chunk_id);
                 }
 
                 if options.expand_all {

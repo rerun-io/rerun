@@ -111,6 +111,23 @@ impl re_byte_size::SizeBytes for TemporalChunkInfo {
     }
 }
 
+/// A cache used to calculate which ranges are loaded from a latest at perspective.
+#[derive(Clone)]
+struct LoadedRanges {
+    ranges: time_range_merger::MergedRanges,
+
+    /// The timeline this is cached for.
+    timeline: TimelineName,
+}
+
+impl re_byte_size::SizeBytes for LoadedRanges {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { ranges, timeline } = self;
+
+        ranges.heap_size_bytes() + timeline.heap_size_bytes()
+    }
+}
+
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
 /// This is constructed from an [`RrdManifest`], which is what the server sends to the client/viewer.
@@ -140,7 +157,7 @@ pub struct RrdManifestIndex {
     /// as loaded.
     ///
     /// Used for displaying the top loaded indicator in the time panel.
-    loaded_ranges: BTreeMap<TimelineName, time_range_merger::MergedRanges>,
+    loaded_ranges: Option<LoadedRanges>,
 
     /// Full time range per timeline
     timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
@@ -176,7 +193,6 @@ impl RrdManifestIndex {
 
         self.sorted_chunks
             .update(&self.entity_tree, manifest.temporal_map());
-        self.update_loaded_ranges();
 
         for (row_idx, (&root_chunk_id, entity_path)) in
             izip!(manifest.col_chunk_ids(), manifest.col_chunk_entity_path()).enumerate()
@@ -261,38 +277,63 @@ impl RrdManifestIndex {
         }
     }
 
-    fn update_loaded_ranges(&mut self) {
+    fn update_loaded_ranges(&mut self, current_timeline: TimelineName) {
         re_tracing::profile_function!();
+
+        let is_unloaded = |id| {
+            self.root_chunks
+                .get(&id)
+                .is_none_or(|c| c.state.is_unloaded())
+        };
+
+        // Skip fully updating if timeline didn't change.
+        if let Some(loaded_ranges) = &mut self.loaded_ranges
+            && loaded_ranges.timeline == current_timeline
+        {
+            loaded_ranges.ranges.update_components_of_interest(
+                &self.chunk_prioritizer.components_of_interest,
+                &self.chunk_prioritizer.component_paths_from_root_id,
+                is_unloaded,
+            );
+            return;
+        }
+
+        let Some(timeline_range) = self.timeline_range(&current_timeline) else {
+            return;
+        };
+
         let mut ranges = Vec::new();
 
         // First we merge ranges for individual components, since chunks' time ranges
         // often have gaps which we don't want to display other components' chunks
         // loaded state in.
-        for (timeline, timeline_range) in &self.timelines {
-            for chunks in self
-                .sorted_chunks
-                .iter_all_component_chunks_on_timeline(*timeline)
-            {
-                let mut new_ranges = time_range_merger::merge_ranges(
-                    chunks
-                        .iter()
-                        .map(|info| time_range_merger::TimeRange::new(info.id, info.time_range)),
-                );
-
-                // Make sure the last range covers to the end of the timeline.
-                if let Some(range) = new_ranges.last_mut() {
-                    range.max = timeline_range.max;
-                }
-
-                ranges.extend(new_ranges);
-            }
-            self.loaded_ranges.insert(
-                *timeline,
-                time_range_merger::MergedRanges::new(time_range_merger::merge_ranges(
-                    ranges.drain(..),
-                )),
+        for chunks in self
+            .sorted_chunks
+            .iter_all_component_chunks_on_timeline(current_timeline)
+        {
+            let mut new_ranges = time_range_merger::merge_ranges(
+                chunks
+                    .iter()
+                    .map(|info| time_range_merger::TimeRange::new(info.id, info.time_range)),
             );
+
+            // Make sure the last range covers to the end of the timeline.
+            if let Some(range) = new_ranges.last_mut() {
+                range.max = timeline_range.max;
+            }
+
+            ranges.extend(new_ranges);
         }
+
+        self.loaded_ranges = Some(LoadedRanges {
+            ranges: time_range_merger::MergedRanges::new(
+                time_range_merger::merge_ranges(ranges.drain(..)),
+                &self.chunk_prioritizer.components_of_interest,
+                &self.chunk_prioritizer.component_paths_from_root_id,
+                is_unloaded,
+            ),
+            timeline: current_timeline,
+        });
     }
 
     pub fn entity_has_temporal_data_on_timeline(
@@ -301,7 +342,7 @@ impl RrdManifestIndex {
         timeline: &TimelineName,
     ) -> bool {
         self.sorted_chunks
-            .get(timeline, entity)
+            .get(timeline, &entity.hash())
             .is_some_and(|e| e.has_data())
     }
 
@@ -368,14 +409,20 @@ impl RrdManifestIndex {
 
         let loaded_ranges = &mut self.loaded_ranges;
         let mut update_ranges = |chunk_id| {
-            for ranges in loaded_ranges.values_mut() {
+            if let Some(loaded_ranges) = loaded_ranges {
                 match state {
                     LoadState::Unloaded => {
-                        ranges.on_chunk_unloaded(&chunk_id);
+                        loaded_ranges.ranges.on_chunk_unloaded(
+                            &chunk_id,
+                            &self.chunk_prioritizer.component_paths_from_root_id,
+                        );
                     }
                     LoadState::InTransit => {}
                     LoadState::Loaded => {
-                        ranges.on_chunk_loaded(&chunk_id);
+                        loaded_ranges.ranges.on_chunk_loaded(
+                            &chunk_id,
+                            &self.chunk_prioritizer.component_paths_from_root_id,
+                        );
                     }
                 }
             }
@@ -482,6 +529,8 @@ impl RrdManifestIndex {
                 self.chunk_prioritizer.chunk_requests_mut().add(batch);
             }
 
+            self.update_loaded_ranges(time_cursor.name);
+
             Ok(())
         } else {
             Err(PrefetchError::NoManifest)
@@ -494,11 +543,15 @@ impl RrdManifestIndex {
     pub fn loaded_ranges_on_timeline(&self, timeline: &TimelineName) -> Vec<AbsoluteTimeRange> {
         re_tracing::profile_function!();
 
-        let Some(ranges) = self.loaded_ranges.get(timeline) else {
+        let Some(loaded_ranges) = self
+            .loaded_ranges
+            .as_ref()
+            .filter(|l| l.timeline == *timeline)
+        else {
             return Vec::new();
         };
 
-        ranges.loaded_ranges()
+        loaded_ranges.ranges.loaded_ranges()
     }
 
     /// If `component` is some, this returns all unloaded temporal entries for that specific
@@ -523,7 +576,7 @@ impl RrdManifestIndex {
                 .filter(|info| index.is_chunk_unloaded(&info.id))
         }
 
-        let Some(entry) = self.sorted_chunks.get(timeline, entity) else {
+        let Some(entry) = self.sorted_chunks.get(timeline, &entity.hash()) else {
             return iterate_unloaded(self, &[]);
         };
 

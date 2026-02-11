@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 use re_chunk::{ChunkId, TimelineName};
-use re_log_types::AbsoluteTimeRange;
+use re_log_types::{AbsoluteTimeRange, EntityPathHash};
 
 /// Summary information about a chunk for display/query purposes.
 #[derive(Clone)]
@@ -109,7 +109,7 @@ impl SortedEntityTemporalChunks {
 /// This cache is rebuilt whenever the manifest is updated via [`Self::update`].
 #[derive(Default, Clone)]
 pub struct SortedTemporalChunks {
-    per_timeline: BTreeMap<TimelineName, IntMap<re_chunk::EntityPath, SortedEntityTemporalChunks>>,
+    per_timeline: BTreeMap<TimelineName, IntMap<EntityPathHash, SortedEntityTemporalChunks>>,
 }
 
 impl re_byte_size::SizeBytes for SortedTemporalChunks {
@@ -135,7 +135,7 @@ impl SortedTemporalChunks {
         for (entity, per_timeline) in native_temporal_map {
             for (timeline, per_component) in per_timeline {
                 let sorted_per_entity = self.per_timeline.entry(*timeline.name()).or_default();
-                let entity_chunks = sorted_per_entity.entry(entity.clone()).or_default();
+                let entity_chunks = sorted_per_entity.entry(entity.hash()).or_default();
 
                 for (component, chunks) in per_component {
                     let component_chunks =
@@ -171,12 +171,12 @@ impl SortedTemporalChunks {
                 let child_chunks = node
                     .children
                     .values()
-                    .filter_map(|v| per_entity.get(&v.path).map(|c| c.per_entity.iter()))
+                    .filter_map(|v| per_entity.get(&v.path.hash()).map(|c| c.per_entity.iter()))
                     .flatten()
                     .cloned()
                     .collect::<Vec<_>>();
 
-                let mut entry = per_entity.entry(node.path.clone());
+                let mut entry = per_entity.entry(node.path.hash());
                 let chunks = match entry {
                     std::collections::hash_map::Entry::Occupied(ref mut entry) => {
                         let chunks = entry.get_mut();
@@ -223,7 +223,7 @@ impl SortedTemporalChunks {
     pub fn get(
         &self,
         timeline: &TimelineName,
-        entity: &re_chunk::EntityPath,
+        entity: &EntityPathHash,
     ) -> Option<&SortedEntityTemporalChunks> {
         self.per_timeline.get(timeline)?.get(entity)
     }
@@ -259,28 +259,13 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_cache() {
-        let cache = SortedTemporalChunks::default();
-        let timeline = TimelineName::new("test");
-        let entity = EntityPath::from("/test");
-
-        assert!(cache.get(&timeline, &entity).is_none());
-        assert_eq!(
-            cache
-                .iter_all_component_chunks_on_timeline(timeline)
-                .count(),
-            0
-        );
-    }
-
-    #[test]
     fn test_component_chunks_returns_empty_slice_for_missing() {
         let cache = SortedTemporalChunks::default();
         let timeline = TimelineName::new("test");
         let entity = EntityPath::from("/test");
 
         // When entity doesn't exist, get returns None
-        assert!(cache.get(&timeline, &entity).is_none());
+        assert!(cache.get(&timeline, &entity.hash()).is_none());
 
         // But if we had an entity with no specific component, it should return empty slice
         let entity_chunks = SortedEntityTemporalChunks::default();
@@ -345,7 +330,7 @@ mod tests {
         cache.update(&entity_tree, &temporal_map);
 
         // Verify chunks are sorted by time_range.min
-        let sorted = cache.get(&timeline, &entity).unwrap();
+        let sorted = cache.get(&timeline, &entity.hash()).unwrap();
         let component_chunks = sorted.component_chunks(&component);
         assert_eq!(component_chunks.len(), 3);
         assert!(component_chunks[0].time_range.min < component_chunks[1].time_range.min);
@@ -408,11 +393,11 @@ mod tests {
         cache.update(&entity_tree, &temporal_map);
 
         // Parent's per_entity should include both its own chunk and child's chunk
-        let parent_sorted = cache.get(&timeline, &parent).unwrap();
+        let parent_sorted = cache.get(&timeline, &parent.hash()).unwrap();
         assert_eq!(parent_sorted.per_entity().len(), 2);
 
         // Child's per_entity should only include its own chunk
-        let child_sorted = cache.get(&timeline, &child).unwrap();
+        let child_sorted = cache.get(&timeline, &child.hash()).unwrap();
         assert_eq!(child_sorted.per_entity().len(), 1);
     }
 
@@ -466,7 +451,7 @@ mod tests {
         cache.update(&entity_tree, &temporal_map);
 
         // per_entity should have only one entry (deduplicated) with merged row counts
-        let sorted = cache.get(&timeline, &entity).unwrap();
+        let sorted = cache.get(&timeline, &entity.hash()).unwrap();
         assert_eq!(sorted.per_entity().len(), 1);
         assert_eq!(sorted.per_entity()[0].num_rows, 25); // 10 + 15
     }

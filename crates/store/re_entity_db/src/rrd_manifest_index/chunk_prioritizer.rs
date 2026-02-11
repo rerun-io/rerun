@@ -269,9 +269,20 @@ impl PrioritizedChunk {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-struct ComponentPathKey {
+pub struct ComponentPathKey {
     entity_path: EntityPathHash,
     component: ComponentIdentifier,
+}
+
+#[cfg(test)]
+impl ComponentPathKey {
+    /// Creates a dummy key for use in tests where the specific entity/component doesn't matter.
+    pub fn dummy() -> Self {
+        Self {
+            entity_path: EntityPathHash::NONE,
+            component: ComponentIdentifier::new("test"),
+        }
+    }
 }
 
 impl re_byte_size::SizeBytes for ComponentPathKey {
@@ -316,7 +327,10 @@ pub struct ChunkPrioritizer {
     /// Chunks that should be downloaded before any else.
     high_priority_chunks: HighPrioChunks,
 
-    component_paths_from_root_id: HashMap<ChunkId, Vec<ComponentPathKey>>,
+    pub component_paths_from_root_id: HashMap<ChunkId, Vec<ComponentPathKey>>,
+
+    /// Component paths that were reported either as being used or missing.
+    pub components_of_interest: HashSet<ComponentPathKey>,
 }
 
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
@@ -330,6 +344,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             static_chunk_ids,
             high_priority_chunks,
             component_paths_from_root_id,
+            components_of_interest,
         } = self;
 
         desired_root_chunks.heap_size_bytes()
@@ -338,6 +353,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             + static_chunk_ids.heap_size_bytes()
             + high_priority_chunks.heap_size_bytes()
             + component_paths_from_root_id.heap_size_bytes()
+            + components_of_interest.heap_size_bytes()
     }
 }
 
@@ -616,7 +632,7 @@ impl ChunkPrioritizer {
         }
 
         // Basically: what components of which entities are currently being viewed by the user?
-        let mut components_of_interest: HashSet<ComponentPathKey> = Default::default();
+        self.components_of_interest.clear();
         {
             profile_scope!("components_of_interest");
 
@@ -628,7 +644,7 @@ impl ChunkPrioritizer {
             for physical_chunk_id in used_physical {
                 if let Some(chunk) = store.physical_chunk(physical_chunk_id) {
                     for component in chunk.components_identifiers() {
-                        components_of_interest.insert(ComponentPathKey {
+                        self.components_of_interest.insert(ComponentPathKey {
                             entity_path: chunk.entity_path().hash(),
                             component,
                         });
@@ -638,7 +654,8 @@ impl ChunkPrioritizer {
             for missing_virtual_chunk_id in missing_virtual {
                 for root_id in store.find_root_chunks(missing_virtual_chunk_id) {
                     if let Some(components) = self.component_paths_from_root_id.get(&root_id) {
-                        components_of_interest.extend(components.iter().copied());
+                        self.components_of_interest
+                            .extend(components.iter().copied());
                     }
                 }
             }
@@ -646,7 +663,7 @@ impl ChunkPrioritizer {
 
         // Mixes virtual and physical chunks (!)
         let chunk_ids_in_priority_order = Self::chunks_in_priority(
-            &components_of_interest,
+            &self.components_of_interest,
             &self.component_paths_from_root_id,
             &self.static_chunk_ids,
             &self.high_priority_chunks,

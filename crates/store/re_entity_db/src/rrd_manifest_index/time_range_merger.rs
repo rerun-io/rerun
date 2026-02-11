@@ -3,13 +3,15 @@
 
 use std::{
     collections::BinaryHeap,
-    ops::{Deref, DerefMut},
+    ops::{Deref, DerefMut, RangeInclusive},
 };
 
-use ahash::HashSet;
+use ahash::{HashMap, HashSet};
 use re_chunk::{ChunkId, TimeInt};
 use re_log_types::AbsoluteTimeRange;
 use re_tracing::profile_function;
+
+use super::chunk_prioritizer::ComponentPathKey;
 
 #[derive(Clone)]
 pub struct TimeRange {
@@ -261,7 +263,10 @@ struct ResolvedRange {
 
     /// The number of unloaded chunks in this range, when this reaches 0
     /// we know the chunk is fully loaded.
-    unloaded_count: usize,
+    ///
+    /// If this is `None` we aren't currently interested in any components
+    /// in the chunks in this range.
+    unloaded_count: Option<usize>,
 }
 
 impl re_byte_size::SizeBytes for ResolvedRange {
@@ -284,7 +289,10 @@ impl re_byte_size::SizeBytes for ResolvedRange {
 pub struct MergedRanges {
     start_time: TimeInt,
     ranges: Vec<ResolvedRange>,
-    ranges_from_chunk: ahash::HashMap<ChunkId, std::ops::RangeInclusive<usize>>,
+    ranges_from_chunk: HashMap<ChunkId, RangeInclusive<usize>>,
+
+    /// The components of interest this is cached for.
+    components_of_interest: HashSet<ComponentPathKey>,
 }
 
 impl re_byte_size::SizeBytes for MergedRanges {
@@ -293,48 +301,105 @@ impl re_byte_size::SizeBytes for MergedRanges {
             start_time: _,
             ranges,
             ranges_from_chunk,
+            components_of_interest,
         } = self;
 
-        ranges.heap_size_bytes() + ranges_from_chunk.heap_size_bytes()
+        ranges.heap_size_bytes()
+            + ranges_from_chunk.heap_size_bytes()
+            + components_of_interest.heap_size_bytes()
     }
 }
 
 impl MergedRanges {
-    pub fn new(ranges: Vec<TimeRange>) -> Self {
+    pub fn new(
+        ranges: Vec<TimeRange>,
+        components_of_interest: &HashSet<ComponentPathKey>,
+        component_paths_from_chunk: &HashMap<ChunkId, Vec<ComponentPathKey>>,
+        is_unloaded: impl Fn(ChunkId) -> bool,
+    ) -> Self {
         re_tracing::profile_function!();
-        let mut ranges_from_chunk =
-            ahash::HashMap::<ChunkId, std::ops::RangeInclusive<usize>>::default();
+
+        let mut ranges_from_chunk = ahash::HashMap::<ChunkId, RangeInclusive<usize>>::default();
 
         let mut start_time = TimeInt::MAX;
-        let mut new_ranges = ranges
+        let new_ranges = ranges
             .into_iter()
             .enumerate()
             .map(|(idx, range)| {
                 for chunk in range.depends_on {
                     ranges_from_chunk
                         .entry(chunk)
-                        .and_modify(|range| {
-                            *range = *range.start()..=idx;
-                        })
+                        .and_modify(|range| *range = *range.start()..=idx)
                         .or_insert(idx..=idx);
                 }
                 start_time = start_time.min(range.range.min);
                 ResolvedRange {
                     end_time: range.range.max,
-                    // We assign this later
-                    unloaded_count: 0,
+                    unloaded_count: None,
                 }
             })
             .collect::<Vec<_>>();
 
-        for idx in ranges_from_chunk.values().flat_map(|r| r.clone()) {
-            new_ranges[idx].unloaded_count += 1;
-        }
-
-        Self {
+        let mut this = Self {
             ranges: new_ranges,
             start_time,
             ranges_from_chunk,
+            components_of_interest: Default::default(),
+        };
+
+        this.update_components_of_interest(
+            components_of_interest,
+            component_paths_from_chunk,
+            is_unloaded,
+        );
+
+        this
+    }
+
+    pub fn is_chunk_interesting(
+        &self,
+        component_paths_from_chunk: &HashMap<ChunkId, Vec<ComponentPathKey>>,
+        chunk: &ChunkId,
+    ) -> bool {
+        component_paths_from_chunk.get(chunk).is_some_and(|paths| {
+            paths
+                .iter()
+                .any(|p| self.components_of_interest.contains(p))
+        })
+    }
+
+    pub fn update_components_of_interest(
+        &mut self,
+        components_of_interest: &HashSet<ComponentPathKey>,
+        component_paths_from_chunk: &HashMap<ChunkId, Vec<ComponentPathKey>>,
+        is_unloaded: impl Fn(ChunkId) -> bool,
+    ) {
+        re_tracing::profile_function!();
+
+        // Skip updating if nothing changed.
+        if self.components_of_interest == *components_of_interest {
+            return;
+        }
+
+        self.components_of_interest = components_of_interest.clone();
+
+        for range in &mut self.ranges {
+            range.unloaded_count = None;
+        }
+
+        for (chunk, range) in &self.ranges_from_chunk {
+            if !self.is_chunk_interesting(component_paths_from_chunk, chunk) {
+                continue;
+            }
+
+            let is_unloaded = is_unloaded(*chunk);
+            for idx in range.clone() {
+                let unloaded_count = self.ranges[idx].unloaded_count.get_or_insert(0);
+
+                if is_unloaded {
+                    *unloaded_count += 1;
+                }
+            }
         }
     }
 
@@ -346,7 +411,15 @@ impl MergedRanges {
 
         let mut last_end = self.start_time;
         for range in &self.ranges {
-            if range.unloaded_count == 0 {
+            let Some(unloaded_count) = &range.unloaded_count else {
+                if let Some(in_progress) = &mut in_progress {
+                    last_end = range.end_time;
+                    in_progress.max = range.end_time;
+                }
+                continue;
+            };
+
+            if *unloaded_count == 0 {
                 if let Some(in_progress) = &mut in_progress {
                     in_progress.max = range.end_time;
                 } else {
@@ -366,25 +439,47 @@ impl MergedRanges {
         loaded_ranges
     }
 
-    pub fn on_chunk_loaded(&mut self, chunk: &ChunkId) {
+    pub fn on_chunk_loaded(
+        &mut self,
+        chunk: &ChunkId,
+        component_paths_from_chunk: &HashMap<ChunkId, Vec<ComponentPathKey>>,
+    ) {
+        if !self.is_chunk_interesting(component_paths_from_chunk, chunk) {
+            return;
+        }
+
         let Some(range) = self.ranges_from_chunk.get(chunk) else {
             return;
         };
 
         for idx in range.clone() {
-            let resolved_range = &mut self.ranges[idx];
+            let Some(unloaded_count) = &mut self.ranges[idx].unloaded_count else {
+                continue;
+            };
 
-            resolved_range.unloaded_count = resolved_range.unloaded_count.saturating_sub(1);
+            *unloaded_count = unloaded_count.saturating_sub(1);
         }
     }
 
-    pub fn on_chunk_unloaded(&mut self, chunk: &ChunkId) {
+    pub fn on_chunk_unloaded(
+        &mut self,
+        chunk: &ChunkId,
+        component_paths_from_chunk: &HashMap<ChunkId, Vec<ComponentPathKey>>,
+    ) {
+        if !self.is_chunk_interesting(component_paths_from_chunk, chunk) {
+            return;
+        }
+
         let Some(range) = self.ranges_from_chunk.get(chunk) else {
             return;
         };
 
         for idx in range.clone() {
-            self.ranges[idx].unloaded_count += 1;
+            let Some(unloaded_count) = &mut self.ranges[idx].unloaded_count else {
+                continue;
+            };
+
+            *unloaded_count += 1;
         }
     }
 }
@@ -604,6 +699,27 @@ mod tests {
         );
     }
 
+    use super::super::chunk_prioritizer::ComponentPathKey;
+
+    /// Helper to build dummy data needed by `MergedRanges`.
+    ///
+    /// Maps every chunk id to a single dummy component path that is also
+    /// in `components_of_interest`, so all chunks are considered "interesting".
+    fn test_dummy_data(
+        chunk_ids: &[u128],
+    ) -> (
+        HashSet<ComponentPathKey>,
+        HashMap<ChunkId, Vec<ComponentPathKey>>,
+    ) {
+        let key = ComponentPathKey::dummy();
+        let components_of_interest: HashSet<ComponentPathKey> = std::iter::once(key).collect();
+        let component_paths_from_chunk: HashMap<ChunkId, Vec<ComponentPathKey>> = chunk_ids
+            .iter()
+            .map(|&id| (chunk_id(id), vec![key]))
+            .collect();
+        (components_of_interest, component_paths_from_chunk)
+    }
+
     #[test]
     fn test_merged_ranges_loaded_ranges_all_unloaded() {
         let ranges = merge_ranges(
@@ -614,7 +730,8 @@ mod tests {
             .into_iter(),
         );
 
-        let merged = MergedRanges::new(ranges);
+        let (coi, cpfc) = test_dummy_data(&[1, 2]);
+        let merged = MergedRanges::new(ranges, &coi, &cpfc, |_| true);
         let loaded = merged.loaded_ranges();
 
         // Nothing is loaded yet
@@ -631,17 +748,18 @@ mod tests {
             .into_iter(),
         );
 
-        let mut merged = MergedRanges::new(ranges);
+        let (coi, cpfc) = test_dummy_data(&[1, 2]);
+        let mut merged = MergedRanges::new(ranges, &coi, &cpfc, |_| true);
 
         // Load chunk 1
-        merged.on_chunk_loaded(&chunk_id(1));
+        merged.on_chunk_loaded(&chunk_id(1), &cpfc);
         let loaded = merged.loaded_ranges();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].min.as_i64(), 0);
         assert_eq!(loaded[0].max.as_i64(), 10);
 
         // Load chunk 2
-        merged.on_chunk_loaded(&chunk_id(2));
+        merged.on_chunk_loaded(&chunk_id(2), &cpfc);
         let loaded = merged.loaded_ranges();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].min.as_i64(), 0);
@@ -658,14 +776,15 @@ mod tests {
             .into_iter(),
         );
 
-        let mut merged = MergedRanges::new(ranges);
+        let (coi, cpfc) = test_dummy_data(&[1, 2]);
+        let mut merged = MergedRanges::new(ranges, &coi, &cpfc, |_| true);
 
         // Load both chunks
-        merged.on_chunk_loaded(&chunk_id(1));
-        merged.on_chunk_loaded(&chunk_id(2));
+        merged.on_chunk_loaded(&chunk_id(1), &cpfc);
+        merged.on_chunk_loaded(&chunk_id(2), &cpfc);
 
         // Unload chunk 1
-        merged.on_chunk_unloaded(&chunk_id(1));
+        merged.on_chunk_unloaded(&chunk_id(1), &cpfc);
         let loaded = merged.loaded_ranges();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].min.as_i64(), 10);
@@ -683,17 +802,18 @@ mod tests {
             .into_iter(),
         );
 
-        let mut merged = MergedRanges::new(ranges);
+        let (coi, cpfc) = test_dummy_data(&[1, 2]);
+        let mut merged = MergedRanges::new(ranges, &coi, &cpfc, |_| true);
 
         // Load only chunk 1 - middle range still unloaded because it needs both
-        merged.on_chunk_loaded(&chunk_id(1));
+        merged.on_chunk_loaded(&chunk_id(1), &cpfc);
         let loaded = merged.loaded_ranges();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].min.as_i64(), 0);
         assert_eq!(loaded[0].max.as_i64(), 10);
 
         // Now load chunk 2 - everything should be loaded
-        merged.on_chunk_loaded(&chunk_id(2));
+        merged.on_chunk_loaded(&chunk_id(2), &cpfc);
         let loaded = merged.loaded_ranges();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].min.as_i64(), 0);
@@ -711,11 +831,12 @@ mod tests {
             .into_iter(),
         );
 
-        let mut merged = MergedRanges::new(ranges);
+        let (coi, cpfc) = test_dummy_data(&[1, 2, 3]);
+        let mut merged = MergedRanges::new(ranges, &coi, &cpfc, |_| true);
 
         // Load chunks 1 and 3, leaving 2 unloaded
-        merged.on_chunk_loaded(&chunk_id(1));
-        merged.on_chunk_loaded(&chunk_id(3));
+        merged.on_chunk_loaded(&chunk_id(1), &cpfc);
+        merged.on_chunk_loaded(&chunk_id(3), &cpfc);
 
         let loaded = merged.loaded_ranges();
         assert_eq!(loaded.len(), 2);
@@ -728,10 +849,11 @@ mod tests {
     #[test]
     fn test_on_chunk_loaded_unknown_chunk() {
         let ranges = merge_ranges(std::iter::once(time_range(chunk_id(1), 0, 10)));
-        let mut merged = MergedRanges::new(ranges);
+        let (coi, cpfc) = test_dummy_data(&[1]);
+        let mut merged = MergedRanges::new(ranges, &coi, &cpfc, |_| true);
 
         // Loading an unknown chunk should not panic
-        merged.on_chunk_loaded(&chunk_id(999));
+        merged.on_chunk_loaded(&chunk_id(999), &cpfc);
 
         // State should be unchanged
         let loaded = merged.loaded_ranges();
