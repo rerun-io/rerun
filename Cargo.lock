@@ -9182,6 +9182,7 @@ dependencies = [
  "saturating_cast",
  "serde",
  "serde_bytes",
+ "strum",
  "thiserror 2.0.17",
 ]
 

@@ -108,70 +108,107 @@ impl MessageParser for ImageMessageParser {
     }
 }
 
-fn decode_image_format(encoding: &str, dimensions: [u32; 2]) -> anyhow::Result<ImageFormat> {
-    match encoding {
-        "rgb8" => Ok(ImageFormat::rgb8(dimensions)),
-        "rgba8" => Ok(ImageFormat::rgba8(dimensions)),
-        "rgb16" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::RGB,
-            ChannelDatatype::U16,
-        )),
-        "rgba16" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::RGBA,
-            ChannelDatatype::U16,
-        )),
-        "bgr8" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::BGR,
-            ChannelDatatype::U8,
-        )),
-        "bgra8" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::BGRA,
-            ChannelDatatype::U8,
-        )),
-        "bgr16" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::BGR,
-            ChannelDatatype::U16,
-        )),
-        "bgra16" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::BGRA,
-            ChannelDatatype::U16,
-        )),
-        "mono8" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::L,
-            ChannelDatatype::U8,
-        )),
-        "mono16" => Ok(ImageFormat::from_color_model(
-            dimensions,
-            ColorModel::L,
-            ChannelDatatype::U16,
-        )),
-        "yuyv" | "yuv422_yuy2" => Ok(ImageFormat::from_pixel_format(
-            dimensions,
-            PixelFormat::YUY2,
-        )),
-        "nv12" => Ok(ImageFormat::from_pixel_format(
-            dimensions,
-            PixelFormat::NV12,
-        )),
-        // Depth image formats
-        "8UC1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::U8)),
-        "8SC1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::I8)),
-        "16UC1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::U16)),
-        "16SC1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::I16)),
-        "32SC1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::I32)),
-        "32FC1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::F32)),
-        // Other
-        format => {
-            anyhow::bail!(
-                "Unsupported image encoding '{format}'. Supported encodings include: rgb8, rgba8, rgb16, rgba16, bgr8, bgra8, bgr16, bgra16, mono8, mono16, yuyv, yuv422_yuy2, nv12, 8UC1, 8SC1, 16UC1, 16SC1, 32SC1, 32FC1"
-            )
+/// A raw image encoding string, as used by ROS and Foxglove.
+///
+/// OpenCV-style single-channel encodings (`8UC1`, `16UC1`, etc.) are treated as depth formats.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, strum::EnumString, strum::VariantNames)]
+pub enum ImageEncoding {
+    #[strum(to_string = "rgb8")]
+    Rgb8,
+    #[strum(to_string = "rgba8")]
+    Rgba8,
+    #[strum(to_string = "rgb16")]
+    Rgb16,
+    #[strum(to_string = "rgba16")]
+    Rgba16,
+    #[strum(to_string = "bgr8")]
+    Bgr8,
+    #[strum(to_string = "bgra8")]
+    Bgra8,
+    #[strum(to_string = "bgr16")]
+    Bgr16,
+    #[strum(to_string = "bgra16")]
+    Bgra16,
+    #[strum(to_string = "mono8")]
+    Mono8,
+    #[strum(to_string = "mono16")]
+    Mono16,
+    #[strum(to_string = "yuyv", serialize = "yuv422_yuy2")]
+    Yuyv,
+    #[strum(to_string = "nv12")]
+    Nv12,
+    // OpenCV-style single-channel (depth) formats
+    #[strum(to_string = "8UC1")]
+    Cv8UC1,
+    #[strum(to_string = "8UC3")]
+    Cv8UC3,
+    #[strum(to_string = "8SC1")]
+    Cv8SC1,
+    #[strum(to_string = "16UC1")]
+    Cv16UC1,
+    #[strum(to_string = "16SC1")]
+    Cv16SC1,
+    #[strum(to_string = "32SC1")]
+    Cv32SC1,
+    #[strum(to_string = "32FC1")]
+    Cv32FC1,
+}
+
+impl ImageEncoding {
+    /// All encoding name strings accepted by [`std::str::FromStr`].
+    pub const NAMES: &[&str] = <Self as strum::VariantNames>::VARIANTS;
+
+    /// Converts this encoding into a Rerun [`ImageFormat`] for the given dimensions.
+    pub fn to_image_format(self, dimensions: [u32; 2]) -> ImageFormat {
+        match self {
+            Self::Rgb8 => ImageFormat::rgb8(dimensions),
+            Self::Rgba8 => ImageFormat::rgba8(dimensions),
+            Self::Rgb16 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::RGB, ChannelDatatype::U16)
+            }
+            Self::Rgba16 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::RGBA, ChannelDatatype::U16)
+            }
+            Self::Bgr8 | Self::Cv8UC3 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::BGR, ChannelDatatype::U8)
+            }
+            Self::Bgra8 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::BGRA, ChannelDatatype::U8)
+            }
+            Self::Bgr16 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::BGR, ChannelDatatype::U16)
+            }
+            Self::Bgra16 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::BGRA, ChannelDatatype::U16)
+            }
+            Self::Mono8 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::L, ChannelDatatype::U8)
+            }
+            Self::Mono16 => {
+                ImageFormat::from_color_model(dimensions, ColorModel::L, ChannelDatatype::U16)
+            }
+            Self::Yuyv => ImageFormat::from_pixel_format(dimensions, PixelFormat::YUY2),
+            Self::Nv12 => ImageFormat::from_pixel_format(dimensions, PixelFormat::NV12),
+            Self::Cv8UC1 => ImageFormat::depth(dimensions, ChannelDatatype::U8),
+            Self::Cv8SC1 => ImageFormat::depth(dimensions, ChannelDatatype::I8),
+            Self::Cv16UC1 => ImageFormat::depth(dimensions, ChannelDatatype::U16),
+            Self::Cv16SC1 => ImageFormat::depth(dimensions, ChannelDatatype::I16),
+            Self::Cv32SC1 => ImageFormat::depth(dimensions, ChannelDatatype::I32),
+            Self::Cv32FC1 => ImageFormat::depth(dimensions, ChannelDatatype::F32),
         }
     }
+}
+
+/// Decodes a raw image encoding string (shared by ROS and Foxglove) into a Rerun [`ImageFormat`].
+///
+/// Supports common encoding strings such as `rgb8`, `mono16`, `16UC1`, `yuyv`, `nv12`, etc.
+/// OpenCV-style single-channel encodings (`8UC1`, `16UC1`, etc.) are treated as depth formats.
+pub fn decode_image_format(encoding: &str, dimensions: [u32; 2]) -> anyhow::Result<ImageFormat> {
+    let enc: ImageEncoding = encoding.parse().map_err(|_err| {
+        anyhow::anyhow!(
+            "Unsupported image encoding '{encoding}'. Supported encodings: {:?}",
+            ImageEncoding::NAMES
+        )
+    })?;
+    Ok(enc.to_image_format(dimensions))
 }

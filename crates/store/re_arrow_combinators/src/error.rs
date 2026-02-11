@@ -80,6 +80,10 @@ pub enum Error {
 
     #[error(transparent)]
     Arrow(Arc<ArrowError>),
+
+    /// Placeholder for a custom error message that doesn't fit into the above categories.
+    #[error("{0}")]
+    Other(String),
 }
 
 impl From<ArrowError> for Error {

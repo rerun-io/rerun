@@ -8,6 +8,7 @@ mod frame_transforms;
 mod log;
 mod pose_in_frame;
 mod poses_in_frame;
+mod raw_image;
 
 use re_lenses::{LensError, Lenses, OutputMode};
 
@@ -19,6 +20,7 @@ pub use frame_transforms::frame_transforms;
 pub use log::log;
 pub use pose_in_frame::pose_in_frame;
 pub use poses_in_frame::poses_in_frame;
+pub use raw_image::raw_image;
 
 /// Suffix appended to frame IDs for image planes.
 ///
@@ -40,5 +42,6 @@ pub fn foxglove_lenses() -> Result<Lenses, LensError> {
     lenses.add_lens(log()?);
     lenses.add_lens(pose_in_frame()?);
     lenses.add_lens(poses_in_frame()?);
+    lenses.add_lens(raw_image()?);
     Ok(lenses)
 }

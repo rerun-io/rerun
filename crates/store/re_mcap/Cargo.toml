@@ -32,6 +32,7 @@ prost-reflect.workspace = true
 saturating_cast.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
+strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
 [dev-dependencies]
