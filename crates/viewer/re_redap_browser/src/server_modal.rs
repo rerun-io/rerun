@@ -402,7 +402,7 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication
             ui.label("Account login:");
 
             if let Some(flow) = login_flow {
-                // Login flow is in progress - show login buttons or spinner
+                // Login flow is in progress - show login buttons or loading indicator
                 if let Some(result) = flow.ui(ui, ctx.command_sender) {
                     match result {
                         LoginFlowResult::Success => {

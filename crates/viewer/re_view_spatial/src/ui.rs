@@ -215,29 +215,26 @@ pub fn create_labels(
     for label in labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
-                // TODO(#1640): 2D labels are not visible in 3D for now.
                 if spatial_kind == SpatialViewKind::ThreeD {
-                    continue;
+                    continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let rect_in_ui = ui_from_scene.transform_rect(rect);
                 (
                     // Place the text centered below the rect
                     (rect_in_ui.width() - 4.0).at_least(60.0),
-                    rect_in_ui.center_bottom() + egui::vec2(0.0, 3.0),
+                    rect_in_ui.center_bottom(),
                 )
             }
             UiLabelTarget::Point2D(pos) => {
-                // TODO(#1640): 2D labels are not visible in 3D for now.
                 if spatial_kind == SpatialViewKind::ThreeD {
-                    continue;
+                    continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let pos_in_ui = ui_from_scene.transform_pos(pos);
-                (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
+                (f32::INFINITY, pos_in_ui)
             }
             UiLabelTarget::Position3D(pos) => {
-                // TODO(#1640): 3D labels are not visible in 2D for now.
                 if spatial_kind == SpatialViewKind::TwoD {
-                    continue;
+                    continue; // TODO(#1640): 3D labels are not visible in 2D for now.
                 }
                 let pos_in_ui = ui_from_world_3d * pos.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
@@ -277,9 +274,10 @@ pub fn create_labels(
             })
         });
 
-        let text_rect = egui::Align2::CENTER_TOP
-            .anchor_rect(egui::Rect::from_min_size(text_anchor_pos, galley.size()));
-        let bg_rect = text_rect.expand2(egui::vec2(4.0, 2.0));
+        let offset = egui::vec2(0.0, 5.0); // Add some margin
+        let text_rect =
+            egui::Align2::CENTER_TOP.anchor_size(text_anchor_pos + offset, galley.size());
+        let bg_rect = text_rect.expand2(egui::vec2(2.0, 0.0));
 
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
@@ -300,6 +298,9 @@ pub fn create_labels(
             },
             HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
+
+        let background_color =
+            background_color.gamma_multiply(parent_ui.tokens().spatial_label_bg_opacity);
 
         let rect_stroke = if is_error {
             egui::Stroke::new(1.0, parent_ui.style().visuals.error_fg_color)
@@ -332,7 +333,7 @@ pub fn create_labels(
     (label_shapes, ui_rects)
 }
 
-pub fn paint_loading_spinners(
+pub fn paint_loading_indicators(
     ui: &egui::Ui,
     ui_from_scene: egui::emath::RectTransform,
     eye3d: &Eye,
@@ -343,11 +344,11 @@ pub fn paint_loading_spinners(
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
     for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
-        for &crate::visualizers::LoadingSpinner {
+        for &crate::visualizers::LoadingIndicator {
             center,
             half_extent_u,
             half_extent_v,
-        } in &data.loading_spinners
+        } in &data.loading_indicators
         {
             // Transform to ui coordinates:
             let center_unprojected = ui_from_world_3d * center.extend(1.0);
@@ -377,7 +378,11 @@ pub fn paint_loading_spinners(
 
             let rect = ui_from_scene.transform_rect(rect);
 
-            egui::Spinner::new().paint_at(ui, rect);
+            re_ui::loading_indicator::paint_loading_indicator_inside(
+                ui,
+                egui::Align2::CENTER_CENTER,
+                rect,
+            );
         }
     }
 }

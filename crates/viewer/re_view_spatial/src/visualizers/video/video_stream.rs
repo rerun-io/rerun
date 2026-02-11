@@ -1,4 +1,3 @@
-use re_renderer::video::{InsufficientSampleDataError, VideoPlayerError};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::Opacity;
@@ -56,12 +55,12 @@ impl VisualizerSystem for VideoStreamVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
         let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
-        let transforms = context_systems.get::<TransformTreeContext>()?;
-        let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
+        let depth_offsets = context_systems.get::<EntityDepthOffsets>(&output)?;
         let latest_at = view_query.latest_at_query();
 
         for (data_result, instruction) in
@@ -76,7 +75,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 self.data.preferred_view_kind,
                 view_kind,
                 &instruction.id,
-                &mut output,
+                &output,
             ) else {
                 continue;
             };
@@ -84,7 +83,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             let world_from_entity = transform_info
                 .single_transform_required_for_entity(entity_path, VideoStream::name())
                 .as_affine3a();
-            let query_context = ctx.query_context(data_result, &latest_at);
+            let query_context = ctx.query_context(data_result, &latest_at, instruction.id);
             let highlight = view_query
                 .highlights
                 .entity_outline_mask(entity_path.hash());
@@ -95,17 +94,23 @@ impl VisualizerSystem for VideoStreamVisualizer {
             // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
             let mut video_resolution = glam::vec2(1280.0, 720.0);
 
-            let opacity_result = data_result.latest_at_with_blueprint_resolved_data_for_component(
-                ctx,
-                &latest_at,
-                VideoStream::descriptor_opacity().component,
-                Some(instruction),
+            let opacity_result_wrapped = re_view::BlueprintResolvedResults::LatestAt(
+                latest_at.clone(),
+                data_result.latest_at_with_blueprint_resolved_data_for_component(
+                    ctx,
+                    &latest_at,
+                    VideoStream::descriptor_opacity().component,
+                    Some(instruction),
+                ),
             );
-            let all_opacities = opacity_result.iter_as(
-                |error| output.report_warning_for(instruction.id, error),
-                view_query.timeline,
-                VideoStream::descriptor_opacity().component,
+            let opacity_result = re_view::VisualizerInstructionQueryResults::new(
+                instruction.id,
+                &opacity_result_wrapped,
+                &output,
             );
+
+            let all_opacities =
+                opacity_result.iter_optional(VideoStream::descriptor_opacity().component);
             let opacity = all_opacities
                 .slice::<f32>()
                 .next()
@@ -169,7 +174,12 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 let get_chunk_array = |id| {
                     let chunk = storage_engine
                         .store()
-                        .use_physical_chunk_or_report_missing(&id)?;
+                        .use_physical_chunk_or_report_missing(&id);
+
+                    let Some(chunk) = chunk else {
+                        output.set_missing_chunks(); // Make sure we show a view-wide loading indicator
+                        return None;
+                    };
 
                     let sample_component = VideoStream::descriptor_sample().component;
 
@@ -204,6 +214,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                             &re_viewer_context::QueryContext {
                                 view_ctx: ctx,
                                 target_entity_path: entity_path,
+                                instruction_id: Some(instruction.id),
                                 archetype_name: Some(VideoStream::name()),
                                 query: &latest_at,
                             },
@@ -227,25 +238,16 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
 
                 Err(err) => {
-                    let severity = match err {
-                        VideoPlayerError::InsufficientSampleData(
-                            InsufficientSampleDataError::NoKeyFrames
-                            | InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp
-                            | InsufficientSampleDataError::NoSamples
-                            | InsufficientSampleDataError::NoLoadedSamples
-                            | InsufficientSampleDataError::ExpectedSampleNotLoaded
-                            | InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp,
-                        ) => VideoPlaybackIssueSeverity::Informational,
-                        _ => VideoPlaybackIssueSeverity::Error,
-                    };
-
+                    if err.should_request_more_frames() {
+                        ctx.egui_ctx().request_repaint();
+                    }
                     show_video_playback_issue(
                         ctx,
                         &mut self.data,
                         highlight,
                         world_from_entity,
                         err.to_string(),
-                        severity,
+                        err.into(),
                         video_resolution,
                         entity_path,
                     );

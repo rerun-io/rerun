@@ -1,10 +1,17 @@
+use std::sync::Arc;
+
+use re_log_types::external::arrow::array::{
+    Array as _, Float64Array, Int32Array, ListArray, StringArray, StructArray,
+};
+use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
 use re_sdk_types::archetypes::{self, Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_sdk_types::datatypes::{self, TimeRange};
-use re_sdk_types::{DynamicArchetype, VisualizableArchetype as _, components};
+use re_sdk_types::{DynamicArchetype, Loggable as _, VisualizableArchetype as _, components};
 use re_test_context::TestContext;
+use re_test_context::VisualizerBlueprintContext as _;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
@@ -360,6 +367,221 @@ fn setup_blueprint_with_explicit_mapping(test_context: &mut TestContext) -> View
             view.defaults_path.clone(),
             &archetypes::SeriesLines::default().with_colors([(0, 0, 255)]),
         );
+
+        blueprint.add_view_at_root(view)
+    })
+}
+
+#[test]
+pub fn test_explicit_component_mapping_nested() {
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<TimeSeriesView>();
+
+    let timeline = test_context.active_timeline().unwrap();
+    log_data_nested(&mut test_context, timeline);
+
+    let view_id = setup_blueprint_with_explicit_mapping_nested(&mut test_context);
+
+    let size = egui::vec2(300.0, 300.0);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "explicit_component_mapping_nested",
+        size,
+        None,
+    ));
+}
+
+fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timeline) {
+    for i in 0..=MAX_TIME {
+        let sigmoid = |x: f64| 1.0 / (1.0 + (-x).exp());
+
+        let timepoint = TimePoint::from([(timeline, i)]);
+        let t = i as f64 / 8.0;
+
+        let single_value = 1.0 - sigmoid(t - 2.0); // Flipped sigmoid: starts top-left, moves to bottom-right
+
+        let shifts = [0.0, -0.5, 0.5];
+        let multiple_values: Vec<f64> = shifts
+            .iter()
+            .map(|&shift| 1.0 - sigmoid(t - 2.0 + shift))
+            .collect();
+
+        use re_log_types::external::arrow;
+
+        let offsets = arrow::buffer::OffsetBuffer::from_lengths([multiple_values.len()]);
+        let values = Arc::new(Float64Array::from(multiple_values)) as Arc<dyn arrow::array::Array>;
+        let list_array = ListArray::new(
+            Arc::new(Field::new("item", DataType::Float64, false)),
+            offsets,
+            values,
+            None,
+        );
+
+        // Create properties struct with color and name fields
+        // Gradient from blue (0, 0, 255) to red (255, 0, 0)
+        let t = i as f32 / MAX_TIME as f32; // Normalized time [0, 1]
+        let r = 0u8;
+        let g = (t * 255.0) as u8;
+        let b = ((1.0 - t) * 255.0) as u8;
+        let color = components::Color::from_rgb(r, g, b);
+
+        // Serialize Color to Arrow using the Loggable trait
+        let color_arrow =
+            datatypes::Rgba32::to_arrow_opt([Some(color.0)]).expect("could not convert color");
+        let color_offsets = arrow::buffer::OffsetBuffer::from_lengths([1]);
+        let color_list_array = ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt32, false)),
+            color_offsets,
+            color_arrow,
+            None,
+        );
+
+        // We are going to build up something that looks like this:
+        //
+        // ```
+        // Struct(
+        //   single Float64,
+        //   multiple List(Float64),
+        //   step Int32,
+        //   properties Struct(
+        //     color List(UInt32),
+        //     name Utf8))
+        // )
+        // ```
+
+        // Int32 step function to test casting - transitions halfway through (0 -> 1)
+        let step_value = i32::from(i > MAX_TIME / 2);
+
+        let name_array =
+            Arc::new(StringArray::from(vec!["my-sigmoid"])) as Arc<dyn arrow::array::Array>;
+
+        let properties_struct = StructArray::from(vec![
+            (
+                Arc::new(Field::new(
+                    "color",
+                    color_list_array.data_type().clone(),
+                    false,
+                )),
+                Arc::new(color_list_array) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new("name", DataType::Utf8, false)),
+                name_array,
+            ),
+        ]);
+
+        let struct_array = StructArray::from(vec![
+            (
+                Arc::new(Field::new("single", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![single_value])) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new(
+                    "multiple",
+                    list_array.data_type().clone(),
+                    false,
+                )),
+                Arc::new(list_array) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new("step", DataType::Int32, false)),
+                Arc::new(Int32Array::from(vec![step_value])) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new(
+                    "properties",
+                    properties_struct.data_type().clone(),
+                    false,
+                )),
+                Arc::new(properties_struct) as Arc<dyn arrow::array::Array>,
+            ),
+        ]);
+
+        test_context.log_entity("plots/sigmoids", |builder| {
+            builder.with_archetype_auto_row(
+                timepoint,
+                &DynamicArchetype::new("custom")
+                    .with_component_from_data("data", Arc::new(struct_array)),
+            )
+        });
+    }
+}
+
+fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) -> ViewId {
+    test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+
+        // Multiple visualizers for the `plots/sigmoids` entity:
+        // * Points (for .single field):
+        //    * scalar - map to data.single
+        //    * marker - use Circle markers
+        //    * color - map to data.properties.color[]
+        //    * name - map to data.properties.name
+        // * Lines (for .multiple[] field elements):
+        //    * scalar - map to data.multiple[]
+        //    * no explicit styling (auto)
+        // * Lines (for .step field):
+        //    * scalar - map to data.step (Int32, tests casting)
+        //    * explicit red color, step function transitions halfway
+        let single_mapping = VisualizerComponentMapping {
+            target: Scalars::descriptor_scalars().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:data".into()),
+            selector: Some(".single".into()),
+        };
+
+        let color_mapping = VisualizerComponentMapping {
+            target: SeriesPoints::descriptor_colors().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:data".into()),
+            selector: Some(".properties.color[]".into()),
+        };
+
+        let name_mapping = VisualizerComponentMapping {
+            target: SeriesPoints::descriptor_names().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:data".into()),
+            selector: Some(".properties.name".into()),
+        };
+
+        let multiple_mapping = VisualizerComponentMapping {
+            target: Scalars::descriptor_scalars().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:data".into()),
+            selector: Some(".multiple[]".into()),
+        };
+
+        let step_mapping = VisualizerComponentMapping {
+            target: Scalars::descriptor_scalars().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:data".into()),
+            selector: Some(".step".into()),
+        };
+
+        let visualizers = vec![
+            SeriesPoints::new()
+                .with_markers([components::MarkerShape::Circle])
+                .visualizer()
+                .with_mappings([
+                    blueprint::components::VisualizerComponentMapping(single_mapping),
+                    blueprint::components::VisualizerComponentMapping(color_mapping),
+                    blueprint::components::VisualizerComponentMapping(name_mapping),
+                ]),
+            SeriesLines::new().visualizer().with_mappings([
+                blueprint::components::VisualizerComponentMapping(multiple_mapping),
+            ]),
+            SeriesLines::new()
+                .with_colors([components::Color::from_rgb(255, 0, 0)])
+                .visualizer()
+                .with_mappings([blueprint::components::VisualizerComponentMapping(
+                    step_mapping,
+                )]),
+        ];
+
+        ctx.save_visualizers(&EntityPath::from("plots/sigmoids"), view.id, visualizers);
 
         blueprint.add_view_at_root(view)
     })

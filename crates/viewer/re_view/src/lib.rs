@@ -8,19 +8,24 @@ pub mod controls;
 
 mod annotation_context_utils;
 mod annotation_scene_context;
+mod blueprint_resolved_results;
 mod chunks_with_component;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
-mod results_ext;
 mod view_property_ui;
+mod visualizer_query;
 
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
+pub use blueprint_resolved_results::{
+    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, BlueprintResolvedResults,
+    BlueprintResolvedResultsExt, HybridResultsChunkIter,
+};
 pub use chunks_with_component::{
     ChunkWithComponent, ChunksWithComponent, MaybeChunksWithComponent,
 };
@@ -33,20 +38,70 @@ pub use outlines::{
 pub use query::{
     DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
-pub use results_ext::{
-    HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,
-    RangeResultsExt,
-};
+use re_arrow_util::DisplayDataType;
+use re_log_types::external::arrow;
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
     view_property_ui_with_redirect,
 };
+pub use visualizer_query::VisualizerInstructionQueryResults;
 
 pub mod external {
     pub use re_entity_db::external::*;
 }
 
-pub type ComponentMappingError = String;
+/// Error that can occur when mapping components.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum ComponentMappingError {
+    /// Failed to parse a selector.
+    #[error("Failed to parse selector: {0}")]
+    SelectorParseFailed(re_arrow_combinators::SelectorError),
+
+    /// Failed to execute a selector.
+    #[error("Failed to select data: {0}")]
+    SelectorExecutionFailed(re_arrow_combinators::SelectorError),
+
+    /// Failed to cast component data to target datatype.
+    #[error("Failed to cast from {source_datatype} to {target_datatype}: {err}")]
+    CastFailed {
+        source_datatype: DisplayDataType,
+        target_datatype: DisplayDataType,
+        err: Arc<arrow::error::ArrowError>,
+    },
+
+    /// Component was not found.
+    #[error("Component '{0}' not found")]
+    ComponentNotFound(re_types_core::ComponentIdentifier),
+}
+
+impl ComponentMappingError {
+    pub fn summary(&self) -> String {
+        match self {
+            Self::SelectorParseFailed(_) => "Failed to parse selector.".to_owned(),
+            Self::SelectorExecutionFailed(_) => "Failed to select data.".to_owned(),
+            Self::CastFailed {
+                source_datatype,
+                target_datatype,
+                ..
+            } => {
+                format!("Failed to cast from {source_datatype} to {target_datatype}.")
+            }
+            Self::ComponentNotFound(component) => {
+                format!("Component '{component}' not found.")
+            }
+        }
+    }
+
+    pub fn details(&self) -> Option<String> {
+        match self {
+            Self::SelectorParseFailed(err) | Self::SelectorExecutionFailed(err) => {
+                Some(err.to_string())
+            }
+            Self::CastFailed { err, .. } => Some(err.to_string()),
+            Self::ComponentNotFound(_) => None,
+        }
+    }
+}
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///

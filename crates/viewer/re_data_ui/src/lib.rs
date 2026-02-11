@@ -10,35 +10,35 @@ use re_sdk_types::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
-mod annotation_context;
-mod app_id;
-mod blob;
-mod component;
-mod component_path;
-mod component_type;
+mod annotation_context_ui;
+mod app_id_ui;
+mod blob_ui;
+mod component_path_ui;
+mod component_type_ui;
+mod component_ui;
 mod component_ui_registry;
-mod data_source;
-mod entity_db;
-mod entity_path;
-mod image;
-mod instance_path;
-mod store_id;
-mod tensor;
-mod transform_frames;
-mod video;
+mod data_source_ui;
+mod entity_db_ui;
+mod entity_path_ui;
+mod image_ui;
+mod instance_path_ui;
+mod store_id_ui;
+mod tensor_ui;
+mod transform_frames_ui;
+mod video_ui;
 
 mod extra_data_ui;
 pub mod item_ui;
 
-pub use component::ComponentPathLatestAtResults;
-pub use component_ui_registry::{add_to_registry, register_component_uis};
-pub use image::image_preview_ui;
-pub use instance_path::archetype_label_list_item_ui;
+pub use self::component_ui::ComponentPathLatestAtResults;
+pub use self::component_ui_registry::{add_to_registry, register_component_uis};
+pub use self::image_ui::image_preview_ui;
+pub use self::instance_path_ui::archetype_label_list_item_ui;
+pub use self::tensor_ui::tensor_summary_ui_grid_contents;
+
 use re_chunk_store::UnitChunkShared;
 use re_types_core::reflection::Reflection;
 use re_types_core::{ArchetypeName, Component};
-
-pub use crate::tensor::tensor_summary_ui_grid_contents;
 
 pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;

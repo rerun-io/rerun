@@ -3,13 +3,15 @@ use re_types_core::ComponentDescriptor;
 use re_ui::{UiLayout, list_item};
 use re_viewer_context::ViewerContext;
 
-use crate::{blob, image, transform_frames, video};
+use crate::{
+    blob_ui::BlobUi, image_ui::ImageUi, transform_frames_ui::TransformFramesUi, video_ui::VideoUi,
+};
 
 pub enum ExtraDataUi {
-    Video(video::VideoUi),
-    Image(image::ImageUi),
-    Blob(blob::BlobUi),
-    TransformHierarchy(transform_frames::TransformFramesUi),
+    Video(VideoUi),
+    Image(ImageUi),
+    Blob(BlobUi),
+    TransformHierarchy(TransformFramesUi),
 }
 
 impl ExtraDataUi {
@@ -21,24 +23,15 @@ impl ExtraDataUi {
         chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
     ) -> Option<Self> {
-        blob::BlobUi::from_components(ctx, entity_path, descr, chunk, entity_components)
+        BlobUi::from_components(ctx, entity_path, descr, chunk, entity_components)
             .map(Self::Blob)
             .or_else(|| {
-                image::ImageUi::from_components(ctx, descr, chunk, entity_components)
-                    .map(Self::Image)
+                ImageUi::from_components(ctx, descr, chunk, entity_components).map(Self::Image)
             })
+            .or_else(|| VideoUi::from_components(ctx, query, entity_path, descr).map(Self::Video))
             .or_else(|| {
-                video::VideoUi::from_components(ctx, query, entity_path, descr).map(Self::Video)
-            })
-            .or_else(|| {
-                transform_frames::TransformFramesUi::from_components(
-                    ctx,
-                    query,
-                    descr,
-                    chunk,
-                    entity_components,
-                )
-                .map(Self::TransformHierarchy)
+                TransformFramesUi::from_components(ctx, query, descr, chunk, entity_components)
+                    .map(Self::TransformHierarchy)
             })
     }
 

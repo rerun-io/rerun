@@ -19,20 +19,6 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 /// Responses from the Data Platform can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
 
-/// Controls how to load chunks from the remote server.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum StreamMode {
-    /// Load all data into memory.
-    #[default]
-    FullLoad,
-
-    /// Larger-than-RAM support.
-    ///
-    /// Load chunks as needed.
-    /// Will start by loading the RRD manifest.
-    OnDemand,
-}
-
 /// Wrapper with a nicer error message
 #[derive(Debug)]
 pub struct TonicStatusError(Box<tonic::Status>);
@@ -255,11 +241,13 @@ impl ApiError {
     }
 
     #[expect(clippy::needless_pass_by_value)]
-    pub fn invalid_server(origin: re_uri::Origin) -> Self {
-        Self::new(
-            ApiErrorKind::InvalidServer,
-            format!("{origin} is not a valid Rerun server"),
-        )
+    pub fn invalid_server(origin: re_uri::Origin, hint: Option<&str>) -> Self {
+        let mut msg = format!("{origin} is not a valid Rerun server");
+        if let Some(hint) = hint {
+            msg.push_str(". ");
+            msg.push_str(hint);
+        }
+        Self::new(ApiErrorKind::InvalidServer, msg)
     }
 
     /// Helper method to downcast the source error to a `ClientCredentialsError` if possible.

@@ -3,14 +3,17 @@ use std::ops::RangeInclusive;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
+use itertools::chain;
 use re_byte_size::SizeBytes as _;
-use re_chunk::{ChunkId, TimeInt, Timeline};
-use re_chunk_store::ChunkStore;
+use re_chunk::{ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
+use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_log_encoding::RrdManifest;
+use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
+use re_tracing::profile_scope;
 
 use crate::{
-    chunk_promise::{BatchInfo, ChunkPromise, ChunkPromiseBatch, ChunkPromises},
-    rrd_manifest_index::{ChunkInfo, LoadState},
+    chunk_requests::{ChunkRequests, RequestInfo},
+    rrd_manifest_index::{LoadState, RootChunkInfo},
     sorted_range_map::SortedRangeMap,
 };
 
@@ -33,132 +36,194 @@ pub enum PrefetchError {
 /// How to calculate which chunks to prefetch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChunkPrefetchOptions {
-    pub timeline: Timeline,
-
-    /// Start loading chunks from this time onwards,
-    /// before looping back to the start.
-    pub start_time: TimeInt,
-
     /// Batch together requests until we reach this size.
-    pub max_uncompressed_bytes_per_batch: u64,
+    pub max_on_wire_bytes_per_batch: u64,
 
     /// Total budget for all loaded chunks.
     pub total_uncompressed_byte_budget: u64,
 
     /// Maximum number of bytes in transit at once.
-    pub max_uncompressed_bytes_in_transit: u64,
+    pub max_bytes_on_wire_at_once: u64,
+}
+
+impl Default for ChunkPrefetchOptions {
+    fn default() -> Self {
+        Self {
+            total_uncompressed_byte_budget: u64::MAX,
+
+            // Batch small chunks together.
+            max_on_wire_bytes_per_batch: 256 * 1024,
+
+            // A high value -> better theoretical bandwidth
+            // Low value -> better responsiveness (e.g. when moving time cursor).
+            // In practice, this is a limit on how many bytes we can download _every frame_.
+            max_bytes_on_wire_at_once: 4_000_000,
+        }
+    }
+}
+
+/// Special chunks for which we need the entire history, not just the latest-at value.
+///
+/// Right now, this is only used for transform-related chunks.
+#[derive(Clone, Default)]
+struct HighPrioChunks {
+    /// Sorted by time range min.
+    temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>>,
+}
+
+impl HighPrioChunks {
+    /// All static chunks, plus all temporal chunks on this timeline before the given time.
+    fn all_before(&self, timeline_point: TimelinePoint) -> impl Iterator<Item = ChunkId> + '_ {
+        self.temporal_chunks
+            .get(timeline_point.name())
+            .into_iter()
+            .flat_map(|chunks| chunks.iter())
+            .filter(move |chunk| chunk.time_range.min <= timeline_point.time)
+            .map(|chunk| chunk.chunk_id)
+    }
+}
+
+impl re_byte_size::SizeBytes for HighPrioChunks {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { temporal_chunks } = self;
+        temporal_chunks.heap_size_bytes()
+    }
+}
+
+#[derive(Clone)]
+struct HighPrioChunk {
+    chunk_id: ChunkId,
+    time_range: AbsoluteTimeRange,
+}
+
+impl re_byte_size::SizeBytes for HighPrioChunk {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            chunk_id: _,
+            time_range: _,
+        } = self;
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 #[derive(Default)]
 struct CurrentBatch {
     row_indices: Vec<usize>,
     uncompressed_bytes: u64,
-    bytes: u64,
+    on_wire_bytes: u64,
+}
+
+impl CurrentBatch {
+    fn reset(&mut self) {
+        let Self {
+            row_indices,
+            uncompressed_bytes,
+            on_wire_bytes,
+        } = self;
+        row_indices.clear();
+        *uncompressed_bytes = 0;
+        *on_wire_bytes = 0;
+    }
 }
 
 /// Helper struct responsible for batching requests and creating
 /// promises for missing chunks.
 struct ChunkRequestBatcher<'a> {
-    load_chunks: &'a dyn Fn(RecordBatch) -> ChunkPromise,
     manifest: &'a RrdManifest,
-    chunk_promises: &'a mut ChunkPromises,
     chunk_byte_size_uncompressed: &'a [u64],
     chunk_byte_size: &'a [u64],
-    max_uncompressed_bytes_per_batch: u64,
+    max_on_wire_bytes_per_batch: u64,
 
-    remaining_bytes_in_transit_budget: u64,
+    remaining_bytes_in_on_wire_budget: u64,
     current_batch: CurrentBatch,
+
+    // Output
+    to_load: Vec<(RecordBatch, RequestInfo)>,
 }
 
 impl<'a> ChunkRequestBatcher<'a> {
     fn new(
-        load_chunks: &'a dyn Fn(RecordBatch) -> ChunkPromise,
         manifest: &'a RrdManifest,
-        chunk_promises: &'a mut ChunkPromises,
+        requests: &ChunkRequests,
         options: &ChunkPrefetchOptions,
     ) -> Self {
         Self {
-            load_chunks,
             chunk_byte_size_uncompressed: manifest.col_chunk_byte_size_uncompressed(),
             chunk_byte_size: manifest.col_chunk_byte_size(),
             manifest,
-            max_uncompressed_bytes_per_batch: options.max_uncompressed_bytes_per_batch,
+            max_on_wire_bytes_per_batch: options.max_on_wire_bytes_per_batch,
 
-            remaining_bytes_in_transit_budget: options
-                .max_uncompressed_bytes_in_transit
-                .saturating_sub(chunk_promises.num_uncompressed_bytes_pending()),
-            chunk_promises,
+            remaining_bytes_in_on_wire_budget: options
+                .max_bytes_on_wire_at_once
+                .saturating_sub(requests.num_on_wire_bytes_pending()),
             current_batch: Default::default(),
+
+            to_load: Vec::new(),
         }
     }
 
-    /// Create promise from the current batch.
     fn finish_batch(&mut self) -> Result<(), PrefetchError> {
+        if self.current_batch.row_indices.is_empty() {
+            return Ok(());
+        }
+
         let row_indices: BTreeSet<usize> = self.current_batch.row_indices.iter().copied().collect();
 
         let col_chunk_ids: &[ChunkId] = self.manifest.col_chunk_ids();
 
-        let mut chunk_ids = BTreeSet::default();
+        let mut root_chunk_ids = ahash::HashSet::default();
         for &row_idx in &row_indices {
-            chunk_ids.insert(col_chunk_ids[row_idx]);
+            root_chunk_ids.insert(col_chunk_ids[row_idx]);
         }
 
         let rb = re_arrow_util::take_record_batch(
             self.manifest.data(),
             &std::mem::take(&mut self.current_batch.row_indices),
         )?;
-        self.chunk_promises.add(ChunkPromiseBatch {
-            promise: re_mutex::Mutex::new(Some((self.load_chunks)(rb))),
-            info: std::sync::Arc::new(BatchInfo {
-                chunk_ids,
+        self.to_load.push((
+            rb,
+            RequestInfo {
+                root_chunk_ids,
                 row_indices,
                 size_bytes_uncompressed: self.current_batch.uncompressed_bytes,
-                size_bytes: self.current_batch.bytes,
-            }),
-        });
-        self.current_batch.bytes = 0;
-        self.current_batch.uncompressed_bytes = 0;
+                size_bytes_on_wire: self.current_batch.on_wire_bytes,
+            },
+        ));
+        self.current_batch.reset();
         Ok(())
     }
 
     /// Add a chunk to be fetched.
-    ///
-    /// If we hit `max_uncompressed_bytes_per_batch` this will create a
-    /// [`ChunkPromise`] that includes the given chunk.
-    fn try_fetch(
-        &mut self,
-        chunk_row_idx: usize,
-        remote_chunk: &mut ChunkInfo,
-    ) -> Result<bool, PrefetchError> {
-        if self.remaining_bytes_in_transit_budget == 0 {
+    fn try_fetch(&mut self, chunk_row_idx: usize) -> Result<bool, PrefetchError> {
+        if self.remaining_bytes_in_on_wire_budget == 0 {
             return Ok(false);
         }
 
         let uncompressed_chunk_size = self.chunk_byte_size_uncompressed[chunk_row_idx];
-        let chunk_byte_size = self.chunk_byte_size[chunk_row_idx];
+        let on_wire_byte_size = self.chunk_byte_size[chunk_row_idx];
 
         self.current_batch.row_indices.push(chunk_row_idx);
         self.current_batch.uncompressed_bytes += uncompressed_chunk_size;
-        self.current_batch.bytes += chunk_byte_size;
+        self.current_batch.on_wire_bytes += on_wire_byte_size;
 
-        remote_chunk.state = LoadState::InTransit;
-
-        if self.max_uncompressed_bytes_per_batch < self.current_batch.uncompressed_bytes {
+        if self.max_on_wire_bytes_per_batch <= self.current_batch.on_wire_bytes {
             self.finish_batch()?;
         }
-        self.remaining_bytes_in_transit_budget = self
-            .remaining_bytes_in_transit_budget
-            .saturating_sub(uncompressed_chunk_size);
+        self.remaining_bytes_in_on_wire_budget = self
+            .remaining_bytes_in_on_wire_budget
+            .saturating_sub(on_wire_byte_size);
         Ok(true)
     }
 
-    /// Fetch a last request batch if one is prepared.
-    fn finish(&mut self) -> Result<(), PrefetchError> {
-        if !self.current_batch.row_indices.is_empty() {
-            self.finish_batch()?;
-        }
-
-        Ok(())
+    /// Returns all batches that should be loaded
+    #[must_use = "Load the returned batches"]
+    pub fn finish(mut self) -> Result<Vec<(RecordBatch, RequestInfo)>, PrefetchError> {
+        self.finish_batch()?;
+        Ok(self.to_load)
     }
 }
 
@@ -179,103 +244,191 @@ fn warn_entity_exceeds_memory(
     }
 }
 
+/// Chunk that we've prioritized in `chunks_in_priority`.
+struct PrioritizedChunk {
+    /// If this chunk came from `used_physical` or `missing_virtual` it's required
+    /// and we log a warning if we can't fit it.
+    required: bool,
+    chunk_id: ChunkId,
+}
+
+impl PrioritizedChunk {
+    fn required(chunk_id: ChunkId) -> Self {
+        Self {
+            required: true,
+            chunk_id,
+        }
+    }
+
+    fn optional(chunk_id: ChunkId) -> Self {
+        Self {
+            required: false,
+            chunk_id,
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ComponentPathKey {
+    entity_path: EntityPathHash,
+    component: ComponentIdentifier,
+}
+
+#[cfg(test)]
+impl ComponentPathKey {
+    /// Creates a dummy key for use in tests where the specific entity/component doesn't matter.
+    pub fn dummy() -> Self {
+        Self {
+            entity_path: EntityPathHash::NONE,
+            component: ComponentIdentifier::new("test"),
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for ComponentPathKey {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            entity_path: _,
+            component: _,
+        } = self;
+
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct ChunkPrioritizer {
+    /// All root chunks that we have an interest in having loaded,
+    /// (or at least a part of them).
+    desired_root_chunks: HashSet<ChunkId>,
+
     /// All physical chunks that are 'in' the memory limit.
     ///
     /// These chunks are protected from being gc'd.
-    pub(super) in_limit_chunks: HashSet<ChunkId>,
+    desired_physical_chunks: HashSet<ChunkId>,
 
-    checked_virtual_chunks: HashSet<ChunkId>,
+    /// Tracks whether the viewer was missing any chunks last time we prioritized chunks.
+    any_missing_chunks: bool,
 
     /// Chunks that are in the progress of being downloaded.
-    chunk_promises: ChunkPromises,
+    chunk_requests: ChunkRequests,
 
     /// Intervals of all root chunks in the rrd manifest per timeline.
-    remote_chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
+    root_chunk_intervals: BTreeMap<Timeline, SortedRangeMap<TimeInt, ChunkId>>,
 
     /// All static root chunks in the rrd manifest.
     static_chunk_ids: HashSet<ChunkId>,
 
     /// Chunks that should be downloaded before any else.
-    high_priority_chunks: Vec<ChunkId>,
+    high_priority_chunks: HighPrioChunks,
 
-    /// Maps a [`ChunkId`] to a specific row in the [`RrdManifest::data`] record batch.
-    manifest_row_from_chunk_id: HashMap<ChunkId, usize>,
+    pub component_paths_from_root_id: HashMap<ChunkId, Vec<ComponentPathKey>>,
+
+    /// Component paths that were reported either as being used or missing.
+    pub components_of_interest: HashSet<ComponentPathKey>,
 }
 
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            in_limit_chunks,
-            checked_virtual_chunks,
-            chunk_promises: _, // not yet implemented
-            remote_chunk_intervals,
+            desired_root_chunks,
+            desired_physical_chunks,
+            any_missing_chunks: _,
+            chunk_requests: _, // not yet implemented
+            root_chunk_intervals: virtual_chunk_intervals,
             static_chunk_ids,
             high_priority_chunks,
-            manifest_row_from_chunk_id,
+            component_paths_from_root_id,
+            components_of_interest,
         } = self;
 
-        in_limit_chunks.heap_size_bytes()
-            + checked_virtual_chunks.heap_size_bytes()
-            + remote_chunk_intervals.heap_size_bytes()
+        desired_root_chunks.heap_size_bytes()
+            + desired_physical_chunks.heap_size_bytes()
+            + virtual_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
             + high_priority_chunks.heap_size_bytes()
-            + manifest_row_from_chunk_id.heap_size_bytes()
+            + component_paths_from_root_id.heap_size_bytes()
+            + components_of_interest.heap_size_bytes()
     }
 }
 
 impl ChunkPrioritizer {
-    pub fn on_rrd_manifest(
-        &mut self,
-        manifest: &RrdManifest,
-        native_static_map: &re_log_encoding::RrdManifestStaticMap,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) {
-        self.update_static_chunks(native_static_map);
-        self.update_chunk_intervals(native_temporal_map);
-        self.update_manifest_row_from_chunk_id(manifest);
-        self.update_high_priority_chunks(native_static_map, native_temporal_map);
-    }
+    pub fn on_rrd_manifest(&mut self, manifest: &RrdManifest) {
+        self.update_static_chunks(manifest);
+        self.update_chunk_intervals(manifest);
+        self.update_high_priority_chunks(manifest);
 
-    /// Find all chunk IDs that contain components with the given prefix.
-    fn find_chunks_with_component_prefix(
-        native_static_map: &re_log_encoding::RrdManifestStaticMap,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-        prefix: &str,
-    ) -> Vec<ChunkId> {
-        let mut chunk_ids = Vec::new();
-
-        for components in native_static_map.values() {
-            for (component, chunk_id) in components {
-                if component.as_str().starts_with(prefix) {
-                    chunk_ids.push(*chunk_id);
-                }
+        self.component_paths_from_root_id.clear();
+        for (entity, per_component) in manifest.static_map() {
+            for (component, chunk) in per_component {
+                self.component_paths_from_root_id
+                    .entry(*chunk)
+                    .or_default()
+                    .push(ComponentPathKey {
+                        entity_path: entity.hash(),
+                        component: *component,
+                    });
             }
         }
 
-        for timelines in native_temporal_map.values() {
-            for components in timelines.values() {
+        for (entity, per_timeline) in manifest.temporal_map() {
+            for per_component in per_timeline.values() {
+                for (component, chunks) in per_component {
+                    for chunk in chunks.keys() {
+                        self.component_paths_from_root_id
+                            .entry(*chunk)
+                            .or_default()
+                            .push(ComponentPathKey {
+                                entity_path: entity.hash(),
+                                component: *component,
+                            });
+                    }
+                }
+            }
+        }
+    }
+
+    /// Returns true if the chunk store had missing chunks last time we prioritized chunks.
+    pub fn any_missing_chunks(&self) -> bool {
+        self.any_missing_chunks
+    }
+
+    /// Find all chunk IDs that contain components with the given prefix.
+    fn find_chunks_with_component_prefix(manifest: &RrdManifest, prefix: &str) -> HighPrioChunks {
+        let mut temporal_chunks: BTreeMap<TimelineName, Vec<HighPrioChunk>> = Default::default();
+
+        // We intentionally ignore static chunks, because we already prioritize ALL static chunks.
+
+        for timelines in manifest.temporal_map().values() {
+            for (timeline, components) in timelines {
                 for (component, chunks) in components {
                     if component.as_str().starts_with(prefix) {
-                        chunk_ids.extend(chunks.keys().copied());
+                        for (chunk_id, entry) in chunks {
+                            temporal_chunks.entry(*timeline.name()).or_default().push(
+                                HighPrioChunk {
+                                    chunk_id: *chunk_id,
+                                    time_range: entry.time_range,
+                                },
+                            );
+                        }
                     }
                 }
             }
         }
 
-        chunk_ids.sort();
-        chunk_ids.dedup();
+        for chunks in temporal_chunks.values_mut() {
+            chunks.sort_by_key(|chunk| chunk.time_range.min);
+        }
 
-        chunk_ids
+        HighPrioChunks { temporal_chunks }
     }
 
-    fn update_high_priority_chunks(
-        &mut self,
-        native_static_map: &re_log_encoding::RrdManifestStaticMap,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) {
+    fn update_high_priority_chunks(&mut self, manifest: &RrdManifest) {
         // Find chunks containing transform-related components.
         // We need to download _all_ of them because any one of them could
         // contain a crucial part of the transform hierarchy.
@@ -284,38 +437,24 @@ impl ChunkPrioritizer {
         // available at each time point.
         // More here: https://linear.app/rerun/issue/RR-3441/required-transform-frames-arent-always-loaded
         self.high_priority_chunks = Self::find_chunks_with_component_prefix(
-            native_static_map,
-            native_temporal_map,
+            manifest,
             "Transform3D:", // Hard-coding this here is VERY hacky, but I want to ship MVP
         );
-
-        re_log::debug!("Found {} transform chunks", self.high_priority_chunks.len());
     }
 
-    fn update_manifest_row_from_chunk_id(&mut self, manifest: &RrdManifest) {
-        self.manifest_row_from_chunk_id.clear();
-        let col_chunk_ids = manifest.col_chunk_ids();
-        for (row_idx, &chunk_id) in col_chunk_ids.iter().enumerate() {
-            self.manifest_row_from_chunk_id.insert(chunk_id, row_idx);
-        }
-    }
-
-    fn update_static_chunks(&mut self, native_static_map: &re_log_encoding::RrdManifestStaticMap) {
-        for entity_chunks in native_static_map.values() {
+    fn update_static_chunks(&mut self, manifest: &RrdManifest) {
+        for entity_chunks in manifest.static_map().values() {
             for &chunk_id in entity_chunks.values() {
                 self.static_chunk_ids.insert(chunk_id);
             }
         }
     }
 
-    fn update_chunk_intervals(
-        &mut self,
-        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
-    ) {
+    fn update_chunk_intervals(&mut self, manifest: &RrdManifest) {
         let mut per_timeline_chunks: BTreeMap<Timeline, Vec<(RangeInclusive<TimeInt>, ChunkId)>> =
             BTreeMap::default();
 
-        for timelines in native_temporal_map.values() {
+        for timelines in manifest.temporal_map().values() {
             for (timeline, components) in timelines {
                 let timeline_chunks = per_timeline_chunks.entry(*timeline).or_default();
                 for chunks in components.values() {
@@ -326,69 +465,115 @@ impl ChunkPrioritizer {
             }
         }
 
-        self.remote_chunk_intervals.clear();
+        self.root_chunk_intervals.clear();
         for (timeline, chunks) in per_timeline_chunks {
-            self.remote_chunk_intervals
+            self.root_chunk_intervals
                 .insert(timeline, SortedRangeMap::new(chunks));
         }
     }
 
-    pub fn chunk_promises(&self) -> &ChunkPromises {
-        &self.chunk_promises
+    pub fn chunk_requests(&self) -> &ChunkRequests {
+        &self.chunk_requests
     }
 
-    pub fn chunk_promises_mut(&mut self) -> &mut ChunkPromises {
-        &mut self.chunk_promises
+    pub fn chunk_requests_mut(&mut self) -> &mut ChunkRequests {
+        &mut self.chunk_requests
     }
 
-    /// Take a hashset of chunks that should be protected from being
+    /// The hashset of chunks that should be protected from being
     /// evicted by gc now.
-    pub fn take_protected_chunks(&mut self) -> HashSet<ChunkId> {
-        std::mem::take(&mut self.in_limit_chunks)
+    pub fn desired_physical_chunks(&self) -> &HashSet<ChunkId> {
+        &self.desired_physical_chunks
     }
 
     /// An iterator over chunks in priority order.
     ///
     /// See [`Self::prioritize_and_prefetch`] for more details.
+    #[expect(clippy::too_many_arguments)] // TODO(emilk): refactor to simplify
     fn chunks_in_priority<'a>(
+        components_of_interest: &'a HashSet<ComponentPathKey>,
+        component_paths_from_root_id: &'a HashMap<ChunkId, Vec<ComponentPathKey>>,
         static_chunk_ids: &'a HashSet<ChunkId>,
-        high_priority_chunks: &'a [ChunkId],
+        high_priority_chunks: &'a HighPrioChunks,
         store: &'a ChunkStore,
-        start_time: TimeInt,
-        chunks: &'a SortedRangeMap<TimeInt, ChunkId>,
-    ) -> impl Iterator<Item = ChunkId> + use<'a> {
-        let store_tracked = store.take_tracked_chunk_ids();
-        let used = store_tracked.used_physical.into_iter();
+        used_and_missing: QueriedChunkIdTracker,
+        time_cursor: TimelinePoint,
+        root_chunks_on_timeline: &'a SortedRangeMap<TimeInt, ChunkId>,
+    ) -> impl Iterator<Item = PrioritizedChunk> + use<'a> {
+        re_tracing::profile_function!();
+
+        let QueriedChunkIdTracker {
+            used_physical,
+            missing_virtual,
+        } = used_and_missing;
+
+        let used_physical = used_physical.into_iter();
 
         let mut missing_roots = Vec::new();
 
-        // Reuse a vec for less allocations in the loop.
-        let mut scratch = Vec::new();
-        for missing in store_tracked.missing {
-            store.collect_root_rrd_manifests(&missing, &mut scratch);
-            missing_roots.extend(scratch.drain(..).map(|(id, _)| id));
+        for missing_virtual_chunk_id in missing_virtual {
+            store.collect_root_ids(&missing_virtual_chunk_id, &mut missing_roots);
         }
 
         let chunks_ids_after_time_cursor = move || {
-            chunks
-                .query(start_time..=TimeInt::MAX)
+            root_chunks_on_timeline
+                .query(time_cursor.time..=TimeInt::MAX)
                 .map(|(_, chunk_id)| *chunk_id)
         };
         let chunks_ids_before_time_cursor = move || {
-            chunks
-                .query(TimeInt::MIN..=start_time.saturating_sub(1))
+            root_chunks_on_timeline
+                .query(TimeInt::MIN..=time_cursor.time.saturating_sub(1))
                 .map(|(_, chunk_id)| *chunk_id)
         };
 
-        let chunk_ids_in_priority_order = itertools::chain!(
-            used,
+        // Note: we do NOT take `components_of_interest` for high-priority transform chunks,
+        // because that seems to cause bugs for unknown reasons.
+        let high_prio_chunks_before_time_cursor = high_priority_chunks.all_before(time_cursor);
+
+        // Chunks that are required for the current view.
+        let required_chunks = chain!(
+            used_physical,
             missing_roots,
             static_chunk_ids.iter().copied(),
-            high_priority_chunks.iter().copied(),
-            std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
-            std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+            high_prio_chunks_before_time_cursor,
         );
-        chunk_ids_in_priority_order
+
+        // Chunks that aren't currently required. Pure prefetching:
+        let optional_chunks = {
+            // Chunks for components we are interested in.
+            let is_interesting_chunk = |chunk_id: &ChunkId| {
+                component_paths_from_root_id[chunk_id]
+                    .iter()
+                    .any(|path| components_of_interest.contains(path))
+            };
+            let is_uninteresting_chunk = |chunk_id: &ChunkId| {
+                !component_paths_from_root_id[chunk_id]
+                    .iter()
+                    .any(|path| components_of_interest.contains(path))
+            };
+
+            // Extra chunks we try to prefetch, that may _soon_ be needed:
+            let optional_interesting_chunks = chain!(
+                std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
+                std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+            )
+            .filter(is_interesting_chunk);
+
+            // Extra chunks we try to prefetch, that is unlikely to be needed anytime soon,
+            // but if we can we still want to load the whole recording:
+            let optional_uninteresting_chunks = chain!(
+                std::iter::once_with(chunks_ids_after_time_cursor).flatten(),
+                std::iter::once_with(chunks_ids_before_time_cursor).flatten(),
+            )
+            .filter(is_uninteresting_chunk);
+
+            chain!(optional_interesting_chunks, optional_uninteresting_chunks)
+        };
+
+        chain!(
+            required_chunks.map(PrioritizedChunk::required),
+            optional_chunks.map(PrioritizedChunk::optional),
+        )
     }
 
     /// Prioritize which chunk (loaded & unloaded) we want to fit in the
@@ -402,58 +587,143 @@ impl ChunkPrioritizer {
     /// - Chunks after the time cursor in rising temporal order.
     /// - Chunks before the time cursor in rising temporal order.
     ///
-    /// We go through these chunks until we hit `options.total_uncompressed_byte_budget`
-    /// and prefetch missing chunks until we hit `options.max_uncompressed_bytes_in_transit`.
+    /// We go through these chunks until we hit [`ChunkPrefetchOptions::total_uncompressed_byte_budget`]
+    /// and prefetch missing chunks until we hit [`ChunkPrefetchOptions::max_bytes_on_wire_at_once`].
+    /// Returns all batches that should be loaded
+    #[must_use = "Load the returned batches"]
     pub fn prioritize_and_prefetch(
         &mut self,
         store: &ChunkStore,
+        used_and_missing: QueriedChunkIdTracker,
         options: &ChunkPrefetchOptions,
-        load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
+        time_cursor: TimelinePoint,
         manifest: &RrdManifest,
-        remote_chunks: &mut HashMap<ChunkId, ChunkInfo>,
-    ) -> Result<(), PrefetchError> {
-        let Some(chunks) = self.remote_chunk_intervals.get(&options.timeline) else {
-            return Err(PrefetchError::UnknownTimeline(options.timeline));
+        root_chunks: &HashMap<ChunkId, RootChunkInfo>,
+    ) -> Result<Vec<(RecordBatch, RequestInfo)>, PrefetchError> {
+        let Some(root_chunks_on_timeline) = self.root_chunk_intervals.get(&time_cursor.timeline())
+        else {
+            return Err(PrefetchError::UnknownTimeline(time_cursor.timeline()));
         };
+
+        self.any_missing_chunks = !used_and_missing.missing_virtual.is_empty();
 
         let mut remaining_byte_budget = options.total_uncompressed_byte_budget;
 
-        let mut chunk_batcher =
-            ChunkRequestBatcher::new(load_chunks, manifest, &mut self.chunk_promises, options);
+        let mut chunk_batcher = ChunkRequestBatcher::new(manifest, &self.chunk_requests, options);
 
+        if chunk_batcher.remaining_bytes_in_on_wire_budget == 0 {
+            // Early-out: too many bytes already in-transit.
+
+            // But, make sure we don't GC the chunks that were used this frame:
+            let QueriedChunkIdTracker {
+                used_physical,
+                missing_virtual: _,
+            } = used_and_missing;
+
+            for physical_chunk_id in used_physical {
+                for root_id in store.find_root_chunks(&physical_chunk_id) {
+                    self.desired_root_chunks.insert(root_id);
+                }
+
+                self.desired_physical_chunks.insert(physical_chunk_id);
+            }
+
+            return Ok(vec![]);
+        }
+
+        // Basically: what components of which entities are currently being viewed by the user?
+        self.components_of_interest.clear();
+        {
+            profile_scope!("components_of_interest");
+
+            let QueriedChunkIdTracker {
+                used_physical,
+                missing_virtual,
+            } = &used_and_missing;
+
+            for physical_chunk_id in used_physical {
+                if let Some(chunk) = store.physical_chunk(physical_chunk_id) {
+                    for component in chunk.components_identifiers() {
+                        self.components_of_interest.insert(ComponentPathKey {
+                            entity_path: chunk.entity_path().hash(),
+                            component,
+                        });
+                    }
+                }
+            }
+            for missing_virtual_chunk_id in missing_virtual {
+                for root_id in store.find_root_chunks(missing_virtual_chunk_id) {
+                    if let Some(components) = self.component_paths_from_root_id.get(&root_id) {
+                        self.components_of_interest
+                            .extend(components.iter().copied());
+                    }
+                }
+            }
+        }
+
+        // Mixes virtual and physical chunks (!)
         let chunk_ids_in_priority_order = Self::chunks_in_priority(
+            &self.components_of_interest,
+            &self.component_paths_from_root_id,
             &self.static_chunk_ids,
             &self.high_priority_chunks,
             store,
-            options.start_time,
-            chunks,
+            used_and_missing,
+            time_cursor,
+            root_chunks_on_timeline,
         );
 
         let entity_paths = manifest.col_chunk_entity_path_raw();
 
-        self.in_limit_chunks.clear();
-        self.checked_virtual_chunks.clear();
+        // Each branch below updates both these two sets:
+        self.desired_root_chunks.clear();
+        self.desired_physical_chunks.clear();
 
         // Reuse vecs for less allocations in the loop.
-        let mut manifest_chunks_scratch = Vec::new();
+        let mut root_chunks_scratch = Vec::new();
         let mut physical_chunks_scratch = Vec::new();
 
-        'outer: for chunk_id in chunk_ids_in_priority_order {
+        'outer: for PrioritizedChunk { required, chunk_id } in chunk_ids_in_priority_order {
+            // chunk_id could be a virtual and/or physical chunk.
+
             // If we've already marked this as to be loaded, ignore it.
-            if self.in_limit_chunks.contains(&chunk_id)
-                || self.checked_virtual_chunks.contains(&chunk_id)
+            if self.desired_physical_chunks.contains(&chunk_id)
+                || self.desired_root_chunks.contains(&chunk_id)
             {
                 continue;
             }
 
-            match remote_chunks.get_mut(&chunk_id) {
+            // Can we still fit this much bytes in memory with our new prioritization?
+            let mut try_use_uncompressed_bytes = |bytes| {
+                remaining_byte_budget = remaining_byte_budget.saturating_sub(bytes);
+
+                if remaining_byte_budget == 0 {
+                    if required {
+                        if cfg!(target_arch = "wasm32") {
+                            re_log::warn_once!(
+                                "Viewing the required data would take more memory than the current budget. Use the native viewer for a higher budget."
+                            );
+                        } else {
+                            re_log::warn_once!(
+                                "Viewing the required data would take more memory than the current budget. Increase the memory budget to view this recording."
+                            );
+                        }
+                    }
+
+                    false
+                } else {
+                    true
+                }
+            };
+
+            match root_chunks.get(&chunk_id) {
                 Some(
-                    remote_chunk @ ChunkInfo {
+                    root_chunk @ RootChunkInfo {
                         state: LoadState::Unloaded | LoadState::InTransit,
                         ..
                     },
                 ) => {
-                    let row_idx = self.manifest_row_from_chunk_id[&chunk_id];
+                    let row_idx = root_chunk.row_id;
 
                     // We count only the chunks we are interested in as being part of the memory budget.
                     // The others can/will be evicted as needed.
@@ -465,17 +735,12 @@ impl ChunkPrioritizer {
                         continue;
                     }
 
-                    {
-                        // Can we fit this chunk in memory?
-                        remaining_byte_budget =
-                            remaining_byte_budget.saturating_sub(uncompressed_chunk_size);
-                        if remaining_byte_budget == 0 {
-                            break; // We've already loaded too much.
-                        }
+                    if !try_use_uncompressed_bytes(uncompressed_chunk_size) {
+                        break 'outer;
                     }
 
-                    if remote_chunk.state == LoadState::Unloaded
-                        && !chunk_batcher.try_fetch(row_idx, remote_chunk)?
+                    if root_chunk.state == LoadState::Unloaded
+                        && !chunk_batcher.try_fetch(row_idx)?
                     {
                         // If we don't have anything more to fetch we stop looking.
                         //
@@ -487,18 +752,21 @@ impl ChunkPrioritizer {
                         // be in memory here.
                         break 'outer;
                     }
-                    self.checked_virtual_chunks.insert(chunk_id);
+
+                    self.desired_root_chunks.insert(chunk_id);
                     store.collect_physical_descendents_of(&chunk_id, &mut physical_chunks_scratch);
-                    self.in_limit_chunks
+                    self.desired_physical_chunks
                         .extend(physical_chunks_scratch.drain(..));
                 }
-                Some(ChunkInfo {
+                Some(RootChunkInfo {
                     state: LoadState::Loaded,
                     ..
                 }) => {
+                    self.desired_root_chunks.insert(chunk_id);
+
                     store.collect_physical_descendents_of(&chunk_id, &mut physical_chunks_scratch);
                     for chunk_id in physical_chunks_scratch.drain(..) {
-                        if self.in_limit_chunks.contains(&chunk_id) {
+                        if self.desired_physical_chunks.contains(&chunk_id) {
                             continue;
                         }
 
@@ -506,16 +774,13 @@ impl ChunkPrioritizer {
                             re_log::warn_once!("Couldn't get physical chunk from chunk store");
                             continue;
                         };
-                        // Can we still fit this chunk in memory with our new prioritization?
-                        remaining_byte_budget =
-                            remaining_byte_budget.saturating_sub((**chunk).total_size_bytes());
-                        if remaining_byte_budget == 0 {
-                            break 'outer; // We've already loaded too much.
-                        }
-                        self.in_limit_chunks.insert(chunk_id);
-                    }
 
-                    self.checked_virtual_chunks.insert(chunk_id);
+                        if !try_use_uncompressed_bytes((**chunk).total_size_bytes()) {
+                            break 'outer;
+                        }
+
+                        self.desired_physical_chunks.insert(chunk_id);
+                    }
                 }
                 None => {
                     // If it's not in the rrd manifest it should be a physical chunk.
@@ -524,11 +789,8 @@ impl ChunkPrioritizer {
                         continue;
                     };
 
-                    // Can we still fit this chunk in memory with our new prioritization?
-                    remaining_byte_budget =
-                        remaining_byte_budget.saturating_sub((**chunk).total_size_bytes());
-                    if remaining_byte_budget == 0 {
-                        break 'outer; // We've already loaded too much.
+                    if !try_use_uncompressed_bytes((**chunk).total_size_bytes()) {
+                        break 'outer;
                     }
 
                     // We want to skip trying to load in chunks from the rrd manifest for
@@ -541,15 +803,22 @@ impl ChunkPrioritizer {
                     //
                     // If these missing splits are missing we can let the `missing` chunk detection
                     // handle that.
-                    store.collect_root_rrd_manifests(&chunk_id, &mut manifest_chunks_scratch);
-                    self.checked_virtual_chunks
-                        .extend(manifest_chunks_scratch.drain(..).map(|(id, _)| id));
+                    store.collect_root_ids(&chunk_id, &mut root_chunks_scratch);
+                    self.desired_root_chunks
+                        .extend(root_chunks_scratch.drain(..));
+
+                    self.desired_physical_chunks.insert(chunk_id);
                 }
             }
         }
 
-        chunk_batcher.finish()?;
+        chunk_batcher.finish()
+    }
 
-        Ok(())
+    /// Cancel all fetches of things that are not currently needed.
+    #[must_use = "Returns root chunks whose download got cancelled. Mark them as unloaded!"]
+    pub fn cancel_outdated_requests(&mut self, egui_now_time: f64) -> Vec<ChunkId> {
+        self.chunk_requests
+            .cancel_outdated_requests(egui_now_time, &self.desired_root_chunks)
     }
 }

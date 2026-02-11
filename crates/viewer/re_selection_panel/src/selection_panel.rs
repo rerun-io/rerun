@@ -12,9 +12,9 @@ use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizerType,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
+    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewerContext, VisualizerViewReport, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -483,6 +483,24 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             let view_class = view.class(ctx.view_class_registry());
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
+            if let Some(visualizers_ui) =
+                view_class.visualizers_ui(ctx, *view_id, view_state, &view.space_origin)
+            {
+                let markdown = "# Visualizers
+
+This section lists all active visualizers in this view. Each visualizer is displayed with its \
+type and the entity path it visualizes.";
+
+                ui.section_collapsing_header("Visualizers")
+                    .with_help_markdown(markdown)
+                    .show(ui, |ui| {
+                        // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
+                        visualizers_ui(ui);
+                    });
+            }
+
             ui.section_collapsing_header("View properties")
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
@@ -506,6 +524,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 });
 
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
+
             view_components_defaults_section_ui(&view_ctx, ui, view);
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
@@ -681,9 +700,9 @@ fn entity_selection_ui(
             .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
         let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
-        let empty_errors = PerVisualizerType::default();
+        let empty_errors = VisualizerViewReport::default();
         let visualizer_errors = view_states
-            .visualizer_errors(*view_id)
+            .per_visualizer_type_reports(*view_id)
             .unwrap_or(&empty_errors);
 
         visualizer_ui(&view_ctx, view, visualizer_errors, entity_path, ui);

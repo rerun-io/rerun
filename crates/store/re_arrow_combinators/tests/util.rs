@@ -28,8 +28,10 @@ pub mod fixtures {
     use std::sync::Arc;
 
     use arrow::{
-        array::{Array as _, ArrayData, Float64Array, ListArray, StructArray},
-        buffer::{NullBuffer, OffsetBuffer},
+        array::{
+            Array as _, ArrayData, Float64Array, ListArray, StringArray, StructArray, UInt8Array,
+        },
+        buffer::{Buffer, NullBuffer, OffsetBuffer},
         datatypes::{DataType, Field, Fields},
     };
 
@@ -227,6 +229,167 @@ pub mod fixtures {
             outer_offsets,
             Arc::new(middle_struct),
             Some(outer_nulls),
+        )
+    }
+
+    #[test]
+    fn example_nested_string_struct_column() {
+        let list_array = nested_string_struct_column();
+        insta::assert_snapshot!(super::DisplayRB(list_array.clone()), @r"
+        ┌───────────────────────────────────────────────────────┐
+        │ col                                                   │
+        │ ---                                                   │
+        │ type: nullable List[nullable Struct[1]]               │
+        ╞═══════════════════════════════════════════════════════╡
+        │ [{data: {names: alice, colors: red}}]                 │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [null]                                                │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ null                                                  │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [{data: null}, {data: {names: dave, colors: yellow}}] │
+        └───────────────────────────────────────────────────────┘
+        ");
+    }
+
+    /// Creates a nested struct column with string values from an underlying shared buffer.
+    pub fn nested_string_struct_column() -> ListArray {
+        // Create a shared StringArray containing all data.
+        let shared_strings = StringArray::from(vec![
+            "alice", "bob", "carol", "dave", // names
+            "red", "green", "blue", "yellow", // colors
+        ]);
+
+        // Extract the raw values buffer (the UTF-8 bytes).
+        let values_buffer = shared_strings.to_data().buffers()[1].clone();
+
+        // Create "names" StringArray using first part of shared buffer.
+        // Strings: "alice" (0-5), "bob" (5-8), "carol" (8-13), "dave" (13-17)
+        let names_offsets: &[i32] = &[0, 5, 8, 13, 17];
+        let names_nulls = NullBuffer::from(vec![true, false, true, true]); // set "bob" as null
+
+        let names_data = ArrayData::builder(DataType::Utf8)
+            .len(4)
+            .null_bit_buffer(Some(names_nulls.buffer().clone()))
+            .add_buffer(Buffer::from_slice_ref(names_offsets))
+            .add_buffer(values_buffer.slice_with_length(0, 17))
+            .build()
+            .unwrap();
+        let names_array = StringArray::from(names_data);
+
+        // Create "colors" StringArray using second part of shared buffer.
+        let offset_start = names_offsets.last().copied().unwrap() as usize;
+        // Strings relative to slice: "red" (0-3), "green" (3-8), "blue" (8-12), "yellow" (12-18)
+        let colors_offsets: &[i32] = &[0, 3, 8, 12, 18];
+        let colors_nulls = NullBuffer::from(vec![true, true, false, true]); // set "blue" as null
+
+        let colors_data = ArrayData::builder(DataType::Utf8)
+            .len(4)
+            .null_bit_buffer(Some(colors_nulls.buffer().clone()))
+            .add_buffer(Buffer::from_slice_ref(colors_offsets))
+            .add_buffer(values_buffer.slice_with_length(offset_start, 18))
+            .build()
+            .unwrap();
+        let colors_array = StringArray::from(colors_data);
+
+        // Build the inner struct containing both string arrays.
+        let inner_struct_fields = Fields::from(vec![
+            Field::new("names", DataType::Utf8, true),
+            Field::new("colors", DataType::Utf8, true),
+        ]);
+        let inner_struct_nulls = NullBuffer::from(vec![true, true, false, true]); // third element is null
+        let inner_struct = StructArray::new(
+            inner_struct_fields.clone(),
+            vec![
+                Arc::new(names_array.clone()),
+                Arc::new(colors_array.clone()),
+            ],
+            Some(inner_struct_nulls),
+        );
+
+        // Wrap in an outer struct with a "data" field.
+        let outer_struct_fields = Fields::from(vec![Field::new(
+            "data",
+            DataType::Struct(inner_struct_fields.clone()),
+            true,
+        )]);
+        let outer_struct_nulls = NullBuffer::from(vec![true, false, true, true]); // second element is null
+        let outer_struct = StructArray::new(
+            outer_struct_fields.clone(),
+            vec![Arc::new(inner_struct)],
+            Some(outer_struct_nulls),
+        );
+
+        // Wrap in a ListArray.
+        use arrow::buffer::OffsetBuffer;
+        let list_offsets = OffsetBuffer::from_lengths([1, 1, 0, 2]); // varying list lengths
+        let list_nulls = NullBuffer::from(vec![true, true, false, true]); // third list is null
+
+        arrow::array::ListArray::new(
+            Arc::new(Field::new_list_field(
+                DataType::Struct(outer_struct_fields),
+                true,
+            )),
+            list_offsets,
+            Arc::new(outer_struct),
+            Some(list_nulls),
+        )
+    }
+
+    #[test]
+    fn example_list_not_nullable() {
+        let array = list_not_nullable();
+        insta::assert_snapshot!(format!("{}", super::DisplayRB(array)), @r"
+        ┌─────────────────────────┐
+        │ col                     │
+        │ ---                     │
+        │ type: nullable List[u8] │
+        ╞═════════════════════════╡
+        │ [1, 2]                  │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [3, 4, 5]               │
+        └─────────────────────────┘
+        ");
+    }
+
+    pub fn list_not_nullable() -> ListArray {
+        let values = UInt8Array::from(vec![1, 2, 3, 4, 5]);
+        let offsets = OffsetBuffer::from_lengths([2, 3]);
+
+        ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, false)),
+            offsets,
+            Arc::new(values),
+            None,
+        )
+    }
+
+    #[test]
+    fn example_list_with_nulls() {
+        let array = list_with_nulls();
+        insta::assert_snapshot!(format!("{}", super::DisplayRB(array)), @r"
+        ┌──────────────────────────────────┐
+        │ col                              │
+        │ ---                              │
+        │ type: nullable List[nullable u8] │
+        ╞══════════════════════════════════╡
+        │ [1, 2]                           │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ null                             │
+        └──────────────────────────────────┘
+        ");
+    }
+
+    pub fn list_with_nulls() -> ListArray {
+        let values = UInt8Array::from(vec![1, 2, 3, 4, 5]);
+        let offsets = OffsetBuffer::from_lengths([2, 3]);
+        let nulls = NullBuffer::from(vec![true, false]);
+
+        ListArray::new(
+            Arc::new(Field::new_list_field(DataType::UInt8, true)),
+            offsets,
+            Arc::new(values),
+            Some(nulls),
         )
     }
 }

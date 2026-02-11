@@ -181,7 +181,7 @@ impl re_byte_size::SizeBytes for RawRrdManifest {
 pub type RrdManifestStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
 
 /// The individual entries in an [`RrdManifestTemporalMap`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RrdManifestTemporalMapEntry {
     /// The time range covered by this entry.
     pub time_range: AbsoluteTimeRange,
@@ -368,7 +368,7 @@ impl RawRrdManifest {
     }
 
     /// Computes a map-based representation of the static data in this RRD manifest.
-    pub fn get_static_data_as_a_map(&self) -> CodecResult<RrdManifestStaticMap> {
+    pub fn calc_static_map(&self) -> CodecResult<RrdManifestStaticMap> {
         re_tracing::profile_function!();
 
         use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -435,7 +435,7 @@ impl RawRrdManifest {
     }
 
     /// Computes a map-based representation of the temporal data in this RRD manifest.
-    pub fn get_temporal_data_as_a_map(&self) -> CodecResult<RrdManifestTemporalMap> {
+    pub fn calc_temporal_map(&self) -> CodecResult<RrdManifestTemporalMap> {
         re_tracing::profile_function!();
 
         use re_arrow_util::ArrowArrayDowncastRef as _;

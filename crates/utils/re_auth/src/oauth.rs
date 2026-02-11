@@ -1,8 +1,7 @@
-use base64::Engine as _;
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use serde::{Deserialize, Serialize};
 
-use crate::Jwt;
+use crate::token::JwtDecodeError;
+use crate::{Jwt, Permission};
 
 pub mod api;
 mod storage;
@@ -52,12 +51,66 @@ pub fn load_credentials() -> Result<Option<Credentials>, CredentialsLoadError> {
 #[error("failed to load credentials: {0}")]
 pub struct CredentialsClearError(#[from] storage::ClearError);
 
-pub fn clear_credentials() -> Result<(), CredentialsClearError> {
+/// Result of a successful [`clear_credentials`] call that had stored credentials.
+pub struct LogoutOutcome {
+    /// The `WorkOS` logout URL to open in the user's browser.
+    pub logout_url: String,
+
+    /// On native, a handle to the background callback server thread.
+    ///
+    /// Join this handle to keep the process alive until the browser has
+    /// loaded the "logged out" landing page (or the server times out).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub server_handle: Option<std::thread::JoinHandle<()>>,
+}
+
+/// Clear stored credentials and return the `WorkOS` logout URL, if available.
+///
+/// On native, this also starts a local callback server so the browser has
+/// somewhere to redirect after the `WorkOS` session is cleared.
+///
+/// The logout URL should be opened in the user's browser to also end the
+/// `WorkOS` session. If no credentials were stored (or the session ID could
+/// not be determined), `Ok(None)` is returned.
+pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearError> {
+    // Load credentials before clearing so we can extract the session ID.
+    let outcome = storage::load().ok().flatten().map(|creds| {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // On native, start a local callback server so WorkOS can redirect
+            // back to a "logged out" landing page.
+            match crate::callback_server::start_logout_server(&creds.claims.sid) {
+                Ok((url, handle)) => LogoutOutcome {
+                    logout_url: url,
+                    server_handle: Some(handle),
+                },
+                Err(err) => {
+                    re_log::warn!("Failed to start logout callback server: {err}");
+                    LogoutOutcome {
+                        logout_url: api::logout_url(&creds.claims.sid, None),
+                        server_handle: None,
+                    }
+                }
+            }
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // On web, redirect to /signed-out on the current origin after logout.
+            let return_to = web_sys::window()
+                .and_then(|w| w.location().origin().ok())
+                .map(|origin| format!("{origin}/signed-out"));
+            LogoutOutcome {
+                logout_url: api::logout_url(&creds.claims.sid, return_to.as_deref()),
+            }
+        }
+    });
+
     storage::clear()?;
 
     crate::credentials::oauth::auth_update(None);
 
-    Ok(())
+    Ok(outcome)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -69,7 +122,7 @@ pub enum CredentialsRefreshError {
     Store(#[from] storage::StoreError),
 
     #[error("failed to deserialize credentials: {0}")]
-    MalformedToken(#[from] MalformedTokenError),
+    MalformedToken(#[from] JwtDecodeError),
 
     #[error("no refresh token available")]
     NoRefreshToken,
@@ -79,8 +132,19 @@ pub enum CredentialsRefreshError {
 pub async fn refresh_credentials(
     credentials: Credentials,
 ) -> Result<Credentials, CredentialsRefreshError> {
-    // Don't refresh unless the access token has expired
-    if !credentials.access_token().is_expired() {
+    refresh_credentials_with_org(credentials, None).await
+}
+
+/// Refresh credentials, optionally switching to a different organization.
+///
+/// If `organization_id` is `Some`, a refresh is always performed (even if the
+/// token hasn't expired) to obtain a token scoped to the specified org.
+pub async fn refresh_credentials_with_org(
+    credentials: Credentials,
+    organization_id: Option<&str>,
+) -> Result<Credentials, CredentialsRefreshError> {
+    // If no org switch is requested, don't refresh unless the access token has expired
+    if organization_id.is_none() && !credentials.access_token().is_expired() {
         re_log::debug!(
             "skipping credentials refresh: credentials expire in {} seconds",
             credentials.access_token().remaining_duration_secs()
@@ -88,16 +152,18 @@ pub async fn refresh_credentials(
         return Ok(credentials);
     }
 
-    re_log::debug!(
-        "expired {} seconds ago",
-        -credentials.access_token().remaining_duration_secs()
-    );
+    if organization_id.is_none() {
+        re_log::debug!(
+            "expired {} seconds ago",
+            -credentials.access_token().remaining_duration_secs()
+        );
+    }
 
     let Some(refresh_token) = &credentials.refresh_token else {
         return Err(CredentialsRefreshError::NoRefreshToken);
     };
 
-    let response = api::refresh(refresh_token).await?;
+    let response = api::refresh(refresh_token, organization_id).await?;
     let credentials = Credentials::from_auth_response(response)?
         .ensure_stored()
         .map_err(|err| CredentialsRefreshError::Store(err.0))?;
@@ -129,21 +195,6 @@ pub enum FetchJwksError {
 
     #[error("failed to deserialize JWKS: {0}")]
     Deserialize(#[from] serde_json::Error),
-}
-
-/// Rerun Cloud permissions
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Permission {
-    /// User can read data.
-    #[serde(rename = "read")]
-    Read,
-
-    /// User can both read and write data.
-    #[serde(rename = "read-write")]
-    ReadWrite,
-
-    #[serde(untagged)]
-    Unknown(String),
 }
 
 #[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future
@@ -182,20 +233,8 @@ impl RerunCloudClaims {
     pub const REQUIRED: &'static [&'static str] =
         &["iss", "sub", "org_id", "permissions", "exp", "iat"];
 
-    pub fn try_from_unverified_jwt(jwt: &Jwt) -> Result<Self, MalformedTokenError> {
-        // TODO(aedm): check signature of the JWT token
-        let (_header, rest) = jwt
-            .as_str()
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingHeaderPayloadSeparator)?;
-        let (payload, _signature) = rest
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingPayloadSignatureSeparator)?;
-        let payload = BASE64_URL_SAFE_NO_PAD
-            .decode(payload)
-            .map_err(MalformedTokenError::Base64)?;
-        let claims = serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
-        Ok(claims)
+    pub fn try_from_unverified_jwt(jwt: &Jwt) -> Result<Self, JwtDecodeError> {
+        jwt.decode_claims()
     }
 }
 
@@ -278,7 +317,7 @@ impl Credentials {
     /// as the authentication API.
     pub fn from_auth_response(
         res: api::RefreshResponse,
-    ) -> Result<InMemoryCredentials, MalformedTokenError> {
+    ) -> Result<InMemoryCredentials, JwtDecodeError> {
         let jwt = Jwt(res.access_token);
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
@@ -297,7 +336,7 @@ impl Credentials {
         access_token: String,
         refresh_token: Option<String>,
         email: String,
-    ) -> Result<InMemoryCredentials, MalformedTokenError> {
+    ) -> Result<InMemoryCredentials, JwtDecodeError> {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&Jwt(access_token.clone()))?;
 
         let user = User {
@@ -367,7 +406,7 @@ impl AccessToken {
     /// Construct an [`AccessToken`] without verifying it.
     ///
     /// The token should come from a trusted source, like the Rerun auth API.
-    pub(crate) fn try_from_unverified_jwt(jwt: Jwt) -> Result<Self, MalformedTokenError> {
+    pub(crate) fn try_from_unverified_jwt(jwt: Jwt) -> Result<Self, JwtDecodeError> {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         Ok(Self {
             token: jwt.0,
@@ -383,21 +422,6 @@ impl std::fmt::Debug for AccessToken {
             .field("expires_at", &self.expires_at)
             .finish()
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum MalformedTokenError {
-    #[error("missing `.` separator between header and payload")]
-    MissingHeaderPayloadSeparator,
-
-    #[error("missing `.` separator between payload and signature")]
-    MissingPayloadSignatureSeparator,
-
-    #[error("failed to decode base64 payload: {0}")]
-    Base64(base64::DecodeError),
-
-    #[error("failed to deserialize payload: {0}")]
-    Serde(serde_json::Error),
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

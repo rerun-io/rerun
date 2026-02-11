@@ -9,7 +9,7 @@ use re_chunk::{Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, T
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
 
-use crate::{ChunkStore, OnMissingChunk};
+use crate::{ChunkStore, ChunkTrackingMode};
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
@@ -612,33 +612,39 @@ impl ChunkStore {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`QueryResults::missing`] field.
+/// This lack of data is communicated using a non-empty [`QueryResults::missing_virtual`] field.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueryResults {
     /// The relevant *physical* chunks that were found for this query.
     ///
-    /// If [`Self::missing`] is non-empty, then these chunks are not enough to compute accurate query results.
+    /// If [`Self::missing_virtual`] is non-empty, then these chunks are not enough to compute accurate query results.
     pub chunks: Vec<Arc<Chunk>>,
 
     /// The relevant *virtual* chunks that were found for this query.
     ///
     /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
     /// results of this query cannot accurately be computed.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing: Vec<ChunkId>,
+    pub missing_virtual: Vec<ChunkId>,
 }
 
 impl std::fmt::Display for QueryResults {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { chunks, missing } = self;
+        let Self {
+            chunks,
+            missing_virtual,
+        } = self;
 
         let chunk_ids = chunks.iter().map(|c| c.id().to_string()).join(",");
 
         if self.is_partial() {
-            let missing_ids = missing.iter().map(|id| id.to_string()).join(",");
+            let missing_ids = missing_virtual.iter().map(|id| id.to_string()).join(",");
             f.write_fmt(format_args!("chunks:[{chunk_ids}] missing:[{missing_ids}]"))
         } else {
             f.write_fmt(format_args!("chunks:[{chunk_ids}]"))
@@ -649,34 +655,36 @@ impl std::fmt::Display for QueryResults {
 impl QueryResults {
     fn from_chunk_ids(
         store: &ChunkStore,
-        on_missing: OnMissingChunk,
+        report_mode: ChunkTrackingMode,
         chunk_ids: impl Iterator<Item = ChunkId>,
     ) -> Self {
         let mut this = Self {
             chunks: vec![],
-            missing: vec![],
+            missing_virtual: vec![],
         };
 
         for chunk_id in chunk_ids {
             if let Some(chunk) = store.chunks_per_chunk_id.get(&chunk_id) {
                 this.chunks.push(chunk.clone());
             } else {
-                match on_missing {
-                    OnMissingChunk::Ignore => {}
-                    OnMissingChunk::Report => {
-                        this.missing.push(chunk_id);
+                match report_mode {
+                    ChunkTrackingMode::Ignore => {}
+                    ChunkTrackingMode::Report => {
+                        this.missing_virtual.push(chunk_id);
                     }
-                    OnMissingChunk::Panic => {
+                    ChunkTrackingMode::PanicOnMissing => {
                         panic!("ChunkStore is missing chunk ID: {chunk_id}");
                     }
                 }
             }
         }
 
-        {
+        if report_mode == ChunkTrackingMode::Report {
             let mut tracker = store.queried_chunk_id_tracker.write();
 
-            tracker.missing.extend(this.missing.iter().copied());
+            tracker
+                .missing_virtual
+                .extend(this.missing_virtual.iter().copied());
 
             tracker
                 .used_physical
@@ -687,7 +695,7 @@ impl QueryResults {
             this.chunks
                 .iter()
                 .map(|chunk| chunk.id())
-                .chain(this.missing.iter().copied())
+                .chain(this.missing_virtual.iter().copied())
                 .all_unique()
         );
 
@@ -703,17 +711,20 @@ impl QueryResults {
     /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing`
+    /// [missing chunk IDs]: `Self::missing_virtual`
     pub fn is_partial(&self) -> bool {
-        !self.missing.is_empty()
+        !self.missing_virtual.is_empty()
     }
 
     /// Returns true if the results are *completely* empty.
     ///
     /// I.e. neither physical/loaded nor virtual/offloaded chunks could be found.
     pub fn is_empty(&self) -> bool {
-        let Self { chunks, missing } = self;
-        chunks.is_empty() && missing.is_empty()
+        let Self {
+            chunks,
+            missing_virtual,
+        } = self;
+        chunks.is_empty() && missing_virtual.is_empty()
     }
 
     /// Attempts to iterate over the returned chunks.
@@ -722,9 +733,9 @@ impl QueryResults {
     /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing`
+    /// [missing chunk IDs]: `Self::missing_virtual`
     pub fn to_iter(&self) -> Option<impl Iterator<Item = &Arc<Chunk>>> {
-        if self.missing.is_empty() {
+        if self.missing_virtual.is_empty() {
             return Some(self.chunks.iter());
         }
 
@@ -740,7 +751,7 @@ impl QueryResults {
     /// It is the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing`
+    /// [missing chunk IDs]: `Self::missing_virtual`
     //
     // TODO(RR-3295): this should ultimately not exist once all callsite have been updated to
     // the do whatever happens to be "the right thing" in their respective context.
@@ -783,7 +794,7 @@ impl ChunkStore {
     /// override any temporal component data.
     pub fn latest_at_relevant_chunks(
         &self,
-        on_missing: OnMissingChunk,
+        report_mode: ChunkTrackingMode,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
@@ -801,7 +812,7 @@ impl ChunkStore {
         {
             return QueryResults::from_chunk_ids(
                 self,
-                on_missing,
+                report_mode,
                 std::iter::once(*static_chunk_id),
             );
         }
@@ -820,7 +831,7 @@ impl ChunkStore {
             })
             .unwrap_or_default();
 
-        QueryResults::from_chunk_ids(self, on_missing, chunk_ids.into_iter())
+        QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter())
     }
 
     /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
@@ -838,7 +849,7 @@ impl ChunkStore {
     /// determine what exact row contains the final result.
     pub fn latest_at_relevant_chunks_for_all_components(
         &self,
-        on_missing: OnMissingChunk,
+        report_mode: ChunkTrackingMode,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         include_static: bool,
@@ -898,7 +909,7 @@ impl ChunkStore {
                 .unwrap_or_default()
         };
 
-        QueryResults::from_chunk_ids(self, on_missing, chunk_ids.into_iter())
+        QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter())
     }
 
     fn latest_at(
@@ -964,7 +975,7 @@ impl ChunkStore {
     /// override any temporal component data.
     pub fn range_relevant_chunks(
         &self,
-        on_missing: OnMissingChunk,
+        report_mode: ChunkTrackingMode,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
@@ -978,7 +989,7 @@ impl ChunkStore {
         {
             return QueryResults::from_chunk_ids(
                 self,
-                on_missing,
+                report_mode,
                 std::iter::once(*static_chunk_id),
             );
         }
@@ -996,7 +1007,7 @@ impl ChunkStore {
                 .into_iter(),
         );
 
-        let mut results = QueryResults::from_chunk_ids(self, on_missing, chunk_ids.into_iter());
+        let mut results = QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter());
         results.chunks = results
             .chunks
             .into_iter()
@@ -1030,7 +1041,7 @@ impl ChunkStore {
     /// determine how exactly each row of data fit with the rest.
     pub fn range_relevant_chunks_for_all_components(
         &self,
-        on_missing: OnMissingChunk,
+        report_mode: ChunkTrackingMode,
         query: &RangeQuery,
         entity_path: &EntityPath,
         include_static: bool,
@@ -1090,7 +1101,7 @@ impl ChunkStore {
             ))
         };
 
-        let mut results = QueryResults::from_chunk_ids(self, on_missing, chunk_ids.into_iter());
+        let mut results = QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter());
         results.chunks = results
             .chunks
             .into_iter()
@@ -1245,7 +1256,7 @@ mod tests {
         // We haven't inserted anything yet, so we just expect empty results across the board.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1253,14 +1264,14 @@ mod tests {
             assert!(results.is_empty());
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             assert!(results.is_empty());
 
-            assert!(store.take_tracked_chunk_ids().missing.is_empty());
+            assert!(store.take_tracked_chunk_ids().missing_virtual.is_empty());
         }
 
         store.insert_chunk(&chunk1).unwrap();
@@ -1270,32 +1281,32 @@ mod tests {
         // Now we've inserted everything, so we expect complete results across the board.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![chunk3.clone()],
-                missing: vec![],
+                missing_virtual: vec![],
             };
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
-                missing: vec![],
+                missing_virtual: vec![],
             };
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
-            assert!(store.take_tracked_chunk_ids().missing.is_empty());
+            assert!(store.take_tracked_chunk_ids().missing_virtual.is_empty());
         }
 
         store.gc(&crate::GarbageCollectionOptions {
@@ -1313,34 +1324,38 @@ mod tests {
         // * range results should now be partial
         {
             let results_latest_at = store.latest_at_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![chunk3.clone()],
-                missing: vec![],
+                missing_virtual: vec![],
             };
             assert_eq!(false, results_latest_at.is_partial());
             assert_eq!(expected, results_latest_at);
 
             let results_range = store.range_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![chunk3.clone()],
-                missing: vec![chunk1.id(), chunk2.id()],
+                missing_virtual: vec![chunk1.id(), chunk2.id()],
             };
             assert_eq!(true, results_range.is_partial());
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.take_tracked_chunk_ids().missing,
-                itertools::chain!(results_latest_at.missing, results_range.missing).collect()
+                store.take_tracked_chunk_ids().missing_virtual,
+                itertools::chain!(
+                    results_latest_at.missing_virtual,
+                    results_range.missing_virtual
+                )
+                .collect()
             );
         }
 
@@ -1349,34 +1364,38 @@ mod tests {
         // Now we've GC'd absolutely everything: we should only get partial results.
         {
             let results_latest_at = store.latest_at_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![],
-                missing: vec![chunk3.id()],
+                missing_virtual: vec![chunk3.id()],
             };
             assert_eq!(true, results_latest_at.is_partial());
             assert_eq!(expected, results_latest_at);
 
             let results_range = store.range_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![],
-                missing: vec![chunk1.id(), chunk2.id(), chunk3.id()],
+                missing_virtual: vec![chunk1.id(), chunk2.id(), chunk3.id()],
             };
             assert_eq!(true, results_range.is_partial());
             assert_eq!(expected, results_range);
 
             assert_eq!(
-                store.take_tracked_chunk_ids().missing,
-                itertools::chain!(results_latest_at.missing, results_range.missing).collect()
+                store.take_tracked_chunk_ids().missing_virtual,
+                itertools::chain!(
+                    results_latest_at.missing_virtual,
+                    results_range.missing_virtual
+                )
+                .collect()
             );
         }
 
@@ -1387,32 +1406,32 @@ mod tests {
         // We've inserted everything back: all results should be complete once again.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![chunk3.clone()],
-                missing: vec![],
+                missing_virtual: vec![],
             };
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
             );
             let expected = QueryResults {
                 chunks: vec![chunk1.clone(), chunk2.clone(), chunk3.clone()],
-                missing: vec![],
+                missing_virtual: vec![],
             };
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
 
-            assert!(store.take_tracked_chunk_ids().missing.is_empty());
+            assert!(store.take_tracked_chunk_ids().missing_virtual.is_empty());
         }
     }
 
@@ -1458,7 +1477,7 @@ mod tests {
 
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1466,7 +1485,7 @@ mod tests {
             assert!(results.is_empty());
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1484,7 +1503,7 @@ mod tests {
         // This used to fail because the compacted IDs would linger on in the internal virtual indices.
         {
             let results = store.latest_at_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 MyPoints::descriptor_points().component,
@@ -1492,7 +1511,7 @@ mod tests {
             assert_eq!(false, results.is_partial());
 
             let results = store.range_relevant_chunks(
-                OnMissingChunk::Report,
+                ChunkTrackingMode::Report,
                 &RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3)),
                 &entity_path,
                 MyPoints::descriptor_points().component,

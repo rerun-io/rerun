@@ -1,4 +1,5 @@
 use egui::NumExt as _;
+use re_chunk_store::MissingChunkReporter;
 use re_data_ui::{DataUi as _, item_ui};
 use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
@@ -26,6 +27,7 @@ use crate::{
 #[expect(clippy::too_many_arguments)]
 pub fn picking(
     ctx: &ViewerContext<'_>,
+    missing_chunk_reporter: &MissingChunkReporter,
     picking_context: &PickingContext,
     ui: &egui::Ui,
     mut response: egui::Response,
@@ -61,7 +63,7 @@ pub fn picking(
 
     let annotations = system_output
         .context_systems
-        .get::<AnnotationSceneContext>()?;
+        .get_and_report_missing::<AnnotationSceneContext>(missing_chunk_reporter)?;
 
     let picking_result = picking_context.pick(
         ctx.render_ctx(),

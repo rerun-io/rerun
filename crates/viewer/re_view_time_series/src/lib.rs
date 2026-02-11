@@ -5,7 +5,9 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod aggregation;
+mod fallbacks;
 mod line_visualizer_system;
+mod naming;
 mod point_visualizer_system;
 mod series_query;
 mod util;
@@ -118,20 +120,5 @@ impl PlotSeries {
     /// so we use the instance path number as an additional differentiator.
     pub fn id(&self) -> egui::Id {
         egui::Id::new((&self.visualizer_instruction_id, self.instance_path.instance))
-    }
-}
-
-/// Error that can occur when loading a single series.
-enum LoadSeriesError {
-    ViewPropertyQuery(ViewPropertyQueryError),
-    InstructionSpecificVisualizerError {
-        instruction_id: VisualizerInstructionId,
-        err: String,
-    },
-}
-
-impl From<ViewPropertyQueryError> for LoadSeriesError {
-    fn from(err: ViewPropertyQueryError) -> Self {
-        Self::ViewPropertyQuery(err)
     }
 }

@@ -57,7 +57,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
                     row_rect,
                     &db,
                     &item,
-                    &timeline,
+                    timeline.name(),
                     config,
                 ));
             });

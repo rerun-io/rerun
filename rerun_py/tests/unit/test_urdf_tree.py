@@ -59,7 +59,7 @@ def test_urdf_tree_transform() -> None:
 
     expected_angle = joint.limit_upper
     origin_roll, origin_pitch, origin_yaw = joint.origin_rpy
-    quat_origin = rru._euler_to_quat(origin_roll, origin_pitch, origin_yaw)
+    quat_origin = _euler_to_quat(origin_roll, origin_pitch, origin_yaw)
     axis_x, axis_y, axis_z = joint.axis
     half_angle = expected_angle / 2.0
     sin_half = math.sin(half_angle)
@@ -70,7 +70,7 @@ def test_urdf_tree_transform() -> None:
         axis_z * sin_half,
         cos_half,
     ]
-    expected_quat = rru._quat_multiply(quat_origin, quat_dynamic)
+    expected_quat = _quat_multiply(quat_origin, quat_dynamic)
 
     assert transform.translation is not None
     assert transform.quaternion is not None
@@ -95,3 +95,33 @@ def assert_quat_equivalent(actual: rr.components.RotationQuatBatch, expected: li
 def assert_translation_expected(actual: rr.components.Translation3DBatch, expected: tuple[float, float, float]) -> None:
     actual_values = actual.pa_array.to_pylist()[0]
     assert actual_values == pytest.approx(expected)
+
+
+def _euler_to_quat(roll: float, pitch: float, yaw: float) -> list[float]:
+    """Convert Euler angles (RPY) to quaternion (XYZW)."""
+    cr = math.cos(roll * 0.5)
+    sr = math.sin(roll * 0.5)
+    cp = math.cos(pitch * 0.5)
+    sp = math.sin(pitch * 0.5)
+    cy = math.cos(yaw * 0.5)
+    sy = math.sin(yaw * 0.5)
+
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+
+    return [x, y, z, w]
+
+
+def _quat_multiply(q1: list[float], q2: list[float]) -> list[float]:
+    """Multiply two quaternions in XYZW format."""
+    x1, y1, z1, w1 = q1
+    x2, y2, z2, w2 = q2
+
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+
+    return [x, y, z, w]

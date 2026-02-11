@@ -5,7 +5,9 @@ mod test_view;
 use ahash::HashMap;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::{SnapshotOptions, SnapshotResult};
-use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
+use re_viewer_context::{
+    Contents, MissingChunkReporter, ViewId, ViewerContext, VisitorControlFlow,
+};
 use re_viewport::execute_systems_for_view;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
@@ -137,7 +139,7 @@ impl TestContextExt for TestContext {
         let view_class = class_registry.get_class_or_log_error(class_identifier);
 
         let mut view_states = self.view_states.lock();
-        view_states.reset_visualizer_errors();
+        view_states.reset_visualizer_reports();
         let view_state = view_states.get_mut_or_create(view_id, view_class);
 
         let context_system_once_per_frame_results = class_registry
@@ -148,12 +150,24 @@ impl TestContextExt for TestContext {
             view_state,
             &context_system_once_per_frame_results,
         );
-        view_states.report_visualizer_errors(view_id, &system_execution_output);
+        view_states.add_visualizer_reports_from_output(view_id, &system_execution_output);
+
+        let missing_chunk_reporter =
+            MissingChunkReporter::new(system_execution_output.any_missing_chunks());
 
         let view_state = view_states.get_mut_or_create(view_id, view_class);
         view_class
-            .ui(ctx, ui, view_state, &view_query, system_execution_output)
+            .ui(
+                ctx,
+                &missing_chunk_reporter,
+                ui,
+                view_state,
+                &view_query,
+                system_execution_output,
+            )
             .expect("failed to run view ui");
+
+        // We intentionally ignore missing_chunk_reporter in this test… for now.
     }
 
     /// [`TestContext::run`] for a single view.

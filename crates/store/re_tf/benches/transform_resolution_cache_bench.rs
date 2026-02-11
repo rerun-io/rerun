@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
-use re_chunk_store::{Chunk, ChunkStoreEvent};
+use re_chunk_store::{Chunk, ChunkStoreEvent, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, TimelineName};
 use re_sdk_types::{RowId, archetypes};
@@ -59,13 +59,26 @@ fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
 
 fn transform_resolution_cache_query(c: &mut Criterion) {
     let (entity_db, events) = setup_store();
+    let storage_engine = entity_db.storage_engine();
+    let chunk_store = storage_engine.store();
+
+    let create_cache_with_all_timelines = || {
+        let mut cache = TransformResolutionCache::new(&entity_db);
+        for i in 0..NUM_TIMELINES {
+            cache.ensure_timeline_is_initialized(
+                chunk_store,
+                TimelineName::new(&format!("timeline{i}")),
+            );
+        }
+        cache
+    };
 
     c.bench_function("build_from_entity_db", |b| {
-        b.iter(|| {
-            let mut cache = TransformResolutionCache::default();
-            cache.process_store_events(events.iter());
-            cache
-        });
+        b.iter(|| TransformResolutionCache::new(&entity_db));
+    });
+
+    c.bench_function("build_from_entity_db_all_timelines", |b| {
+        b.iter(create_cache_with_all_timelines);
     });
 
     let query = re_chunk_store::LatestAtQuery::new(TimelineName::new("timeline2"), 123);
@@ -73,41 +86,58 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
 
     c.bench_function("query_uncached_frame", |b| {
         b.iter_batched(
-            || {
-                let mut cache = TransformResolutionCache::default();
-                cache.process_store_events(events.iter());
-                cache
-            },
+            create_cache_with_all_timelines,
             |cold_cache| {
                 let timeline_transforms = cold_cache.transforms_for_timeline(query.timeline());
                 let frame_transforms = timeline_transforms.frame_transforms(queried_frame).unwrap();
-                frame_transforms
-                    .latest_at_transform(&entity_db, &query)
-                    .unwrap()
+                let missing_chunk_reporter = MissingChunkReporter::default();
+                let result = frame_transforms
+                    .latest_at_transform(&entity_db, &missing_chunk_reporter, &query)
+                    .unwrap();
+                assert!(missing_chunk_reporter.is_empty());
+                result
             },
             criterion::BatchSize::PerIteration,
         );
     });
 
-    let mut warm_cache = TransformResolutionCache::default();
-    warm_cache.process_store_events(events.iter());
+    let warm_cache = create_cache_with_all_timelines();
     let timeline_transforms = warm_cache.transforms_for_timeline(query.timeline());
+    let missing_chunk_reporter = MissingChunkReporter::default();
     timeline_transforms
         .frame_transforms(queried_frame)
         .unwrap()
-        .latest_at_transform(&entity_db, &query);
+        .latest_at_transform(&entity_db, &missing_chunk_reporter, &query);
+    assert!(missing_chunk_reporter.is_empty());
 
     c.bench_function("query_cached_frame", |b| {
         b.iter(|| {
             let timeline_transforms = warm_cache.transforms_for_timeline(query.timeline());
             let frame_transforms = timeline_transforms.frame_transforms(queried_frame).unwrap();
-            frame_transforms
-                .latest_at_transform(&entity_db, &query)
-                .unwrap()
+            let missing_chunk_reporter = MissingChunkReporter::default();
+            let result = frame_transforms
+                .latest_at_transform(&entity_db, &missing_chunk_reporter, &query)
+                .unwrap();
+            assert!(missing_chunk_reporter.is_empty());
+            result
         });
     });
 
-    // TODO(andreas): Additional benchmarks for iterative invalidation would be great!
+    // Benchmark incremental updates via process_store_events.
+    c.bench_function("process_store_events", |b| {
+        b.iter_batched(
+            || {
+                let mut cache = TransformResolutionCache::new(&entity_db);
+                cache.ensure_timeline_is_initialized(chunk_store, query.timeline());
+                cache
+            },
+            |mut cache| {
+                cache.process_store_events(events.iter());
+                cache
+            },
+            criterion::BatchSize::PerIteration,
+        );
+    });
 }
 
 criterion_group!(benches, transform_resolution_cache_query);

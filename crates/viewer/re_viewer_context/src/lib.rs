@@ -73,7 +73,7 @@ pub use self::component_fallbacks::{
     ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for,
 };
 pub use self::component_ui_registry::{
-    ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName,
+    ComponentUiRegistry, ComponentUiTypes, EditTarget, TryShowEditUiResult, VariantName,
 };
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::display_mode::DisplayMode;
@@ -106,7 +106,7 @@ pub use self::time_control::{
     time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    DatatypeMatchKind, IndicatedEntities, PerVisualizerInstruction, PerVisualizerType,
+    DatatypeMatch, IndicatedEntities, PerVisualizerInstruction, PerVisualizerType,
     PerVisualizerTypeInViewClass, VisualizableEntities, VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
@@ -116,15 +116,16 @@ pub use self::utils::{
 };
 pub use self::view::{
     AnyPhysicalDatatypeRequirement, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
-    PerSystemDataResults, PerSystemEntities, RecommendedView, RecommendedVisualizers,
-    RequiredComponents, SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority,
-    ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError, ViewContext,
-    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
-    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-    ViewSystemRegistrator, VisualizerCollection, VisualizerComponentMappings,
-    VisualizerComponentSource, VisualizerExecutionErrorState, VisualizerExecutionOutput,
-    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem,
+    PerSystemEntities, RecommendedView, RecommendedVisualizers, RequiredComponents,
+    SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder,
+    ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
+    ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
+    ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewSystemState,
+    VisualizerCollection, VisualizerComponentMappings, VisualizerComponentSource,
+    VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionReport,
+    VisualizerInstructionsPerType, VisualizerQueryInfo, VisualizerReportContext,
+    VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport, VisualizerViewReport,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
@@ -134,6 +135,9 @@ pub mod external {
     pub use tokio;
     pub use {nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
 }
+
+// Re-export
+pub use re_chunk_store::MissingChunkReporter;
 
 // ---------------------------------------------------------------------------
 

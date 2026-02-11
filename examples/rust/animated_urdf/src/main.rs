@@ -12,8 +12,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-use rerun::components::Translation3D;
-use rerun::external::re_data_loader::UrdfTree;
+use rerun::external::re_data_loader::{UrdfTree, urdf_joint_transform};
 use rerun::external::{re_log, urdf_rs};
 
 fn main() -> anyhow::Result<()> {
@@ -40,8 +39,6 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
         rec.set_time_sequence("step", step);
         for (joint_index, joint) in urdf.joints().enumerate() {
             if joint.joint_type == urdf_rs::JointType::Revolute {
-                let fixed_axis = joint.axis.xyz.0;
-
                 // Usually this angle would come from a measurement - here we just fake something:
                 let dynamic_angle = emath::remap(
                     (step as f64 * (0.02 + joint_index as f64 / 100.0)).sin(),
@@ -49,33 +46,15 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                     joint.limit.lower..=joint.limit.upper,
                 );
 
-                // Compute the full rotation for this joint.
-                // TODO(michael): we could make this a bit nicer with a better URDF utility.
-                let rotation = glam::Quat::from_euler(
-                    glam::EulerRot::XYZ,
-                    joint.origin.rpy[0] as f32,
-                    joint.origin.rpy[1] as f32,
-                    joint.origin.rpy[2] as f32,
-                ) * glam::Quat::from_axis_angle(
-                    glam::Vec3::new(
-                        fixed_axis[0] as f32,
-                        fixed_axis[1] as f32,
-                        fixed_axis[2] as f32,
-                    ),
-                    dynamic_angle as f32,
-                );
-
                 // Rerun loads the URDF transforms with child/parent frame relations.
                 // In order to move a joint, we just need to log a new transform between two of those frames.
-                rec.log(
-                    "/transforms",
-                    &rerun::Transform3D::from_rotation(rerun::Quaternion::from_xyzw(
-                        rotation.to_array(),
-                    ))
-                    .with_translation(Translation3D::from(joint.origin.xyz.0))
-                    .with_parent_frame(joint.parent.link.clone())
-                    .with_child_frame(joint.child.link.clone()),
-                )?;
+                //
+                // We can use the `compute_transform3d` utility here, it handles origin + axis-angle rotation
+                // and sets the parent/child frames according to the joint.
+                let joint_transform =
+                    urdf_joint_transform::compute_transform3d(joint, dynamic_angle, true)?;
+
+                rec.log("/transforms", &joint_transform)?;
             }
         }
     }

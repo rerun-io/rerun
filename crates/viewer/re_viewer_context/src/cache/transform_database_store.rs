@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use ahash::HashSet;
 use parking_lot::{ArcRwLockReadGuard, RawRwLock};
 use re_byte_size::SizeBytes;
 use re_chunk::{LatestAtQuery, TimelineName};
@@ -16,30 +17,27 @@ use super::Cache;
 /// Ensures that the cache stays up to date.
 #[derive(Default)]
 pub struct TransformDatabaseStoreCache {
-    initialized: bool,
-    transform_cache: TransformResolutionCache,
+    transform_cache: Option<TransformResolutionCache>,
 
     transform_forest: Option<Arc<re_tf::TransformForest>>,
+
+    /// Timelines that were used in the current frame.
+    /// Used for evicting unused timelines at the beginning of the next frame.
+    used_timelines: HashSet<TimelineName>,
 }
 
 impl TransformDatabaseStoreCache {
-    fn ensure_initialized(&mut self, entity_db: &EntityDb) {
-        if !self.initialized {
-            re_tracing::profile_function!();
-            self.initialized = true; // There can't be a race here since we have `&mut self``.
-            self.transform_cache
-                .add_chunks(entity_db.storage_engine().store().iter_physical_chunks());
-        }
-    }
-
     /// Returns the registry of all known frame ids.
     #[inline]
     pub fn frame_id_registry(
         &mut self,
         entity_db: &EntityDb,
     ) -> ArcRwLockReadGuard<RawRwLock, FrameIdRegistry> {
-        self.ensure_initialized(entity_db);
-        self.transform_cache.frame_id_registry()
+        let transform_cache = self
+            .transform_cache
+            .get_or_insert_with(|| TransformResolutionCache::new(entity_db));
+
+        transform_cache.frame_id_registry()
     }
 
     /// Accesses the transform component tracking data for a given timeline.
@@ -49,18 +47,37 @@ impl TransformDatabaseStoreCache {
         entity_db: &EntityDb,
         timeline: TimelineName,
     ) -> ArcRwLockReadGuard<RawRwLock, CachedTransformsForTimeline> {
-        // TODO(RR-3539): lazily initialize only the requested timeline
-        self.ensure_initialized(entity_db);
-        self.transform_cache.transforms_for_timeline(timeline)
+        let transform_cache = self
+            .transform_cache
+            .get_or_insert_with(|| TransformResolutionCache::new(entity_db));
+
+        // Remember that this timeline was used this frame.
+        self.used_timelines.insert(timeline);
+
+        transform_cache
+            .ensure_timeline_is_initialized(entity_db.storage_engine().store(), timeline);
+
+        transform_cache.transforms_for_timeline(timeline)
     }
 
-    pub fn update_transform_forest(&mut self, entity_db: &EntityDb, query: &LatestAtQuery) {
-        self.ensure_initialized(entity_db);
-        self.transform_forest = Some(Arc::new(TransformForest::new(
-            entity_db,
-            &self.transform_cache,
-            query,
-        )));
+    pub fn update_transform_forest(
+        &mut self,
+        entity_db: &EntityDb,
+        query: &LatestAtQuery,
+    ) -> Arc<re_tf::TransformForest> {
+        re_tracing::profile_function!();
+
+        let transform_cache = self
+            .transform_cache
+            .get_or_insert_with(|| TransformResolutionCache::new(entity_db));
+
+        self.transform_forest
+            .insert(Arc::new(TransformForest::new(
+                entity_db,
+                transform_cache,
+                query,
+            )))
+            .clone()
     }
 
     pub fn transform_forest(&self) -> Option<Arc<re_tf::TransformForest>> {
@@ -73,14 +90,14 @@ impl SizeBytes for TransformDatabaseStoreCache {
         re_tracing::profile_function!();
 
         let Self {
-            initialized,
             transform_cache,
             transform_forest,
+            used_timelines,
         } = self;
 
-        initialized.heap_size_bytes()
-            + transform_cache.heap_size_bytes()
+        transform_cache.heap_size_bytes()
             + transform_forest.heap_size_bytes()
+            + used_timelines.heap_size_bytes()
     }
 }
 
@@ -89,16 +106,31 @@ impl Cache for TransformDatabaseStoreCache {
         "TransformDatabaseStoreCache"
     }
 
+    fn begin_frame(&mut self) {
+        self.used_timelines.clear();
+    }
+
     fn purge_memory(&mut self) {
-        // Can't purge memory from the transform cache right now and even if we could, there's
-        // no point to it since we can't build it up in a more compact fashion yet.
+        if let Some(transform_cache) = &mut self.transform_cache {
+            // Evict all timelines that weren't used in the last frame.
+            // They will be lazily re-initialized if needed again.
+            let unused_timelines = transform_cache
+                .cached_timelines()
+                .filter(|t| !self.used_timelines.contains(t))
+                .collect::<Vec<_>>();
+
+            for timeline in unused_timelines {
+                transform_cache.evict_timeline_cache(timeline);
+            }
+        }
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
-        self.transform_cache
-            .process_store_events(events.iter().copied());
+        if let Some(transform_cache) = &mut self.transform_cache {
+            transform_cache.process_store_events(events.iter().copied());
+        }
     }
 }
 
@@ -107,13 +139,14 @@ impl re_byte_size::MemUsageTreeCapture for TransformDatabaseStoreCache {
         re_tracing::profile_function!();
 
         let Self {
-            initialized: _, // just a bool
+            used_timelines,
             transform_cache,
             transform_forest,
         } = self;
 
         let mut node = re_byte_size::MemUsageNode::new();
 
+        node.add("used_timelines", used_timelines.total_size_bytes());
         node.add("transform_cache", transform_cache.capture_mem_usage_tree());
 
         if let Some(transform_forest) = &transform_forest {

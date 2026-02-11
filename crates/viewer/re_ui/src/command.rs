@@ -661,9 +661,24 @@ impl UICommand {
 
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Self> {
+        fn conflicts_with_text_editing(kb_shortcut: &KeyboardShortcut) -> bool {
+            // TODO(emilk): move this into egui
+            kb_shortcut.modifiers.is_none()
+                || matches!(
+                    kb_shortcut.logical_key,
+                    Key::Space
+                        | Key::ArrowLeft
+                        | Key::ArrowRight
+                        | Key::ArrowUp
+                        | Key::ArrowDown
+                        | Key::Home
+                        | Key::End
+                )
+        }
+
         use strum::IntoEnumIterator as _;
 
-        let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
+        let text_edit_has_focus = egui_ctx.text_edit_focused();
 
         let mut commands: Vec<(KeyboardShortcut, Self)> = Self::iter()
             .flat_map(|cmd| {
@@ -688,16 +703,8 @@ impl UICommand {
 
         let command = egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
-                if anything_has_focus {
-                    // If a text edit has focus, is should usually get exclusive access to that input.
-                    // For instance: use alt-arrows to move the cursor a whole word (at least on mac).
-                    // The exception are shortcuts with ctrl/cmd in them:
-                    let is_command = kb_shortcut.modifiers.command
-                        || kb_shortcut.modifiers.mac_cmd
-                        || kb_shortcut.modifiers.ctrl;
-                    if !is_command {
-                        continue; // ignore
-                    }
+                if text_edit_has_focus && conflicts_with_text_editing(&kb_shortcut) {
+                    continue; // Make sure we can move text cursor with alt-arrow keys, etc
                 }
 
                 if input.consume_shortcut(&kb_shortcut) {

@@ -2,5 +2,5 @@
 source: crates/viewer/re_view_spatial/tests/topology_errors.rs
 expression: snapshot_content
 ---
-"Ellipsoids3D": /disconnected_entity: No transform path from "disconnected" to the view's origin frame ("pinhole").
 "Boxes3D": /misplaced_boxes3d_entity: Can't visualize 3D content that is under a pinhole projection.
+"Ellipsoids3D": /disconnected_entity: No transform path from "disconnected" to the view's origin frame ("pinhole").

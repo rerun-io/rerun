@@ -71,6 +71,7 @@ disallowed-methods = [
   { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
   { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
+  { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "poll_promise::Promise::block_and_take", reason = "Cannot block on Web" },
@@ -102,6 +103,7 @@ disallowed-methods = [
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
+  { path = "egui::Spinner", reason = "Use re_ui::loading_indicator" },
   { path = "instant::SystemTime", reason = "Known bugs. Use web-time." },
   { path = "once_cell::sync::OnceCell", reason = "Use `std::sync::OnceLock` instead" },
   { path = "std::fs::File", reason = "Can't access files on web" },

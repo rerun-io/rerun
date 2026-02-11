@@ -68,7 +68,7 @@ impl std::fmt::Display for Expr {
 }
 
 // TODO(RR-3438): Add error location reporting.
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, PartialEq, Eq, thiserror::Error, Clone)]
 pub enum Error {
     #[error("expected `{expected}` but found `{found}`")]
     ExpectedSymbol {

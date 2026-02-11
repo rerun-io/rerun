@@ -4,6 +4,7 @@ use std::rc::Rc;
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, authorization_url, send_async};
 use re_log::ResultExt as _;
+use re_ui::UiExt as _;
 use re_viewer_context::AsyncRuntimeHandle;
 use url::Url;
 use uuid::Uuid;
@@ -106,7 +107,7 @@ impl State {
     #[expect(clippy::unused_self)] // compat with native api
     pub fn ui(&self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.spinner();
+            ui.loading_indicator();
             ui.label("Waiting for login…");
         });
     }

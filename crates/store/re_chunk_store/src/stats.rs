@@ -368,7 +368,6 @@ impl SizeBytes for ChunkStore {
             id,
             config,
             time_type_registry,
-            type_registry,
             per_column_metadata,
             chunk_ids_per_min_row_id,
             chunks_lineage,
@@ -423,10 +422,6 @@ impl SizeBytes for ChunkStore {
             + {
                 profile_scope!("time_type_registry");
                 time_type_registry.heap_size_bytes()
-            }
-            + {
-                profile_scope!("type_registry");
-                type_registry.heap_size_bytes()
             }
             + {
                 profile_scope!("per_column_metadata");

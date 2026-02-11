@@ -118,6 +118,39 @@ impl Objects {
                         "Nullable fields on unions are not supported.",
                     );
                 }
+
+                // Validate whether someone is using a type we use for non-nullable arrays to describe some nullable field.
+                if field.is_nullable
+                    && (obj.kind == ObjectKind::Datatype || obj.kind == ObjectKind::Component)
+                    && let Some(field_type_fqname) = field.typ.fqname()
+                    // TODO(andreas): This is a hack, here because introducing this warning, I really don't want to touch annotation info right now.
+                    && obj.name != "AnnotationInfo"
+                {
+                    let field_obj = &this[field_type_fqname];
+                    if field_obj.is_arrow_transparent() {
+                        let suggestion = if field_obj.name == "Utf8" {
+                            "Use `string (nullable)` instead of `rerun.datatypes.Utf8 (nullable)`."
+                                .to_owned()
+                        } else {
+                            format!(
+                                "Consider using a primitive type instead of nullable transparent wrapper `{}`.",
+                                field_obj.name
+                            )
+                        };
+
+                        reporter.warn(
+                                virtpath,
+                                field_type_fqname,
+                                format!(
+                                    "Nullable transparent wrapper type detected. {} \
+                                     Transparent wrapper types like '{}' don't handle None internally, \
+                                     which can cause serialization issues.",
+                                    suggestion,
+                                    field_obj.name
+                                ),
+                            );
+                    }
+                }
             }
         }
 

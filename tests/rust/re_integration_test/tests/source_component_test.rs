@@ -80,7 +80,7 @@ pub async fn test_source_component_dropdown() {
         .click_label("Points3D:radii_$source");
     harness.snapshot_app("source_component_5");
 
-    // Select "View Default" from the dropdown options to avoid confusion with the "Override" RadioButton
-    harness.click_label("View Default");
+    // Select "View default" from the dropdown options to avoid confusion with the "Override" RadioButton
+    harness.click_label("View default");
     harness.snapshot_app("source_component_6");
 }

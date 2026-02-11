@@ -26,6 +26,20 @@ pub struct Reflection {
     pub archetypes: ArchetypeReflectionMap,
 }
 
+impl Reflection {
+    /// Looks up the expected Arrow datatype for a given [`ComponentIdentifier`] using reflection.
+    pub fn lookup_datatype(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<&arrow::datatypes::DataType> {
+        self.component_identifiers
+            .get(&component)
+            .and_then(|descr| descr.component_type)
+            .and_then(|ct| self.components.get(&ct))
+            .map(|r| &r.datatype)
+    }
+}
+
 /// Computes a placeholder for a given arrow datatype.
 ///
 /// With the exception of a few unsupported types,

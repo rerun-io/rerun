@@ -12,6 +12,12 @@ pub enum AuthCommands {
     /// To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
     Login(LoginCommand),
 
+    /// Log out of Rerun.
+    ///
+    /// This command clears the credentials stored on your machine
+    /// and ends your session.
+    Logout(LogoutCommand),
+
     /// Retrieve the stored access token.
     ///
     /// The access token is part of the credentials produced by `rerun auth login`,
@@ -37,6 +43,21 @@ pub struct LoginCommand {
     /// Trigger the full login flow even if valid credentials already exist.
     #[clap(long, default_value = "false")]
     force: bool,
+
+    /// `WorkOS` organization ID to log in to.
+    ///
+    /// If you belong to multiple organizations, this selects which one
+    /// to use. Without this flag, the browser will prompt you to choose
+    /// (or reuse the previous selection).
+    #[clap(long, hide = true)]
+    org_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub struct LogoutCommand {
+    /// Post a link instead of directly opening in the browser.
+    #[clap(long, default_value = "false")]
+    no_open_browser: bool,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -53,6 +74,12 @@ pub struct GenerateTokenCommand {
     /// - ISO 8601 duration format, e.g. `P1D`.
     #[clap(long)]
     expiration: String,
+
+    /// Which permission the token should have.
+    ///
+    /// [`read`, `read-write`]
+    #[clap(long, default_value = "read")]
+    permission: String,
 }
 
 impl AuthCommands {
@@ -62,23 +89,62 @@ impl AuthCommands {
                 let options = re_auth::cli::LoginOptions {
                     open_browser: !args.no_open_browser,
                     force_login: args.force,
+                    org_id: args.org_id,
                 };
                 runtime.block_on(re_auth::cli::login(options))
+            }
+
+            Self::Logout(args) => {
+                let options = re_auth::cli::LogoutOptions {
+                    open_browser: !args.no_open_browser,
+                };
+                re_auth::cli::logout(&options)
             }
 
             Self::Token(_) => runtime.block_on(re_auth::cli::token()),
 
             Self::GenerateToken(args) => {
-                let server = url::Url::parse(&args.server)
-                    .map_err(|err| re_auth::cli::Error::Generic(err.into()))?
-                    .origin();
+                let server = parse_http_or_rerun_uri(&args.server)
+                    .map_err(|err| re_auth::cli::Error::Generic(err.into()))?;
                 let expiration = args
                     .expiration
                     .parse::<jiff::Span>()
                     .map_err(|err| re_auth::cli::Error::Generic(err.into()))?;
-                let options = re_auth::cli::GenerateTokenOptions { server, expiration };
+                let permission = args
+                    .permission
+                    .parse::<re_auth::Permission>()
+                    .map_err(|err| re_auth::cli::Error::Generic(err.into()))?;
+                let options = re_auth::cli::GenerateTokenOptions {
+                    server,
+                    expiration,
+                    permission,
+                };
                 runtime.block_on(re_auth::cli::generate_token(options))
             }
         }
+    }
+}
+
+#[derive(Debug)]
+struct InvalidUri;
+
+impl std::fmt::Display for InvalidUri {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "invalid uri, expected one of: `rerun://`, `rerun+http://`, `rerun+https://`, `http://`, `https://`"
+        )
+    }
+}
+
+impl std::error::Error for InvalidUri {}
+
+fn parse_http_or_rerun_uri(s: &str) -> Result<url::Origin, InvalidUri> {
+    if let Ok(url) = s.parse::<re_uri::Origin>() {
+        Ok(url::Url::parse(&url.as_url()).expect("valid url").origin())
+    } else if let Ok(url) = url::Url::parse(s) {
+        Ok(url.origin())
+    } else {
+        Err(InvalidUri)
     }
 }

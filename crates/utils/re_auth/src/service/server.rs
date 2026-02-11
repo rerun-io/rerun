@@ -4,30 +4,24 @@ use tonic::{Request, Status};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 use crate::provider::VerificationOptions;
-use crate::{Error, Jwt, RedapProvider};
+use crate::{Error, Jwt, Permission, RedapProvider};
 
 #[derive(Debug, Clone)]
 pub struct UserContext {
     pub user_id: String,
 
-    #[cfg(feature = "oauth")]
-    pub permissions: Vec<crate::oauth::Permission>,
+    pub permissions: Vec<Permission>,
 }
 
-#[cfg(feature = "oauth")]
 impl UserContext {
     pub fn has_read_permission(&self) -> bool {
-        use crate::oauth::Permission as P;
-
         self.permissions
             .iter()
-            .any(|p| p == &P::Read || p == &P::ReadWrite)
+            .any(|p| p == &Permission::Read || p == &Permission::ReadWrite)
     }
 
     pub fn has_write_permission(&self) -> bool {
-        use crate::oauth::Permission as P;
-
-        self.permissions.iter().any(|p| p == &P::ReadWrite)
+        self.permissions.iter().any(|p| p == &Permission::ReadWrite)
     }
 }
 
@@ -77,7 +71,6 @@ impl Interceptor for Authenticator {
             req.extensions_mut().insert(UserContext {
                 user_id: claims.sub().to_owned(),
 
-                #[cfg(feature = "oauth")]
                 permissions: claims.permissions().to_vec(),
             });
         }

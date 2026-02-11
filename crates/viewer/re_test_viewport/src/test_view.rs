@@ -98,6 +98,7 @@ impl ViewClass for TestView {
     fn ui(
         &self,
         _ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         _state: &mut dyn re_viewer_context::ViewState,
         _query: &re_viewer_context::ViewQuery<'_>,

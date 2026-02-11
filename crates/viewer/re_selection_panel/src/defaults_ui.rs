@@ -104,6 +104,7 @@ fn active_default_ui(
     let query_context = QueryContext {
         view_ctx: ctx,
         target_entity_path: &view.defaults_path,
+        instruction_id: None,
         archetype_name: None,
         query,
     };
@@ -306,6 +307,7 @@ fn add_popup_ui(
     let query_context = QueryContext {
         view_ctx: ctx,
         target_entity_path: defaults_path,
+        instruction_id: None,
         archetype_name: None,
         query,
     };

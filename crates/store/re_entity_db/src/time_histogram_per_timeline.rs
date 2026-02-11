@@ -226,7 +226,7 @@ impl TimeHistogramPerTimeline {
     pub fn on_rrd_manifest(&mut self, rrd_manifest_index: &RrdManifestIndex) {
         re_tracing::profile_function!();
 
-        for chunk in rrd_manifest_index.remote_chunks() {
+        for chunk in rrd_manifest_index.root_chunks() {
             if chunk.temporals.is_empty() {
                 self.has_static = true;
             }
@@ -260,8 +260,8 @@ impl TimeHistogramPerTimeline {
                 ChunkStoreDiff::Addition(add) => {
                     let delta_chunk = add.delta_chunk();
 
-                    let remote_chunk_id = add.chunk_before_processing.id();
-                    let remote_chunk_info = rrd_manifest_index.remote_chunk_info(&remote_chunk_id);
+                    let root_chunk_id = add.chunk_before_processing.id();
+                    let root_chunk_info = rrd_manifest_index.root_chunk_info(&root_chunk_id);
 
                     if delta_chunk.is_static() {
                         self.has_static = true;
@@ -270,7 +270,7 @@ impl TimeHistogramPerTimeline {
                             let times = time_column.times_raw();
                             let timeline = time_column.timeline();
 
-                            if let Some(chunk_info) = remote_chunk_info
+                            if let Some(chunk_info) = root_chunk_info
                                 && let Some(timeline_info) =
                                     &chunk_info.temporals.get(timeline.name())
                             {
@@ -310,14 +310,10 @@ impl TimeHistogramPerTimeline {
                         // We want to explicitly look for root chunks here, even if that means walking recursively
                         // through the lineage tree.
                         // We will need them in order to re-fill the estimates as best as we can.
-                        let remote_chunk_ids = store
-                            .find_root_rrd_manifests(&del.chunk.id())
-                            .into_iter()
-                            .map(|(c, _)| c)
-                            .collect_vec();
-                        let remote_chunk_infos = remote_chunk_ids
+                        let root_chunk_ids = store.find_root_chunks(&del.chunk.id());
+                        let root_chunk_infos = root_chunk_ids
                             .iter()
-                            .filter_map(|cid| rrd_manifest_index.remote_chunk_info(cid))
+                            .filter_map(|cid| rrd_manifest_index.root_chunk_info(cid))
                             .collect_vec();
 
                         for time_column in del.chunk.timelines().values() {
@@ -346,7 +342,7 @@ impl TimeHistogramPerTimeline {
                                 _ => 1.0,
                             };
 
-                            for chunk_info in &remote_chunk_infos {
+                            for chunk_info in &root_chunk_infos {
                                 if let Some(timeline_info) =
                                     chunk_info.temporals.get(timeline.name())
                                 {

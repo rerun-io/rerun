@@ -31,7 +31,7 @@ pub use self::loader_archetype::ArchetypeLoader;
 pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_mcap::McapLoader;
 pub use self::loader_rrd::RrdLoader;
-pub use self::loader_urdf::{UrdfDataLoader, UrdfTree};
+pub use self::loader_urdf::{UrdfDataLoader, UrdfTree, joint_transform as urdf_joint_transform};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     load_file::load_from_path,
@@ -414,11 +414,21 @@ impl LoadedData {
 ///
 /// Lazy initialized the first time a file is opened.
 static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
+    let mcap_loader = match crate::loader_mcap::lenses::foxglove_lenses() {
+        Ok(lenses) => McapLoader::default().with_lenses(lenses),
+        Err(err) => {
+            re_log::error_once!(
+                "Failed to build Foxglove lenses: {err}. MCAP loader will run without them."
+            );
+            McapLoader::default()
+        }
+    };
+
     vec![
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        Arc::new(McapLoader::default()),
+        Arc::new(mcap_loader),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]

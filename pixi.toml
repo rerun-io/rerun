@@ -162,6 +162,8 @@ rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --
   "rerun-build-web-release",
 ] }
 
+rerun-build-native-and-pending-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --release --", env = { RERUN_TRAILING_WEB_VIEWER = "1" } }
+
 # Compile and run the web-viewer via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).

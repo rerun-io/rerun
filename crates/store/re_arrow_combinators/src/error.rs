@@ -1,12 +1,13 @@
 //! Error types used in the `re_arrow_combinators` crate.
 
 use std::num::TryFromIntError;
+use std::sync::Arc;
 
 use arrow::datatypes::DataType;
 use arrow::error::ArrowError;
 
 /// Errors that can occur during array transformations.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, Clone)]
 pub enum Error {
     #[error("Field '{field_name}' not found. Available fields: [{}]", available_fields.join(", "))]
     FieldNotFound {
@@ -78,7 +79,17 @@ pub enum Error {
     IndexOutOfBounds { index: usize, length: usize },
 
     #[error(transparent)]
-    Arrow(#[from] ArrowError),
+    Arrow(Arc<ArrowError>),
+
+    /// Placeholder for a custom error message that doesn't fit into the above categories.
+    #[error("{0}")]
+    Other(String),
+}
+
+impl From<ArrowError> for Error {
+    fn from(err: ArrowError) -> Self {
+        Self::Arrow(Arc::new(err))
+    }
 }
 
 impl From<crate::selector::Error> for Error {
@@ -88,9 +99,7 @@ impl From<crate::selector::Error> for Error {
             crate::selector::Error::Runtime(e) => e,
             // For lex/parse errors, wrap them in a generic error message
             // These shouldn't typically happen at runtime since selectors are pre-parsed
-            other => Self::Arrow(ArrowError::InvalidArgumentError(format!(
-                "Selector error: {other}"
-            ))),
+            other => ArrowError::InvalidArgumentError(format!("Selector error: {other}")).into(),
         }
     }
 }

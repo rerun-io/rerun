@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
+use parking_lot::Mutex;
+use re_chunk_store::MissingChunkReporter;
+use vec1::Vec1;
+
 use re_chunk::{ArchetypeName, ComponentType};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
@@ -128,6 +131,104 @@ impl VisualizerQueryInfo {
     }
 }
 
+/// Severity level for visualizer diagnostics.
+///
+/// Sorts from least concern to highest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum VisualizerReportSeverity {
+    /// Something went wrong on an optional component.
+    ///
+    /// We can often still show something using the default.
+    Warning,
+
+    /// Something went wrong on a required component (or otherwise fatally).
+    ///
+    /// The entity usually can't be shown.
+    Error,
+
+    /// It's not just a single visualizer instruction that failed, but the visualizer as a whole tanked.
+    OverallVisualizerError,
+}
+
+/// Contextual information about where/why a diagnostic occurred.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct VisualizerReportContext {
+    /// The component that caused the issue (if applicable).
+    ///
+    /// In presence of mappings this is the target mapping, i.e. the visualizer's "slot name".
+    pub component: Option<ComponentIdentifier>,
+
+    /// Additional free-form context
+    pub extra: Option<String>,
+}
+
+impl re_byte_size::SizeBytes for VisualizerReportContext {
+    fn heap_size_bytes(&self) -> u64 {
+        self.extra.heap_size_bytes()
+    }
+}
+
+/// A diagnostic message (error or warning) from a visualizer for a single instruction.
+///
+/// Collected into [`crate::VisualizerTypeReport::PerInstructionReport`].
+///
+/// # Sub-types of per-instruction failures
+///
+/// * **Cross-component / "global" reason** — the entity can't be shown for a reason
+///   not tied to one component (e.g. a broken transform chain, `Pinhole` interplay).
+///   In this case [`context.component`](VisualizerReportContext::component) is `None`.
+///
+/// * **A specific component didn't make sense**
+///   ([`context.component`](VisualizerReportContext::component) is `Some`):
+///   - *Selector failure* — the component mapping/selector couldn't resolve:
+///     the referenced component doesn't exist, the jq selector string is syntactically
+///     invalid, or it points at something that doesn't exist.
+///   - *Bad data* — the selector resolved, but the resulting data is malformed,
+///     has an unexpected type, or is otherwise unusable.
+///
+/// For a high-level failure handling overview, see the `re_viewer` crate documentation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct VisualizerInstructionReport {
+    pub severity: VisualizerReportSeverity,
+    pub context: VisualizerReportContext,
+
+    /// Short message suitable for inline display
+    pub summary: String,
+
+    /// Optional detailed explanation
+    pub details: Option<String>,
+}
+
+impl re_byte_size::SizeBytes for VisualizerInstructionReport {
+    fn heap_size_bytes(&self) -> u64 {
+        self.summary.heap_size_bytes()
+            + self.details.heap_size_bytes()
+            + self.context.heap_size_bytes()
+    }
+}
+
+impl VisualizerInstructionReport {
+    /// Create a new error report
+    pub fn error(summary: impl Into<String>) -> Self {
+        Self {
+            severity: VisualizerReportSeverity::Error,
+            summary: summary.into(),
+            details: None,
+            context: VisualizerReportContext::default(),
+        }
+    }
+
+    /// Create a new warning report
+    pub fn warning(summary: impl Into<String>) -> Self {
+        Self {
+            severity: VisualizerReportSeverity::Warning,
+            summary: summary.into(),
+            details: None,
+            context: VisualizerReportContext::default(),
+        }
+    }
+}
+
 /// Result of running [`VisualizerSystem::execute`].
 #[derive(Default)]
 pub struct VisualizerExecutionOutput {
@@ -136,12 +237,18 @@ pub struct VisualizerExecutionOutput {
     /// It's the view's responsibility to queue this data for rendering.
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 
-    /// Errors encountered during execution, mapped to the visualizer instructions that caused them.
+    /// Reports (errors and warnings) encountered during execution, mapped to the visualizer instructions that caused them.
     ///
-    /// Errors from last frame will be shown in the UI for the respective visualizer instruction.
+    /// Reports from last frame will be shown in the UI for the respective visualizer instruction.
     /// For errors that prevent any visualization at all, return a
     /// [`ViewSystemExecutionError`] instead.
-    pub errors_per_instruction: HashMap<VisualizerInstructionId, String>,
+    ///
+    /// It's mutex protected to make it easier to append errors while processing instructions in parallel.
+    pub reports_per_instruction:
+        Mutex<BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>>,
+
+    /// Used to indicate that some chunks were missing
+    missing_chunk_reporter: MissingChunkReporter,
     //
     // TODO(andreas): We should put other output here as well instead of passing around visualizer
     // structs themselves which is rather surprising.
@@ -150,24 +257,62 @@ pub struct VisualizerExecutionOutput {
 }
 
 impl VisualizerExecutionOutput {
+    /// Indicate that the view should show a loading indicator because data is missing.
+    pub fn set_missing_chunks(&self) {
+        self.missing_chunk_reporter.report_missing_chunk();
+    }
+
+    /// Were any required chunks missing?
+    pub fn any_missing_chunks(&self) -> bool {
+        self.missing_chunk_reporter.any_missing()
+    }
+
+    /// Can be used to report missing chunks.
+    pub fn missing_chunk_reporter(&self) -> &MissingChunkReporter {
+        &self.missing_chunk_reporter
+    }
+
     /// Marks the given visualizer instruction as having encountered an error during visualization.
     pub fn report_error_for(
-        &mut self,
+        &self,
         instruction_id: VisualizerInstructionId,
         error: impl Into<String>,
     ) {
-        self.errors_per_instruction
-            .insert(instruction_id, error.into());
+        // TODO(RR-3506): enforce supplying context information.
+        let report = VisualizerInstructionReport::error(error);
+        self.reports_per_instruction
+            .lock()
+            .entry(instruction_id)
+            .and_modify(|v| v.push(report.clone()))
+            .or_insert_with(|| vec1::vec1![report]);
     }
 
     /// Marks the given visualizer instruction as having encountered a warning during visualization.
     pub fn report_warning_for(
-        &mut self,
+        &self,
         instruction_id: VisualizerInstructionId,
-        error: impl Into<String>,
+        warning: impl Into<String>,
     ) {
-        // TODO(RR-3506): We should differentiate between errors and warnings from visualizers.
-        self.report_error_for(instruction_id, error);
+        // TODO(RR-3506): enforce supplying context information.
+        let report = VisualizerInstructionReport::warning(warning);
+        self.reports_per_instruction
+            .lock()
+            .entry(instruction_id)
+            .and_modify(|v| v.push(report.clone()))
+            .or_insert_with(|| vec1::vec1![report]);
+    }
+
+    /// Report a detailed diagnostic for a visualizer instruction.
+    pub fn report(
+        &self,
+        instruction_id: VisualizerInstructionId,
+        report: VisualizerInstructionReport,
+    ) {
+        self.reports_per_instruction
+            .lock()
+            .entry(instruction_id)
+            .and_modify(|v| v.push(report.clone()))
+            .or_insert_with(|| vec1::vec1![report]);
     }
 
     pub fn with_draw_data(

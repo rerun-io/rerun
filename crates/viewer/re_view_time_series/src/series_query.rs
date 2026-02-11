@@ -3,13 +3,16 @@
 use itertools::Itertools as _;
 
 use re_chunk_store::RangeQuery;
-use re_chunk_store::external::re_chunk::CastToPrimitive;
-use re_log_types::{EntityPath, TimeInt};
-use re_sdk_types::external::arrow;
+use re_log_types::TimeInt;
+use re_log_types::external::arrow::array::{self, BooleanArray};
+use re_log_types::external::arrow::buffer::BooleanBuffer;
+use re_sdk_types::components::SeriesVisible;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
-use re_view::{HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
-use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
+use re_sdk_types::{
+    Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
+};
+use re_view::clamped_or_nothing;
+use re_viewer_context::QueryContext;
 
 use crate::{PlotPoint, PlotSeriesKind};
 
@@ -24,45 +27,53 @@ pub fn determine_num_series(all_scalar_chunks: &re_view::ChunksWithComponent<'_>
         .iter()
         .find_map(|chunk| {
             chunk
-                // TODO(grtlr): The comment above is even more important when we do casting (allocations) here.
-                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
-                .iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
-                .find_map(|values| (!values.is_empty()).then_some(values.len()))
+                .iter_slices::<f64>()
+                .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         })
         .unwrap_or(1)
 }
 
 /// Queries the visibility flags for all series in a query.
 pub fn collect_series_visibility(
-    query: &RangeQuery,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &HybridRangeResults<'_>,
+    query_ctx: &QueryContext<'_>,
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
     num_series: usize,
     visibility_component: ComponentIdentifier,
 ) -> Vec<bool> {
-    bootstrapped_results
-        .iter_as(|_| {}, *query.timeline(), visibility_component)
+    let boolean_buffer = results
+        .iter_optional(visibility_component)
         .slice::<bool>()
-        .chain(
-            results
-                .iter_as(|_| {}, *query.timeline(), visibility_component)
-                .slice::<bool>(),
-        )
         .next()
         .map_or_else(
-            || vec![true; num_series], // By default all series are visible.
-            |(_, visible)| {
-                let mut flags = visible.iter().collect_vec();
-                if flags.len() < num_series {
-                    // If there are less flags than series, repeat the last flag (or true if there are no flags).
-                    flags.extend(std::iter::repeat_n(
-                        *flags.last().unwrap_or(&true),
-                        num_series - flags.len(),
-                    ));
-                }
-                flags
+            || {
+                query_ctx
+                    .viewer_ctx()
+                    .component_fallback_registry
+                    .fallback_for(visibility_component, Some(SeriesVisible::name()), query_ctx)
+                    .as_any()
+                    .downcast_ref::<BooleanArray>()
+                    .map(|arr| arr.values().clone())
+                    .unwrap_or_else(|| {
+                        re_log::warn_once!(
+                            "Failed to cast visibility fallback to BooleanArray, defaulting to true"
+                        );
+                        BooleanBuffer::new_set(1)
+                    })
             },
-        )
+            |(_, visible)| visible,
+        );
+
+    let mut flags = boolean_buffer.iter().take(num_series).collect_vec();
+
+    // If there are less flags than series, repeat the last flag (or true if there are no flags).
+    if flags.len() < num_series {
+        flags.extend(std::iter::repeat_n(
+            *flags.last().unwrap_or(&true),
+            num_series - flags.len(),
+        ));
+    }
+
+    flags
 }
 
 /// Allocates all points for the series.
@@ -99,10 +110,7 @@ pub fn collect_scalars(
         let points = &mut *points_per_series[0];
         all_scalar_chunks
             .iter()
-            .flat_map(|chunk| {
-                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
-                chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
-            })
+            .flat_map(|chunk| chunk.iter_slices::<f64>())
             .enumerate()
             .for_each(|(i, values)| {
                 if let Some(value) = values.first() {
@@ -114,17 +122,13 @@ pub fn collect_scalars(
     } else {
         all_scalar_chunks
             .iter()
-            .flat_map(|chunk| {
-                // TODO(grtlr): Unless we're on the happy path this allocates and happens everytime the visualizer runs!
-                chunk.iter_slices::<CastToPrimitive<arrow::datatypes::Float64Type, f64>>()
-            })
+            .flat_map(|chunk| chunk.iter_slices::<f64>())
             .enumerate()
             .for_each(|(i, values)| {
-                let values_slice = values.as_ref();
-                for (points, value) in points_per_series.iter_mut().zip(values_slice) {
+                for (points, value) in points_per_series.iter_mut().zip(values) {
                     points[i].value = *value;
                 }
-                for points in points_per_series.iter_mut().skip(values_slice.len()) {
+                for points in points_per_series.iter_mut().skip(values.len()) {
                     points[i].attrs.kind = PlotSeriesKind::Clear;
                 }
             });
@@ -133,10 +137,9 @@ pub fn collect_scalars(
 
 /// Collects colors for the series into pre-allocated plot points.
 pub fn collect_colors(
-    entity_path: &EntityPath,
+    query_ctx: &QueryContext<'_>,
     query: &RangeQuery,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &re_view::HybridRangeResults<'_>,
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     color_descriptor: &ComponentDescriptor,
@@ -153,19 +156,8 @@ pub fn collect_colors(
         re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
     }
 
-    let bootstrapped_color_chunks =
-        bootstrapped_results.get_optional_chunks(color_descriptor.component);
-    let results_color_chunks = results.get_optional_chunks(color_descriptor.component);
-    let all_color_chunks = bootstrapped_color_chunks
-        .iter(|err| {
-            // TODO(RR-3506): This should be a visualizer warning instead!
-            re_log::warn_once!("could not retrieve all colors: {err}");
-        })
-        .chain(results_color_chunks.iter(|err| {
-            // TODO(RR-3506): This should be a visualizer warning instead!
-            re_log::warn_once!("could not retrieve result colors: {err}");
-        }))
-        .collect_vec();
+    let color_iter = query_results.iter_optional(color_descriptor.component);
+    let all_color_chunks = color_iter.chunks().iter().collect_vec();
 
     if all_color_chunks.len() == 1 && all_color_chunks[0].chunk.is_static() {
         re_tracing::profile_scope!("override/default fast path");
@@ -182,23 +174,31 @@ pub fn collect_colors(
             }
         }
     } else if all_color_chunks.is_empty() {
-        if num_series > 1 {
-            re_tracing::profile_scope!("default color for multiple series");
+        re_tracing::profile_scope!("fallback colors");
 
-            // Have to fill in additional default colors.
-            // TODO(andreas): Could they somehow be provided by the fallback provider?
-            // It's tricky since the fallback provider doesn't know how many colors to produce!
-            for (i, points) in points_per_series.iter_mut().skip(1).enumerate() {
-                // Normally we generate colors from entity names, but getting the display label needs extra processing,
-                // and it's nice to not care about that here.
-                let fallback_color = auto_color_egui(
-                    (re_log_types::hash::Hash64::hash((entity_path, i)).hash64() % u16::MAX as u64)
-                        as u16,
-                );
+        let fallback_array = query_ctx
+            .viewer_ctx()
+            .component_fallback_registry
+            .fallback_for(
+                color_descriptor.component,
+                Some(components::Color::name()),
+                query_ctx,
+            );
+
+        if let Some(color_array) = fallback_array.as_any().downcast_ref::<array::UInt32Array>() {
+            let fallback_colors = color_array.values();
+
+            for (points, color) in points_per_series
+                .iter_mut()
+                .zip(clamped_or_nothing(fallback_colors.as_ref(), num_series))
+            {
+                let color = map_raw_color(color);
                 for point in points {
-                    point.attrs.color = fallback_color;
+                    point.attrs.color = color;
                 }
             }
+        } else {
+            re_log::error_once!("Failed to cast builtin color fallback to UInt32Array");
         }
     } else {
         re_tracing::profile_scope!("standard path");
@@ -237,54 +237,81 @@ pub fn collect_colors(
     }
 }
 
+/// Expands names to match `num_series`, adding indices for additional series.
+/// For selectors like `data[]`, strips the `[]` suffix before adding indices.
+fn expand_series_names(names: &[String], num_series: usize) -> Vec<String> {
+    let name_count = names.len();
+    (0..num_series)
+        .zip(clamped_or_nothing(names, num_series))
+        .map(|(i, name)| {
+            if i < name_count {
+                name.clone()
+            } else {
+                format!("{name}[{i}]")
+            }
+        })
+        .collect()
+}
+
 /// Collects series names for the series into pre-allocated plot points.
 pub fn collect_series_name(
     query_ctx: &QueryContext<'_>,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &re_view::HybridRangeResults<'_>,
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     num_series: usize,
     name_descriptor: &ComponentDescriptor,
 ) -> Vec<String> {
     re_tracing::profile_function!();
 
-    let bootstrapped_name_chunks =
-        bootstrapped_results.get_optional_chunks(name_descriptor.component);
-    let results_name_chunks = results.get_optional_chunks(name_descriptor.component);
-    let mut series_names: Vec<String> = bootstrapped_name_chunks
-        .iter(|err| {
-            // TODO(RR-3506): This should be a visualizer warning instead!
-            re_log::warn_once!("could not retrieve bootstrapped names: {err}");
-        })
-        .chain(results_name_chunks.iter(|err| {
-            // TODO(RR-3506): This should be a visualizer warning instead!
-            re_log::warn_once!("could not retrieve result names: {err}");
-        }))
+    let name_iter = query_results.iter_optional(name_descriptor.component);
+    let all_name_chunks = name_iter.chunks().iter().collect_vec();
+
+    if let Some(slice) = all_name_chunks
+        .iter()
         .find(|chunk| !chunk.chunk.is_empty())
         .and_then(|chunk| chunk.iter_slices::<String>().next())
-        .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
-        .unwrap_or_default();
+        .filter(|slice| !slice.is_empty())
+    {
+        re_tracing::profile_scope!("logged names");
+        let names: Vec<String> = slice.iter().map(|s| s.to_string()).collect();
+        expand_series_names(&names, num_series)
+    } else {
+        re_tracing::profile_scope!("fallback names");
 
-    if series_names.len() < num_series {
-        let fallback_name: String =
-            typed_fallback_for::<components::Name>(query_ctx, name_descriptor.component)
-                .to_string();
-        if num_series == 1 {
-            series_names.push(fallback_name);
+        let fallback_array = query_ctx
+            .viewer_ctx()
+            .component_fallback_registry
+            .fallback_for(
+                name_descriptor.component,
+                name_descriptor.component_type,
+                query_ctx,
+            );
+
+        if let Some(string_array) = fallback_array.as_any().downcast_ref::<array::StringArray>() {
+            let fallback_names: Vec<_> = string_array
+                .iter()
+                .flatten()
+                .map(|s| s.to_owned())
+                .collect();
+
+            if fallback_names.is_empty() {
+                re_log::error_once!("Failed to retrieve fallback names");
+                vec![]
+            } else {
+                // Due to the frame delay, we might end up with too few fallbacks here too, so we always
+                // expand the array of names.
+                expand_series_names(&fallback_names, num_series)
+            }
         } else {
-            // Repeating a name never makes sense, so we fill up the remaining names with made up ones instead.
-            series_names
-                .extend((series_names.len()..num_series).map(|i| format!("{fallback_name}/{i}")));
+            re_log::error_once!("Failed to cast builtin name fallback to StringArray");
+            vec![]
         }
     }
-
-    series_names
 }
 
 /// Collects `radius_ui` for the series into pre-allocated plot points.
 pub fn collect_radius_ui(
     query: &RangeQuery,
-    bootstrapped_results: &re_view::HybridLatestAtResults<'_>,
-    results: &re_view::HybridRangeResults<'_>,
+    query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
     radius_descriptor: &ComponentDescriptor,
@@ -295,19 +322,8 @@ pub fn collect_radius_ui(
     let num_series = points_per_series.len();
 
     {
-        let bootstrapped_radius_chunks =
-            bootstrapped_results.get_optional_chunks(radius_descriptor.component);
-        let results_radius_chunks = results.get_optional_chunks(radius_descriptor.component);
-        let all_radius_chunks = bootstrapped_radius_chunks
-            .iter(|err| {
-                // TODO(RR-3506): This should be a visualizer warning instead!
-                re_log::warn_once!("could not retrieve bootstrapped radius: {err}");
-            })
-            .chain(results_radius_chunks.iter(|err| {
-                // TODO(RR-3506): This should be a visualizer warning instead!
-                re_log::warn_once!("could not retrieve result radius: {err}");
-            }))
-            .collect_vec();
+        let radius_iter = query_results.iter_optional(radius_descriptor.component);
+        let all_radius_chunks = radius_iter.chunks().iter().collect_vec();
 
         if all_radius_chunks.len() == 1 && all_radius_chunks[0].chunk.is_static() {
             re_tracing::profile_scope!("override/default fast path");

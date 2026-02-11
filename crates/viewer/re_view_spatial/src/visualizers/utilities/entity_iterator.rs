@@ -1,6 +1,5 @@
-use re_log_types::{TimeInt, TimelineName};
 use re_sdk_types::Archetype;
-use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
+use re_view::{AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput,
@@ -25,7 +24,7 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     context_systems: &ViewContextCollection,
-    output: &mut VisualizerExecutionOutput,
+    output: &VisualizerExecutionOutput,
     archetype_space_kind: Option<SpatialViewKind>,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
@@ -33,14 +32,14 @@ where
     A: Archetype,
     F: FnMut(
         &QueryContext<'_>,
-        &mut SpatialSceneVisualizerInstructionContext<'_>,
-        &HybridResults<'_>,
+        &SpatialSceneVisualizerInstructionContext<'_>,
+        &VisualizerInstructionQueryResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
     let view_kind = super::spatial_view_kind_from_view_class(ctx.view_class_identifier);
-    let transforms = context_systems.get::<TransformTreeContext>()?;
-    let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
-    let annotations = context_systems.get::<AnnotationSceneContext>()?;
+    let transforms = context_systems.get::<TransformTreeContext>(output)?;
+    let depth_offsets = context_systems.get::<EntityDepthOffsets>(output)?;
+    let annotations = context_systems.get::<AnnotationSceneContext>(output)?;
 
     let latest_at = query.latest_at_query();
 
@@ -63,8 +62,7 @@ where
         };
 
         let depth_offset_key = (system_identifier, entity_path.hash());
-        let mut entity_context = SpatialSceneVisualizerInstructionContext {
-            instruction_id: &visualizer_instruction.id,
+        let instruction_context = SpatialSceneVisualizerInstructionContext {
             transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer
@@ -74,58 +72,26 @@ where
             annotations: annotations.0.find(entity_path),
             highlight: query.highlights.entity_outline_mask(entity_path.hash()),
             view_class_identifier: context_systems.view_class_identifier(),
-            output,
         };
 
         let results =
             data_result.query_archetype_with_history::<A>(ctx, query, visualizer_instruction);
 
-        let mut query_ctx = ctx.query_context(data_result, &latest_at);
+        let visualizer_instruction_result =
+            VisualizerInstructionQueryResults::new(visualizer_instruction.id, &results, output);
+
+        let mut query_ctx = ctx.query_context(data_result, &latest_at, visualizer_instruction.id);
         query_ctx.archetype_name = Some(A::name());
 
         {
             re_tracing::profile_scope!(format!("{entity_path}"));
-            fun(&query_ctx, &mut entity_context, &results)?;
+            fun(
+                &query_ctx,
+                &instruction_context,
+                &visualizer_instruction_result,
+            )?;
         }
     }
 
     Ok(())
-}
-
-// ---
-
-use re_chunk::{ChunkComponentIterItem, RowId};
-use re_chunk_store::external::re_chunk;
-
-/// Iterate `chunks` as indexed deserialized batches.
-///
-/// For simple cases (i.e. everything up to flat structs), prefer [`iter_slices`] instead which is
-/// faster.
-///
-/// See [`re_chunk::Chunk::iter_component`] for more information.
-pub fn iter_component<'a, C: re_sdk_types::Component>(
-    chunks: &'a ChunksWithComponent<'a>,
-    timeline: TimelineName,
-) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
-    chunks.iter().flat_map(move |chunk| {
-        itertools::izip!(
-            chunk.iter_component_indices(timeline),
-            chunk.iter_component::<C>()
-        )
-    })
-}
-
-/// Iterate `chunks` as indexed primitives.
-///
-/// See [`re_chunk::Chunk::iter_slices`] for more information.
-pub fn iter_slices<'a, T: 'a + re_chunk::ChunkComponentSlicer>(
-    chunks: &'a ChunksWithComponent<'a>,
-    timeline: TimelineName,
-) -> impl Iterator<Item = ((TimeInt, RowId), T::Item<'a>)> + 'a {
-    chunks.iter().flat_map(move |chunk| {
-        itertools::izip!(
-            chunk.iter_component_indices(timeline),
-            chunk.iter_slices::<T>()
-        )
-    })
 }

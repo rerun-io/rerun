@@ -217,7 +217,7 @@ fn test_topology_errors() {
         let visualizer_errors = test_context
             .view_states
             .lock()
-            .visualizer_errors(view_id)
+            .per_visualizer_type_reports(view_id)
             .cloned()
             .unwrap_or_default();
 
@@ -227,20 +227,21 @@ fn test_topology_errors() {
             .iter()
             .map(|(visualizer_type, error)| {
                 let error = match error {
-                    re_viewer_context::VisualizerExecutionErrorState::Overall(err) => {
-                        re_error::format_ref(&err)
+                    re_viewer_context::VisualizerTypeReport::OverallError(err) => {
+                        err.summary.clone()
                     }
-                    re_viewer_context::VisualizerExecutionErrorState::PerInstruction(errors) => {
-                        errors
-                            .iter()
-                            .map(|(instr_id, err)| {
-                                let data_result = query_result_tree
-                                    .lookup_result_by_visualizer_instruction(*instr_id);
-                                format!("{:?}: {err}", data_result.unwrap().entity_path)
+                    re_viewer_context::VisualizerTypeReport::PerInstructionReport(errors) => errors
+                        .iter()
+                        .flat_map(|(instr_id, reports)| {
+                            let data_result = query_result_tree
+                                .lookup_result_by_visualizer_instruction(*instr_id)
+                                .unwrap();
+                            reports.iter().map(|report| {
+                                format!("{:?}: {}", data_result.entity_path, report.summary)
                             })
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                    }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n"),
                 };
                 format!("{visualizer_type:?}: {error}")
             })

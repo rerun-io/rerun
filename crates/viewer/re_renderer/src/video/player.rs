@@ -7,7 +7,9 @@ use web_time::Instant;
 use super::VideoFrameTexture;
 use super::chunk_decoder::VideoSampleDecoder;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
-use crate::video::{DecoderDelayState, InsufficientSampleDataError, VideoPlayerError};
+use crate::video::{
+    DecoderDelayState, InsufficientSampleDataError, UnloadedSampleDataError, VideoPlayerError,
+};
 
 pub struct PlayerConfiguration {
     /// Don't report hickups lasting shorter than this.
@@ -15,7 +17,7 @@ pub struct PlayerConfiguration {
     /// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
     /// transient errors without flickering.
     ///
-    /// Same with showing a spinner: if we show it too fast, it is annoying.
+    /// Same with showing a loading indicator: if we show it too fast, it is annoying.
     ///
     /// This is wallclock time and independent of how fast a video is being played back.
     pub decoding_grace_delay_before_reporting: Duration,
@@ -161,7 +163,7 @@ pub fn request_keyframe_before<'a>(
                     VideoPlayerError::BadData
                 }),
             re_video::SampleMetadataState::Unloaded(_) => {
-                Err(InsufficientSampleDataError::ExpectedSampleNotLoaded.into())
+                Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into())
             }
         }
     } else {
@@ -209,7 +211,7 @@ fn try_request_missing_samples_at_presentation_timestamp<'a>(
     let Some(found_loaded_sample_idx) =
         sample_idx_after_timestamp.or_else(|| best_sample_idx_before_timestamp.map(|(_, idx)| idx))
     else {
-        return InsufficientSampleDataError::NoLoadedSamples.into();
+        return UnloadedSampleDataError::NoLoadedSamples.into();
     };
 
     match request_keyframe_before(
@@ -326,6 +328,7 @@ impl VideoPlayer {
         let Some(requested_sample_idx) =
             video_description.latest_sample_index_at_presentation_timestamp(requested_pts)
         else {
+            self.reset(video_description)?;
             return Err(try_request_missing_samples_at_presentation_timestamp(
                 requested_pts,
                 video_description,
@@ -387,14 +390,14 @@ impl VideoPlayer {
             };
         }
 
-        // Decide whether to show a spinner or even error out.
-        let show_spinner = match self.decoder_delay_state {
+        // Decide whether to show a loading indicator or even error out.
+        let show_loading_indicator = match self.decoder_delay_state {
             DecoderDelayState::UpToDate => {
                 self.last_time_caught_up = Some(Instant::now());
                 false
             }
 
-            // Haven't caught up, but intentionally don't show a spinner.
+            // Haven't caught up, but intentionally don't show a loading indicator.
             DecoderDelayState::UpToDateToleratedEdgeOfLiveStream => false,
 
             DecoderDelayState::UpToDateWithinTolerance | DecoderDelayState::Behind => {
@@ -423,7 +426,7 @@ impl VideoPlayer {
         Ok(VideoFrameTexture {
             texture: self.video_texture.texture.clone(),
             decoder_delay_state: self.decoder_delay_state,
-            show_spinner,
+            show_loading_indicator,
             frame_info: self.video_texture.frame_info.clone(),
             source_pixel_format: self.video_texture.source_pixel_format,
         })
@@ -460,7 +463,11 @@ impl VideoPlayer {
         // required for the encoder to work if we've already enqueued the frames,
         // but it does make it more stable to still have those in-memory.
         let requested_keyframe_idx =
-            request_keyframe_before(video_description, requested_sample_idx, get_video_buffer)?;
+            request_keyframe_before(video_description, requested_sample_idx, get_video_buffer)
+                .inspect_err(|_err| {
+                    // We're already returning an error here.
+                    let _res = self.reset(video_description);
+                })?;
 
         self.handle_errors_and_reset_decoder_if_needed(
             video_description,
@@ -533,9 +540,7 @@ impl VideoPlayer {
                     // Usually `last_enqueued` is greater than `requested_sample_idx`
                     // since we stay ahead of the requested sample as described above.
                     if last_enqueued <= requested_sample_idx {
-                        return Err(VideoPlayerError::InsufficientSampleData(
-                            InsufficientSampleDataError::ExpectedSampleNotLoaded,
-                        ));
+                        return Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into());
                     }
 
                     break;
@@ -788,7 +793,7 @@ impl VideoPlayer {
         }
 
         // If we're streaming in live video, we're a bit more relaxed about what counts as "catching up" for newly incoming frames:
-        // * we don't want to show the spinner too eagerly and rather give the impression of a delayed stream
+        // * we don't want to show the loading indicator too eagerly and rather give the impression of a delayed stream
         // * some decoders need a certain amount of samples in the queue to produce a frame.
         //   See AsyncDecoder::min_num_samples_to_enqueue_ahead for more details about decoder peculiarities.
         if treat_video_as_live_stream(&self.config, video_description) {

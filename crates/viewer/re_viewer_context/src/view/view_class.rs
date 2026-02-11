@@ -1,4 +1,7 @@
-use nohash_hasher::{IntMap, IntSet};
+use std::collections::BTreeMap;
+
+use nohash_hasher::IntSet;
+use re_chunk_store::MissingChunkReporter;
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 
@@ -25,7 +28,7 @@ pub enum ViewClassLayoutPriority {
     High,
 }
 
-pub struct RecommendedVisualizers(pub IntMap<ViewSystemIdentifier, VisualizerComponentMappings>);
+pub struct RecommendedVisualizers(pub BTreeMap<ViewSystemIdentifier, VisualizerComponentMappings>);
 
 impl RecommendedVisualizers {
     pub fn empty() -> Self {
@@ -60,6 +63,13 @@ pub trait ViewClass: Send + Sync {
     fn identifier() -> ViewClassIdentifier
     where
         Self: Sized;
+
+    /// Ordering hint for view class recommendations. Lower values are recommended *more*.
+    ///
+    /// If tied, the display name is used as a tiebreaker in lexicographical order.
+    fn recommendation_order(&self) -> i32 {
+        0
+    }
 
     /// User-facing name of this view class.
     ///
@@ -174,7 +184,22 @@ pub trait ViewClass: Send + Sync {
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics;
 
+    /// Ui for quickly navigating the (active) visualizers for a view.
+    ///
+    /// Each view can opt-in to using this feature.
+    #[expect(clippy::type_complexity)]
+    fn visualizers_ui<'a>(
+        &'a self,
+        _ctx: &'a ViewerContext<'a>,
+        _view_id: ViewId,
+        _state: &'a mut dyn ViewState,
+        _space_origin: &'a EntityPath,
+    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
+        None
+    }
+
     /// Ui shown when the user selects a view of this class.
+    #[doc(alias = "settings_ui")]
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
@@ -209,9 +234,12 @@ pub trait ViewClass: Send + Sync {
     /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
     ///              In the future, we likely want to move view builder handling to `re_viewport` with
     ///              minimal configuration options exposed via [`crate::ViewClass`].
+    #[doc(alias = "paint")]
+    #[doc(alias = "render")]
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,

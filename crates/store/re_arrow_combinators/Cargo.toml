@@ -24,6 +24,7 @@ re_arrow_util.workspace = true
 
 arrow.workspace = true
 thiserror.workspace = true
+vec1.workspace = true
 
 [dev-dependencies]
 insta.workspace = true

@@ -53,6 +53,17 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
+  // Unregisters segments and layers from the Dataset.
+  //
+  // Excluding IO errors, this will always succeed as long the target dataset exists.
+  // Corollary: unregistering data that doesn't exist is a no-op.
+  //
+  // This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
+  // also follow the schema returned by `GetDatasetManifestSchema`.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc UnregisterFromDataset(UnregisterFromDatasetRequest) returns (stream UnregisterFromDatasetResponse) {}
+
   // Write chunks to one or more segments.
   //
   // The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
@@ -266,6 +277,39 @@ message RegisterWithDatasetRequest {
 }
 
 message RegisterWithDatasetResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+// This request acts as a *product* filter:
+// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+message UnregisterFromDatasetRequest {
+  // The segment IDs to drop. All of them if empty.
+  //
+  // The final filter will be the *outer product* of this and `layers_to_drop`.
+  repeated rerun.common.v1alpha1.SegmentId segments_to_drop = 1;
+
+  // The layer names to drop. All of them if empty.
+  //
+  // The final filter will be the *outer product* of this and `segments_to_drop`.
+  repeated string layers_to_drop = 2;
+
+  // If true, deletion will go through regardless of the segments/layers' current statuses.
+  //
+  // This is only useful in the very specific, catatrophic scenario where the contents of the
+  // task queue were lost and some tasks are now stuck in `status=pending` forever.
+  //
+  // Do not use this unless you know exactly what you're doing.
+  bool force = 3;
+}
+
+message UnregisterFromDatasetResponse {
+  // This contains all the information about the segments and layers that were actually removed.
+  //
+  // This dataframe is always guaranteed to be a subset of the one found in `ScanDatasetManifestResponse`.
+  // They share the same semantics, schemas, etc.
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 

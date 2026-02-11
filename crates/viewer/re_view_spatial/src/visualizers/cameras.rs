@@ -229,9 +229,9 @@ impl VisualizerSystem for CamerasVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
         let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
@@ -257,7 +257,7 @@ impl VisualizerSystem for CamerasVisualizer {
             // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the
             // pinhole information from the transform tree instead, which already has this and other properties queried.
             if query_results
-                .get_required_mono::<components::PinholeProjection>(
+                .get_mono::<components::PinholeProjection>(
                     Pinhole::descriptor_image_from_camera().component,
                 )
                 .is_none()
@@ -298,7 +298,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 .entity_outline_mask(data_result.entity_path.hash());
 
             if let Err(err) = self.visit_instance(
-                &ctx.query_context(data_result, &query.latest_at_query()),
+                &ctx.query_context(data_result, &query.latest_at_query(), instruction.id),
                 &mut line_builder,
                 transforms,
                 &component_data,

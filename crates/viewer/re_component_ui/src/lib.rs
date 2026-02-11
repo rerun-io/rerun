@@ -76,6 +76,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // Color components:
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);
+    registry.add_singleline_array_edit_or_view::<Color>(color::edit_rgba32_array);
     registry.add_singleline_edit_or_view::<AlbedoFactor>(color::edit_rgba32);
 
     // 0-inf float components:

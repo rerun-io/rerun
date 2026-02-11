@@ -15,6 +15,10 @@ from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
 )
+from ..._converters import (
+    str_or_none,
+)
+from .visualizer_component_mapping_ext import VisualizerComponentMappingExt
 
 if TYPE_CHECKING:
     from ...blueprint import datatypes as blueprint_datatypes
@@ -34,30 +38,8 @@ def _visualizer_component_mapping__target__special_field_converter_override(x: d
         return datatypes.Utf8(x)
 
 
-def _visualizer_component_mapping__source_component__special_field_converter_override(
-    x: datatypes.Utf8Like | None,
-) -> datatypes.Utf8 | None:
-    if x is None:
-        return None
-    elif isinstance(x, datatypes.Utf8):
-        return x
-    else:
-        return datatypes.Utf8(x)
-
-
-def _visualizer_component_mapping__selector__special_field_converter_override(
-    x: datatypes.Utf8Like | None,
-) -> datatypes.Utf8 | None:
-    if x is None:
-        return None
-    elif isinstance(x, datatypes.Utf8):
-        return x
-    else:
-        return datatypes.Utf8(x)
-
-
 @define(init=False)
-class VisualizerComponentMapping:
+class VisualizerComponentMapping(VisualizerComponentMappingExt):
     """
     **Datatype**: Associate components of an entity to components of a visualizer.
 
@@ -71,8 +53,8 @@ class VisualizerComponentMapping:
         target: datatypes.Utf8Like,
         source_kind: blueprint_datatypes.ComponentSourceKindLike,
         *,
-        source_component: datatypes.Utf8Like | None = None,
-        selector: datatypes.Utf8Like | None = None,
+        source_component: str | None = None,
+        selector: str | None = None,
     ) -> None:
         """
         Create a new instance of the VisualizerComponentMapping datatype.
@@ -117,18 +99,14 @@ class VisualizerComponentMapping:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    source_component: datatypes.Utf8 | None = field(
-        default=None, converter=_visualizer_component_mapping__source_component__special_field_converter_override
-    )
+    source_component: str | None = field(default=None, converter=str_or_none)
     # Component selector for mapping.
     #
     # Defaults to `target` if not specified.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    selector: datatypes.Utf8 | None = field(
-        default=None, converter=_visualizer_component_mapping__selector__special_field_converter_override
-    )
+    selector: str | None = field(default=None, converter=str_or_none)
     # Optional selector string using jq-like syntax to pick a specific field on `source_component`.
     #
     # ⚠ TODO(RR-3308): Not fully implemented yet.
@@ -157,22 +135,4 @@ class VisualizerComponentMappingBatch(BaseBatch[VisualizerComponentMappingArrayL
 
     @staticmethod
     def _native_to_pa_array(data: VisualizerComponentMappingArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.blueprint.datatypes import ComponentSourceKindBatch
-        from rerun.datatypes import Utf8Batch
-
-        typed_data: Sequence[VisualizerComponentMapping]
-
-        if isinstance(data, VisualizerComponentMapping):
-            typed_data = [data]
-        else:
-            typed_data = data
-
-        return pa.StructArray.from_arrays(
-            [
-                Utf8Batch([x.target for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ComponentSourceKindBatch([x.source_kind for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                Utf8Batch([x.source_component for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                Utf8Batch([x.selector for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        return VisualizerComponentMappingExt.native_to_pa_array_override(data, data_type)

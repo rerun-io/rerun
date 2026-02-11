@@ -3,7 +3,6 @@
 //! The origin heuristics feature is used to automatically set the view origin
 //! for views based on the data in the log.
 
-use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
@@ -117,7 +116,12 @@ pub async fn test_origin_keypoint_3d() {
     harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_at(harness.get_by_label("keypoint").rect().left_center());
+    let keypoint = harness
+        .blueprint_tree()
+        .get_label("keypoint")
+        .rect()
+        .left_center();
+    harness.right_click_at(keypoint);
     harness.hover_label_contains("Add to new view");
     harness.click_label("3D");
     harness.snapshot_app("origin_keypoint_3d");
@@ -130,7 +134,12 @@ pub async fn test_origin_keypoint_2d() {
     harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
 
-    harness.right_click_at(harness.get_by_label("keypoint").rect().left_center());
+    let keypoint = harness
+        .blueprint_tree()
+        .get_label("keypoint")
+        .rect()
+        .left_center();
+    harness.right_click_at(keypoint);
     harness.hover_label_contains("Add to new view");
     harness.click_label("2D");
     harness.remove_cursor();

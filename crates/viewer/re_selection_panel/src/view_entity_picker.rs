@@ -61,7 +61,7 @@ impl ViewEntityPicker {
 
                 ui.add_space(5.0);
                 ui.panel_content(|ui| {
-                    self.filter_state.search_field_ui(ui);
+                    self.filter_state.search_field_ui(ui, "Search for entity…");
                 });
                 ui.add_space(5.0);
 

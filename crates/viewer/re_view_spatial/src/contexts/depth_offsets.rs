@@ -28,9 +28,12 @@ impl ViewContextSystem for EntityDepthOffsets {
     fn execute(
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         query: &re_viewer_context::ViewQuery<'_>,
         _once_per_frame_result: &re_viewer_context::ViewContextSystemOncePerFrameResult,
     ) {
+        re_tracing::profile_function!();
+
         let mut entities_per_draw_order = BTreeMap::new();
         for (visualizer, draw_order_descriptor) in visualizers_processing_draw_order() {
             collect_draw_order_per_visualizer(
@@ -79,6 +82,8 @@ fn collect_draw_order_per_visualizer(
         BTreeSet<(ViewSystemIdentifier, EntityPathHash)>,
     >,
 ) {
+    re_tracing::profile_function!();
+
     let latest_at_query = ctx.current_query();
     let mut default_draw_order = None; // determined lazily
 
@@ -94,7 +99,7 @@ fn collect_draw_order_per_visualizer(
         .get_mono::<DrawOrder>(draw_order_descriptor.component)
         .unwrap_or_else(|| {
             *default_draw_order.get_or_insert_with(|| {
-                let ctx = ctx.query_context(data_result, &latest_at_query);
+                let ctx = ctx.query_context(data_result, &latest_at_query, instruction.id);
                 determine_default_draworder(&ctx, draw_order_descriptor.component)
             })
         });

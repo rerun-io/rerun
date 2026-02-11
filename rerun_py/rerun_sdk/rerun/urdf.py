@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import warnings
 from typing import TYPE_CHECKING
 
@@ -75,15 +74,17 @@ class UrdfJoint:
         """Velocity limit of the joint."""
         return self._inner.limit_velocity
 
-    def compute_transform(self, angle: float) -> Transform3D:
+    def compute_transform(self, value: float, clamp: bool = True) -> Transform3D:
         """
-        Compute a Transform3D for this joint at the given angle.
+        Compute a Transform3D for this joint at the given value.
 
         Parameters
         ----------
-        angle:
+        value:
             Joint angle in radians (revolute/continuous) or distance in meters (prismatic).
-            Ignored for fixed joints. Values outside limits are clamped with a warning.
+            Ignored for fixed joints. Values outside limits are clamped with a warning if `clamp` is True.
+        clamp:
+            Whether to clamp & warn about values outside joint limits.
 
         Returns
         -------
@@ -94,99 +95,17 @@ class UrdfJoint:
         from . import Transform3D
         from .datatypes import Quaternion
 
-        joint_type = self.joint_type
+        result = self._inner.compute_transform(value, clamp=clamp)
 
-        if joint_type in ("revolute", "continuous"):
-            # Revolute and continuous joints rotate around their axis
-            # Check limits only for revolute (continuous has no limits)
-            if joint_type == "revolute" and not (self.limit_lower <= angle <= self.limit_upper):
-                warnings.warn(
-                    f"Joint '{self.name}' angle {angle:.4f} rad is outside limits "
-                    f"[{self.limit_lower:.4f}, {self.limit_upper:.4f}] rad. Clamping.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                angle = max(self.limit_lower, min(self.limit_upper, angle))
+        if result["warning"] is not None:
+            warnings.warn(result["warning"], UserWarning, stacklevel=2)
 
-            # Combine origin rotation (RPY) with dynamic rotation (axis-angle)
-            # First convert origin RPY to quaternion
-            roll, pitch, yaw = self.origin_rpy
-            quat_origin = _euler_to_quat(roll, pitch, yaw)
-
-            # Convert axis-angle to quaternion
-            axis_x, axis_y, axis_z = self.axis
-            half_angle = angle / 2.0
-            sin_half = math.sin(half_angle)
-            cos_half = math.cos(half_angle)
-            quat_dynamic = [
-                axis_x * sin_half,  # x
-                axis_y * sin_half,  # y
-                axis_z * sin_half,  # z
-                cos_half,  # w
-            ]
-
-            # Multiply quaternions: quat_origin * quat_dynamic
-            combined_quat = _quat_multiply(quat_origin, quat_dynamic)
-
-            return Transform3D(
-                quaternion=Quaternion(xyzw=combined_quat),
-                translation=self.origin_xyz,
-                parent_frame=self.parent_link,
-                child_frame=self.child_link,
-            )
-
-        elif joint_type == "prismatic":
-            # Prismatic joints translate along their axis
-            if not (self.limit_lower <= angle <= self.limit_upper):
-                warnings.warn(
-                    f"Joint '{self.name}' distance {angle:.4f} m is outside limits "
-                    f"[{self.limit_lower:.4f}, {self.limit_upper:.4f}] m. Clamping.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                angle = max(self.limit_lower, min(self.limit_upper, angle))
-
-            # Compute translation: origin + dynamic offset along axis
-            axis_x, axis_y, axis_z = self.axis
-            origin_x, origin_y, origin_z = self.origin_xyz
-            translation = (
-                origin_x + axis_x * angle,
-                origin_y + axis_y * angle,
-                origin_z + axis_z * angle,
-            )
-
-            # For prismatic joints, rotation is just the origin rotation
-            roll, pitch, yaw = self.origin_rpy
-            quat = None
-            if roll != 0.0 or pitch != 0.0 or yaw != 0.0:
-                quat = Quaternion(xyzw=_euler_to_quat(roll, pitch, yaw))
-            return Transform3D(
-                translation=translation,
-                quaternion=quat,
-                parent_frame=self.parent_link,
-                child_frame=self.child_link,
-            )
-
-        elif joint_type == "fixed":
-            # Fixed joints only have the origin transform
-            roll, pitch, yaw = self.origin_rpy
-            quat = None
-            if roll != 0.0 or pitch != 0.0 or yaw != 0.0:
-                quat = Quaternion(xyzw=_euler_to_quat(roll, pitch, yaw))
-            return Transform3D(
-                translation=self.origin_xyz,
-                quaternion=quat,
-                parent_frame=self.parent_link,
-                child_frame=self.child_link,
-            )
-
-        else:
-            # Unsupported joint types
-            raise NotImplementedError(
-                f"Joint type '{joint_type}' is not supported by compute_transform(). "
-                f"Supported types are: revolute, continuous, prismatic, fixed. "
-                f"Unsupported types (floating, planar, spherical) require advanced kinematics."
-            )
+        return Transform3D(
+            quaternion=Quaternion(xyzw=result["quaternion_xyzw"]),
+            translation=result["translation"],
+            parent_frame=result["parent_frame"],
+            child_frame=result["child_frame"],
+        )
 
     def __repr__(self) -> str:
         return self._inner.__repr__()
@@ -325,33 +244,3 @@ class UrdfTree:
 
     def __repr__(self) -> str:
         return self._inner.__repr__()
-
-
-def _euler_to_quat(roll: float, pitch: float, yaw: float) -> list[float]:
-    """Convert Euler angles (RPY) to quaternion (XYZW)."""
-    cr = math.cos(roll * 0.5)
-    sr = math.sin(roll * 0.5)
-    cp = math.cos(pitch * 0.5)
-    sp = math.sin(pitch * 0.5)
-    cy = math.cos(yaw * 0.5)
-    sy = math.sin(yaw * 0.5)
-
-    w = cr * cp * cy + sr * sp * sy
-    x = sr * cp * cy - cr * sp * sy
-    y = cr * sp * cy + sr * cp * sy
-    z = cr * cp * sy - sr * sp * cy
-
-    return [x, y, z, w]
-
-
-def _quat_multiply(q1: list[float], q2: list[float]) -> list[float]:
-    """Multiply two quaternions in XYZW format."""
-    x1, y1, z1, w1 = q1
-    x2, y2, z2, w2 = q2
-
-    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
-    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
-    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
-    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-
-    return [x, y, z, w]

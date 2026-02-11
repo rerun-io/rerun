@@ -76,6 +76,9 @@ pub struct DesignTokens {
     pub success_text_color: Color32,
     pub info_text_color: Color32,
 
+    /// Opacity multiplier for the background of 2D labels in spatial views.
+    pub spatial_label_bg_opacity: f32,
+
     /// Background color for viewport views.
     pub viewport_background: Color32,
 
@@ -221,6 +224,14 @@ pub struct DesignTokens {
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
 
+    // Visualizer list (selection panel)
+    pub visualizer_list_title_text_color: Color32,
+    pub visualizer_list_path_text_color: Color32,
+    pub visualizer_list_color_box_size: f32,
+    pub visualizer_list_color_box_stroke: Stroke,
+    pub visualizer_list_pill_bg_color: Color32,
+    pub visualizer_list_pill_bg_color_hovered: Color32,
+
     pub code_index_color: Color32,
     pub code_string_color: Color32,
     pub code_null_color: Color32,
@@ -286,6 +297,8 @@ impl DesignTokens {
 
             success_text_color: get_color("success_text_color"),
             info_text_color: get_color("info_text_color"),
+
+            spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
 
             viewport_background: get_color("viewport_background"),
 
@@ -385,6 +398,15 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
+
+            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
+            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
+            visualizer_list_color_box_size: get_scalar("visualizer_list_color_box_size")?,
+            visualizer_list_color_box_stroke: get_stroke("visualizer_list_color_box_stroke"),
+            visualizer_list_pill_bg_color: get_color("visualizer_list_pill_bg_color"),
+            visualizer_list_pill_bg_color_hovered: get_color(
+                "visualizer_list_pill_bg_color_hovered",
+            ),
 
             code_index_color: get_color("code_index_color"),
             code_string_color: get_color("code_string_color"),

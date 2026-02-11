@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
 import pyarrow as pa
@@ -42,6 +43,23 @@ if TYPE_CHECKING:
         Schema,
         VectorDistanceMetric,
     )
+
+
+# TODO(#12612): switch to `StrEnum` when we drop Python 3.10
+class OnDuplicateSegmentLayer(str, Enum):
+    """
+    How to handle duplicate segment layers when registering recordings to a dataset.
+
+    Attributes:
+        ERROR: Raise an error if a segment layer with the same name already exists.
+        SKIP: Skip the duplicate segment layer.
+        REPLACE: Replace the existing segment layer with the new one.
+
+    """
+
+    ERROR = "error"
+    SKIP = "skip"
+    REPLACE = "replace"
 
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
@@ -275,10 +293,30 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return segment_table_df
 
-    def manifest(self) -> datafusion.DataFrame:
-        """Return the dataset manifest as a DataFusion DataFrame."""
+    def manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
+        """
+        Return the dataset manifest as a DataFusion DataFrame.
 
-        return self._internal.manifest()
+        Parameters
+        ----------
+        include_diagnostic_data:
+            Include diagnostic data in the manifest. That may include rows that correspond to layers which failed
+            registration, were deleted, or are in pending states.
+
+            !!! note
+
+                Diagnostic data is subject to change in any release and should not be relied on for production.
+
+        """
+
+        from datafusion import col
+
+        df = self._internal.manifest()
+
+        if not include_diagnostic_data:
+            df = df.filter(col("rerun_registration_status") == "done").drop("rerun_registration_status")
+
+        return df
 
     def segment_url(  # noqa: PLR0917
         self,
@@ -330,6 +368,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         recording_uri: str | Sequence[str],
         *,
         layer_name: str | Sequence[str] = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
     ) -> RegistrationHandle:
         """
         Register RRD URIs to the dataset and return a handle to track progress.
@@ -339,14 +378,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        recording_uri
+        recording_uri:
             The URI(s) of the RRD(s) to register. Can be a single URI string or a sequence of URIs.
 
-        layer_name
+        layer_name:
             The layer(s) to which the recordings will be registered to.
             Can be a single layer name (applied to all recordings) or a sequence of layer names
             (must match the length of `recording_uri`).
             Defaults to `"base"`.
+
+        on_duplicate:
+            How to handle the cases where the segment id and layer name already exist in the dataset?
+            Defaults to `OnDuplicateSegmentLayer.ERROR`.
 
         Returns
         -------
@@ -368,9 +411,64 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             if len(layer_names) != len(recording_uris):
                 raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
-        return RegistrationHandle(self._internal.register(recording_uris, recording_layers=layer_names))
+        return RegistrationHandle(
+            self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
+        )
 
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandle:
+    def unregister(
+        self,
+        *,
+        segments_to_drop: str | Sequence[str],
+        layers_to_drop: str | Sequence[str],
+        force: bool = False,
+    ) -> None:
+        """
+        Unregisters segments and layers from the dataset.
+
+        Excluding IO errors, this will always succeed as long the target dataset exists.
+        Corollary: unregistering data that doesn't exist is a no-op.
+
+        This method acts as a *product* filter:
+        * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+        * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+        * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+        * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+
+        Parameters
+        ----------
+        segments_to_drop: list[str]
+            The segment IDs to drop. All of them if empty.
+            The final filter will be the *outer product* of this and `layers_to_drop`.
+
+        layers_to_drop: list[str]
+            The layer names to drop. All of them if empty.
+            The final filter will be the *outer product* of this and `segments_to_drop`.
+
+        force: bool
+            If true, deletion will go through regardless of the segments/layers' current statuses.
+            This is only useful in the very specific, catatrophic scenario where the contents of the
+            task queue were lost and some tasks are now stuck in `status=pending` forever.
+            Do not use this unless you know exactly what you're doing.
+
+        """
+        if isinstance(segments_to_drop, str):
+            segments_to_drop = [segments_to_drop]
+        else:
+            segments_to_drop = list(segments_to_drop)
+
+        if isinstance(layers_to_drop, str):
+            layers_to_drop = [layers_to_drop]
+        else:
+            layers_to_drop = list(layers_to_drop)
+
+        self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
+
+    def register_prefix(
+        self,
+        recordings_prefix: str,
+        layer_name: str | None = None,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> RegistrationHandle:
         """
         Register all RRDs under a given prefix to the dataset and return a handle to track progress.
 
@@ -389,6 +487,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The layer to which the recordings will be registered to.
             If `None`, this defaults to `"base"`.
 
+        on_duplicate:
+            How to handle the cases where the segment id and layer name already exist in the dataset?
+            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+
         Returns
         -------
         A handle to track and wait on the registration tasks.
@@ -396,7 +498,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """
         from ._registration_handle import RegistrationHandle
 
-        return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name=layer_name))
+        if layer_name is None:
+            layer_name = "base"
+
+        return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name, on_duplicate))
 
     def download_segment(self, segment_id: str) -> Recording:
         """Download a segment from the dataset."""
@@ -458,7 +563,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions.
+            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
+            contents.
 
         Returns
         -------
@@ -847,7 +953,7 @@ class DatasetView:
 
         import datafusion
 
-        available_segments = set(self._internal.segment_ids())
+        available_segments = set() if using_index_values is None else set(self._internal.segment_ids())
 
         index_values_dict = None
         match using_index_values:
@@ -891,21 +997,37 @@ class DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
 
-        Filters are composed: if this view already has a segment filter,
-        the result is the intersection of both filters.
-
         Parameters
         ----------
-        segment_ids : str | Sequence[str] | datafusion.DataFrame
+        segment_ids
             A segment ID string, a list of segment ID strings, or a DataFusion DataFrame
-            with a column named 'rerun_segment_id'.
+            with a column named 'rerun_segment_id'. When passing a DataFrame,
+            if there are additional columns, they will be ignored.
 
         Returns
         -------
         DatasetView
             A new view filtered to the given segments.
 
+        Examples
+        --------
+        ```python
+        # Filter to a single segment
+        view = dataset.filter_segments("recording_0")
+
+        # Filter to specific segments
+        view = dataset.filter_segments(["recording_0", "recording_1"])
+
+        # Filter using a DataFrame
+        good_segments = segment_table.filter(col("success"))
+        view = dataset.filter_segments(good_segments)
+
+        # Read data from the filtered view
+        df = view.reader(index="timeline")
+        ```
+
         """
+
         import datafusion
 
         if isinstance(segment_ids, str):
@@ -926,12 +1048,29 @@ class DatasetView:
         Parameters
         ----------
         exprs : str | Sequence[str]
-            Entity path expression or list of entity path expressions.
+            Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
+            contents.
 
         Returns
         -------
         DatasetView
             A new view filtered to the matching entity paths.
+
+        Examples
+        --------
+        ```python
+        # Filter to a single entity path
+        view = dataset.filter_contents("/points/**")
+
+        # Filter to specific entity paths
+        view = dataset.filter_contents(["/points/**"])
+
+        # Exclude certain paths
+        view = dataset.filter_contents(["/points/**", "-/text/**"])
+
+        # Chain with segment filters
+        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
+        ```
 
         """
         if isinstance(exprs, str):
@@ -1154,44 +1293,56 @@ class TableEntry(Entry[TableEntryInternal]):
         insert_mode: TableInsertModeInternal,
     ) -> None:
         """Internal helper to write named parameters to the table."""
-        batch = self._python_objects_to_record_batch(self.arrow_schema(), named_params)
+        batch = _python_objects_to_record_batch(self.arrow_schema(), named_params)
         if batch is not None:
             reader = RecordBatchReader.from_batches(batch.schema, [batch])
             self._internal.write_batches(reader, insert_mode=insert_mode)
 
-    def _python_objects_to_record_batch(self, schema: pa.Schema, named_params: dict[str, Any]) -> pa.RecordBatch:
-        cast_params = {}
-        expected_len = None
 
-        for name, value in named_params.items():
-            field = schema.field(name)
-            if field is None:
-                raise ValueError(f"Column {name} does not exist in table")
+def _python_objects_to_record_batch(schema: pa.Schema, named_params: dict[str, Any]) -> pa.RecordBatch:
+    cast_params = {}
+    expected_len = None
 
-            if isinstance(value, str):
-                value = [value]
+    for name, value in named_params.items():
+        field = schema.field(name)
+        if field is None:
+            raise ValueError(f"Column {name} does not exist in table")
 
-            try:
-                cast_value = pa.array(value, type=field.type)
-            except TypeError:
-                cast_value = pa.array([value], type=field.type)
+        if isinstance(value, str):
+            value = [value]
 
-            cast_params[name] = cast_value
+        try:
+            cast_value = pa.array(value, type=field.type)
+        except TypeError:
+            cast_value = pa.array([value], type=field.type)
 
-            if expected_len is None:
-                expected_len = len(cast_value)
-            else:
-                if len(cast_value) != expected_len:
-                    raise ValueError("Columns have mismatched number of rows")
+        cast_params[name] = cast_value
 
-        if expected_len is None or expected_len == 0:
-            return
+        if expected_len is None:
+            expected_len = len(cast_value)
+        else:
+            if len(cast_value) != expected_len:
+                error = (
+                    f"Columns have mismatched number of rows. "
+                    f"Column '{name}' has {len(cast_value)} rows but expected {expected_len}."
+                )
 
-        columns = []
-        for field in schema:
-            if field.name in cast_params:
-                columns.append(cast_params[field.name])
-            else:
-                columns.append(pa.array([None] * expected_len, type=field.type))
+                if pa.types.is_list(field.type) or pa.types.is_large_list(field.type):
+                    error += (
+                        f" Hint: For single-row list-typed columns, wrap your list in another list: "
+                        f"{name}=[[...]] instead of {name}=[...]"  # NOLINT
+                    )
 
-        return pa.RecordBatch.from_arrays(columns, schema=schema)
+                raise ValueError(error)
+
+    if expected_len is None or expected_len == 0:
+        return
+
+    columns = []
+    for field in schema:
+        if field.name in cast_params:
+            columns.append(cast_params[field.name])
+        else:
+            columns.append(pa.array([None] * expected_len, type=field.type))
+
+    return pa.RecordBatch.from_arrays(columns, schema=schema)

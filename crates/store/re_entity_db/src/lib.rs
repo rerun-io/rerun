@@ -4,7 +4,7 @@
 #![doc = document_features::document_features!()]
 //!
 
-mod chunk_promise;
+mod chunk_requests;
 pub mod entity_db;
 pub mod entity_tree;
 mod ingestion_statistics;
@@ -23,7 +23,7 @@ pub use self::entity_tree::EntityTree;
 pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats};
 pub use self::instance_path::{InstancePath, InstancePathHash};
 pub use self::rrd_manifest_index::{
-    BatchInfo, ChunkPrefetchOptions, ChunkPromise, ChunkPromises, RrdManifestIndex,
+    ChunkPrefetchOptions, ChunkPromise, ChunkRequests, RequestInfo, RrdManifestIndex,
 };
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline};

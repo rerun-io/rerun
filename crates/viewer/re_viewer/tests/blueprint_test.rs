@@ -3,8 +3,9 @@ use std::path::Path;
 
 use re_chunk::{RowId, TimePoint};
 use re_test_context::TestContext;
+use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _};
+use re_viewer_context::ViewClass as _;
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewBlueprint;
 

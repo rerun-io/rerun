@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError};
 use pyo3::prelude::*;
 use re_sdk::EntityPath;
-use re_sdk::external::re_data_loader::UrdfTree;
+use re_sdk::external::re_data_loader::{UrdfTree, urdf_joint_transform};
 use re_sdk::external::urdf_rs::{Joint, JointType, Link};
 
 /// A `.urdf` file loaded into memory (excluding any mesh files).
@@ -159,6 +159,46 @@ impl PyUrdfJoint {
     #[getter]
     pub fn limit_velocity(&self) -> f64 {
         self.0.limit.velocity
+    }
+
+    /// Compute the transform components for this joint at the given value.
+    ///
+    /// The result is wrapped in a dictionary for easy conversion to the final types in Python.
+    ///
+    /// If `clamp` is true, values outside joint limits will be clamped and a warning is generated.
+    /// If `clamp` is false (default), values outside limits are used as-is without warnings.
+    #[pyo3(signature = (value, clamp = false))]
+    pub fn compute_transform(&self, py: Python<'_>, value: f64, clamp: bool) -> PyResult<PyObject> {
+        match urdf_joint_transform::internal::compute_joint_transform(&self.0, value, clamp) {
+            Ok(result) => {
+                let dict = pyo3::types::PyDict::new(py);
+                dict.set_item(
+                    "quaternion_xyzw",
+                    (
+                        result.quaternion.x,
+                        result.quaternion.y,
+                        result.quaternion.z,
+                        result.quaternion.w,
+                    ),
+                )?;
+                dict.set_item(
+                    "translation",
+                    (
+                        result.translation.x,
+                        result.translation.y,
+                        result.translation.z,
+                    ),
+                )?;
+                dict.set_item("parent_frame", result.parent_frame)?;
+                dict.set_item("child_frame", result.child_frame)?;
+                dict.set_item("warning", result.warning)?;
+
+                Ok(dict.into())
+            }
+            Err(e @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
+                Err(PyNotImplementedError::new_err(e.to_string()))
+            }
+        }
     }
 
     fn __repr__(&self) -> String {

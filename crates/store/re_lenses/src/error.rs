@@ -1,3 +1,4 @@
+use re_arrow_util::DisplayDataType;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::EntityPathFilter;
 
@@ -27,18 +28,18 @@ pub enum LensError {
     #[error("Chunk validation failed: {0}")]
     ChunkValidationFailed(#[from] re_chunk::ChunkError),
 
-    #[error("Failed to apply operations to component '{component}'")]
+    #[error("Failed to apply operations to component '{component}': {source}")]
     ComponentOperationFailed {
         component: ComponentIdentifier,
         #[source]
-        source: OpError,
+        source: Box<OpError>, // Box because of size.
     },
 
-    #[error("Failed to apply operations to timeline '{timeline_name}'")]
+    #[error("Failed to apply operations to timeline '{timeline_name}': {source}")]
     TimeOperationFailed {
         timeline_name: TimelineName,
         #[source]
-        source: OpError,
+        source: Box<OpError>, // Box because of size.
     },
 
     #[error(
@@ -46,7 +47,7 @@ pub enum LensError {
     )]
     InvalidTimeColumn {
         timeline_name: TimelineName,
-        actual_type: arrow::datatypes::DataType,
+        actual_type: DisplayDataType,
     },
 
     #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]

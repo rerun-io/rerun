@@ -33,7 +33,6 @@ impl ChunkStore {
             id: _,
             config: _,
             time_type_registry,
-            type_registry,
             per_column_metadata,
             chunks_per_chunk_id: _,      // physical data only
             chunk_ids_per_min_row_id: _, // physical data only
@@ -61,28 +60,6 @@ impl ChunkStore {
                 .index_columns()
                 .map(|descr| (descr.timeline_name(), descr.timeline().typ())),
         );
-
-        for descr in sorbet_schema.columns.component_columns() {
-            let Some((component_type, inner_datatype)) = descr
-                .component_type
-                .map(|typ| (typ, descr.inner_datatype()))
-            else {
-                continue;
-            };
-
-            if let Some(old_typ) = type_registry.insert(component_type, inner_datatype.clone())
-                && old_typ != inner_datatype
-            {
-                re_log::warn_once!(
-                    "Component '{}' with component type '{}' on entity '{}' changed type from {} to {}",
-                    descr.component,
-                    component_type,
-                    descr.entity_path,
-                    re_arrow_util::format_data_type(&old_typ),
-                    re_arrow_util::format_data_type(&inner_datatype)
-                );
-            }
-        }
 
         for descr in sorbet_schema.columns.component_columns() {
             let inner_datatype = descr.inner_datatype();
@@ -113,7 +90,7 @@ impl ChunkStore {
             }
         }
 
-        let native_static_map = rrd_manifest.get_static_data_as_a_map()?;
+        let native_static_map = rrd_manifest.static_map();
         chunks_lineage.extend(
             native_static_map
                 .values()
@@ -125,9 +102,9 @@ impl ChunkStore {
                     )
                 }),
         );
-        *static_chunk_ids_per_entity = native_static_map;
+        *static_chunk_ids_per_entity = native_static_map.clone();
 
-        let native_temporal_map = rrd_manifest.get_temporal_data_as_a_map()?;
+        let native_temporal_map = rrd_manifest.temporal_map();
         chunks_lineage.extend(
             native_temporal_map
                 .values()
@@ -143,8 +120,8 @@ impl ChunkStore {
         );
         for (entity_path, per_timeline) in native_temporal_map {
             for (timeline, per_component) in per_timeline {
-                for (component, per_chunk) in per_component {
-                    for (chunk_id, entry) in per_chunk {
+                for (&component, per_chunk) in per_component {
+                    for (&chunk_id, &entry) in per_chunk {
                         let RrdManifestTemporalMapEntry {
                             time_range,
                             num_rows: _,
@@ -775,22 +752,6 @@ impl ChunkStore {
                 descriptor,
             } = column;
 
-            if let Some(component_type) = descriptor.component_type
-                && let Some(old_typ) = self
-                    .type_registry
-                    .insert(component_type, list_array.value_type())
-                && old_typ != column.list_array.value_type()
-            {
-                re_log::warn_once!(
-                    "Component '{}' with component type '{}' on entity '{}' changed type from {} to {}",
-                    descriptor.component,
-                    component_type,
-                    chunk_after_processing.entity_path(),
-                    re_arrow_util::format_data_type(&old_typ),
-                    re_arrow_util::format_data_type(&column.list_array.value_type())
-                );
-            }
-
             let (descr, column_metadata_state, datatype) = self
                 .per_column_metadata
                 .entry(chunk_after_processing.entity_path().clone())
@@ -1013,7 +974,6 @@ impl ChunkStore {
             id,
             config: _,
             time_type_registry: _,
-            type_registry: _,
             per_column_metadata,
             chunks_per_chunk_id,
             chunks_lineage: _, // lineage metadata must never be dropped, regardless

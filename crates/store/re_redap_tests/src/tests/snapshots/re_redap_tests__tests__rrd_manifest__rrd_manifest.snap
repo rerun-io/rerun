@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_redap_tests/src/tests/rrd_manifest.rs
-expression: "rrd_manifest.data.redact(&[RrdManifest::FIELD_CHUNK_KEY,\nRrdManifest::FIELD_CHUNK_BYTE_OFFSET, RrdManifest::FIELD_CHUNK_BYTE_SIZE,\nRrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED,]).filter_columns_by(|f|\n!RrdManifest::COMMON_IMPL_SPECIFIC_FIELDS.contains(&f.name().as_str())).unwrap().horizontally_sorted().format_snapshot(true)"
+expression: "rrd_manifest.data.redact(&[RawRrdManifest::FIELD_CHUNK_KEY,\nRawRrdManifest::FIELD_CHUNK_BYTE_OFFSET,\nRawRrdManifest::FIELD_CHUNK_BYTE_SIZE,\nRawRrdManifest::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED,]).filter_columns_by(|f|\n!RawRrdManifest::COMMON_IMPL_SPECIFIC_FIELDS.contains(&f.name().as_str())).unwrap().horizontally_sorted().format_snapshot(true)"
 ---
 ┌───────────────────────────────────────────┬──────────────────────────────────┬──────────────────────────────────┐
 │ chunk_byte_offset                         ┆ 0                                ┆ 0                                │

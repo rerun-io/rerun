@@ -14,12 +14,13 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_channel::{
     DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
 };
-use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
+use re_log_types::{
+    ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg, TimelinePoint,
+};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_sdk_types::external::uuid;
-use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
@@ -368,52 +369,30 @@ impl App {
         );
 
         {
-            // TODO(emilk/egui#7659): This is a workaround consuming the Space/Arrow keys so we can
-            // use them as timeline shortcuts. Egui's built in behavior is to interact with focus,
-            // and we don't want that.
-            // But of course text edits should still get it so we use this ugly hack to check if
-            // a text edit is focused.
+            // This is a workaround consuming the space and arrow keys so we can use them as timeline shortcuts.
+            // Egui's built in behavior is to interact with focus, and we don't want that.
+            // TODO(emilk/egui#7899): allow consuming events before egui uses them to move keyboard focus.
+            // TODO(emilk/egui#7659): allow disabling certain egui shortcuts.
             let command_sender = command_sender.clone();
             creation_context.egui_ctx.on_begin_pass(
-                "filter space key",
+                "rerun-kb-shortcuts",
                 Arc::new(move |ctx| {
-                    if !ctx.text_edit_focused() {
-                        let conflicting_commands = [
-                            UICommand::PlaybackTogglePlayPause,
-                            UICommand::PlaybackBeginning,
-                            UICommand::PlaybackEnd,
-                            UICommand::PlaybackForwardFast,
-                            UICommand::PlaybackBackFast,
-                            UICommand::PlaybackStepForward,
-                            UICommand::PlaybackStepBack,
-                            UICommand::PlaybackForward,
-                            UICommand::PlaybackBack,
-                        ];
+                    // egui has already listened for arrow keys before this point,
+                    // so in order for the arrow keys to NOT move the focus, we need to
+                    // undo that focus change here:
+                    let reset_focus_direction = ctx.input_mut(|i| {
+                        i.key_pressed(Key::ArrowLeft) || i.key_pressed(Key::ArrowRight)
+                    });
 
-                        let os = ctx.os();
-                        let mut reset_focus_direction = false;
-                        ctx.input_mut(|i| {
-                            for command in conflicting_commands {
-                                for shortcut in command.kb_shortcuts(os) {
-                                    if i.consume_shortcut(&shortcut) {
-                                        if shortcut.logical_key == Key::ArrowLeft
-                                            || shortcut.logical_key == Key::ArrowRight
-                                        {
-                                            reset_focus_direction = true;
-                                        }
-                                        command_sender.send_ui(command);
-                                    }
-                                }
-                            }
+                    if reset_focus_direction {
+                        ctx.memory_mut(|mem| {
+                            mem.move_focus(FocusDirection::None);
                         });
+                    }
 
-                        if reset_focus_direction {
-                            // Additionally, we need to revert the focus direction on ArrowLeft/Right
-                            // keys to prevent the focus change for timeline shortcuts
-                            ctx.memory_mut(|mem| {
-                                mem.move_focus(FocusDirection::None);
-                            });
-                        }
+                    // Consumes the used shortcut (including the "space" key):
+                    if let Some(cmd) = UICommand::listen_for_kb_shortcut(ctx) {
+                        command_sender.send_ui(cmd);
                     }
                 }),
             );
@@ -683,12 +662,6 @@ impl App {
 
     pub fn component_fallback_registry(&mut self) -> &mut FallbackProviderRegistry {
         &mut self.component_fallback_registry
-    }
-
-    fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
-        if let Some(cmd) = UICommand::listen_for_kb_shortcut(egui_ctx) {
-            self.command_sender.send_ui(cmd);
-        }
     }
 
     fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
@@ -1293,8 +1266,22 @@ impl App {
                 }
             }
             SystemCommand::Logout => {
-                if let Err(err) = re_auth::oauth::clear_credentials() {
-                    re_log::error!("Failed to logout: {err}");
+                match re_auth::oauth::clear_credentials() {
+                    Ok(Some(outcome)) => {
+                        // Open the WorkOS logout URL to also end the browser session.
+                        // This opens in a new tab/window so the viewer state is preserved.
+                        // WorkOS clears its session cookies and redirects to /signed-out.
+                        egui_ctx.open_url(egui::output::OpenUrl {
+                            url: outcome.logout_url,
+                            new_tab: true,
+                        });
+                    }
+                    Ok(None) => {
+                        re_log::debug!("No session to logout from");
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to logout: {err}");
+                    }
                 }
                 self.state.redap_servers.logout();
             }
@@ -1481,11 +1468,9 @@ impl App {
         }
 
         let sender = self.command_sender.clone();
-        let stream = data_source.clone().stream(
-            Self::auth_error_handler(sender),
-            &self.connection_registry,
-            self.app_options().experimental.stream_mode,
-        );
+        let stream = data_source
+            .clone()
+            .stream(Self::auth_error_handler(sender), &self.connection_registry);
 
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
@@ -2617,6 +2602,8 @@ impl App {
         store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
+        re_tracing::profile_function!();
+
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
         if let Some(entity_db) = store_hub.entity_db(store_id)
@@ -2867,11 +2854,10 @@ impl App {
                 );
             }
 
-            let time_cursor_for =
-                |store_id: &StoreId| -> Option<(re_log_types::Timeline, re_log_types::TimeInt)> {
-                    let time_ctrl = self.state.time_controls.get(store_id)?;
-                    Some((*time_ctrl.timeline()?, time_ctrl.time_int()?))
-                };
+            let time_cursor_for = |store_id: &StoreId| -> Option<TimelinePoint> {
+                let time_ctrl = self.state.time_controls.get(store_id)?;
+                Some((*time_ctrl.timeline()?, time_ctrl.time_int()?).into())
+            };
             store_hub.purge_fraction_of_ram(fraction_to_purge, &time_cursor_for);
 
             let mem_use_after = MemoryUse::capture();
@@ -3209,11 +3195,8 @@ impl App {
         })
     }
 
-    /// Prefetch chunks for the open recording (stream from server)
-    ///
-    /// There is logic duplicated between this and [`Self::receive_log_msg`].
-    /// Make sure they are kept in sync!
-    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+    /// Receive in-transit chunks (previously prefetched):
+    fn receive_fetched_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
         let store_ids: Vec<_> = store_hub
@@ -3221,16 +3204,18 @@ impl App {
             .recordings()
             .map(|db| db.store_id().clone())
             .collect();
-        // Receive in-transit chunks (previously prefetched):
+
         for store_id in store_ids {
             let db = store_hub.entity_db_mut(&store_id);
 
-            if db.rrd_manifest_index.has_manifest() {
+            if db.can_fetch_chunks_from_redap() {
+                re_tracing::profile_scope!("recording");
+
                 let mut store_events = Vec::new();
                 for chunk in db
-                    .rrd_manifest_index
-                    .chunk_promises_mut()
-                    .resolve_pending(self.egui_ctx.time())
+                    .rrd_manifest_index_mut()
+                    .chunk_requests_mut()
+                    .receive_finished(self.egui_ctx.time())
                 {
                     match db.add_chunk(&std::sync::Arc::new(chunk)) {
                         Ok(events) => {
@@ -3244,19 +3229,30 @@ impl App {
 
                 self.process_store_events_for_db(store_hub, &store_id, &store_events);
 
-                // Need to reborrow as read-only since we passed store_hub as mutable earlier.
-                let db = store_hub
-                    .entity_db(&store_id)
-                    .expect("Just queried it mutable and that was fine.");
+                // Need to reborrow since we pass `&mut store_hub` above.
+                let db = store_hub.entity_db_mut(&store_id);
 
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!
 
-                if db.rrd_manifest_index.chunk_promises().has_pending() {
+                // We cancel right after resoliving (above), so that
+                // we give each fetch as much time as possible to finish.
+                db.rrd_manifest_index_mut()
+                    .cancel_outdated_requests(self.egui_ctx.time());
+
+                if db.rrd_manifest_index_mut().chunk_requests().has_pending() {
                     self.egui_ctx.request_repaint(); // check back for more
                 }
             }
         }
+    }
+
+    /// Prefetch chunks for the open recording (stream from server)
+    ///
+    /// There is logic duplicated between this and [`Self::receive_log_msg`].
+    /// Make sure they are kept in sync!
+    fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
+        re_tracing::profile_function!();
 
         // Even if we wanted, we cannot get rid of this overhead
         let unpurgable_cache_size = store_hub
@@ -3527,9 +3523,7 @@ impl eframe::App for App {
         self.memory_panel
             .update(&gpu_resource_stats, store_stats.as_ref());
 
-        self.check_keyboard_shortcuts(egui_ctx);
-
-        self.purge_memory_if_needed(&mut store_hub);
+        self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
 
         // In some (rare) circumstances we run two egui passes in a single frame.
         // This happens on call to `egui::Context::request_discard`.
@@ -3537,7 +3531,7 @@ impl eframe::App for App {
         if is_start_of_new_frame {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
-            store_hub.begin_frame_caches();
+            store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
         }
 
         self.receive_messages(&mut store_hub, egui_ctx);
@@ -3588,6 +3582,7 @@ impl eframe::App for App {
             }
         }
 
+        self.receive_fetched_chunks(&mut store_hub);
         self.prefetch_chunks(&mut store_hub);
 
         {
@@ -3808,7 +3803,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
                 .auto_sized()
                 .show(egui_ctx, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spinner();
+                        ui.loading_indicator();
                         ui.label("Writing file to disk…");
                     })
                 });

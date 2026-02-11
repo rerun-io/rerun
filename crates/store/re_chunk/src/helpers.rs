@@ -202,7 +202,7 @@ impl Chunk {
 }
 
 impl UnitChunkShared {
-    // Turns the unit chunk back into a standard [`Chunk`].
+    /// Turns the unit chunk back into a standard [`Chunk`].
     #[inline]
     pub fn into_chunk(self) -> ChunkShared {
         self.0

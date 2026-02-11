@@ -28,7 +28,8 @@ impl ColumnMetadata {
 /// semantically empty.
 #[derive(Debug, Clone, Default)]
 pub struct SchemaBuilder {
-    columns: HashMap<ColumnDescriptor, ColumnMetadata>,
+    /// `HashMap<ColumnName, (ColumnDescriptor, ColumnMetadata)>`
+    columns: HashMap<String, (ColumnDescriptor, ColumnMetadata)>,
 }
 
 impl SchemaBuilder {
@@ -60,10 +61,16 @@ impl SchemaBuilder {
                 },
             };
 
+            // NOTE: Do not ever use the column descriptor as a key, as it contains runtime information
+            // (e.g. sorting state) that does not pertain at all to column uniqueness semantics.
+            let column_name = column_descriptor.column_name(BatchType::Dataframe);
+
             self.columns
-                .entry(column_descriptor.clone())
-                .and_modify(|metadata: &mut ColumnMetadata| metadata.merge_with(this_metadata))
-                .or_insert(this_metadata);
+                .entry(column_name)
+                .and_modify(|(_descr, metadata): &mut (_, ColumnMetadata)| {
+                    metadata.merge_with(this_metadata);
+                })
+                .or_insert_with(|| (column_descriptor.clone(), this_metadata));
         }
     }
 
@@ -74,7 +81,7 @@ impl SchemaBuilder {
     /// [#10315](https://github.com/rerun-io/rerun/issues/10315)).
     pub fn build(self) -> Vec<Field> {
         self.columns
-            .into_iter()
+            .into_values()
             .map(|(mut column_descriptor, metadata)| {
                 match &mut column_descriptor {
                     ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => {}

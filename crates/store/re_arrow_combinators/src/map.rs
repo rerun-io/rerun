@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray};
+use arrow::array::{
+    Array, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray, StringArray,
+};
 use arrow::datatypes::Field;
 
 use crate::{Error, Transform};
@@ -33,7 +35,7 @@ where
     type Target = ListArray;
 
     fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
-        let values = source.values();
+        let (field, offsets, values, nulls) = source.clone().into_parts();
         let downcast =
             values
                 .as_any()
@@ -44,14 +46,13 @@ where
                 })?;
 
         let transformed = self.transform.transform(downcast)?;
-        let new_field = Arc::new(Field::new_list_field(
-            transformed.data_type().clone(),
-            transformed.is_nullable(),
-        ));
 
-        let (_, offsets, _, nulls) = source.clone().into_parts();
+        let new_field = field
+            .as_ref()
+            .clone()
+            .with_data_type(transformed.data_type().clone());
         Ok(ListArray::new(
-            new_field,
+            new_field.into(),
             offsets,
             Arc::new(transformed),
             nulls,
@@ -194,6 +195,106 @@ where
         let result: PrimitiveArray<T> = source
             .iter()
             .map(|opt| Some(opt.unwrap_or(self.default_value)))
+            .collect();
+        Ok(result)
+    }
+}
+
+/// Prepends a prefix to each string value in a string array.
+///
+/// Null values are preserved.
+#[derive(Clone)]
+pub struct StringPrefix {
+    prefix: String,
+    prefix_empty_string: bool,
+}
+
+impl StringPrefix {
+    /// Create a new string prefix prepender.
+    pub fn new(prefix: impl Into<String>) -> Self {
+        Self {
+            prefix: prefix.into(),
+            prefix_empty_string: true,
+        }
+    }
+
+    /// Configures whether to add the prefix to empty strings.
+    ///
+    /// The default behavior is to add the prefix to all strings, including empty ones.
+    /// Setting this to `false` leaves empty strings unmodified.
+    pub fn with_prefix_empty_string(mut self, prefix_empty_string: bool) -> Self {
+        self.prefix_empty_string = prefix_empty_string;
+        self
+    }
+}
+
+impl Transform for StringPrefix {
+    type Source = StringArray;
+    type Target = StringArray;
+
+    fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
+        let result: StringArray = source
+            .iter()
+            .map(|opt| {
+                opt.map(|s| {
+                    if s.is_empty() && !self.prefix_empty_string {
+                        // Pass through empty strings without adding the prefix.
+                        s.to_owned()
+                    } else {
+                        format!("{}{}", self.prefix, s)
+                    }
+                })
+            })
+            .collect();
+        Ok(result)
+    }
+}
+
+/// Appends a suffix to each string value in a string array.
+///
+/// Null values are preserved.
+#[derive(Clone)]
+pub struct StringSuffix {
+    suffix: String,
+    suffix_empty_string: bool,
+}
+
+impl StringSuffix {
+    /// Create a new string suffix appender.
+    pub fn new(suffix: impl Into<String>) -> Self {
+        Self {
+            suffix: suffix.into(),
+            suffix_empty_string: true,
+        }
+    }
+
+    /// Configures whether to add the suffix to empty strings.
+    ///
+    /// The default behavior is to add the suffix to all strings, including empty ones.
+    /// Setting this to `false` leaves empty strings unmodified.
+    pub fn with_suffix_empty_string(mut self, suffix_empty_string: bool) -> Self {
+        self.suffix_empty_string = suffix_empty_string;
+        self
+    }
+}
+
+impl Transform for StringSuffix {
+    type Source = StringArray;
+    type Target = StringArray;
+
+    fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
+        let result: StringArray = source
+            .iter()
+            .map(|opt| {
+                opt.map(|s| {
+                    if s.is_empty() && !self.suffix_empty_string {
+                        // Pass through empty strings without adding the suffix.
+                        s.to_owned()
+                    } else {
+                        format!("{}{}", s, self.suffix)
+                    }
+                })
+            })
             .collect();
         Ok(result)
     }

@@ -218,6 +218,14 @@ impl<T: SizeBytes> SizeBytes for VecDeque<T> {
     }
 }
 
+impl<T: SizeBytes> SizeBytes for vec1::Vec1<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // Vec1 is a wrapper around Vec, so delegate to the Vec implementation
+        self.as_vec().heap_size_bytes()
+    }
+}
+
 impl<T: SizeBytes> SizeBytes for Option<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {

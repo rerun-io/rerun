@@ -129,6 +129,18 @@ pub enum Op {
     /// Converts video codec strings to Rerun `VideoCodec` enum values (as `u32`).
     StringToVideoCodecUInt32,
 
+    /// Prepends a prefix to each string value, including empty strings.
+    StringPrefix(String),
+
+    /// Prepends a prefix to each non-empty string value, leaving empty strings unchanged.
+    StringPrefixNonEmpty(String),
+
+    /// Appends a suffix to each string value, including empty strings.
+    StringSuffix(String),
+
+    /// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
+    StringSuffixNonEmpty(String),
+
     /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
     TimeSpecToNanos,
 
@@ -143,6 +155,14 @@ impl std::fmt::Debug for Op {
             Self::BinaryToListUInt8 => f.debug_struct("BinaryToListUInt8").finish(),
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
             Self::StringToVideoCodecUInt32 => f.debug_struct("StringToVideoCodecUInt32").finish(),
+            Self::StringPrefix(prefix) => f.debug_tuple("StringPrefix").field(prefix).finish(),
+            Self::StringPrefixNonEmpty(prefix) => {
+                f.debug_tuple("StringPrefixNonEmpty").field(prefix).finish()
+            }
+            Self::StringSuffix(suffix) => f.debug_tuple("StringSuffix").field(suffix).finish(),
+            Self::StringSuffixNonEmpty(suffix) => {
+                f.debug_tuple("StringSuffixNonEmpty").field(suffix).finish()
+            }
             Self::TimeSpecToNanos => f.debug_struct("TimeSpecToNanos").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
@@ -196,6 +216,26 @@ impl Op {
         Self::StringToVideoCodecUInt32
     }
 
+    /// Prepends a prefix to each string value, including empty strings.
+    pub fn string_prefix(prefix: impl Into<String>) -> Self {
+        Self::StringPrefix(prefix.into())
+    }
+
+    /// Prepends a prefix to each non-empty string value, leaving empty strings unchanged.
+    pub fn string_prefix_nonempty(prefix: impl Into<String>) -> Self {
+        Self::StringPrefixNonEmpty(prefix.into())
+    }
+
+    /// Appends a suffix to each string value, including empty strings.
+    pub fn string_suffix(suffix: impl Into<String>) -> Self {
+        Self::StringSuffix(suffix.into())
+    }
+
+    /// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
+    pub fn string_suffix_nonempty(suffix: impl Into<String>) -> Self {
+        Self::StringSuffixNonEmpty(suffix.into())
+    }
+
     /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
     pub fn time_spec_to_nanos() -> Self {
         Self::TimeSpecToNanos
@@ -226,6 +266,22 @@ impl Op {
                     .transform(list_array)
                     .map_err(Into::into)
             }
+            Self::StringPrefix(prefix) => map::MapList::new(map::StringPrefix::new(prefix.clone()))
+                .transform(list_array)
+                .map_err(Into::into),
+            Self::StringPrefixNonEmpty(prefix) => map::MapList::new(
+                map::StringPrefix::new(prefix.clone()).with_prefix_empty_string(false),
+            )
+            .transform(list_array)
+            .map_err(Into::into),
+            Self::StringSuffix(suffix) => map::MapList::new(map::StringSuffix::new(suffix.clone()))
+                .transform(list_array)
+                .map_err(Into::into),
+            Self::StringSuffixNonEmpty(suffix) => map::MapList::new(
+                map::StringSuffix::new(suffix.clone()).with_suffix_empty_string(false),
+            )
+            .transform(list_array)
+            .map_err(Into::into),
             Self::TimeSpecToNanos => map::MapList::new(semantic::TimeSpecToNanos::default())
                 .transform(list_array)
                 .map_err(Into::into),
@@ -323,7 +379,7 @@ fn collect_output_components_iter<'a>(
             Ok(list_array) => Ok((output.component_descr.clone(), list_array)),
             Err(source) => Err(LensError::ComponentOperationFailed {
                 component: output.component_descr.component,
-                source,
+                source: Box::new(source),
             }),
         },
     )
@@ -338,7 +394,7 @@ fn collect_output_times_iter<'a>(
             Ok(list_array) => Ok((time.timeline_name, time.timeline_type, list_array)),
             Err(source) => Err(LensError::TimeOperationFailed {
                 timeline_name: time.timeline_name,
-                source,
+                source: Box::new(source),
             }),
         },
     )
@@ -362,7 +418,7 @@ fn try_convert_time_column(
     } else {
         Err(LensError::InvalidTimeColumn {
             timeline_name,
-            actual_type: list_array.values().data_type().clone(),
+            actual_type: list_array.values().data_type().clone().into(),
         })
     }
 }
@@ -615,7 +671,7 @@ impl OneToMany {
                         Err(err) => {
                             errors.push(LensError::TimeOperationFailed {
                                 timeline_name,
-                                source: err.into(),
+                                source: Box::new(err.into()),
                             });
                             None
                         }
@@ -639,7 +695,7 @@ impl OneToMany {
                         Err(err) => {
                             errors.push(LensError::ComponentOperationFailed {
                                 component: component_descr.component,
-                                source: err.into(),
+                                source: Box::new(err.into()),
                             });
                             None
                         }

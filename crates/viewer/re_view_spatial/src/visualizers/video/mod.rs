@@ -10,7 +10,7 @@ use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifie
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
-use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D};
 
 /// Identify a video stream for a given video.
@@ -39,7 +39,7 @@ fn visualize_video_frame_texture(
     let re_renderer::video::VideoFrameTexture {
         texture,
         decoder_delay_state,
-        show_spinner,
+        show_loading_indicator,
         frame_info: _,
         source_pixel_format: _,
     } = video_frame_texture;
@@ -61,9 +61,9 @@ fn visualize_video_frame_texture(
         ctx.egui_ctx().request_repaint();
     }
 
-    if show_spinner {
+    if show_loading_indicator {
         // Show loading rectangle:
-        visualizer_data.loading_spinners.push(LoadingSpinner {
+        visualizer_data.loading_indicators.push(LoadingIndicator {
             center: top_left_corner_position + 0.5 * (extent_u + extent_v),
             half_extent_u: 0.5 * extent_u,
             half_extent_v: 0.5 * extent_v,
@@ -95,7 +95,7 @@ fn visualize_video_frame_texture(
         );
     } else {
         // If we don't have a texture, still expand the bounding box,
-        // so the default extents of the view show the spinner in the same place as if we had a texture.
+        // so the default extents of the view show the loading indicator in the same place as if we had a texture.
         register_video_bounds_with_bounding_box(
             entity_path.hash(),
             visualizer_data,
@@ -117,6 +117,20 @@ enum VideoPlaybackIssueSeverity {
     ///
     /// E.g. not having the necessary data yet.
     Informational,
+
+    /// We still have required unloaded samples before we're able to play this video.
+    Loading,
+}
+
+impl From<re_renderer::video::VideoPlayerError> for VideoPlaybackIssueSeverity {
+    fn from(value: re_renderer::video::VideoPlayerError) -> Self {
+        use re_renderer::video::VideoPlayerError;
+        match value {
+            VideoPlayerError::UnloadedSampleData(_) => Self::Loading,
+            VideoPlayerError::InsufficientSampleData(_) => Self::Informational,
+            _ => Self::Error,
+        }
+    }
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -139,6 +153,25 @@ fn show_video_playback_issue(
         video_size,
         ctx.view_class_identifier,
     );
+
+    let style = match severity {
+        VideoPlaybackIssueSeverity::Error => UiLabelStyle::Error,
+        VideoPlaybackIssueSeverity::Informational => UiLabelStyle::Default,
+        VideoPlaybackIssueSeverity::Loading => {
+            // Make sure to use the video instead of texture size here,
+            // since the texture may be a placeholder which doesn't have the full size yet.
+            let top_left_corner_position = world_from_entity.transform_point3(glam::Vec3::ZERO);
+            let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_size.x);
+            let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y);
+
+            visualizer_data.loading_indicators.push(LoadingIndicator {
+                center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                half_extent_u: 0.5 * extent_u,
+                half_extent_v: 0.5 * extent_v,
+            });
+            return;
+        }
+    };
 
     let render_ctx = ctx.viewer_ctx.render_ctx();
 
@@ -216,10 +249,6 @@ fn show_video_playback_issue(
         egui::vec2(video_error_rect_size.x * 3.0, video_error_rect_size.y),
     );
 
-    let style = match severity {
-        VideoPlaybackIssueSeverity::Error => UiLabelStyle::Error,
-        VideoPlaybackIssueSeverity::Informational => UiLabelStyle::Default,
-    };
     visualizer_data.ui_labels.push(UiLabel {
         text: error_string,
         style,

@@ -58,9 +58,11 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        re_tracing::profile_function!();
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
+        let output = VisualizerExecutionOutput::default();
+
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
 
         let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
@@ -76,7 +78,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             let entity_path = &data_result.entity_path;
 
             // Draw all transforms defined _at_ this entity.
-            // TODO(RR-3319): consider also root frames here (not only child frames).
             let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = transforms
                 .child_frames_for_entity(entity_path.hash())
                 .map(|(frame_id_hash, transform)| {
@@ -92,6 +93,23 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     (*frame_id_hash, target_from_source.as_affine3a())
                 })
                 .collect();
+
+            let num_transforms_on_entity = transforms_to_draw.len(); // Note: must be measured here, right after the call to `child_frames_for_entity`
+
+            // A bit of a hack here, but when visualizing a whole transform hierarchy,
+            // it's very nice to also show the root:
+            let show_root = 2 <= num_transforms_on_entity;
+            if show_root {
+                // Add the root:
+                let target_frame = transforms.target_frame();
+                let root_from_target = transforms.transform_forest().root_from_frame(target_frame);
+                if let Some(root_from_target) = root_from_target {
+                    let root_id = root_from_target.root;
+                    let root_from_target = root_from_target.target_from_source;
+                    let target_from_root = root_from_target.inverse();
+                    transforms_to_draw.push((root_id, target_from_root.as_affine3a()));
+                }
+            }
 
             // We then *prepend* the axes for the entity's coordinate frame, because we want them to be drawn below
             // the additional transform data (the user usually knows which entity they are on).
@@ -166,7 +184,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 continue;
             }
 
-            let show_frame: bool = results
+            let show_frame_label: bool = results
                 .get_mono_with_fallback::<ShowLabels>(show_frame_identifier)
                 .into();
 
@@ -174,7 +192,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             for (instance_index, (label_id_hash, world_from_obj)) in
                 transforms_to_draw.iter().enumerate()
             {
-                if show_frame {
+                if show_frame_label {
                     if let Some(frame_id) = transforms.lookup_frame_id(*label_id_hash) {
                         self.0.ui_labels.push(UiLabel {
                             text: frame_id.to_string(),

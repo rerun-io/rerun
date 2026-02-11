@@ -34,9 +34,11 @@ pub struct PyDatasetViewInternal {
     // logical plan and lazily execute it instead of materializing the segment IDs.
     segment_filter: Option<HashSet<String>>,
 
-    /// Content filters: entity path expressions like "/points/**", "-/text/**". If empty,
-    /// everything is included.
-    content_filters: Vec<String>,
+    /// Content filters: entity path expressions like "/points/**", "-/text/**".
+    /// - `None` means no filter was specified (-> keep everything from schema)
+    /// - `Some([])` means filter out everything (`.filter_contents([])`)
+    /// - `Some([...])` use the provided paths as filters
+    content_filters: Option<Vec<String>>,
 }
 
 impl PyDatasetViewInternal {
@@ -49,28 +51,17 @@ impl PyDatasetViewInternal {
         Self {
             dataset,
             segment_filter,
-            content_filters: content_filters.unwrap_or_default(),
-        }
-    }
-
-    /// Get the resolved entity path filter from content filter expressions.
-    fn resolved_entity_path_filter(&self) -> ResolvedEntityPathFilter {
-        if self.content_filters.is_empty() {
-            // Accept everything
-            EntityPathFilter::parse_forgiving("/**").resolve_without_substitutions()
-        } else {
-            let expr = self.content_filters.join(" ");
-            EntityPathFilter::parse_forgiving(&expr).resolve_without_substitutions()
+            content_filters,
         }
     }
 
     /// Filter schema columns based on content filters.
     fn filter_schema(&self, schema: SorbetColumnDescriptors) -> SorbetColumnDescriptors {
-        if self.content_filters.is_empty() {
+        if self.content_filters.is_none() {
             return schema;
         }
 
-        let filter = self.resolved_entity_path_filter();
+        let filter = resolved_entity_path_filter(&self.content_filters);
 
         // Filter columns: keep non-component columns (row_id, index) and matching component columns
         let filtered_columns: Vec<ColumnDescriptor> = schema
@@ -108,7 +99,7 @@ impl PyDatasetViewInternal {
 
     /// Return the content filter expressions.
     #[getter]
-    fn content_filters(&self) -> Vec<String> {
+    fn content_filters(&self) -> Option<Vec<String>> {
         self.content_filters.clone()
     }
 
@@ -174,7 +165,7 @@ impl PyDatasetViewInternal {
             Self::new(
                 self_.dataset.clone_ref(py),
                 Some(combined_segments),
-                Some(self_.content_filters.clone()),
+                self_.content_filters.clone(),
             ),
         )
     }
@@ -189,8 +180,14 @@ impl PyDatasetViewInternal {
         let py = self_.py();
 
         // Combine with existing content filters
-        let mut combined_filters = self_.content_filters.clone();
-        combined_filters.extend(exprs);
+        let combined_filters = match &self_.content_filters {
+            Some(existing) => {
+                let mut combined = existing.clone();
+                combined.extend(exprs);
+                combined
+            }
+            None => exprs,
+        };
 
         Py::new(
             py,
@@ -295,23 +292,41 @@ impl PyDatasetViewInternal {
 }
 
 /// Get the resolved entity path filter from content filter expressions.
-fn resolved_entity_path_filter(content_filters: &[String]) -> ResolvedEntityPathFilter {
-    if content_filters.is_empty() {
-        EntityPathFilter::parse_forgiving("/**").resolve_without_substitutions()
-    } else {
-        let expr = content_filters.join(" ");
-        EntityPathFilter::parse_forgiving(&expr).resolve_without_substitutions()
+///
+/// This achieves the following semantics:
+/// - no `filter_contents()` -> everything
+/// - `filter_contents([])` -> nothing
+/// - `filter_contents("/doesnt/exist")` -> nothing
+/// - `filter_contents("/does/exist")` -> only matching columns
+///
+/// Also, it always applies the "hide properties by default" implicit behavior.
+fn resolved_entity_path_filter(content_filters: &Option<Vec<String>>) -> ResolvedEntityPathFilter {
+    match content_filters {
+        None => {
+            // No filter specified - accept everything
+            EntityPathFilter::parse_forgiving("/**").resolve_without_substitutions()
+        }
+
+        Some(filters) if filters.is_empty() => {
+            // Empty filter explicitly specified - accept nothing
+            EntityPathFilter::parse_forgiving("-/**").resolve_without_substitutions()
+        }
+
+        Some(filters) => {
+            let expr = filters.join(" ");
+            EntityPathFilter::parse_forgiving(&expr).resolve_without_substitutions()
+        }
     }
 }
 
 /// Build a `ViewContentsSelector` from content filters.
 fn build_view_contents(
     schema: &ArrowSchema,
-    content_filters: &[String],
-) -> Option<ViewContentsSelector> {
+    content_filters: &Option<Vec<String>>,
+) -> ViewContentsSelector {
     let filter = resolved_entity_path_filter(content_filters);
 
-    let contents: ViewContentsSelector = schema
+    schema
         .fields()
         .iter()
         .filter_map(|field| ColumnDescriptor::try_from_arrow_field(None, field.as_ref()).ok())
@@ -324,13 +339,7 @@ fn build_view_contents(
         })
         .filter(|comp| filter.matches(&comp.entity_path))
         .map(|comp| (comp.entity_path.clone(), None))
-        .collect();
-
-    if contents.is_empty() {
-        None
-    } else {
-        Some(contents)
-    }
+        .collect()
 }
 
 /// Build a table provider for dataframe queries with the given parameters.
@@ -339,7 +348,7 @@ fn build_dataframe_query_table_provider(
     py: Python<'_>,
     dataset: &Py<PyDatasetEntryInternal>,
     segment_filter: Option<HashSet<String>>,
-    content_filters: &[String],
+    content_filters: &Option<Vec<String>>,
     index: Option<String>,
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
@@ -361,7 +370,7 @@ fn build_dataframe_query_table_provider(
     let static_only = index.is_none();
 
     let query_expression = QueryExpression {
-        view_contents,
+        view_contents: Some(view_contents),
         include_semantically_empty_columns,
         include_tombstone_columns,
         include_static_columns: if static_only {

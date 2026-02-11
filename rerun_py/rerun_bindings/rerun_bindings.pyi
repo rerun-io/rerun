@@ -152,6 +152,7 @@ class ComponentColumnSelector:
             The component to select. Example: `Points3D:positions`.
 
         """
+
     @property
     def entity_path(self) -> str:
         """
@@ -216,6 +217,7 @@ class RRDArchive:
 
     def num_recordings(self) -> int:
         """The number of recordings in the archive."""
+
     def all_recordings(self) -> list[Recording]:
         """All the recordings in the archive."""
 
@@ -388,12 +390,14 @@ class PyMemorySinkStorage:
 
         Note: This will do a blocking flush before returning!
         """
+
     def num_msgs(self) -> int:
         """
         Count the number of pending messages in the [`MemorySinkStorage`].
 
         This will do a blocking flush before returning!
         """
+
     def drain_as_bytes(self) -> bytes:
         """
         Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
@@ -419,6 +423,7 @@ class PyBinarySinkStorage:
             If the timeout is reached, an error is raised.
 
         """
+
     def flush(self, *, timeout_sec: float = 1e38) -> None:
         """
         Flushes the binary sink and ensures that all logged messages have been encoded into the stream.
@@ -983,8 +988,19 @@ class DatasetEntryInternal:
 
     # ---
 
-    def register(self, recording_uris: list[str], *, recording_layers: list[str]) -> RegistrationHandleInternal: ...
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandleInternal: ...
+    def register(
+        self, recording_uris: list[str], recording_layers: list[str], on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
+    def register_prefix(
+        self, recordings_prefix: str, layer_name: str, on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
+    def unregister(
+        self,
+        *,
+        segments_to_drop: list[str],
+        layers_to_drop: list[str],
+        force: bool = False,
+    ) -> None: ...
 
     # ---
 
@@ -1133,6 +1149,15 @@ class _UrdfJointInternal:
     def limit_effort(self) -> float: ...
     @property
     def limit_velocity(self) -> float: ...
+    def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute the transform components for this joint at the given value.
+
+        The result is wrapped in a dictionary for easy conversion to the final types in Python.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
 
 class _UrdfLinkInternal:
     """Internal Rust representation of a URDF link."""

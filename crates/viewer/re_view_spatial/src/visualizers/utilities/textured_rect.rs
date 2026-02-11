@@ -18,7 +18,7 @@ pub fn textured_rect_from_image(
     re_tracing::profile_function!();
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = ctx
+    let image_stats = ctx
         .store_context
         .caches
         .entry(|c: &mut ImageStatsCache| c.entry(image));
@@ -27,7 +27,7 @@ pub fn textured_rect_from_image(
         ctx.render_ctx(),
         &debug_name,
         image,
-        &tensor_stats,
+        &image_stats,
         &ent_context.annotations,
         colormap,
     )

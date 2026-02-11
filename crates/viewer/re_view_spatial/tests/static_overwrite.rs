@@ -8,6 +8,7 @@ use re_sdk_types::archetypes;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
+use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};

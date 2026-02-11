@@ -5,7 +5,7 @@ use egui::mutex::Mutex;
 use re_auth::callback_server::OauthCallbackServer;
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, send_native};
-use re_ui::{Variant, icons};
+use re_ui::{UiExt as _, Variant, icons};
 
 use super::ActionButton;
 
@@ -25,7 +25,7 @@ impl State {
         // The native login flow uses oauth 2.0 code authorization flow with PKCE
 
         if self.pending_authentication {
-            ui.spinner();
+            ui.loading_indicator();
         } else {
             ui.horizontal(|ui| {
                 if ActionButton::new(&icons::EXTERNAL_LINK, "Log in", "Link opened!")

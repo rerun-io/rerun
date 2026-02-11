@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicU64;
 
 use ahash::{HashMap, HashSet};
 use arrow::datatypes::DataType as ArrowDataType;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
@@ -436,23 +437,33 @@ impl ChunkStoreHandle {
 
 /// This keeps track of all missing virtual [`ChunkId`]s and all
 /// used physical [`ChunkId`]s.
-///
-/// Chunks are considered missing when they are required to compute the results of a query, but cannot be
-/// found in local memory. This set is automatically populated anytime that happens.
 #[derive(Debug, Default)]
 pub struct QueriedChunkIdTracker {
+    /// Used physical chunks.
     pub used_physical: HashSet<ChunkId>,
-    pub missing: HashSet<ChunkId>,
+
+    /// Missing virtual chunks.
+    ///
+    /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
+    /// found in local memory. This set is automatically populated anytime that happens.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
+    //
+    // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
+    // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
+    // their own tracking. And document it so.
+    pub missing_virtual: HashSet<ChunkId>,
 }
 
 impl re_byte_size::SizeBytes for QueriedChunkIdTracker {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             used_physical,
-            missing,
+            missing_virtual,
         } = self;
 
-        used_physical.heap_size_bytes() + missing.heap_size_bytes()
+        used_physical.heap_size_bytes() + missing_virtual.heap_size_bytes()
     }
 }
 
@@ -475,17 +486,6 @@ pub struct ChunkStore {
     ///
     /// See also [`Self::time_column_type`].
     pub(crate) time_type_registry: IntMap<TimelineName, TimeType>,
-
-    /// Keeps track of the _latest_ datatype information for all component types that have been written
-    /// to the store so far.
-    ///
-    /// This index is purely additive: it is never affected by garbage collection in any way.
-    ///
-    /// See also [`Self::lookup_datatype`].
-    //
-    // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
-    // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentType, ArrowDataType>,
 
     // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
     pub(crate) per_column_metadata: IntMap<
@@ -525,7 +525,7 @@ pub struct ChunkStore {
     ///   it can still be reached, provided that the associated Redap server still exists.
     ///
     /// This is purely additive: never garbage collected.
-    pub(crate) chunks_lineage: BTreeMap<ChunkId, ChunkDirectLineage>,
+    pub(crate) chunks_lineage: HashMap<ChunkId, ChunkDirectLineage>,
 
     /// Anytime a chunk gets split during insertion, this is recorded here.
     ///
@@ -658,7 +658,6 @@ impl Clone for ChunkStore {
             id: self.id.clone(),
             config: self.config.clone(),
             time_type_registry: self.time_type_registry.clone(),
-            type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
             chunks_lineage: self.chunks_lineage.clone(),
@@ -686,7 +685,6 @@ impl std::fmt::Display for ChunkStore {
             id,
             config,
             time_type_registry: _,
-            type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
@@ -737,7 +735,7 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "]\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "virtual chunks: [\n"))?;
-        for chunk_id in chunks_lineage.keys() {
+        for chunk_id in chunks_lineage.keys().sorted() {
             if chunks_per_chunk_id.contains_key(chunk_id) {
                 continue;
             }
@@ -769,7 +767,6 @@ impl ChunkStore {
             id,
             config,
             time_type_registry: Default::default(),
-            type_registry: Default::default(),
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
             chunks_lineage: Default::default(),
@@ -828,8 +825,8 @@ impl ChunkStore {
 
     /// Get a *physical* chunk based on its ID.
     #[inline]
-    pub fn physical_chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
-        self.chunks_per_chunk_id.get(id)
+    pub fn physical_chunk(&self, physical_chunk_id: &ChunkId) -> Option<&Arc<Chunk>> {
+        self.chunks_per_chunk_id.get(physical_chunk_id)
     }
 
     /// Get a *physical* chunk based on its ID and track the chunk as either
@@ -838,9 +835,9 @@ impl ChunkStore {
         let chunk = self.physical_chunk(id);
 
         if chunk.is_some() {
-            self.insert_used_chunk_id(*id);
+            self.report_used_physical_chunk_id(*id);
         } else {
-            self.insert_missing_chunk_id(*id);
+            self.report_missing_virtual_chunk_id(*id);
         }
 
         chunk
@@ -856,12 +853,6 @@ impl ChunkStore {
     #[inline]
     pub fn time_column_type(&self, timeline_name: &TimelineName) -> Option<TimeType> {
         self.time_type_registry.get(timeline_name).copied()
-    }
-
-    /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
-    #[inline]
-    pub fn lookup_datatype(&self, component_type: &ComponentType) -> Option<ArrowDataType> {
-        self.type_registry.get(component_type).cloned()
     }
 
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
@@ -908,6 +899,27 @@ impl ChunkStore {
         Some((component_descr.component_type, datatype.clone()))
     }
 
+    /// Checks whether any column in the store with the given [`ComponentType`] has a datatype
+    /// that differs from `expected_datatype`.
+    ///
+    /// This iterates over all entities, so it should not be called in a hot path.
+    pub fn has_mismatched_datatype_for_component_type(
+        &self,
+        component_type: &ComponentType,
+        expected_datatype: &ArrowDataType,
+    ) -> Option<&ArrowDataType> {
+        for per_component in self.per_column_metadata.values() {
+            for (descr, _, datatype) in per_component.values() {
+                if descr.component_type.as_ref() == Some(component_type)
+                    && datatype != expected_datatype
+                {
+                    return Some(datatype);
+                }
+            }
+        }
+        None
+    }
+
     /// Returns and iterator over [`ChunkId`]s that were detected as
     /// used or missing since the last time since method was called.
     ///
@@ -927,7 +939,7 @@ impl ChunkStore {
     }
 
     /// Signal that the chunk was used and should not be evicted by gc.
-    fn insert_used_chunk_id(&self, chunk_id: ChunkId) {
+    pub fn report_used_physical_chunk_id(&self, chunk_id: ChunkId) {
         self.queried_chunk_id_tracker
             .write()
             .used_physical
@@ -935,10 +947,10 @@ impl ChunkStore {
     }
 
     /// Signal that a chunk is missing and should be fetched when possible.
-    fn insert_missing_chunk_id(&self, chunk_id: ChunkId) {
+    pub fn report_missing_virtual_chunk_id(&self, chunk_id: ChunkId) {
         self.queried_chunk_id_tracker
             .write()
-            .missing
+            .missing_virtual
             .insert(chunk_id);
     }
 
@@ -946,7 +958,7 @@ impl ChunkStore {
     ///
     /// See also [`ChunkStore::take_tracked_chunk_ids`].
     pub fn num_missing_chunk_ids(&self) -> usize {
-        self.queried_chunk_id_tracker.read().missing.len()
+        self.queried_chunk_id_tracker.read().missing_virtual.len()
     }
 }
 

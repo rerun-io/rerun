@@ -98,6 +98,22 @@ impl Segment {
         }
     }
 
+    /// Returns the removed [`Layer`], if any.
+    pub fn remove_layer(&mut self, layer_name: &str) -> Option<Layer> {
+        self.inner.modify().layers.remove(layer_name)
+    }
+
+    /// Retains only the layers specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(name, layer)` for which `f(&name, &mut layer)` returns `false`.
+    /// The layers are visited in unsorted (and unspecified) order.
+    pub fn retain_layers<F>(&mut self, f: F)
+    where
+        F: FnMut(&String, &mut Layer) -> bool,
+    {
+        self.inner.modify().layers.retain(f);
+    }
+
     pub fn num_chunks(&self) -> u64 {
         self.inner
             .layers

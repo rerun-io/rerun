@@ -2,6 +2,7 @@
 
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
+use re_arrow_combinators::Selector;
 use re_chunk::ComponentIdentifier;
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
@@ -10,28 +11,51 @@ use re_types_core::ViewClassIdentifier;
 use crate::ViewSystemIdentifier;
 
 /// Types of matches when matching [`crate::RequiredComponents::AnyPhysicalDatatype`].
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum DatatypeMatchKind {
+#[derive(Clone, Debug)]
+pub enum DatatypeMatch {
     /// Only the physical datatype was matched, but semantics aren't the native ones.
-    PhysicalDatatypeOnly,
+    PhysicalDatatypeOnly {
+        arrow_datatype: arrow::datatypes::DataType,
+
+        /// The semantic component type if any.
+        ///
+        /// Note that `Some` doesn't necessarily mean that this is a Rerun type, it may still be a user supplied type.
+        component_type: Option<re_chunk::ComponentType>,
+
+        /// If this match was found via nested field access, contains the selectors to extract those fields
+        /// along with their respective Arrow datatypes for ranking purposes.
+        /// Empty for direct matches.
+        selectors: Vec<(Selector, arrow::datatypes::DataType)>,
+    },
 
     /// The Rerun native datatype was matched.
     ///
     /// For example the native type for a Rerun point cloud is `rerun.components.Position3D`.
     /// This is *not* concerned with the column name of the data, only the datatype.
-    NativeSemantics,
+    NativeSemantics {
+        arrow_datatype: arrow::datatypes::DataType,
+
+        /// The semantic component type if any.
+        ///
+        /// Note that `Some` doesn't necessarily mean that this is a Rerun type, it may still be a user supplied type.
+        component_type: Option<re_chunk::ComponentType>,
+    },
 }
 
-/// Information about a datatype match, including the match kind and the actual Arrow datatype.
-#[derive(Clone, Debug)]
-pub struct DatatypeMatchInfo {
-    pub kind: DatatypeMatchKind,
-    pub arrow_datatype: arrow::datatypes::DataType,
+impl DatatypeMatch {
+    pub fn component_type(&self) -> &Option<re_chunk::ComponentType> {
+        match self {
+            Self::PhysicalDatatypeOnly { component_type, .. }
+            | Self::NativeSemantics { component_type, .. } => component_type,
+        }
+    }
 
-    /// The semantic component type if any.
-    ///
-    /// Note that `Some` doesn't necessarily mean that this is a Rerun type, it may still be a user supplied type.
-    pub component_type: Option<re_chunk::ComponentType>,
+    pub fn arrow_datatype(&self) -> &arrow::datatypes::DataType {
+        match self {
+            Self::PhysicalDatatypeOnly { arrow_datatype, .. }
+            | Self::NativeSemantics { arrow_datatype, .. } => arrow_datatype,
+        }
+    }
 }
 
 /// Describes why a given entity was marked as visualizable.
@@ -48,40 +72,18 @@ pub enum VisualizableReason {
 
     /// [`crate::RequiredComponents::AnyPhysicalDatatype`] matched for this entity with the given components.
     DatatypeMatchAny {
-        matches: IntMap<ComponentIdentifier, DatatypeMatchInfo>,
+        matches: IntMap<ComponentIdentifier, DatatypeMatch>,
     },
 }
 
 impl VisualizableReason {
-    /// Returns true if this reason includes a match with native semantics.
-    ///
-    /// The component identifier of the match may not be equal to the one the visualizer's associated archetype expects.
-    /// To ensure that, use [`Self::full_native_match`].
-    /// This distinction is only ever relevant if we want to distinguish with the component name as well.
-    ///
-    /// Example:
-    /// `SeriesLines` visualizer expects a component named "Scalars:scalars" with component (semantic) type "rerun.components.Scalars".
-    /// For an incoming entity with a component named "OtherScalars:scalars" with component type "rerun.components.Scalars",
-    /// [`Self::any_match_with_native_semantics`] would return true, but [`Self::full_native_match`] would return false.
-    //
-    // TODO(andreas): We'll likely move into a direction where semantic match will always be sufficient and emits a mapping to the
-    // component if needed (not needed == full_native_match) which should be preferred when possible.
-    pub fn any_match_with_native_semantics(&self) -> bool {
-        match self {
-            Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
-            Self::DatatypeMatchAny { matches } => matches
-                .values()
-                .any(|info| info.kind == DatatypeMatchKind::NativeSemantics),
-        }
-    }
-
     /// Returns true if this match reason is a perfect match for the given component identifier.
     pub fn full_native_match(&self, component_identifier: ComponentIdentifier) -> bool {
         match self {
             Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
             Self::DatatypeMatchAny { matches } => matches
                 .get(&component_identifier)
-                .map(|info| info.kind == DatatypeMatchKind::NativeSemantics)
+                .map(|info| matches!(info, DatatypeMatch::NativeSemantics { .. }))
                 .unwrap_or(false),
         }
     }

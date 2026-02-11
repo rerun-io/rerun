@@ -203,6 +203,31 @@ def log_transform3d_translation_mat3x3(data: Transform3DInput, static: bool) -> 
     print(f"Logged {total_log_calls} transforms in {elapsed:.2f}s ({transforms_per_second:.0f} transforms/second)")
 
 
+def test_bench_create_transform3d_translation_mat3x3(benchmark: Any) -> None:
+    data = Transform3DInput.prepare(42, 1000, 100)
+    benchmark(create_transform3d_translation_mat3x3, data, False)
+
+
+def create_transform3d_translation_mat3x3(data: Transform3DInput, static: bool) -> None:
+    """Just create Transform3D with translation and mat3x3 for each entity at each time step."""
+    start = time.perf_counter()
+
+    transforms = []
+    for time_index in range(data.num_time_steps):
+        for entity_index in range(data.num_entities):
+            transforms.append(
+                rr.Transform3D(
+                    translation=data.translations[time_index, entity_index],
+                    mat3x3=np.array(data.mat3x3s[time_index, entity_index], dtype=np.float32),
+                )
+            )
+
+    elapsed = time.perf_counter() - start
+    total_log_calls = data.num_entities * data.num_time_steps
+    transforms_per_second = total_log_calls / elapsed
+    print(f"Logged {total_log_calls} transforms in {elapsed:.2f}s ({transforms_per_second:.0f} transforms/second)")
+
+
 @pytest.mark.parametrize(
     ["num_entities", "num_time_steps", "static"],
     [
@@ -237,6 +262,9 @@ if __name__ == "__main__":
         action="store_true",
         help="Connect to a running Rerun viewer via gRPC instead of using memory recording",
     )
+    parser.add_argument(
+        "--create-only", action="store_true", help="Only create Transform3D instances without logging them"
+    )
     args = parser.parse_args()
 
     if args.benchmark == "transform3d":
@@ -252,4 +280,7 @@ if __name__ == "__main__":
             rr.memory_recording()
         data = Transform3DInput.prepare(42, args.num_entities, args.num_time_steps)
         print("Logging…")
-        log_transform3d_translation_mat3x3(data, static=args.static)
+        if args.create_only:
+            create_transform3d_translation_mat3x3(data, args.static)
+        else:
+            log_transform3d_translation_mat3x3(data, args.static)

@@ -9,8 +9,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, PerVisualizerType, SystemCommand, SystemCommandSender as _,
-    ViewId, ViewStates, ViewerContext, VisitorControlFlow, VisualizerExecutionErrorState,
+    Item, ItemCollection, ItemContext, SystemCommand, SystemCommandSender as _, ViewId, ViewStates,
+    ViewerContext, VisitorControlFlow, VisualizerReportSeverity, VisualizerViewReport,
     contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
@@ -143,6 +143,7 @@ impl BlueprintTree {
             .id_salt("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
+                re_tracing::profile_scope!("blueprint_tree_scroll_area");
                 ui.panel_content(|ui| {
                     self.blueprint_tree_scroll_to_item =
                         ctx.focused_item.as_ref().and_then(|item| {
@@ -199,6 +200,8 @@ impl BlueprintTree {
         container_data: &ContainerData,
         view_states: &ViewStates,
     ) {
+        re_tracing::profile_function!();
+
         let item = Item::Container(container_data.id);
 
         // It's possible that the root becomes technically collapsed (e.g. context menu or arrow
@@ -302,7 +305,7 @@ impl BlueprintTree {
                     ui,
                     view_data,
                     parent_visible,
-                    view_states.visualizer_errors(view_data.id),
+                    view_states.per_visualizer_type_reports(view_data.id),
                 );
             }
         }
@@ -319,6 +322,8 @@ impl BlueprintTree {
         parent_visible: bool,
         view_states: &ViewStates,
     ) {
+        re_tracing::profile_function!();
+
         let item = Item::Container(container_data.id);
         let content = Contents::Container(container_data.id);
 
@@ -403,8 +408,10 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         view_data: &ViewData,
         container_visible: bool,
-        errors: Option<&PerVisualizerType<VisualizerExecutionErrorState>>,
+        errors: Option<&VisualizerViewReport>,
     ) {
+        re_tracing::profile_function!();
+
         let mut visible = view_data.visible;
         let view_visible = visible && container_visible;
         let item = Item::View(view_data.id);
@@ -416,10 +423,7 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let has_error =
-            errors.is_some_and(|errors| errors.values().any(|error| error.is_overall()));
-
-        let item_content = if has_error {
+        let item_content = if errors.is_some_and(|errors| !errors.is_empty()) {
             list_item::LabelContent::new(
                 egui::RichText::new(view_data.name.as_ref()).color(ui.visuals().error_fg_color),
             )
@@ -527,7 +531,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         data_result_data: &DataResultData,
         view_visible: bool,
-        errors: Option<&PerVisualizerType<VisualizerExecutionErrorState>>,
+        visualizer_reports: Option<&VisualizerViewReport>,
     ) {
         let item = Item::DataResult(
             data_result_data.view_id,
@@ -541,24 +545,34 @@ impl BlueprintTree {
                     DataResultKind::EmptyOriginPlaceholder
                 );
 
-                let has_error = errors.is_some_and(|errors| {
-                    data_result_data
-                        .visualizer_instruction_ids
-                        .iter()
-                        .any(|instruction_id| {
-                            errors
-                                .values()
-                                .any(|err| err.error_string_for(instruction_id).is_some())
-                        })
-                });
+                let highest_report_severity: Option<VisualizerReportSeverity> = visualizer_reports
+                    .and_then(|visualizer_reports| {
+                        data_result_data
+                            .visualizer_instruction_ids
+                            .iter()
+                            .filter_map(|instruction_id| {
+                                visualizer_reports
+                                    .values()
+                                    .filter_map(|err| err.highest_severity_for(instruction_id))
+                                    .max()
+                            })
+                            .max()
+                    });
+
+                let format_color = match highest_report_severity {
+                    Some(
+                        VisualizerReportSeverity::Error
+                        | VisualizerReportSeverity::OverallVisualizerError,
+                    ) => Some(ui.visuals().error_fg_color),
+                    Some(VisualizerReportSeverity::Warning) => Some(ui.visuals().warn_fg_color),
+                    None => is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
+                };
 
                 let item_content = list_item::LabelContent::new(format_matching_text(
                     ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
-                    has_error.then(|| ui.visuals().error_fg_color).or_else(|| {
-                        is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color)
-                    }),
+                    format_color,
                 ))
                 .with_icon(guess_instance_path_icon(
                     ctx,
@@ -651,7 +665,7 @@ impl BlueprintTree {
                                 ui,
                                 child,
                                 view_visible,
-                                errors,
+                                visualizer_reports,
                             );
                         }
                     },

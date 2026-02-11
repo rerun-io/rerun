@@ -338,31 +338,31 @@ impl ChunkStore {
     /// The resulting root chunks might or might not be volatile.
     /// If you only care about chunks that are still available for download, see [`Self::find_root_rrd_manifests`].
     pub fn find_root_chunks(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
-        fn recurse(store: &ChunkStore, chunk_id: &ChunkId, roots: &mut Vec<ChunkId>) {
-            let lineage = store.chunks_lineage.get(chunk_id);
-            match lineage {
-                Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                    recurse(store, chunk_id, roots);
-                }
-
-                Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
-                    for chunk_id in chunk_ids {
-                        recurse(store, chunk_id, roots);
-                    }
-                }
-
-                Some(ChunkDirectLineage::ReferencedFrom(_) | ChunkDirectLineage::Volatile) => {
-                    roots.push(*chunk_id);
-                }
-
-                _ => {}
-            }
-        }
-
         let mut roots = Vec::new();
-        recurse(self, chunk_id, &mut roots);
-
+        self.collect_root_ids(chunk_id, &mut roots);
         roots
+    }
+
+    /// See [`Self::find_root_chunks`].
+    pub fn collect_root_ids(&self, chunk_id: &ChunkId, roots: &mut Vec<ChunkId>) {
+        let lineage = self.chunks_lineage.get(chunk_id);
+        match lineage {
+            Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
+                self.collect_root_ids(chunk_id, roots);
+            }
+
+            Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
+                for chunk_id in chunk_ids {
+                    self.collect_root_ids(chunk_id, roots);
+                }
+            }
+
+            Some(ChunkDirectLineage::ReferencedFrom(_) | ChunkDirectLineage::Volatile) => {
+                roots.push(*chunk_id);
+            }
+
+            None => {}
+        }
     }
 
     /// Returns the top-level non-volatile roots of a given chunk, if any.
@@ -377,7 +377,6 @@ impl ChunkStore {
     pub fn find_root_rrd_manifests(&self, chunk_id: &ChunkId) -> Vec<(ChunkId, Arc<RrdManifest>)> {
         let mut roots = Vec::new();
         self.collect_root_rrd_manifests(chunk_id, &mut roots);
-
         roots
     }
 
@@ -444,34 +443,42 @@ impl ChunkStore {
 
     /// Returns true if either the specified chunk or one of its ancestors resulted from a split.
     pub fn descends_from_a_split(&self, chunk_id: &ChunkId) -> bool {
-        fn recurse(store: &ChunkStore, chunk_id: &ChunkId, compaction_found: bool) -> bool {
-            let lineage = store.chunks_lineage.get(chunk_id);
-            match lineage {
-                Some(ChunkDirectLineage::SplitFrom(_chunk_id, _sibling_ids)) => {
-                    #[expect(clippy::manual_assert)]
-                    if cfg!(debug_assertions) && compaction_found {
-                        panic!(
-                            "Chunk {chunk_id} mixes compaction and splitting in its lineage tree"
-                        )
+        if cfg!(debug_assertions) {
+            // Do a bit more expensive recursion as a form of sanity checking:
+            fn recurse(store: &ChunkStore, chunk_id: &ChunkId, compaction_found: bool) -> bool {
+                let lineage = store.chunks_lineage.get(chunk_id);
+                match lineage {
+                    Some(ChunkDirectLineage::SplitFrom(_chunk_id, _sibling_ids)) => {
+                        debug_assert!(
+                            !compaction_found,
+                            "DEBUG ASSERT: Chunk {chunk_id} mixes compaction and splitting in its lineage tree"
+                        );
+                        true
                     }
-                    true
-                }
 
-                Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
-                    for chunk_id in chunk_ids {
-                        if recurse(store, chunk_id, true) {
-                            return true;
+                    Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
+                        for chunk_id in chunk_ids {
+                            if recurse(store, chunk_id, true) {
+                                return true;
+                            }
                         }
+                        false
                     }
-                    false
+
+                    _ => false,
                 }
-
-                _ => false,
             }
-        }
 
-        let compaction_found = false;
-        recurse(self, chunk_id, compaction_found)
+            let compaction_found = false;
+            recurse(self, chunk_id, compaction_found)
+        } else {
+            // We never mix splits and compactions in the same lineage tree,
+            // so no need to recurse:
+            matches!(
+                self.chunks_lineage.get(chunk_id),
+                Some(ChunkDirectLineage::SplitFrom { .. })
+            )
+        }
     }
 
     /// Returns true if either the specified chunk or one of its ancestors resulted from a compaction.
@@ -1086,11 +1093,12 @@ mod tests {
         let redacted_chunk_ids: ahash::HashMap<_, _> = store
             .chunks_lineage
             .keys()
+            .sorted()
             .map(|chunk_id| (*chunk_id, next_chunk_id()))
             .collect();
 
         let mut lineage_report = Vec::new();
-        for chunk_id in store.chunks_per_chunk_id.keys() {
+        for chunk_id in store.chunks_per_chunk_id.keys().sorted() {
             lineage_report.push(store.format_lineage(chunk_id));
         }
 

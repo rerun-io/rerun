@@ -3,8 +3,11 @@
   "large_button_icon_size": 12,
   "large_button_corner_radius": 6,
   "small_icon_size": 14,
+  "visualizer_list_color_box_size": 14,
   "modal_button_width": 50,
   "default_modal_width": 400,
+
+  "spatial_label_bg_opacity": 0.5,
 
   "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
   "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill
@@ -291,6 +294,23 @@
     },
     "list_item_collapse_default": {
       "color": "{Gray.700}"
+    },
+
+    "visualizer_list_title_text_color": {
+      "color": "{Gray.1000}"
+    },
+    "visualizer_list_path_text_color": {
+      "color": "{Gray.550}"
+    },
+    "visualizer_list_color_box_stroke": {
+      "color": "{Gray.800}",
+      "width": 1
+    },
+    "visualizer_list_pill_bg_color": {
+      "color": "{Gray.200}"
+    },
+    "visualizer_list_pill_bg_color_hovered": {
+      "color": "{Gray.250}"
     },
 
     //array indices

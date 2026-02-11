@@ -20,7 +20,7 @@ use re_log_channel::LogSource;
 use re_log_encoding::RrdManifest;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
-    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType, TimelinePoint,
 };
 use re_mutex::Mutex;
 use re_query::{
@@ -105,7 +105,7 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
-    pub rrd_manifest_index: RrdManifestIndex,
+    rrd_manifest_index: RrdManifestIndex,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
@@ -226,24 +226,15 @@ impl EntityDb {
             };
             for component in components {
                 let component_indent = "  ".repeat(depth + 1);
-                if let Some(component_descr) =
-                    store.entity_component_descriptor(entity_path, component)
-                    && let Some(component_type) = &component_descr.component_type
+                if let Some((component_type, datatype)) =
+                    store.lookup_component_type(entity_path, component)
                 {
-                    if let Some(datatype) = store.lookup_datatype(component_type) {
-                        text.push_str(&format!(
-                            "{}{}: {}\n",
-                            component_indent,
-                            component_type.short_name(),
-                            re_arrow_util::format_data_type(&datatype)
-                        ));
-                    } else {
-                        text.push_str(&format!(
-                            "{}{}\n",
-                            component_indent,
-                            component_type.short_name()
-                        ));
-                    }
+                    let name = component_type
+                        .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
+                    text.push_str(&format!(
+                        "{component_indent}{name}: {}\n",
+                        re_arrow_util::format_data_type(&datatype)
+                    ));
                 } else {
                     // Fallback to component identifier
                     text.push_str(&format!("{component_indent}{component}\n"));
@@ -302,6 +293,19 @@ impl EntityDb {
     #[inline]
     pub fn rrd_manifest_index_mut(&mut self) -> &mut RrdManifestIndex {
         &mut self.rrd_manifest_index
+    }
+
+    /// Are we connected to redap, and can fetch missing chunks?
+    pub fn can_fetch_chunks_from_redap(&self) -> bool {
+        // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
+        self.data_source
+            .as_ref()
+            .is_some_and(|source| source.is_redap())
+    }
+
+    /// Are we currently in the process of downloading the RRD Manifest?
+    pub fn is_currently_downloading_manifest(&self) -> bool {
+        self.can_fetch_chunks_from_redap() && !self.rrd_manifest_index.has_manifest()
     }
 
     #[inline]
@@ -457,14 +461,11 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component]);
+        let results = self.latest_at(query, entity_path, [component]);
+        // TODO(RR-3295): report missing chunks to caller
         results
             .component_mono(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -482,15 +483,11 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component]);
-
+        let results = self.latest_at(query, entity_path, [component]);
+        // TODO(RR-3295): report missing chunks to caller
         results
             .component_mono_quiet(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     #[inline]
@@ -520,12 +517,9 @@ impl EntityDb {
         component: ComponentIdentifier,
         query: &LatestAtQuery,
     ) -> bool {
-        let timeline = Timeline::new(query.timeline(), self.timeline_type(&query.timeline()));
-
         !self
             .rrd_manifest_index()
-            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
-            .iter()
+            .unloaded_temporal_entries_for(&query.timeline(), entity_path, Some(component))
             .any(|chunk| chunk.time_range.contains(query.at()))
     }
 
@@ -633,9 +627,7 @@ impl EntityDb {
             re_log::error!("Failed to load RRD Manifest into store: {err}");
         }
 
-        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
-            re_log::error!("Failed to load RRD Manifest: {err}");
-        }
+        self.rrd_manifest_index.append(rrd_manifest);
 
         self.time_histogram_per_timeline
             .on_rrd_manifest(&self.rrd_manifest_index);
@@ -665,7 +657,10 @@ impl EntityDb {
         &mut self,
         record_batch: &arrow::array::RecordBatch,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(format!(
+            "{} rows",
+            re_format::format_uint(record_batch.num_rows())
+        ));
 
         self.last_modified_at = web_time::Instant::now();
         let chunk_batch =
@@ -680,6 +675,7 @@ impl EntityDb {
 
     /// Insert new data into the store.
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
 
@@ -771,7 +767,7 @@ impl EntityDb {
     pub fn purge_fraction_of_ram(
         &mut self,
         fraction_to_purge: f32,
-        time_cursor: Option<(Timeline, TimeInt)>,
+        time_cursor: Option<TimelinePoint>,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -779,30 +775,35 @@ impl EntityDb {
 
         let protected_chunks = self
             .rrd_manifest_index
-            .chunk_prioritizer_mut()
-            .take_protected_chunks();
+            .chunk_prioritizer()
+            .desired_physical_chunks()
+            .clone();
+
         let store_events = self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             time_budget: DEFAULT_GC_TIME_BUDGET,
 
-            // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
-            // otherwise timestamp-based collection will ignore it.
-            protect_latest: 1,
+            #[expect(clippy::bool_to_int_with_if)]
+            protect_latest: if self.can_fetch_chunks_from_redap() {
+                // We can redownload data, so we are free to drop anything.
+                // This makes the GC faster.
+                // Also, if it is important, then chunk is already in the `protected_chunks` set,
+                // which is based (in part) on the chunks used in the previous frame.
+                0
+            } else {
+                1 // We can't redownload data, so always keep the latest data point of each component
+            },
 
-            // TODO(emilk): we could protect the data that is currently being viewed
-            // (e.g. when paused in the live camera example).
-            // To be perfect it would need margins (because of latest-at), i.e. we would need to know
-            // exactly how far back the latest-at is of each component at the current time…
-            // …but maybe it doesn't have to be perfect.
-            //
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
+
             protected_chunks,
-            furthest_from: if self.rrd_manifest_index.has_manifest() {
-                // If we have an RRD manifest, it means we can download chunks on-demand.
+
+            furthest_from: if self.can_fetch_chunks_from_redap() {
+                // We can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:
-                time_cursor.map(|(timeline, time)| (*timeline.name(), time))
+                time_cursor.map(|tc| (tc.name, tc.time))
             } else {
                 // If we don't have an RRD manifest, then we can't redownload data,
                 // and we GC the oldest data instead.

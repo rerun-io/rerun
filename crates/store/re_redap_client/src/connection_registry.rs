@@ -6,12 +6,26 @@ use std::sync::Arc;
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
+use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
 
 use crate::connection_client::GenericConnectionClient;
 use crate::grpc::{RedapClient, RedapClientInner};
 use crate::{ApiError, ApiResult, TonicStatusError};
+
+/// Returns a suggested host if the user likely forgot the "api." prefix.
+///
+/// This detects the common mistake of connecting to `xxx.cloud.rerun.io` instead of
+/// `api.xxx.cloud.rerun.io`.
+fn suggest_api_prefix(origin: &Origin) -> Option<String> {
+    let host = origin.format_host();
+    if !host.starts_with("api.") && host.ends_with(".cloud.rerun.io") {
+        Some(format!("api.{host}"))
+    } else {
+        None
+    }
+}
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.
@@ -91,6 +105,9 @@ pub enum ClientCredentialsError {
         status: TonicStatusError,
         credentials: SourcedCredentials,
     },
+
+    #[error("{0}")]
+    HostMismatch(re_auth::HostMismatchError),
 }
 
 /// Registry of all tokens and connections to the redap servers.
@@ -120,6 +137,16 @@ pub enum CredentialSource {
     PerOrigin,
     Fallback,
     EnvVar,
+}
+
+impl std::fmt::Display for CredentialSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PerOrigin => f.write_str("per-origin"),
+            Self::Fallback => f.write_str("fallback"),
+            Self::EnvVar => f.write_str("env-var"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -308,12 +335,35 @@ impl ConnectionRegistryHandle {
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,
     ) -> ApiResult<RedapClient> {
+        // Check the token's allowed hosts before wrapping it in a provider that
+        // would blindly attach it to every outgoing request. If the host
+        // doesn't match, return a credentials error so the caller can skip
+        // this credential and try the next one.
+        let host = origin.host.to_string();
         let provider: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>> =
             match credentials.as_ref().map(|c| &c.credentials) {
-                Some(Credentials::Token(token)) => Some(Arc::new(
-                    re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
-                )),
+                Some(Credentials::Token(token)) => {
+                    token.for_host(&host).map_err(|err| {
+                        ApiError::credentials_with_source(
+                            ClientCredentialsError::HostMismatch(err),
+                            format!("token not allowed for host '{host}'"),
+                        )
+                    })?;
+                    Some(Arc::new(
+                        re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
+                    ))
+                }
                 Some(Credentials::Stored) => {
+                    // For stored credentials, load the token to check its allowed hosts
+                    // before committing to using it.
+                    if let Ok(Some(c)) = re_auth::oauth::load_credentials() {
+                        c.access_token().jwt().for_host(&host).map_err(|err| {
+                            ApiError::credentials_with_source(
+                                ClientCredentialsError::HostMismatch(err),
+                                format!("stored token not allowed for host '{host}'"),
+                            )
+                        })?;
+                    }
                     Some(Arc::new(re_auth::credentials::CliCredentialsProvider::new()))
                 }
                 None => None,
@@ -331,13 +381,21 @@ impl ConnectionRegistryHandle {
             {
                 Ok(res) => res,
                 Err(err) => {
-                    return Err(ApiError::connection(format!(
-                        "failed to connect to server '{origin}': {err}"
-                    )));
+                    let mut msg = format!("failed to connect to server '{origin}': {err}");
+                    if let Some(suggested) = suggest_api_prefix(&origin) {
+                        msg.push_str(&format!(". Did you mean '{suggested}'?"));
+                    }
+                    return Err(ApiError::connection(msg));
                 }
             };
+
             if !res.ok {
-                return Err(ApiError::invalid_server(origin));
+                let hint = suggest_api_prefix(&origin).map(|suggested| {
+                    format!(
+                        "Did you mean '{suggested}'? Rerun Cloud endpoints require the 'api.' prefix"
+                    )
+                });
+                return Err(ApiError::invalid_server(origin.clone(), hint.as_deref()));
             }
         }
 

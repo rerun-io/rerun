@@ -100,29 +100,34 @@ def test_dataset_register(rrd_paths: list[Path]) -> None:
             ds.manifest().select("rerun_layer_name", "rerun_segment_id").sort("rerun_layer_name", "rerun_segment_id")
         ) == inline_snapshot(
             """\
-┌──────────────────┬─────────────────────┐
-│ rerun_layer_name ┆ rerun_segment_id    │
-│ ---              ┆ ---                 │
-│ type: Utf8       ┆ type: Utf8          │
-╞══════════════════╪═════════════════════╡
-│ base             ┆ complex_recording_0 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ extra            ┆ complex_recording_1 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ fiz              ┆ complex_recording_2 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ fuz              ┆ complex_recording_3 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ more             ┆ complex_recording_0 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ more             ┆ complex_recording_1 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ more             ┆ complex_recording_2 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ more             ┆ complex_recording_3 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ more             ┆ complex_recording_4 │
-└──────────────────┴─────────────────────┘\
+┌────────────────────────────────────────────┐
+│ METADATA:                                  │
+│ * version: 0.1.2                           │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────┬─────────────────────┐ │
+│ │ rerun_layer_name ┆ rerun_segment_id    │ │
+│ │ ---              ┆ ---                 │ │
+│ │ type: Utf8       ┆ type: Utf8          │ │
+│ ╞══════════════════╪═════════════════════╡ │
+│ │ base             ┆ complex_recording_0 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ extra            ┆ complex_recording_1 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ fiz              ┆ complex_recording_2 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ fuz              ┆ complex_recording_3 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_0 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_1 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_2 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_3 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_4 │ │
+│ └──────────────────┴─────────────────────┘ │
+└────────────────────────────────────────────┘\
 """
         )
 
@@ -237,3 +242,26 @@ def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
 │ complex_recording_4 ┆ true                │
 └─────────────────────┴─────────────────────┘\
 """)
+
+
+def test_manifest_diagnostic_data(complex_dataset_prefix: Path) -> None:
+    """Test the include_diagnostic_data parameter on manifest()."""
+    with rr.server.Server() as server:
+        client = server.client()
+        ds = client.create_dataset("dataset")
+        ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
+
+        # Default: rerun_registration_status column should not be present
+        manifest = ds.manifest()
+        column_names = [f.name for f in manifest.schema()]
+        assert "rerun_registration_status" not in column_names
+
+        # With include_diagnostic_data=True: column should be present
+        manifest_diag = ds.manifest(include_diagnostic_data=True)
+        column_names_diag = [f.name for f in manifest_diag.schema()]
+        assert "rerun_registration_status" in column_names_diag
+
+        # In re_server, all registrations are successful (Done=1)
+        # since schema conflicts fail synchronously
+        statuses = manifest_diag.select("rerun_registration_status").to_arrow_table().to_pydict()
+        assert all(s == "done" for s in statuses["rerun_registration_status"])

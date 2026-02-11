@@ -19,6 +19,7 @@ mod drop_time_range;
 mod events;
 mod gc;
 mod lineage;
+mod missing_chunk_reporter;
 mod properties;
 mod query;
 mod stats;
@@ -47,11 +48,13 @@ pub use self::events::{
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
+pub use self::missing_chunk_reporter::MissingChunkReporter;
 pub use self::properties::ExtractPropertiesError;
 pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
 pub use self::store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
+    QueriedChunkIdTracker,
 };
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
@@ -92,16 +95,15 @@ pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;
 
 /// What to do when a virtual chunk is missing from the store.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OnMissingChunk {
-    /// Ignore the missing chunk, and return partial results.
+pub enum ChunkTrackingMode {
+    /// Ignore missing & used chunks, and return partial results.
     Ignore,
 
-    /// Remember the missing chunk ID in [`ChunkStore::take_tracked_chunk_ids`]
-    /// and report it back in [`QueryResults::missing`].
+    /// Remember the missing & used chunk ID in [`ChunkStore::take_tracked_chunk_ids`].
     Report,
 
     /// Panic when a chunk is missing.
     ///
     /// Only use this in tests!
-    Panic,
+    PanicOnMissing,
 }

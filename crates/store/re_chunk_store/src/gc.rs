@@ -1,9 +1,10 @@
-use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 
+use ahash::HashSet;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use re_format::format_bytes;
 use web_time::Instant;
 
 use re_byte_size::SizeBytes;
@@ -159,7 +160,7 @@ impl ChunkStore {
 
         let stats_before = self.stats();
 
-        let total_size_bytes_before = stats_before.total().total_size_bytes as f64;
+        let total_size_bytes_before = stats_before.total().total_size_bytes;
         let total_num_chunks_before = stats_before.total().num_chunks;
         let total_num_rows_before = stats_before.total().num_rows;
 
@@ -167,8 +168,8 @@ impl ChunkStore {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
 
-                let num_bytes_to_drop = total_size_bytes_before * p;
-                let target_size_bytes = total_size_bytes_before - num_bytes_to_drop;
+                let target_bytes_to_drop = (total_size_bytes_before as f64 * p).round() as u64;
+                let target_size_bytes = total_size_bytes_before - target_bytes_to_drop;
 
                 re_log::trace!(
                     kind = "gc",
@@ -176,13 +177,13 @@ impl ChunkStore {
                     %options.target,
                     total_num_chunks_before = re_format::format_uint(total_num_chunks_before),
                     total_num_rows_before = re_format::format_uint(total_num_rows_before),
-                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before),
-                    target_size_bytes = re_format::format_bytes(target_size_bytes),
-                    drop_at_least_num_bytes = re_format::format_bytes(num_bytes_to_drop),
+                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
+                    target_size_bytes = re_format::format_bytes(target_size_bytes as _),
+                    drop_at_least_num_bytes = re_format::format_bytes(target_bytes_to_drop as _),
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_num_bytes(options, num_bytes_to_drop)
+                self.gc_drop_at_least_num_bytes(options, target_bytes_to_drop)
             }
 
             GarbageCollectionTarget::Everything => {
@@ -191,16 +192,16 @@ impl ChunkStore {
                     id = self.gc_id,
                     %options.target,
                     total_num_rows_before = re_format::format_uint(total_num_rows_before),
-                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before),
+                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_num_bytes(options, f64::INFINITY)
+                self.gc_drop_at_least_num_bytes(options, u64::MAX)
             }
         };
 
         let stats_after = self.stats();
-        let total_size_bytes_after = stats_after.total().total_size_bytes as f64;
+        let total_size_bytes_after = stats_after.total().total_size_bytes;
         let total_num_chunks_after = stats_after.total().num_chunks;
         let total_num_rows_after = stats_after.total().num_rows;
 
@@ -210,10 +211,10 @@ impl ChunkStore {
             %options.target,
             total_num_chunks_before = re_format::format_uint(total_num_chunks_before),
             total_num_rows_before = re_format::format_uint(total_num_rows_before),
-            total_size_bytes_before = re_format::format_bytes(total_size_bytes_before),
+            total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
             total_num_chunks_after = re_format::format_uint(total_num_chunks_after),
             total_num_rows_after = re_format::format_uint(total_num_rows_after),
-            total_size_bytes_after = re_format::format_bytes(total_size_bytes_after),
+            total_size_bytes_after = re_format::format_bytes(total_size_bytes_after as _),
             "GC done"
         );
 
@@ -247,7 +248,7 @@ impl ChunkStore {
     //
     // TODO(jleibs): More complex functionality might required expanding this to also
     // *ignore* specific entities, components, timelines, etc. for this protection.
-    fn find_all_protected_physical_chunk_ids(&self, target_count: usize) -> BTreeSet<ChunkId> {
+    fn find_all_protected_physical_chunk_ids(&self, target_count: usize) -> HashSet<ChunkId> {
         re_tracing::profile_function!();
 
         if target_count == 0 {
@@ -261,32 +262,32 @@ impl ChunkStore {
                     |(_timeline, temporal_chunk_ids_per_component)| {
                         temporal_chunk_ids_per_component.iter().flat_map(
                             |(_, temporal_chunk_ids_per_time)| {
-                                temporal_chunk_ids_per_time
-                                    .per_start_time
-                                    .values()
-                                    .rev()
-                                    .flatten()
-                                    .copied()
-                                    .chain(
-                                        temporal_chunk_ids_per_time
-                                            .per_end_time
-                                            .values()
-                                            .rev()
-                                            .flatten()
-                                            .copied(),
-                                    )
-                                    .filter(|chunk_id| {
-                                        self.chunks_per_chunk_id.contains_key(chunk_id) // make sure it's physical
-                                    })
-                                    // We might get unlucky and not hit the target count because `per_end_time`
-                                    // ended up yielding the same chunks as `per_start_time`, which will get
-                                    // deduplicated afterwards.
-                                    // This is fine for now, for two reasons:
-                                    // 1. In practice, we never use anything other than a `target_count` of 1, which
-                                    //    makes this whole thing irrelevant.
-                                    // 2. The whole concept of "protecting latest" only makes sense in the context
-                                    //    of the legacy data paths, which are on their way out anyhow.
-                                    .take(target_count)
+                                itertools::chain!(
+                                    temporal_chunk_ids_per_time
+                                        .per_start_time
+                                        .values()
+                                        .rev()
+                                        .flatten()
+                                        .copied(),
+                                    temporal_chunk_ids_per_time
+                                        .per_end_time
+                                        .values()
+                                        .rev()
+                                        .flatten()
+                                        .copied(),
+                                )
+                                .filter(|chunk_id| {
+                                    self.chunks_per_chunk_id.contains_key(chunk_id) // make sure it's physical
+                                })
+                                // We might get unlucky and not hit the target count because `per_end_time`
+                                // ended up yielding the same chunks as `per_start_time`, which will get
+                                // deduplicated afterwards.
+                                // This is fine for now, for two reasons:
+                                // 1. In practice, we never use anything other than a `target_count` of 1, which
+                                //    makes this whole thing irrelevant.
+                                // 2. The whole concept of "protecting latest" only makes sense in the context
+                                //    of the legacy data paths, which are on their way out anyhow.
+                                .take(target_count)
                             },
                         )
                     },
@@ -298,9 +299,9 @@ impl ChunkStore {
     fn gc_drop_at_least_num_bytes(
         &mut self,
         options: &GarbageCollectionOptions,
-        num_bytes_to_drop: f64,
+        target_bytes_to_drop: u64,
     ) -> Vec<ChunkStoreDiff> {
-        re_tracing::profile_function!(re_format::format_bytes(num_bytes_to_drop));
+        re_tracing::profile_function!(re_format::format_bytes(target_bytes_to_drop as _));
 
         let mark_start_time = Instant::now();
 
@@ -309,7 +310,7 @@ impl ChunkStore {
 
         let chunks_to_be_removed = {
             re_tracing::profile_scope!("mark");
-            self.gc_find_candidates(options, num_bytes_to_drop, mark_time_budget)
+            self.gc_find_candidates(options, target_bytes_to_drop, mark_time_budget)
         };
 
         // Make sure we don't remove more than half of the total time budget.
@@ -358,10 +359,16 @@ impl ChunkStore {
     fn gc_find_candidates(
         &self,
         options: &GarbageCollectionOptions,
-        mut num_bytes_to_drop: f64,
+        target_bytes_to_drop: u64,
         time_budget: Duration,
     ) -> Vec<Arc<Chunk>> {
         let mut chunks_to_be_removed = Vec::new();
+
+        if target_bytes_to_drop == 0 {
+            return chunks_to_be_removed;
+        }
+
+        let mut num_bytes_dropped = 0;
 
         // These are all physical/loaded chunks by definition, since we need to access their data in
         // order to sort them in the first place.
@@ -388,16 +395,18 @@ impl ChunkStore {
             {
                 // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
                 // and would count as amortized (i.e. 0 bytes).
-                num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
+                num_bytes_dropped += <Chunk as SizeBytes>::total_size_bytes(&*chunk);
 
                 chunks_to_be_removed.push(chunk);
 
-                if num_bytes_to_drop <= 0.0 {
-                    break; // byte target reached
+                if target_bytes_to_drop <= num_bytes_dropped {
+                    return chunks_to_be_removed; // byte target reached
                 }
                 // NOTE: ignores the time budget, since we've already done the expensive thing.
             }
         }
+
+        let bytes_dropped_by_furthest_from = num_bytes_dropped;
 
         // The code above (mark-furthest-from) cannot respect the time budget,
         // so if it blows past it we could end up in a situation where the entire budget
@@ -405,8 +414,8 @@ impl ChunkStore {
         // So we do NOT count the `mark-furthest-from` phase towards the time budget.
         // See the TODO(cmc) above for more.
 
-        if 0.0 < num_bytes_to_drop {
-            re_tracing::profile_scope!("mark-other");
+        if num_bytes_dropped < target_bytes_to_drop {
+            re_tracing::profile_scope!("mark-by-row-id");
 
             // `find_all_protected_physical_chunk_ids` is rather expensive so make sure we only
             // compute it if we couldn't find enough chunks to remove already.
@@ -432,17 +441,27 @@ impl ChunkStore {
             for chunk in chunks_in_priority_order {
                 // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
                 // and would count as amortized (i.e. 0 bytes).
-                num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
+                num_bytes_dropped += <Chunk as SizeBytes>::total_size_bytes(&*chunk);
 
                 chunks_to_be_removed.push(chunk);
 
                 // Only check time budget once we have removed at least one chunk.
                 if time_budget <= start_time.elapsed() {
-                    break; // time budget exhausted
+                    return chunks_to_be_removed; // time budget exhausted
                 }
-                if num_bytes_to_drop <= 0.0 {
-                    break; // byte target reached
+                if target_bytes_to_drop <= num_bytes_dropped {
+                    return chunks_to_be_removed; // byte target reached
                 }
+            }
+
+            if options.furthest_from.is_some() {
+                re_log::debug!(
+                    "GC: Furthest-from strategy found {} bytes to drop, and RowId-based strategy found an additional {} bytes to drop ({} total of {} target)",
+                    format_bytes(bytes_dropped_by_furthest_from as _),
+                    format_bytes((num_bytes_dropped - bytes_dropped_by_furthest_from) as _),
+                    format_bytes(num_bytes_dropped as _),
+                    format_bytes(target_bytes_to_drop as _),
+                );
             }
         }
 
@@ -479,7 +498,6 @@ impl ChunkStore {
             id: _,
             config: _,
             time_type_registry: _,       // purely additive
-            type_registry: _,            // purely additive
             per_column_metadata: _,      // purely additive
             chunks_per_chunk_id: _,      // handled by shallow impl
             chunk_ids_per_min_row_id: _, // handled by shallow impl
@@ -643,7 +661,6 @@ impl ChunkStore {
             id: _,
             config: _,
             time_type_registry: _,  // purely additive
-            type_registry: _,       // purely additive
             per_column_metadata: _, // purely additive
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,

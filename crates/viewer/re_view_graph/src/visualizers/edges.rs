@@ -2,7 +2,7 @@ use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::archetypes::{self, GraphEdges};
 use re_sdk_types::{self, components, datatypes};
-use re_view::{ComponentMappingError, DataResultQuery as _};
+use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -53,7 +53,7 @@ impl VisualizerSystem for EdgesVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         // TODO(cmc): could we (improve and then) use reflection for this?
         re_sdk_types::static_assert_struct_has_fields!(
@@ -66,24 +66,25 @@ impl VisualizerSystem for EdgesVisualizer {
 
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
-            let error_reporter = |error: &ComponentMappingError| {
-                output.report_error_for(instruction.id, error);
-            };
-
-            let results = data_result
+            // TODO(andreas): why not data_result.query_archetype_with_history
+            let latest_at_results = data_result
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphEdges>(
                     ctx,
                     &timeline_query,
                     Some(instruction),
                 );
+            let results = re_view::BlueprintResolvedResults::from((
+                timeline_query.clone(),
+                latest_at_results,
+            ));
+            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
-            let all_edges = results.iter_as(
-                error_reporter,
-                query.timeline,
-                GraphEdges::descriptor_edges().component,
-            );
+            let all_edges = results.iter_required(GraphEdges::descriptor_edges().component);
             let graph_type = results
-                .get_mono::<components::GraphType>(GraphEdges::descriptor_graph_type().component)
+                .iter_optional(GraphEdges::descriptor_graph_type().component)
+                .component_slow::<components::GraphType>()
+                .next()
+                .and_then(|(_index, graph_types)| graph_types.iter().next().copied())
                 .unwrap_or_default();
 
             let sources = all_edges

@@ -48,6 +48,6 @@ egui_extras.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 rexif.workspace = true
 unindent.workspace = true
-jiff.workspace = true

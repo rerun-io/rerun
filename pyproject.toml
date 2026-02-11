@@ -27,7 +27,7 @@ dev = [
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
   "ruff==0.12.10",
-  "mypy==1.14.1",
+  "mypy==1.19.1",
   "nbqa==1.9.1",
   # Packages needed for running scripts + their type stubs for mypy
   "pandas>=2.0",
@@ -52,6 +52,7 @@ dev = [
   "rich>=13.0",
   # Testing packages (typed, needed for linting tests)
   "pytest>=8.0",
+  "pytest-benchmark",
   "inline-snapshot>=0.31",
   "syrupy>=4.0",
   # Notebook dependencies (needed for linting rerun_notebook)
@@ -65,14 +66,16 @@ dev = [
   "google-cloud-compute>=1.20.0",
   "pyyaml>=6.0",
   "types-pyyaml>=6.0",
+  "wheel>=0.46",
   # Needed by lerobot dataloader example
   "huggingface-hub<1.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
   "datafusion>=50.0",
   "jupyter>=1.0",
+  "types-protobuf", # Needed by mcap-protobuf-support
 ]
-snippets = ["rerun-sdk", "av", "pandas", "rerun_export"]
+snippets = ["rerun-sdk", "av", "pandas", "mcap-protobuf-support"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
@@ -149,7 +152,8 @@ docs = [
 package = false
 
 # Override lerobot's dependency on rerun-sdk to use the workspace version
-override-dependencies = ["rerun-sdk"]
+# TODO(RR-3548): Figure out how to have lerobot as a workspace member without causing dependency issues.
+# override-dependencies = ["rerun-sdk"]
 
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
@@ -190,7 +194,8 @@ nv12 = { workspace = true }
 objectron = { workspace = true }
 open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
-rerun_export = { workspace = true }
+# TODO(RR-3548): Figure out a way to include this, without lerobot causing dependency issues.
+# rerun_export = { workspace = true }
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -243,7 +248,7 @@ members = [
   # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
-  "examples/python/rerun_export",
+  # "examples/python/rerun_export" # Excluded: causes dependency issues,
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
@@ -397,11 +402,10 @@ invalid-argument-type = "ignore"
 unresolved-import = "ignore"
 # others to burn down
 call-non-callable = "ignore"
+# TODO(astral-sh/ty/#2501)
 index-out-of-bounds = "ignore"
 invalid-assignment = "ignore"
-invalid-return-type = "ignore"
 no-matching-overload = "ignore"
-possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 unresolved-reference = "ignore"
 unsupported-operator = "ignore"

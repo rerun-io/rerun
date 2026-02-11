@@ -91,7 +91,7 @@ def flat_np_array_from_array_like(array: npt.NDArray[Any], dimension: int) -> np
             f"Expected either a flat array with a length multiple of {dimension} elements, or an array with shape (`num_elements`, {dimension}). Shape of passed array was {array.shape}.",
         )
 
-    return array.reshape((-1,))
+    return array.ravel()
 
 
 if __name__ == "__main__":

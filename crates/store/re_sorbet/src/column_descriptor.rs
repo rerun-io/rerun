@@ -69,6 +69,16 @@ impl ColumnDescriptor {
         }
     }
 
+    /// Column name, used in record batches.
+    #[inline]
+    pub fn column_name(&self, batch_type: crate::BatchType) -> String {
+        match self {
+            Self::RowId(descr) => descr.column_name(),
+            Self::Time(descr) => descr.column_name().to_owned(),
+            Self::Component(descr) => descr.column_name(batch_type),
+        }
+    }
+
     /// Short and usually unique, used in UI.
     #[inline]
     pub fn display_name(&self) -> String {

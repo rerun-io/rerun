@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pyarrow.compute
-from typing_extensions import deprecated
 
 from rerun.error_utils import RerunMissingDependencyError
 
@@ -71,23 +70,6 @@ def segment_url(
     return inner_udf(segment_id_col).alias("segment_url")
 
 
-@deprecated("Use segment_url() instead")
-def partition_url(
-    dataset: DatasetEntry,
-    *,
-    partition_id_col: str | Expr | None = None,
-    timestamp_col: str | Expr | None = None,
-    timeline_name: str | None = None,
-) -> Expr:
-    """Compute the URL for a partition within a dataset."""
-    return segment_url(
-        dataset,
-        segment_id_col=partition_id_col,
-        timestamp_col=timestamp_col,
-        timeline_name=timeline_name,
-    )
-
-
 def segment_url_udf(dataset: DatasetEntry) -> ScalarUDF:
     """
     Create a UDF to the URL for a segment within a Dataset.
@@ -106,12 +88,6 @@ def segment_url_udf(dataset: DatasetEntry) -> ScalarUDF:
         )
 
     return udf(inner_udf, [pa.string()], pa.string(), "stable")
-
-
-@deprecated("Use segment_url_udf() instead")
-def partition_url_udf(dataset: DatasetEntry) -> ScalarUDF:
-    """Create a UDF to the URL for a partition within a Dataset."""
-    return segment_url_udf(dataset)
 
 
 def segment_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) -> ScalarUDF:
@@ -145,9 +121,3 @@ def segment_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) -> S
         )
 
     return udf(inner_udf, [pa.string(), pa.timestamp("ns")], pa.string(), "stable")
-
-
-@deprecated("Use segment_url_with_timeref_udf() instead")
-def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) -> ScalarUDF:
-    """Create a UDF to the URL for a partition within a Dataset with timestamp."""
-    return segment_url_with_timeref_udf(dataset, timeline_name)

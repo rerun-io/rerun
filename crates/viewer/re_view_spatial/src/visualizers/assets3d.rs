@@ -124,44 +124,32 @@ impl VisualizerSystem for Asset3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let preferred_view_kind = self.0.preferred_view_kind;
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Asset3D, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let all_blob_chunks = results
-                    .get_required_chunk(Asset3D::descriptor_blob().component)
-                    .ensure_required(|err| spatial_ctx.report_error(err));
-                if all_blob_chunks.is_empty() {
+                let all_blobs = results.iter_required(Asset3D::descriptor_blob().component);
+                if all_blobs.is_empty() {
                     return Ok(());
                 }
 
-                let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-                let all_media_types = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Asset3D::descriptor_media_type().component,
-                );
-                let all_albedo_factors = results.iter_as(
-                    |err| spatial_ctx.report_warning(err),
-                    timeline,
-                    Asset3D::descriptor_albedo_factor().component,
-                );
+                let all_media_types =
+                    results.iter_optional(Asset3D::descriptor_media_type().component);
+                let all_albedo_factors =
+                    results.iter_optional(Asset3D::descriptor_albedo_factor().component);
 
                 let query_result_hash = results.query_result_hash();
 
                 let data = re_query::range_zip_1x2(
-                    all_blobs_indexed,
+                    all_blobs.slice::<&[u8]>(),
                     all_media_types.slice::<String>(),
                     all_albedo_factors.slice::<u32>(),
                 )

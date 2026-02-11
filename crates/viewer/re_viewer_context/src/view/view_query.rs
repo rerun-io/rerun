@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
-use itertools::Itertools as _;
+use itertools::Either;
 use nohash_hasher::IntSet;
+
 use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
@@ -15,7 +16,7 @@ use crate::{
 };
 
 /// [`VisualizerComponentMapping`] but without the target.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VisualizerComponentSource {
     /// See [`ComponentSourceKind::SourceComponent`].
     SourceComponent {
@@ -39,11 +40,13 @@ impl VisualizerComponentSource {
             selector,
         } = mapping;
 
-        let source_component = source_component.as_ref().unwrap_or(target);
-
         match source_kind {
             ComponentSourceKind::SourceComponent => Self::SourceComponent {
-                source_component: source_component.as_str().into(),
+                source_component: source_component
+                    .as_ref()
+                    .map(|c| c.as_str())
+                    .unwrap_or_else(|| target.as_str())
+                    .into(),
                 selector: selector.as_ref().map_or(String::new(), |s| s.to_string()),
             },
 
@@ -185,10 +188,15 @@ pub struct DataResult {
     /// Where to retrieve the data from.
     pub entity_path: EntityPath,
 
-    /// There are any visualizers that can run on this data result.
+    /// There are any visualizers that *can* run on this data result.
     pub any_visualizers_available: bool,
 
-    /// Which `ViewSystems`s to pass the `DataResult` to.
+    /// Describes which visualizers should run for this data result.
+    ///
+    /// Invisible data results may still have visualizer instructions here,
+    /// but they aren't considered active.
+    ///
+    /// [`Self::any_visualizers_available`] may be true even if this is empty.
     pub visualizer_instructions: Vec<VisualizerInstruction>,
 
     /// If true, this path is not actually included in the query results and is just here
@@ -337,7 +345,8 @@ impl DataResult {
     }
 }
 
-pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
+pub type VisualizerInstructionsPerType<'a> =
+    BTreeMap<ViewSystemIdentifier, Vec<(&'a DataResult, &'a VisualizerInstruction)>>;
 
 #[derive(Debug)]
 pub struct ViewQuery<'s> {
@@ -347,10 +356,10 @@ pub struct ViewQuery<'s> {
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
 
-    /// All [`DataResult`]s that are queried by active visualizers.
+    /// All active visualizer instructions for each visualizer type.
     ///
-    /// Contains also invisible objects, use `iter_visible_data_results` to iterate over visible ones.
-    pub per_visualizer_data_results: PerSystemDataResults<'s>,
+    /// These are only from visible data results.
+    pub active_visualizer_instructions_per_type: VisualizerInstructionsPerType<'s>,
 
     /// The timeline we're on.
     pub timeline: TimelineName,
@@ -365,49 +374,19 @@ pub struct ViewQuery<'s> {
 }
 
 impl<'s> ViewQuery<'s> {
-    /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
-    pub fn iter_visualizer_instruction_for<'a>(
-        &'a self,
+    /// Iter over all visible data results and their visualizer instructions for the given visualizer type.
+    pub fn iter_visualizer_instruction_for(
+        &self,
         visualizer: ViewSystemIdentifier,
-    ) -> impl Iterator<Item = (&'a DataResult, &'a VisualizerInstruction)> + 'a
-    where
-        's: 'a,
-    {
-        self.per_visualizer_data_results.get(&visualizer).map_or(
-            itertools::Either::Left(std::iter::empty()),
-            |results| {
-                itertools::Either::Right(
-                    results
-                        .iter()
-                        .filter(|result| result.is_visible())
-                        .flat_map(move |result| {
-                            result
-                                .visualizer_instructions
-                                .iter()
-                                .filter_map(move |instruction| {
-                                    (instruction.visualizer_type == visualizer)
-                                        .then_some((*result, instruction))
-                                })
-                        }),
-                )
-            },
-        )
-    }
-
-    /// Iterates over all currently visible (i.e. at least one visualizer is active) [`DataResult`]s of the [`ViewQuery`].
-    #[inline]
-    pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
-        self.per_visualizer_data_results
-            .values()
-            .flat_map(|data_results| data_results.iter().copied())
-            .unique_by(|data_result| data_result.entity_path.hash())
-    }
-
-    /// Iterates over all currently visible (i.e. at least one visualizer is active) entities of the [`ViewQuery`].
-    #[inline]
-    pub fn iter_all_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
-        self.iter_all_data_results()
-            .map(|data_result| &data_result.entity_path)
+    ) -> impl Iterator<Item = (&'s DataResult, &'s VisualizerInstruction)> {
+        if let Some(instructions) = self
+            .active_visualizer_instructions_per_type
+            .get(&visualizer)
+        {
+            Either::Left(instructions.iter().copied())
+        } else {
+            Either::Right(std::iter::empty())
+        }
     }
 
     #[inline]

@@ -144,7 +144,7 @@ fn decode_color_image(
     image_bytes: &[u8],
     media_type: &str,
 ) -> Result<ImageInfo, ImageLoadError> {
-    re_tracing::profile_function!();
+    re_tracing::profile_function!(media_type);
 
     let mut reader = image::ImageReader::new(std::io::Cursor::new(image_bytes));
 

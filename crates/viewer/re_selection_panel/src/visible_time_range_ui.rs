@@ -390,8 +390,8 @@ fn resolved_visible_history_boundary_ui(
                     }
                     TimeType::Sequence => {
                         label += &format!(
-                            " with {offset} frame{} offset",
-                            if offset.abs() > 1 { "s" } else { "" }
+                            " with {} offset",
+                            re_format::format_plural_signed_s(offset, "frame")
                         );
                     }
                 }

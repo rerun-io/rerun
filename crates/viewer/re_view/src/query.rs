@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
+use re_log_types::external::arrow;
+use re_log_types::external::arrow::array::Array as _;
 use re_log_types::hash::Hash64;
 use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
@@ -7,8 +11,70 @@ use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_types_core::{Archetype, ComponentIdentifier};
 use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
-use crate::HybridResults;
-use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
+use crate::blueprint_resolved_results::{
+    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults,
+};
+use crate::{BlueprintResolvedResults, ComponentMappingError};
+
+/// Casts the values in a `ListArray` to the target datatype.
+///
+/// Returns the array unchanged if already the correct type (zero-copy).
+fn cast_list_array_values(
+    source: &arrow::array::ListArray,
+    target_datatype: &arrow::datatypes::DataType,
+) -> Result<arrow::array::ListArray, arrow::error::ArrowError> {
+    let values = source.values();
+
+    // Happy path: already the right type
+    if values.data_type() == target_datatype {
+        return Ok(source.clone());
+    }
+
+    // Cast the values
+    let casted_values = arrow::compute::cast(values, target_datatype)?;
+
+    // Rebuild the ListArray with casted values
+    arrow::array::ListArray::try_new(
+        Arc::new(arrow::datatypes::Field::new_list_field(
+            target_datatype.clone(),
+            true,
+        )),
+        source.offsets().clone(),
+        casted_values,
+        source.nulls().cloned(),
+    )
+}
+
+/// Applies a selector (if present) and casts the component for known datatypes (if required).
+fn transform_chunk(
+    target: &ComponentIdentifier,
+    source: &ComponentIdentifier,
+    selector: &Option<re_arrow_combinators::Selector>,
+    target_datatype: Option<&arrow::datatypes::DataType>,
+    chunk: &re_chunk_store::Chunk,
+) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
+    chunk.with_mapped_component(*source, *target, |arr| {
+        let transformed = if let Some(sel) = selector {
+            sel.execute_per_row(&arr)
+                .map_err(ComponentMappingError::SelectorExecutionFailed)?
+        } else {
+            arr
+        };
+
+        // Apply casting if target datatype is known.
+        if let Some(dt) = target_datatype {
+            cast_list_array_values(&transformed, dt).map_err(|err| {
+                ComponentMappingError::CastFailed {
+                    source_datatype: transformed.data_type().clone().into(),
+                    target_datatype: dt.clone().into(),
+                    err: Arc::new(err),
+                }
+            })
+        } else {
+            Ok(transformed)
+        }
+    })
+}
 
 /// All information required to rewrite a source component into a target component.
 ///
@@ -29,8 +95,8 @@ struct ActiveRemapping {
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`crate::HybridResults`].
+/// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
+/// [`crate::BlueprintResolvedResults`].
 pub fn range_with_blueprint_resolved_data<'a>(
     ctx: &ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
@@ -38,7 +104,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     data_result: &re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-) -> HybridRangeResults<'a> {
+) -> BlueprintResolvedRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
@@ -83,7 +149,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
                             });
                             Ok(source.source_kind())
                         }
-                        Err(err) => Err(format!("parsing selector failed: {err}")),
+                        Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
                     }
                 }
             } else {
@@ -100,39 +166,38 @@ pub fn range_with_blueprint_resolved_data<'a>(
         );
 
         // Apply mapping to the results.
+        let reflection = ctx.viewer_ctx.reflection();
         for ActiveRemapping {
             target,
             source,
             selector,
         } in &active_remappings
         {
-            // TODO(RR-3498): Move the casting in here too!
-            if let Some(mut chunks) = results.components.remove(source) {
+            let target_datatype = reflection.lookup_datatype(*target);
+
+            // NOTE: We clone the chunks instead of removing them, because multiple mappings may
+            // reference the same source component.
+            if let Some(mut chunks) = results.components.get(source).cloned() {
                 'ctx: {
                     for chunk in &mut chunks {
-                        let result = if let Some(sel) = selector {
-                            chunk.with_mapped_component(*source, *target, move |arr| {
-                                sel.execute_per_row(&arr)
-                            })
-                        } else {
-                            chunk.with_mapped_component::<re_arrow_combinators::SelectorError>(
-                                *source, *target, Ok,
-                            )
-                        };
+                        let result =
+                            transform_chunk(target, source, selector, target_datatype, chunk);
 
                         match result {
                             Ok(modified_chunk) => *chunk = modified_chunk,
                             Err(err) => {
-                                component_sources.insert(
-                                    *target,
-                                    Err(format!("failed to execute selector: {err}")),
-                                );
+                                component_sources.insert(*target, Err(err));
                                 break 'ctx;
                             }
                         }
                     }
                     results.components.insert(*target, chunks);
                 }
+            } else {
+                component_sources.insert(
+                    *target,
+                    Err(ComponentMappingError::ComponentNotFound(*source)),
+                );
             }
         }
 
@@ -158,9 +223,10 @@ pub fn range_with_blueprint_resolved_data<'a>(
         }
     }
 
-    HybridRangeResults {
+    BlueprintResolvedRangeResults {
         overrides,
         store_results,
+        _instruction_id: visualizer_instruction.id,
         view_defaults: &ctx.query_result.view_defaults,
         component_sources,
         component_mappings_hash: Hash64::hash(&active_remappings),
@@ -176,8 +242,8 @@ pub fn range_with_blueprint_resolved_data<'a>(
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`crate::HybridResults`].
+/// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
+/// [`crate::BlueprintResolvedResults`].
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
@@ -185,7 +251,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-) -> HybridLatestAtResults<'a> {
+) -> BlueprintResolvedLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
     // TODO(andreas): It would be great to avoid querying for overrides & store values that aren't used due to explicit source components.
@@ -237,7 +303,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                                 });
                                 Ok(source.source_kind())
                             }
-                            Err(err) => Err(format!("parsing selector failed: {err}")),
+                            Err(err) => Err(ComponentMappingError::SelectorParseFailed(err)),
                         }
                     }
                 } else {
@@ -255,21 +321,19 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     );
 
     // Apply mapping to the results.
+    let reflection = ctx.viewer_ctx.reflection();
     for ActiveRemapping {
         target,
         source,
         selector,
     } in &active_remappings
     {
-        if let Some(chunk) = store_results.components.remove(source) {
-            let result = if let Some(sel) = selector {
-                chunk.with_mapped_component(*source, *target, move |arr| sel.execute_per_row(&arr))
-            } else {
-                chunk.with_mapped_component::<re_arrow_combinators::SelectorError>(
-                    *source, *target, Ok,
-                )
-            };
+        let target_datatype = reflection.lookup_datatype(*target);
 
+        // NOTE: We borrow the chunk instead of removing it, because multiple mappings may
+        // reference the same source component.
+        if let Some(chunk) = store_results.components.get(source) {
+            let result = transform_chunk(target, source, selector, target_datatype, chunk);
             match result {
                 Ok(modified_chunk) => {
                     let chunk = std::sync::Arc::new(modified_chunk)
@@ -278,10 +342,14 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                     store_results.components.insert(*target, chunk);
                 }
                 Err(err) => {
-                    component_sources
-                        .insert(*target, Err(format!("failed to execute selector: {err}")));
+                    component_sources.insert(*target, Err(err));
                 }
             }
+        } else {
+            component_sources.insert(
+                *target,
+                Err(ComponentMappingError::ComponentNotFound(*source)),
+            );
         }
     }
 
@@ -304,10 +372,11 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         }
     }
 
-    HybridLatestAtResults {
+    BlueprintResolvedLatestAtResults {
         overrides,
         store_results,
         view_defaults: &ctx.query_result.view_defaults,
+        instruction_id: visualizer_instruction.map(|instruction| instruction.id),
         ctx,
         query: latest_at_query.clone(),
         data_result,
@@ -324,7 +393,7 @@ pub fn query_archetype_with_history<'a>(
     components: impl IntoIterator<Item = ComponentIdentifier>,
     data_result: &'a re_viewer_context::DataResult,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-) -> HybridResults<'a> {
+) -> BlueprintResolvedResults<'a> {
     match query_range {
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
@@ -414,7 +483,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a>;
+    ) -> BlueprintResolvedLatestAtResults<'a>;
 
     fn latest_at_with_blueprint_resolved_data_for_component<'a>(
         &'a self,
@@ -422,7 +491,7 @@ pub trait DataResultQuery {
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a>;
+    ) -> BlueprintResolvedLatestAtResults<'a>;
 
     /// Queries for the given components, taking into account:
     /// * visible history if enabled
@@ -433,7 +502,7 @@ pub trait DataResultQuery {
         view_query: &ViewQuery<'_>,
         component_descriptors: impl IntoIterator<Item = ComponentIdentifier>,
         visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> HybridResults<'a>;
+    ) -> BlueprintResolvedResults<'a>;
 
     /// Queries for all components of an archetype, taking into account:
     /// * visible history if enabled
@@ -443,7 +512,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
         visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> HybridResults<'a> {
+    ) -> BlueprintResolvedResults<'a> {
         self.query_components_with_history(
             ctx,
             view_query,
@@ -459,7 +528,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a> {
+    ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
@@ -476,7 +545,7 @@ impl DataResultQuery for DataResult {
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
         visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
-    ) -> HybridLatestAtResults<'a> {
+    ) -> BlueprintResolvedLatestAtResults<'a> {
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
@@ -493,7 +562,7 @@ impl DataResultQuery for DataResult {
         view_query: &ViewQuery<'_>,
         components: impl IntoIterator<Item = ComponentIdentifier>,
         visualizer_instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> HybridResults<'a> {
+    ) -> BlueprintResolvedResults<'a> {
         query_archetype_with_history(
             ctx,
             &view_query.timeline,

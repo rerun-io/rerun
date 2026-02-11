@@ -8,11 +8,11 @@ use std::sync::atomic::AtomicBool;
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-use re_chunk::{Chunk, ChunkBuilder};
+use re_chunk::{Chunk, ChunkBuilder, TimeInt};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
+use re_log_types::{TimelinePoint, external::re_tuid::Tuid};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
@@ -102,6 +102,71 @@ impl BlueprintContext for TestBlueprintCtx<'_> {
     }
 }
 
+// TODO(grtlr): Could we consolidate this with `TestBlueprintCtx`?
+/// Extension trait for test-specific blueprint operations.
+///
+/// This trait provides `save_visualizers` for any type that implements `BlueprintContext`,
+/// allowing tests to save visualizers with deterministic IDs via `ViewerContext`.
+pub trait VisualizerBlueprintContext: BlueprintContext {
+    /// Saves visualizers to blueprint with deterministic IDs.
+    ///
+    /// This assigns deterministic visualizer IDs based on the entity path
+    /// and index of the visualizer, making the output reproducible for tests.
+    fn save_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        view_id: ViewId,
+        visualizers: impl IntoIterator<Item = impl Into<re_sdk_types::Visualizer>>,
+    ) {
+        use re_sdk_types::AsComponents;
+        use re_sdk_types::blueprint::archetypes as bp_archetypes;
+        use re_sdk_types::blueprint::components::VisualizerInstructionId;
+
+        let base_override_path =
+            bp_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
+                view_id.uuid(),
+                entity_path,
+            );
+
+        let mut ids = Vec::new();
+        for (i, visualizer) in visualizers.into_iter().enumerate() {
+            let mut visualizer = visualizer.into();
+
+            // Generate a deterministic ID based on entity path hash and visualizer index
+            visualizer.id =
+                VisualizerInstructionId::new_deterministic(entity_path.hash().hash64(), i);
+
+            ids.push(visualizer.id);
+            let visualizer_path = base_override_path
+                .clone()
+                .join(&EntityPath::from_single_string(visualizer.id.to_string()));
+
+            let mut instruction =
+                bp_archetypes::VisualizerInstruction::new(visualizer.visualizer_type.clone());
+            if !visualizer.mappings.is_empty() {
+                instruction = instruction.with_component_map(visualizer.mappings.clone());
+            }
+
+            self.save_blueprint_archetypes(
+                visualizer_path,
+                std::iter::once(&instruction as &dyn AsComponents).chain(
+                    visualizer
+                        .overrides
+                        .iter()
+                        .map(|batch| batch as &dyn AsComponents),
+                ),
+            );
+        }
+
+        self.save_blueprint_archetype(
+            base_override_path,
+            &bp_archetypes::ActiveVisualizers::new(ids),
+        );
+    }
+}
+
+impl<T: BlueprintContext + ?Sized> VisualizerBlueprintContext for T {}
+
 impl Default for TestContext {
     fn default() -> Self {
         Self::new()
@@ -114,11 +179,22 @@ impl TestContext {
     }
 
     pub fn new_with_store_info(store_info: StoreInfo) -> Self {
+        Self::new_with_store_info_and_config(
+            store_info,
+            re_chunk_store::ChunkStoreConfig::from_env().unwrap_or_default(),
+        )
+    }
+
+    pub fn new_with_store_info_and_config(
+        store_info: StoreInfo,
+        store_config: re_chunk_store::ChunkStoreConfig,
+    ) -> Self {
         re_log::setup_logging();
 
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
-        let mut recording_store = EntityDb::new(recording_store_id.clone());
+        let mut recording_store =
+            EntityDb::with_store_config(recording_store_id.clone(), true, store_config);
 
         recording_store.set_store_info(SetStoreInfo {
             row_id: Tuid::new(),
@@ -483,6 +559,12 @@ impl TestContext {
         let store_hub = self.store_hub.get_mut();
         let active_recording = store_hub.active_recording_mut().unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);
+
+        // Pretend like we are connected to a real redap server:
+        active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
+            uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+            select_when_loaded: true,
+        });
     }
 
     /// Register a view class.
@@ -502,6 +584,23 @@ impl TestContext {
 
         let mut store_hub = self.store_hub.lock();
         store_hub.begin_frame_caches();
+
+        if let Some(db) = store_hub.active_recording_mut()
+            && db.can_fetch_chunks_from_redap()
+            && let Some(timeline) = self.time_ctrl.read().timeline()
+        {
+            let (rrd_manifest, storage_engine) = db.rrd_manifest_index_mut_and_storage_engine();
+            let _err = rrd_manifest.prefetch_chunks(
+                storage_engine.store(),
+                &re_entity_db::ChunkPrefetchOptions {
+                    total_uncompressed_byte_budget: 0,
+                    ..Default::default()
+                },
+                TimelinePoint::from((*timeline, TimeInt::ZERO)),
+                &|_| panic!("We have 0 bytes allowed memory"),
+            );
+        }
+
         let (storage_context, store_context) = store_hub.read_context();
         let store_context = store_context
             .expect("TestContext should always have enough information to provide a store context");

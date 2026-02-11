@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
 use re_sdk_types::{Component, ComponentType, SerializationError, ViewClassIdentifier};
 
-use crate::{QueryContext, ViewerContext};
+use crate::QueryContext;
 
 /// Tries to get a fallback for the type `C`.
 ///
@@ -238,6 +238,8 @@ impl FallbackProviderRegistry {
         component_type: Option<ComponentType>,
         ctx: &QueryContext<'_>,
     ) -> ArrayRef {
+        re_tracing::profile_function!(component);
+
         let res = self
             .get_fallback_function(component, component_type, ctx)
             .map(|f| f(ctx));
@@ -260,7 +262,7 @@ impl FallbackProviderRegistry {
         }
 
         if let Some(ty) = component_type {
-            placeholder_for(ctx.viewer_ctx(), ty)
+            placeholder_for(ctx, component, ty)
         } else {
             re_log::warn_once!(
                 "Requested fallback for component {component} without component type"
@@ -276,22 +278,27 @@ impl FallbackProviderRegistry {
 /// It can be set as part of the reflection information, see [`re_types_core::reflection::ComponentReflection::custom_placeholder`].
 /// Note that automatically generated placeholders ignore any extension types.
 ///
-/// This requires the component type to be known by either datastore or blueprint store and
+/// This requires the component type to be known by either reflection or the datastore and
 /// will return a placeholder for a nulltype otherwise, logging an error.
-/// The rationale is that to get into this situation, we need to know of a component type for which
-/// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
-fn placeholder_for(viewer_ctx: &ViewerContext<'_>, component: re_chunk::ComponentType) -> ArrayRef {
+fn placeholder_for(
+    ctx: &QueryContext<'_>,
+    component_identifier: ComponentIdentifier,
+    component: re_chunk::ComponentType,
+) -> ArrayRef {
+    let viewer_ctx = ctx.viewer_ctx();
     let datatype = if let Some(reflection) = viewer_ctx.reflection().components.get(&component) {
-        // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
+        // It's a builtin type with reflection. We either have custom placeholder, or can rely on the known datatype.
         if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
             return placeholder.clone();
         }
         reflection.datatype.clone()
     } else {
+        let entity_path = ctx.target_entity_path;
         viewer_ctx.recording_engine()
                 .store()
-                .lookup_datatype(&component)
-                .or_else(|| viewer_ctx.blueprint_engine().store().lookup_datatype(&component))
+                .lookup_component_type(entity_path, component_identifier)
+                .or_else(|| viewer_ctx.blueprint_engine().store().lookup_component_type(entity_path, component_identifier))
+                .map(|(_component_type, datatype)| datatype)
                 .unwrap_or_else(|| {
                          re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
                                     arrow::datatypes::DataType::Null})

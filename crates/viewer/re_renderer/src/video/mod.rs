@@ -13,6 +13,16 @@ use re_video::{DecodeSettings, VideoDataDescription};
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
 
+/// Detailed error for unloaded samples.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum UnloadedSampleDataError {
+    #[error("Video doesn't have any loaded samples.")]
+    NoLoadedSamples,
+
+    #[error("Frame data required for the requested sample is not loaded yet.")]
+    ExpectedSampleNotLoaded,
+}
+
 /// Detailed error for lack of sample data.
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum InsufficientSampleDataError {
@@ -22,17 +32,11 @@ pub enum InsufficientSampleDataError {
     #[error("Video doesn't have any samples.")]
     NoSamples,
 
-    #[error("Video doesn't have any loaded samples.")]
-    NoLoadedSamples,
-
     #[error("No key frames prior to current time.")]
     NoKeyFramesPriorToRequestedTimestamp,
 
     #[error("No frames prior to current time.")]
     NoSamplesPriorToRequestedTimestamp,
-
-    #[error("The requested frame data is not, or no longer, available.")]
-    ExpectedSampleNotLoaded,
 
     #[error("Missing samples between last decoded sample and requested sample.")]
     MissingSamples,
@@ -52,6 +56,9 @@ pub enum VideoPlayerError {
 
     #[error(transparent)]
     InsufficientSampleData(#[from] InsufficientSampleDataError),
+
+    #[error(transparent)]
+    UnloadedSampleData(#[from] UnloadedSampleDataError),
 
     /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
@@ -111,7 +118,7 @@ pub enum DecoderDelayState {
     /// we signal the end of the video (after which we have to restart the decoder).
     ///
     /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
-    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading spinner.
+    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading indicator.
     ///
     /// The tolerance value used for this is the sum of
     /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
@@ -158,8 +165,8 @@ pub struct VideoFrameTexture {
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub decoder_delay_state: DecoderDelayState,
 
-    /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
-    pub show_spinner: bool,
+    /// If true, this texture is so out-dated that it should have a loading indicator on top of it.
+    pub show_loading_indicator: bool,
 
     /// Format information about the original data from the video decoder.
     ///
@@ -232,7 +239,7 @@ impl re_byte_size::SizeBytes for Video {
 
 impl Drop for Video {
     fn drop(&mut self) {
-        re_log::debug!("Dropping Video {:?}", self.debug_name);
+        re_log::trace!("Dropping Video {:?}", self.debug_name);
     }
 }
 

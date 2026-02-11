@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::ImagePlaneDistance;
 use re_sdk_types::{ArchetypeName, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
 use re_view::{
-    DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
+    BlueprintResolvedLatestAtResults, DataResultQuery as _, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
@@ -164,12 +164,8 @@ impl ViewContextSystem for TransformTreeContext {
 
         let caches = ctx.store_context.caches;
         let transform_forest = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.update_transform_forest(ctx.recording(), &ctx.current_query());
-            c.transform_forest()
+            c.update_transform_forest(ctx.recording(), &ctx.current_query())
         });
-
-        // We update this here so it should exist.
-        let transform_forest = transform_forest.unwrap_or_default();
 
         let frame_id_registry = caches
             .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
@@ -192,6 +188,7 @@ impl ViewContextSystem for TransformTreeContext {
     fn execute(
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
+        missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
@@ -202,18 +199,27 @@ impl ViewContextSystem for TransformTreeContext {
             .expect("Unexpected static execution result type");
 
         self.transform_forest = static_execution_result.transform_forest.clone();
+        if self.transform_forest.any_missing_chunks() {
+            missing_chunk_reporter.report_missing_chunk();
+        }
         self.frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
         let results = {
             re_tracing::profile_scope!("latest-ats");
-            query
-                .iter_all_data_results()
-                .map(|data_result| {
-                    let latest_at_query = ctx.current_query();
+            let latest_at_query = ctx.current_query();
 
+            ctx.query_result
+                .tree
+                .iter_data_results()
+                .filter(|data_result| {
+                    // We're only interested in supplying visualizers.
+                    data_result.visible && !data_result.visualizer_instructions.is_empty()
+                })
+                .map(|data_result| {
                     let transform_frame_id_component =
                         archetypes::CoordinateFrame::descriptor_frame().component;
 
+                    re_tracing::profile_scope!("latest_at_with_blueprint_resolved_data");
                     latest_at_with_blueprint_resolved_data(
                         ctx,
                         None,
@@ -349,10 +355,12 @@ impl ViewContextSystem for TransformTreeContext {
                         .entity_transform_id_mapping
                         .transform_frame_id_to_entity_path
                         .get(&transform_frame_id_hash)?;
+                    let missing_chunk_reporter_ref = &missing_chunk_reporter;
                     let transform_infos =
                         entity_paths_for_frame.iter().map(move |entity_path_hash| {
                             let transform_info = map_tree_transform_to_transform_info(
                                 ctx,
+                                missing_chunk_reporter_ref,
                                 &tree_transform,
                                 transforms,
                                 latest_at_query,
@@ -380,6 +388,7 @@ impl ViewContextSystem for TransformTreeContext {
 
 fn map_tree_transform_to_transform_info(
     ctx: &ViewContext<'_>,
+    missing_chunk_reporter: &MissingChunkReporter,
     tree_transform: &Result<TreeTransform, re_tf::TransformFromToError>,
     transforms: &re_tf::CachedTransformsForTimeline,
     latest_at_query: &LatestAtQuery,
@@ -389,7 +398,11 @@ fn map_tree_transform_to_transform_info(
     let poses = transforms
         .pose_transforms(*entity_path_hash)
         .map(|pose_transforms| {
-            pose_transforms.latest_at_instance_poses(ctx.recording(), latest_at_query)
+            pose_transforms.latest_at_instance_poses(
+                ctx.recording(),
+                missing_chunk_reporter,
+                latest_at_query,
+            )
         })
         .unwrap_or_default();
 
@@ -445,6 +458,12 @@ impl TransformTreeContext {
         let target_from_root = root_from_target.inverse();
 
         Some(target_from_root * pinhole_root_info.parent_root_from_pinhole_root)
+    }
+
+    /// The full transform forest
+    #[inline]
+    pub fn transform_forest(&self) -> &re_tf::TransformForest {
+        &self.transform_forest
     }
 
     /// Returns the target frame, also known as the space origin.
@@ -543,7 +562,7 @@ fn lookup_image_plane_distance(
                     .component_mono_quiet::<ImagePlaneDistance>(plane_dist_component)
                     .unwrap_or_else(|| {
                         typed_fallback_for(
-                            &ctx.query_context(data_result, latest_at_query),
+                            &ctx.query_context_without_visualizer(data_result, latest_at_query),
                             plane_dist_component,
                         )
                     })
@@ -556,7 +575,7 @@ impl EntityTransformIdMapping {
     /// Build a lookup table from entity paths to their transform frame id hashes.
     fn new(
         ctx: &ViewContext<'_>,
-        results: &[HybridLatestAtResults<'_>],
+        results: &[BlueprintResolvedLatestAtResults<'_>],
         space_origin: &EntityPath,
     ) -> Self {
         // This is blueprint-dependent data and may also change over recording time,
@@ -603,7 +622,7 @@ impl EntityTransformIdMapping {
     fn determine_frame_id_mapping_for(
         &mut self,
         ctx: &ViewContext<'_>,
-        results: &HybridLatestAtResults<'_>,
+        results: &BlueprintResolvedLatestAtResults<'_>,
     ) {
         let transform_frame_id_component =
             archetypes::CoordinateFrame::descriptor_frame().component;
@@ -617,7 +636,7 @@ impl EntityTransformIdMapping {
                     // Make sure this is the same as the fallback provider (which is a lot slower to run)
                     debug_assert_eq!(
                         TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
-                            &ctx.query_context(results.data_result, &results.query),
+                            &ctx.query_context_without_visualizer(results.data_result, &results.query),
                             transform_frame_id_component
                         )),
                         fallback
@@ -625,7 +644,7 @@ impl EntityTransformIdMapping {
                     fallback
                 },
                 |frame_id| {
-                    let is_mono = results.store_results.component_mono_raw_quiet(transform_frame_id_component).is_some();
+                    let is_mono = results.get_raw_cell(transform_frame_id_component).is_some_and(|array| array.len() == 1);
                     if !is_mono {
                         re_log::warn_once!(
                             "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
@@ -652,6 +671,7 @@ impl EntityTransformIdMapping {
 
 #[cfg(test)]
 mod tests {
+    use re_chunk_store::MissingChunkReporter;
     use re_log_types::{EntityPath, TimePoint};
     use re_sdk_types::archetypes::CoordinateFrame;
     use re_test_context::TestContext;
@@ -784,7 +804,13 @@ mod tests {
 
                 let mut tree_context = TransformTreeContext::default();
                 let once_per_frame = TransformTreeContext::execute_once_per_frame(ctx);
-                tree_context.execute(&view_ctx, &view_query, &once_per_frame);
+                let missing_chunk_reporter = MissingChunkReporter::default();
+                tree_context.execute(
+                    &view_ctx,
+                    &missing_chunk_reporter,
+                    &view_query,
+                    &once_per_frame,
+                );
 
                 assert_eq!(
                     tree_context.target_frame(),
@@ -792,6 +818,8 @@ mod tests {
                     "View expected target frame {expected_target:?}, got {:?}",
                     tree_context.format_frame(tree_context.target_frame())
                 );
+
+                assert!(!missing_chunk_reporter.any_missing());
             }
         });
     }

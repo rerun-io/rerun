@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sized
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -10,54 +11,107 @@ from pyarrow import ArrowInvalid
 from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentBatchLike, ComponentColumn
-from .error_utils import catch_and_log_exceptions, strict_mode as strict_mode
+from .error_utils import _send_warning_or_raise, catch_and_log_exceptions, strict_mode as strict_mode
 
-ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
+
+@dataclass(frozen=True)
+class ArrowTypeOnly:
+    """Arrow type inferred directly from the input (dlpack, string, scalar)."""
+
+    pa_type: pa.DataType
+
+
+@dataclass(frozen=True)
+class NumpyArrowType:
+    """Arrow type inferred via numpy fallback, retaining the numpy dtype for future conversions."""
+
+    np_type: np.dtype[Any]
+    pa_type: pa.DataType
+
+
+TypeRegistryValue = ArrowTypeOnly | NumpyArrowType
+
+
+class TypeRegistry:
+    """
+    Registry that caches the inferred Arrow type for dynamic components.
+
+    Rerun requires that a given component only takes on a single type. This registry
+    records the type inferred on first log and reuses it for subsequent logs. A warning
+    is emitted if a component's type changes.
+    """
+
+    def __init__(self) -> None:
+        self._entries: dict[ComponentDescriptor, TypeRegistryValue] = {}
+
+    def get(self, descriptor: ComponentDescriptor, *, expect_column: bool = False) -> TypeRegistryValue | None:
+        entry = self._entries.get(descriptor)
+        if entry is not None and expect_column:
+            # The stored type had its outer list<> stripped during column-mode registration.
+            # Re-wrap so the parsing chain receives the correct list type for list-of-lists data.
+            return ArrowTypeOnly(pa.list_(entry.pa_type))
+        return entry
+
+    def register(self, descriptor: ComponentDescriptor, new: TypeRegistryValue, *, expect_column: bool = False) -> None:
+        # In column mode, the outer list dimension represents rows, not part of the data type.
+        if expect_column and pa.types.is_list(new.pa_type):
+            new = ArrowTypeOnly(new.pa_type.value_type)
+
+        existing = self._entries.get(descriptor)
+        if existing is not None and existing != new:
+            _send_warning_or_raise(
+                f"Type for '{descriptor}' changed from {existing} to {new}. "
+                "Rerun requires that a given component only takes on a single type.",
+                depth_to_user_code=3,
+            )
+        self._entries[descriptor] = new
+
+
+ANY_VALUE_TYPE_REGISTRY = TypeRegistry()
 
 
 def _parse_arrow_array(
     value: Any,
     *,
-    pa_type: Any | None = None,
-    np_type: Any | None = None,
-    descriptor: ComponentDescriptor | None = None,
-) -> pa.Array:
-    possible_array = _try_parse_dlpack(value, pa_type=pa_type, descriptor=descriptor)
+    cached: TypeRegistryValue | None = None,
+) -> tuple[pa.Array, TypeRegistryValue]:
+    """
+    Parse a value into an Arrow array, returning the array and its inferred type registry entry.
+
+    Registration in the type registry is the caller's responsibility.
+    """
+    pa_type = cached.pa_type if cached is not None else None
+    np_type = cached.np_type if isinstance(cached, NumpyArrowType) else None
+
+    possible_array = _try_parse_dlpack(value, pa_type=pa_type)
     if possible_array is not None:
         return possible_array
-    possible_array = _try_parse_string(value, pa_type=pa_type, descriptor=descriptor)
+    possible_array = _try_parse_string(value, pa_type=pa_type)
     if possible_array is not None:
         return possible_array
-    possible_array = _try_parse_scalar(value, pa_type=pa_type, descriptor=descriptor)
+    possible_array = _try_parse_scalar(value, pa_type=pa_type)
     if possible_array is not None:
         return possible_array
     return _fallback_parse(
         value,
         pa_type=pa_type,
         np_type=np_type,
-        descriptor=descriptor,
     )
 
 
-def _try_parse_dlpack(
-    value: Any, *, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
-) -> pa.Array | None:
+def _try_parse_dlpack(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Array, TypeRegistryValue] | None:
     # If the value has a __dlpack__ method, we can convert it to numpy without copy
     # then to arrow
     if hasattr(value, "__dlpack__"):
         try:
             pa_array: pa.Array = pa.array(np.from_dlpack(value), type=pa_type)
-            if descriptor is not None:
-                ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, pa_array.type)
-            return pa_array
+            return pa_array, ArrowTypeOnly(pa_array.type)
         except (ArrowInvalid, TypeError, BufferError):
             pass
     return None
 
 
-def _try_parse_string(
-    value: Any, *, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
-) -> pa.Array | None:
+def _try_parse_string(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Array, TypeRegistryValue] | None:
     # Special case: strings are iterables so pyarrow will not
     # handle them properly
     if not isinstance(value, (str, bytes)):
@@ -68,23 +122,17 @@ def _try_parse_string(
                     f"pa.array of value {value} and type {pa_type} resulted in type {pa_array.type}"
                 )
 
-            if descriptor is not None:
-                ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, pa_array.type)
-            return pa_array
+            return pa_array, ArrowTypeOnly(pa_array.type)
         except (ArrowInvalid, TypeError):
             pass
     return None
 
 
-def _try_parse_scalar(
-    value: Any, *, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
-) -> pa.Array | None:
+def _try_parse_scalar(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Array, TypeRegistryValue] | None:
     try:
         pa_scalar = pa.scalar(value)
         pa_array = pa.array([pa_scalar], type=pa_type)
-        if descriptor is not None:
-            ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, pa_array.type)
-        return pa_array
+        return pa_array, ArrowTypeOnly(pa_array.type)
     except (ArrowInvalid, TypeError):
         pass
     return None
@@ -95,26 +143,22 @@ def _fallback_parse(
     *,
     pa_type: Any | None = None,
     np_type: Any | None = None,
-    descriptor: ComponentDescriptor | None = None,
-) -> pa.Array:
+) -> tuple[pa.Array, TypeRegistryValue]:
     # Fall back - use numpy which handles a wide variety of lists, tuples,
     # and mixtures of them and will turn into a well formed array
     np_value = np.atleast_1d(np.asarray(value, dtype=np_type))
     try:
         pa_array = pa.array(np_value, type=pa_type)
     except pa.lib.ArrowInvalid as e:
-        # Improve the error message a bit:
-        raise ValueError(f"Cannot convert {np_value} to arrow array of type {pa_type}. descriptor: {descriptor}") from e
+        raise ValueError(f"Cannot convert {np_value} to arrow array of type {pa_type}.") from e
     except pa.lib.ArrowNotImplementedError as e:
-        if np_type is None and descriptor is None:
+        if np_type is None:
             raise ValueError(
                 f"Cannot convert value {value} to arrow array of type {pa_type}."
                 " Inconsistent with previous type provided."
             ) from e
         raise e
-    if descriptor is not None:
-        ANY_VALUE_TYPE_REGISTRY[descriptor] = (np_value.dtype, pa_array.type)
-    return pa_array
+    return pa_array, NumpyArrowType(np_value.dtype, pa_array.type)
 
 
 class AnyBatchValue(ComponentBatchLike):
@@ -127,7 +171,14 @@ class AnyBatchValue(ComponentBatchLike):
     See also [rerun.AnyValues][].
     """
 
-    def __init__(self, descriptor: str | ComponentDescriptor, value: Any, *, drop_untyped_nones: bool = True) -> None:
+    def __init__(
+        self,
+        descriptor: str | ComponentDescriptor,
+        value: Any,
+        *,
+        drop_untyped_nones: bool = True,
+        expect_column: bool = False,
+    ) -> None:
         """
         Construct a new AnyBatchValue.
 
@@ -162,6 +213,11 @@ class AnyBatchValue(ComponentBatchLike):
         drop_untyped_nones:
             If True, any components that are either None or empty will be dropped unless they have been
             previously logged with a type.
+        expect_column:
+            If True, the outermost dimension of the data is treated as the row/column dimension
+            rather than as part of the data type. This prevents list-typed inference from being
+            cached in the type registry (e.g., ``[[1,2,3], [4,5,6]]`` is treated as 2 rows of
+            ``int64`` data rather than a single batch of ``list<int64>``).
 
         """
         if isinstance(descriptor, str):
@@ -169,10 +225,8 @@ class AnyBatchValue(ComponentBatchLike):
         elif isinstance(descriptor, ComponentDescriptor):
             descriptor = descriptor
 
-        np_type, pa_type = ANY_VALUE_TYPE_REGISTRY.get(descriptor, (None, None))
-
         self.descriptor = descriptor
-        self.pa_array = None
+        self.pa_array: pa.Array | None = None
 
         with catch_and_log_exceptions(f"Converting data for '{descriptor}'"):
             if isinstance(value, pa.Array):
@@ -180,16 +234,19 @@ class AnyBatchValue(ComponentBatchLike):
             elif hasattr(value, "as_arrow_array"):
                 self.pa_array = value.as_arrow_array()
             else:
-                if pa_type is None:
+                cached = ANY_VALUE_TYPE_REGISTRY.get(descriptor, expect_column=expect_column)
+                if cached is None:
                     if value is None or (isinstance(value, Sized) and len(value) == 0):
                         if not drop_untyped_nones:
                             raise ValueError(f"Cannot convert {value} to arrow array without an explicit type")
                     else:
-                        self.pa_array = _parse_arrow_array(value, pa_type=None, np_type=np_type, descriptor=descriptor)
+                        self.pa_array, inferred = _parse_arrow_array(value, cached=cached)
+                        ANY_VALUE_TYPE_REGISTRY.register(descriptor, inferred, expect_column=expect_column)
                 else:
                     if value is None:
                         value = []
-                    self.pa_array = _parse_arrow_array(value, pa_type=pa_type, np_type=np_type, descriptor=None)
+                    self.pa_array, inferred = _parse_arrow_array(value, cached=cached)
+                    ANY_VALUE_TYPE_REGISTRY.register(descriptor, inferred, expect_column=expect_column)
 
     def is_valid(self) -> bool:
         return self.pa_array is not None
@@ -206,7 +263,7 @@ class AnyBatchValue(ComponentBatchLike):
         descriptor: str | ComponentDescriptor,
         value: Any,
         drop_untyped_nones: bool = True,
-    ) -> ComponentColumn:
+    ) -> ComponentColumn | None:
         """
         Construct a new column-oriented AnyBatchValue.
 
@@ -247,6 +304,33 @@ class AnyBatchValue(ComponentBatchLike):
             If True, any components that are either None or empty will be dropped unless they have been
             previously logged with a type.
 
+        Returns
+        -------
+        The component column, or ``None`` if the value could not be converted.
+
         """
-        inst = cls(descriptor, value, drop_untyped_nones=drop_untyped_nones)
-        return ComponentColumn(descriptor, inst)
+        # Normalize flat sequences to list-of-lists so column data is always
+        # parsed as list<T>. This keeps the type registry consistent: column-mode
+        # always infers list<T> which is then stripped to T for storage.
+        if value is not None and not isinstance(value, (pa.Array, str, bytes)):
+            try:
+                arr = np.asarray(value)
+            except ValueError:
+                arr = None  # Ragged lists — already list-of-lists
+            if arr is not None and arr.ndim == 1 and arr.dtype.kind != "O":
+                value = [[x] for x in value]
+
+        inst = cls(descriptor, value, drop_untyped_nones=drop_untyped_nones, expect_column=True)
+
+        if not inst.is_valid():
+            return None
+
+        pa_array = inst.as_arrow_array()
+        if pa_array is not None and pa.types.is_list(pa_array.type):
+            # The outer list dimension is the row dimension. Flatten it and pass
+            # the list offsets directly to ComponentColumn.
+            column_offsets = pa_array.offsets.to_numpy().astype(np.int32)
+            inst.pa_array = pa_array.values
+            return ComponentColumn(inst.descriptor, inst, offsets=column_offsets)
+
+        return ComponentColumn(inst.descriptor, inst)

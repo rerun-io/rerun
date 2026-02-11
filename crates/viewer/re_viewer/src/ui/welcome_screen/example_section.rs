@@ -282,7 +282,7 @@ impl ExampleSection {
                     // Still waiting for example to load
                     ui.separator();
 
-                    ui.spinner(); // Placeholder for the examples
+                    ui.loading_indicator(); // Placeholder for the examples
                     return;
                 };
 

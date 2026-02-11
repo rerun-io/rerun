@@ -23,6 +23,7 @@ default = []
 
 [dependencies]
 re_arrow_combinators.workspace = true
+re_arrow_util.workspace = true
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
 re_log_types.workspace = true
@@ -41,3 +42,4 @@ egui.workspace = true
 glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+thiserror.workspace = true

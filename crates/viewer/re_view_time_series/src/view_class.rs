@@ -1,17 +1,22 @@
-use egui::ahash::{HashMap, HashSet};
+use std::collections::BTreeMap;
+
+use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
-use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use itertools::{Either, Itertools as _};
+use nohash_hasher::IntSet;
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
+use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
-use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
+use re_sdk_types::blueprint::archetypes::{
+    ActiveVisualizers, PlotBackground, PlotLegend, ScalarAxis, TimeAxis,
+};
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
-use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
+use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
@@ -19,19 +24,20 @@ use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType,
-    PerVisualizerTypeInViewClass, QueryRange, RecommendedView, RecommendedVisualizers,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableReason, VisualizerComponentMappings,
-    VisualizerComponentSource,
+    BlueprintContext as _, DatatypeMatch, IdentifiedViewSystem as _, IndicatedEntities, Item,
+    PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, RecommendedView,
+    RecommendedVisualizers, SystemCommandSender as _, SystemExecutionOutput, TimeControlCommand,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
+    VisualizerComponentMappings, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
 
 use crate::PlotSeriesKind;
 use crate::line_visualizer_system::SeriesLinesSystem;
+use crate::naming::{SeriesInfo, SeriesNamesContext};
 use crate::point_visualizer_system::SeriesPointsSystem;
 
 // ---
@@ -39,10 +45,10 @@ use crate::point_visualizer_system::SeriesPointsSystem;
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
-    scalar_range: Range1D,
+    pub(crate) scalar_range: Range1D,
 
     /// The size of the current range of time which covers the whole time series.
-    max_time_view_range: AbsoluteTimeRange,
+    pub(crate) max_time_view_range: AbsoluteTimeRange,
 
     /// We offset the time values of the plot so that unix timestamps don't run out of precision.
     ///
@@ -50,12 +56,15 @@ pub struct TimeSeriesViewState {
     /// to work properly.
     pub(crate) time_offset: i64,
 
-    /// Default names for entities, used when no label is provided.
+    /// Cached disambiguated names for visualizers, used when no label is provided.
+    pub(crate) default_series_name_formats: HashMap<VisualizerInstructionId, String>,
+
+    /// The number of time series rendered by each visualizer instruction last frame.
     ///
-    /// This is here because it must be computed with full knowledge of all entities in the plot
-    /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
-    /// forwarded to the default providers.
-    pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
+    /// We track egui-ids here because the number of "series" passed to egui can actually be much higher
+    /// since every color change, every discontinuity, etc. creates a new series, sharing the same egui id.
+    pub(crate) num_time_series_last_frame_per_instruction:
+        HashMap<VisualizerInstructionId, IntSet<egui::Id>>,
 }
 
 impl Default for TimeSeriesViewState {
@@ -64,7 +73,8 @@ impl Default for TimeSeriesViewState {
             scalar_range: [0.0, 0.0].into(),
             max_time_view_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
-            default_names_for_entities: Default::default(),
+            default_series_name_formats: Default::default(),
+            num_time_series_last_frame_per_instruction: Default::default(),
         }
     }
 }
@@ -153,77 +163,7 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        for component in [
-            SeriesLines::descriptor_names().component,
-            SeriesPoints::descriptor_names().component,
-        ] {
-            system_registry.register_fallback_provider::<re_sdk_types::components::Name>(
-                component,
-                |ctx| {
-                    let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
-
-                    state
-                        .ok()
-                        .and_then(|state| {
-                            state
-                                .default_names_for_entities
-                                .get(ctx.target_entity_path)
-                                .map(|name| name.clone().into())
-                        })
-                        .or_else(|| {
-                            ctx.target_entity_path
-                                .last()
-                                .map(|part| part.ui_string().into())
-                        })
-                        .unwrap_or_default()
-                },
-            );
-        }
-        system_registry.register_fallback_provider(
-            ScalarAxis::descriptor_range().component,
-            |ctx| {
-                ctx.view_state()
-                    .as_any()
-                    .downcast_ref::<TimeSeriesViewState>()
-                    .map(|s| make_range_sane(s.scalar_range))
-                    .unwrap_or_default()
-            },
-        );
-        system_registry.register_fallback_provider(
-            TimeAxis::descriptor_view_range().component,
-            |ctx| {
-                let timeline_histograms = ctx.viewer_ctx().recording().timeline_histograms();
-                let (timeline_min, timeline_max) = timeline_histograms
-                    .get(ctx.viewer_ctx().time_ctrl.timeline_name())
-                    .and_then(|stats| Some((stats.min_opt()?, stats.max_opt()?)))
-                    .unzip();
-                ctx.view_state()
-                    .as_any()
-                    .downcast_ref::<TimeSeriesViewState>()
-                    .map(|s| {
-                        re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                            start: if Some(s.max_time_view_range.min) == timeline_min {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                            } else {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    s.max_time_view_range.min.into(),
-                                )
-                            },
-                            end: if Some(s.max_time_view_range.max) == timeline_max {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                            } else {
-                                re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                    s.max_time_view_range.max.into(),
-                                )
-                            },
-                        })
-                    })
-                    .unwrap_or(re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                        start: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                        end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                    }))
-            },
-        );
+        crate::fallbacks::register_fallbacks(system_registry);
 
         system_registry.register_visualizer::<SeriesLinesSystem>()?;
         system_registry.register_visualizer::<SeriesPointsSystem>()?;
@@ -302,81 +242,31 @@ impl ViewClass for TimeSeriesView {
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
-        let mut indicated_entities = IndicatedEntities::default();
-
-        for indicated in [
-            SeriesLinesSystem::identifier(),
-            SeriesPointsSystem::identifier(),
-        ]
-        .iter()
-        .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
-        {
-            indicated_entities.0.extend(indicated.0.iter().cloned());
-        }
-
-        // Because SeriesLines is our fallback visualizer, also include any entities for which
-        // SeriesLines is visualizable, even if not indicated.
-        if let Some(maybe_visualizable) = ctx
+        // Note that point series has the same visualizable conditions, it doesn't matter which one we look at here.
+        let Some(visualizable_entities) = ctx
             .visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
-        {
-            indicated_entities.0.extend(
-                maybe_visualizable
-                    .iter()
-                    .filter_map(|(ent, reason)| {
-                        reason.any_match_with_native_semantics().then_some(ent)
-                    })
-                    .cloned(),
-            );
-        }
-
-        // Ensure we don't modify this list anymore before we check the `include_entity`.
-        let indicated_entities = indicated_entities;
-
-        if !indicated_entities.iter().any(include_entity) {
+        else {
             return ViewSpawnHeuristics::empty();
-        }
+        };
 
-        // Spawn time series data at the root if theres 'either:
-        // * time series data directly at the root
-        // * all time series data are direct children of the root
-        //
-        // This heuristic was last edited in 2015-04-11 by @emilk,
-        // because it was triggering too often (https://github.com/rerun-io/rerun/pull/9587).
-        // Maybe we should remove it completely?
-        // I have a feeling it was added to handle the case many scalars of the form `/x`, `/y`, `/z` etc,
-        // but we now support logging multiple scalars in one entity.
-        //
-        // This is the last hold out of "child of root" spawning, which we removed otherwise
-        // (see https://github.com/rerun-io/rerun/issues/4926)
-        let root_entities: IntSet<EntityPath> = ctx
-            .recording()
-            .tree()
-            .children
-            .values()
-            .map(|subtree| subtree.path.clone())
-            .collect();
-        if indicated_entities.contains(&EntityPath::root())
-            || indicated_entities.is_subset(&root_entities)
-        {
-            return ViewSpawnHeuristics::root();
-        }
+        let entities_with_exact_match =
+            visualizable_entities
+                .iter()
+                .filter_map(|(entity_path, reason)| {
+                    if !include_entity(entity_path) {
+                        return None;
+                    }
+                    reason
+                        .full_native_match(Scalars::descriptor_scalars().component)
+                        .then_some(entity_path)
+                });
 
-        // If there's other entities that have the right indicator & didn't match the above,
-        // spawn a time series view for each child of the root that has any entities with the right indicator.
-        let mut child_of_root_entities = HashSet::default();
-        #[expect(clippy::iter_over_hash_type)]
-        for entity in indicated_entities.iter() {
-            if let Some(child_of_root) = entity.iter().next() {
-                child_of_root_entities.insert(child_of_root);
-            }
-        }
-
-        ViewSpawnHeuristics::new(child_of_root_entities.into_iter().map(|path_part| {
-            let entity = EntityPath::new(vec![path_part.clone()]);
-            RecommendedView::new_subtree(entity)
-        }))
+        ViewSpawnHeuristics::new_with_order_preserved(
+            entities_with_exact_match
+                .into_iter()
+                .map(|entity_path| RecommendedView::new_single_entity(entity_path.clone())),
+        )
     }
 
     /// Auto picked visualizers for an entity if there was not explicit selection.
@@ -397,7 +287,7 @@ impl ViewClass for TimeSeriesView {
 
         let scalars_component = Scalars::descriptor_scalars().component;
 
-        let mut visualizers_with_mappings: IntMap<
+        let mut visualizers_with_mappings: BTreeMap<
             ViewSystemIdentifier,
             VisualizerComponentMappings,
         > = available_visualizers
@@ -438,6 +328,7 @@ impl ViewClass for TimeSeriesView {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -454,6 +345,56 @@ impl ViewClass for TimeSeriesView {
             .chain(line_series.all_series.iter())
             .chain(point_series.all_series.iter())
             .collect();
+
+        state.num_time_series_last_frame_per_instruction.clear();
+
+        let view_query_result = ctx.lookup_query_result(query.view_id);
+        let scalar_component = Scalars::descriptor_scalars().component;
+
+        let mut series_names = SeriesNamesContext::default();
+
+        {
+            re_tracing::profile_scope!("iterate all_plot_series");
+
+            for series in &all_plot_series {
+                let instruction_id = series.visualizer_instruction_id;
+
+                if let Some(data_result) = view_query_result
+                    .tree
+                    .lookup_result_by_visualizer_instruction(instruction_id)
+                    && let Some(instruction) = data_result
+                        .visualizer_instructions
+                        .iter()
+                        .find(|instr| instr.id == instruction_id)
+                {
+                    let (component, selector) = instruction
+                        .component_mappings
+                        .get(&scalar_component)
+                        .and_then(|mapping| match mapping {
+                            re_viewer_context::VisualizerComponentSource::SourceComponent {
+                                source_component,
+                                selector,
+                            } => Some((*source_component, selector.clone())),
+                            _ => None,
+                        })
+                        .unwrap_or((scalar_component, String::new()));
+
+                    series_names.insert(
+                        instruction_id,
+                        SeriesInfo::new(data_result.entity_path.clone(), component, &selector),
+                    );
+                }
+
+                state
+                    .num_time_series_last_frame_per_instruction
+                    .entry(instruction_id)
+                    .or_default()
+                    .insert(series.id());
+            }
+        }
+
+        // Compute disambiguated names after all series are collected
+        state.default_series_name_formats = series_names.dissambiguated_names();
 
         // Note that a several plot items can point to the same entity path and in some cases even to the same instance path!
         // (e.g. when plotting both lines & points with the same entity/instance path)
@@ -739,15 +680,6 @@ impl ViewClass for TimeSeriesView {
                 plot_ui.set_plot_bounds_y(y_range);
                 plot_ui.set_plot_bounds_x(x_range);
 
-                // Needed by for the visualizers' fallback provider.
-                state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
-                    all_plot_series
-                        .iter()
-                        .map(|series| series.instance_path.entity_path.clone())
-                        // `short_names_with_disambiguation` expects no duplicate entities
-                        .collect::<nohash_hasher::IntSet<_>>(),
-                );
-
                 add_series_to_plot(
                     plot_ui,
                     &query.highlights,
@@ -855,6 +787,155 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+
+    fn visualizers_ui<'a>(
+        &'a self,
+        viewer_ctx: &'a re_viewer_context::ViewerContext<'a>,
+        view_id: ViewId,
+        state: &'a mut dyn ViewState,
+        space_origin: &'a EntityPath,
+    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
+        let state = state.downcast_mut::<TimeSeriesViewState>().ok()?;
+
+        let visualizer_ui = move |ui: &mut egui::Ui| {
+            list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
+                let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
+                re_tracing::profile_function!();
+                let query_result = ctx.query_result;
+
+                let handles = query_result.tree.data_results_by_path.values().sorted();
+                for handle in handles {
+                    let Some(node) = query_result.tree.data_results.get(*handle) else {
+                        continue;
+                    };
+                    let pill_margin = egui::Margin::symmetric(8, 6);
+                    for instruction in &node.data_result.visualizer_instructions {
+                        ui.add_space(10.0);
+
+                        let entity_path = &node.data_result.entity_path;
+
+                        let full_path = entity_path
+                            .to_string()
+                            .strip_prefix('/')
+                            .map(|s| s.to_owned())
+                            .unwrap_or_else(|| entity_path.to_string());
+
+                        let series_color =
+                            get_time_series_color(&ctx, &node.data_result, instruction);
+
+                        let display_name =
+                            get_time_series_name(&ctx, &node.data_result, instruction);
+
+                        // Estimate the pill height so Sides can vertically center
+                        // both sides (pill on the left, trash button on the right).
+                        let pill_height = 2.0 * ui.text_style_height(&egui::TextStyle::Body)
+                            + ui.spacing().item_spacing.y
+                            + pill_margin.sum().y;
+
+                        egui::Sides::new().height(pill_height).shrink_left().show(
+                            ui,
+                            |ui| {
+                                let mut frame = egui::Frame::default()
+                                    .fill(ui.tokens().visualizer_list_pill_bg_color)
+                                    .corner_radius(4.0)
+                                    .inner_margin(pill_margin)
+                                    .begin(ui);
+                                {
+                                    let ui = &mut frame.content_ui;
+                                    ui.set_width(ui.available_width());
+
+                                    // Disable text selection so hovering the text only hovers the pill
+                                    ui.style_mut().interaction.selectable_labels = false;
+
+                                    // Visualizer name and entity path
+                                    let labels =
+                                        ui.vertical(|ui| {
+                                            ui.label(egui::RichText::new(&display_name).color(
+                                                ui.tokens().visualizer_list_title_text_color,
+                                            ));
+                                            ui.label(
+                                                egui::RichText::new(&full_path).size(10.5).color(
+                                                    ui.tokens().visualizer_list_path_text_color,
+                                                ),
+                                            );
+                                        });
+
+                                    // Color box on the right, vertically centered on the labels.
+                                    if let Some(series_color) = series_color {
+                                        let size = ui.tokens().visualizer_list_color_box_size;
+                                        let rect = egui::Rect::from_center_size(
+                                            egui::pos2(
+                                                ui.max_rect().right() - size / 2.0,
+                                                labels.response.rect.center().y,
+                                            ),
+                                            egui::vec2(size, size),
+                                        );
+                                        ui.painter().rect(
+                                            rect,
+                                            3.0,
+                                            series_color,
+                                            ui.tokens().visualizer_list_color_box_stroke,
+                                            egui::StrokeKind::Outside,
+                                        );
+                                    }
+                                }
+                                let response = frame
+                                    .allocate_space(ui)
+                                    .interact(egui::Sense::click())
+                                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+                                if response.hovered() {
+                                    frame.frame.fill =
+                                        ui.tokens().visualizer_list_pill_bg_color_hovered;
+                                }
+                                if response.clicked() {
+                                    let instance_path = InstancePath::from(entity_path.clone());
+                                    ctx.viewer_ctx.command_sender().send_system(
+                                        re_viewer_context::SystemCommand::set_selection(
+                                            Item::DataResult(ctx.view_id, instance_path),
+                                        ),
+                                    );
+                                }
+                                frame.paint(ui);
+                            },
+                            |ui| {
+                                // Trashcan button to remove this visualizer.
+                                let remove_response =
+                                    ui.small_icon_button(&re_ui::icons::TRASH, "Remove visualizer");
+                                if remove_response.clicked() {
+                                    let override_base_path = &node.data_result.override_base_path;
+
+                                    let active_visualizers = node
+                                        .data_result
+                                        .visualizer_instructions
+                                        .iter()
+                                        .filter(|v| v.id != instruction.id)
+                                        .collect::<Vec<_>>();
+
+                                    let archetype = ActiveVisualizers::new(
+                                        active_visualizers.iter().map(|v| v.id.0),
+                                    );
+
+                                    ctx.save_blueprint_archetype(
+                                        override_base_path.clone(),
+                                        &archetype,
+                                    );
+
+                                    // Ensure the remaining instructions are persisted so that their
+                                    // types and mappings are available on the next frame.
+                                    for visualizer_instruction in active_visualizers {
+                                        visualizer_instruction
+                                            .write_instruction_to_blueprint(ctx.viewer_ctx);
+                                    }
+                                }
+                            },
+                        );
+                    }
+                }
+            });
+        };
+
+        Some(Box::new(visualizer_ui))
+    }
 }
 
 /// Returns a priority score for a given Arrow datatype.
@@ -865,6 +946,7 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
         DataType::Float64 => 0,
         DataType::Float32 => 1,
         DataType::Float16 => 2,
+        // Note: We can visualize the following datatype but don't recommend them.
         DataType::Int64 => 3,
         DataType::Int32 => 5,
         DataType::Int16 => 7,
@@ -878,6 +960,9 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
     }
 }
 
+const RECOMMENDED_DATATYPES: &[DataType] =
+    &[DataType::Float64, DataType::Float32, DataType::Float16];
+
 fn scalar_mapping_selector(
     reason_opt: Option<&VisualizableReason>,
 ) -> Option<VisualizerComponentSource> {
@@ -888,47 +973,98 @@ fn scalar_mapping_selector(
 
     let target_component = Scalars::descriptor_scalars().component;
 
-    // Sorting priorities:
-    // 1. Match kind: Full native (identity) > Native semantics > Physical datatype only
-    // 2. Component type: unknown/custom > known Rerun type
-    //    - Rationale: When expecting Scalars, prefer raw numeric data over components with
-    //      different known semantics (e.g., Color, LinearSpeed)
-    // 3. Datatype preference: f64 > f32 > int64 > int32 > ... (see `scalar_datatype_priority`)
-    // 4. Alphabetical order as final tiebreaker
-    matches
-        .iter()
-        .sorted_by_key(|(source_component, match_info)| {
-            let primary_match_order = if **source_component == target_component {
-                // Full native match - exact component identifier
-                0
-            } else {
-                match match_info.kind {
-                    // Native semantic match - same semantic type but different component identifier
-                    re_viewer_context::DatatypeMatchKind::NativeSemantics => 1,
-                    // Physical datatype match - compatible datatype but different semantics
-                    re_viewer_context::DatatypeMatchKind::PhysicalDatatypeOnly => 2,
+    // Flatten all (component, selector) pairs into a single comparable list
+    // to find the globally best match across all components.
+    let candidates = matches.iter().flat_map(|(source_component, match_info)| {
+        let is_rerun_native_type = match_info
+            .component_type()
+            .is_some_and(|t| t.is_rerun_type());
+        let primary_match_order = match match_info {
+            DatatypeMatch::NativeSemantics { .. } => {
+                i32::from(*source_component != target_component)
+            }
+            DatatypeMatch::PhysicalDatatypeOnly { .. } => {
+                if *source_component == target_component {
+                    0
+                } else {
+                    2
                 }
-            };
+            }
+        };
 
-            let is_rerun_native_type = match_info.component_type.is_some_and(|t| t.is_rerun_type());
-            let datatype_order = scalar_datatype_priority(&match_info.arrow_datatype);
+        match match_info {
+            DatatypeMatch::NativeSemantics { arrow_datatype, .. } => {
+                Either::Left(Either::Left(std::iter::once((
+                    primary_match_order,
+                    is_rerun_native_type,
+                    scalar_datatype_priority(arrow_datatype),
+                    *source_component,
+                    0usize,
+                    String::new(),
+                ))))
+            }
+            DatatypeMatch::PhysicalDatatypeOnly {
+                arrow_datatype,
+                selectors,
+                ..
+            } => {
+                if selectors.is_empty() {
+                    if RECOMMENDED_DATATYPES.contains(match_info.arrow_datatype()) {
+                        Either::Left(Either::Left(std::iter::once((
+                            primary_match_order,
+                            is_rerun_native_type,
+                            scalar_datatype_priority(arrow_datatype),
+                            *source_component,
+                            0usize,
+                            String::new(),
+                        ))))
+                    } else {
+                        Either::Left(Either::Right(std::iter::empty()))
+                    }
+                } else {
+                    // Nested field access: selector_index preserves field definition order.
+                    Either::Right(selectors.iter().enumerate().filter_map(
+                        move |(selector_index, (selector, datatype))| {
+                            RECOMMENDED_DATATYPES.contains(datatype).then_some((
+                                primary_match_order,
+                                is_rerun_native_type,
+                                scalar_datatype_priority(datatype),
+                                *source_component,
+                                selector_index,
+                                selector.to_string(),
+                            ))
+                        },
+                    ))
+                }
+            }
+        }
+    });
 
-            // Sort by: match order, prefer custom types (inverted boolean so false/custom sorts first),
-            // then datatype priority, then alphabetically.
-            (
-                primary_match_order,
-                is_rerun_native_type, // custom types (false) sort before Rerun types (true)
-                datatype_order,
-                *source_component,
-            )
-        })
-        .next()
-        .map(
-            |(source_component, _)| VisualizerComponentSource::SourceComponent {
-                source_component: *source_component,
-                selector: String::new(),
+    // Priority key (lower = better):
+    // 1. primary_match_order (0=exact match, 1=semantic match, 2=physical only)
+    // 2. is_rerun_native_type (false < true, prefer custom types)
+    // 3. scalar_datatype_priority (Float64=0, Float32=1, etc.)
+    // 4. source_component (deterministic component selection)
+    // 5. selector_index (field definition order within component)
+    candidates
+        .into_iter()
+        .min_by_key(
+            |(match_order, is_rerun, dt_priority, component, field_order, _)| {
+                (
+                    *match_order,
+                    *is_rerun,
+                    *dt_priority,
+                    *component,
+                    *field_order,
+                )
             },
         )
+        .map(|(_, _, _, source_component, _, selector)| {
+            VisualizerComponentSource::SourceComponent {
+                source_component,
+                selector,
+            }
+        })
 }
 
 fn draw_time_cursor(
@@ -1242,7 +1378,7 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
 }
 
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
-fn make_range_sane(y_range: Range1D) -> Range1D {
+pub fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
 
     if !start.is_finite() {
@@ -1264,7 +1400,129 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
+fn strip_instance_number(str: &str) -> String {
+    if let Some(stripped) = str.strip_suffix(']').and_then(|s| {
+        let i = s.rfind('[')?;
+        s[i + 1..]
+            .bytes()
+            .all(|b| b.is_ascii_digit())
+            .then_some(&s[..i])
+    }) {
+        format!("{stripped}[]")
+    } else {
+        str.to_owned()
+    }
+}
+
+/// Returns the name for a time series visualizer.
+fn get_time_series_name(
+    ctx: &re_viewer_context::ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    instruction: &re_viewer_context::VisualizerInstruction,
+) -> String {
+    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
+        SeriesLines::descriptor_names().component
+    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
+        SeriesPoints::descriptor_names().component
+    } else {
+        return instruction.visualizer_type.to_string();
+    };
+
+    let query_result = re_view::latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [component],
+        Some(instruction),
+    );
+
+    let first_name = query_result.get_mono_with_fallback::<Name>(component);
+
+    // We might have already "injected" the instance number into the name of the series.
+    // So we re-normalize the series name again.
+    strip_instance_number(&first_name)
+}
+
+/// Returns the color for a time series visualizer based on the specific visualizer type.
+fn get_time_series_color(
+    ctx: &re_viewer_context::ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    instruction: &re_viewer_context::VisualizerInstruction,
+) -> Option<egui::Color32> {
+    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
+        SeriesLines::descriptor_colors().component
+    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
+        SeriesPoints::descriptor_colors().component
+    } else {
+        return None;
+    };
+
+    let query_result = re_view::latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [component],
+        Some(instruction),
+    );
+    Some(
+        // TODO(RR-3571): We should get multiple instances here.
+        query_result
+            .get_mono_with_fallback::<Color>(component)
+            .into(),
+    )
+}
+
 #[test]
 fn test_help_view() {
     re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+}
+
+#[test]
+fn test_strip_instance_number() {
+    // Empty string
+    assert_eq!(strip_instance_number(""), "");
+
+    // No brackets at all
+    assert_eq!(strip_instance_number("foo"), "foo");
+    assert_eq!(strip_instance_number("hello world"), "hello world");
+
+    // Valid instance numbers should be normalized to []
+    assert_eq!(strip_instance_number("foo[0]"), "foo[]");
+    assert_eq!(strip_instance_number("foo[1]"), "foo[]");
+    assert_eq!(strip_instance_number("foo[123]"), "foo[]");
+
+    // Empty brackets (no digits) should remain unchanged
+    assert_eq!(strip_instance_number("foo[]"), "foo[]");
+
+    // Non-digit content in brackets should remain unchanged
+    assert_eq!(strip_instance_number("foo[abc]"), "foo[abc]");
+    assert_eq!(strip_instance_number("foo[1a]"), "foo[1a]");
+    assert_eq!(strip_instance_number("foo[a1]"), "foo[a1]");
+    assert_eq!(strip_instance_number("foo[ ]"), "foo[ ]");
+    assert_eq!(strip_instance_number("foo[1 2]"), "foo[1 2]");
+
+    // Half-open brackets (only `[`) should remain unchanged
+    assert_eq!(strip_instance_number("foo["), "foo[");
+    assert_eq!(strip_instance_number("["), "[");
+    assert_eq!(strip_instance_number("foo[123"), "foo[123");
+
+    // Half-closed brackets (only `]`) should remain unchanged
+    assert_eq!(strip_instance_number("foo]"), "foo]");
+    assert_eq!(strip_instance_number("]"), "]");
+    assert_eq!(strip_instance_number("123]"), "123]");
+
+    // Multiple bracket pairs - only the last valid instance number is stripped
+    assert_eq!(strip_instance_number("foo[0][1]"), "foo[0][]");
+    assert_eq!(strip_instance_number("foo[abc][123]"), "foo[abc][]");
+
+    // Nested or malformed brackets
+    assert_eq!(strip_instance_number("foo[[0]]"), "foo[[0]]");
+    assert_eq!(strip_instance_number("foo[0]["), "foo[0][");
+    assert_eq!(strip_instance_number("foo][0]"), "foo][]");
+
+    // Edge cases with brackets in the middle
+    assert_eq!(strip_instance_number("foo[0]bar"), "foo[0]bar");
+    assert_eq!(strip_instance_number("foo[0]bar[1]"), "foo[0]bar[]");
 }

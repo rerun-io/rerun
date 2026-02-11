@@ -306,6 +306,8 @@ fn error_ui(
                     }
                 }
             }
+
+            ClientCredentialsError::HostMismatch(_) => "The token is not allowed for this server",
         };
 
         edit_alert(ui, message, edit_message);

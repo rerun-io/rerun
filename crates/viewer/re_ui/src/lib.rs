@@ -16,6 +16,7 @@ mod hot_reload_design_tokens;
 mod icon_text;
 pub mod icons;
 pub mod list_item;
+pub mod loading_indicator;
 mod markdown_utils;
 pub mod menu;
 pub mod modal;

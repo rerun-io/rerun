@@ -74,6 +74,7 @@ exclude_path = [
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
   "scripts/lint.py", # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
+  ".typos.toml",
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
@@ -128,6 +129,7 @@ exclude = [
   'file:///does/not/exist.rrd',
   'file://path/to/file.rrd',
   'file://somehost/file/path.rrd',
+  'file:///tmp/droidnano/Fri_Aug_18_09:46:43_2023.rrd',
 
   'https://redap.rerun.io',
   'http://wrong-scheme',

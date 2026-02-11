@@ -1,6 +1,7 @@
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
 use super::VisualizerCollection;
@@ -31,10 +32,27 @@ impl<'a> ViewContext<'a> {
         &'a self,
         data_result: &'a DataResult,
         query: &'a LatestAtQuery,
+        instruction_id: VisualizerInstructionId,
     ) -> QueryContext<'a> {
         QueryContext {
             view_ctx: self,
             target_entity_path: &data_result.entity_path,
+            instruction_id: instruction_id.into(),
+            archetype_name: None,
+            query,
+        }
+    }
+
+    #[inline]
+    pub fn query_context_without_visualizer(
+        &'a self,
+        data_result: &'a DataResult,
+        query: &'a LatestAtQuery,
+    ) -> QueryContext<'a> {
+        QueryContext {
+            view_ctx: self,
+            target_entity_path: &data_result.entity_path,
+            instruction_id: None,
             archetype_name: None,
             query,
         }

@@ -7,7 +7,7 @@ struct Uuid  (
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[int] | bytes",
   "attr.python.array_aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int] | Sequence[bytes]",
-  "attr.rust.derive": "Default, Copy, PartialEq, Eq, Hash",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.repr": "transparent"
 ) {
   /// The raw bytes representing the UUID.

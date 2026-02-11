@@ -240,6 +240,7 @@ Authentication with the redap.
 **Commands**
 
 * `login`: Log into Rerun.
+* `logout`: Log out of Rerun.
 * `token`: Retrieve the stored access token.
 * `generate-token`: Generate a fresh access token.
 
@@ -267,6 +268,21 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 >
 > [Default: `false`]
 
+## rerun auth logout
+
+Log out of Rerun.
+
+This command clears the credentials stored on your machine and ends your session.
+
+**Usage**: `rerun auth logout [OPTIONS]`
+
+**Options**
+
+* `--no-open-browser <NO_OPEN_BROWSER>`
+> Post a link instead of directly opening in the browser.
+>
+> [Default: `false`]
+
 ## rerun auth generate-token
 
 Generate a fresh access token.
@@ -275,7 +291,7 @@ You can use this token to authorize requests to the Rerun Data Platform.
 
 It's closer to an API key than an access token, as it can be revoked before it expires.
 
-**Usage**: `rerun auth generate-token --server <SERVER> --expiration <EXPIRATION>`
+**Usage**: `rerun auth generate-token [OPTIONS] --server <SERVER> --expiration <EXPIRATION>`
 
 **Options**
 
@@ -284,6 +300,13 @@ It's closer to an API key than an access token, as it can be revoked before it e
 
 * `--expiration <EXPIRATION>`
 > Duration of the token, either in: - "human time", e.g. `1 day`, or - ISO 8601 duration format, e.g. `P1D`.
+
+* `--permission <PERMISSION>`
+> Which permission the token should have.
+>
+> [`read`, `read-write`]
+>
+> [Default: `read`]
 
 ## rerun mcap
 

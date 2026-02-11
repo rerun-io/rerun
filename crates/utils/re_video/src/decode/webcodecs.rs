@@ -119,10 +119,6 @@ unsafe impl Send for WebVideoFrame {}
 #[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoFrame {}
 
-static IS_SAFARI: LazyLock<bool> = LazyLock::new(|| {
-    web_sys::window().is_some_and(|w| w.has_own_property(&wasm_bindgen::JsValue::from("safari")))
-});
-
 static IS_FIREFOX: LazyLock<bool> = LazyLock::new(|| {
     web_sys::window()
         .and_then(|w| w.navigator().user_agent().ok())
@@ -349,10 +345,17 @@ impl AsyncDecoder for WebVideoDecoder {
     }
 
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
-        // TODO(#8848): For some h264 videos (which??) we need to enqueue more samples, otherwise Safari will not provide us with any frames.
+        // TODO(#8848): For some h264 videos we need to enqueue more samples. For example videos in
+        // `s3://rerun-redap-datasets-pdx/larger-than-ram-demo/very-large.rrd`. (requires rerun login)
+        //
+        // This fixes it for Safari and Chrome on mac, while firefox still has issues.
+        //
+        // Another defense against this we could consider is if we aren't getting frames back from the
+        // decoder, continue trying to give it more.
+        //
         // (The same happens with FFmpeg-cli decoder for the affected videos)
-        if self.codec == VideoCodec::H264 && *IS_SAFARI {
-            16 // Safari needs more samples queued for h264
+        if self.codec == VideoCodec::H264 {
+            16 // enqueue more samples for h264
         } else {
             // No such workaround are needed anywhere else,
             // GOP boundaries as handled by the video player are enough.

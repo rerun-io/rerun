@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use re_data_source::{AuthErrorHandler, LogDataSource, StreamMode};
+use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -377,9 +377,9 @@ impl Args {
 
             let any_subcommands = cmd.get_subcommands().any(|cmd| cmd.get_name() != "help");
             let any_positional_args = cmd.get_arguments().any(|arg| arg.is_positional());
-            let any_floating_args = cmd
-                .get_arguments()
-                .any(|arg| !arg.is_positional() && arg.get_long() != Some("help"));
+            let any_floating_args = cmd.get_arguments().any(|arg| {
+                !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
+            });
 
             let full_name = full_name
                 .into_iter()
@@ -478,7 +478,9 @@ impl Args {
             let floatings = any_floating_args.then(|| {
                 let options = cmd
                     .get_arguments()
-                    .filter(|arg| !arg.is_positional() && arg.get_long() != Some("help"))
+                    .filter(|arg| {
+                        !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
+                    })
                     .map(generate_arg_doc)
                     .collect_vec()
                     .join("\n\n");
@@ -620,7 +622,7 @@ where
     // We don't want the runtime to run on the main thread, as we need that one for our UI.
     // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
     // and synchronize the result using some other means instead.
-    let tokio_runtime = Runtime::new()?;
+    let tokio_runtime = initialize_tokio_runtime(args.threads)?;
     let _tokio_guard = tokio_runtime.enter();
 
     let res = if let Some(command) = args.command {
@@ -920,7 +922,6 @@ fn start_native_viewer(
                 &UrlParamProcessingConfig::native_viewer(),
                 &connection_registry,
                 Some(auth_error_handler),
-                app.app_options().experimental.stream_mode,
             )?;
 
             // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
@@ -1011,7 +1012,6 @@ fn connect_to_existing_server(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
-        Default::default(),
     )?;
     if !receivers.urls_to_pass_on_to_viewer.is_empty() {
         re_log::warn!(
@@ -1063,7 +1063,6 @@ fn serve_web(
         &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
         connection_registry,
         None,
-        Default::default(),
     )?;
 
     // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
@@ -1133,7 +1132,6 @@ fn serve_grpc(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
-        Default::default(),
     )?;
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
@@ -1166,7 +1164,6 @@ fn save_or_test_receive(
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
         connection_registry,
         None,
-        Default::default(),
     )?;
     receivers.error_on_unhandled_urls(if save.is_none() {
         "--test-receive"
@@ -1331,6 +1328,12 @@ fn initialize_thread_pool(threads_args: i32) {
                 // (if rayon manages to figure out how many cores we have).
             }
         }
+    } else if threads_args == 1 {
+        // 1 means "single-threaded".
+        // Put all jobs on the caller thread, just to simplify
+        // the flamegraph and make it more similar to a browser.
+        builder = builder.num_threads(1).use_current_thread();
+        re_log::info!("Running in single-threaded mode.");
     } else {
         // 0 means "use all cores", and rayon understands that
         builder = builder.num_threads(threads_args as usize);
@@ -1339,6 +1342,32 @@ fn initialize_thread_pool(threads_args: i32) {
     if let Err(err) = builder.build_global() {
         re_log::warn!("Failed to initialize rayon thread pool: {err}");
     }
+}
+
+fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    // Name the tokio threads for the benefit of debuggers and profilers:
+    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    builder.thread_name_fn(|| {
+        static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+        let nr = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
+        format!("tokio-#{nr}")
+    });
+    builder.enable_all();
+
+    if threads_args < 0 {
+        if let Ok(cores) = std::thread::available_parallelism() {
+            let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
+            builder.worker_threads(threads);
+        }
+    } else if 0 < threads_args {
+        builder.worker_threads(threads_args as usize);
+    } else {
+        // 0 means "use default" (typically num CPUs)
+    }
+
+    builder.build()
 }
 
 #[cfg(feature = "native_viewer")]
@@ -1473,7 +1502,6 @@ impl ReceiversFromUrlParams {
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
         auth_error_handler: Option<AuthErrorHandler>,
-        steam_mode: StreamMode,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
@@ -1524,9 +1552,7 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| {
-                data_source.stream(auth_error_handler.clone(), connection_registry, steam_mode)
-            })
+            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {
@@ -1603,6 +1629,7 @@ fn record_cli_command_analytics(args: &Args) {
         Some(Command::Auth(cmd)) => {
             let subcommand = match cmd {
                 AuthCommands::Login(_) => "login",
+                AuthCommands::Logout(_) => "logout",
                 AuthCommands::Token(_) => "token",
                 AuthCommands::GenerateToken(_) => "generate-token",
             };

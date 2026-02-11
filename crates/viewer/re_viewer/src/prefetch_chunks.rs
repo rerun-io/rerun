@@ -2,6 +2,7 @@ use arrow::array::RecordBatch;
 
 use re_chunk::{Chunk, TimeInt};
 use re_entity_db::EntityDb;
+use re_log_types::TimelinePoint;
 use re_redap_client::{ApiResult, ConnectionClient};
 use re_viewer_context::TimeControl;
 
@@ -27,27 +28,20 @@ pub fn prefetch_chunks_for_active_recording(
         re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
     };
     let start_time = TimeInt::new_temporal(current_time.saturating_sub(before_margin));
+    let time_cursor = TimelinePoint::from((timeline, start_time));
 
-    if !recording.rrd_manifest_index.has_manifest() {
+    if !recording.can_fetch_chunks_from_redap() {
         return None;
     }
 
     let options = re_entity_db::ChunkPrefetchOptions {
-        timeline,
-        start_time,
         total_uncompressed_byte_budget: memory_budget.as_bytes(),
-
-        // Batch small chunks together.
-        max_uncompressed_bytes_per_batch: 1_000_000,
-
-        // TODO(RR-3204): what is a reasonable size here?
-        // A high value -> better theoretical bandwidth
-        max_uncompressed_bytes_in_transit: 10_000_000,
+        ..Default::default()
     };
 
     let (rrd_manifest, storage_engine) = recording.rrd_manifest_index_mut_and_storage_engine();
 
-    if let Err(err) = rrd_manifest.prefetch_chunks(storage_engine.store(), &options, &|rb| {
+    let load_chunks = &|rb| {
         egui_ctx.request_repaint();
         let connection_registry = connection_registry.clone();
         let origin = origin.clone();
@@ -69,7 +63,11 @@ pub fn prefetch_chunks_for_active_recording(
                 poll_promise::Promise::spawn_async(fut)
             }
         }
-    }) {
+    };
+
+    if let Err(err) =
+        rrd_manifest.prefetch_chunks(storage_engine.store(), &options, time_cursor, load_chunks)
+    {
         re_log::warn_once!("prefetch_chunks failed: {err}");
     }
 

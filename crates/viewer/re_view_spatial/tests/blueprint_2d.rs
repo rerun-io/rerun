@@ -1,7 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_sdk_types::{Archetype as _, archetypes};
-use re_test_context::TestContext;
+use re_test_context::{TestContext, VisualizerBlueprintContext as _};
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};

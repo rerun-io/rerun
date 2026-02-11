@@ -29,6 +29,9 @@ pub struct QueryContext<'a> {
     /// For view properties this is the path that stores the respective view property archetype.
     pub target_entity_path: &'a re_log_types::EntityPath,
 
+    /// If the query is made from a visualizer, this contains that visualizer's id.
+    pub instruction_id: Option<VisualizerInstructionId>,
+
     /// Archetype name in which context the component is needed.
     ///
     /// View properties always have an archetype context, but overrides/defaults may not.
@@ -95,13 +98,10 @@ impl Default for DataQueryResult {
             tree: Default::default(),
             num_matching_entities: 0,
             num_visualized_entities: 0,
-            view_defaults: re_query::LatestAtResults {
-                entity_path: "<defaults>".into(),
-                query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
-                missing: Default::default(),
-                compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
-                components: Default::default(),
-            },
+            view_defaults: re_query::LatestAtResults::empty(
+                "<defaults>".into(),
+                re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
+            ),
         }
     }
 }
@@ -285,6 +285,12 @@ impl DataResultTree {
                 self.visit_recursive(*child, visitor);
             }
         }
+    }
+
+    /// Iterates over all [`DataResult`]s.
+    #[inline]
+    pub fn iter_data_results(&self) -> impl Iterator<Item = &DataResult> {
+        self.data_results.values().map(|node| &node.data_result)
     }
 }
 

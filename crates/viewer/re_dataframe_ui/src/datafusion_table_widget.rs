@@ -89,14 +89,14 @@ impl Columns<'_> {
 /// This is primarily useful for testing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TableStatus {
-    /// The table is loading its content for the first time and has no cached content. A spinner
-    /// is displayed.
+    /// The table is loading its content for the first time and has no cached content.
+    /// A loading indicator is displayed.
     InitialLoading,
 
     /// The table is fully loaded and no update is in progress.
     Loaded,
 
-    /// The table is currently updating its content and a spinner is displayed. The previously loaded
+    /// The table is currently updating its content and a loading indicator is displayed. The previously loaded
     /// content is displayed in the meantime.
     Updating,
 
@@ -362,7 +362,7 @@ impl<'a> DataFusionTableWidget<'a> {
         title: Option<&str>,
         url: Option<&str>,
         queried_at: Timestamp,
-        should_show_spinner: bool,
+        should_show_loading_indicator: bool,
         query_result: &DataFusionQueryResult,
         column_blueprint_fn: &ColumnBlueprintFn<'_>,
     ) -> TableBlueprint {
@@ -422,7 +422,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 Some(&mut table_config),
                 title,
                 url,
-                should_show_spinner,
+                should_show_loading_indicator,
             );
         }
 
@@ -578,7 +578,7 @@ fn title_ui(
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&str>,
-    should_show_spinner: bool,
+    should_show_loading_indicator: bool,
 ) {
     Frame::new()
         .inner_margin(Margin {
@@ -602,8 +602,8 @@ fn title_ui(
                             .send_system(SystemCommand::CopyViewerUrl(url.to_owned()));
                     }
 
-                    if should_show_spinner {
-                        ui.spinner();
+                    if should_show_loading_indicator {
+                        ui.loading_indicator();
                     }
                 },
                 |ui| {
@@ -678,11 +678,7 @@ impl DataFusionTableDelegate<'_> {
             let selected_rows = selection.selected_rows;
 
             if let Some(segment_links_spec) = &self.blueprint.segment_links {
-                let label = format!(
-                    "Open {} segment{}",
-                    selected_rows.len(),
-                    format_plural_s(selected_rows.len())
-                );
+                let label = format!("Open {}", format_plural_s(selected_rows.len(), "segment"));
                 let response =
                     ui.add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label));
 

@@ -5,10 +5,8 @@
 
 use ahash::HashMap;
 
-use crate::{
-    PerVisualizerType, SystemExecutionOutput, ViewClass, ViewId, ViewState,
-    VisualizerExecutionErrorState,
-};
+use crate::view::system_execution_output::VisualizerViewReport;
+use crate::{SystemExecutionOutput, ViewClass, ViewId, ViewState, VisualizerTypeReport};
 
 /// State for the `View`s that persists across frames but otherwise
 /// is not saved.
@@ -21,14 +19,14 @@ pub struct ViewStates {
     /// This is cleared out each frame and populated after all visualizers have been executed.
     // TODO(andreas): Would be nice to bundle this with `ViewState` by making `ViewState` a struct containing errors & generic data.
     // But at point of writing this causes too much needless churn.
-    visualizer_errors: HashMap<ViewId, PerVisualizerType<VisualizerExecutionErrorState>>,
+    visualizer_reports: HashMap<ViewId, VisualizerViewReport>,
 }
 
 impl re_byte_size::SizeBytes for ViewStates {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             states,
-            visualizer_errors,
+            visualizer_reports: visualizer_errors,
         } = self;
         states
             .iter()
@@ -60,31 +58,26 @@ impl ViewStates {
             .or_insert_with(|| view_class.new_state());
     }
 
-    /// Removes all previously stored visualizer errors.
-    pub fn reset_visualizer_errors(&mut self) {
-        self.visualizer_errors.clear();
+    /// Removes all previously stored visualizer reports.
+    pub fn reset_visualizer_reports(&mut self) {
+        self.visualizer_reports.clear();
     }
 
-    /// Reports visualizer errors from a system execution output for a given view.
-    pub fn report_visualizer_errors(
+    /// Adds visualizer reports from a system execution output for a given view.
+    pub fn add_visualizer_reports_from_output(
         &mut self,
         view_id: ViewId,
         system_output: &SystemExecutionOutput,
     ) {
-        let per_visualizer_errors = &mut self.visualizer_errors.entry(view_id).or_default().0;
+        let per_visualizer_reports = self.visualizer_reports.entry(view_id).or_default();
 
-        per_visualizer_errors.extend(system_output.visualizer_execution_output.iter().filter_map(
-            |(id, result)| {
-                VisualizerExecutionErrorState::from_result(result).map(|error| (*id, error))
-            },
+        per_visualizer_reports.extend(system_output.visualizer_execution_output.iter().filter_map(
+            |(id, result)| VisualizerTypeReport::from_result(result).map(|error| (*id, error)),
         ));
     }
 
-    /// Access latest visualizer errors for a given view.
-    pub fn visualizer_errors(
-        &self,
-        view_id: ViewId,
-    ) -> Option<&PerVisualizerType<VisualizerExecutionErrorState>> {
-        self.visualizer_errors.get(&view_id)
+    /// Access latest visualizer reports (warnings and errors) for a given view.
+    pub fn per_visualizer_type_reports(&self, view_id: ViewId) -> Option<&VisualizerViewReport> {
+        self.visualizer_reports.get(&view_id)
     }
 }

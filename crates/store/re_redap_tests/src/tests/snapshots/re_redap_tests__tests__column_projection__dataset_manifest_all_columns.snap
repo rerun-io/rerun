@@ -12,6 +12,7 @@ expression: "&all_columns"
     "rerun_num_chunks",
     "rerun_size_bytes",
     "rerun_schema_sha256",
+    "rerun_registration_status",
     "property:points:Points2D:positions",
     "property:text_log:TextLog:text",
 ]

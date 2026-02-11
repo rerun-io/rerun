@@ -1,7 +1,7 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::EncodedImage;
 use re_sdk_types::components::{MediaType, Opacity};
-use re_view::HybridResults;
+use re_view::VisualizerInstructionQueryResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -49,13 +49,13 @@ impl VisualizerSystem for EncodedImageVisualizer {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
+            &output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_encoded_image(ctx, results, spatial_ctx);
@@ -78,39 +78,23 @@ impl EncodedImageVisualizer {
     fn process_encoded_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults<'_>,
-        spatial_ctx: &mut SpatialSceneVisualizerInstructionContext<'_>,
+        results: &VisualizerInstructionQueryResults<'_>,
+        spatial_ctx: &SpatialSceneVisualizerInstructionContext<'_>,
     ) {
         re_tracing::profile_function!();
 
-        use re_view::RangeResultsExt as _;
-
-        use super::entity_iterator::iter_slices;
-
         let entity_path = ctx.target_entity_path;
 
-        let all_blob_chunks = results
-            .get_required_chunk(EncodedImage::descriptor_blob().component)
-            .ensure_required(|err| spatial_ctx.report_error(err));
-        if all_blob_chunks.is_empty() {
+        let all_blobs = results.iter_required(EncodedImage::descriptor_blob().component);
+        if all_blobs.is_empty() {
             return;
         }
-
-        let timeline = ctx.query.timeline();
-        let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-        let all_media_types = results.iter_as(
-            |err| spatial_ctx.report_warning(err),
-            timeline,
-            EncodedImage::descriptor_media_type().component,
-        );
-        let all_opacities = results.iter_as(
-            |err| spatial_ctx.report_warning(err),
-            timeline,
-            EncodedImage::descriptor_opacity().component,
-        );
+        let all_media_types =
+            results.iter_optional(EncodedImage::descriptor_media_type().component);
+        let all_opacities = results.iter_optional(EncodedImage::descriptor_opacity().component);
 
         for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
-            all_blobs_indexed,
+            all_blobs.slice::<&[u8]>(),
             all_media_types.slice::<String>(),
             all_opacities.slice::<f32>(),
         ) {
@@ -172,7 +156,9 @@ impl EncodedImageVisualizer {
                         spatial_ctx.view_class_identifier,
                     );
                 }
-                Err(err) => spatial_ctx.report_error(re_error::format(err)),
+                Err(err) => {
+                    results.report_error(re_error::format(err));
+                }
             }
         }
     }

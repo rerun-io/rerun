@@ -92,6 +92,7 @@ skip = [
   { name = "rustix" }, # tantivy uses an old version.
   { name = "linux-raw-sys" }, # because of two rustix versions.
   { name = "bitflags" }, # core-graphics & png uses an older version.
+  { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
   { name = "petgraph" }, # b/c lance

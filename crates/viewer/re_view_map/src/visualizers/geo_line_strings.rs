@@ -3,7 +3,7 @@ use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::{LineDrawDataError, LineStripFlags};
 use re_sdk_types::archetypes::GeoLineStrings;
 use re_sdk_types::components::{Color, Radius};
-use re_view::DataResultQuery as _;
+use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -44,7 +44,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -54,34 +54,23 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 view_query,
                 instruction,
             );
+            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
 
             let mut batch_data = GeoLineStringsBatch::default();
 
             // gather all relevant chunks
-            let timeline = view_query.timeline;
-            let all_lines = results.iter_as(
-                |error| output.report_warning_for(instruction.id, error),
-                timeline,
-                GeoLineStrings::descriptor_line_strings().component,
-            );
-            let all_colors = results.iter_as(
-                |error| output.report_warning_for(instruction.id, error),
-                timeline,
-                GeoLineStrings::descriptor_colors().component,
-            );
-            let all_radii = results.iter_as(
-                |error| output.report_warning_for(instruction.id, error),
-                timeline,
-                GeoLineStrings::descriptor_radii().component,
-            );
+            let all_lines =
+                results.iter_required(GeoLineStrings::descriptor_line_strings().component);
+            let all_colors = results.iter_optional(GeoLineStrings::descriptor_colors().component);
+            let all_radii = results.iter_optional(GeoLineStrings::descriptor_radii().component);
 
             // fallback component values
             let fallback_color: Color = typed_fallback_for(
-                &ctx.query_context(data_result, &view_query.latest_at_query()),
+                &ctx.query_context(data_result, &view_query.latest_at_query(), instruction.id),
                 GeoLineStrings::descriptor_colors().component,
             );
             let fallback_radius: Radius = typed_fallback_for(
-                &ctx.query_context(data_result, &view_query.latest_at_query()),
+                &ctx.query_context(data_result, &view_query.latest_at_query(), instruction.id),
                 GeoLineStrings::descriptor_radii().component,
             );
 
