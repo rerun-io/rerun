@@ -31,7 +31,7 @@ include = [
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.90"
-version = "0.30.0-alpha.1+dev"
+version = "0.30.0-alpha.1"
 
 [workspace.metadata.cargo-shear]
 ignored = [
