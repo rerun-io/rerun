@@ -905,7 +905,7 @@ class DatasetView:
 
         import datafusion
 
-        available_segments = set(self._internal.segment_ids())
+        available_segments = set() if using_index_values is None else set(self._internal.segment_ids())
 
         index_values_dict = None
         match using_index_values:
