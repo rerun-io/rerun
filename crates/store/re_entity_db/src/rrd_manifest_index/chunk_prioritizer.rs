@@ -3,10 +3,9 @@ use std::ops::RangeInclusive;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
-use itertools::{chain, izip};
-use nohash_hasher::IntSet;
+use itertools::chain;
 use re_byte_size::SizeBytes as _;
-use re_chunk::{ChunkId, TimeInt, Timeline, TimelineName};
+use re_chunk::{ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
 use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
@@ -269,6 +268,27 @@ impl PrioritizedChunk {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+struct ComponentPathKey {
+    entity_path: EntityPathHash,
+    component: ComponentIdentifier,
+}
+
+impl re_byte_size::SizeBytes for ComponentPathKey {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            entity_path: _,
+            component: _,
+        } = self;
+
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct ChunkPrioritizer {
@@ -296,7 +316,7 @@ pub struct ChunkPrioritizer {
     /// Chunks that should be downloaded before any else.
     high_priority_chunks: HighPrioChunks,
 
-    entity_path_hash_from_chunk_id: HashMap<ChunkId, EntityPathHash>,
+    component_paths_from_root_id: HashMap<ChunkId, Vec<ComponentPathKey>>,
 }
 
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
@@ -309,7 +329,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             root_chunk_intervals: virtual_chunk_intervals,
             static_chunk_ids,
             high_priority_chunks,
-            entity_path_hash_from_chunk_id,
+            component_paths_from_root_id,
         } = self;
 
         desired_root_chunks.heap_size_bytes()
@@ -317,7 +337,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             + virtual_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
             + high_priority_chunks.heap_size_bytes()
-            + entity_path_hash_from_chunk_id.heap_size_bytes()
+            + component_paths_from_root_id.heap_size_bytes()
     }
 }
 
@@ -327,11 +347,33 @@ impl ChunkPrioritizer {
         self.update_chunk_intervals(manifest);
         self.update_high_priority_chunks(manifest);
 
-        for (chunk_id, entity_path) in
-            izip!(manifest.col_chunk_ids(), manifest.col_chunk_entity_path())
-        {
-            self.entity_path_hash_from_chunk_id
-                .insert(*chunk_id, entity_path.hash());
+        self.component_paths_from_root_id.clear();
+        for (entity, per_component) in manifest.static_map() {
+            for (component, chunk) in per_component {
+                self.component_paths_from_root_id
+                    .entry(*chunk)
+                    .or_default()
+                    .push(ComponentPathKey {
+                        entity_path: entity.hash(),
+                        component: *component,
+                    });
+            }
+        }
+
+        for (entity, per_timeline) in manifest.temporal_map() {
+            for per_component in per_timeline.values() {
+                for (component, chunks) in per_component {
+                    for chunk in chunks.keys() {
+                        self.component_paths_from_root_id
+                            .entry(*chunk)
+                            .or_default()
+                            .push(ComponentPathKey {
+                                entity_path: entity.hash(),
+                                component: *component,
+                            });
+                    }
+                }
+            }
         }
     }
 
@@ -433,8 +475,8 @@ impl ChunkPrioritizer {
     /// See [`Self::prioritize_and_prefetch`] for more details.
     #[expect(clippy::too_many_arguments)] // TODO(emilk): refactor to simplify
     fn chunks_in_priority<'a>(
-        entities_of_interest: &'a IntSet<EntityPathHash>,
-        entity_path_hash_from_chunk_id: &'a HashMap<ChunkId, EntityPathHash>,
+        components_of_interest: &'a HashSet<ComponentPathKey>,
+        component_paths_from_root_id: &'a HashMap<ChunkId, Vec<ComponentPathKey>>,
         static_chunk_ids: &'a HashSet<ChunkId>,
         high_priority_chunks: &'a HighPrioChunks,
         store: &'a ChunkStore,
@@ -468,7 +510,7 @@ impl ChunkPrioritizer {
                 .map(|(_, chunk_id)| *chunk_id)
         };
 
-        // Note: we do NOT take `entities_of_interest` for high-priority transform chunks,
+        // Note: we do NOT take `components_of_interest` for high-priority transform chunks,
         // because that seems to cause bugs for unknown reasons.
         let high_prio_chunks_before_time_cursor = high_priority_chunks.all_before(time_cursor);
 
@@ -482,12 +524,16 @@ impl ChunkPrioritizer {
 
         // Chunks that aren't currently required. Pure prefetching:
         let optional_chunks = {
-            // Chunks for entities we are interested in.
+            // Chunks for components we are interested in.
             let is_interesting_chunk = |chunk_id: &ChunkId| {
-                entities_of_interest.contains(&entity_path_hash_from_chunk_id[chunk_id])
+                component_paths_from_root_id[chunk_id]
+                    .iter()
+                    .any(|path| components_of_interest.contains(path))
             };
             let is_uninteresting_chunk = |chunk_id: &ChunkId| {
-                !entities_of_interest.contains(&entity_path_hash_from_chunk_id[chunk_id])
+                !component_paths_from_root_id[chunk_id]
+                    .iter()
+                    .any(|path| components_of_interest.contains(path))
             };
 
             // Extra chunks we try to prefetch, that may _soon_ be needed:
@@ -569,10 +615,10 @@ impl ChunkPrioritizer {
             return Ok(vec![]);
         }
 
-        // Basically: what entities are currently being viewed by the user?
-        let mut entities_of_interest: IntSet<EntityPathHash> = Default::default();
+        // Basically: what components of which entities are currently being viewed by the user?
+        let mut components_of_interest: HashSet<ComponentPathKey> = Default::default();
         {
-            profile_scope!("entities_of_interest");
+            profile_scope!("components_of_interest");
 
             let QueriedChunkIdTracker {
                 used_physical,
@@ -581,13 +627,18 @@ impl ChunkPrioritizer {
 
             for physical_chunk_id in used_physical {
                 if let Some(chunk) = store.physical_chunk(physical_chunk_id) {
-                    entities_of_interest.insert(chunk.entity_path().hash());
+                    for component in chunk.components_identifiers() {
+                        components_of_interest.insert(ComponentPathKey {
+                            entity_path: chunk.entity_path().hash(),
+                            component,
+                        });
+                    }
                 }
             }
             for missing_virtual_chunk_id in missing_virtual {
                 for root_id in store.find_root_chunks(missing_virtual_chunk_id) {
-                    if let Some(chunk) = root_chunks.get(&root_id) {
-                        entities_of_interest.insert(chunk.entity_path.hash());
+                    if let Some(components) = self.component_paths_from_root_id.get(&root_id) {
+                        components_of_interest.extend(components.iter().copied());
                     }
                 }
             }
@@ -595,8 +646,8 @@ impl ChunkPrioritizer {
 
         // Mixes virtual and physical chunks (!)
         let chunk_ids_in_priority_order = Self::chunks_in_priority(
-            &entities_of_interest,
-            &self.entity_path_hash_from_chunk_id,
+            &components_of_interest,
+            &self.component_paths_from_root_id,
             &self.static_chunk_ids,
             &self.high_priority_chunks,
             store,
