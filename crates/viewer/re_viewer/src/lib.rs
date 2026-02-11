@@ -2,6 +2,28 @@
 //!
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
+//!
+//! # Failure handling overview
+//!
+//! ## High-level
+//!
+//! Errors that affect the Viewer broadly, either user error or general issues,
+//! are reported via [`re_log`] (i.e. [`re_log::error!`] / [`re_log::warn!`]).
+//! These are not scoped to a specific view or entity and are often intermittent.
+//! They are shown in the notification panel.
+//!
+//! ## Per-visualizer-type in a view ([`re_viewer_context::VisualizerTypeReport::OverallError`])
+//!
+//! A specific visualizer type fails entirely for a view.
+//! Rare and almost always a Viewer bug.
+//!
+//! ## Per-instruction (per entity × visualizer × view) ([`re_viewer_context::VisualizerInstructionReport`])
+//!
+//! The most common failure mode: something goes wrong for a specific entity being
+//! processed by a specific visualizer in a specific view.
+//! Collected in [`re_viewer_context::VisualizerTypeReport::PerInstructionReport`].
+//!
+//! See [`re_viewer_context::VisualizerInstructionReport`] for how these break down further.
 
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 

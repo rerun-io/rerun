@@ -56,16 +56,24 @@ impl SystemExecutionOutput {
 /// In a `BTreeMap` to ensure stable sorting.
 pub type VisualizerViewReport = BTreeMap<ViewSystemIdentifier, VisualizerTypeReport>;
 
-/// Errors that occurred during the execution of a visualizer.
+/// Diagnostics from executing a single visualizer type within a view.
 ///
-/// For convenience, the actual execution method of visualizer is using a `Result` type,
-/// but this enum is more suited for storing errors throughout a frame.
+/// For a high-level failure handling overview, see the `re_viewer` crate documentation.
 #[derive(Clone, Debug)]
 pub enum VisualizerTypeReport {
-    /// The entire visualizer failed to execute.
+    /// The entire visualizer type failed to execute for this view.
+    ///
+    /// For example, "point cloud rendering broke down completely".
+    /// This is rare and almost always a bug in the Viewer itself.
+    /// (So rare, in fact, that today we sometimes lump these together with per-instruction
+    /// errors.)
     OverallError(VisualizerInstructionReport),
 
-    /// The visualizer executed, but had per-instruction reports (errors and warnings).
+    /// The visualizer executed, but produced per-instruction reports (errors and/or warnings).
+    ///
+    /// Keyed by instruction (≈ entity), each entry lists one or more
+    /// [`VisualizerInstructionReport`]s. These are somewhat common, practically never infect
+    /// other entities, and are often not completely fatal.
     PerInstructionReport(BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>),
 }
 

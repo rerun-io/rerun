@@ -136,7 +136,14 @@ impl VisualizerQueryInfo {
 /// Sorts from least concern to highest.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum VisualizerReportSeverity {
+    /// Something went wrong on an optional component.
+    ///
+    /// We can often still show something using the default.
     Warning,
+
+    /// Something went wrong on a required component (or otherwise fatally).
+    ///
+    /// The entity usually can't be shown.
     Error,
 
     /// It's not just a single visualizer instruction that failed, but the visualizer as a whole tanked.
@@ -161,7 +168,25 @@ impl re_byte_size::SizeBytes for VisualizerReportContext {
     }
 }
 
-/// A diagnostic message (error or warning) from a visualizer.
+/// A diagnostic message (error or warning) from a visualizer for a single instruction.
+///
+/// Collected into [`crate::VisualizerTypeReport::PerInstructionReport`].
+///
+/// # Sub-types of per-instruction failures
+///
+/// * **Cross-component / "global" reason** — the entity can't be shown for a reason
+///   not tied to one component (e.g. a broken transform chain, `Pinhole` interplay).
+///   In this case [`context.component`](VisualizerReportContext::component) is `None`.
+///
+/// * **A specific component didn't make sense**
+///   ([`context.component`](VisualizerReportContext::component) is `Some`):
+///   - *Selector failure* — the component mapping/selector couldn't resolve:
+///     the referenced component doesn't exist, the jq selector string is syntactically
+///     invalid, or it points at something that doesn't exist.
+///   - *Bad data* — the selector resolved, but the resulting data is malformed,
+///     has an unexpected type, or is otherwise unusable.
+///
+/// For a high-level failure handling overview, see the `re_viewer` crate documentation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VisualizerInstructionReport {
     pub severity: VisualizerReportSeverity,
