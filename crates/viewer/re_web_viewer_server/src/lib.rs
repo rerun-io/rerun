@@ -49,6 +49,11 @@ mod data {
     pub fn signed_in_html() -> &'static [u8] {
         include_bytes!("../web_viewer/signed-in.html")
     }
+
+    #[inline]
+    pub fn signed_out_html() -> &'static [u8] {
+        include_bytes!("../web_viewer/signed-out.html")
+    }
 }
 
 #[cfg(all(not(disable_web_viewer_server), trailing_web_viewer))]
@@ -262,6 +267,7 @@ impl WebViewerServerInner {
                 ("application/wasm", data::viewer_wasm())
             }
             "/signed-in" => ("text/html", data::signed_in_html()),
+            "/signed-out" => ("text/html", data::signed_out_html()),
             _ => {
                 re_log::warn!("404 path: {}", path);
                 return request.respond(tiny_http::Response::empty(404));

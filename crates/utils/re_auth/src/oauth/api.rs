@@ -235,6 +235,22 @@ impl Default for Pkce {
     }
 }
 
+/// Construct the `WorkOS` logout URL for a given session ID.
+///
+/// Redirecting the user's browser to this URL will end their `WorkOS` session.
+/// If `return_to` is provided, the user will be redirected there after logout.
+pub fn logout_url(session_id: &str, return_to: Option<&str>) -> String {
+    let mut url = format!(
+        "{base}/user_management/sessions/logout?session_id={session_id}",
+        base = *WORKOS_API,
+    );
+    if let Some(return_to) = return_to {
+        url.push_str("&return_to=");
+        url.push_str(return_to);
+    }
+    url
+}
+
 pub fn authorization_url(redirect_uri: &str, state: &str, pkce: &Pkce) -> String {
     let url = format!(
         "\

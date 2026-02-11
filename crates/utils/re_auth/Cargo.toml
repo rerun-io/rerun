@@ -64,7 +64,7 @@ tiny_http = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["json"] }
 js-sys.workspace = true
 wasm-bindgen.workspace = true
-web-sys = { workspace = true, features = ["Storage", "Window"] }
+web-sys = { workspace = true, features = ["Location", "Storage", "Window"] }
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }

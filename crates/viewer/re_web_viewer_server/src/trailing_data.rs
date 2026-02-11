@@ -71,6 +71,7 @@ struct WebViewerData {
     viewer_js: Vec<u8>,
     viewer_wasm: Vec<u8>,
     signed_in_html: Vec<u8>,
+    signed_out_html: Vec<u8>,
 }
 
 static WEB_VIEWER_DATA: OnceLock<WebViewerData> = OnceLock::new();
@@ -157,6 +158,7 @@ fn load_from_trailing_zip() -> Result<WebViewerData, TrailingDataError> {
     let viewer_js = extract_file(&mut zip, "re_viewer.js")?;
     let viewer_wasm = extract_file(&mut zip, "re_viewer_bg.wasm")?;
     let signed_in_html = extract_file(&mut zip, "signed-in.html")?;
+    let signed_out_html = extract_file(&mut zip, "signed-out.html")?;
 
     Ok(WebViewerData {
         index_html,
@@ -165,6 +167,7 @@ fn load_from_trailing_zip() -> Result<WebViewerData, TrailingDataError> {
         viewer_js,
         viewer_wasm,
         signed_in_html,
+        signed_out_html,
     })
 }
 
@@ -226,4 +229,9 @@ pub fn viewer_wasm() -> &'static [u8] {
 #[inline]
 pub fn signed_in_html() -> &'static [u8] {
     &get_data().signed_in_html
+}
+
+#[inline]
+pub fn signed_out_html() -> &'static [u8] {
+    &get_data().signed_out_html
 }

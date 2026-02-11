@@ -1266,8 +1266,22 @@ impl App {
                 }
             }
             SystemCommand::Logout => {
-                if let Err(err) = re_auth::oauth::clear_credentials() {
-                    re_log::error!("Failed to logout: {err}");
+                match re_auth::oauth::clear_credentials() {
+                    Ok(Some(logout_url)) => {
+                        // Open the WorkOS logout URL to also end the browser session.
+                        // This opens in a new tab/window so the viewer state is preserved.
+                        // WorkOS clears its session cookies and redirects to /signed-out.
+                        egui_ctx.open_url(egui::output::OpenUrl {
+                            url: logout_url,
+                            new_tab: true,
+                        });
+                    }
+                    Ok(None) => {
+                        re_log::debug!("No session to logout from");
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to logout: {err}");
+                    }
                 }
                 self.state.redap_servers.logout();
             }
