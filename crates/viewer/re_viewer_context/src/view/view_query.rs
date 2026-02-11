@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// [`VisualizerComponentMapping`] but without the target.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VisualizerComponentSource {
     /// See [`ComponentSourceKind::SourceComponent`].
     SourceComponent {

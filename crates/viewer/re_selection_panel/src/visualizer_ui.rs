@@ -284,11 +284,11 @@ fn visualizer_components(
                     {
                         (current_value_row_id, raw_current_value_array, None)
                     } else {
-                        (None, raw_default, None)
+                        (None, raw_default.clone(), None)
                     }
                 }
 
-                Err(err) => (None, raw_default, Some(err)),
+                Err(err) => (None, raw_default.clone(), Some(err)),
             };
 
         // TODO(RR-3562): We've already displayed errors at the top of the visualizer.
@@ -353,6 +353,7 @@ fn visualizer_components(
                 instruction,
                 &query_info,
                 &raw_override,
+                &raw_default,
             );
         };
 
@@ -497,6 +498,7 @@ fn collect_source_component_options(
         .collect()
 }
 
+#[expect(clippy::too_many_arguments)]
 fn source_component_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
@@ -505,6 +507,55 @@ fn source_component_ui(
     instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
     raw_override: &Option<ArrayRef>,
+    raw_default: &ArrayRef,
+) {
+    let current = current_component_source(
+        instruction,
+        &component_descr.component,
+        raw_override.is_some(),
+        entity_components_with_datatype,
+    );
+
+    ui.push_id("source_component", |ui| {
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
+            |ui, _| {
+                let response = egui::ComboBox::new("source_component_combo_box", "")
+                    .selected_text(component_source_string(&current))
+                    .show_ui(ui, |ui| {
+                        source_component_items_ui(
+                            ctx,
+                            ui,
+                            entity_components_with_datatype,
+                            component_descr,
+                            instruction,
+                            query_info,
+                            raw_override,
+                            raw_default,
+                        );
+                    });
+                response.response.widget_info(|| {
+                    egui::WidgetInfo::labeled(
+                        egui::WidgetType::ComboBox,
+                        ui.is_enabled(),
+                        // TODO(aedm): Weird label, but we need to find this item in the integration test somehow.
+                        format!("{}_$source", component_descr.component),
+                    )
+                });
+            },
+        ));
+    });
+}
+
+#[expect(clippy::too_many_arguments)]
+fn source_component_items_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
+    component_descr: &ComponentDescriptor,
+    instruction: &VisualizerInstruction,
+    query_info: &VisualizerQueryInfo,
+    raw_override: &Option<ArrayRef>,
+    raw_default: &ArrayRef,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
 
@@ -527,47 +578,46 @@ fn source_component_ui(
         query_info,
     );
 
+    let has_editor = component_descr.component_type.is_some_and(|ct| {
+        ctx.viewer_ctx
+            .component_ui_registry()
+            .registered_ui_types(ct)
+            .has_edit_ui(raw_default.len() > 1)
+    });
+
     if !is_required_component {
-        // TODO(andreas): Which order should these be in?
-        options.push(VisualizerComponentSource::Override); // TODO(andreas): Will we rename this to `Custom` eventually?
         options.push(VisualizerComponentSource::Default);
+
+        // Show the override/adding override only if there is an editor or we already have an override set to begin with.
+        if has_editor || raw_override.is_some() {
+            options.push(VisualizerComponentSource::Override);
+        }
     }
 
-    let current = current_component_source(
-        instruction,
-        &component_descr.component,
-        raw_override.is_some(),
-        entity_components_with_datatype,
-    );
+    for source in options {
+        let add_custom = source == VisualizerComponentSource::Override && raw_override.is_none();
+        let label = if add_custom {
+            "Add Custom".to_owned()
+        } else {
+            component_source_string(&source)
+        };
 
-    ui.push_id("source_component", |ui| {
-        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
-            |ui, _| {
-                let response = egui::ComboBox::new("source_component_combo_box", "")
-                    .selected_text(component_source_string(&current))
-                    .show_ui(ui, |ui| {
-                        for source in options {
-                            if ui.button(component_source_string(&source)).clicked() {
-                                save_component_mapping(
-                                    ctx,
-                                    instruction,
-                                    source,
-                                    component_descr.component,
-                                );
-                            }
-                        }
-                    });
-                response.response.widget_info(|| {
-                    egui::WidgetInfo::labeled(
-                        egui::WidgetType::ComboBox,
-                        ui.is_enabled(),
-                        // TODO(aedm): Weird label, but we need to find this item in the integration test somehow.
-                        format!("{}_$source", component_descr.component),
-                    )
-                });
-            },
-        ));
-    });
+        if ui.button(label).clicked() {
+            save_component_mapping(ctx, instruction, source, component_descr.component);
+
+            if add_custom {
+                // Persist the override value right away, so the `add_custom` check can rely on the override value being in the blueprint store.
+                // This also makes behavior generally more consistent - imagine what if the default flickers for some reason:
+                // this will make it so that override doesn't flicker until one edits the value.
+                ctx.save_blueprint_array(
+                    instruction.override_path.clone(),
+                    component_descr.clone(),
+                    raw_default.clone(),
+                );
+            }
+            ui.close();
+        }
+    }
 }
 
 /// Determines which component source is currently active.
@@ -621,7 +671,7 @@ fn component_source_string(source: &VisualizerComponentSource) -> String {
                 format!("{}{}", source_component.as_str(), selector)
             }
         }
-        VisualizerComponentSource::Override => "Override".to_owned(),
+        VisualizerComponentSource::Override => "Custom".to_owned(),
         VisualizerComponentSource::Default => "View default".to_owned(),
     }
 }

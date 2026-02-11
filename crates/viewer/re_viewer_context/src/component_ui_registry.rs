@@ -31,6 +31,22 @@ bitflags::bitflags! {
 
         /// Edit the component over multiple [`re_ui::list_item::ListItem`]s.
         const MultiLineEditor = 0b0000100;
+
+        /// Edit multiple values (arrays) of this component at once.
+        const MultiValueEditor = 0b0001000;
+    }
+}
+
+impl ComponentUiTypes {
+    /// Whether an edit UI is available.
+    ///
+    /// If `multi_value` is true, requires a [`Self::MultiValueEditor`] to be registered.
+    pub fn has_edit_ui(&self, multi_value: bool) -> bool {
+        if multi_value {
+            self.contains(Self::MultiValueEditor)
+        } else {
+            self.intersects(Self::SingleLineEditor | Self::MultiLineEditor)
+        }
     }
 }
 
@@ -454,13 +470,17 @@ impl ComponentUiRegistry {
             .component_singleline_edit_or_view
             .contains_key(&ComponentUiIdentifier::ComponentArray(name))
         {
-            types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::SingleLineEditor;
+            types |= ComponentUiTypes::DisplayUi
+                | ComponentUiTypes::SingleLineEditor
+                | ComponentUiTypes::MultiValueEditor;
         }
         if self
             .component_multiline_edit_or_view
             .contains_key(&ComponentUiIdentifier::ComponentArray(name))
         {
-            types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::MultiLineEditor;
+            types |= ComponentUiTypes::DisplayUi
+                | ComponentUiTypes::MultiLineEditor
+                | ComponentUiTypes::MultiValueEditor;
         }
 
         types
