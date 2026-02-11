@@ -7,8 +7,9 @@ use re_entity_db::EntityPath;
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_sdk_types::Visualizer;
 use re_test_context::TestContext;
+use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::{TestContextExt as _, TestView};
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewSystemIdentifier};
+use re_viewer_context::{ViewClass as _, ViewSystemIdentifier};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 /// Test that [`re_viewer_context::ViewQuery::iter_visualizer_instruction_for`] returns the expected results.

@@ -9,7 +9,7 @@ use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_sdk_types::{ComponentIdentifier, blueprint::components::VisualizerInstructionId};
-use re_viewer_context::{DataResult, ViewContext, typed_fallback_for};
+use re_viewer_context::{DataResult, QueryContext, ViewContext, typed_fallback_for};
 
 use crate::{
     ComponentMappingError,
@@ -197,7 +197,7 @@ impl BlueprintResolvedRangeResults<'_> {
     }
 }
 
-impl BlueprintResolvedLatestAtResults<'_> {
+impl<'a> BlueprintResolvedLatestAtResults<'a> {
     /// Utility for retrieving the first instance of a component.
     ///
     /// This operates on a single component at a time and does not handle
@@ -230,16 +230,8 @@ impl BlueprintResolvedLatestAtResults<'_> {
         &self,
         component: ComponentIdentifier,
     ) -> C {
-        self.get_mono::<C>(component).unwrap_or_else(|| {
-            let query_context = if let Some(instruction_id) = self.instruction_id {
-                self.ctx
-                    .query_context(self.data_result, &self.query, instruction_id)
-            } else {
-                self.ctx
-                    .query_context_without_visualizer(self.data_result, &self.query)
-            };
-            typed_fallback_for(&query_context, component)
-        })
+        self.get_mono::<C>(component)
+            .unwrap_or_else(|| typed_fallback_for(&self.query_context(), component))
     }
 
     /// Returns the raw arrow array for the given component's single cell.
@@ -257,6 +249,32 @@ impl BlueprintResolvedLatestAtResults<'_> {
             .ok()??;
 
         unit_chunk.component_batch_raw(component)
+    }
+
+    /// Builds a [`QueryContext`] from this result's context, data result, and query.
+    pub fn query_context(&'a self) -> QueryContext<'a> {
+        if let Some(instruction_id) = self.instruction_id {
+            self.ctx
+                .query_context(self.data_result, &self.query, instruction_id)
+        } else {
+            self.ctx
+                .query_context_without_visualizer(self.data_result, &self.query)
+        }
+    }
+
+    /// Returns the fallback arrow array for the given component.
+    ///
+    /// This first tries the registered fallback provider and then falls back to
+    /// the placeholder value registered in the viewer context.
+    pub fn get_fallback_for(
+        &self,
+        component: ComponentIdentifier,
+        component_type: Option<re_chunk::ComponentType>,
+    ) -> ArrayRef {
+        self.ctx
+            .viewer_ctx
+            .component_fallback_registry
+            .fallback_for(component, component_type, &self.query_context())
     }
 }
 

@@ -1,4 +1,6 @@
-use nohash_hasher::{IntMap, IntSet};
+use std::collections::BTreeMap;
+
+use nohash_hasher::IntSet;
 use re_chunk_store::MissingChunkReporter;
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
@@ -26,7 +28,7 @@ pub enum ViewClassLayoutPriority {
     High,
 }
 
-pub struct RecommendedVisualizers(pub IntMap<ViewSystemIdentifier, VisualizerComponentMappings>);
+pub struct RecommendedVisualizers(pub BTreeMap<ViewSystemIdentifier, VisualizerComponentMappings>);
 
 impl RecommendedVisualizers {
     pub fn empty() -> Self {

@@ -11,6 +11,7 @@ use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_sdk_types::datatypes::{self, TimeRange};
 use re_sdk_types::{DynamicArchetype, Loggable as _, VisualizableArchetype as _, components};
 use re_test_context::TestContext;
+use re_test_context::VisualizerBlueprintContext as _;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;

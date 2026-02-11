@@ -5,11 +5,10 @@ use std::f64::consts::TAU;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
+use re_test_context::VisualizerBlueprintContext as _;
 use re_viewer::external::re_log_types::EntityPath;
 use re_viewer::external::re_sdk_types::{self, VisualizableArchetype as _, archetypes};
-use re_viewer::external::re_viewer_context::{
-    BlueprintContext as _, RecommendedView, ViewClass as _,
-};
+use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 

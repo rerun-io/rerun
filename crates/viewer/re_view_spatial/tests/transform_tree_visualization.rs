@@ -7,6 +7,7 @@ use re_sdk_types::components::Position3D;
 use re_sdk_types::datatypes::Angle;
 use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
+use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};

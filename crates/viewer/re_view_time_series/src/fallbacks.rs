@@ -43,7 +43,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 let num_series = ctx
                     .instruction_id
                     .and_then(|id| state.num_time_series_last_frame_per_instruction.get(&id))
-                    .map_or(1, |set| set.len().max(1));
+                    .map_or(1, |set| set.len());
 
                 let mut series_names = Vec::new();
 
@@ -82,16 +82,13 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 let num_series = ctx
                     .instruction_id
                     .and_then(|id| state.num_time_series_last_frame_per_instruction.get(&id))
-                    .map_or(1, |set| set.len().max(1));
+                    .map_or(1, |set| set.len());
 
                 (0..num_series)
                     .map(|i| {
-                        // For historical reasons we take a different hash for the first series.
-                        let hash = if i == 0 {
-                            ctx.target_entity_path.hash64()
-                        } else {
-                            re_log_types::hash::Hash64::hash((ctx.target_entity_path, i)).hash64()
-                        } % u16::MAX as u64;
+                        let hash = re_log_types::hash::Hash64::hash((ctx.instruction_id, i))
+                            .hash64()
+                            % u16::MAX as u64;
                         re_viewer_context::auto_color_egui(hash as u16).into()
                     })
                     .collect()

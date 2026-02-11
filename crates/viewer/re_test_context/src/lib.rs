@@ -102,6 +102,71 @@ impl BlueprintContext for TestBlueprintCtx<'_> {
     }
 }
 
+// TODO(grtlr): Could we consolidate this with `TestBlueprintCtx`?
+/// Extension trait for test-specific blueprint operations.
+///
+/// This trait provides `save_visualizers` for any type that implements `BlueprintContext`,
+/// allowing tests to save visualizers with deterministic IDs via `ViewerContext`.
+pub trait VisualizerBlueprintContext: BlueprintContext {
+    /// Saves visualizers to blueprint with deterministic IDs.
+    ///
+    /// This assigns deterministic visualizer IDs based on the entity path
+    /// and index of the visualizer, making the output reproducible for tests.
+    fn save_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        view_id: ViewId,
+        visualizers: impl IntoIterator<Item = impl Into<re_sdk_types::Visualizer>>,
+    ) {
+        use re_sdk_types::AsComponents;
+        use re_sdk_types::blueprint::archetypes as bp_archetypes;
+        use re_sdk_types::blueprint::components::VisualizerInstructionId;
+
+        let base_override_path =
+            bp_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
+                view_id.uuid(),
+                entity_path,
+            );
+
+        let mut ids = Vec::new();
+        for (i, visualizer) in visualizers.into_iter().enumerate() {
+            let mut visualizer = visualizer.into();
+
+            // Generate a deterministic ID based on entity path hash and visualizer index
+            visualizer.id =
+                VisualizerInstructionId::new_deterministic(entity_path.hash().hash64(), i);
+
+            ids.push(visualizer.id);
+            let visualizer_path = base_override_path
+                .clone()
+                .join(&EntityPath::from_single_string(visualizer.id.to_string()));
+
+            let mut instruction =
+                bp_archetypes::VisualizerInstruction::new(visualizer.visualizer_type.clone());
+            if !visualizer.mappings.is_empty() {
+                instruction = instruction.with_component_map(visualizer.mappings.clone());
+            }
+
+            self.save_blueprint_archetypes(
+                visualizer_path,
+                std::iter::once(&instruction as &dyn AsComponents).chain(
+                    visualizer
+                        .overrides
+                        .iter()
+                        .map(|batch| batch as &dyn AsComponents),
+                ),
+            );
+        }
+
+        self.save_blueprint_archetype(
+            base_override_path,
+            &bp_archetypes::ActiveVisualizers::new(ids),
+        );
+    }
+}
+
+impl<T: BlueprintContext + ?Sized> VisualizerBlueprintContext for T {}
+
 impl Default for TestContext {
     fn default() -> Self {
         Self::new()

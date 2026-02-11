@@ -1,8 +1,10 @@
+use std::collections::BTreeMap;
+
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
@@ -14,7 +16,7 @@ use re_sdk_types::blueprint::archetypes::{
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
-use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
+use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
@@ -285,7 +287,7 @@ impl ViewClass for TimeSeriesView {
 
         let scalars_component = Scalars::descriptor_scalars().component;
 
-        let mut visualizers_with_mappings: IntMap<
+        let mut visualizers_with_mappings: BTreeMap<
             ViewSystemIdentifier,
             VisualizerComponentMappings,
         > = available_visualizers
@@ -821,11 +823,8 @@ impl ViewClass for TimeSeriesView {
                         let series_color =
                             get_time_series_color(&ctx, &node.data_result, instruction);
 
-                        // Use series name if available, otherwise fall back to entity name
-                        let display_name = entity_path
-                            .last()
-                            .map(|part| part.ui_string())
-                            .unwrap_or_else(|| "/".to_owned());
+                        let display_name =
+                            get_time_series_name(&ctx, &node.data_result, instruction);
 
                         // Estimate the pill height so Sides can vertically center
                         // both sides (pill on the left, trash button on the right).
@@ -1401,6 +1400,50 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
+fn strip_instance_number(str: &str) -> String {
+    if let Some(stripped) = str.strip_suffix(']').and_then(|s| {
+        let i = s.rfind('[')?;
+        s[i + 1..]
+            .bytes()
+            .all(|b| b.is_ascii_digit())
+            .then_some(&s[..i])
+    }) {
+        format!("{stripped}[]")
+    } else {
+        str.to_owned()
+    }
+}
+
+/// Returns the name for a time series visualizer.
+fn get_time_series_name(
+    ctx: &re_viewer_context::ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    instruction: &re_viewer_context::VisualizerInstruction,
+) -> String {
+    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
+        SeriesLines::descriptor_names().component
+    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
+        SeriesPoints::descriptor_names().component
+    } else {
+        return instruction.visualizer_type.to_string();
+    };
+
+    let query_result = re_view::latest_at_with_blueprint_resolved_data(
+        ctx,
+        None,
+        &ctx.current_query(),
+        data_result,
+        [component],
+        Some(instruction),
+    );
+
+    let first_name = query_result.get_mono_with_fallback::<Name>(component);
+
+    // We might have already "injected" the instance number into the name of the series.
+    // So we re-normalize the series name again.
+    strip_instance_number(&first_name)
+}
+
 /// Returns the color for a time series visualizer based on the specific visualizer type.
 fn get_time_series_color(
     ctx: &re_viewer_context::ViewContext<'_>,
@@ -1424,6 +1467,7 @@ fn get_time_series_color(
         Some(instruction),
     );
     Some(
+        // TODO(RR-3571): We should get multiple instances here.
         query_result
             .get_mono_with_fallback::<Color>(component)
             .into(),
@@ -1433,4 +1477,52 @@ fn get_time_series_color(
 #[test]
 fn test_help_view() {
     re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+}
+
+#[test]
+fn test_strip_instance_number() {
+    // Empty string
+    assert_eq!(strip_instance_number(""), "");
+
+    // No brackets at all
+    assert_eq!(strip_instance_number("foo"), "foo");
+    assert_eq!(strip_instance_number("hello world"), "hello world");
+
+    // Valid instance numbers should be normalized to []
+    assert_eq!(strip_instance_number("foo[0]"), "foo[]");
+    assert_eq!(strip_instance_number("foo[1]"), "foo[]");
+    assert_eq!(strip_instance_number("foo[123]"), "foo[]");
+
+    // Empty brackets (no digits) should remain unchanged
+    assert_eq!(strip_instance_number("foo[]"), "foo[]");
+
+    // Non-digit content in brackets should remain unchanged
+    assert_eq!(strip_instance_number("foo[abc]"), "foo[abc]");
+    assert_eq!(strip_instance_number("foo[1a]"), "foo[1a]");
+    assert_eq!(strip_instance_number("foo[a1]"), "foo[a1]");
+    assert_eq!(strip_instance_number("foo[ ]"), "foo[ ]");
+    assert_eq!(strip_instance_number("foo[1 2]"), "foo[1 2]");
+
+    // Half-open brackets (only `[`) should remain unchanged
+    assert_eq!(strip_instance_number("foo["), "foo[");
+    assert_eq!(strip_instance_number("["), "[");
+    assert_eq!(strip_instance_number("foo[123"), "foo[123");
+
+    // Half-closed brackets (only `]`) should remain unchanged
+    assert_eq!(strip_instance_number("foo]"), "foo]");
+    assert_eq!(strip_instance_number("]"), "]");
+    assert_eq!(strip_instance_number("123]"), "123]");
+
+    // Multiple bracket pairs - only the last valid instance number is stripped
+    assert_eq!(strip_instance_number("foo[0][1]"), "foo[0][]");
+    assert_eq!(strip_instance_number("foo[abc][123]"), "foo[abc][]");
+
+    // Nested or malformed brackets
+    assert_eq!(strip_instance_number("foo[[0]]"), "foo[[0]]");
+    assert_eq!(strip_instance_number("foo[0]["), "foo[0][");
+    assert_eq!(strip_instance_number("foo][0]"), "foo][]");
+
+    // Edge cases with brackets in the middle
+    assert_eq!(strip_instance_number("foo[0]bar"), "foo[0]bar");
+    assert_eq!(strip_instance_number("foo[0]bar[1]"), "foo[0]bar[]");
 }
