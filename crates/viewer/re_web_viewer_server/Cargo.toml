@@ -25,6 +25,7 @@ include = [
   "web_viewer/re_viewer.js",
   "web_viewer/sw.js",
   "web_viewer/signed-in.html",
+  "web_viewer/signed-out.html",
 ]
 
 [lints]
