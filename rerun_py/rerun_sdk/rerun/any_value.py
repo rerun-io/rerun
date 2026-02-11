@@ -4,7 +4,9 @@ from typing import Any
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
+from .any_batch_value import AnyBatchValue
 from .dynamic_archetype import DynamicArchetype
+from .error_utils import catch_and_log_exceptions
 
 
 class AnyValues(AsComponents):
@@ -141,10 +143,13 @@ class AnyValues(AsComponents):
             The components to be logged.
 
         """
-        inst = cls(drop_untyped_nones, **kwargs)
-        return ComponentColumnList([
-            ComponentColumn(batch.component_descriptor(), batch) for batch in inst._builder.as_component_batches()
-        ])
+        columns: list[ComponentColumn] = []
+        with catch_and_log_exceptions("AnyValues.columns"):
+            for name, value in kwargs.items():
+                col = AnyBatchValue.column(name, value, drop_untyped_nones=drop_untyped_nones)
+                if col is not None:
+                    columns.append(col)
+        return ComponentColumnList(columns)
 
     @property
     def component_batches(self) -> list[DescribedComponentBatch]:

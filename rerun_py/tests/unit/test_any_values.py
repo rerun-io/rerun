@@ -196,3 +196,34 @@ def test_any_values_with_field() -> None:
     values = rr.AnyValues().with_component_from_data(descriptor="value", value=np.array([5], dtype=np.int64))
     assert values.as_component_batches()[0].component_descriptor() == rr.ComponentDescriptor("value")
     assert values.as_component_batches()[0].as_arrow_array().to_numpy() == np.array([5], dtype=np.int64)
+
+
+def test_any_values_columns_scalar() -> None:
+    cols = rr.AnyValues.columns(any_val_scalars=[1.0, 2.0, 3.0])
+    column_list = list(cols)
+    assert len(column_list) == 1
+
+    arrow = column_list[0].as_arrow_array()
+
+    # 3 rows, each containing a single scalar
+    assert len(arrow) == 3
+    assert pa.types.is_floating(arrow.type.value_type)
+    for i, expected in enumerate([1.0, 2.0, 3.0]):
+        assert arrow[i].as_py() == [expected]
+
+
+def test_any_values_columns_list_of_lists() -> None:
+    cols = rr.AnyValues.columns(any_val_arrays=[[1, 2, 3], [4, 5], [6]])
+    column_list = list(cols)
+    assert len(column_list) == 1
+
+    arrow = column_list[0].as_arrow_array()
+
+    # 3 rows with variable-length partitions
+    assert len(arrow) == 3
+    assert arrow[0].as_py() == [1, 2, 3]
+    assert arrow[1].as_py() == [4, 5]
+    assert arrow[2].as_py() == [6]
+
+    # The element type should be int64, NOT list<int64>
+    assert pa.types.is_integer(arrow.type.value_type)

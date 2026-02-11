@@ -12,8 +12,6 @@ from .error_utils import catch_and_log_exceptions
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any]
-
 
 class DynamicArchetype(AsComponents):
     """
@@ -87,8 +85,6 @@ class DynamicArchetype(AsComponents):
             The components to be logged.
 
         """
-        global ANY_VALUE_TYPE_REGISTRY
-
         self._component_batches: list[DescribedComponentBatch] = []
         self._archetype: str | None = None
         self._name = self.__class__.__name__
@@ -223,7 +219,12 @@ class DynamicArchetype(AsComponents):
             The components to be logged.
 
         """
-        inst = cls(archetype, drop_untyped_nones, components)
-        return ComponentColumnList([
-            ComponentColumn(batch.component_descriptor(), batch) for batch in inst._component_batches
-        ])
+        columns: list[ComponentColumn] = []
+        with catch_and_log_exceptions("DynamicArchetype.columns"):
+            if components is not None:
+                for name, value in components.items():
+                    descriptor = ComponentDescriptor(component=name).with_builtin_archetype(archetype)
+                    col = AnyBatchValue.column(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+                    if col is not None:
+                        columns.append(col)
+        return ComponentColumnList(columns)
