@@ -20,7 +20,7 @@ pub fn compressed_image() -> Result<Lens, LensError> {
                     CoordinateFrame::descriptor_frame(),
                     [
                         Op::selector(".frame_id"),
-                        Op::string_suffix(IMAGE_PLANE_SUFFIX),
+                        Op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX),
                     ],
                 )
                 // The format field can be "jpeg", "png", "webp" or "avif" in the Foxglove schema.

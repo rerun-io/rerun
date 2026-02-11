@@ -129,11 +129,17 @@ pub enum Op {
     /// Converts video codec strings to Rerun `VideoCodec` enum values (as `u32`).
     StringToVideoCodecUInt32,
 
-    /// Prepends a prefix to each string value.
+    /// Prepends a prefix to each string value, including empty strings.
     StringPrefix(String),
 
-    /// Appends a suffix to each string value.
+    /// Prepends a prefix to each non-empty string value, leaving empty strings unchanged.
+    StringPrefixNonEmpty(String),
+
+    /// Appends a suffix to each string value, including empty strings.
     StringSuffix(String),
+
+    /// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
+    StringSuffixNonEmpty(String),
 
     /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
     TimeSpecToNanos,
@@ -150,7 +156,13 @@ impl std::fmt::Debug for Op {
             Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
             Self::StringToVideoCodecUInt32 => f.debug_struct("StringToVideoCodecUInt32").finish(),
             Self::StringPrefix(prefix) => f.debug_tuple("StringPrefix").field(prefix).finish(),
+            Self::StringPrefixNonEmpty(prefix) => {
+                f.debug_tuple("StringPrefixNonEmpty").field(prefix).finish()
+            }
             Self::StringSuffix(suffix) => f.debug_tuple("StringSuffix").field(suffix).finish(),
+            Self::StringSuffixNonEmpty(suffix) => {
+                f.debug_tuple("StringSuffixNonEmpty").field(suffix).finish()
+            }
             Self::TimeSpecToNanos => f.debug_struct("TimeSpecToNanos").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
@@ -204,14 +216,24 @@ impl Op {
         Self::StringToVideoCodecUInt32
     }
 
-    /// Prepends a prefix to each string value.
+    /// Prepends a prefix to each string value, including empty strings.
     pub fn string_prefix(prefix: impl Into<String>) -> Self {
         Self::StringPrefix(prefix.into())
     }
 
-    /// Appends a suffix to each string value.
+    /// Prepends a prefix to each non-empty string value, leaving empty strings unchanged.
+    pub fn string_prefix_nonempty(prefix: impl Into<String>) -> Self {
+        Self::StringPrefixNonEmpty(prefix.into())
+    }
+
+    /// Appends a suffix to each string value, including empty strings.
     pub fn string_suffix(suffix: impl Into<String>) -> Self {
         Self::StringSuffix(suffix.into())
+    }
+
+    /// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
+    pub fn string_suffix_nonempty(suffix: impl Into<String>) -> Self {
+        Self::StringSuffixNonEmpty(suffix.into())
     }
 
     /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
@@ -247,9 +269,19 @@ impl Op {
             Self::StringPrefix(prefix) => map::MapList::new(map::StringPrefix::new(prefix.clone()))
                 .transform(list_array)
                 .map_err(Into::into),
+            Self::StringPrefixNonEmpty(prefix) => map::MapList::new(
+                map::StringPrefix::new(prefix.clone()).with_prefix_empty_string(false),
+            )
+            .transform(list_array)
+            .map_err(Into::into),
             Self::StringSuffix(suffix) => map::MapList::new(map::StringSuffix::new(suffix.clone()))
                 .transform(list_array)
                 .map_err(Into::into),
+            Self::StringSuffixNonEmpty(suffix) => map::MapList::new(
+                map::StringSuffix::new(suffix.clone()).with_suffix_empty_string(false),
+            )
+            .transform(list_array)
+            .map_err(Into::into),
             Self::TimeSpecToNanos => map::MapList::new(semantic::TimeSpecToNanos::default())
                 .transform(list_array)
                 .map_err(Into::into),

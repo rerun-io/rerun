@@ -129,3 +129,51 @@ fn test_string_transforms_from_nested_struct() {
         └───────────────────────────────────────────────────────┘
         ");
 }
+
+/// Tests that `StringPrefix` and `StringSuffix` preserve empty strings as-is when configured to do so.
+#[test]
+fn test_string_transforms_preserve_empty_strings() {
+    use arrow::array::StringArray;
+
+    let input = StringArray::from(vec![Some("hello"), Some(""), None, Some("world")]);
+
+    let prefixed = StringPrefix::new("prefix_")
+        .with_prefix_empty_string(false)
+        .transform(&input)
+        .unwrap();
+    insta::assert_snapshot!(DisplayRB(prefixed), @r"
+        ┌─────────────────────┐
+        │ col                 │
+        │ ---                 │
+        │ type: nullable Utf8 │
+        ╞═════════════════════╡
+        │ prefix_hello        │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │                     │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ null                │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ prefix_world        │
+        └─────────────────────┘
+        ");
+
+    let suffixed = StringSuffix::new("_suffix")
+        .with_suffix_empty_string(false)
+        .transform(&input)
+        .unwrap();
+    insta::assert_snapshot!(DisplayRB(suffixed), @r"
+        ┌─────────────────────┐
+        │ col                 │
+        │ ---                 │
+        │ type: nullable Utf8 │
+        ╞═════════════════════╡
+        │ hello_suffix        │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │                     │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ null                │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ world_suffix        │
+        └─────────────────────┘
+        ");
+}

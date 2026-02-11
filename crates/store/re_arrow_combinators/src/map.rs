@@ -206,6 +206,7 @@ where
 #[derive(Clone)]
 pub struct StringPrefix {
     prefix: String,
+    prefix_empty_string: bool,
 }
 
 impl StringPrefix {
@@ -213,7 +214,17 @@ impl StringPrefix {
     pub fn new(prefix: impl Into<String>) -> Self {
         Self {
             prefix: prefix.into(),
+            prefix_empty_string: true,
         }
+    }
+
+    /// Configures whether to add the prefix to empty strings.
+    ///
+    /// The default behavior is to add the prefix to all strings, including empty ones.
+    /// Setting this to `false` leaves empty strings unmodified.
+    pub fn with_prefix_empty_string(mut self, prefix_empty_string: bool) -> Self {
+        self.prefix_empty_string = prefix_empty_string;
+        self
     }
 }
 
@@ -224,7 +235,16 @@ impl Transform for StringPrefix {
     fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
         let result: StringArray = source
             .iter()
-            .map(|opt| opt.map(|s| format!("{}{}", self.prefix, s)))
+            .map(|opt| {
+                opt.map(|s| {
+                    if s.is_empty() && !self.prefix_empty_string {
+                        // Pass through empty strings without adding the prefix.
+                        s.to_owned()
+                    } else {
+                        format!("{}{}", self.prefix, s)
+                    }
+                })
+            })
             .collect();
         Ok(result)
     }
@@ -236,6 +256,7 @@ impl Transform for StringPrefix {
 #[derive(Clone)]
 pub struct StringSuffix {
     suffix: String,
+    suffix_empty_string: bool,
 }
 
 impl StringSuffix {
@@ -243,7 +264,17 @@ impl StringSuffix {
     pub fn new(suffix: impl Into<String>) -> Self {
         Self {
             suffix: suffix.into(),
+            suffix_empty_string: true,
         }
+    }
+
+    /// Configures whether to add the suffix to empty strings.
+    ///
+    /// The default behavior is to add the suffix to all strings, including empty ones.
+    /// Setting this to `false` leaves empty strings unmodified.
+    pub fn with_suffix_empty_string(mut self, suffix_empty_string: bool) -> Self {
+        self.suffix_empty_string = suffix_empty_string;
+        self
     }
 }
 
@@ -254,7 +285,16 @@ impl Transform for StringSuffix {
     fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
         let result: StringArray = source
             .iter()
-            .map(|opt| opt.map(|s| format!("{}{}", s, self.suffix)))
+            .map(|opt| {
+                opt.map(|s| {
+                    if s.is_empty() && !self.suffix_empty_string {
+                        // Pass through empty strings without adding the suffix.
+                        s.to_owned()
+                    } else {
+                        format!("{}{}", s, self.suffix)
+                    }
+                })
+            })
             .collect();
         Ok(result)
     }

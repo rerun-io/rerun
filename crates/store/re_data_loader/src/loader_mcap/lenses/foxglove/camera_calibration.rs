@@ -26,7 +26,7 @@ pub fn camera_calibration() -> Result<Lens, LensError> {
             Pinhole::descriptor_child_frame(),
             [
                 Op::selector(".frame_id"),
-                Op::string_suffix(IMAGE_PLANE_SUFFIX),
+                Op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX),
             ],
         )
         .component(
