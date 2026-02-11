@@ -44,8 +44,13 @@ class TypeRegistry:
     def __init__(self) -> None:
         self._entries: dict[ComponentDescriptor, TypeRegistryValue] = {}
 
-    def get(self, descriptor: ComponentDescriptor) -> TypeRegistryValue | None:
-        return self._entries.get(descriptor)
+    def get(self, descriptor: ComponentDescriptor, *, expect_column: bool = False) -> TypeRegistryValue | None:
+        entry = self._entries.get(descriptor)
+        if entry is not None and expect_column:
+            # The stored type had its outer list<> stripped during column-mode registration.
+            # Re-wrap so the parsing chain receives the correct list type for list-of-lists data.
+            return ArrowTypeOnly(pa.list_(entry.pa_type))
+        return entry
 
     def register(self, descriptor: ComponentDescriptor, new: TypeRegistryValue, *, expect_column: bool = False) -> None:
         # In column mode, the outer list dimension represents rows, not part of the data type.
@@ -229,7 +234,7 @@ class AnyBatchValue(ComponentBatchLike):
             elif hasattr(value, "as_arrow_array"):
                 self.pa_array = value.as_arrow_array()
             else:
-                cached = ANY_VALUE_TYPE_REGISTRY.get(descriptor)
+                cached = ANY_VALUE_TYPE_REGISTRY.get(descriptor, expect_column=expect_column)
                 if cached is None:
                     if value is None or (isinstance(value, Sized) and len(value) == 0):
                         if not drop_untyped_nones:
@@ -304,6 +309,17 @@ class AnyBatchValue(ComponentBatchLike):
         The component column, or ``None`` if the value could not be converted.
 
         """
+        # Normalize flat sequences to list-of-lists so column data is always
+        # parsed as list<T>. This keeps the type registry consistent: column-mode
+        # always infers list<T> which is then stripped to T for storage.
+        if value is not None and not isinstance(value, (pa.Array, str, bytes)):
+            try:
+                arr = np.asarray(value)
+            except ValueError:
+                arr = None  # Ragged lists — already list-of-lists
+            if arr is not None and arr.ndim == 1 and arr.dtype.kind != "O":
+                value = [[x] for x in value]
+
         inst = cls(descriptor, value, drop_untyped_nones=drop_untyped_nones, expect_column=True)
 
         if not inst.is_valid():

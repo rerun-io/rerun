@@ -227,3 +227,77 @@ def test_any_values_columns_list_of_lists() -> None:
 
     # The element type should be int64, NOT list<int64>
     assert pa.types.is_integer(arrow.type.value_type)
+
+
+MODE_COMBINATIONS = [
+    ("row", "row"),
+    ("row", "column"),
+    ("column", "row"),
+    ("column", "column"),
+]
+
+
+@pytest.mark.parametrize("first_mode, second_mode", MODE_COMBINATIONS)
+def test_any_batch_value_type_registry_string(first_mode: str, second_mode: str) -> None:
+    """The type registry must not break any combination of row/column calls (string data)."""
+
+    descriptor = f"registry_str_{first_mode}_{second_mode}"
+    row_values = ["hello", "world"]
+    col_values = [[["a", "b"], ["c", "d"]], [["e", "f"], ["g", "h"]]]
+
+    for i, mode in enumerate([first_mode, second_mode]):
+        if mode == "row":
+            batch = rr.AnyBatchValue(descriptor, row_values[i])
+            assert batch.is_valid()
+            assert batch.as_arrow_array().to_pylist() == [row_values[i]]  # type: ignore[union-attr]
+        else:
+            col = rr.AnyBatchValue.column(descriptor, col_values[i])
+            assert col is not None
+            assert col.as_arrow_array().to_pylist() == [list(row) for row in col_values[i]]  # type: ignore[union-attr]
+
+
+def test_any_batch_value_type_registry_column_flat_then_flat() -> None:
+    """Two successive flat-scalar column calls with the same descriptor."""
+
+    descriptor = "registry_col_flat_flat"
+
+    col1 = rr.AnyBatchValue.column(descriptor, [1.0, 2.0, 3.0])
+    assert col1 is not None
+    assert col1.as_arrow_array().to_pylist() == [[1.0], [2.0], [3.0]]  # type: ignore[union-attr]
+
+    col2 = rr.AnyBatchValue.column(descriptor, [4.0, 5.0])
+    assert col2 is not None
+    assert col2.as_arrow_array().to_pylist() == [[4.0], [5.0]]  # type: ignore[union-attr]
+
+
+def test_any_batch_value_type_registry_column_flat_then_jagged() -> None:
+    """First column call with scalars (no list type inferred), then with jagged lists."""
+
+    descriptor = "registry_col_flat_then_jagged"
+
+    col1 = rr.AnyBatchValue.column(descriptor, [1.0, 2.0, 3.0])
+    assert col1 is not None
+    assert col1.as_arrow_array().to_pylist() == [[1.0], [2.0], [3.0]]  # type: ignore[union-attr]
+
+    col2 = rr.AnyBatchValue.column(descriptor, [[10, 20], [30]])
+    assert col2 is not None
+    assert col2.as_arrow_array().to_pylist() == [[10.0, 20.0], [30.0]]  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize("first_mode, second_mode", MODE_COMBINATIONS)
+def test_any_batch_value_type_registry_numeric(first_mode: str, second_mode: str) -> None:
+    """The type registry must not break any combination of row/column calls (numeric data)."""
+
+    descriptor = f"registry_num_{first_mode}_{second_mode}"
+    row_values = [1.0, 2.0]
+    col_values = [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]]
+
+    for i, mode in enumerate([first_mode, second_mode]):
+        if mode == "row":
+            batch = rr.AnyBatchValue(descriptor, row_values[i])
+            assert batch.is_valid()
+            assert batch.as_arrow_array().to_pylist() == [row_values[i]]  # type: ignore[union-attr]
+        else:
+            col = rr.AnyBatchValue.column(descriptor, col_values[i])
+            assert col is not None
+            assert col.as_arrow_array().to_pylist() == [list(row) for row in col_values[i]]  # type: ignore[union-attr]
