@@ -1,6 +1,6 @@
 [package]
 name = "graph_lattice"
-version = "0.30.0-alpha.3"
+version = "0.30.0-alpha.4+dev"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT OR Apache-2.0"

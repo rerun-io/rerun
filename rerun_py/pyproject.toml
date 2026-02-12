@@ -46,7 +46,7 @@ tests = [
   "torch>=2.5", # Needs numpy 2 support
   "datafusion==50.1.0",
 ]
-notebook = ["rerun-notebook==0.30.0-alpha.3"]
+notebook = ["rerun-notebook==0.30.0-alpha.4+dev"]
 datafusion = ["datafusion==50.1.0"]
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
