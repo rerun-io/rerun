@@ -37,12 +37,17 @@ fn setup_store(test_context: &mut TestContext) {
     // Expected: Should pick Scalar component
     for i in 0..10 {
         test_context.log_entity("entity_builtin_only", |builder| {
-            builder.with_archetype_auto_row([(timeline, i)], &archetypes::Scalars::single(i as f64))
+            builder
+                .with_archetype_auto_row([(timeline, i)], &archetypes::Scalars::single(i as f64))
+                .with_archetype_auto_row(
+                    [(timeline, i)],
+                    &archetypes::SeriesLines::update_fields().with_widths([10.0, 20.0]),
+                )
         });
     }
 
     // Scenario 2: Entity with builtin Scalar and custom Float64 component
-    // Expected: Should pick builtin Scalar component over custom
+    // Expected: Only Scalar is recommended (LinearSpeed is not recommended)
     for i in 0..10 {
         test_context.log_entity("entity_builtin_and_custom_same_type", |builder| {
             builder
@@ -59,7 +64,7 @@ fn setup_store(test_context: &mut TestContext) {
     }
 
     // Scenario 3: Entity with only custom Float64 component (temporal)
-    // Expected: Should pick the custom component since it matches the datatype
+    // Expected: No visualizers (LinearSpeed is not recommended)
     for i in 0..10 {
         test_context.log_entity("entity_custom_only_temporal", |builder| {
             builder.with_archetype_auto_row(
@@ -71,7 +76,7 @@ fn setup_store(test_context: &mut TestContext) {
     }
 
     // Scenario 4: Entity with multiple known Rerun component types (LinearSpeed) on custom archetype
-    // Expected: Should pick the first one alphabetically
+    // Expected: No visualizers (LinearSpeed is not recommended)
     for i in 0..10 {
         test_context.log_entity("entity_multiple_rerun_types_temporal", |builder| {
             builder.with_archetype_auto_row(
@@ -85,7 +90,7 @@ fn setup_store(test_context: &mut TestContext) {
     }
 
     // Scenario 5: Entity with both static and temporal known Rerun component type (LinearSpeed)
-    // Expected: Should pick temporal component, not static
+    // Expected: No visualizers (LinearSpeed is not recommended)
     test_context.log_entity("entity_rerun_type_static_and_temporal", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
@@ -106,7 +111,7 @@ fn setup_store(test_context: &mut TestContext) {
     }
 
     // Scenario 6: Entity with only static known Rerun component type (LinearSpeed)
-    // Expected: Should not visualize (can't plot static data in time series)
+    // Expected: No visualizers (LinearSpeed is not recommended, and it's also static)
     test_context.log_entity("entity_rerun_type_static_only", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
@@ -116,7 +121,7 @@ fn setup_store(test_context: &mut TestContext) {
     });
 
     // Scenario 7: Entity with multiple fully custom components (no known Rerun types)
-    // Expected: Should pick Float64 over Int types, preferring higher precision
+    // Expected: Should only recommend Float64 (Int types are never recommended)
     for i in 0..10 {
         test_context.log_entity("entity_fully_custom_mixed_types", |builder| {
             builder.with_archetype_auto_row(
@@ -139,17 +144,15 @@ fn setup_store(test_context: &mut TestContext) {
     }
 
     // Scenario 8: Entity with fully custom Float64 vs known Rerun component type (LinearSpeed)
-    // Expected: Should prefer the fully custom component over LinearSpeed (both PhysicalDatatypeOnly)
-    // Note: Fully custom component is named "zebra_custom" (alphabetically after "linear_speed")
-    //       to ensure preference is based on component type metadata, not alphabetical ordering
+    // Expected: Only fully custom Float64 is recommended (LinearSpeed is not recommended)
     for i in 0..10 {
         test_context.log_entity("entity_fully_custom_vs_rerun_type", |builder| {
             builder.with_archetype_auto_row(
                 [(timeline, i)],
                 &DynamicArchetype::new("custom")
-                    // Known Rerun component type (LinearSpeed) - has semantic meaning
+                    // LinearSpeed component - not recommended for time series
                     .with_component::<components::LinearSpeed>("linear_speed", [i as f64 * 20.0])
-                    // Fully custom Float64 - no ComponentType metadata (alphabetically after linear_speed)
+                    // Fully custom Float64 - recommended
                     .with_component_from_data(
                         "zebra_custom",
                         Arc::new(Float64Array::from(vec![i as f64 * 10.0])),
@@ -340,23 +343,15 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
-/// Helper to get the single visualizer instruction for an entity.
-/// Ensures there's exactly one visualizer and returns it.
-fn single_visualizer_for<'a>(
+/// Helper to get all visualizer instructions for an entity.
+fn visualizers_for<'a>(
     data_result_tree: &'a re_viewer_context::DataResultTree,
     entity_path: &str,
-) -> &'a re_viewer_context::VisualizerInstruction {
+) -> &'a [re_viewer_context::VisualizerInstruction] {
     let result = data_result_tree
         .lookup_result_by_path(EntityPath::from(entity_path).hash())
         .unwrap_or_else(|| panic!("{entity_path} should be in query results"));
-
-    assert_eq!(
-        result.visualizer_instructions.len(),
-        1,
-        "{entity_path} should have exactly one visualizer",
-    );
-
-    &result.visualizer_instructions[0]
+    &result.visualizer_instructions
 }
 
 /// Helper to extract the scalar component mapping from a visualizer instruction.
@@ -369,6 +364,19 @@ fn scalar_mapping_for(
         .expect("Should have mapping for Scalar component")
 }
 
+/// Helper to extract source component name and selector from a visualizer instruction.
+/// Panics if the mapping is not a `SourceComponent`.
+/// Returns (`component_name`, `selector_str`).
+fn source_component_for(instruction: &re_viewer_context::VisualizerInstruction) -> (&str, &str) {
+    match scalar_mapping_for(instruction) {
+        re_viewer_context::VisualizerComponentSource::SourceComponent {
+            source_component,
+            selector,
+        } => (source_component.as_str(), selector.as_str()),
+        other => panic!("Expected SourceComponent mapping, got {other:?}"),
+    }
+}
+
 fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
     let query_result = test_context
         .query_results
@@ -378,100 +386,65 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
     let scalar_component = archetypes::Scalars::descriptor_scalars().component;
 
     // Scenario 1: Entity with only builtin Scalar component
+    // Expected: Should pick Scalar component (identity mapping)
     {
-        let instruction = single_visualizer_for(data_result_tree, "entity_builtin_only");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_builtin_only");
+        assert_eq!(instructions.len(), 1);
+        let mapping = scalar_mapping_for(&instructions[0]);
 
         assert!(
             mapping.is_identity_mapping(scalar_component),
-            "Expected SourceComponent mapping for builtin Scalar"
+            "Expected identity mapping for builtin Scalar"
         );
     }
 
     // Scenario 2: Entity with builtin Scalar and custom component
+    // Expected: Only Scalar gets an instruction (LinearSpeed is not recommended)
     {
-        let instruction =
-            single_visualizer_for(data_result_tree, "entity_builtin_and_custom_same_type");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_builtin_and_custom_same_type");
+        assert_eq!(instructions.len(), 1);
 
+        let mapping = scalar_mapping_for(&instructions[0]);
         assert!(
             mapping.is_identity_mapping(scalar_component),
-            "Expected SourceComponent mapping for builtin Scalar"
+            "Expected identity mapping for builtin Scalar; LinearSpeed is not recommended"
         );
     }
 
     // Scenario 3: Entity with only custom Float64 component (temporal)
+    // Expected: Should not visualize (LinearSpeed is not recommended)
     {
-        let instruction = single_visualizer_for(data_result_tree, "entity_custom_only_temporal");
-        let mapping = scalar_mapping_for(instruction);
-
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert!(
-                    source_component.as_str().contains("custom"),
-                    "Should map to custom component: {}",
-                    source_component.as_str()
-                );
-                assert!(
-                    selector.is_empty(),
-                    "Expected empty selector for direct component mapping"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for custom component"),
-        }
+        let instructions = visualizers_for(data_result_tree, "entity_custom_only_temporal");
+        assert!(
+            instructions.is_empty(),
+            "entity_custom_only_temporal should have no visualizer instructions since LinearSpeed is not recommended, but got: {instructions:?}",
+        );
     }
 
     // Scenario 4: Entity with multiple known Rerun component types (LinearSpeed)
+    // Expected: Should not visualize (LinearSpeed is not recommended)
     {
-        let instruction =
-            single_visualizer_for(data_result_tree, "entity_multiple_rerun_types_temporal");
-        let mapping = scalar_mapping_for(instruction);
-
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:alpha_component",
-                    "Should pick alphabetically first custom component (alpha_component): {}",
-                    source_component.as_str()
-                );
-                assert!(
-                    selector.is_empty(),
-                    "Expected empty selector for direct component mapping"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for alphabetically first component"),
-        }
+        let instructions =
+            visualizers_for(data_result_tree, "entity_multiple_rerun_types_temporal");
+        assert!(
+            instructions.is_empty(),
+            "entity_multiple_rerun_types_temporal should have no visualizer instructions since LinearSpeed is not recommended, but got: {instructions:?}",
+        );
     }
 
     // Scenario 5: Entity with static and temporal known Rerun component type (LinearSpeed)
+    // Expected: Should not visualize (LinearSpeed is not recommended)
     {
-        let instruction =
-            single_visualizer_for(data_result_tree, "entity_rerun_type_static_and_temporal");
-        let mapping = scalar_mapping_for(instruction);
-
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                ..
-            } => {
-                assert!(
-                    source_component.as_str().contains("temporal"),
-                    "Should pick temporal LinearSpeed component, not static: {}",
-                    source_component.as_str()
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for temporal component"),
-        }
+        let instructions =
+            visualizers_for(data_result_tree, "entity_rerun_type_static_and_temporal");
+        assert!(
+            instructions.is_empty(),
+            "entity_rerun_type_static_and_temporal should have no visualizer instructions since LinearSpeed is not recommended, but got: {instructions:?}",
+        );
     }
 
     // Scenario 6: Entity with only static known Rerun component type (LinearSpeed)
+    // Expected: Should not visualize (LinearSpeed is not recommended, and it's also static)
     {
         // We don't emit data result elements if there's no visualizer instructions in the first place,
         // so the lookup should come back empty.
@@ -480,191 +453,152 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
 
         assert!(
             result.is_none(),
-            "entity_rerun_type_static_only should not have any data result out of the box since it is marked as non-visualizable, but got: {result:?}",
+            "entity_rerun_type_static_only should not have any data result since LinearSpeed is not recommended, but got: {result:?}",
         );
     }
 
     // Scenario 7: Entity with multiple fully custom components (Float64 and Int types)
+    // Expected: Should only recommend Float64 (Int types are never recommended)
     {
-        let instruction =
-            single_visualizer_for(data_result_tree, "entity_fully_custom_mixed_types");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_fully_custom_mixed_types");
+        assert_eq!(instructions.len(), 1);
 
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:beta_component",
-                    "Should pick Float64 component (beta_component) over Int types: {}",
-                    source_component.as_str()
-                );
-                assert!(
-                    selector.is_empty(),
-                    "Expected empty selector for direct component mapping"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for entity_fully_custom_mixed_types"),
-        }
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(
+            component, "custom:beta_component",
+            "Should recommend Float64 component (beta_component); Int types are never recommended: {component}"
+        );
+        assert!(
+            selector.is_empty(),
+            "Expected empty selector for direct component mapping"
+        );
     }
 
     // Scenario 8: Entity with fully custom Float64 vs known Rerun type (LinearSpeed)
+    // Expected: Only fully custom Float64 gets an instruction (LinearSpeed is not recommended)
     {
-        let instruction =
-            single_visualizer_for(data_result_tree, "entity_fully_custom_vs_rerun_type");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_fully_custom_vs_rerun_type");
+        assert_eq!(instructions.len(), 1);
 
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:zebra_custom",
-                    "Should pick fully custom Float64 (zebra_custom, no ComponentType) over known Rerun type (linear_speed, LinearSpeed ComponentType), even though it's alphabetically after it: {}",
-                    source_component.as_str()
-                );
-                assert!(
-                    selector.is_empty(),
-                    "Expected empty selector for direct component mapping"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for fully custom component"),
-        }
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(
+            component, "custom:zebra_custom",
+            "Should recommend fully custom Float64 (zebra_custom); LinearSpeed is not recommended: {component}"
+        );
+        assert!(
+            selector.is_empty(),
+            "Expected empty selector for direct component mapping"
+        );
     }
 
     // Scenario 9: Entity with fully custom Float64 vs Scalars (NativeSemantics match)
+    // Expected: Both get their own instruction (2 total), Scalars first (NativeSemantics > PhysicalDatatypeOnly)
     {
-        let instruction = single_visualizer_for(data_result_tree, "entity_fully_custom_vs_scalars");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_fully_custom_vs_scalars");
+        assert_eq!(instructions.len(), 2);
 
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:scalars",
-                    "Should pick Scalars component (NativeSemantics match) over fully custom Float64 (PhysicalDatatypeOnly), even though fully custom is alphabetically first: {}",
-                    source_component.as_str()
-                );
-                assert!(
-                    selector.is_empty(),
-                    "Expected empty selector for direct component mapping"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for Scalars component"),
-        }
+        // Should pick Scalars component (NativeSemantics match) over fully custom Float64
+        // (PhysicalDatatypeOnly), even though fully custom is alphabetically first.
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(
+            component, "custom:scalars",
+            "Should pick Scalars component (NativeSemantics match) first: {component}"
+        );
+        assert!(
+            selector.is_empty(),
+            "Expected empty selector for direct component mapping"
+        );
+
+        let (component, selector) = source_component_for(&instructions[1]);
+        assert_eq!(component, "custom:aaa_custom");
+        assert!(
+            selector.is_empty(),
+            "Expected empty selector for direct component mapping"
+        );
     }
 
     // Scenario 10: Entity with nested struct containing Float64 and Int32 fields
+    // Expected: Should only recommend Float64 field (.x) (Int32 is never recommended)
     {
-        let instruction = single_visualizer_for(data_result_tree, "entity_nested_struct");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_nested_struct");
+        assert_eq!(instructions.len(), 1);
 
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:nested_data",
-                    "Should map to nested struct component"
-                );
-                assert_eq!(
-                    selector.as_str(),
-                    ".x",
-                    "Expected selector `.x` (Float64 field, higher priority than Int32)"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for nested struct"),
-        }
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(
+            component, "custom:nested_data",
+            "Should map to nested struct component"
+        );
+        assert_eq!(
+            selector, ".x",
+            "Expected selector `.x` (Float64 field); Int32 field `.y` is never recommended"
+        );
     }
 
     // Scenario 11: Complex nested structure with mixed types
     // Structure: { a: { b: Int32, c: Float64 }, x: Float32 }
-    // Expected: Should pick .a.c (Float64) over .x (Float32) due to datatype priority
+    // Expected: Both float fields get their own instruction (.a.c Float64 first, .x Float32 second)
     {
-        let instruction =
-            single_visualizer_for(data_result_tree, "entity_nested_datatype_priority");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_nested_datatype_priority");
+        assert_eq!(instructions.len(), 2);
 
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:complex_data",
-                    "Should map to nested struct component"
-                );
-                assert_eq!(
-                    selector.as_str(),
-                    ".a.c",
-                    "Expected selector `.a.c` (Float64 field, higher priority than Float32 `x`)"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for complex nested struct"),
-        }
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(
+            component, "custom:complex_data",
+            "Should map to nested struct component"
+        );
+        assert_eq!(
+            selector, ".a.c",
+            "Expected selector `.a.c` (Float64 is ordered before Float32); Int32 field `.b` is never recommended"
+        );
+
+        let (component, selector) = source_component_for(&instructions[1]);
+        assert_eq!(
+            component, "custom:complex_data",
+            "Should map to nested struct component"
+        );
+        assert_eq!(selector, ".x");
     }
 
     // Scenario 12: All Float64 fields but different path lengths
     // Structure: { z: Float64, a: { b: Float64 } }
-    // Expected: Should pick .z (shorter path) over .a.b (longer path)
+    // Expected: Both Float64 fields get their own instruction (.z first - shorter path)
     {
-        let instruction = single_visualizer_for(data_result_tree, "entity_nested_path_length");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_nested_path_length");
+        assert_eq!(instructions.len(), 2);
 
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:path_data",
-                    "Should map to nested struct component"
-                );
-                assert_eq!(
-                    selector.as_str(),
-                    ".z",
-                    "Expected selector `.z` (shorter path than `.a.b`)"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for path length preference"),
-        }
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(
+            component, "custom:path_data",
+            "Should map to nested struct component"
+        );
+        assert_eq!(
+            selector, ".z",
+            "Expected selector `.z` (shorter path than `.a.b`)"
+        );
+
+        let (component, selector) = source_component_for(&instructions[1]);
+        assert_eq!(
+            component, "custom:path_data",
+            "Should map to nested struct component"
+        );
+        assert_eq!(selector, ".a.b");
     }
 
     // Scenario 13: Entity with list of structs with mixed field types
     // Structure: { a: [{ b: Uint32, c: Float64 }] }
-    // Expected: Should extract Float64 field using [] operator (.a[].c) over Uint32 field
+    // Expected: Should only recommend Float64 field (.a[].c) (Uint32 is never recommended)
     {
-        let instruction = single_visualizer_for(data_result_tree, "entity_list_of_structs");
-        let mapping = scalar_mapping_for(instruction);
+        let instructions = visualizers_for(data_result_tree, "entity_list_of_structs");
+        assert_eq!(instructions.len(), 1);
 
-        match mapping {
-            re_viewer_context::VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            } => {
-                assert_eq!(
-                    source_component.as_str(),
-                    "custom:data",
-                    "Should map to component containing list of structs"
-                );
-                assert_eq!(
-                    selector.as_str(),
-                    ".a[].c",
-                    "Expected selector `.a[].c` to access Float64 field (c) within list of structs, preferring Float64 over Uint32 (b)"
-                );
-            }
-            _ => panic!("Expected SourceComponent mapping for list of structs with nested fields"),
-        }
+        let (component, selector) = source_component_for(&instructions[0]);
+        assert_eq!(
+            component, "custom:data",
+            "Should map to component containing list of structs"
+        );
+        assert_eq!(
+            selector, ".a[].c",
+            "Expected selector `.a[].c` to access Float64 field (c) within list of structs; Uint32 field (b) is never recommended"
+        );
     }
 }

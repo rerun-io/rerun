@@ -544,6 +544,11 @@ impl DataQueryPropertyResolver<'_> {
                 node.data_result.visualizer_instructions = recommended_visualizers
                     .0
                     .into_iter()
+                    .flat_map(|(visualizer_type, many_component_mappings)| {
+                        many_component_mappings
+                            .into_iter()
+                            .map(move |component_mappings| (visualizer_type, component_mappings))
+                    })
                     .enumerate()
                     .map(|(index, (visualizer_type, component_mappings))| {
                         let id = VisualizerInstructionId::new_deterministic(

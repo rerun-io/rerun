@@ -4,6 +4,7 @@ use nohash_hasher::IntSet;
 use re_chunk_store::MissingChunkReporter;
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
+use vec1::Vec1;
 
 use super::{ViewContext, VisualizerComponentMappings};
 use crate::{
@@ -28,7 +29,10 @@ pub enum ViewClassLayoutPriority {
     High,
 }
 
-pub struct RecommendedVisualizers(pub BTreeMap<ViewSystemIdentifier, VisualizerComponentMappings>);
+pub struct RecommendedVisualizers(
+    /// A _stable_ mapping for which visualizers can visualize which components (with optional selectors).
+    pub BTreeMap<ViewSystemIdentifier, Vec1<VisualizerComponentMappings>>,
+);
 
 impl RecommendedVisualizers {
     pub fn empty() -> Self {

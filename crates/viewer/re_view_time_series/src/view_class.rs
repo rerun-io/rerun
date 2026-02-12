@@ -18,7 +18,7 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
+use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
@@ -34,6 +34,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
+use vec1::Vec1;
 
 use crate::PlotSeriesKind;
 use crate::line_visualizer_system::SeriesLinesSystem;
@@ -276,58 +277,59 @@ impl ViewClass for TimeSeriesView {
         visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        let available_visualizers: HashMap<ViewSystemIdentifier, Option<&VisualizableReason>> =
+        let available_visualizers: HashMap<ViewSystemIdentifier, &VisualizableReason> =
             visualizable_entities_per_visualizer
                 .iter()
                 .filter_map(|(visualizer, ents)| {
-                    ents.get(entity_path)
-                        .map(|reason| (*visualizer, Some(reason)))
+                    ents.get(entity_path).map(|reason| (*visualizer, reason))
                 })
                 .collect();
 
-        let scalars_component = Scalars::descriptor_scalars().component;
-
-        let mut visualizers_with_mappings: BTreeMap<
-            ViewSystemIdentifier,
-            VisualizerComponentMappings,
-        > = available_visualizers
-            .iter()
-            .filter_map(|(visualizer, reason_opt)| {
-                // Filter out entities that weren't indicated.
-                // We later fall back on to line visualizers for those.
-                if indicated_entities_per_visualizer
-                    .get(visualizer)?
-                    .contains(entity_path)
-                {
-                    let mappings = scalar_mapping_selector(*reason_opt)
-                        .into_iter()
-                        .map(|selector| (scalars_component, selector))
-                        .collect();
-                    Some((*visualizer, mappings))
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let mut recommended = RecommendedVisualizers(
+            available_visualizers
+                .iter()
+                .filter_map(|(visualizer, reason)| {
+                    // Filter out entities that weren't indicated.
+                    // We later fall back on to line visualizers for those.
+                    if indicated_entities_per_visualizer
+                        .get(visualizer)?
+                        .contains(entity_path)
+                    {
+                        // Each scalar source becomes a separate VisualizerComponentMappings
+                        // so that each nested scalar field gets its own time series.
+                        let all_mappings: Vec<VisualizerComponentMappings> =
+                            all_scalar_mappings(reason)
+                                .map(|(component, source)| BTreeMap::from([(component, source)]))
+                                .collect();
+                        Vec1::try_from_vec(all_mappings)
+                            .ok()
+                            .map(|mappings| (*visualizer, mappings))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        );
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if visualizers_with_mappings.is_empty()
+        if recommended.0.is_empty()
             && let Some(series_line_visualizable_reason) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
         {
-            let mappings = scalar_mapping_selector(*series_line_visualizable_reason)
-                .into_iter()
-                .map(|selector| (scalars_component, selector))
-                .collect::<VisualizerComponentMappings>();
-
-            // If we didn't find a mapping, this visualizer is not worth bothering.
-            // (`scalar_mapping_selector` also produces a mapping for the default scalar component)
-            if !mappings.is_empty() {
-                visualizers_with_mappings.insert(SeriesLinesSystem::identifier(), mappings);
+            // Each scalar source becomes a separate VisualizerComponentMappings
+            // so that each nested scalar field gets its own time series.
+            let all_mappings: Vec<VisualizerComponentMappings> =
+                all_scalar_mappings(series_line_visualizable_reason)
+                    .map(|(component, source)| BTreeMap::from([(component, source)]))
+                    .collect();
+            if let Ok(mappings) = Vec1::try_from_vec(all_mappings) {
+                recommended
+                    .0
+                    .insert(SeriesLinesSystem::identifier(), mappings);
             }
         }
 
-        RecommendedVisualizers(visualizers_with_mappings)
+        recommended
     }
 
     fn ui(
@@ -968,28 +970,36 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
 const RECOMMENDED_DATATYPES: &[DataType] =
     &[DataType::Float64, DataType::Float32, DataType::Float16];
 
-fn scalar_mapping_selector(
-    reason_opt: Option<&VisualizableReason>,
-) -> Option<VisualizerComponentSource> {
-    let Some(re_viewer_context::VisualizableReason::DatatypeMatchAny { matches }) = reason_opt
-    else {
-        return None;
+fn all_scalar_mappings(
+    reason: &VisualizableReason,
+) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
+    let re_viewer_context::VisualizableReason::DatatypeMatchAny { matches } = reason else {
+        return Either::Left(std::iter::empty());
     };
 
-    let target_component = Scalars::descriptor_scalars().component;
+    let target = Scalars::descriptor_scalars();
 
     // Flatten all (component, selector) pairs into a single comparable list
     // to find the globally best match across all components.
     let candidates = matches.iter().flat_map(|(source_component, match_info)| {
-        let is_rerun_native_type = match_info
-            .component_type()
-            .is_some_and(|t| t.is_rerun_type());
+        let is_rerun_native_type = match_info.component_type() == &target.component_type;
+
+        // If it's not the exact semantic type that we're looking for,
+        // but it is a Rerun-builtin semantic type then we don't consider it at all.
+        if !is_rerun_native_type
+            && match_info
+                .component_type()
+                .is_some_and(|t| t.is_rerun_type())
+        {
+            return Either::Left(Either::Right(std::iter::empty()));
+        }
+
         let primary_match_order = match match_info {
             DatatypeMatch::NativeSemantics { .. } => {
-                i32::from(*source_component != target_component)
+                i32::from(*source_component != target.component)
             }
             DatatypeMatch::PhysicalDatatypeOnly { .. } => {
-                if *source_component == target_component {
+                if *source_component == target.component {
                     0
                 } else {
                     2
@@ -1051,25 +1061,30 @@ fn scalar_mapping_selector(
     // 3. scalar_datatype_priority (Float64=0, Float32=1, etc.)
     // 4. source_component (deterministic component selection)
     // 5. selector_index (field definition order within component)
-    candidates
-        .into_iter()
-        .min_by_key(
-            |(match_order, is_rerun, dt_priority, component, field_order, _)| {
+    Either::Right(
+        candidates
+            .into_iter()
+            .sorted_by_key(
+                |(match_order, is_rerun, dt_priority, component, field_order, _)| {
+                    (
+                        *match_order,
+                        *is_rerun,
+                        *dt_priority,
+                        *component,
+                        *field_order,
+                    )
+                },
+            )
+            .map(move |(_, _, _, source_component, _, selector)| {
                 (
-                    *match_order,
-                    *is_rerun,
-                    *dt_priority,
-                    *component,
-                    *field_order,
+                    target.component,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component,
+                        selector,
+                    },
                 )
-            },
-        )
-        .map(|(_, _, _, source_component, _, selector)| {
-            VisualizerComponentSource::SourceComponent {
-                source_component,
-                selector,
-            }
-        })
+            }),
+    )
 }
 
 fn draw_time_cursor(
@@ -1550,10 +1565,9 @@ mod tests {
             TimeSeriesView.recommended_visualizers_for_entity(&entity_path, &viz, &indicated);
 
         assert!(result.0.contains_key(&SeriesLinesSystem::identifier()));
-        assert!(
-            result.0[&SeriesLinesSystem::identifier()]
-                .contains_key(&Scalars::descriptor_scalars().component)
-        );
+        let mappings = &result.0[&SeriesLinesSystem::identifier()];
+        assert_eq!(mappings.len(), 1);
+        assert!(mappings[0].contains_key(&Scalars::descriptor_scalars().component));
     }
 }
 

@@ -38,6 +38,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
 smallvec.workspace = true
+vec1.workspace = true
 
 [dev-dependencies]
 re_chunk_store.workspace = true
