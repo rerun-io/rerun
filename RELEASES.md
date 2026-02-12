@@ -75,7 +75,7 @@ Note that `prepare-release-0.x` is _invalid_. Always specify the `y`, even if it
 The _base_ of the branch should depends on what kind of release it is:
 
 - For a _minor_ release, the branch is created from `main`.
-- For a _patch_ release, the branch is created from `docs-latest` (:warning: branching off `docs-latest` instead of the latest release tag ensures that documentation patches will be included)
+- For a _patch_ release, the branch is created from `docs-latest` ( :warning: branching off `docs-latest` instead of the latest release tag ensures that documentation patches will be included)
 - For an _alpha_ release, the branch is created from `main`.
 
 You can do this either using `git` on your command line, or through the UI:
