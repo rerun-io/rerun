@@ -935,15 +935,16 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
     }
 }
 
-impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
+impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
     type Error = TypeConversionError;
     fn try_from(
-        value: crate::cloud::v1alpha1::CreateTableEntryRequest,
+        value: &crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.name,
+            name: value.name.clone(),
             schema: value
                 .schema
+                .as_ref()
                 .ok_or(missing_field!(
                     crate::cloud::v1alpha1::CreateTableEntryRequest,
                     "schema"
@@ -951,9 +952,19 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                 .try_into()?,
             provider_details: value
                 .provider_details
-                .map(|v| ProviderDetails::try_from(&v))
+                .as_ref()
+                .map(|v| ProviderDetails::try_from(v))
                 .transpose()?,
         })
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
+    type Error = TypeConversionError;
+    fn try_from(
+        value: crate::cloud::v1alpha1::CreateTableEntryRequest,
+    ) -> Result<Self, Self::Error> {
+        Self::try_from(&value)
     }
 }
 

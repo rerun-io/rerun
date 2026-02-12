@@ -22,6 +22,9 @@ pub const RERUN_HTTP_HEADER_CLIENT_VERSION: &str = "x-rerun-client-version";
 /// propagating it into our gRPC metrics, traces and metrics.
 pub const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 
+/// HTTP authorization header key, used to transport authorization tokens
+pub const HTTP_HEADER_AUTHORIZATION: &str = "authorization";
+
 /// Extension trait for [`tonic::Request`] to inject Rerun Data Protocol headers into gRPC requests.
 ///
 /// Example:
@@ -73,6 +76,10 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
         if let Some(entry_name) = md.get_bin(RERUN_HTTP_HEADER_ENTRY_NAME).cloned() {
             self.metadata_mut()
                 .insert_bin(RERUN_HTTP_HEADER_ENTRY_NAME, entry_name);
+        }
+
+        if let Some(auth) = md.get(HTTP_HEADER_AUTHORIZATION).cloned() {
+            self.metadata_mut().insert(HTTP_HEADER_AUTHORIZATION, auth);
         }
 
         self
