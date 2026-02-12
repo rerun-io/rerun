@@ -508,6 +508,23 @@ SECTION_TABLE: Final[list[Section]] = [
         show_tables=True,
         mod_path=["rerun.notebook"],
         show_submodules=True,
+        func_list=[
+            "set_default_size",
+        ],
+        class_list=[
+            "Viewer",
+            "ViewerEvent",
+            "PlayEvent",
+            "PauseEvent",
+            "TimeUpdateEvent",
+            "TimelineChangeEvent",
+            "SelectionChangeEvent",
+            "RecordingOpenEvent",
+            "SelectionItem",
+            "EntitySelectionItem",
+            "ViewSelectionItem",
+            "ContainerSelectionItem",
+        ],
     ),
     Section(
         title="Script Helpers",

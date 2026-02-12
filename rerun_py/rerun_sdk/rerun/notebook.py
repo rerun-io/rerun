@@ -24,7 +24,17 @@ from rerun import bindings
 from rerun.error_utils import RerunMissingDependencyError
 
 from ._event import (
-    ViewerEvent,
+    ContainerSelectionItem as ContainerSelectionItem,
+    EntitySelectionItem as EntitySelectionItem,
+    PauseEvent as PauseEvent,
+    PlayEvent as PlayEvent,
+    RecordingOpenEvent as RecordingOpenEvent,
+    SelectionChangeEvent as SelectionChangeEvent,
+    SelectionItem as SelectionItem,
+    TimelineChangeEvent as TimelineChangeEvent,
+    TimeUpdateEvent as TimeUpdateEvent,
+    ViewerEvent as ViewerEvent,
+    ViewSelectionItem as ViewSelectionItem,
     _viewer_event_from_json_str,
 )
 from .recording_stream import RecordingStream, get_data_recording
@@ -477,6 +487,20 @@ class Viewer:
         self._viewer.set_time_ctrl(timeline, time, play)
 
     def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
+        """
+        Register a callback to be called when a viewer event occurs.
+
+        The callback will receive a [`ViewerEvent`][rerun.notebook.ViewerEvent], which is one of:
+        [`PlayEvent`][rerun.notebook.PlayEvent], [`PauseEvent`][rerun.notebook.PauseEvent],
+        [`TimeUpdateEvent`][rerun.notebook.TimeUpdateEvent], [`TimelineChangeEvent`][rerun.notebook.TimelineChangeEvent],
+        [`SelectionChangeEvent`][rerun.notebook.SelectionChangeEvent], or [`RecordingOpenEvent`][rerun.notebook.RecordingOpenEvent].
+
+        Parameters
+        ----------
+        callback:
+            A function that takes a [`ViewerEvent`][rerun.notebook.ViewerEvent] as its only argument.
+
+        """
         self._event_callbacks.append(callback)
 
     def set_credentials(self, access_token: str, email: str) -> None:
