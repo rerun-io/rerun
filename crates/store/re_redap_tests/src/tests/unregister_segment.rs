@@ -287,9 +287,10 @@ pub async fn unregister_then_query(service: impl RerunCloudService) {
     )
     .await;
 
-    let _removed = service
+    service
         .unregister_from_dataset_name(dataset_name, &["my_segment_id"], &[])
-        .await;
+        .await
+        .unwrap();
 
     query_dataset_snapshot(
         &service,

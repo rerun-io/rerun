@@ -1,0 +1,18 @@
+---
+source: crates/store/re_redap_tests/src/tests/rrd_manifest.rs
+expression: rrd_manifest.sorbet_schema.format_snapshot()
+---
+top-level metadata: [
+    sorbet:version: "0.1.2"
+]
+/data:test: nullable List[nullable f32] [
+    rerun:component: "test"
+    rerun:entity_path: "/data"
+    rerun:is_static: "true"
+    rerun:kind: "data"
+]
+rerun.controls.RowId: FixedSizeBinary[16] [
+    ARROW:extension:metadata: "{\"namespace\":\"row\"}"
+    ARROW:extension:name: "rerun.datatypes.TUID"
+    rerun:kind: "control"
+]

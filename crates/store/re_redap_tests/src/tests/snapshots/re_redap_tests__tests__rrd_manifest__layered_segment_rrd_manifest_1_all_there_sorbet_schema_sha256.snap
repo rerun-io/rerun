@@ -1,0 +1,5 @@
+---
+source: crates/store/re_redap_tests/src/tests/rrd_manifest.rs
+expression: "rrd_manifest.sorbet_schema_sha256.iter().map(|b|\nformat!(\"{b:02x}\")).collect::<String>()"
+---
+ec802bca32cdf0a913ecddcde2c6b8c868cc4f1fce727224f3fbc15443883809

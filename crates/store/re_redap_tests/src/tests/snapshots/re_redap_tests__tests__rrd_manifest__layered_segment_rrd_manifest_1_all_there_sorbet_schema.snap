@@ -1,0 +1,44 @@
+---
+source: crates/store/re_redap_tests/src/tests/rrd_manifest.rs
+expression: rrd_manifest.sorbet_schema.format_snapshot()
+---
+top-level metadata: [
+    sorbet:version: "0.1.2"
+]
+/data:test: nullable List[nullable f32] [
+    rerun:component: "test"
+    rerun:entity_path: "/data"
+    rerun:is_static: "true"
+    rerun:kind: "data"
+]
+/my/entity:example.MyPoints:colors: nullable List[nullable u32] [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:entity_path: "/my/entity"
+    rerun:kind: "data"
+]
+/my/entity:example.MyPoints:labels: nullable List[nullable Utf8] [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:labels"
+    rerun:component_type: "example.MyLabel"
+    rerun:entity_path: "/my/entity"
+    rerun:is_static: "true"
+    rerun:kind: "data"
+]
+/my/entity:example.MyPoints:points: nullable List[nullable Struct[2]] [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:entity_path: "/my/entity"
+    rerun:kind: "data"
+]
+frame_nr: nullable i64 [
+    rerun:index_name: "frame_nr"
+    rerun:kind: "index"
+]
+rerun.controls.RowId: FixedSizeBinary[16] [
+    ARROW:extension:metadata: "{\"namespace\":\"row\"}"
+    ARROW:extension:name: "rerun.datatypes.TUID"
+    rerun:kind: "control"
+]

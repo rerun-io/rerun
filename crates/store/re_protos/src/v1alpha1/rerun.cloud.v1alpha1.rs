@@ -2385,6 +2385,11 @@ pub mod rerun_cloud_service_client {
         /// Get the RRD Footer manifest.
         ///
         /// This includes details about what chunks there are, and what kind of data they contain.
+        ///
+        /// The manifest might be returned in multiple parts, at the discretion of the server.
+        /// When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
+        /// identical Sorbet schema hashes too).
+        /// That means it is always semantically valid to concatenate the data from these RRD manifests.
         pub async fn get_rrd_manifest(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRrdManifestRequest>,
@@ -2888,6 +2893,11 @@ pub mod rerun_cloud_service_server {
         /// Get the RRD Footer manifest.
         ///
         /// This includes details about what chunks there are, and what kind of data they contain.
+        ///
+        /// The manifest might be returned in multiple parts, at the discretion of the server.
+        /// When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
+        /// identical Sorbet schema hashes too).
+        /// That means it is always semantically valid to concatenate the data from these RRD manifests.
         async fn get_rrd_manifest(
             &self,
             request: tonic::Request<super::GetRrdManifestRequest>,
