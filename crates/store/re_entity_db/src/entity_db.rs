@@ -305,9 +305,9 @@ impl EntityDb {
 
     /// Are we currently in the process of downloading the RRD Manifest?
     pub fn is_currently_downloading_manifest(&self) -> bool {
-        // The is_empty check handles the case where we tried and failed to download the manifest,
+        // The `num_rows == 0` check handles the case where we tried and failed to download the manifest,
         // but managed to download the data anyhow.
-        self.is_empty()
+        self.num_rows() == 0
             && !self.rrd_manifest_index.has_manifest()
             && self.can_fetch_chunks_from_redap()
     }
