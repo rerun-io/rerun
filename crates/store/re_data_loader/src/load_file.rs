@@ -75,8 +75,6 @@ pub fn load_from_file_contents(
 
     re_log::info!("Loading {filepath:?}…");
 
-    let data = load(settings, filepath, Some(contents))?;
-
     // If no application ID was specified, we derive one from the filename.
     let application_id = settings.application_id.clone().or_else(|| {
         filepath
@@ -89,6 +87,8 @@ pub fn load_from_file_contents(
         application_id,
         ..settings.clone()
     };
+
+    let data = load(&settings, filepath, Some(contents))?;
 
     send(settings, file_source, data, tx);
 
