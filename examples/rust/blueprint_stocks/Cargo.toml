@@ -1,7 +1,7 @@
 [package]
 name = "blueprint_stocks"
 
-version = "0.30.0-alpha.2"
+version = "0.30.0-alpha.3+dev"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT OR Apache-2.0"
