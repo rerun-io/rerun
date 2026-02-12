@@ -11,6 +11,15 @@ pub struct LogReceiver {
     connected: AtomicBool,
 }
 
+impl std::fmt::Debug for LogReceiver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LogReceiver")
+            .field("source", &self.source)
+            .field("connected", &self.connected.load(Relaxed))
+            .finish_non_exhaustive()
+    }
+}
+
 impl LogReceiver {
     pub(crate) fn new(
         rx: re_quota_channel::Receiver<SmartMessage>,

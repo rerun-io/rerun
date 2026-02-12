@@ -76,9 +76,12 @@ impl DataLoader for ArchetypeLoader {
             .map(|prefix| prefix / EntityPath::from_file_path(&filepath))
             .unwrap_or_else(|| EntityPath::from_file_path(&filepath));
 
+        #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
         let mut timepoint = TimePoint::default();
-        // TODO(cmc): log these once heuristics (I think?) are fixed
+
+        #[cfg(not(target_arch = "wasm32"))]
         if false && let Ok(metadata) = filepath.metadata() {
+            // TODO(cmc): log these once heuristics (I think?) are fixed
             use re_log_types::TimeCell;
 
             if let Some(created) = metadata
@@ -133,7 +136,7 @@ impl DataLoader for ArchetypeLoader {
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, loader = self.name(), "Loading 3D model…",);
             rows.extend(load_mesh(
-                filepath,
+                filepath.clone(),
                 timepoint,
                 entity_path,
                 contents.into_owned(),
@@ -144,11 +147,17 @@ impl DataLoader for ArchetypeLoader {
         } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, loader = self.name(), "Loading text document…",);
             rows.extend(load_text_document(
-                filepath,
+                filepath.clone(),
                 timepoint,
                 entity_path,
                 contents.into_owned(),
             )?);
+        } else {
+            return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
+        }
+
+        if rows.is_empty() {
+            re_log::warn!("{} is empty", filepath.display());
         }
 
         let store_id = settings.opened_store_id.clone().unwrap_or_else(|| {
