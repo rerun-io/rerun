@@ -233,6 +233,12 @@ impl PyCatalogClientInternal {
         )
     }
 
+    /// Create a table entry.
+    ///
+    /// NOTE: when provided, `url` is a _prefix_ for the table location, and we must ensure that
+    /// the actual url is unique by inserting a UUID in the path. This is different from the
+    /// semantics of the layers below ([`re_redap_client::ConnectionClient::create_table_entry`] and
+    /// redap), which expect a full url that we must guarantee is free to use.
     fn create_table(
         self_: Py<Self>,
         py: Python<'_>,
@@ -251,8 +257,19 @@ impl PyCatalogClientInternal {
 
         let url = url
             .map(|url| {
-                url.parse::<url::Url>()
-                    .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))
+                let mut url = url
+                    .parse::<url::Url>()
+                    .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
+
+                if url.cannot_be_a_base() {
+                    return Err(PyValueError::new_err(format!(
+                        "URL cannot be a base: {url}"
+                    )));
+                }
+                url.path_segments_mut()
+                    .expect("just checked with cannot_be_a_base()")
+                    .push(&re_tuid::Tuid::new().to_string());
+                Ok::<_, PyErr>(url)
             })
             .transpose()?;
 

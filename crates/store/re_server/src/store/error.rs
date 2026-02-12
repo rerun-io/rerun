@@ -69,6 +69,9 @@ pub enum Error {
 
     #[error("{0}")]
     SchemaConflict(String),
+
+    #[error("Table storage already exists at location: {0}")]
+    TableStorageAlreadyExists(String),
 }
 
 impl Error {
@@ -105,7 +108,8 @@ impl From<Error> for tonic::Status {
             Error::DuplicateEntryNameError(_)
             | Error::DuplicateEntryIdError(_)
             | Error::LayerAlreadyExists(_)
-            | Error::IndexAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
+            | Error::IndexAlreadyExists(_)
+            | Error::TableStorageAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
 
             Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
 

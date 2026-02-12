@@ -235,17 +235,19 @@ impl Table {
         name: &str,
         url: &url::Url,
         schema: SchemaRef,
-    ) -> Result<Self, DataFusionError> {
+    ) -> Result<Self, super::error::Error> {
         use re_protos::cloud::v1alpha1::ext::LanceTable;
+
+        if lance::Dataset::open(url.as_str()).await.is_ok() {
+            return Err(super::error::Error::TableStorageAlreadyExists(
+                url.to_string(),
+            ));
+        }
 
         let rb = vec![Ok(RecordBatch::new_empty(Arc::clone(&schema)))];
         let rb = arrow::record_batch::RecordBatchIterator::new(rb.into_iter(), schema);
 
-        let ds = Arc::new(
-            lance::Dataset::write(rb, url.as_str(), None)
-                .await
-                .map_err(|err| DataFusionError::External(err.into()))?,
-        );
+        let ds = Arc::new(lance::Dataset::write(rb, url.as_str(), None).await?);
         let created_at = Some(jiff::Timestamp::now());
         let provider_details = LanceTable {
             table_url: url.clone(),
@@ -267,7 +269,10 @@ impl Table {
         _name: &str,
         _url: &url::Url,
         _schema: SchemaRef,
-    ) -> Result<Self, DataFusionError> {
-        exec_err!("Create table not implemented for bare DataFusion table")
+    ) -> Result<Self, super::error::Error> {
+        Err(DataFusionError::NotImplemented(
+            "Create table not implemented for bare DataFusion table".to_owned(),
+        )
+        .into())
     }
 }

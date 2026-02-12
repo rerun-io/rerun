@@ -1009,6 +1009,9 @@ where
             .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))
     }
 
+    /// Create a table entry.
+    ///
+    /// NOTE: if `url` is provided, the caller must ensure that it is writable and yet unused.
     pub async fn create_table_entry(
         &mut self,
         name: &str,

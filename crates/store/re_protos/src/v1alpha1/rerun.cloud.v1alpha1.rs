@@ -1352,8 +1352,11 @@ pub struct CreateTableEntryRequest {
     pub name: ::prost::alloc::string::String,
     /// Information about the table to register.
     ///
-    /// This must be encoded message of one of the following supported types:
-    /// - LanceTable
+    /// If not provided, a Lance-backed table will be created using at an auto-generated URL based on the server's
+    /// configuration.
+    ///
+    /// If provided, it must be an encoded message of the `LanceTable` type, which contains the intended storage URL. The
+    /// caller is responsible for ensuring that the storage is writable and free to use.
     #[prost(message, optional, tag = "2")]
     pub provider_details: ::core::option::Option<::prost_types::Any>,
     /// Schema of the table to create

@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
     from . import DatasetEntry, TableEntry
 
-
 # Known FFI compatible releases of Datafusion.
 DATAFUSION_MAJOR_VERSION_COMPATIBILITY_SETS = [
     {49, 50},
@@ -292,7 +291,9 @@ class CatalogClient:
             The schema of the table to create.
 
         url
-            The URL of the directory for where to store the Lance table.
+            The URL of the directory for where to store the Lance table. If provided, the table will be stored in a
+            globally unique subdirectory. If not provided, the server will use an automatically generated URL based on
+            its configured writable storage.
 
         """
         from . import TableEntry

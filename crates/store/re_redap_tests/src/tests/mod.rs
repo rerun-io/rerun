@@ -58,6 +58,7 @@ define_redap_tests! {
     column_projection::test_segment_table_column_projections,
     create_dataset::create_dataset_tests,
     create_table::create_table_entry,
+    create_table::create_table_entry_duplicate_url,
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::entries_table_with_empty_dataset,

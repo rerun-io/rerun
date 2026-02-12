@@ -909,8 +909,11 @@ message CreateTableEntryRequest {
 
   // Information about the table to register.
   //
-  // This must be encoded message of one of the following supported types:
-  // - LanceTable
+  // If not provided, a Lance-backed table will be created using at an auto-generated URL based on the server's
+  // configuration.
+  //
+  // If provided, it must be an encoded message of the `LanceTable` type, which contains the intended storage URL. The
+  // caller is responsible for ensuring that the storage is writable and free to use.
   optional google.protobuf.Any provider_details = 2;
 
   // Schema of the table to create
