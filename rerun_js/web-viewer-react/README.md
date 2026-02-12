@@ -35,7 +35,7 @@ export default function App() {
 ```
 
 The `rrd` in the snippet above should be a URL pointing to either:
-- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.29.1/examples/dna.rrd>
+- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.29.2/examples/dna.rrd>
 - A gRPC connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API
 
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.

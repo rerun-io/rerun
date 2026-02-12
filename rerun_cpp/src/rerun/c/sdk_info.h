@@ -2,7 +2,7 @@
 ///
 /// This should match the string returned by `rr_version_string` (C) or `rerun::version_string` (C++).
 /// If not, the SDK's binary and the C header are out of sync.
-#define RERUN_SDK_HEADER_VERSION "0.29.1"
+#define RERUN_SDK_HEADER_VERSION "0.29.2"
 
 /// Major version of the Rerun C SDK.
 #define RERUN_SDK_HEADER_VERSION_MAJOR 0
@@ -11,7 +11,7 @@
 #define RERUN_SDK_HEADER_VERSION_MINOR 29
 
 /// Patch version of the Rerun C SDK.
-#define RERUN_SDK_HEADER_VERSION_PATCH 1
+#define RERUN_SDK_HEADER_VERSION_PATCH 2
 
 /// Is the Rerun library version greater or equal to this?
 ///
