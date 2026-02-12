@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
 use re_log_channel::LogSender;
-use re_log_types::{FileSource, LogMsg};
+use re_log_types::{ApplicationId, FileSource, LogMsg};
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
 
@@ -23,8 +23,6 @@ pub fn load_from_path(
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
     tx: &LogSender,
 ) -> Result<(), DataLoaderError> {
-    use re_log_types::ApplicationId;
-
     re_tracing::profile_function!(path.to_string_lossy());
 
     if !path.exists() {
@@ -43,16 +41,16 @@ pub fn load_from_path(
             .map(|f| f.to_string_lossy().to_string())
             .map(ApplicationId::from)
     });
-    let settings = &crate::DataLoaderSettings {
+    let settings = crate::DataLoaderSettings {
         // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot loader handles this automatically.
         force_store_info: !crate::lerobot::is_lerobot_dataset(path),
         application_id,
         ..settings.clone()
     };
 
-    let rx = load(settings, path, None)?;
+    let rx = load(&settings, path, None)?;
 
-    send(settings.clone(), file_source, rx, tx);
+    send(settings, file_source, rx, tx);
 
     Ok(())
 }
@@ -79,7 +77,20 @@ pub fn load_from_file_contents(
 
     let data = load(settings, filepath, Some(contents))?;
 
-    send(settings.clone(), file_source, data, tx);
+    // If no application ID was specified, we derive one from the filename.
+    let application_id = settings.application_id.clone().or_else(|| {
+        filepath
+            .file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .map(ApplicationId::from)
+    });
+
+    let settings = crate::DataLoaderSettings {
+        application_id,
+        ..settings.clone()
+    };
+
+    send(settings, file_source, data, tx);
 
     Ok(())
 }
