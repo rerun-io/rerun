@@ -29,7 +29,7 @@ async function load(base_url?: string): Promise<typeof wasm_bindgen.WebHandle> {
     ]);
   }
   let bindgen = get_wasm_bindgen();
-  await bindgen(_wasm_module);
+  await bindgen({ module_or_path: _wasm_module });
   return class extends bindgen.WebHandle {
     free() {
       super.free();
