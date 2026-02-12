@@ -404,12 +404,24 @@ pub fn channel<T: Clone>(
     max_messages: usize,
     max_bytes: u64,
 ) -> (Sender<T>, Receiver<T>) {
+    let debug_name = debug_name.into();
     let max_messages = max_messages.max(1); // Ensure we allow at least 1 message
+
+    if max_bytes == 0 {
+        let msg = format!(
+            "Channel '{debug_name}' has a memory limit of 0 bytes. Consider giving it at least a few MiB so that it can handle a quick burst of messages without blocking."
+        );
+        if cfg!(debug_assertions) {
+            re_log::warn_once!("DEBUG WARNING: {msg}");
+        } else {
+            re_log::debug_once!("{msg}");
+        }
+    }
 
     let (inner, inner_rx) = broadcast::channel(max_messages);
 
     let state = Arc::new(ChannelState {
-        debug_name: debug_name.into(),
+        debug_name,
         locked: Mutex::new(Locked {
             bytes_in_flight: 0,
             messages_in_flight: 0,

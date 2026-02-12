@@ -40,14 +40,23 @@ pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 
+/// Maximum number of messages in the input queue.
+const CHANNEL_SIZE_MESSAGES: usize = 1024; // TODO(emilk): move into `ServerOptions` after the patch release.
+
+/// Make sure we can handle a quick burst of messages without blocking,
+/// even if the server has a [`ServerOptions::memory_limit`] of zero.
+const CHANNEL_SIZE_BYTES: u64 = 128 * 1024 * 1024; // TODO(emilk): move into `ServerOptions` after the patch release.
+
 /// Options for the gRPC Proxy Server
 #[derive(Clone, Copy, Debug)]
 pub struct ServerOptions {
     /// When a client connect, should they be sent the oldest data first, or the newest?
     pub playback_behavior: PlaybackBehavior,
 
-    /// Start garbage collecting old data when we reach this.
-    pub memory_limit: MemoryLimit,
+    /// Limit on how much history the server saves.
+    ///
+    /// It will start garbage collecting old data when we reach this.
+    pub memory_limit: MemoryLimit, // TODO(emilk): rename `history_limit`
 }
 
 impl Default for ServerOptions {
@@ -868,26 +877,17 @@ impl MessageProxy {
     }
 
     fn new_with_recv(
-        mut options: ServerOptions,
+        options: ServerOptions,
     ) -> (Self, async_broadcast_channel::Receiver<LogOrTableMsgProto>) {
-        // Divide up the memory budget:
-        let (broadcast_channel_memory_limit, rest_memory_limit) = options.memory_limit.split(0.25);
-        options.memory_limit = rest_memory_limit;
-
         let (broadcast_log_tx, broadcast_log_rx) = async_broadcast_channel::channel(
             "re_grpc_server broadcast",
-            4096,
-            broadcast_channel_memory_limit.as_bytes(),
+            CHANNEL_SIZE_MESSAGES,
+            CHANNEL_SIZE_BYTES,
         );
 
         let (event_tx, event_rx) = {
-            let message_queue_capacity = if options.memory_limit == MemoryLimit::ZERO {
-                1
-            } else {
-                16 // Apply backpressure early
-            };
             // TODO(emilk): this could also use a size-based backpressure mechanism.
-
+            let message_queue_capacity = 32; // Apply backpressure early
             async_mpsc_channel::channel("re_grpc_server events", message_queue_capacity)
         };
 
