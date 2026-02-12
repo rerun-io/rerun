@@ -24,11 +24,18 @@ pub enum Error {
     #[error("Entry id '{0}' not found")]
     EntryIdNotFound(EntryId),
 
-    #[error("Segment '{0}' not found in dataset '{1}'")]
-    SegmentIdNotFound(SegmentId, EntryId),
+    #[error("Segment '{segment_id}' not found in dataset '{entry_id}'")]
+    SegmentIdNotFound {
+        segment_id: SegmentId,
+        entry_id: EntryId,
+    },
 
-    #[error("Layer '{0}' not found in segment '{1}' of dataset '{2}'")]
-    LayerNameNotFound(String, SegmentId, EntryId),
+    #[error("Layer '{layer_name}' not found in segment '{segment_id}' of dataset '{entry_id}'")]
+    LayerNameNotFound {
+        layer_name: String,
+        segment_id: SegmentId,
+        entry_id: EntryId,
+    },
 
     #[error("Layer '{0}' already exists")]
     LayerAlreadyExists(String),
@@ -89,8 +96,8 @@ impl From<Error> for tonic::Status {
 
             Error::EntryIdNotFound(_)
             | Error::EntryNameNotFound(_)
-            | Error::SegmentIdNotFound(_, _)
-            | Error::LayerNameNotFound(_, _, _)
+            | Error::SegmentIdNotFound { .. }
+            | Error::LayerNameNotFound { .. }
             | Error::IndexNotFound(_)
             | Error::ChunkNotFound(_) => Self::not_found(format!("{err:#}")),
 

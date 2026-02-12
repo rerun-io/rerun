@@ -22,16 +22,16 @@ pub enum GrpcFlushError {
     #[error("gRPC flush timed out after {num_sec:.0}s - not all messages were sent")]
     Timeout { num_sec: f32 },
 
-    #[error("gRPC has been unable to connect to {uri} for {duration_sec:.0}s")]
+    #[error("gRPC has been unable to connect for {duration_sec:.0}s, uri: {uri}")]
     FailedToConnect { uri: ProxyUri, duration_sec: f32 },
 
-    #[error("gRPC connection to {uri} gracefully disconnected")]
+    #[error("gRPC connection gracefully disconnected, uri: {uri}")]
     GracefulDisconnect { uri: ProxyUri },
 
     #[error("{0}")]
     InternalError(String),
 
-    #[error("gRPC connection to {uri} severed: {err}")]
+    #[error("gRPC connection severed: {err}, uri: {uri}")]
     ErrorDisconnect {
         uri: ProxyUri,
         err: ClientConnectionFailure,
@@ -355,7 +355,7 @@ async fn message_proxy_client(
                 if last_connect_failure_log_time
                     .is_none_or(|last_log_time| log_interval < last_log_time.elapsed())
                 {
-                    re_log::debug!("Failed to connect to {uri}: {err}, retrying…");
+                    re_log::debug!(?uri, "Failed to connect: {err}, retrying…");
                     last_connect_failure_log_time = Some(Instant::now());
                 }
 
@@ -372,7 +372,7 @@ async fn message_proxy_client(
         }
     };
 
-    re_log::debug!("Connected to {uri}");
+    re_log::debug!(?uri, "Connected");
     status.store(ClientConnectionState::Connected);
 
     let mut client = MessageProxyServiceClient::new(channel)

@@ -22,7 +22,7 @@ pub enum Error {
     #[error("Unexpected base URL: {0}")]
     UnexpectedBaseUrl(String),
 
-    #[error("URL {url:?} cannot be loaded as a recording")]
+    #[error("URL cannot be loaded as a recording: {url:?}")]
     CannotLoadUrlAsRecording { url: String },
 
     #[error("Dataset data URL requires a `?segment_id` query parameter")]

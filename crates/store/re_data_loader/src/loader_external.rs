@@ -320,7 +320,7 @@ fn decode_and_stream(
         let msg = match msg {
             Ok(msg) => msg,
             Err(err) => {
-                re_log::warn_once!("Failed to decode message in {filepath:?}: {err}");
+                re_log::warn!(?filepath, "Failed to decode message: {err}");
                 continue;
             }
         };

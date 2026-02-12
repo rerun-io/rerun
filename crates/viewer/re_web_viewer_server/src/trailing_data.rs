@@ -24,7 +24,7 @@ enum TrailingDataError {
     #[error("Failed to get current executable path: {0}")]
     CurrentExe(#[from] std::io::Error),
 
-    #[error("Failed to open executable at {path:?}: {source}")]
+    #[error("Failed to open executable: {source}, path: {path}")]
     OpenFile {
         path: std::path::PathBuf,
         source: std::io::Error,

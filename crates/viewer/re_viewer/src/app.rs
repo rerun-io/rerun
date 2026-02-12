@@ -510,7 +510,7 @@ impl App {
                 if err.to_string().contains(url) {
                     re_log::error!("{err}");
                 } else {
-                    re_log::error!("Failed to open URL {url}: {err}");
+                    re_log::error!(?url, "Failed to open URL: {err}");
                 }
             }
         }
@@ -2432,7 +2432,10 @@ impl App {
 
                 re_log_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
+                        re_log::warn!(
+                            "Data source has left unexpectedly: {err}, source: {}",
+                            msg.source
+                        );
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }
@@ -3152,7 +3155,7 @@ impl App {
                                 re_log::info!("Saved screenshot to {file_path:?}");
                             }
                             Err(err) => {
-                                re_log::error!("Failed to save screenshot to {file_path:?}: {err}");
+                                re_log::error!(?file_path, "Failed to save screenshot: {err}");
                                 // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
                                 std::fs::remove_file(&file_path).ok();
                             }

@@ -25,6 +25,19 @@ from gitignore_parser import parse_gitignore
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
+
+# Detect log macros with inline sensitive data (URLs, paths) in the format string.
+# Sensitive data should be passed as structured fields instead.
+# Bad:  re_log::warn!("Failed to open URL {url}: {err}");
+# Good: re_log::warn!(?url, "Failed to open URL: {err}");
+log_with_inline_sensitive_data = re.compile(
+    r're_log::(error|warn)(_once)?!\s*\(\s*"[^"]*\{(url|path|filepath|file_path|uri|file|filename|dir|directory|folder)[^}]*\}'
+)
+
+# Detect thiserror #[error(...)] with multiple unnamed tuple fields like {0}, {1}
+# Bad:  #[error("Failed to do {0}: {1}")]
+# Good: #[error("Failed to do {path}: {err}")]
+thiserror_multiple_unnamed = re.compile(r"#\[error\(.*\{1")
 wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
@@ -234,6 +247,12 @@ def lint_line(
     if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 
+    if log_with_inline_sensitive_data.search(line):
+        return 'URLs and paths should be passed as structured fields, not inline in log messages. Use e.g. `re_log::warn!(?url, "message: {err}")` instead of `re_log::warn!("message {url}: {err}")`'
+
+    if thiserror_multiple_unnamed.search(line):
+        return "Use named fields for complex errors instead of multiple unnamed tuple fields like {0}, {1}"
+
     if "from attr import dataclass" in line:
         return "Avoid 'from attr import dataclass'; prefer 'from dataclasses import dataclass'"
 
@@ -401,6 +420,29 @@ def test_lint_line() -> None:
         "The https://example.com/dataplatform/api endpoint",
         "We need a data platform solution",
         "Building data platform infrastructure",
+        # Structured logging with sensitive data as fields (good pattern)
+        're_log::warn!(?url, "Failed to open URL: {err}");',
+        're_log::error!(?path, "Failed to read file: {err}");',
+        're_log::info!(?filepath, loader = ?exe, "Loading data…");',
+        're_log::debug!(url = ?url, "Fetching data");',
+        # _once variants with structured fields (good)
+        're_log::warn_once!(?url, "Failed to open URL: {err}");',
+        're_log::error_once!(?path, "Cannot read file: {err}");',
+        # Log messages without sensitive inline data (also fine)
+        're_log::info!("Starting server on port {port}");',
+        're_log::warn!("Connection failed: {err}");',
+        # info! is allowed to have inline paths (user-facing)
+        're_log::info!("Saving to {filepath}");',
+        're_log::info!("Scanning {dir}");',
+        # debug! and trace! are allowed to have inline paths (developer-facing)
+        're_log::debug!("Loading {file_path}");',
+        're_log::trace!("Connecting to {uri}");',
+        're_log::debug!("Entering {directory}");',
+        're_log::trace!("Created {folder}");',
+        # thiserror with named fields (good)
+        '#[error("Failed to open {path}: {err}")]',
+        '#[error("Something went wrong: {0}")]',  # single unnamed is fine
+        '#[error("Simple error message")]',
     ]
 
     should_error = [
@@ -458,6 +500,17 @@ def test_lint_line() -> None:
         "Using dataplatform for analytics",
         "I love the data platform",
         "The Rerun data platform is great",
+        # Inline sensitive data in log messages (bad pattern) - only error/warn are linted
+        're_log::warn!("Failed to open URL {url}: {err}");',
+        're_log::error!("Failed to read file at {path}: {err}");',
+        're_log::warn!("Cannot find {file}");',
+        're_log::error!("Missing {filename}");',
+        # _once variants should also be linted
+        're_log::warn_once!("Failed to open URL {url}: {err}");',
+        're_log::error_once!("Cannot read {path}");',
+        # thiserror with multiple unnamed fields (bad)
+        '#[error("Failed to do {0}: {1}")]',
+        '#[error("{0} failed with {1} at {2}")]',
     ]
 
     for test in should_pass:

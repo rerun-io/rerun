@@ -102,7 +102,10 @@ impl Dataset {
         self.inner
             .segments
             .get(segment_id)
-            .ok_or_else(|| Error::SegmentIdNotFound(segment_id.clone(), self.id))
+            .ok_or_else(|| Error::SegmentIdNotFound {
+                segment_id: segment_id.clone(),
+                entry_id: self.id,
+            })
     }
 
     /// Returns the segments from the given list of id.
@@ -118,7 +121,10 @@ impl Dataset {
             // Validate that all segment IDs exist
             for id in segment_ids {
                 if !self.inner.segments.contains_key(id) {
-                    return Err(Error::SegmentIdNotFound(id.clone(), self.id));
+                    return Err(Error::SegmentIdNotFound {
+                        segment_id: id.clone(),
+                        entry_id: self.id,
+                    });
                 }
             }
 

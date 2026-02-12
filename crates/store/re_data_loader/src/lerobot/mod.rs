@@ -309,8 +309,12 @@ pub struct LeRobotDatasetTask {
 /// Errors that might happen when loading data through a [`crate::loader_lerobot::LeRobotDatasetLoader`].
 #[derive(thiserror::Error, Debug)]
 pub enum LeRobotError {
-    #[error("IO error occurred on path: {1}")]
-    IO(#[source] std::io::Error, std::path::PathBuf),
+    #[error("IO error occurred on path: {path}")]
+    IO {
+        #[source]
+        source: std::io::Error,
+        path: std::path::PathBuf,
+    },
 
     #[error(transparent)]
     Json(#[from] serde_json::Error),
@@ -342,6 +346,16 @@ pub enum LeRobotError {
 
     #[error("Episode {0:?} data file does not contain any records")]
     EmptyEpisode(EpisodeIndex),
+}
+
+impl LeRobotError {
+    /// Create an IO error with the given source and path.
+    pub fn io(source: std::io::Error, path: impl Into<std::path::PathBuf>) -> Self {
+        Self::IO {
+            source,
+            path: path.into(),
+        }
+    }
 }
 
 #[cfg(test)]

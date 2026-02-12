@@ -31,7 +31,7 @@ pub fn stream_from_http_to_channel(url: String, follow: bool) -> re_log_channel:
                 ControlFlow::Break(())
             }
             HttpMessage::Failure(err) => {
-                tx.quit(Some(err))
+                tx.quit(Some(Box::new(err)))
                     .warn_on_err_once("Failed to send quit marker");
                 ControlFlow::Break(())
             }

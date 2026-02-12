@@ -41,10 +41,10 @@ impl Filter for NonNullableBooleanFilter {
                 Ok(array_has(col(field.name().clone()), lit(self.as_bool())))
             }
 
-            _ => Err(FilterError::InvalidNonNullableBooleanFilter(
-                self.clone(),
-                field.clone().into(),
-            )),
+            _ => Err(FilterError::InvalidNonNullableBooleanFilter {
+                filter: self.clone(),
+                field: field.clone().into(),
+            }),
         }
     }
 
@@ -207,10 +207,10 @@ impl Filter for NullableBooleanFilter {
             }
 
             _ => {
-                return Err(FilterError::InvalidNullableBooleanFilter(
-                    self.clone(),
-                    field.clone().into(),
-                ));
+                return Err(FilterError::InvalidNullableBooleanFilter {
+                    filter: self.clone(),
+                    field: field.clone().into(),
+                });
             }
         };
 

@@ -59,6 +59,7 @@ We log problems using our own `re_log` crate (which is currently a wrapper aroun
 * The code should only panic if there is a bug in the code.
 * Never ignore an error: either pass it on, or log it.
 * Handle each error exactly once. If you log it, don't pass it on. If you pass it on, don't log it.
+* Put any sensitive data (like URLs, file paths etc) LAST in the error message, so that users can send us the first half and omit the sensitive half.
 
 Strive to encode code invariants and contracts in the type system as much as possible. So if a vector cannot be empty, consider using [`vec1`](https://crates.io/crates/vec1). [Parse, don’t validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/).
 

@@ -93,12 +93,10 @@ impl InMemoryStore {
                 for (layer_name, chunk_keys) in layer_index {
                     let store_handle = segment
                         .layer(layer_name)
-                        .ok_or_else(|| {
-                            Error::LayerNameNotFound(
-                                layer_name.to_owned(),
-                                segment_id.clone(),
-                                *dataset_id,
-                            )
+                        .ok_or_else(|| Error::LayerNameNotFound {
+                            layer_name: layer_name.to_owned(),
+                            segment_id: segment_id.clone(),
+                            entry_id: *dataset_id,
                         })?
                         .store_handle()
                         .read();

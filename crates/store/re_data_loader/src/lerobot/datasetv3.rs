@@ -152,7 +152,7 @@ impl LeRobotDatasetV3 {
         let episode_parquet_file = self.path.join(&episode_data_path);
 
         let file = File::open(&episode_parquet_file)
-            .map_err(|err| LeRobotError::IO(err, episode_parquet_file.clone()))?;
+            .map_err(|err| LeRobotError::io(err, episode_parquet_file.clone()))?;
 
         // Read all data at once
         let reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
@@ -279,7 +279,7 @@ impl LeRobotDatasetV3 {
 
         let contents = {
             re_tracing::profile_scope!("fs::read");
-            std::fs::read(&videopath).map_err(|err| LeRobotError::IO(err, videopath.clone()))?
+            std::fs::read(&videopath).map_err(|err| LeRobotError::io(err, videopath.clone()))?
         };
 
         // cache contents of big video blobs
@@ -681,10 +681,8 @@ impl LeRobotEpisodeData {
         // Walk all subdirectories and load episode data files.
         let metadir = metadir.as_ref();
         let mut all_episodes = vec![];
-        for entry in
-            std::fs::read_dir(metadir).map_err(|err| LeRobotError::IO(err, metadir.to_owned()))?
-        {
-            let entry = entry.map_err(|err| LeRobotError::IO(err, metadir.to_owned()))?;
+        for entry in std::fs::read_dir(metadir).map_err(|err| LeRobotError::io(err, metadir))? {
+            let entry = entry.map_err(|err| LeRobotError::io(err, metadir))?;
             let path = entry.path();
             let path = path.as_path();
 
@@ -692,16 +690,15 @@ impl LeRobotEpisodeData {
 
             if path.is_dir() {
                 for chunk_entry in
-                    std::fs::read_dir(path).map_err(|err| LeRobotError::IO(err, path.to_owned()))?
+                    std::fs::read_dir(path).map_err(|err| LeRobotError::io(err, path))?
                 {
-                    let chunk_entry =
-                        chunk_entry.map_err(|err| LeRobotError::IO(err, path.to_owned()))?;
+                    let chunk_entry = chunk_entry.map_err(|err| LeRobotError::io(err, path))?;
                     let chunk_path = chunk_entry.path();
 
                     if chunk_path.is_file() {
                         let chunk_parquet = ParquetRecordBatchReaderBuilder::try_new(
                             File::open(&chunk_path)
-                                .map_err(|err| LeRobotError::IO(err, chunk_path.clone()))?,
+                                .map_err(|err| LeRobotError::io(err, chunk_path.clone()))?,
                         )?
                         .build()?;
 
@@ -905,7 +902,7 @@ impl LeRobotDatasetInfoV3 {
     /// The `LeRobot` dataset info file is typically stored under `meta/info.json`.
     pub fn load_from_json_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let info_file = File::open(filepath.as_ref())
-            .map_err(|err| LeRobotError::IO(err, filepath.as_ref().to_owned()))?;
+            .map_err(|err| LeRobotError::io(err, filepath.as_ref()))?;
         let reader = BufReader::new(info_file);
 
         serde_json::from_reader(reader).map_err(|err| err.into())
@@ -997,7 +994,7 @@ impl LeRobotDatasetV3Tasks {
     pub fn load_from_parquet_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let filepath = filepath.as_ref().to_owned();
         let parquet_data =
-            File::open(&filepath).map_err(|err| LeRobotError::IO(err, filepath.clone()))?;
+            File::open(&filepath).map_err(|err| LeRobotError::io(err, filepath.clone()))?;
 
         let reader = ParquetRecordBatchReaderBuilder::try_new(parquet_data)?.build()?;
 

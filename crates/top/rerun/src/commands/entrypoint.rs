@@ -1403,14 +1403,16 @@ fn stream_to_rrd_on_disk(
     use re_log_encoding::FileSinkError;
 
     if path.exists() {
-        re_log::warn!("Overwriting existing file at {path:?}");
+        re_log::warn!(?path, "Overwriting existing file");
     }
 
     re_log::info!("Saving incoming log stream to {path:?}. Abort with Ctrl-C.");
 
     let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
-    let file =
-        std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
+    let file = std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile {
+        path: path.clone(),
+        source: err,
+    })?;
     let mut encoder = re_log_encoding::Encoder::new_eager(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
@@ -1546,7 +1548,7 @@ impl ReceiversFromUrlParams {
 
         let auth_error_handler = auth_error_handler.unwrap_or_else(|| {
             std::sync::Arc::new(|uri, err| {
-                re_log::error!("Authentication error for data source {uri}: {err}");
+                re_log::error!(?uri, "Authentication error for data source: {err}");
             })
         });
 

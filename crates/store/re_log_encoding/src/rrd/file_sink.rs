@@ -27,8 +27,11 @@ impl FileFlushError {
 #[derive(thiserror::Error, Debug)]
 pub enum FileSinkError {
     /// Error creating the file.
-    #[error("Failed to create file {0}: {1}")]
-    CreateFile(PathBuf, std::io::Error),
+    #[error("Failed to create file: {source}, path: {path}")]
+    CreateFile {
+        source: std::io::Error,
+        path: PathBuf,
+    },
 
     /// Error spawning the file writer thread.
     #[error("Failed to spawn thread: {0}")]
@@ -88,8 +91,10 @@ impl FileSink {
         // have multiple file sinks for the same file live?
         // This likely caused an instability in the past, see https://github.com/rerun-io/rerun/issues/3306
 
-        let file = std::fs::File::create(&path)
-            .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
+        let file = std::fs::File::create(&path).map_err(|err| FileSinkError::CreateFile {
+            path: path.clone(),
+            source: err,
+        })?;
         let encoder =
             crate::Encoder::new_eager(re_build_info::CrateVersion::LOCAL, encoding_options, file)?;
         let join_handle = spawn_and_stream(Some(&path), encoder, rx)?;

@@ -155,7 +155,7 @@ fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>>
                 }
             }
             Err(err) => {
-                re_log::debug!("Failed to load file size of {url:?}: {err}");
+                re_log::debug!(?url, "Failed to load file size: {err}");
                 sender.send(None);
             }
         }

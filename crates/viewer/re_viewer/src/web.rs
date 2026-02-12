@@ -217,7 +217,7 @@ impl WebHandle {
                 );
             }
             Err(err) => {
-                re_log::warn!("Failed to open URL {url:?}: {err}");
+                re_log::warn!(?url, "Failed to open URL: {err}");
             }
         }
     }
@@ -318,7 +318,7 @@ impl WebHandle {
                             HttpMessage::Success => ControlFlow::Continue(()),
                             HttpMessage::Failure(err) => {
                                 log_tx
-                                    .quit(Some(err))
+                                    .quit(Some(Box::new(err)))
                                     .warn_on_err_once("Failed to send quit marker");
                                 ControlFlow::Break(())
                             }
@@ -811,7 +811,7 @@ fn create_app(
                     );
                 }
                 Err(err) => {
-                    re_log::warn!("Failed to open URL {url:?}: {err}");
+                    re_log::warn!(?url, "Failed to open URL: {err}");
                 }
             }
         }

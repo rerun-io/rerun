@@ -68,8 +68,11 @@ pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
 
-    #[error("Failed to create server at address {0}: {1}")]
-    CreateServerFailed(String, Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("Failed to create server: {source}: ({address})")]
+    CreateServerFailed {
+        source: Box<dyn std::error::Error + Send + Sync + 'static>,
+        address: String,
+    },
 }
 
 // ----------------------------------------------------------------------------
@@ -142,8 +145,12 @@ impl WebViewerServer {
     pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
         let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 
-        let server = tiny_http::Server::http(bind_addr)
-            .map_err(|err| WebViewerServerError::CreateServerFailed(bind_addr.to_string(), err))?;
+        let server = tiny_http::Server::http(bind_addr).map_err(|err| {
+            WebViewerServerError::CreateServerFailed {
+                address: bind_addr.to_string(),
+                source: err,
+            }
+        })?;
         let shutdown = AtomicBool::new(false);
 
         let inner = Arc::new(WebViewerServerInner {

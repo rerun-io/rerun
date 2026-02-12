@@ -9,7 +9,7 @@ use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, TonicStatusError};
 ///
 /// This is used by the viewer to _receive_ log messages.
 pub fn stream(uri: re_uri::ProxyUri) -> re_log_channel::LogReceiver {
-    re_log::debug!("Loading {uri} via gRPC…");
+    re_log::debug!(?uri, "Loading via gRPC…");
 
     let (tx, rx) =
         re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri.clone()));
@@ -50,7 +50,7 @@ async fn stream_async(
             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
     };
 
-    re_log::debug!("Streaming messages from gRPC endpoint {uri}");
+    re_log::debug!(?uri, "Streaming messages from gRPC endpoint");
 
     let mut stream = client
         .read_messages(ReadMessagesRequest {})

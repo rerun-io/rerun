@@ -100,7 +100,7 @@ impl LeRobotDatasetV2 {
         let episode_parquet_file = self.path.join(episode_data_path);
 
         let file = File::open(&episode_parquet_file)
-            .map_err(|err| LeRobotError::IO(err, episode_parquet_file))?;
+            .map_err(|err| LeRobotError::io(err, episode_parquet_file))?;
         let mut reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
 
         reader
@@ -122,7 +122,7 @@ impl LeRobotDatasetV2 {
 
         let contents = {
             re_tracing::profile_scope!("fs::read");
-            std::fs::read(&videopath).map_err(|err| LeRobotError::IO(err, videopath))?
+            std::fs::read(&videopath).map_err(|err| LeRobotError::io(err, videopath))?
         };
 
         Ok(Cow::Owned(contents))
@@ -245,7 +245,7 @@ impl LeRobotDatasetInfo {
     /// The `LeRobot` dataset info file is typically stored under `meta/info.json`.
     pub fn load_from_json_file(filepath: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let info_file = File::open(filepath.as_ref())
-            .map_err(|err| LeRobotError::IO(err, filepath.as_ref().to_owned()))?;
+            .map_err(|err| LeRobotError::io(err, filepath.as_ref()))?;
         let reader = BufReader::new(info_file);
 
         serde_json::from_reader(reader).map_err(|err| err.into())
@@ -327,7 +327,7 @@ where
     use crate::lerobot::LeRobotError;
 
     let entries = std::fs::read_to_string(filepath.as_ref())
-        .map_err(|err| LeRobotError::IO(err, filepath.as_ref().to_owned()))?
+        .map_err(|err| LeRobotError::io(err, filepath.as_ref()))?
         .lines()
         .map(|line| serde_json::from_str(line))
         .collect::<Result<Vec<D>, _>>()?;
