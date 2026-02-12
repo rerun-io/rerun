@@ -318,8 +318,13 @@ impl ViewClass for TimeSeriesView {
             let mappings = scalar_mapping_selector(*series_line_visualizable_reason)
                 .into_iter()
                 .map(|selector| (scalars_component, selector))
-                .collect();
-            visualizers_with_mappings.insert(SeriesLinesSystem::identifier(), mappings);
+                .collect::<VisualizerComponentMappings>();
+
+            // If we didn't find a mapping, this visualizer is not worth bothering.
+            // (`scalar_mapping_selector` also produces a mapping for the default scalar component)
+            if !mappings.is_empty() {
+                visualizers_with_mappings.insert(SeriesLinesSystem::identifier(), mappings);
+            }
         }
 
         RecommendedVisualizers(visualizers_with_mappings)
@@ -1474,9 +1479,82 @@ fn get_time_series_color(
     )
 }
 
-#[test]
-fn test_help_view() {
-    re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_help_view() {
+        re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+    }
+
+    fn build_visualizable_entities(
+        entity_path: &EntityPath,
+        reason: VisualizableReason,
+    ) -> PerVisualizerTypeInViewClass<VisualizableEntities> {
+        PerVisualizerTypeInViewClass {
+            view_class_identifier: TimeSeriesView::identifier(),
+            per_visualizer: std::iter::once((
+                SeriesLinesSystem::identifier(),
+                VisualizableEntities(std::iter::once((entity_path.clone(), reason)).collect()),
+            ))
+            .collect(),
+        }
+    }
+
+    /// Regression: non-recommended physical datatype (`Int32`) must not cause
+    /// `SeriesLinesSystem` to be recommended with an empty mapping.
+    #[test]
+    fn test_no_recommendation_for_non_recommended_datatype() {
+        let entity_path = EntityPath::from("sensor/data");
+        let viz = build_visualizable_entities(
+            &entity_path,
+            VisualizableReason::DatatypeMatchAny {
+                matches: std::iter::once((
+                    Scalars::descriptor_scalars().component,
+                    DatatypeMatch::PhysicalDatatypeOnly {
+                        arrow_datatype: DataType::Int32,
+                        component_type: None,
+                        selectors: vec![],
+                    },
+                ))
+                .collect(),
+            },
+        );
+        let indicated = PerVisualizerType::default();
+        let result =
+            TimeSeriesView.recommended_visualizers_for_entity(&entity_path, &viz, &indicated);
+
+        assert!(result.0.is_empty());
+    }
+
+    /// `SeriesLinesSystem` should be recommended when the datatype is a recommended one, even if not indicated.
+    #[test]
+    fn test_recommendation_for_recommended_datatype() {
+        let entity_path = EntityPath::from("sensor/data");
+        let viz = build_visualizable_entities(
+            &entity_path,
+            VisualizableReason::DatatypeMatchAny {
+                matches: std::iter::once((
+                    Scalars::descriptor_scalars().component,
+                    DatatypeMatch::NativeSemantics {
+                        arrow_datatype: DataType::Float64,
+                        component_type: None,
+                    },
+                ))
+                .collect(),
+            },
+        );
+        let indicated = PerVisualizerType::default();
+        let result =
+            TimeSeriesView.recommended_visualizers_for_entity(&entity_path, &viz, &indicated);
+
+        assert!(result.0.contains_key(&SeriesLinesSystem::identifier()));
+        assert!(
+            result.0[&SeriesLinesSystem::identifier()]
+                .contains_key(&Scalars::descriptor_scalars().component)
+        );
+    }
 }
 
 #[test]
