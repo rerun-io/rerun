@@ -11,6 +11,37 @@ use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
 
 // ---
 
+/// Per-component information for chunks.
+///
+/// Created from either a physical chunk or virtual manifest metadata.
+#[derive(Clone)]
+pub struct ChunkComponentMeta {
+    pub descriptor: re_sdk_types::ComponentDescriptor,
+
+    /// The component list's inner data type.
+    ///
+    /// `None` if unknown.
+    pub inner_arrow_datatype: Option<arrow::datatypes::DataType>,
+
+    /// True if there's actually any data logged for this component.
+    ///
+    /// For virtual this means `row_count > 0`.
+    pub has_data: bool,
+
+    /// Whether this component only has static data.
+    pub is_static_only: bool,
+}
+
+/// Chunk meta originating from either a virtual or physical chunk.
+///
+/// Useful for chunk store subscribers that do the same logic
+/// for physical and virtual additions.
+#[derive(Clone)]
+pub struct ChunkMeta {
+    pub entity_path: re_chunk::EntityPath,
+    pub components: Vec<ChunkComponentMeta>,
+}
+
 /// The atomic unit of change in the Rerun [`ChunkStore`].
 ///
 /// A [`ChunkStoreEvent`] describes the changes caused by the addition or deletion of a
@@ -67,8 +98,13 @@ impl std::ops::Deref for ChunkStoreEvent {
 /// Refer to field-level documentation for more information.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChunkStoreDiff {
+    /// When a new physical chunk has been appended.
     Addition(ChunkStoreDiffAddition),
+
+    /// When a new rrd manifest has been appended.
     VirtualAddition(ChunkStoreDiffVirtualAddition),
+
+    /// When a physical chunk has been evicted.
     Deletion(ChunkStoreDiffDeletion),
 }
 
@@ -280,6 +316,28 @@ impl ChunkStoreDiffAddition {
     pub fn is_static(&self) -> bool {
         self.chunk_before_processing.is_static()
     }
+
+    /// [`ChunkMeta`] for the `delta_chunk`.
+    pub fn chunk_meta(&self) -> ChunkMeta {
+        let delta_chunk = self.delta_chunk();
+        let entity_path = delta_chunk.entity_path();
+
+        let components: Vec<ChunkComponentMeta> = delta_chunk
+            .components()
+            .values()
+            .map(|column| ChunkComponentMeta {
+                descriptor: column.descriptor.clone(),
+                inner_arrow_datatype: Some(column.list_array.value_type()),
+                has_data: !column.list_array.values().is_empty(),
+                is_static_only: delta_chunk.is_static(),
+            })
+            .collect();
+
+        ChunkMeta {
+            entity_path: entity_path.clone(),
+            components,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -293,6 +351,121 @@ pub struct ChunkStoreDiffVirtualAddition {
     ///
     /// If this is set, all fields below are irrelevant (set to their default/empty values).
     pub rrd_manifest: Arc<RrdManifest>,
+}
+
+impl ChunkStoreDiffVirtualAddition {
+    /// Iterator over [`ChunkMeta`]s in the new rrd manifest.
+    ///
+    /// In no particular order.
+    pub fn chunk_metas(&self) -> impl Iterator<Item = ChunkMeta> {
+        re_tracing::profile_function!();
+
+        // Build per-component metadata from the recording's sorbet schema.
+        let component_schema_info: ahash::HashMap<
+            re_chunk::ComponentIdentifier,
+            ChunkComponentMeta,
+        > = self
+            .rrd_manifest
+            .sorbet_schema()
+            .fields()
+            .iter()
+            .filter(|f| {
+                re_sorbet::ColumnKind::try_from(f.as_ref()).ok()
+                    == Some(re_sorbet::ColumnKind::Component)
+            })
+            .map(|field| {
+                let inner_arrow_datatype = match field.data_type() {
+                    arrow::datatypes::DataType::List(inner)
+                    | arrow::datatypes::DataType::LargeList(inner) => inner.data_type().clone(),
+                    other => other.clone(),
+                };
+
+                let descriptor = re_sdk_types::ComponentDescriptor::from((**field).clone());
+                (
+                    descriptor.component,
+                    ChunkComponentMeta {
+                        descriptor,
+                        inner_arrow_datatype: Some(inner_arrow_datatype),
+                        // These fields are filled in later in this function
+                        has_data: false,
+                        is_static_only: false,
+                    },
+                )
+            })
+            .collect();
+
+        /// Helper to track what's know about a component from the manifest's static/temporal maps.
+        #[derive(Default)]
+        struct VirtualComponentInfo {
+            has_temporal: bool,
+
+            has_rows: bool,
+        }
+
+        let mut entity_components = ahash::HashMap::<_, nohash_hasher::IntMap<_, _>>::default();
+
+        #[expect(
+            clippy::iter_over_hash_type,
+            reason = "This collects information into hashmaps"
+        )]
+        for (entity_path, per_component) in self.rrd_manifest.static_map() {
+            let entry = entity_components.entry(entity_path).or_default();
+            for &component in per_component.keys() {
+                // Static entries always have data (they wouldn't be in the map otherwise).
+                entry.insert(
+                    component,
+                    VirtualComponentInfo {
+                        has_temporal: false,
+                        has_rows: true,
+                    },
+                );
+            }
+        }
+
+        #[expect(
+            clippy::iter_over_hash_type,
+            reason = "This collects information into hashmaps"
+        )]
+        for (entity_path, per_timeline) in self.rrd_manifest.temporal_map() {
+            let entry = entity_components.entry(entity_path).or_default();
+            for per_component in per_timeline.values() {
+                for (&component, per_chunk) in per_component {
+                    let has_rows = per_chunk.values().any(|e| e.num_rows > 0);
+
+                    let existing = entry.entry(component).or_default();
+                    existing.has_temporal = true;
+                    existing.has_rows |= has_rows;
+                }
+            }
+        }
+
+        entity_components
+            .into_iter()
+            .map(move |(entity_path, components)| ChunkMeta {
+                entity_path: entity_path.clone(),
+                components: components
+                    .into_iter()
+                    .map(|(component, info)| {
+                        let has_data = info.has_rows;
+                        let is_static_only = !info.has_temporal;
+                        if let Some(meta) = component_schema_info.get(&component) {
+                            ChunkComponentMeta {
+                                has_data,
+                                is_static_only,
+                                ..meta.clone()
+                            }
+                        } else {
+                            ChunkComponentMeta {
+                                has_data,
+                                is_static_only,
+                                descriptor: re_sdk_types::ComponentDescriptor::partial(component),
+                                inner_arrow_datatype: None,
+                            }
+                        }
+                    })
+                    .collect(),
+            })
+    }
 }
 
 /// An atomic deletion event.

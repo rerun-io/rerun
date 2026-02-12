@@ -4,14 +4,13 @@ use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::IntMap;
 use re_arrow_combinators::extract_nested_fields;
-use re_chunk::{ArchetypeName, ArrowArray as _, ComponentIdentifier};
+use re_chunk::{ArchetypeName, ComponentIdentifier, ComponentType};
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
-use re_log_types::{EntityPathHash, StoreId};
+use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_sdk_types::ComponentSet;
-use re_types_core::SerializedComponentColumn;
 
 use crate::typed_entity_collections::DatatypeMatch;
-use crate::view::visualizer_system::AnyPhysicalDatatypeRequirement;
+use crate::view::visualizer_system::{AnyPhysicalDatatypeRequirement, DatatypeSet};
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, RequiredComponents, ViewSystemIdentifier,
     VisualizableEntities, VisualizerSystem, typed_entity_collections::VisualizableReason,
@@ -163,6 +162,223 @@ impl VisualizerEntitySubscriber {
     }
 }
 
+/// Process a single entity's components and update the visualizer entity mapping.
+///
+/// This is the shared core logic between physical chunk additions and virtual manifest additions.
+fn process_entity_components(
+    relevant_archetype: Option<ArchetypeName>,
+    requirement: &Requirement,
+    visualizer: &ViewSystemIdentifier,
+    store_mapping: &mut VisualizerEntityMapping,
+    store_id: &StoreId,
+    re_chunk_store::ChunkMeta {
+        entity_path,
+        components,
+    }: re_chunk_store::ChunkMeta,
+) {
+    // Update indicated_entities.
+    if relevant_archetype.is_none()
+        || relevant_archetype.is_some_and(|archetype| {
+            components
+                .iter()
+                .any(|c| c.descriptor.archetype == Some(archetype))
+        })
+    {
+        store_mapping
+            .indicated_entities
+            .0
+            .insert(entity_path.clone());
+    }
+
+    // Check component requirements.
+    match requirement {
+        Requirement::None => {
+            re_log::trace!(
+                "Entity {entity_path:?} in store {store_id:?} may now be visualizable by {visualizer:?} (no requirements)",
+            );
+
+            store_mapping
+                .visualizable_entities
+                .0
+                .insert(entity_path.clone(), VisualizableReason::Always);
+        }
+
+        Requirement::AllComponents(AllComponentsRequirement {
+            required_components_indices,
+        }) => {
+            let required_components_bitmap = store_mapping
+            .required_component_and_filter_bitmap_per_entity
+            .entry(entity_path.hash())
+            .or_insert_with(|| {
+                // An empty set would mean that all entities will never be "visualizable",
+                // because `.all()` is always false for an empty set.
+                debug_assert!(
+                    !required_components_indices.is_empty(),
+                    "[DEBUG ASSERT] encountered empty set of required components for `RequiredComponentMode::All`"
+                );
+                BitVec::from_elem(required_components_indices.len(), false)
+            });
+
+            // Early-out: if all required components are already present, we already
+            // marked this entity as visualizable in a previous event.
+            if required_components_bitmap.all() {
+                return;
+            }
+
+            for c in components {
+                if let Some(index) = required_components_indices.get(&c.descriptor.component)
+                    && c.has_data
+                {
+                    required_components_bitmap.set(*index, true);
+                }
+            }
+
+            if required_components_bitmap.all() {
+                re_log::trace!(
+                    "Entity {entity_path:?} in store {store_id:?} may now be visualizable by {visualizer:?}",
+                );
+
+                store_mapping
+                    .visualizable_entities
+                    .0
+                    .insert(entity_path.clone(), VisualizableReason::ExactMatchAll);
+            }
+        }
+
+        Requirement::AnyComponent(AnyComponentRequirement {
+            relevant_components,
+        }) => {
+            let has_any_component = components
+                .iter()
+                .any(|c| relevant_components.contains(&c.descriptor.component) && c.has_data);
+
+            if has_any_component {
+                re_log::trace!(
+                    "Entity {entity_path:?} in store {store_id:?} may now be visualizable by {visualizer:?} (has any required component)",
+                );
+
+                store_mapping
+                    .visualizable_entities
+                    .0
+                    .insert(entity_path.clone(), VisualizableReason::ExactMatchAny);
+            }
+        }
+
+        Requirement::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
+            semantic_type,
+            physical_types,
+            allow_static_data,
+        }) => {
+            let mut has_any_datatype = false;
+
+            for c in components {
+                if !allow_static_data && c.is_static_only {
+                    continue;
+                }
+
+                let Some(arrow_datatype) = &c.inner_arrow_datatype else {
+                    continue;
+                };
+
+                if let Some(match_info) = check_datatype_match(
+                    arrow_datatype,
+                    c.descriptor.component_type,
+                    semantic_type,
+                    physical_types,
+                    c.descriptor.component,
+                ) && c.has_data
+                {
+                    has_any_datatype = true;
+                    insert_datatype_match(
+                        &mut store_mapping.visualizable_entities,
+                        &entity_path,
+                        c.descriptor.component,
+                        match_info,
+                        visualizer,
+                    );
+                }
+            }
+
+            if has_any_datatype {
+                re_log::trace!(
+                    "Entity {entity_path:?} in store {store_id:?} may now be visualizable by {visualizer:?} (has any required datatype)",
+                );
+            }
+        }
+    }
+}
+
+/// Check if an Arrow datatype matches the physical/semantic requirements.
+fn check_datatype_match(
+    arrow_datatype: &arrow::datatypes::DataType,
+    component_type: Option<ComponentType>,
+    semantic_type: &ComponentType,
+    physical_types: &DatatypeSet,
+    component: ComponentIdentifier,
+) -> Option<DatatypeMatch> {
+    let is_physical_match = physical_types.contains(arrow_datatype);
+    let is_semantic_match = component_type == Some(*semantic_type);
+
+    match (is_physical_match, is_semantic_match) {
+        (false, false) => {
+            // No direct match - try nested field access
+            extract_nested_fields(arrow_datatype, |dt| physical_types.contains(dt)).map(
+                |selectors| DatatypeMatch::PhysicalDatatypeOnly {
+                    arrow_datatype: arrow_datatype.clone(),
+                    component_type,
+                    selectors: selectors.into(),
+                },
+            )
+        }
+
+        (true, false) => Some(DatatypeMatch::PhysicalDatatypeOnly {
+            arrow_datatype: arrow_datatype.clone(),
+            component_type,
+            selectors: Vec::new(),
+        }),
+
+        (true, true) => Some(DatatypeMatch::NativeSemantics {
+            arrow_datatype: arrow_datatype.clone(),
+            component_type,
+        }),
+
+        (false, true) => {
+            re_log::warn_once!(
+                "Component {component:?} matched semantic type {semantic_type:?} but none of the expected physical arrow types {arrow_datatype:?} for this semantic type.",
+            );
+            None
+        }
+    }
+}
+
+/// Insert a datatype match for an entity into the visualizable entities map.
+fn insert_datatype_match(
+    visualizable_entities: &mut VisualizableEntities,
+    entity_path: &EntityPath,
+    component: ComponentIdentifier,
+    match_info: DatatypeMatch,
+    visualizer: &ViewSystemIdentifier,
+) {
+    match visualizable_entities.0.entry(entity_path.clone()) {
+        Entry::Occupied(mut occupied_entry) => {
+            if let VisualizableReason::DatatypeMatchAny { matches } = occupied_entry.get_mut() {
+                matches.insert(component, match_info);
+            } else {
+                debug_assert!(
+                    false,
+                    "[DEBUG ASSERT] entity {entity_path:?} already marked visualizable for visualizer {visualizer:?} with a different reason than `DatatypeMatchAny`",
+                );
+            }
+        }
+
+        Entry::Vacant(vacant_entry) => {
+            vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
+                matches: std::iter::once((component, match_info)).collect(),
+            });
+        }
+    }
+}
+
 impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
     #[inline]
     fn name(&self) -> String {
@@ -183,257 +399,44 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
         re_tracing::profile_function!(self.visualizer);
 
         // TODO(andreas): Need to react to store removals as well. As of writing doesn't exist yet.
+        //                These removals also need to keep in mind that things from the rrd manifest
+        //                shouldn't be removed.
 
         for event in events {
-            let Some(add) = event.to_addition() else {
-                // Visualizability is only additive, don't care about removals.
-                continue;
-            };
-
             let store_mapping = self
                 .per_store_mapping
                 .entry(event.store_id.clone())
                 .or_default();
 
-            // This is a purely additive datastructure, and it doesn't keep track of actual chunks,
-            // just the bits of data that are of actual interest.
-            // Therefore, the delta chunk is all we need, always.
-            let delta_chunk = add.delta_chunk();
-            let entity_path = delta_chunk.entity_path();
+            match &event.diff {
+                re_chunk_store::ChunkStoreDiff::Addition(add) => {
+                    // This is a purely additive datastructure, and it doesn't keep track of actual chunks,
+                    // just the bits of data that are of actual interest.
+                    // Therefore, the meta of the delta chunk is all we need, always.
 
-            // Update archetype tracking:
-            if self.relevant_archetype.is_none()
-                || self.relevant_archetype.is_some_and(|archetype| {
-                    delta_chunk
-                        .components()
-                        .component_descriptors()
-                        .any(|component_descr| component_descr.archetype == Some(archetype))
-                })
-            {
-                store_mapping
-                    .indicated_entities
-                    .0
-                    .insert(entity_path.clone());
-            }
-
-            // Check component requirements based on mode
-            match &self.requirement {
-                Requirement::None => {
-                    // No requirements means that all entities are candidates.
-                    re_log::trace!(
-                        "Entity {:?} in store {:?} may now be visualizable by {:?} (no requirements)",
-                        entity_path,
-                        event.store_id,
-                        self.visualizer
+                    process_entity_components(
+                        self.relevant_archetype,
+                        &self.requirement,
+                        &self.visualizer,
+                        store_mapping,
+                        &event.store_id,
+                        add.chunk_meta(),
                     );
-
-                    store_mapping
-                        .visualizable_entities
-                        .0
-                        .insert(entity_path.clone(), VisualizableReason::Always);
                 }
-
-                Requirement::AllComponents(AllComponentsRequirement {
-                    required_components_indices,
-                }) => {
-                    // Entity must have all required components
-                    let required_components_bitmap = store_mapping
-                        .required_component_and_filter_bitmap_per_entity
-                        .entry(entity_path.hash())
-                        .or_insert_with(|| {
-                            // An empty set would mean that all entities will never be "visualizable",
-                            // because `.all()` is always false for an empty set.
-                            debug_assert!(
-                                !required_components_indices.is_empty(),
-                                "[DEBUG ASSERT] encountered empty set of required components for `RequiredComponentMode::All`"
-                            );
-                            BitVec::from_elem(required_components_indices.len(), false)
-                        });
-
-                    // Early-out: if all required components are already present, we already
-                    // marked this entity as visualizable in a previous event.
-                    if required_components_bitmap.all() {
-                        continue;
-                    }
-
-                    #[expect(clippy::iter_over_hash_type)]
-                    for SerializedComponentColumn {
-                        list_array,
-                        descriptor,
-                    } in delta_chunk.components().values()
-                    {
-                        if let Some(index) = required_components_indices.get(&descriptor.component)
-                        {
-                            // The component might be present, but logged completely empty.
-                            // That shouldn't count towards having the component present!
-                            if !list_array.values().is_empty() {
-                                required_components_bitmap.set(*index, true);
-                            }
-                        }
-                    }
-
-                    // Check if all required components are now present
-                    if required_components_bitmap.all() {
-                        re_log::trace!(
-                            "Entity {:?} in store {:?} may now be visualizable by {:?}",
-                            entity_path,
-                            event.store_id,
-                            self.visualizer
-                        );
-
-                        store_mapping
-                            .visualizable_entities
-                            .0
-                            .insert(entity_path.clone(), VisualizableReason::ExactMatchAll);
-                    }
-                }
-
-                Requirement::AnyComponent(AnyComponentRequirement {
-                    relevant_components,
-                }) => {
-                    // Entity must have any of the required components
-                    let mut has_any_component = false;
-
-                    #[expect(clippy::iter_over_hash_type)]
-                    for SerializedComponentColumn {
-                        list_array,
-                        descriptor,
-                    } in delta_chunk.components().values()
-                    {
-                        if relevant_components.contains(&descriptor.component) {
-                            // The component might be present, but logged completely empty.
-                            if !list_array.values().is_empty() {
-                                has_any_component = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if has_any_component {
-                        re_log::trace!(
-                            "Entity {:?} in store {:?} may now be visualizable by {:?} (has any required component)",
-                            entity_path,
-                            event.store_id,
-                            self.visualizer
-                        );
-
-                        store_mapping
-                            .visualizable_entities
-                            .0
-                            .insert(entity_path.clone(), VisualizableReason::ExactMatchAny);
-                    }
-                }
-
-                Requirement::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
-                    semantic_type,
-                    physical_types,
-                    allow_static_data,
-                }) => {
-                    // Entity must have any of the required components
-                    let mut has_any_datatype = false;
-
-                    #[expect(clippy::iter_over_hash_type)]
-                    for SerializedComponentColumn {
-                        list_array,
-                        descriptor,
-                    } in delta_chunk.components().values()
-                    {
-                        if !allow_static_data && delta_chunk.is_static() {
-                            // Skip static components if we require non-static data.
-                            continue;
-                        }
-
-                        let arrow_datatype = list_array.value_type();
-                        let component_type = descriptor.component_type;
-                        let is_physical_match = physical_types.contains(&arrow_datatype);
-                        let is_semantic_match = component_type == Some(*semantic_type);
-
-                        let match_info: Option<DatatypeMatch> = match (
-                            is_physical_match,
-                            is_semantic_match,
-                        ) {
-                            (false, false) => {
-                                // No direct match - try nested field access
-                                extract_nested_fields(&list_array.value_type(), |dt| {
-                                    physical_types.contains(dt)
-                                })
-                                .map(|selectors| {
-                                    DatatypeMatch::PhysicalDatatypeOnly {
-                                        arrow_datatype,
-                                        component_type,
-                                        selectors: selectors.into(),
-                                    }
-                                })
-                            }
-
-                            (true, false) => Some(DatatypeMatch::PhysicalDatatypeOnly {
-                                arrow_datatype,
-                                component_type,
-                                selectors: Vec::new(),
-                            }),
-
-                            (true, true) => Some(DatatypeMatch::NativeSemantics {
-                                arrow_datatype,
-                                component_type,
-                            }),
-
-                            (false, true) => {
-                                re_log::warn_once!(
-                                    "Component {:?} matched semantic type {semantic_type:?} but none of the expected physical arrow types {arrow_datatype:?} for this semantic type.",
-                                    descriptor.component
-                                );
-                                None
-                            }
-                        };
-
-                        if let Some(match_info) = match_info {
-                            // The component might be present, but logged completely empty.
-                            if !list_array.values().is_empty() {
-                                has_any_datatype = true;
-
-                                // Track the component that matched
-                                match store_mapping
-                                    .visualizable_entities
-                                    .0
-                                    .entry(entity_path.clone())
-                                {
-                                    Entry::Occupied(mut occupied_entry) => {
-                                        if let VisualizableReason::DatatypeMatchAny { matches } =
-                                            occupied_entry.get_mut()
-                                        {
-                                            matches.insert(descriptor.component, match_info);
-                                        } else {
-                                            // We already had a different kind of match? Shouldn't happen.
-                                            debug_assert!(
-                                                false,
-                                                "[DEBUG ASSERT] entity {entity_path:?} already marked visualizable for visualizer {:?} with a different reason than `DatatypeMatchAny`",
-                                                self.visualizer
-                                            );
-                                        }
-                                    }
-
-                                    Entry::Vacant(vacant_entry) => {
-                                        vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
-                                            matches: std::iter::once((
-                                                descriptor.component,
-                                                match_info,
-                                            ))
-                                            .collect(),
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if has_any_datatype {
-                        re_log::trace!(
-                            "Entity {:?} in store {:?} may now be visualizable by {:?} (has any required datatype)",
-                            entity_path,
-                            event.store_id,
-                            self.visualizer
+                re_chunk_store::ChunkStoreDiff::VirtualAddition(virtual_add) => {
+                    for meta in virtual_add.chunk_metas() {
+                        process_entity_components(
+                            self.relevant_archetype,
+                            &self.requirement,
+                            &self.visualizer,
+                            store_mapping,
+                            &event.store_id,
+                            meta,
                         );
                     }
+                }
+                re_chunk_store::ChunkStoreDiff::Deletion(_) => {
+                    // Not handling deletions here yet.
                 }
             }
         }

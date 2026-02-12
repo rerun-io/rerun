@@ -43,8 +43,8 @@ pub use self::dataframe::{
     ViewContentsSelector,
 };
 pub use self::events::{
-    ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion, ChunkStoreDiffVirtualAddition,
-    ChunkStoreEvent,
+    ChunkComponentMeta, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion,
+    ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
