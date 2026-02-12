@@ -130,6 +130,25 @@ impl VisualizerTypeReport {
         }
     }
 
+    /// Get reports for a specific instruction that are associated with a specific component.
+    pub fn reports_for_component(
+        &self,
+        instruction_id: &VisualizerInstructionId,
+        component: re_chunk::ComponentIdentifier,
+    ) -> impl Iterator<Item = &VisualizerInstructionReport> {
+        self.reports_for(instruction_id)
+            .filter(move |report| report.context.component == Some(component))
+    }
+
+    /// Get reports for a specific instruction that are NOT associated with any component.
+    pub fn reports_without_component(
+        &self,
+        instruction_id: &VisualizerInstructionId,
+    ) -> impl Iterator<Item = &VisualizerInstructionReport> {
+        self.reports_for(instruction_id)
+            .filter(|report| report.context.component.is_none())
+    }
+
     /// Get the highest severity report for an instruction.
     pub fn highest_severity_for(
         &self,

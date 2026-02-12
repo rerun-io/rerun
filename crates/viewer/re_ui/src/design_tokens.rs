@@ -10,8 +10,8 @@ use crate::{CUSTOM_WINDOW_DECORATIONS, format_with_decimals_in_range};
 #[derive(Debug)]
 pub struct AlertVisuals {
     pub fill: Color32,
-    pub stroke: Color32,
     pub icon: Color32,
+    pub text: Color32,
 }
 
 impl AlertVisuals {
@@ -20,8 +20,8 @@ impl AlertVisuals {
 
         Ok(Self {
             fill: color_from_json(color_table, value.get("fill")?)?,
-            stroke: color_from_json(color_table, value.get("stroke")?)?,
             icon: color_from_json(color_table, value.get("icon")?)?,
+            text: color_from_json(color_table, value.get("text")?)?,
         })
     }
 

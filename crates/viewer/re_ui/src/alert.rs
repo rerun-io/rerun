@@ -72,7 +72,6 @@ impl Alert {
         let colors = self.kind.colors(ui);
 
         egui::Frame::new()
-            .stroke((1.0, colors.stroke))
             .fill(colors.fill)
             .corner_radius(6)
             .inner_margin(6.0)
@@ -97,16 +96,23 @@ impl Alert {
         full_text: Option<String>,
     ) -> Response {
         let visible_text = visible_text.into();
+        let text_color = self.kind.colors(ui).text;
         self.show(ui, |ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-            let response = ui.strong(&visible_text).on_hover_ui(|ui| {
-                if let Some(full_text) = &full_text {
-                    ui.label(full_text);
-                    ui.add_space(8.0);
-                }
-                ui.label("Click to copy text.");
-            });
+            let response = ui
+                .label(
+                    egui::RichText::new(&visible_text)
+                        .strong()
+                        .color(text_color),
+                )
+                .on_hover_ui(|ui| {
+                    if let Some(full_text) = &full_text {
+                        ui.label(full_text);
+                        ui.add_space(8.0);
+                    }
+                    ui.label("Click to copy text.");
+                });
             if response.clicked() {
                 ui.ctx().copy_text(full_text.unwrap_or(visible_text));
             }
@@ -129,23 +135,34 @@ impl Alert {
 
 #[cfg(test)]
 mod tests {
-    use egui_kittest::Harness;
+    use egui::Theme;
+    use egui_kittest::{Harness, SnapshotResults};
 
     use crate::UiExt as _;
 
     #[test]
     fn test_alert() {
-        let mut harness = Harness::builder().build_ui(|ui| {
-            crate::apply_style_and_install_loaders(ui.ctx());
+        let mut results = SnapshotResults::new();
+        for theme in [egui::Theme::Dark, egui::Theme::Light] {
+            let mut harness = Harness::builder().with_theme(theme).build_ui(|ui| {
+                crate::apply_style_and_install_loaders(ui.ctx());
 
-            ui.info_label("This is an info alert.");
-            ui.success_label("This is a success alert.");
-            ui.warning_label("This is a warning alert.");
-            ui.error_label("This is an error alert.");
-        });
+                ui.info_label("This is an info alert.");
+                ui.success_label("This is a success alert.");
+                ui.warning_label("This is a warning alert.");
+                ui.error_label("This is an error alert.");
+            });
 
-        harness.run();
-        harness.fit_contents();
-        harness.snapshot("alert");
+            harness.run();
+            harness.fit_contents();
+            harness.snapshot(format!(
+                "alert_{}",
+                match theme {
+                    Theme::Dark => "dark",
+                    Theme::Light => "light",
+                }
+            ));
+            results.extend_harness(&mut harness);
+        }
     }
 }

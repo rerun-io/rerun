@@ -10,6 +10,7 @@ use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::menu::menu_style;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
@@ -160,28 +161,22 @@ pub fn visualizer_ui_impl(
                             .with_always_show_buttons(true),
                         );
 
-                    // Show whether this visualizer has any reports (errors/warnings).
+                    // Show reports that are not associated with a specific component at the top.
                     if let Some(reports) = per_type_visualizer_reports.get(&visualizer_type) {
-                        // TODO(RR-3562): Better display when errors are associated with concrete components.
-                        for report in reports.reports_for(&visualizer_instruction.id) {
-                            match report.severity {
-                                re_viewer_context::VisualizerReportSeverity::OverallVisualizerError | re_viewer_context::VisualizerReportSeverity::Error => {
-                                    let label = ui.error_label(&report.summary);
-                                    if let Some(details) = &report.details {
-                                        label.on_hover_text(details);
-                                    }
-                                }
-                                re_viewer_context::VisualizerReportSeverity::Warning => {
-                                    let label = ui.warning_label(&report.summary);
-                                    if let Some(details) = &report.details {
-                                        label.on_hover_text(details);
-                                    }
-                                }
-                            }
+                        for report in reports.reports_without_component(&visualizer_instruction.id)
+                        {
+                            show_visualizer_report(ui, report);
                         }
                     }
 
-                    visualizer_components(ctx, ui, data_result, visualizer, visualizer_instruction);
+                    visualizer_components(
+                        ctx,
+                        ui,
+                        data_result,
+                        visualizer,
+                        visualizer_instruction,
+                        per_type_visualizer_reports.get(&visualizer_type),
+                    );
                 } else {
                     ui.list_item_flat_noninteractive(
                         list_item::LabelContent::new(format!(
@@ -206,6 +201,7 @@ fn visualizer_components(
     data_result: &DataResult,
     visualizer: &dyn VisualizerSystem,
     instruction: &VisualizerInstruction,
+    type_report: Option<&re_viewer_context::VisualizerTypeReport>,
 ) {
     let query_info = visualizer.visualizer_query_info(ctx.viewer_ctx.app_options());
 
@@ -291,13 +287,14 @@ fn visualizer_components(
                 Err(err) => (None, raw_default.clone(), Some(err)),
             };
 
-        // TODO(RR-3562): We've already displayed errors at the top of the visualizer.
-        // We eventually want to move the relevant ones further down here,
-        // but meanwhile it means we have to ignore the errors we got here.
-        // We'll have to reconciliate the ad-hoc query errors versus the visualizer reports from last frame!
-        // (expectation is that those query errors are included in the visualizer reports, but there may be more
-        // on the reports than just mapping errors)
-        let _todo_handle_errors = mapping_error;
+        // Any mapping errors should already be in the `component_reports` below, since the visualizers should
+        // fail in the exact same way. So the mapping errors can be explicitly ignored:
+        let _mapping_err = mapping_error;
+
+        let component_reports: Vec<_> = type_report
+            .into_iter()
+            .flat_map(|r| r.reports_for_component(&instruction.id, target_component))
+            .collect();
 
         let value_fn = |ui: &mut egui::Ui, _style| {
             let multiline = false;
@@ -394,6 +391,31 @@ fn visualizer_components(
                 // TODO(andreas): Add data ui for component descr?
                 component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
             });
+        }
+
+        for report in &component_reports {
+            show_visualizer_report(ui, report);
+        }
+    }
+}
+
+fn show_visualizer_report(
+    ui: &mut egui::Ui,
+    report: &re_viewer_context::VisualizerInstructionReport,
+) {
+    match report.severity {
+        re_viewer_context::VisualizerReportSeverity::OverallVisualizerError
+        | re_viewer_context::VisualizerReportSeverity::Error => {
+            let label = ui.error_label(&report.summary);
+            if let Some(details) = &report.details {
+                label.on_hover_text(details);
+            }
+        }
+        re_viewer_context::VisualizerReportSeverity::Warning => {
+            let label = ui.warning_label(&report.summary);
+            if let Some(details) = &report.details {
+                label.on_hover_text(details);
+            }
         }
     }
 }
@@ -524,6 +546,7 @@ fn source_component_ui(
             |ui, _| {
                 let response = egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(component_source_string(&current))
+                    .popup_style(menu_style())
                     .show_ui(ui, |ui| {
                         source_component_items_ui(
                             ctx,
@@ -534,6 +557,7 @@ fn source_component_ui(
                             query_info,
                             raw_override,
                             raw_default,
+                            &current,
                         );
                     });
                 response.response.widget_info(|| {
@@ -559,6 +583,7 @@ fn source_component_items_ui(
     query_info: &VisualizerQueryInfo,
     raw_override: &Option<ArrayRef>,
     raw_default: &ArrayRef,
+    current: &VisualizerComponentSource,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
 
@@ -597,16 +622,23 @@ fn source_component_items_ui(
         }
     }
 
-    for source in options {
-        let add_custom = source == VisualizerComponentSource::Override && raw_override.is_none();
+    // If the current source is not in the options list (e.g. because the selector is invalid
+    // or the source component doesn't exist), add it so it still shows up as selected.
+    if !options.contains(current) {
+        options.insert(0, current.clone());
+    }
+
+    for source in &options {
+        let add_custom = *source == VisualizerComponentSource::Override && raw_override.is_none();
+        let selected = source == current;
         let label = if add_custom {
             "Add Custom".to_owned()
         } else {
-            component_source_string(&source)
+            component_source_string(source)
         };
 
-        if ui.button(label).clicked() {
-            save_component_mapping(ctx, instruction, source, component_descr.component);
+        if ui.selectable_label(selected, label).clicked() {
+            save_component_mapping(ctx, instruction, source.clone(), component_descr.component);
 
             if add_custom {
                 // Persist the override value right away, so the `add_custom` check can rely on the override value being in the blueprint store.

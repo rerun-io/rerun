@@ -360,12 +360,11 @@
        "color": "{Green.500}",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "{Green.500}",
-       "alpha": 125,
-    },
     "icon": {
        "color": "{Green.500}"
+    },
+    "text": {
+       "color": "{Green.900}"
     },
   },
   "alert_info": {
@@ -373,12 +372,11 @@
        "color": "{Blue.500}",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "{Blue.500}",
-       "alpha": 125,
-    },
     "icon": {
        "color": "{Blue.500}"
+    },
+    "text": {
+       "color": "{Blue.900}"
     },
   },
   "alert_warning": {
@@ -386,12 +384,11 @@
        "color": "#DF7700",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "#DF7700",
-       "alpha": 125,
-    },
     "icon": {
        "color": "#DF7700"
+    },
+    "text": {
+       "color": "#FFD28A"
     },
   },
   "alert_error": {
@@ -399,12 +396,11 @@
        "color": "{Red.500}",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "{Red.500}",
-       "alpha": 125,
-    },
     "icon": {
        "color": "{Red.500}"
+    },
+    "text": {
+       "color": "{Red.900}"
     },
   },
 

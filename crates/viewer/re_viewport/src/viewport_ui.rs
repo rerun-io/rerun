@@ -780,13 +780,13 @@ impl TilesDelegate<'_, '_> {
                         .as_image()
                         .fit_to_exact_size(ui.tokens().small_icon_size)
                         .alt_text("View warnings")
-                        .tint(ui.visuals().warn_fg_color)
+                        .tint(ui.tokens().alert_warning.icon)
                 } else {
                     icons::ERROR
                         .as_image()
                         .fit_to_exact_size(ui.tokens().small_icon_size)
                         .alt_text("View errors")
-                        .tint(ui.visuals().error_fg_color)
+                        .tint(ui.tokens().alert_error.icon)
                 };
 
             let response = ui
@@ -851,10 +851,10 @@ impl TilesDelegate<'_, '_> {
                         let (icon, color) = match report.severity {
                             re_viewer_context::VisualizerReportSeverity::Error
                             | re_viewer_context::VisualizerReportSeverity::OverallVisualizerError => {
-                                (&icons::ERROR, ui.visuals().error_fg_color)
+                                (&icons::ERROR, ui.tokens().alert_error.icon)
                             }
                             re_viewer_context::VisualizerReportSeverity::Warning => {
-                                (&icons::WARNING, ui.visuals().warn_fg_color)
+                                (&icons::WARNING, ui.tokens().alert_warning.icon)
                             }
                         };
 
