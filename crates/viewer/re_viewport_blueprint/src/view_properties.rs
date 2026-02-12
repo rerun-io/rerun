@@ -260,7 +260,7 @@ impl ViewProperty {
             target_entity_path: &self.blueprint_store_path,
             instruction_id: None,
             archetype_name: Some(self.archetype_name),
-            query: &self.blueprint_query,
+            query: self.blueprint_query.clone(),
         }
     }
 }

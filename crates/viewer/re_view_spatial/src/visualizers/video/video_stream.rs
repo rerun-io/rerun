@@ -83,7 +83,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             let world_from_entity = transform_info
                 .single_transform_required_for_entity(entity_path, VideoStream::name())
                 .as_affine3a();
-            let query_context = ctx.query_context(data_result, &latest_at, instruction.id);
+            let query_context = ctx.query_context(data_result, latest_at.clone(), instruction.id);
             let highlight = view_query
                 .highlights
                 .entity_outline_mask(entity_path.hash());
@@ -157,7 +157,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
             };
 
-            let video_time = video_stream_time_from_query(query_context.query);
+            let video_time = video_stream_time_from_query(&query_context.query);
             if video_time.0 < 0 {
                 // The frame is from before the video starts, so nothing to draw here!
                 continue;
@@ -193,7 +193,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
                     video_stream_id(entity_path, ctx.view_id, Self::identifier()),
-                    video_stream_time_from_query(query_context.query),
+                    video_stream_time_from_query(&query_context.query),
                     &|id| {
                         let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
 
@@ -216,7 +216,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                                 target_entity_path: entity_path,
                                 instruction_id: Some(instruction.id),
                                 archetype_name: Some(VideoStream::name()),
-                                query: &latest_at,
+                                query: latest_at.clone(),
                             },
                             VideoStream::descriptor_opacity().component,
                         )

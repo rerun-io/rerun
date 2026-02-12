@@ -91,7 +91,7 @@ impl VisualizerSystem for TensorSystem {
                         typed_fallback_for(
                             &ctx.query_context(
                                 data_result,
-                                &query.latest_at_query(),
+                                query.latest_at_query(),
                                 instruction.id,
                             ),
                             Tensor::descriptor_value_range().component,

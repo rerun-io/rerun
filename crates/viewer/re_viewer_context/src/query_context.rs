@@ -38,7 +38,7 @@ pub struct QueryContext<'a> {
     pub archetype_name: Option<re_sdk_types::ArchetypeName>,
 
     /// Query which didn't yield a result for the component at the target entity path.
-    pub query: &'a re_chunk_store::LatestAtQuery,
+    pub query: re_chunk_store::LatestAtQuery,
 }
 
 impl QueryContext<'_> {

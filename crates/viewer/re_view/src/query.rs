@@ -9,7 +9,9 @@ use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_types_core::{Archetype, ComponentIdentifier};
-use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
+use re_viewer_context::{
+    DataResult, QueryContext, QueryRange, ViewContext, ViewQuery, ViewerContext,
+};
 
 use crate::blueprint_resolved_results::{
     BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults,
@@ -372,14 +374,19 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         }
     }
 
+    let query_context = QueryContext {
+        view_ctx: ctx,
+        target_entity_path: &data_result.entity_path,
+        instruction_id: visualizer_instruction.map(|instruction| instruction.id),
+        archetype_name: None,
+        query: latest_at_query.clone(),
+    };
+
     BlueprintResolvedLatestAtResults {
         overrides,
         store_results,
         view_defaults: &ctx.query_result.view_defaults,
-        instruction_id: visualizer_instruction.map(|instruction| instruction.id),
-        ctx,
-        query: latest_at_query.clone(),
-        data_result,
+        query_context,
         component_sources,
         component_indices_hash: Hash64::hash(&active_remappings),
     }

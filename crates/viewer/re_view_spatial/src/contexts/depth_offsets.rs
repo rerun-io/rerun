@@ -99,7 +99,7 @@ fn collect_draw_order_per_visualizer(
         .get_mono::<DrawOrder>(draw_order_descriptor.component)
         .unwrap_or_else(|| {
             *default_draw_order.get_or_insert_with(|| {
-                let ctx = ctx.query_context(data_result, &latest_at_query, instruction.id);
+                let ctx = ctx.query_context(data_result, latest_at_query.clone(), instruction.id);
                 determine_default_draworder(&ctx, draw_order_descriptor.component)
             })
         });

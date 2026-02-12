@@ -106,7 +106,7 @@ fn active_default_ui(
         target_entity_path: &view.defaults_path,
         instruction_id: None,
         archetype_name: None,
-        query,
+        query: query.clone(),
     };
 
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
@@ -309,7 +309,7 @@ fn add_popup_ui(
         target_entity_path: defaults_path,
         instruction_id: None,
         archetype_name: None,
-        query,
+        query: query.clone(),
     };
 
     // Present the option to add new components for each component that doesn't

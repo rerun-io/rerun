@@ -842,7 +842,7 @@ impl ComponentUiRegistry {
                 ctx.viewer_ctx(),
                 ui,
                 UiLayout::List,
-                ctx.query,
+                &ctx.query,
                 origin_db,
                 ctx.target_entity_path,
                 component_descr,

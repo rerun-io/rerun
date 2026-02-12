@@ -93,7 +93,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                     typed_fallback_for::<Length>(
                         &ctx.query_context(
                             data_result,
-                            &view_query.latest_at_query(),
+                            view_query.latest_at_query(),
                             instruction.id,
                         ),
                         BarChart::descriptor_widths().component,

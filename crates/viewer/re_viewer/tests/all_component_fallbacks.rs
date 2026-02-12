@@ -26,7 +26,7 @@ fn test_all_component_fallbacks() {
                 target_entity_path: &"/stockholm/södermalm/slussen".into(),
                 instruction_id: None,
                 archetype_name: Some(*arch_name),
-                query: &test_context.blueprint_query,
+                query: test_context.blueprint_query.clone(),
             };
             let mut arch_display = String::new();
 

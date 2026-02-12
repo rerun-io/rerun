@@ -31,7 +31,7 @@ impl<'a> ViewContext<'a> {
     pub fn query_context(
         &'a self,
         data_result: &'a DataResult,
-        query: &'a LatestAtQuery,
+        query: LatestAtQuery,
         instruction_id: VisualizerInstructionId,
     ) -> QueryContext<'a> {
         QueryContext {
@@ -47,7 +47,7 @@ impl<'a> ViewContext<'a> {
     pub fn query_context_without_visualizer(
         &'a self,
         data_result: &'a DataResult,
-        query: &'a LatestAtQuery,
+        query: LatestAtQuery,
     ) -> QueryContext<'a> {
         QueryContext {
             view_ctx: self,

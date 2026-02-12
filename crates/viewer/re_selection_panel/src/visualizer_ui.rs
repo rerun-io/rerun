@@ -206,7 +206,7 @@ fn visualizer_components(
     let query_info = visualizer.visualizer_query_info(ctx.viewer_ctx.app_options());
 
     let store_query = ctx.current_query();
-    let query_ctx = ctx.query_context(data_result, &store_query, instruction.id);
+    let query_ctx = ctx.query_context(data_result, store_query.clone(), instruction.id);
 
     // Query fully resolved data.
     let query_result = latest_at_with_blueprint_resolved_data(

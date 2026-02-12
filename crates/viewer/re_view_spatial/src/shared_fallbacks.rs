@@ -88,7 +88,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<archetypes::Pinhole>(
                                 ctx.view_ctx,
-                                ctx.query,
+                                &ctx.query,
                                 Some(camera_visualizer_instruction),
                             );
 

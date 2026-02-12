@@ -80,7 +80,8 @@ where
         let visualizer_instruction_result =
             VisualizerInstructionQueryResults::new(visualizer_instruction.id, &results, output);
 
-        let mut query_ctx = ctx.query_context(data_result, &latest_at, visualizer_instruction.id);
+        let mut query_ctx =
+            ctx.query_context(data_result, latest_at.clone(), visualizer_instruction.id);
         query_ctx.archetype_name = Some(A::name());
 
         {

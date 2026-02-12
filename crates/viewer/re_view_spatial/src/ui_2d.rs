@@ -174,7 +174,7 @@ impl SpatialView2D {
                     target_entity_path: query.space_origin,
                     instruction_id: None,
                     archetype_name: Some(archetypes::Pinhole::name()),
-                    query: &query.latest_at_query(),
+                    query: query.latest_at_query(),
                 };
                 Pinhole {
                     image_from_camera: pinhole.image_from_camera.0.into(),

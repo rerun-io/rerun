@@ -562,7 +562,10 @@ fn lookup_image_plane_distance(
                     .component_mono_quiet::<ImagePlaneDistance>(plane_dist_component)
                     .unwrap_or_else(|| {
                         typed_fallback_for(
-                            &ctx.query_context_without_visualizer(data_result, latest_at_query),
+                            &ctx.query_context_without_visualizer(
+                                data_result,
+                                latest_at_query.clone(),
+                            ),
                             plane_dist_component,
                         )
                     })
@@ -621,7 +624,7 @@ impl EntityTransformIdMapping {
 
     fn determine_frame_id_mapping_for(
         &mut self,
-        ctx: &ViewContext<'_>,
+        _ctx: &ViewContext<'_>,
         results: &BlueprintResolvedLatestAtResults<'_>,
     ) {
         let transform_frame_id_component =
@@ -632,11 +635,11 @@ impl EntityTransformIdMapping {
             .map_or_else(
                 || {
                     let fallback =
-                        TransformFrameIdHash::from_entity_path(&results.data_result.entity_path);
+                        TransformFrameIdHash::from_entity_path(results.entity_path());
                     // Make sure this is the same as the fallback provider (which is a lot slower to run)
                     debug_assert_eq!(
                         TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
-                            &ctx.query_context_without_visualizer(results.data_result, &results.query),
+                            results.query_context(),
                             transform_frame_id_component
                         )),
                         fallback
@@ -648,13 +651,13 @@ impl EntityTransformIdMapping {
                     if !is_mono {
                         re_log::warn_once!(
                             "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
-                            results.data_result.entity_path,
+                            results.entity_path(),
                         );
                     }
                     TransformFrameIdHash::new(&frame_id)},
             );
 
-        let entity_path_hash = results.data_result.entity_path.hash();
+        let entity_path_hash = results.entity_path().hash();
 
         match self.transform_frame_id_to_entity_path.entry(frame_id) {
             std::collections::hash_map::Entry::Vacant(entry) => {

@@ -9,7 +9,7 @@ use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_sdk_types::{ComponentIdentifier, blueprint::components::VisualizerInstructionId};
-use re_viewer_context::{DataResult, QueryContext, ViewContext, typed_fallback_for};
+use re_viewer_context::{QueryContext, typed_fallback_for};
 
 use crate::{
     ComponentMappingError,
@@ -26,11 +26,8 @@ pub struct BlueprintResolvedLatestAtResults<'a> {
     pub overrides: LatestAtResults,
     pub(crate) store_results: LatestAtResults,
     pub view_defaults: &'a LatestAtResults,
-    pub(crate) instruction_id: Option<VisualizerInstructionId>,
 
-    pub ctx: &'a ViewContext<'a>,
-    pub query: LatestAtQuery,
-    pub data_result: &'a DataResult,
+    pub(crate) query_context: QueryContext<'a>,
 
     pub(crate) component_sources:
         IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
@@ -197,7 +194,7 @@ impl BlueprintResolvedRangeResults<'_> {
     }
 }
 
-impl<'a> BlueprintResolvedLatestAtResults<'a> {
+impl BlueprintResolvedLatestAtResults<'_> {
     /// Utility for retrieving the first instance of a component.
     ///
     /// This operates on a single component at a time and does not handle
@@ -231,7 +228,7 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
         component: ComponentIdentifier,
     ) -> C {
         self.get_mono::<C>(component)
-            .unwrap_or_else(|| typed_fallback_for(&self.query_context(), component))
+            .unwrap_or_else(|| typed_fallback_for(self.query_context(), component))
     }
 
     /// Returns the raw arrow array for the given component's single cell.
@@ -251,15 +248,19 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
         unit_chunk.component_batch_raw(component)
     }
 
-    /// Builds a [`QueryContext`] from this result's context, data result, and query.
-    pub fn query_context(&'a self) -> QueryContext<'a> {
-        if let Some(instruction_id) = self.instruction_id {
-            self.ctx
-                .query_context(self.data_result, &self.query, instruction_id)
-        } else {
-            self.ctx
-                .query_context_without_visualizer(self.data_result, &self.query)
-        }
+    /// Returns the [`QueryContext`] for this result.
+    pub fn query_context(&self) -> &QueryContext<'_> {
+        &self.query_context
+    }
+
+    /// Returns the target entity path for this result.
+    pub fn entity_path(&self) -> &re_log_types::EntityPath {
+        self.query_context.target_entity_path
+    }
+
+    /// Returns the query used to produce this result.
+    pub fn query(&self) -> &LatestAtQuery {
+        &self.query_context.query
     }
 
     /// Returns the fallback arrow array for the given component.
@@ -271,10 +272,10 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
         component: ComponentIdentifier,
         component_type: Option<re_chunk::ComponentType>,
     ) -> ArrayRef {
-        self.ctx
-            .viewer_ctx
+        self.query_context
+            .viewer_ctx()
             .component_fallback_registry
-            .fallback_for(component, component_type, &self.query_context())
+            .fallback_for(component, component_type, self.query_context())
     }
 }
 

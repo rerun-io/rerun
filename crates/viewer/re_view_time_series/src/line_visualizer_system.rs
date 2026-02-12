@@ -103,7 +103,7 @@ impl SeriesLinesSystem {
         re_tracing::profile_function!();
 
         let current_query = ctx.current_query();
-        let query_ctx = ctx.query_context(data_result, &current_query, instruction.id);
+        let query_ctx = ctx.query_context(data_result, current_query.clone(), instruction.id);
 
         let time_range = util::determine_time_range(ctx, data_result)?;
 

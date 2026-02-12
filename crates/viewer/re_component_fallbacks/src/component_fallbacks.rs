@@ -14,7 +14,7 @@ pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
         // See https://github.com/rerun-io/rerun/issues/3852
         re_viewer_context::resolution_of_image_at(
             ctx.viewer_ctx(),
-            ctx.query,
+            &ctx.query,
             ctx.target_entity_path,
         )
         // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
@@ -37,7 +37,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                 .recording()
                 .latest_at_component::<components::TensorData>(
                     ctx.target_entity_path,
-                    ctx.query,
+                    &ctx.query,
                     archetypes::BarChart::descriptor_values().component,
                 )
                 && tensor.is_vector()
@@ -258,7 +258,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                 .recording()
                 .latest_at_component::<components::ImageFormat>(
                     ctx.target_entity_path,
-                    ctx.query,
+                    &ctx.query,
                     archetypes::DepthImage::descriptor_format().component,
                 )
                 .is_some_and(|(_index, format)| format.is_float());
@@ -273,7 +273,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                 .recording()
                 .latest_at_component::<components::ImageBuffer>(
                 ctx.target_entity_path,
-                ctx.query,
+                &ctx.query,
                 archetypes::DepthImage::descriptor_buffer().component,
             ) {
                 // TODO(andreas): What about overrides on the image format?
@@ -281,7 +281,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                     .recording()
                     .latest_at_component::<components::ImageFormat>(
                         ctx.target_entity_path,
-                        ctx.query,
+                        &ctx.query,
                         archetypes::DepthImage::descriptor_format().component,
                     )
                 {
@@ -318,7 +318,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         |ctx| {
             let blob = ctx.recording().latest_at_component::<components::Blob>(
                 ctx.target_entity_path,
-                ctx.query,
+                &ctx.query,
                 archetypes::EncodedDepthImage::descriptor_blob().component,
             );
             if let Some(((_time, row_id), blob)) = blob {
@@ -326,7 +326,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                     .recording()
                     .latest_at_component::<components::MediaType>(
                         ctx.target_entity_path,
-                        ctx.query,
+                        &ctx.query,
                         archetypes::EncodedDepthImage::descriptor_media_type().component,
                     )
                     .map(|(_, media_type)| media_type);
@@ -390,7 +390,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                 .recording()
                 .latest_at_component::<components::TensorData>(
                     ctx.target_entity_path,
-                    ctx.query,
+                    &ctx.query,
                     archetypes::Tensor::descriptor_data().component,
                 )
             {
@@ -487,7 +487,7 @@ fn show_labels_fallback(
     text_component: re_sdk_types::ComponentIdentifier,
 ) -> components::ShowLabels {
     let results = ctx.recording().latest_at(
-        ctx.query,
+        &ctx.query,
         ctx.target_entity_path,
         [instance_count_component, text_component],
     );
