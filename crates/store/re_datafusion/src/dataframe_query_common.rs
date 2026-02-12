@@ -41,8 +41,8 @@ use std::sync::Arc;
 /// rows with 32b of data. We are setting this lower as a reasonable first guess to avoid
 /// the pitfall of executing a single row at a time, but we will likely want to consider
 /// at some point moving to a dynamic sizing.
-const DEFAULT_BATCH_BYTES: u64 = 200 * 1024 * 1024;
-const DEFAULT_BATCH_ROWS: usize = 2048;
+pub(crate) const DEFAULT_BATCH_BYTES: u64 = 200 * 1024 * 1024;
+pub(crate) const DEFAULT_BATCH_ROWS: usize = 2048;
 
 /// Mapping of `rerun_segment_id` to set of `IndexValues` to be used for querying
 /// a specific set of index values per segment. If the option is None, then

@@ -35,7 +35,7 @@ def test_datafusion_write_table(entry_factory: EntryFactory, tmp_path: pathlib.P
     df_prior = ctx.table(table_name)
     prior_count = df_prior.count()
 
-    df_smaller = ctx.table(table_name).filter(col("id") < 5)
+    df_smaller = ctx.table(table_name).filter(col("id") < 5).cache()
     smaller_count = df_smaller.count()
 
     # Verify append mode

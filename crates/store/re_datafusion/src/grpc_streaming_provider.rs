@@ -2,6 +2,8 @@ use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
+use crate::batch_coalescer::coalescer::CoalescerOptions;
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
@@ -88,7 +90,7 @@ where
         _state: &dyn Session,
         projection: Option<&Vec<usize>>,
         _filters: &[Expr],
-        _limit: Option<usize>,
+        limit: Option<usize>,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         StreamingTableExec::try_new(
             self.schema.clone(),
@@ -102,6 +104,16 @@ where
             None,
         )
         .map(|e| Arc::new(e) as Arc<dyn ExecutionPlan>)
+        .map(|exec| {
+            Arc::new(SizedCoalesceBatchesExec::new(
+                exec,
+                CoalescerOptions {
+                    target_batch_rows: crate::dataframe_query_common::DEFAULT_BATCH_ROWS,
+                    target_batch_bytes: crate::dataframe_query_common::DEFAULT_BATCH_BYTES,
+                    max_rows: limit,
+                },
+            )) as Arc<dyn ExecutionPlan>
+        })
     }
 
     fn supports_filters_pushdown(

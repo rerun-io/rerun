@@ -4,7 +4,7 @@ use std::sync::Arc;
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
-use pyo3::types::PyAnyMethods as _;
+use pyo3::types::{PyAnyMethods as _, PyDict};
 use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
@@ -35,6 +35,27 @@ impl PyCatalogClientInternal {
     pub fn connection(&self) -> &ConnectionHandle {
         &self.connection
     }
+}
+
+fn setup_datafusion_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
+    let df_module = py.import("datafusion")?;
+
+    let config_options = PyDict::new(py);
+    config_options.set_item("datafusion.execution.coalesce_batches", "false")?;
+
+    let session_config = df_module.call_method1("SessionConfig", (config_options,))?;
+    let datafusion_ctx = df_module.call_method1("SessionContext", (session_config,))?;
+
+    let html_renderer = PyRerunHtmlTable::new(None, None);
+    let format_fn = df_module
+        .getattr("dataframe_formatter")
+        .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
+
+    if let Ok(format_fn) = format_fn {
+        let _ = format_fn.call1((html_renderer,))?;
+    }
+
+    Ok(datafusion_ctx.unbind())
 }
 
 #[pymethods]
@@ -72,23 +93,7 @@ impl PyCatalogClientInternal {
 
         let connection = ConnectionHandle::new(connection_registry, origin.clone());
 
-        let datafusion_ctx = py
-            .import("datafusion")
-            .and_then(|datafusion| Ok(datafusion.getattr("SessionContext")?.call0()?.unbind()))
-            .ok();
-
-        // Set up our renderer by default since we've already established datafusion
-        // is installed.
-        let html_renderer = PyRerunHtmlTable::new(None, None);
-
-        let format_fn = py
-            .import("datafusion")
-            .and_then(|datafusion| datafusion.getattr("dataframe_formatter"))
-            .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
-
-        if let Ok(format_fn) = format_fn {
-            let _ = format_fn.call1((html_renderer,))?;
-        }
+        let datafusion_ctx = setup_datafusion_context(py).ok();
 
         let ret = Self {
             origin,
