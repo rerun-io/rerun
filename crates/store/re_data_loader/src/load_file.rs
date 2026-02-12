@@ -232,7 +232,7 @@ pub(crate) fn load(
     let rx_loader = {
         let (tx_loader, rx_loader) = crossbeam::channel::unbounded();
 
-        let any_compatible_loader = crate::iter_loaders().map(|loader| {
+        let any_compatible_loader = crate::iter_loaders().any(|loader| {
             if let Some(contents) = contents.as_deref() {
                 let settings = settings.clone();
                 let tx_loader = tx_loader.clone();
@@ -250,9 +250,7 @@ pub(crate) fn load(
             } else {
                 false
             }
-        })
-            .reduce(|any_compatible, is_compatible| any_compatible || is_compatible)
-            .unwrap_or(false);
+        });
 
         // Implicitly closing `tx_loader`!
 
