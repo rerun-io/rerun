@@ -11,14 +11,15 @@ use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::menu::menu_style;
-use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
+use re_ui::{ComboItem, OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
     AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, TryShowEditUiResult,
     UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection, VisualizerComponentSource,
-    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem, VisualizerViewReport,
+    VisualizerInstruction, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
+    VisualizerViewReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -351,6 +352,10 @@ fn visualizer_components(
                 &query_info,
                 &raw_override,
                 &raw_default,
+                component_reports
+                    .iter()
+                    .find(|report| report.severity == VisualizerReportSeverity::Error)
+                    .map(|report| report.summary.clone()),
             );
         };
 
@@ -533,6 +538,7 @@ fn source_component_ui(
     query_info: &VisualizerQueryInfo,
     raw_override: &Option<ArrayRef>,
     raw_default: &ArrayRef,
+    current_selection_error: Option<String>,
 ) {
     let current = current_component_source(
         instruction,
@@ -558,6 +564,7 @@ fn source_component_ui(
                             raw_override,
                             raw_default,
                             &current,
+                            current_selection_error,
                         );
                     });
                 response.response.widget_info(|| {
@@ -584,6 +591,7 @@ fn source_component_items_ui(
     raw_override: &Option<ArrayRef>,
     raw_default: &ArrayRef,
     current: &VisualizerComponentSource,
+    mut current_selection_error: Option<String>,
 ) {
     let reflection = ctx.viewer_ctx.reflection();
 
@@ -637,7 +645,12 @@ fn source_component_items_ui(
             component_source_string(source)
         };
 
-        if ui.selectable_label(selected, label).clicked() {
+        let mut item = ComboItem::new(label).selected(selected);
+        if selected && let Some(error) = current_selection_error.take() {
+            item = item.error(Some(error));
+        }
+
+        if ui.add(item).clicked() {
             save_component_mapping(ctx, instruction, source.clone(), component_descr.component);
 
             if add_custom {

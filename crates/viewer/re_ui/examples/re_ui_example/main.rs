@@ -5,13 +5,16 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use crossbeam::channel::Receiver;
-use egui::{Modifiers, os};
+use egui::{ComboBox, Modifiers, Widget as _, os};
 use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::menu::menu_style;
 use re_ui::notifications::NotificationUi;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{
-    CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
-    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _, icons, list_item,
+    ComboItem, ComboItemHeader, CommandPalette, CommandPaletteAction, CommandPaletteUrl,
+    ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _, UICommand, UICommandSender,
+    UiExt as _, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
@@ -548,6 +551,32 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.warning_label("This is an example of a long warning label.");
             ui.success_label("This is an example of a long success label.");
             ui.info_label("This is an example of a long info label.");
+
+            ComboBox::new("combo_item_example", "")
+                .selected_text("ComboItem Example")
+                .popup_style(menu_style())
+                .height(300.0)
+                .show_ui(ui, |ui| {
+                    ui.add(ComboItemHeader::new("Recommended:"));
+
+                    ComboItem::new("vertex_normals")
+                        .error(Some("Invalid selector".to_owned()))
+                        .selected(true)
+                        .ui(ui);
+
+                    let mut code = SyntaxHighlightedBuilder::new();
+                    code.append_syntax("[")
+                        .append_primitive("0.000")
+                        .append_syntax(",")
+                        .append_primitive("0.000")
+                        .append_syntax("]");
+
+                    ui.add(ComboItemHeader::new("Other values:"));
+                    ComboItem::new("vertex_positions").ui(ui);
+                    ComboItem::new("Rerun default")
+                        .value(code.into_widget_text(ui.style()))
+                        .ui(ui);
+                });
         });
 
         ui.help_button(|ui| {

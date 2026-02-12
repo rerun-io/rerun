@@ -31,12 +31,14 @@ mod ui_ext;
 mod ui_layout;
 
 mod button;
+mod combo_item;
 #[cfg(feature = "testing")]
 pub mod testing;
 
 use egui::NumExt as _;
 
 pub use self::button::*;
+pub use self::combo_item::*;
 pub use self::command::{UICommand, UICommandSender};
 pub use self::command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl};
 pub use self::context_ext::ContextExt;

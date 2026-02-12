@@ -9,7 +9,7 @@ set -eu
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 if [ -z "${RUN_ID:-}" ]; then
-    RUN_ID=$(gh run list --branch "$BRANCH" --workflow "Rust" --json databaseId -q '.[0].databaseId')
+    RUN_ID=$(gh run list --branch "$BRANCH" --workflow "Reality: Pull-Request" --json databaseId -q '.[0].databaseId')
     echo "Downloading test results from run $RUN_ID from branch $BRANCH"
 else
     echo "Using provided RUN_ID: $RUN_ID"

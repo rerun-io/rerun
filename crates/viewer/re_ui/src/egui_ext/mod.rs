@@ -7,6 +7,8 @@ pub mod context_ext;
 mod mac_traffic_light_sizes;
 pub mod response_ext;
 pub(crate) mod widget_ext;
+mod widget_text_ext;
 
 #[cfg(target_os = "macos")]
 pub use mac_traffic_light_sizes::WindowChromeMetrics;
+pub use widget_text_ext::WidgetTextExt;

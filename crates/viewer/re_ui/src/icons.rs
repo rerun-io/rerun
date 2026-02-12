@@ -242,3 +242,4 @@ pub const DOWNLOAD: Icon = icon_from_path!("../data/icons/download.svg");
 
 // Other non-icon-sized images:
 pub const DROPDOWN_ARROW: Icon = icon_from_path!("../data/icons/dropdown_arrow.svg");
+pub const CHECKED: Icon = icon_from_path!("../data/icons/checked.svg");
