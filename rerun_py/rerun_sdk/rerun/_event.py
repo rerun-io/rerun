@@ -11,12 +11,18 @@ from typing_extensions import deprecated
 #       and the serialization code, which is in `viewer_event_from_json`.
 
 
-# Base class for all viewer events
 @dataclass
 class ViewerEventBase:
+    """Base class for all viewer events."""
+
     application_id: str
+    """The application ID of the recording that triggered the event."""
+
     recording_id: str
+    """The recording ID of the recording that triggered the event."""
+
     segment_id: str | None
+    """The segment ID of the recording that triggered the event, if any."""
 
     @property
     @deprecated("Use `segment_id` instead.")
@@ -24,45 +30,65 @@ class ViewerEventBase:
         return self.segment_id
 
 
-# Selection item types with proper type discrimination
 @dataclass
 class EntitySelectionItem:
+    """An entity selection item, representing a selected entity in the viewer."""
+
     @property
     def type(self) -> Literal["entity"]:
         return "entity"
 
     entity_path: str
+    """The entity path of the selected entity."""
+
     instance_id: int | None = None
+    """The instance ID of the selected entity, if any."""
+
     view_name: str | None = None
+    """The name of the view containing the selected entity, if any."""
+
     position: list[float] | None = None
+    """The 3D position of the selection, if any."""
 
 
 @dataclass
 class ViewSelectionItem:
+    """A view selection item, representing a selected view in the viewer."""
+
     @property
     def type(self) -> Literal["view"]:
         return "view"
 
     view_id: str
+    """The ID of the selected view."""
+
     view_name: str
+    """The name of the selected view."""
 
 
 @dataclass
 class ContainerSelectionItem:
+    """A container selection item, representing a selected container in the viewer."""
+
     @property
     def type(self) -> Literal["container"]:
         return "container"
 
     container_id: str
+    """The ID of the selected container."""
+
     container_name: str
+    """The name of the selected container."""
 
 
 SelectionItem = EntitySelectionItem | ViewSelectionItem | ContainerSelectionItem
+"""Union type for all possible selection item types."""
 
 
-# Concrete event classes
 @dataclass
 class PlayEvent(ViewerEventBase):
+    """Event triggered when the viewer starts playing."""
+
     @property
     def type(self) -> Literal["play"]:
         return "play"
@@ -70,6 +96,8 @@ class PlayEvent(ViewerEventBase):
 
 @dataclass
 class PauseEvent(ViewerEventBase):
+    """Event triggered when the viewer pauses playback."""
+
     @property
     def type(self) -> Literal["pause"]:
         return "pause"
@@ -77,44 +105,60 @@ class PauseEvent(ViewerEventBase):
 
 @dataclass
 class TimeUpdateEvent(ViewerEventBase):
+    """Event triggered when the current time changes in the viewer."""
+
     @property
     def type(self) -> Literal["time_update"]:
         return "time_update"
 
     time: float
+    """The new time value."""
 
 
 @dataclass
 class TimelineChangeEvent(ViewerEventBase):
+    """Event triggered when the active timeline changes in the viewer."""
+
     @property
     def type(self) -> Literal["timeline_change"]:
         return "timeline_change"
 
     timeline: str
+    """The name of the new active timeline."""
+
     time: float
+    """The current time value on the new timeline."""
 
 
 @dataclass
 class SelectionChangeEvent(ViewerEventBase):
+    """Event triggered when the selection changes in the viewer."""
+
     @property
     def type(self) -> Literal["selection_change"]:
         return "selection_change"
 
     items: list[SelectionItem]
+    """The list of currently selected items."""
 
 
 @dataclass
 class RecordingOpenEvent(ViewerEventBase):
+    """Event triggered when a recording is opened in the viewer."""
+
     @property
     def type(self) -> Literal["recording_open"]:
         return "recording_open"
 
     source: str
+    """The source of the recording (e.g. a URL or file path)."""
+
     version: str | None
+    """The version of the recording, if available."""
 
 
-# Union type for all possible event types
 ViewerEvent = PlayEvent | PauseEvent | TimeUpdateEvent | TimelineChangeEvent | SelectionChangeEvent | RecordingOpenEvent
+"""Union type for all possible viewer event types."""
 
 
 def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
