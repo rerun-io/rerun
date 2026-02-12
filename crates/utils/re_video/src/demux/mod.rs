@@ -324,14 +324,14 @@ impl VideoDataDescription {
     }
 
     fn sanity_check_samples(&self) -> Result<(), String> {
-        // Decode timestamps are strictly monotonically increasing.
+        // Decode timestamps are monotonically increasing.
         for (a, b) in self.samples.iter().tuple_windows() {
             if let SampleMetadataState::Present(a) = a
                 && let SampleMetadataState::Present(b) = b
                 && a.decode_timestamp > b.decode_timestamp
             {
                 return Err(format!(
-                    "Decode timestamps are not strictly monotonically increasing: {:?} {:?}",
+                    "Decode timestamps are not monotonically increasing: {:?} {:?}",
                     a.decode_timestamp, b.decode_timestamp
                 ));
             }
