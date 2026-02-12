@@ -69,7 +69,7 @@ pub fn garbage_collect_string_view_batch(batch: &RecordBatch) -> RecordBatch {
 
                 let gc_string = builder.finish();
 
-                debug_assert!(gc_string.data_buffers().len() <= 1); // buffer count can be 0 if the `ideal_buffer_size` is 0
+                re_log::debug_assert!(gc_string.data_buffers().len() <= 1); // buffer count can be 0 if the `ideal_buffer_size` is 0
 
                 Arc::new(gc_string)
             } else {

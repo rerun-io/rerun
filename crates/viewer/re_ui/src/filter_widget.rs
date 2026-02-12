@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
+use re_log::debug_assert;
 use smallvec::SmallVec;
 
 use crate::{UiExt as _, icons, list_item};

@@ -8,6 +8,8 @@ use arrow::array::{
 use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::Field;
 
+use re_log::debug_assert_eq;
+
 use crate::{Error, Transform};
 
 /// Extracts a field from a struct array.

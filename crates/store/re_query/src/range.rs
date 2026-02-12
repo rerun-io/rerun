@@ -301,7 +301,7 @@ impl RangeCache {
     ) -> (Vec<Chunk>, Vec<ChunkId>) {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
-        debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
+        re_log::debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
 
         // First, we forward the query as-is to the store.
         //
@@ -347,7 +347,7 @@ impl RangeCache {
             .into_iter()
             .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
             .map(|cached_sorted_chunk| {
-                debug_assert!(
+                re_log::debug_assert!(
                     cached_sorted_chunk
                         .chunk
                         .is_timeline_sorted(query.timeline())

@@ -618,7 +618,7 @@ impl ChunkStore {
             }
         }
 
-        debug_assert!(
+        re_log::debug_assert!(
             deletions.len() >= deletions_shallow.len() && {
                 let del_ids: ahash::HashSet<_> =
                     deletions.iter().map(|del| del.chunk.id()).collect();

@@ -475,7 +475,7 @@ fn query_overrides_at_path(
             let index = value.index(&ctx.blueprint_query.timeline());
 
             // NOTE: This can never happen, but I'd rather it happens than an unwrap.
-            debug_assert!(index.is_some(), "{value:#?}");
+            re_log::debug_assert!(index.is_some(), "{value:#?}");
             let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
 
             overrides.add(component, index, value.clone());

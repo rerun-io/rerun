@@ -165,7 +165,7 @@ impl TimeInt {
     }
 
     pub fn closest_multiple_of(&self, snap_interval: i64) -> Self {
-        debug_assert!(1 <= snap_interval);
+        re_log::debug_assert!(1 <= snap_interval);
         match self.0 {
             Some(t) => {
                 let v = t.get();

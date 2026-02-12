@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef as ArrowArrayRef};
+use re_log::debug_assert;
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::{Component, ComponentIdentifier};
 

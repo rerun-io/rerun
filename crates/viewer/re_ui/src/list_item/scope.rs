@@ -231,7 +231,7 @@ impl LayoutInfoStack {
                     Wrap all calls to ListItem in a list_item_scope()."
                 );
             }
-            debug_assert!(
+            re_log::debug_assert!(
                 state.is_some(),
                 "ListItem was not wrapped in list_item_scope()"
             );

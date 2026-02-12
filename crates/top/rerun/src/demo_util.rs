@@ -114,7 +114,7 @@ fn colormap_turbo_srgb(t: f32) -> [u8; 4] {
     const G2: Vec2 = Vec2::new(4.27729857, 2.82956604);
     const B2: Vec2 = Vec2::new(-89.90310912, 27.34824973);
 
-    debug_assert!((0.0..=1.0).contains(&t));
+    re_log::debug_assert!((0.0..=1.0).contains(&t));
 
     let v4 = glam::vec4(1.0, t, t * t, t * t * t);
     let v2 = v4.zw() * v4.z;

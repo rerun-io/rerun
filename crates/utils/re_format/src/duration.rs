@@ -1,4 +1,5 @@
 use itertools::Itertools as _;
+use re_log::debug_assert;
 
 use crate::{THIN_SPACE, format_uint};
 

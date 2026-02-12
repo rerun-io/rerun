@@ -107,9 +107,9 @@ impl ComponentType {
     #[track_caller]
     pub fn sanity_check(&self) {
         let full_type = self.0.as_str();
-        debug_assert!(
+        re_log::debug_assert!(
             !full_type.starts_with("rerun.components.rerun.components."),
-            "DEBUG ASSERT: Found component with full type {full_type:?}. Maybe some bad round-tripping?"
+            "Found component with full type {full_type:?}. Maybe some bad round-tripping?"
         );
     }
 

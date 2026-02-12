@@ -264,7 +264,7 @@ impl ImageInfo {
         } else {
             let num_channels = self.format.color_model().num_channels();
 
-            debug_assert!(channel < num_channels as u32);
+            re_log::debug_assert!(channel < num_channels as u32);
             if num_channels as u32 <= channel {
                 return None;
             }

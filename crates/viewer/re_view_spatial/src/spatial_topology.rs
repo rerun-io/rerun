@@ -5,6 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
     ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
+use re_log::debug_assert;
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_sdk_types::Component as _;
 use re_sdk_types::components::{PinholeProjection, ViewCoordinates};

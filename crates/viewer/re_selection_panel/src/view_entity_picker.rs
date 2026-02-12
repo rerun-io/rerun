@@ -193,7 +193,7 @@ fn add_entities_line_ui(
 
     let Some(add_info) = entities_add_info.get(entity_path) else {
         // No add info implies that there can't be an add line ui, shouldn't get here.
-        debug_assert!(false, "No add info for entity path: {entity_path:?}");
+        re_log::debug_panic!("No add info for entity path: {entity_path:?}");
         return;
     };
 

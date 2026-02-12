@@ -32,6 +32,7 @@ default = []
 # Rerun dependencies:
 re_arrow_util.workspace = true
 re_dataframe.workspace = true
+re_log.workspace = true
 re_redap_client.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true

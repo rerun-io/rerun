@@ -17,7 +17,7 @@ pub fn execute_per_row(expr: &Expr, source: &ListArray) -> Result<ListArray, cra
     // TODO(grtlr): It would be much cleaner if `MapList` (or equivalent would be called on this level).
     let result = expr.transform(source)?;
 
-    debug_assert_eq!(
+    re_log::debug_assert_eq!(
         result.len(),
         source.len(),
         "selectors should never change row count"

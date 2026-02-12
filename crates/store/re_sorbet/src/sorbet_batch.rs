@@ -190,7 +190,7 @@ impl SorbetBatch {
             batch.columns()
         )
         .map(|(old_field, mut new_field, column)| {
-            debug_assert_eq!(new_field.data_type(), column.data_type());
+            re_log::debug_assert_eq!(new_field.data_type(), column.data_type());
 
             let mut metadata = old_field.metadata().clone();
             metadata.extend(new_field.metadata().clone()); // overwrite old with new

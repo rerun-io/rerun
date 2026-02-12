@@ -9,6 +9,7 @@
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
+use re_log::debug_assert_eq;
 use re_mutex::Mutex;
 use smallvec::smallvec;
 
@@ -268,7 +269,7 @@ impl PickingLayerProcessor {
 
         // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
         // This is "trivially true" if the size of the depth format is a multiple of the size of the id format.
-        debug_assert!(
+        re_log::debug_assert!(
             Self::PICKING_LAYER_FORMAT.block_copy_size(None).unwrap()
                 % Self::PICKING_LAYER_DEPTH_FORMAT
                     .block_copy_size(Some(wgpu::TextureAspect::DepthOnly))

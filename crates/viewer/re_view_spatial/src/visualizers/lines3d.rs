@@ -108,7 +108,7 @@ impl Lines3DVisualizer {
 
                 num_rendered_strips += 1;
             }
-            debug_assert_eq!(
+            re_log::debug_assert_eq!(
                 data.strips.len(),
                 num_rendered_strips,
                 "the number of renderer strips after all post-processing is done should be equal to {} (got {num_rendered_strips} instead)",

@@ -181,7 +181,7 @@ fn unwrap(res: std::io::Result<f32>, component: &str) -> f32 {
     match res {
         Ok(x) => x,
         Err(err) => {
-            debug_assert!(false, "failed to read `{component}`: {err}");
+            re_log::debug_panic!("failed to read `{component}`: {err}");
             f32::NAN
         }
     }

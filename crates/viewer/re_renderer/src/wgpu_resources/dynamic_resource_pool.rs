@@ -166,8 +166,7 @@ where
             );
             for resource in resources {
                 let Some(removed_resource) = state.all_resources.remove(resource) else {
-                    debug_assert!(
-                        false,
+                    re_log::debug_panic!(
                         "a resource was marked as destroyed last frame that we no longer kept track of"
                     );
                     continue;

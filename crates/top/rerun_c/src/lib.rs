@@ -52,9 +52,9 @@ impl CStringView {
         if self.is_empty() {
             Ok("")
         } else {
-            debug_assert!(
+            re_log::debug_assert!(
                 1000 < self.string.addr() && self.length < 1_000_000,
-                "DEBUG ASSERT: Suspected memory corruption when reading argument {argument_name:?}: {self:#?}"
+                "Suspected memory corruption when reading argument {argument_name:?}: {self:#?}"
             );
             ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
         }

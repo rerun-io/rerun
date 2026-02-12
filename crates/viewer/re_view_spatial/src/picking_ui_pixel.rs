@@ -588,7 +588,7 @@ fn pixel_value_string_from_gpu_texture(
     let readback_result_rgb = readback_belt.readback_newest_available(
         readback_id,
         |data, userdata: Box<TextureReadbackUserdata>| {
-            debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);
+            re_log::debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);
 
             // Try to find the pixel at the mouse position.
             // If our position isn't available, just clamp to the edge of the area.

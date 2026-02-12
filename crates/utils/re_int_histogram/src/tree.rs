@@ -6,6 +6,7 @@
 //! There are branch nodes, and two types of leaf nodes: dense, and sparse.
 //! Dense leaves are only found at the very bottom of the trie.
 
+use re_log::{debug_assert, debug_assert_eq};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{RangeI64, RangeU64, i64_key_from_u64_key, u64_key_from_i64_key};
@@ -923,6 +924,8 @@ impl re_byte_size::SizeBytes for DenseLeaf {
 #[cfg(test)]
 mod tests {
     #![expect(clippy::cast_possible_wrap)] // ok in tests
+
+    use re_log::debug_assert_eq;
 
     use super::*;
 

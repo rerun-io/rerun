@@ -13,7 +13,7 @@ pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialV
     } else if class == crate::SpatialView2D::identifier() {
         SpatialViewKind::TwoD
     } else {
-        debug_assert!(false, "Not a spatial view class identifier {class:?}");
+        re_log::debug_panic!("Not a spatial view class identifier {class:?}");
         SpatialViewKind::TwoD
     }
 }

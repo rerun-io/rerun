@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::array::{Array, RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Field, Schema};
-use re_log::ResultExt as _;
+use re_log::{ResultExt as _, debug_panic};
 
 pub struct Migration;
 
@@ -44,10 +44,7 @@ fn drop_indicators(batch: RecordBatch) -> RecordBatch {
                 val.starts_with("rerun.components.") && val.ends_with("Indicator")
             }) {
                 let Some(indicator) = field.metadata().get("rerun:component") else {
-                    debug_assert!(
-                        false,
-                        "missing 'rerun:component' entry that should be present"
-                    );
+                    debug_panic!("missing 'rerun:component' entry that should be present");
                     return Some(i);
                 };
                 re_log::debug_once!("Dropping column because 'rerun:component' is '{indicator}'",);

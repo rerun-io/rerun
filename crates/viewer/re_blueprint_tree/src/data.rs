@@ -12,6 +12,7 @@ use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
 use re_entity_db::InstancePath;
+use re_log::debug_assert;
 use re_log_types::EntityPath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;

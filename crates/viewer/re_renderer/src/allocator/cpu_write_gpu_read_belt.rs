@@ -1,5 +1,7 @@
 use std::sync::mpsc;
 
+use re_log::debug_assert;
+
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture};
 
@@ -134,7 +136,7 @@ where
         if true {
             let vec: Vec<T> = elements.collect();
 
-            debug_assert_eq!(
+            re_log::debug_assert_eq!(
                 vec.as_ptr() as usize % std::mem::align_of::<T>(),
                 0,
                 "Vec::collect collects into unaligned memory! Is this a bug in the allocator?"

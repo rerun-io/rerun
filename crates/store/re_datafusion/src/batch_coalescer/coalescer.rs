@@ -121,7 +121,7 @@ impl SizedBatchCoalescer {
         {
             // Limit is reached
             let remaining_rows = max_rows - self.state.total_rows;
-            debug_assert!(remaining_rows > 0);
+            re_log::debug_assert!(remaining_rows > 0);
 
             let batch = batch.slice(0, remaining_rows);
             self.state.buffered_rows += batch.num_rows();

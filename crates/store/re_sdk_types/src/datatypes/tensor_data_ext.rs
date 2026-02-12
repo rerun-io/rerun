@@ -204,7 +204,7 @@ macro_rules! tensor_from_ndarray {
                         vec.drain(..offset);
                         vec
                     } else {
-                        debug_assert!(vec.is_empty());
+                        re_log::debug_assert!(vec.is_empty());
                         vec
                     }
                 } else {

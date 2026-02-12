@@ -7,7 +7,7 @@
 
 use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj, Simulation};
-use re_log::error_once;
+use re_log::{debug_assert, debug_panic, error_once};
 
 use super::params::ForceLayoutParams;
 use super::request::NodeTemplate;
@@ -205,7 +205,7 @@ impl ForceLayoutProvider {
 
             for (node, template) in &graph.nodes {
                 let pos = positions.next().unwrap_or_else(|| {
-                    debug_assert!(false, "not enough positions returned for layout request");
+                    debug_panic!("not enough positions returned for layout request");
                     error_once!("not enough positions returned for layout request");
                     Pos2::ZERO
                 });

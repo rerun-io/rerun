@@ -1,5 +1,6 @@
 use fixed::FixedI128;
 use fixed::traits::LossyInto as _;
+use re_log::debug_assert;
 
 use super::NonMinI64;
 use crate::TimeInt;

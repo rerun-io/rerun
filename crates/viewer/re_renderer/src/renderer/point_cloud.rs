@@ -624,8 +624,7 @@ impl Renderer for PointCloudRenderer {
                 _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
             };
             let Some(bind_group_all_points) = bind_group_all_points else {
-                debug_assert!(
-                    false,
+                re_log::debug_panic!(
                     "Point data bind group for draw phase {phase:?} was not set despite being submitted for drawing."
                 );
                 continue;

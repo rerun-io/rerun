@@ -123,9 +123,9 @@ impl UiLayout {
             // This will make the tooltip too wide.
             // TODO(#11211): do proper fix
 
-            debug_assert!(
+            re_log::debug_assert!(
                 galley.size().x < ui.spacing().tooltip_width + 1000.0,
-                "DEBUG ASSERT: adding huge galley with width: {} to a tooltip.",
+                "adding huge galley with width: {} to a tooltip.",
                 galley.size().x
             );
 

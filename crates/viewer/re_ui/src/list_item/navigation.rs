@@ -74,7 +74,7 @@ impl ListItemNavigation {
     /// Call this _only_ if [`Self::init_if_root`] returned true.
     pub fn end_if_root(ctx: &Context) {
         let navigation = ctx.data_mut(|d| d.remove_temp::<Self>(Id::NULL));
-        debug_assert!(navigation.is_some(), "Expected to find ListItemNavigation");
+        re_log::debug_assert!(navigation.is_some(), "Expected to find ListItemNavigation");
 
         let Some(navigation) = navigation else {
             return;

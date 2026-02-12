@@ -134,7 +134,7 @@ impl ::re_types_core::Loggable for Range1D {
                 ZipValidity::new_with_validity(offsets, arrow_data.nulls())
                     .map(|elem| {
                         elem.map(|(start, end): (usize, usize)| {
-                            debug_assert!(end - start == 2usize);
+                            re_log::debug_assert!(end - start == 2usize);
                             if arrow_data_inner.len() < end {
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end),

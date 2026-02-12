@@ -715,7 +715,7 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
 
         for (&location, &latency_sec) in &secs_since_log {
             if location == TimestampLocation::Log {
-                debug_assert_eq!(latency_sec, 0.0);
+                re_log::debug_assert_eq!(latency_sec, 0.0);
             } else {
                 let latency_since_previous = latency_sec - previous;
                 previous = latency_sec;

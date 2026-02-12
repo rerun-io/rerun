@@ -149,7 +149,7 @@ impl RowId {
 
     /// Panics if the array is of the wrong width
     pub fn slice_from_arrow(array: &arrow::array::FixedSizeBinaryArray) -> &[Self] {
-        debug_assert_eq!(array.data_type(), &Self::arrow_datatype());
+        re_log::debug_assert_eq!(array.data_type(), &Self::arrow_datatype());
         bytemuck::cast_slice(array.value_data())
     }
 }

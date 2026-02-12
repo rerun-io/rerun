@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use arrow::array::{RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Fields, Schema};
-use re_log::ResultExt as _;
+use re_log::{ResultExt as _, debug_assert};
 
 fn trim_archetype_prefix(name: &str) -> &str {
     name.trim()

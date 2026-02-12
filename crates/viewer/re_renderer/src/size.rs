@@ -1,3 +1,5 @@
+use re_log::debug_assert;
+
 /// A size of something in either scene units or ui points.
 ///
 /// Implementation:

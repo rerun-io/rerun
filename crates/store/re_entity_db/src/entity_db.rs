@@ -16,6 +16,7 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
     ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
+use re_log::{debug_assert, debug_assert_eq};
 use re_log_channel::LogSource;
 use re_log_encoding::RrdManifest;
 use re_log_types::{

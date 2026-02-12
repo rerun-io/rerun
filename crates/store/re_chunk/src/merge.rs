@@ -62,7 +62,7 @@ impl Chunk {
             izip!(self.timelines.iter(), rhs.timelines.iter())
                 .filter_map(
                     |((lhs_timeline, lhs_time_chunk), (rhs_timeline, rhs_time_chunk))| {
-                        debug_assert_eq!(lhs_timeline, rhs_timeline);
+                        re_log::debug_assert_eq!(lhs_timeline, rhs_timeline);
                         lhs_time_chunk
                             .concatenated(rhs_time_chunk)
                             .map(|time_column| (*lhs_timeline, time_column))

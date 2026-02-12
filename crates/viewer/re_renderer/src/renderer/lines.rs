@@ -759,8 +759,7 @@ impl Renderer for LineRenderer {
                 _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
             };
             let Some(bind_group_draw_data) = bind_group_draw_data else {
-                debug_assert!(
-                    false,
+                re_log::debug_panic!(
                     "Line data bind group for draw phase {phase:?} was not set despite being submitted for drawing."
                 );
                 continue;

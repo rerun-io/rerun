@@ -455,7 +455,7 @@ impl MessageLayer for McapRos2ReflectionLayer {
                 .schemas_per_topic
                 .insert(channel.topic.clone(), message_schema);
 
-            debug_assert!(
+            re_log::debug_assert!(
                 found.is_none(),
                 "Duplicate schema for topic {}",
                 channel.topic

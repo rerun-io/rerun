@@ -691,7 +691,7 @@ impl QueryResults {
                 .extend(this.chunks.iter().map(|c| c.id()));
         }
 
-        debug_assert!(
+        re_log::debug_assert!(
             this.chunks
                 .iter()
                 .map(|chunk| chunk.id())

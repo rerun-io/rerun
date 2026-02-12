@@ -31,6 +31,9 @@ disallowed-macros = [
 
   { path = "egui::hex_color", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
 
+  { path = "std::debug_assert", reason = "Use `re_log::debug_assert` instead" },
+  { path = "std::debug_assert_eq", reason = "Use `re_log::debug_assert_eq` instead" },
+
   # TODO(emilk): consider forbidding these to encourage the use of proper log stream, and then explicitly allow legitimate uses
   # 'std::eprint',
   # 'std::eprintln',

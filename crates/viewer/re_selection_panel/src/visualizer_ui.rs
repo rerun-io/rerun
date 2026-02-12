@@ -268,9 +268,9 @@ fn visualizer_components(
                 Ok(chunks) => {
                     let row_id_and_non_empty_raw_array = chunks.chunks.first().and_then(|chunk| {
                         let unit_chunk = chunk.clone().into_unit();
-                        debug_assert!(
+                        re_log::debug_assert!(
                             unit_chunk.is_some(),
-                            "DEBUG ASSERT: Expected unit chunk from latest-at query"
+                            "Expected unit chunk from latest-at query"
                         );
                         unit_chunk?.non_empty_component_batch_raw(target_component)
                     });

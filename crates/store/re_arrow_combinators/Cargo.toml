@@ -21,6 +21,7 @@ all-features = true
 
 [dependencies]
 re_arrow_util.workspace = true
+re_log.workspace = true
 
 arrow.workspace = true
 thiserror.workspace = true

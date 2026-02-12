@@ -198,7 +198,7 @@ fn atomic_latest_at_query(
         };
 
         if let Some(row_index) = highest_row_index_with_expected_frame_id {
-            debug_assert!(!chunk.is_empty());
+            re_log::debug_assert!(!chunk.is_empty());
             let new_unit_chunk = chunk.row_sliced_shallow(row_index, 1).into_unit()
                 .expect("Chunk was just sliced to single row, therefore it must be convertible to a unit chunk");
 

@@ -1,4 +1,5 @@
 use bytemuck::Pod;
+use re_log::debug_assert;
 
 use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 use crate::wgpu_resources::{self, GpuTexture};
@@ -336,7 +337,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         debug_assert!(!texture_format.has_depth_aspect());
         debug_assert!(!texture_format.has_stencil_aspect());
         debug_assert!(!texture_format.is_compressed());
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             texture_format
                 .block_copy_size(None)
                 .expect("Depth/stencil formats are not supported as data textures"),

@@ -83,7 +83,7 @@ impl StoreBundle {
     ///
     /// Like [`Self::entry`] but also sets `StoreInfo` to a default value.
     pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        debug_assert!(id.is_blueprint());
+        re_log::debug_assert!(id.is_blueprint());
 
         self.recording_store.entry(id.clone()).or_insert_with(|| {
             // TODO(jleibs): If the blueprint doesn't exist this probably means we are

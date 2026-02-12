@@ -65,7 +65,7 @@ impl<'a> AppBlueprint<'a> {
         };
 
         if let Some(blueprint_db) = blueprint_db {
-            debug_assert_eq!(
+            re_log::debug_assert_eq!(
                 blueprint_db.store_kind(),
                 re_log_types::StoreKind::Blueprint,
                 "the entity db backing an app blueprint has to be a blueprint store."

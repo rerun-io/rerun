@@ -722,8 +722,7 @@ impl VideoPlayer {
 
             self.enqueue_sample_range(video_description, &sample_range, get_video_buffer)
         } else {
-            debug_assert!(
-                false,
+            re_log::debug_panic!(
                 "[DEBUG] Tried to enqueue gop starting after max samples to enqueue"
             );
             Ok(())

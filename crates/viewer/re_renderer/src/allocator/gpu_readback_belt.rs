@@ -1,6 +1,8 @@
 use std::ops::Range;
 use std::sync::mpsc;
 
+use re_log::debug_assert;
+
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
 

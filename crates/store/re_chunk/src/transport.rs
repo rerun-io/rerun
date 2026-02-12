@@ -65,7 +65,7 @@ impl Chunk {
 
                     let array = info.times_array();
 
-                    debug_assert_eq!(&timeline.datatype(), array.data_type());
+                    re_log::debug_assert_eq!(&timeline.datatype(), array.data_type());
 
                     let schema =
                         re_sorbet::IndexColumnDescriptor::from_timeline(*timeline, *is_sorted);

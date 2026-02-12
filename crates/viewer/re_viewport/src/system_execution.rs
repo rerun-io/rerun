@@ -177,7 +177,7 @@ pub fn execute_systems_for_all_views<'a>(
                 egui_tiles::Tile::Pane(view_id) => {
                     let view = views.get(view_id)?;
                     let Some(view_state) = view_states.get(*view_id) else {
-                        debug_assert!(false, "View state for view {view_id:?} not found. That shouldn't be possible since we just ensured they exist above.");
+                        re_log::debug_panic!("View state for view {view_id:?} not found. That shouldn't be possible since we just ensured they exist above.");
                         return None;
                     };
 

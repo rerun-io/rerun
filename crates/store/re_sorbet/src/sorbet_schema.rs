@@ -130,7 +130,7 @@ impl SorbetSchema {
     pub(crate) fn try_from_migrated_arrow_schema(
         arrow_schema: &ArrowSchema,
     ) -> Result<Self, SorbetError> {
-        debug_assert!(
+        re_log::debug_assert!(
             !arrow_schema.metadata.contains_key("rerun.id"),
             "The schema should not contain the legacy 'rerun.id' key, because it should have already been migrated to 'rerun:id'."
         );

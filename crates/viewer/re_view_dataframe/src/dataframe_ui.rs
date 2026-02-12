@@ -414,7 +414,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
         let table_style = self.table_style;
 
-        debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
+        re_log::debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
 
         let display_data = match &self.display_data {
             Ok(display_data) => display_data,

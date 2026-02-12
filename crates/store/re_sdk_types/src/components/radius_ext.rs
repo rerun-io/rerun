@@ -1,3 +1,4 @@
+use re_log::debug_assert;
 use re_types_core::datatypes::Float32;
 
 use super::Radius;

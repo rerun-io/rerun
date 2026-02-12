@@ -8,6 +8,7 @@ use std::sync::Arc;
 use egui::epaint::Vertex;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
 use re_chunk_store::{ChunkTrackingMode, RangeQuery};
+use re_log::debug_assert;
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
@@ -530,10 +531,10 @@ pub fn data_density_graph_ui(
         DensityGraphBuilderConfig::default(),
     );
 
-    debug_assert_eq!(
+    re_log::debug_assert_eq!(
         num_missing_chunk_ids_before,
         db.storage_engine().store().num_missing_chunk_ids(),
-        "DEBUG ASSERT: The density graph should not request new chunks. (This assert assumes single-threaded access to the store)."
+        "The density graph should not request new chunks. (This assert assumes single-threaded access to the store)."
     );
 
     data.density_graph.buckets = smooth(&data.density_graph.buckets);

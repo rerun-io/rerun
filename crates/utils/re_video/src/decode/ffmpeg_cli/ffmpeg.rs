@@ -9,6 +9,7 @@ use ffmpeg_sidecar::child::FfmpegChild;
 use ffmpeg_sidecar::command::FfmpegCommand;
 use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use h264_reader::nal::UnitType;
+use re_log::debug_assert;
 use re_quota_channel::{Receiver, SendError, Sender};
 
 use super::version::FFmpegVersionParseError;
@@ -652,7 +653,7 @@ impl FrameBuffer {
             timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
         } = frame;
 
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             data.len() * 8,
             (width * height * pixel_format.bits_per_pixel()) as usize
         );

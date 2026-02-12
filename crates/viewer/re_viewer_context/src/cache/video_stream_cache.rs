@@ -11,6 +11,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, Timeline, TimelineName};
 use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent};
 use re_entity_db::EntityDb;
+use re_log::{debug_assert, debug_panic};
 use re_log_types::{EntityPathHash, TimeType, VecDequeSortingExt as _};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components;
@@ -639,10 +640,7 @@ fn handle_split_chunk_addition(
 
                 idx
             } else {
-                debug_assert!(
-                    false,
-                    "Split chunks ended up with more samples than the original chunk?"
-                );
+                debug_panic!("Split chunks ended up with more samples than the original chunk?");
 
                 old_known_range.last_sample
             }
@@ -664,10 +662,7 @@ fn handle_split_chunk_addition(
 
         res
     } else {
-        debug_assert!(
-            false,
-            "This should've been inserted above in `handle_samples`"
-        );
+        debug_panic!("This should've been inserted above in `handle_samples`");
         Ok(())
     }
 }
@@ -970,7 +965,7 @@ fn read_samples_from_known_chunk(
 
     {
         let _samples_iter = samples_iter;
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             _samples_iter
                 .map(|(idx, s)| (idx, s.source_id()))
                 .collect::<Vec<_>>()

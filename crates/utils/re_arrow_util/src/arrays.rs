@@ -9,6 +9,7 @@ use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer};
 use arrow::datatypes::{DataType, Field, UInt8Type};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
+use re_log::debug_assert;
 
 // ---------------------------------------------------------------------------------
 
@@ -413,7 +414,7 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
     // reallocate the inner array so that it is dense (non-nullable),
     // and use an offset-buffer with zero-length lists for the nulls.
 
-    debug_assert_eq!(field.data_type(), array.data_type());
+    re_log::debug_assert_eq!(field.data_type(), array.data_type());
 
     let item_field = Arc::new(Field::new(
         "item",

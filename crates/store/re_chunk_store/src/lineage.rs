@@ -449,9 +449,9 @@ impl ChunkStore {
                 let lineage = store.chunks_lineage.get(chunk_id);
                 match lineage {
                     Some(ChunkDirectLineage::SplitFrom(_chunk_id, _sibling_ids)) => {
-                        debug_assert!(
+                        re_log::debug_assert!(
                             !compaction_found,
-                            "DEBUG ASSERT: Chunk {chunk_id} mixes compaction and splitting in its lineage tree"
+                            "Chunk {chunk_id} mixes compaction and splitting in its lineage tree"
                         );
                         true
                     }

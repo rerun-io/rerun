@@ -6,6 +6,7 @@ use nohash_hasher::IntMap;
 use re_arrow_combinators::extract_nested_fields;
 use re_chunk::{ArchetypeName, ComponentIdentifier, ComponentType};
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
+use re_log::{debug_assert, debug_panic};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_sdk_types::ComponentSet;
 
@@ -364,9 +365,8 @@ fn insert_datatype_match(
             if let VisualizableReason::DatatypeMatchAny { matches } = occupied_entry.get_mut() {
                 matches.insert(component, match_info);
             } else {
-                debug_assert!(
-                    false,
-                    "[DEBUG ASSERT] entity {entity_path:?} already marked visualizable for visualizer {visualizer:?} with a different reason than `DatatypeMatchAny`",
+                debug_panic!(
+                    "entity {entity_path:?} already marked visualizable for visualizer {visualizer:?} with a different reason than `DatatypeMatchAny`",
                 );
             }
         }

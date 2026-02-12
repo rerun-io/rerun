@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use re_chunk::{ChunkId, TimelineName};
+use re_log::debug_assert;
 use re_log_types::AbsoluteTimeRange;
 
 use crate::{ChunkStore, ChunkStoreEvent};

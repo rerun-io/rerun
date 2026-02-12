@@ -4,7 +4,7 @@ use ahash::HashMap;
 use re_chunk::{ComponentIdentifier, RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
-use re_log::ResultExt as _;
+use re_log::{ResultExt as _, debug_assert_eq};
 use re_log_types::{Instance, StoreId};
 use re_sdk_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};

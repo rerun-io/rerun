@@ -16,6 +16,7 @@
 //! `re_ui::notifications` for more information.
 
 mod channel_logger;
+mod debug_assert;
 mod result_extensions;
 
 #[cfg(feature = "setup")]

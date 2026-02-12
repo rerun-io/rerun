@@ -106,7 +106,7 @@ impl ShareModal {
     ) {
         let Some(url) = &mut self.url else {
             // Happens only if the modal is closed anyways.
-            debug_assert!(!self.modal.is_open());
+            re_log::debug_assert!(!self.modal.is_open());
             return;
         };
 

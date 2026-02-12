@@ -267,8 +267,8 @@ pub fn quote_arrow_serializer(
                             1 + num_variants) // +1 for the virtual `nulls` arm
                         .collect();
 
-                    debug_assert_eq!(field_type_ids.len(), fields.len());
-                    debug_assert_eq!(fields.len(), children.len());
+                    re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+                    re_log::debug_assert_eq!(fields.len(), children.len());
 
                     as_array_ref(UnionArray::try_new(
                         UnionFields::new(field_type_ids, fields),
@@ -433,8 +433,8 @@ pub fn quote_arrow_serializer(
                     let offsets = #quoted_offsets;
                     let children = #quoted_children;
 
-                    debug_assert_eq!(field_type_ids.len(), fields.len());
-                    debug_assert_eq!(fields.len(), children.len());
+                    re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+                    re_log::debug_assert_eq!(fields.len(), children.len());
 
                     as_array_ref(UnionArray::try_new(
                         UnionFields::new(field_type_ids, fields),

@@ -5,6 +5,7 @@ use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
+use re_log::debug_assert;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 
 use crate::TransformFrameIdHash;

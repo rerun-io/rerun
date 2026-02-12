@@ -1,5 +1,6 @@
 use enumset::__internal::EnumSetTypePrivate as _;
 use enumset::EnumSet;
+use re_log::{debug_assert, debug_panic};
 
 use super::DrawPhase;
 use crate::context::Renderers;
@@ -30,7 +31,8 @@ impl PackedRenderingKeyAndDrawDataIndex {
     #[inline]
     const fn new(renderer_key: RendererTypeId, draw_data_index: DrawDataIndex) -> Self {
         // 24 bits for the draw data index. Should be enough for anyone ;-).
-        debug_assert!(draw_data_index < 0xFFFFFF);
+        #![expect(clippy::disallowed_macros)] // Need to use the `std` macro in const contextss
+        std::debug_assert!(draw_data_index < 0xFFFFFF);
 
         Self(((renderer_key.bits() as u32) << 24) | draw_data_index)
     }
@@ -216,8 +218,7 @@ impl DrawPhaseManager {
             );
 
             let Some(renderer) = renderers.get_by_key(renderer_key) else {
-                debug_assert!(
-                    false,
+                debug_panic!(
                     "Previously acquired renderer not found by key. Since renderers are never deleted this should be impossible."
                 );
                 continue;

@@ -7,6 +7,7 @@ use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
+use re_log::debug_assert;
 use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 
 use crate::store::ChunkIdSetPerTime;

@@ -7,6 +7,7 @@ use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, ChunkTrackingMode, LatestAtQuery, TimeInt};
+use re_log::debug_assert;
 use re_log_types::EntityPath;
 use re_types_core::components::ClearIsRecursive;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -706,7 +707,7 @@ impl LatestAtCache {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_scope!("latest_at", format!("{component_type} @ {query:?}"));
 
-        debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
+        re_log::debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
 
         let Self {
             cache_key: _,

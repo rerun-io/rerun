@@ -514,7 +514,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
 
 /// Is this a supported file extension by any of our builtin [`DataLoader`]s?
 pub fn is_supported_file_extension(extension: &str) -> bool {
-    debug_assert!(
+    re_log::debug_assert!(
         !extension.starts_with('.'),
         "Expected extension without period, but got {extension:?}"
     );

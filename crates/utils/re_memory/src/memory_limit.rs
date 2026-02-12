@@ -143,7 +143,7 @@ impl MemoryLimit {
     ///
     /// `fraction` should be between 0.0 and 1.0.
     pub fn split(self, fraction: f32) -> (Self, Self) {
-        debug_assert!(
+        re_log::debug_assert!(
             (0.0..=1.0).contains(&fraction),
             "fraction must be between 0.0 and 1.0, got {fraction}"
         );

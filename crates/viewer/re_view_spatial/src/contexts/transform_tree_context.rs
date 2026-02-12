@@ -296,8 +296,7 @@ impl ViewContextSystem for TransformTreeContext {
             let Some(frame_transforms) =
                 transforms_for_timeline.frame_transforms(transform_frame_id_hash)
             else {
-                debug_assert!(
-                    false,
+                re_log::debug_panic!(
                     "No tree transforms found for frame id hash {transform_frame_id_hash:?} for which we're trying to lookup a pinhole image plane distance."
                 );
                 return 1.0;
@@ -637,7 +636,7 @@ impl EntityTransformIdMapping {
                     let fallback =
                         TransformFrameIdHash::from_entity_path(results.entity_path());
                     // Make sure this is the same as the fallback provider (which is a lot slower to run)
-                    debug_assert_eq!(
+                    re_log::debug_assert_eq!(
                         TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
                             results.query_context(),
                             transform_frame_id_component

@@ -11,6 +11,7 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_entity_db::{EntityDb, StoreBundle};
+use re_log::debug_assert;
 use re_log_channel::LogSource;
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId, TimelinePoint};
 use re_query::QueryCachesStats;

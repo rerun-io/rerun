@@ -149,7 +149,7 @@ impl BlueprintUndoState {
         let frame_nr = egui_ctx.cumulative_frame_nr();
 
         if let Some((_, last_frame_nr)) = self.inflection_points.last_key_value() {
-            debug_assert!(
+            re_log::debug_assert!(
                 *last_frame_nr <= frame_nr,
                 "Frame counter is running backwards, from {last_frame_nr} to {frame_nr}!"
             );

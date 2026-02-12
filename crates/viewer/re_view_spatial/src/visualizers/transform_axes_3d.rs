@@ -207,10 +207,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     } else {
                         // It should not be possible to hit this path and frame id hashes are not something that
                         // we should ever expose to our users, so let's add a debug assert for good measure.
-                        debug_assert!(
-                            false,
-                            "[DEBUG ASSERT] unable to resolve frame id hash {label_id_hash:?}"
-                        );
+                        re_log::debug_panic!("unable to resolve frame id hash {label_id_hash:?}");
                         output.report_error_for(
                             instruction.id,
                             format!("Could not resolve frame id hash {label_id_hash:?}"),

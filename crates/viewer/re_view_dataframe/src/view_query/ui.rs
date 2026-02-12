@@ -48,8 +48,7 @@ impl Query {
                 if let Some(range) = ctx.recording().time_range_for(timeline.name()) {
                     TimeDragValue::from_abs_time_range(range)
                 } else {
-                    debug_assert!(
-                        false,
+                    re_log::debug_panic!(
                         "This should never happen because `timeline` should exist if not `None`"
                     );
                     TimeDragValue::from_time_range(0..=0)

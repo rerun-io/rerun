@@ -180,8 +180,8 @@ impl crate::Loggable for TimeRangeBoundary {
                         .count(),
                 )),
             ];
-            debug_assert_eq!(field_type_ids.len(), fields.len());
-            debug_assert_eq!(fields.len(), children.len());
+            re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+            re_log::debug_assert_eq!(fields.len(), children.len());
             as_array_ref(UnionArray::try_new(
                 UnionFields::new(field_type_ids, fields),
                 ScalarBuffer::from(type_ids),

@@ -297,9 +297,9 @@ impl SeriesPointsSystem {
 
             let mut series = Vec::with_capacity(num_series);
 
-            debug_assert!(
+            re_log::debug_assert!(
                 points_per_series.len() <= series_names.len(),
-                "[DEBUG ASSERT] Number of series names {} after processing should be at least the number of series allocated {}",
+                "Number of series names {} after processing should be at least the number of series allocated {}",
                 series_names.len(),
                 points_per_series.len()
             );

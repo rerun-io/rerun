@@ -124,7 +124,7 @@ impl CamerasVisualizer {
             return Err("Can only visualize pinhole under isometric transforms.".to_owned());
         };
 
-        debug_assert!(world_from_camera_iso.is_finite());
+        re_log::debug_assert!(world_from_camera_iso.is_finite());
 
         self.pinhole_cameras.push(PinholeWrapper {
             ent_path: ent_path.clone(),

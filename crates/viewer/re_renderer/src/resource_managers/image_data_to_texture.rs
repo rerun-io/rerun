@@ -367,7 +367,7 @@ fn copy_data_to_texture(
         let bytes_per_row_unpadded = buffer_info.bytes_per_row_unpadded as usize;
         let num_padding_bytes_per_row =
             buffer_info.bytes_per_row_padded as usize - bytes_per_row_unpadded;
-        debug_assert!(
+        re_log::debug_assert!(
             num_padding_bytes_per_row > 0,
             "No padding bytes, but the unpadded buffer size is not equal to the unpadded buffer."
         );

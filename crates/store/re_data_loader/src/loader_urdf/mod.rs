@@ -165,7 +165,7 @@ fn walk_tree(
     let link = urdf_tree
         .get_link(link_name)
         .with_context(|| format!("Link {link_name:?} missing from map"))?;
-    debug_assert_eq!(link_name, link.name);
+    re_log::debug_assert_eq!(link_name, link.name);
 
     log_link(urdf_tree, tx, store_id, timepoint, link)?;
 

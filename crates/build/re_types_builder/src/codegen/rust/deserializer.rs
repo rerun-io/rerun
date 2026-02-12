@@ -1,5 +1,6 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
+use re_log::debug_assert;
 
 use crate::codegen::rust::arrow::{
     ArrowDataTypeTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
@@ -698,7 +699,7 @@ fn quote_arrow_field_deserializer(
 
                                 // We're manually generating our own offsets in this case, thus length
                                 // must be correct.
-                                debug_assert!(end - start == #length);
+                                re_log::debug_assert!(end - start == #length);
 
                                 // NOTE: It is absolutely crucial we explicitly handle the
                                 // boundchecks manually first, otherwise rustc completely chokes

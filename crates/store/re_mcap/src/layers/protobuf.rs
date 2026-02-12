@@ -300,7 +300,7 @@ fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> Struct
         .map(|f| arrow_builder_from_field(&f))
         .collect::<Vec<_>>();
 
-    debug_assert_eq!(fields.len(), field_builders.len());
+    re_log::debug_assert_eq!(fields.len(), field_builders.len());
 
     re_log::trace!(
         "Created StructBuilder for message {} with fields: {:?}",
@@ -444,7 +444,7 @@ impl MessageLayer for McapProtobufLayer {
             let found = self
                 .descrs_per_topic
                 .insert(channel.topic.clone(), message_descriptor);
-            debug_assert!(found.is_none());
+            re_log::debug_assert!(found.is_none());
         }
 
         Ok(())

@@ -1,5 +1,5 @@
 use itertools::{Itertools as _, izip};
-use re_log::ResultExt as _;
+use re_log::{ResultExt as _, debug_assert_eq};
 
 use crate::allocator::DataTextureSource;
 use crate::draw_phases::PickingLayerObjectId;

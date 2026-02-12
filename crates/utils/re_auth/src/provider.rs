@@ -48,7 +48,7 @@ impl SecretKey {
         // 32 bytes or 256 bits
         let secret_key = generate_secret_key(rng, 32);
 
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             secret_key.len() * size_of::<u8>() * 8,
             256,
             "The resulting secret should be 256 bits."

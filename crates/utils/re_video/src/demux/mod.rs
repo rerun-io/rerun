@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 
 use bit_vec::BitVec;
 use itertools::Itertools as _;
+use re_log::{debug_assert, debug_panic};
 use re_span::Span;
 use re_tuid::Tuid;
 use web_time::Instant;
@@ -847,7 +848,7 @@ impl VideoDataDescription {
                 if let Some(sample) = self.samples[*sample_idx].sample() {
                     cmp_time(sample)
                 } else {
-                    debug_assert!(false, "[DEBUG]: keyframe indices should always be valid");
+                    debug_panic!("keyframe indices should always be valid");
 
                     false
                 }

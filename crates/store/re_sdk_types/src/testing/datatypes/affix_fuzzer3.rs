@@ -237,8 +237,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .count(),
                 )),
             ];
-            debug_assert_eq!(field_type_ids.len(), fields.len());
-            debug_assert_eq!(fields.len(), children.len());
+            re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+            re_log::debug_assert_eq!(fields.len(), children.len());
             as_array_ref(UnionArray::try_new(
                 UnionFields::new(field_type_ids, fields),
                 ScalarBuffer::from(type_ids),
@@ -403,7 +403,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 .map(|elem| {
                                     elem
                                         .map(|(start, end): (usize, usize)| {
-                                            debug_assert!(end - start == 3usize);
+                                            re_log::debug_assert!(end - start == 3usize);
                                             if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(

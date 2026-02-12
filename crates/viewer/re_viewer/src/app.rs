@@ -11,6 +11,7 @@ use re_chunk::TimelineName;
 use re_data_source::{AuthErrorHandler, FileContents, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
+use re_log::debug_assert;
 use re_log_channel::{
     DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
 };

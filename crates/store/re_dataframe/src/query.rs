@@ -23,6 +23,7 @@ use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
     IndexValue, QueryExpression, SparseFillStrategy,
 };
+use re_log::{debug_assert, debug_assert_eq, debug_panic};
 use re_log_types::AbsoluteTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
@@ -1010,12 +1011,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .get(selected_idx)
                     .map(|(view_idx, _)| *view_idx)
                 else {
-                    debug_assert!(false, "selected_idx out of bounds");
+                    debug_panic!("selected_idx out of bounds");
                     continue;
                 };
 
                 let Some(streaming_state) = view_streaming_state.get_mut(view_idx) else {
-                    debug_assert!(false, "view_idx out of bounds");
+                    debug_panic!("view_idx out of bounds");
                     continue;
                 };
 

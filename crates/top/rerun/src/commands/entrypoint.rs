@@ -1092,7 +1092,7 @@ fn serve_web(
             format!("rerun+http://{server_addr}/proxy")
         };
 
-        debug_assert!(
+        re_log::debug_assert!(
             proxy_url.parse::<re_uri::RedapUri>().is_ok(),
             "Expected a proper proxy URI, but got {proxy_url:?}"
         );

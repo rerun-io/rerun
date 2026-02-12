@@ -505,7 +505,7 @@ impl TimePanel {
         let time_fg_x_range = {
             // Painting to the right of the scroll bar (if any) looks bad:
             let right = ui.max_rect().right() - ui.spacing_mut().scroll.bar_outer_margin;
-            debug_assert!(time_x_left < right);
+            re_log::debug_assert!(time_x_left < right);
             Rangef::new(time_x_left, right)
         };
 

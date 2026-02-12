@@ -148,7 +148,7 @@ pub fn collect_colors(
 
     let num_series = points_per_series.len();
 
-    debug_assert_eq!(components::Color::arrow_datatype(), ArrowDatatype::UInt32);
+    re_log::debug_assert_eq!(components::Color::arrow_datatype(), ArrowDatatype::UInt32);
 
     fn map_raw_color(raw: &u32) -> re_renderer::Color32 {
         let [a, b, g, r] = raw.to_le_bytes();

@@ -1,3 +1,5 @@
+use re_log::debug_assert;
+
 use crate::Error;
 
 /// The different schemes supported by Rerun.

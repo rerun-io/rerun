@@ -36,6 +36,7 @@ mod combo_item;
 pub mod testing;
 
 use egui::NumExt as _;
+use re_log::debug_assert;
 
 pub use self::button::*;
 pub use self::combo_item::*;
