@@ -98,7 +98,10 @@ impl crate::DataUi for EntityDb {
             }
         }
 
-        if ctx.app_options().show_metrics && self.can_fetch_chunks_from_redap() {
+        if ctx.app_options().show_metrics
+            && self.can_fetch_chunks_from_redap()
+            && ui_layout.is_selection_panel()
+        {
             ui.add_space(4.0);
             ui.collapsing_header("In-flight chunk requests", false, |ui| {
                 chunk_requests_ui(ui, self.rrd_manifest_index());

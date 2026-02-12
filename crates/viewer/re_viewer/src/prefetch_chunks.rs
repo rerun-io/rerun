@@ -21,13 +21,7 @@ pub fn prefetch_chunks_for_active_recording(
     let redap_uri = recording.redap_uri()?.clone();
     let origin = redap_uri.origin.clone();
 
-    // Load data from slightly before the current time to give some room for latest-at.
-    // This is a bit hacky, but works for now.
-    let before_margin = match timeline.typ() {
-        re_log_types::TimeType::Sequence => 30,
-        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
-    };
-    let start_time = TimeInt::new_temporal(current_time.saturating_sub(before_margin));
+    let start_time = TimeInt::new_temporal(current_time);
     let time_cursor = TimelinePoint::from((timeline, start_time));
 
     if !recording.can_fetch_chunks_from_redap() {

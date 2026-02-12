@@ -73,12 +73,18 @@ struct HighPrioChunks {
 
 impl HighPrioChunks {
     /// All static chunks, plus all temporal chunks on this timeline before the given time.
+    /// With chunks closest to the time cursor ordered first.
     fn all_before(&self, timeline_point: TimelinePoint) -> impl Iterator<Item = ChunkId> + '_ {
         self.temporal_chunks
             .get(timeline_point.name())
             .into_iter()
-            .flat_map(|chunks| chunks.iter())
-            .filter(move |chunk| chunk.time_range.min <= timeline_point.time)
+            .flat_map(move |chunks| {
+                let idx =
+                    chunks.partition_point(|chunk| chunk.time_range.min <= timeline_point.time);
+
+                // Start loading closest to the time cursor.
+                chunks[..idx].iter().rev()
+            })
             .map(|chunk| chunk.chunk_id)
     }
 }
