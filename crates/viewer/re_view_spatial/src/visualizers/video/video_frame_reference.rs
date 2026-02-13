@@ -219,7 +219,10 @@ impl VideoFrameReferenceVisualizer {
                                 spatial_ctx.highlight,
                                 world_from_entity,
                                 err.to_string(),
-                                err.into(),
+                                // We don't want to show loading for this since
+                                // the data comes from a blob that will always
+                                // either be fully loaded or not.
+                                err.severity().loading_to_informational(),
                                 video_resolution,
                                 entity_path,
                             );

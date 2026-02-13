@@ -247,7 +247,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         highlight,
                         world_from_entity,
                         err.to_string(),
-                        err.into(),
+                        err.severity(),
                         video_resolution,
                         entity_path,
                     );

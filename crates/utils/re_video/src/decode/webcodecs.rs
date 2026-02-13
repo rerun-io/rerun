@@ -100,6 +100,15 @@ pub enum WebError {
     NotEnoughCodecInformation,
 }
 
+impl WebError {
+    pub fn severity(&self) -> crate::VideoPlaybackIssueSeverity {
+        match self {
+            Self::NotEnoughCodecInformation => crate::VideoPlaybackIssueSeverity::Loading,
+            _ => crate::VideoPlaybackIssueSeverity::Error,
+        }
+    }
+}
+
 // SAFETY: There is no way to access the same JS object from different OS threads
 //         in a way that could result in a data race.
 

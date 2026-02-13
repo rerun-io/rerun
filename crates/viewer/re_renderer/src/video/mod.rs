@@ -8,7 +8,7 @@ pub use chunk_decoder::VideoSampleDecoder;
 pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
 use re_mutex::Mutex;
-use re_video::{DecodeSettings, VideoDataDescription};
+use re_video::{DecodeSettings, VideoDataDescription, VideoPlaybackIssueSeverity};
 
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
@@ -98,6 +98,15 @@ impl VideoPlayerError {
         match self {
             Self::Decoding(err) => err.should_request_more_frames(),
             _ => false,
+        }
+    }
+
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
+        match self {
+            Self::UnloadedSampleData(_) => VideoPlaybackIssueSeverity::Loading,
+            Self::Decoding(decode_error) => decode_error.severity(),
+            Self::InsufficientSampleData(_) => VideoPlaybackIssueSeverity::Informational,
+            _ => VideoPlaybackIssueSeverity::Error,
         }
     }
 }

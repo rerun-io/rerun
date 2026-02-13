@@ -6,6 +6,7 @@ use re_log_types::{EntityPath, EntityPathHash};
 use re_renderer::renderer;
 use re_renderer::resource_managers::ImageDataDesc;
 use re_sdk_types::ViewClassIdentifier;
+use re_video::VideoPlaybackIssueSeverity;
 use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
@@ -103,33 +104,6 @@ fn visualize_video_frame_texture(
             video_size,
             ctx.view_class_identifier,
         );
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum VideoPlaybackIssueSeverity {
-    /// The video can't be played back due to a proper error.
-    ///
-    /// E.g. invalid data provided, decoder problems, not supported etc.
-    Error,
-
-    /// The video can't be played back right now, but it may not actually be an error.
-    ///
-    /// E.g. not having the necessary data yet.
-    Informational,
-
-    /// We still have required unloaded samples before we're able to play this video.
-    Loading,
-}
-
-impl From<re_renderer::video::VideoPlayerError> for VideoPlaybackIssueSeverity {
-    fn from(value: re_renderer::video::VideoPlayerError) -> Self {
-        use re_renderer::video::VideoPlayerError;
-        match value {
-            VideoPlayerError::UnloadedSampleData(_) => Self::Loading,
-            VideoPlayerError::InsufficientSampleData(_) => Self::Informational,
-            _ => Self::Error,
-        }
     }
 }
 

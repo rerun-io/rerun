@@ -95,7 +95,7 @@ pub use ffmpeg_cli::{
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
-use crate::{SampleIndex, Time, VideoDataDescription};
+use crate::{SampleIndex, Time, VideoDataDescription, VideoPlaybackIssueSeverity};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodeError {
@@ -154,6 +154,25 @@ impl DecodeError {
 
             // Unsupported format.
             Self::BadBitsPerComponent(_) => false,
+        }
+    }
+
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
+        match self {
+            #[cfg(with_dav1d)]
+            Self::Dav1d(err) => match err {
+                dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,
+                _ => VideoPlaybackIssueSeverity::Error,
+            },
+            #[cfg(target_arch = "wasm32")]
+            Self::WebDecoder(err) => err.severity(),
+            #[cfg(with_ffmpeg)]
+            Self::Ffmpeg(_) => VideoPlaybackIssueSeverity::Error,
+
+            Self::UnsupportedCodec(_)
+            | Self::Dav1dWithoutNasm
+            | Self::NoDav1dOnLinuxArm64
+            | Self::BadBitsPerComponent(_) => VideoPlaybackIssueSeverity::Error,
         }
     }
 }
