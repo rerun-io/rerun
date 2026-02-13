@@ -113,3 +113,49 @@ pub async fn create_table_entry_duplicate_url(service: impl RerunCloudService) {
     assert_eq!(err.code(), Code::AlreadyExists);
     assert!(err.message().contains(&table_url.to_string()));
 }
+
+pub async fn create_table_entry_failed_does_not_leak_name(service: impl RerunCloudService) {
+    // Regression test for https://linear.app/rerun/issue/RR-3644/create-table-failure-leads-to-unlisted-existing-table
+    let schema = Schema::new(vec![Field::new("column_a", DataType::Utf8, false)]);
+
+    let table_name = "should_not_leak";
+
+    // First attempt: use an unsupported URL scheme, which should fail.
+    let bad_provider = ProviderDetails::LanceTable(LanceTable {
+        table_url: url::Url::parse("surprise://bad").expect("parse url"),
+    });
+
+    let create_table_request = CreateTableEntryRequest {
+        name: table_name.to_owned(),
+        schema: schema.clone(),
+        provider_details: Some(bad_provider),
+    }
+    .try_into()
+    .expect("Unable to create table request");
+
+    service
+        .create_table_entry(tonic::Request::new(create_table_request))
+        .await
+        .expect_err("create_table_entry with unsupported URL scheme should fail");
+
+    // Second attempt: same name but a valid URL — should succeed because the
+    // failed first attempt must not have leaked the name into the store.
+    let tmp_dir = tempfile::tempdir().expect("create temp dir");
+    let good_provider = ProviderDetails::LanceTable(LanceTable {
+        table_url: url::Url::from_directory_path(tmp_dir.path())
+            .expect("create url from tmp directory"),
+    });
+
+    let create_table_request = CreateTableEntryRequest {
+        name: table_name.to_owned(),
+        schema,
+        provider_details: Some(good_provider),
+    }
+    .try_into()
+    .expect("Unable to create table request");
+
+    service
+        .create_table_entry(tonic::Request::new(create_table_request))
+        .await
+        .expect("create_table_entry with valid URL should succeed after prior failure");
+}

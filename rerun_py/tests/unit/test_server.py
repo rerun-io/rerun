@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pyarrow as pa
 import pytest
 from rerun.server import Server
 
@@ -129,3 +130,23 @@ def test_server_dataset_files_must_be_files() -> None:
     """Test that dataset file paths must be files, not directories."""
     with pytest.raises(ValueError, match="must be a RRD file"):
         Server(datasets={"bad_dataset": [DATASET_DIR]})
+
+
+def test_server_failed_table_creation_does_not_leak_entry(tmp_path: Path) -> None:
+    """Regression test for https://linear.app/rerun/issue/RR-3644/create-table-failure-leads-to-unlisted-existing-table."""
+
+    with Server() as server:
+        client = server.client()
+
+        schema = pa.schema([])
+
+        try:
+            # This must fail because the URI is unsupported
+            t = client.create_table("test", schema, url="surprise://bucket/does/not/exist")
+        except Exception:
+            pass
+
+        assert "t" not in locals()
+
+        # We should be free to
+        t = client.create_table("test", schema, url=tmp_path.as_uri())

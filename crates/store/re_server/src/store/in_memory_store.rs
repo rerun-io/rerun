@@ -488,11 +488,11 @@ impl InMemoryStore {
         }
 
         let entry_id = EntryId::new();
-        self.id_by_name.insert(name.to_owned(), entry_id);
 
         let table = Table::create_table_entry(entry_id, name, url, schema).await?;
         let table_entry = table.as_table_entry();
 
+        self.id_by_name.insert(name.to_owned(), entry_id);
         self.tables.insert(entry_id, table);
         self.update_entries_table()?;
 

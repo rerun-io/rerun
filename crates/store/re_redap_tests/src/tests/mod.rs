@@ -59,6 +59,7 @@ define_redap_tests! {
     create_dataset::create_dataset_tests,
     create_table::create_table_entry,
     create_table::create_table_entry_duplicate_url,
+    create_table::create_table_entry_failed_does_not_leak_name,
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::entries_table_with_empty_dataset,
