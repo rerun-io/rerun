@@ -425,7 +425,7 @@ jobs:
           version="${{ needs.version.outputs.final }}"
 
           cat <<EOF > comment-body.txt
-          GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
+          The GitHub release draft for $version can be found in the [release list](https://github.com/rerun-io/rerun/releases).
 
           Add a description, changelog, and a nice header video/picture, then click 'Publish release'.
           EOF

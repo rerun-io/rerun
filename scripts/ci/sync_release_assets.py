@@ -14,6 +14,7 @@ You can also run it manually if you want to update a specific release's assets:
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from typing import TYPE_CHECKING, cast
 
@@ -267,6 +268,15 @@ def main() -> None:
     repo = gh.get_repo(args.github_repository)
     release = cast("GitRelease", get_any_release(repo, args.github_release))
     commit = {tag.name: tag.commit for tag in repo.get_tags()}[args.github_release]
+
+    if release.body is None:
+        print(
+            "Release has no body - make sure to add release notes! "
+            "You might also run into this if you created the release manually "
+            "and not from the draft created by the release job, please check.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(
         f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…',
