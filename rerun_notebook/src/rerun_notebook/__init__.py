@@ -175,6 +175,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _event_queue: list[_Event] = []
 
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
+    _theme = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     _raw_event_callbacks: list[Callable[[str], None]] = []
 
@@ -186,6 +187,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
         fallback_token: str | None = None,
+        theme: Literal["dark", "light", "system"] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -199,6 +201,9 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
         if fallback_token:
             self._fallback_token = fallback_token
+
+        if theme:
+            self._theme = theme
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:  # noqa: ARG001
             if isinstance(content, str):

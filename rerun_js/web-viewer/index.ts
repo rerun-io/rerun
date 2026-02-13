@@ -101,6 +101,13 @@ export interface WebViewerOptions {
    * enclosing notebook environment, it should be used to set the fallback token.
    */
   fallback_token?: string;
+
+  /**
+   * The color theme to use.
+   *
+   * If not set, the viewer uses the previously persisted theme preference or defaults to "system".
+   */
+  theme?: "dark" | "light" | "system";
 }
 
 // `AppOptions` and `WebViewerOptions` must be compatible

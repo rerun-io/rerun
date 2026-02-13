@@ -660,6 +660,7 @@ pub struct AppOptions {
     // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
     // height: Option<String>,
     fallback_token: Option<String>,
+    theme: Option<String>,
 
     // Hidden `WebViewerOptions`
     // ------------
@@ -727,6 +728,7 @@ fn create_app(
         notebook,
 
         fallback_token,
+        theme,
     } = app_options;
 
     if let Some(fallback_token) = fallback_token {
@@ -777,6 +779,23 @@ fn create_app(
         viewer_base_url,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
+
+    if let Some(theme) = theme {
+        match theme.as_str() {
+            "dark" => cc
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::Dark),
+            "light" => cc
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::Light),
+            "system" => cc
+                .egui_ctx
+                .options_mut(|o| o.theme_preference = egui::ThemePreference::System),
+            _ => {
+                // Don't touch egui's settings, might be loaded from previous user interaction.
+            }
+        }
+    }
 
     let mut app = crate::App::new(
         main_thread_token,

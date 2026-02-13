@@ -124,6 +124,7 @@ function startViewer(handle, parent, getProps) {
     manifest_url: props.manifest_url,
     render_backend: props.render_backend,
     hide_welcome_screen: props.hide_welcome_screen,
+    theme: props.theme,
 
     // NOTE: `width`, `height` intentionally ignored, they will
     //       instead be used on the parent `div` element

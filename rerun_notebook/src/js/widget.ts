@@ -22,6 +22,7 @@ interface WidgetModel {
   _panel_states?: PanelStates;
 
   _fallback_token?: string;
+  _theme?: string;
 }
 
 type Opt<T> = T | null | undefined;
@@ -74,6 +75,7 @@ class ViewerWidget {
     model.on("msg:custom", this.on_custom_message);
 
     this.options.fallback_token = model.get("_fallback_token");
+    this.options.theme = model.get("_theme") as AppOptions["theme"];
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 

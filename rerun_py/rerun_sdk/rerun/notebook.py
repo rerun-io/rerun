@@ -90,6 +90,7 @@ class Viewer:
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
         use_global_recording: bool | None = None,
+        theme: Literal["dark", "light", "system"] | None = None,
     ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
@@ -127,6 +128,10 @@ class Viewer:
             Settings this to `False` causes the Viewer to not pick up the global recording.
 
             Defaults to `False` if `url` is provided, and `True` otherwise.
+        theme:
+            The color theme to use. Either "dark", "light", or "system".
+
+            If not set, the viewer uses the previously persisted theme preference or defaults to "system".
 
         """
         if not HAS_NOTEBOOK:
@@ -148,6 +153,7 @@ class Viewer:
             height=height if height is not None else _default_height,
             url=url,
             fallback_token=fallback_token,
+            theme=theme,
         )
 
         # Set full credentials if we have them so the UI can show who's logged in
