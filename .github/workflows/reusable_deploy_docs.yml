@@ -32,14 +32,14 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "write"
   id-token: "write"
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
@@ -66,10 +66,9 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
-          environments: py-docs
+          pixi-version: v0.55.0
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -83,7 +82,7 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Build docs
-        run: pixi run -e py-docs mkdocs build -f rerun_py/mkdocs.yml -d site
+        run: pixi run uv run --group docs mkdocs build -f rerun_py/mkdocs.yml -d site
 
       - name: "Upload Python Docs (version)"
         uses: google-github-actions/upload-cloud-storage@v2
@@ -93,29 +92,10 @@ jobs:
           process_gcloudignore: false
           parent: false
 
-      - name: "Update latest index.html"
+      - name: "Update URL rewrite rules for stable"
         if: ${{ inputs.UPDATE_LATEST }}
         run: |
-          cat <<EOF > index.html
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Redirecting</title>
-            <noscript>
-              <meta http-equiv="refresh" content="1; url=../${{ inputs.PY_DOCS_VERSION_NAME }}/" />
-            </noscript>
-            <script>
-              window.location.replace("../${{ inputs.PY_DOCS_VERSION_NAME }}/" + window.location.hash);
-            </script>
-          </head>
-          <body>
-            Redirecting to <a href="../${{ inputs.PY_DOCS_VERSION_NAME }}/">../${{ inputs.PY_DOCS_VERSION_NAME }}/</a>
-          </body>
-          </html>
-          EOF
-
-          gsutil cp ./index.html gs://rerun-docs/docs/python/stable/
+          pixi run uv run --group dev scripts/update_docs_url_rewrite.py --version ${{ inputs.PY_DOCS_VERSION_NAME }} --language python
 
       - name: "Update versions.json"
         if: ${{ inputs.UPDATE_LATEST }}
@@ -165,9 +145,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Doxygen C++ docs
         run: pixi run -e cpp cpp-docs
@@ -197,10 +177,9 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
-          environments: py-docs
+          pixi-version: v0.55.0
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -224,26 +203,7 @@ jobs:
           process_gcloudignore: false
           parent: false
 
-      - name: "Update latest"
+      - name: "Update URL rewrite rules for stable"
         if: ${{ inputs.UPDATE_LATEST }}
         run: |
-          cat <<EOF > index.html
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Redirecting</title>
-            <noscript>
-              <meta http-equiv="refresh" content="1; url=../${{ inputs.JS_DOCS_VERSION_NAME }}/" />
-            </noscript>
-            <script>
-              window.location.replace("../${{ inputs.JS_DOCS_VERSION_NAME }}/" + window.location.hash);
-            </script>
-          </head>
-          <body>
-            Redirecting to <a href="../${{ inputs.JS_DOCS_VERSION_NAME }}/">../${{ inputs.JS_DOCS_VERSION_NAME }}/</a>
-          </body>
-          </html>
-          EOF
-
-          gsutil cp ./index.html gs://rerun-docs/docs/js/stable/
+          pixi run uv run --group dev scripts/update_docs_url_rewrite.py --version ${{ inputs.JS_DOCS_VERSION_NAME }} --language js

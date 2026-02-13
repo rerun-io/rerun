@@ -19,12 +19,12 @@ Orienting and placing capsules forms a separate transform that is applied prior 
 * `radii`: [`Radius`](../components/radius.md)
 
 ### Recommended
-* `translations`: [`PoseTranslation3D`](../components/pose_translation3d.md)
+* `translations`: [`Translation3D`](../components/translation3d.md)
 * `colors`: [`Color`](../components/color.md)
 
 ### Optional
-* `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
-* `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `rotation_axis_angles`: [`RotationAxisAngle`](../components/rotation_axis_angle.md)
+* `quaternions`: [`RotationQuat`](../components/rotation_quat.md)
 * `line_radii`: [`Radius`](../components/radius.md)
 * `fill_mode`: [`FillMode`](../components/fill_mode.md)
 * `labels`: [`Text`](../components/text.md)
@@ -48,7 +48,7 @@ Orienting and placing capsules forms a separate transform that is applied prior 
 
 snippet: archetypes/capsules3d_batch
 
-<picture data-inline-viewer="snippets/capsules3d_batch">
+<picture data-inline-viewer="snippets/archetypes/capsules3d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1024w.png">

@@ -6,19 +6,20 @@ use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
-    Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext,
 };
 
-use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
-    visualizer_system::EmptySystem,
-};
+use crate::dataframe_ui::dataframe_ui;
+use crate::expanded_rows::ExpandedRowsCache;
+use crate::view_query;
+use crate::visualizer_system::EmptySystem;
 
 #[derive(Default)]
 struct DataframeViewState {
     /// Cache for the expanded rows.
-    expended_rows_cache: ExpandedRowsCache,
+    expanded_rows_cache: ExpandedRowsCache,
 
     /// List of view columns for the current query, cached here for the column visibility UI.
     view_columns: Option<Vec<ColumnDescriptor>>,
@@ -40,6 +41,11 @@ pub struct DataframeView;
 impl ViewClass for DataframeView {
     fn identifier() -> ViewClassIdentifier {
         "Dataframe".into()
+    }
+
+    fn recommendation_order(&self) -> i32 {
+        // Put the dataframe view last in recommendations since it is a bit of a catch-all view!
+        i32::MAX
     }
 
     fn display_name(&self) -> &'static str {
@@ -107,6 +113,7 @@ Configure in the selection panel:
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -129,9 +136,12 @@ Configure in the selection panel:
             engine: ctx.recording().storage_engine_arc(),
         };
 
-        let view_contents = query
-            .iter_all_entities()
-            .map(|entity| (entity.clone(), None))
+        // TODO(andreas): why are we dealing with a ViewerContext and not a ViewContext here? The later would have the query results readily available.
+        let query_results = ctx.lookup_query_result(query.view_id);
+        let view_contents = query_results
+            .tree
+            .iter_data_results()
+            .map(|data_result| (data_result.entity_path.clone(), None))
             .collect();
 
         let sparse_fill_strategy = if view_query.latest_at_enabled()? {
@@ -168,7 +178,7 @@ Configure in the selection panel:
             ctx,
             ui,
             &query_handle,
-            &mut state.expended_rows_cache,
+            &mut state.expanded_rows_cache,
             &query.view_id,
         );
 
@@ -204,11 +214,10 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
         )
         .clicked()
     {
-        ctx.selection_state.set_selection(Item::View(view_id));
+        ctx.command_sender()
+            .send_system(SystemCommand::set_selection(Item::View(view_id)));
     }
 }
-
-re_viewer_context::impl_component_fallback_provider!(DataframeView => []);
 
 #[test]
 fn test_help_view() {

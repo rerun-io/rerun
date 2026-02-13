@@ -5,50 +5,55 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 use re_log_types::EntityPath;
-use re_types::reflection::ComponentDescriptorExt as _;
-use re_types::{ComponentDescriptor, RowId};
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::{ComponentDescriptor, RowId};
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
-mod annotation_context;
-mod app_id;
-mod blob;
-mod component;
-mod component_path;
-mod component_type;
+mod annotation_context_ui;
+mod app_id_ui;
+mod blob_ui;
+mod component_path_ui;
+mod component_type_ui;
+mod component_ui;
 mod component_ui_registry;
-mod data_source;
-mod entity_db;
-mod entity_path;
-mod image;
-mod instance_path;
-mod store_id;
-mod tensor;
-mod video;
+mod data_source_ui;
+mod entity_db_ui;
+mod entity_path_ui;
+mod image_ui;
+mod instance_path_ui;
+mod store_id_ui;
+mod tensor_ui;
+mod transform_frames_ui;
+mod video_ui;
 
+mod extra_data_ui;
 pub mod item_ui;
 
-pub use crate::tensor::tensor_summary_ui_grid_contents;
-pub use component::ComponentPathLatestAtResults;
-pub use component_ui_registry::{add_to_registry, register_component_uis};
-pub use image::image_preview_ui;
-pub use instance_path::archetype_label_list_item_ui;
-use re_types_core::ArchetypeName;
+pub use self::component_ui::ComponentPathLatestAtResults;
+pub use self::component_ui_registry::{add_to_registry, register_component_uis};
+pub use self::image_ui::image_preview_ui;
+pub use self::instance_path_ui::archetype_label_list_item_ui;
+pub use self::tensor_ui::tensor_summary_ui_grid_contents;
+
+use re_chunk_store::UnitChunkShared;
 use re_types_core::reflection::Reflection;
+use re_types_core::{ArchetypeName, Component};
 
 pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
 
 /// Components grouped by archetype.
-pub fn sorted_component_list_by_archetype_for_ui<'a>(
+pub fn sorted_component_list_by_archetype_for_ui(
     reflection: &Reflection,
-    iter: impl IntoIterator<Item = &'a ComponentDescriptor> + 'a,
+    iter: impl IntoIterator<Item = ComponentDescriptor>,
 ) -> ArchetypeComponentMap {
     let mut map = iter
         .into_iter()
         .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
             acc.entry(descriptor.archetype)
                 .or_default()
-                .push(descriptor.clone());
+                .push(descriptor);
             acc
         });
 
@@ -88,7 +93,9 @@ pub trait DataUi {
 
     /// Called [`Self::data_ui`] using the default query and recording.
     fn data_ui_recording(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+        ui.sanity_check();
         self.data_ui(ctx, ui, ui_layout, &ctx.current_query(), ctx.recording());
+        ui.sanity_check();
     }
 }
 
@@ -97,7 +104,7 @@ pub trait DataUi {
 /// This is given the context of the entity it is part of so it can do queries.
 pub trait EntityDataUi {
     /// If you need to lookup something in the chunk store, use the given query to do so.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -143,6 +150,18 @@ pub fn annotations(
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
-    annotation_map.load(ctx, query, std::iter::once(entity_path));
+    annotation_map.load(ctx, query);
     annotation_map.find(entity_path)
+}
+
+/// Finds and deserializes the given component type if its descriptor matches the given archetype name.
+fn find_and_deserialize_archetype_mono_component<C: Component>(
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+    archetype_name: Option<ArchetypeName>,
+) -> Option<C> {
+    components.iter().find_map(|(descr, chunk)| {
+        (descr.component_type == Some(C::name()) && descr.archetype == archetype_name)
+            .then(|| chunk.component_mono::<C>(descr.component)?.ok())
+            .flatten()
+    })
 }

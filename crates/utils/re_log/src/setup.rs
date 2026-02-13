@@ -69,6 +69,10 @@ pub fn setup_logging_with_filter(log_filter: &str) {
             always_enabled: env_var_bool("RERUN_PANIC_ON_WARN") == Some(true),
         }))
         .expect("Failed to install panic-on-warn logger");
+
+        if cfg!(target_os = "macos") && cfg!(target_arch = "x86_64") {
+            crate::warn!("Rerun does not officially support Intel Macs (x86/x64)");
+        }
     }
 
     #[cfg(target_arch = "wasm32")]

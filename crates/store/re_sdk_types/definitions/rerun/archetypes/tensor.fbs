@@ -1,0 +1,39 @@
+namespace rerun.archetypes;
+
+
+/// An N-dimensional array of numbers.
+///
+/// \cpp Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+/// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+/// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+///
+/// \py It's not currently possible to use `send_columns` with tensors since construction
+/// \py of `rerun.components.TensorDataBatch` does not support more than a single element.
+/// \py This will be addressed as part of <https://github.com/rerun-io/rerun/issues/6832>.
+///
+/// \example archetypes/tensor_simple title="Simple tensor" image="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png"
+table Tensor (
+  "attr.docs.category": "Image & tensor",
+  "attr.docs.view_types": "TensorView, BarChartView: for 1D tensors",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "Tensor",
+  "attr.rust.derive": "PartialEq"
+) {
+  /// The tensor data
+  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
+
+  // --- Optional ---
+
+  /// The expected range of values.
+  ///
+  /// This is typically the expected range of valid values.
+  /// Everything outside of the range is clamped to the range for the purpose of colormpaping.
+  /// Any colormap applied for display, will map this range.
+  ///
+  /// If not specified, the range will be automatically estimated from the data.
+  /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+  /// in the contents of the tensor.
+  /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+  /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+  value_range: rerun.components.ValueRange ("attr.rerun.component_optional", nullable, order: 2000);
+}

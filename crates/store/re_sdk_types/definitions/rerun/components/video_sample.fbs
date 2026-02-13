@@ -1,0 +1,17 @@
+namespace rerun.components;
+
+/// Video sample data (also known as "video chunk").
+///
+/// Each video sample must contain enough data for exactly one video frame
+/// (this restriction may be relaxed in the future for some codecs).
+///
+/// Keyframes may require additional data, for details see [components.VideoCodec].
+table VideoSample (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "bytes | npt.NDArray[np.uint8]",
+  "attr.python.array_aliases": "bytes | npt.NDArray[np.uint8]",
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.repr": "transparent"
+) {
+  buffer: rerun.datatypes.Blob (order: 100);
+}

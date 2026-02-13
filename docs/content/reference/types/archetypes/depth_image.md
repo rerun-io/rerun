@@ -36,7 +36,7 @@ Each pixel corresponds to a depth value in units specified by [`components.Depth
 
 snippet: archetypes/depth_image_simple
 
-<picture data-inline-viewer="snippets/depth_image_simple">
+<picture data-inline-viewer="snippets/archetypes/depth_image_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/1024w.png">
@@ -48,7 +48,7 @@ snippet: archetypes/depth_image_simple
 
 snippet: archetypes/depth_image_3d
 
-<picture data-inline-viewer="snippets/depth_image_3d">
+<picture data-inline-viewer="snippets/archetypes/depth_image_3d">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1024w.png">

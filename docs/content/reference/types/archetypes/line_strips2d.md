@@ -36,7 +36,7 @@ title: "LineStrips2D"
 
 snippet: archetypes/line_strips2d_simple
 
-<picture data-inline-viewer="snippets/line_strips2d_simple">
+<picture data-inline-viewer="snippets/archetypes/line_strips2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1024w.png">
@@ -48,7 +48,7 @@ snippet: archetypes/line_strips2d_simple
 
 snippet: archetypes/line_strips2d_segments_simple
 
-<picture data-inline-viewer="snippets/line_strips2d_segments_simple">
+<picture data-inline-viewer="snippets/archetypes/line_strips2d_segments_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1024w.png">
@@ -60,7 +60,7 @@ snippet: archetypes/line_strips2d_segments_simple
 
 snippet: archetypes/line_strips2d_batch
 
-<picture data-inline-viewer="snippets/line_strips2d_batch">
+<picture data-inline-viewer="snippets/archetypes/line_strips2d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/1024w.png">

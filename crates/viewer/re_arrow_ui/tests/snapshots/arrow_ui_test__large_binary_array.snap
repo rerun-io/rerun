@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+[42 B, 1000 B, 190 B]

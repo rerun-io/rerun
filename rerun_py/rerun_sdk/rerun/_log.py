@@ -23,7 +23,7 @@ def log(
     *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
     recording: RecordingStream | None = None,
-    strict: bool | None = None,
+    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
 ) -> None:
     r"""
     Log data to Rerun.
@@ -190,7 +190,7 @@ def _log_components(
 
     added = set()
 
-    for descr, array in zip(descriptors, arrow_arrays):
+    for descr, array in zip(descriptors, arrow_arrays, strict=False):
         # Array could be None if there was an error producing the empty array
         # Nothing we can do at this point other than ignore it. Some form of error
         # should have been logged.

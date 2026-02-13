@@ -15,7 +15,7 @@ Generates a 3D colored cube and demonstrates how to log a point cloud.
   <img src="https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/full.png" alt="Minimal example screenshot">
 </picture>
 
-Straightforward example from the [Quick Start guide](https://www.rerun.io/docs/getting-started/quick-start/python) to generate a 3D colored cube and demonstrate how to log a point cloud.
+Straightforward example from the [Quick Start guide](https://www.rerun.io/docs/getting-started/data-in/python) to generate a 3D colored cube and demonstrate how to log a point cloud.
 
 ## Used Rerun types
 

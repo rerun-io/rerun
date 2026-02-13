@@ -1,7 +1,6 @@
 use egui::NumExt as _;
 use nohash_hasher::IntMap;
 use re_entity_db::InstancePath;
-
 use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
 use re_viewer_context::{

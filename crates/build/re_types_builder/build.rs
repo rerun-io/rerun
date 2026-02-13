@@ -2,9 +2,8 @@
 
 use std::path::Path;
 
-use xshell::{Shell, cmd};
-
 use re_build_tools::{compute_file_hash, read_versioning_hash, write_versioning_hash};
+use xshell::{Shell, cmd};
 
 // ---
 
@@ -14,7 +13,7 @@ const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const FBS_REFLECTION_DEFINITION_PATH: &str = "./definitions/reflection.fbs";
 
 fn should_run() -> bool {
-    #![allow(clippy::match_same_arms)]
+    #![expect(clippy::match_same_arms)]
     use re_build_tools::Environment;
 
     match Environment::detect() {
@@ -71,7 +70,7 @@ fn main() {
     // NOTE: This requires `flatc` to be in $PATH, but only for contributors, not end users.
     // Even for contributors, `flatc` won't be needed unless they edit some of the .fbs files.
     let sh = Shell::new().expect("Shell::new() failed");
-    #[allow(clippy::unwrap_used)] // unwrap is okay here
+    #[expect(clippy::unwrap_used)] // unwrap is okay here
     cmd!(
         sh,
         "flatc -o src/ --rust --gen-onefile --filename-suffix '' {FBS_REFLECTION_DEFINITION_PATH}"

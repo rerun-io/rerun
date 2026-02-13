@@ -1,0 +1,18 @@
+[package]
+name = "test_out_of_order_transforms"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+re_log = { workspace = true, features = ["setup"] }
+rerun = { path = "../../../crates/top/rerun", features = ["clap", "web_viewer"] }
+
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+glam.workspace = true

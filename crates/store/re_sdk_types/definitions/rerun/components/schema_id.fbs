@@ -1,0 +1,16 @@
+namespace rerun.components;
+
+// ---
+
+/// A 16-bit unique identifier for a schema within the MCAP file.
+table SchemaId (
+  "attr.arrow.transparent",
+
+  /// TODO(#11107): Stabilize
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "int | npt.NDArray[np.uint8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[np.uint64]",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  id: rerun.datatypes.UInt16 (order: 100);
+}

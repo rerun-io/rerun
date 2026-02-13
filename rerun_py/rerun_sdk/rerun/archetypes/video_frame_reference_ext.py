@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import deprecated
 
 from .. import components, datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
@@ -23,6 +22,8 @@ class VideoFrameReferenceExt:
         seconds: float | None = None,
         nanoseconds: int | None = None,
         video_reference: datatypes.EntityPathLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: datatypes.Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the VideoFrameReference archetype.
@@ -54,6 +55,15 @@ class VideoFrameReferenceExt:
             For a series of video frame references, it is recommended to specify this path only once
             at the beginning of the series and then rely on latest-at query semantics to
             keep the video reference active.
+        opacity:
+            Opacity of the video, useful for layering several media.
+
+            Defaults to 1.0 (fully opaque).
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
+            Defaults to `-15.0`.
 
         """
 
@@ -70,6 +80,8 @@ class VideoFrameReferenceExt:
             self.__attrs_init__(
                 timestamp=timestamp,
                 video_reference=video_reference,
+                opacity=opacity,
+                draw_order=draw_order,
             )
             return
 
@@ -77,26 +89,6 @@ class VideoFrameReferenceExt:
 
     @classmethod
     def columns_secs(
-        cls,
-        seconds: npt.ArrayLike,
-    ) -> ComponentColumnList:
-        """
-        Helper for `VideoFrameReference.columns` with seconds-based `timestamp`.
-
-        Parameters
-        ----------
-        seconds:
-            Timestamp values in seconds since video start.
-
-        """
-        from .. import VideoFrameReference
-
-        nanoseconds = np.asarray(seconds, dtype=np.int64) * int(1e9)
-        return VideoFrameReference.columns(timestamp=nanoseconds)
-
-    @classmethod
-    @deprecated("Renamed to `columns_secs`")
-    def columns_seconds(
         cls,
         seconds: npt.ArrayLike,
     ) -> ComponentColumnList:
@@ -134,47 +126,7 @@ class VideoFrameReferenceExt:
         return VideoFrameReference.columns(timestamp=nanoseconds)
 
     @classmethod
-    @deprecated("Renamed to `columns_millis`")
-    def columns_milliseconds(
-        cls,
-        milliseconds: npt.ArrayLike,
-    ) -> ComponentColumnList:
-        """
-        Helper for `VideoFrameReference.columns` with milliseconds-based `timestamp`.
-
-        Parameters
-        ----------
-        milliseconds:
-            Timestamp values in milliseconds since video start.
-
-        """
-        from .. import VideoFrameReference
-
-        nanoseconds = np.asarray(milliseconds, dtype=np.int64) * int(1e6)
-        return VideoFrameReference.columns(timestamp=nanoseconds)
-
-    @classmethod
     def columns_nanos(
-        cls,
-        nanoseconds: npt.ArrayLike,
-    ) -> ComponentColumnList:
-        """
-        Helper for `VideoFrameReference.columns` with nanoseconds-based `timestamp`.
-
-        Parameters
-        ----------
-        nanoseconds:
-            Timestamp values in nanoseconds since video start.
-
-        """
-        from .. import VideoFrameReference
-
-        nanoseconds = np.asarray(nanoseconds, dtype=np.int64)
-        return VideoFrameReference.columns(timestamp=nanoseconds)
-
-    @classmethod
-    @deprecated("Renamed to `columns_nanos`")
-    def columns_nanoseconds(
         cls,
         nanoseconds: npt.ArrayLike,
     ) -> ComponentColumnList:

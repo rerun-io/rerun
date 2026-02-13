@@ -1,0 +1,34 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: test_results
+---
+TestResult {
+    filter: String(
+        StringFilter {
+            operator: DoesNotContain,
+            query: "b",
+        },
+    ),
+    field: Field {
+        name: "column",
+        data_type: Utf8,
+        nullable: false,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
+    },
+    unfiltered: StringArray
+    [
+      "a",
+      "b",
+      "c",
+      "ab",
+      "A B",
+      "aBc",
+    ],
+    filtered: StringArray
+    [
+      "a",
+      "c",
+    ],
+}

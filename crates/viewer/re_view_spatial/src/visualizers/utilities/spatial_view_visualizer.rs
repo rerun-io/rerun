@@ -1,18 +1,18 @@
 use re_log_types::EntityPathHash;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::ViewClass as _;
 
 use super::UiLabel;
-use crate::{
-    PickableTexturedRect, SpatialView2D, view_kind::SpatialViewKind, visualizers::LoadingSpinner,
-};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::LoadingIndicator;
+use crate::{PickableTexturedRect, SpatialView2D};
 
 /// Common data struct for all spatial scene elements.
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
 pub struct SpatialViewVisualizerData {
-    /// Loading icons/spinners shown using egui, in world/scene coordinates.
-    pub loading_spinners: Vec<LoadingSpinner>,
+    /// Loading indicators shown using egui, in world/scene coordinates.
+    pub loading_indicators: Vec<LoadingIndicator>,
 
     /// Labels that should be shown using egui.
     pub ui_labels: Vec<UiLabel>,
@@ -30,7 +30,7 @@ pub struct SpatialViewVisualizerData {
 impl SpatialViewVisualizerData {
     pub fn new(preferred_view_kind: Option<SpatialViewKind>) -> Self {
         Self {
-            loading_spinners: Default::default(),
+            loading_indicators: Default::default(),
             ui_labels: Default::default(),
             bounding_boxes: Default::default(),
             pickable_rects: Default::default(),
@@ -72,20 +72,6 @@ impl SpatialViewVisualizerData {
                 pickable_rect.textured_rect.bounding_box(),
             ));
         }
-    }
-
-    pub fn add_bounding_box_from_points(
-        &mut self,
-        entity: EntityPathHash,
-        points: impl Iterator<Item = glam::Vec3>,
-        world_from_obj: glam::Affine3A,
-    ) {
-        re_tracing::profile_function!();
-        self.add_bounding_box(
-            entity,
-            macaw::BoundingBox::from_points(points),
-            world_from_obj,
-        );
     }
 
     pub fn as_any(&self) -> &dyn std::any::Any {

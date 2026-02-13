@@ -6,6 +6,17 @@ title: "TextLogView"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 A view of a text log, for use with [`archetypes.TextLog`](https://rerun.io/docs/reference/types/archetypes/text_log).
 
+## Properties
+
+### `columns`
+The columns to display in the view.
+
+* `timeline_columns`: What timeline columns to show.
+* `text_log_columns`: All columns to be displayed.
+### `rows`
+Filter for rows to display in the view.
+### `format_options`
+Formatting options for the text log view.
 
 ## API reference links
  * 🐍 [Python API docs for `TextLogView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextLogView)
@@ -16,7 +27,7 @@ A view of a text log, for use with [`archetypes.TextLog`](https://rerun.io/docs/
 
 snippet: views/text_log
 
-<picture data-inline-viewer="snippets/text_log">
+<picture data-inline-viewer="snippets/views/text_log">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1024w.png">

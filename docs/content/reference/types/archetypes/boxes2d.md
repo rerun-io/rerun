@@ -37,7 +37,7 @@ title: "Boxes2D"
 
 snippet: archetypes/boxes2d_simple
 
-<picture data-inline-viewer="snippets/boxes2d_simple">
+<picture data-inline-viewer="snippets/archetypes/boxes2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1024w.png">

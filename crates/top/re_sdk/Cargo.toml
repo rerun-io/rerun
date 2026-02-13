@@ -28,7 +28,7 @@ default = []
 ##
 ## See our `log_file` example and <https://www.rerun.io/docs/reference/data-loaders/overview>
 ## for more information.
-data_loaders = ["dep:re_data_loader", "dep:re_smart_channel"]
+data_loaders = ["dep:re_data_loader", "dep:re_log_channel"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -39,31 +39,31 @@ data_loaders = ["dep:re_data_loader", "dep:re_smart_channel"]
 ##
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
-web_viewer = [
-  "dep:re_smart_channel",
-  "dep:re_web_viewer_server",
-  "dep:tokio",
-  "dep:webbrowser",
-]
+web_viewer = ["dep:re_log_channel", "dep:re_web_viewer_server", "dep:tokio", "dep:webbrowser"]
 
-server = ["dep:re_smart_channel", "dep:tokio"]
+server = ["dep:re_log_channel", "dep:tokio"]
 
 
 [dependencies]
+re_arrow_combinators.workspace = true
 re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
 re_grpc_client.workspace = true
 re_grpc_server.workspace = true
+re_lenses.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
+re_quota_channel.workspace = true
+re_sdk_types.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
 re_uri.workspace = true
 
 ahash.workspace = true
+arrow.workspace = true
 const_format.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
@@ -72,11 +72,12 @@ nohash-hasher.workspace = true
 parking_lot.workspace = true
 percent-encoding.workspace = true
 thiserror.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 
 # Optional dependencies
 
 re_data_loader = { workspace = true, optional = true }
-re_smart_channel = { workspace = true, optional = true }
+re_log_channel = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 tokio = { workspace = true, optional = true }
@@ -87,8 +88,11 @@ webbrowser = { workspace = true, optional = true }
 libc.workspace = true
 
 [dev-dependencies]
+arrow.workspace = true
 insta.workspace = true
 similar-asserts.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 
 [build-dependencies]

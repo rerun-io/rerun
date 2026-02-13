@@ -1,0 +1,17 @@
+namespace rerun.components;
+
+/// A generic count value.
+///
+/// Used for counting various entities like messages, schemas, channels, etc.
+table Count (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "int | npt.NDArray[np.uint64]",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+
+  /// TODO(#11107): Stabilize
+  "attr.rerun.state": "unstable"
+) {
+  value: rerun.datatypes.UInt64 (order: 100);
+}

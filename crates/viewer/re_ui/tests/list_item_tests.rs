@@ -1,5 +1,7 @@
-use egui::Vec2;
-use egui_kittest::SnapshotOptions;
+#![cfg(feature = "testing")]
+
+use egui_kittest::kittest::Queryable as _;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 
 #[test]
@@ -23,6 +25,9 @@ pub fn test_list_items_should_match_snapshot() {
         ui.list_item()
             .force_hovered(true)
             .show_hierarchical(ui, list_item::LabelContent::new("Perma-hovered item"));
+
+        ui.list_item()
+            .show_hierarchical(ui, list_item::LabelContent::new("Focused item"));
 
         ui.list_item().show_hierarchical_with_children(
             ui,
@@ -112,8 +117,8 @@ pub fn test_list_items_should_match_snapshot() {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons").with_buttons(|ui| {
-                        ui.small_icon_button(&icons::ADD, "Add")
-                            | ui.small_icon_button(&icons::REMOVE, "Remove")
+                        ui.small_icon_button(&icons::ADD, "Add");
+                        ui.small_icon_button(&icons::REMOVE, "Remove");
                     }),
                 );
 
@@ -121,10 +126,10 @@ pub fn test_list_items_should_match_snapshot() {
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons (always shown)")
                         .with_buttons(|ui| {
-                            ui.small_icon_button(&icons::ADD, "Add")
-                                | ui.small_icon_button(&icons::REMOVE, "Remove")
+                            ui.small_icon_button(&icons::ADD, "Add");
+                            ui.small_icon_button(&icons::REMOVE, "Remove");
                         })
-                        .always_show_buttons(true),
+                        .with_always_show_buttons(true),
                 );
             },
         );
@@ -165,16 +170,18 @@ pub fn test_list_items_should_match_snapshot() {
                         ui,
                         list_item::PropertyContent::new("Color")
                             .with_icon(&icons::VIEW_TEXT)
-                            .action_button(&icons::ADD, "Add", || {})
-                            .value_color(&color),
+                            .with_action_button(&icons::ADD, "Add", || {})
+                            .value_color(&color)
+                            .with_always_show_buttons(true),
                     );
 
                     ui.list_item().show_hierarchical(
                         ui,
                         list_item::PropertyContent::new("Color (editable)")
                             .with_icon(&icons::VIEW_TEXT)
-                            .action_button(&icons::ADD, "Add", || {})
-                            .value_color_mut(&mut color),
+                            .with_action_button(&icons::ADD, "Add", || {})
+                            .value_color_mut(&mut color)
+                            .with_always_show_buttons(true),
                     );
                 });
             },
@@ -218,8 +225,7 @@ pub fn test_list_items_should_match_snapshot() {
         );
     };
 
-    let mut harness = egui_kittest::Harness::builder()
-        .with_size(Vec2::new(700.0, 700.0))
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [700.0, 700.0])
         .build(|ctx| {
             egui::SidePanel::right("right_panel").show(ctx, |ui| {
                 ui.set_width(650.0);
@@ -229,6 +235,8 @@ pub fn test_list_items_should_match_snapshot() {
             });
         });
 
+    harness.get_by_label("Focused item").focus();
+
     harness.run();
-    harness.snapshot_options("list_items", &SnapshotOptions::new().threshold(1.3));
+    harness.snapshot("list_items");
 }

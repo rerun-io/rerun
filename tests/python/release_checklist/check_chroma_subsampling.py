@@ -73,7 +73,7 @@ def bgra2y8(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uin
     else:
         yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YUV)
         y, _u, _v = cv2.split(yuv)
-    return cast(npt.NDArray[np.uint8], y).astype(np.uint8)
+    return cast("npt.NDArray[np.uint8]", y).astype(np.uint8)
 
 
 def bgra2nv12(bgra: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:

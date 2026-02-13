@@ -1,0 +1,12 @@
+[project]
+name = "server_tables"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["rerun-sdk", "datafusion==50.1"]
+
+[project.scripts]
+server_tables = "server_tables:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -30,7 +30,7 @@ impl std::fmt::Display for DebugLabel {
 }
 
 impl DebugLabel {
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     #[inline]
     pub fn get(&self) -> Option<&str> {
         #[cfg(debug_assertions)]

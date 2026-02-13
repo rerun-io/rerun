@@ -1,0 +1,36 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: test_results
+---
+TestResult {
+    filter: Timestamp(
+        TimestampFilter(Between 2025-09-16 11:47:00Z and 2025-09-23 09:47:00Z),
+    ),
+    field: Field {
+        name: "column",
+        data_type: Timestamp(
+            Millisecond,
+            None,
+        ),
+        nullable: true,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
+    },
+    unfiltered: PrimitiveArray<Timestamp(Millisecond, None)>
+    [
+      2025-09-23T11:47:00,
+      2025-09-23T10:47:00,
+      2025-09-22T11:47:00,
+      2024-09-23T11:47:00,
+      null,
+      2025-09-23T12:47:00,
+      2025-09-24T11:47:00,
+      null,
+      2026-09-23T11:47:00,
+    ],
+    filtered: PrimitiveArray<Timestamp(Millisecond, None)>
+    [
+      2025-09-22T11:47:00,
+    ],
+}

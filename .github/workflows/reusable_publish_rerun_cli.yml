@@ -18,6 +18,7 @@ on:
 permissions:
   contents: "read"
   id-token: "write"
+  packages: "read"
 
 jobs:
   linux-arm64:
@@ -35,15 +36,6 @@ jobs:
     with:
       CONCURRENCY: publish-rerun-cli-linux-x64-${{ github.ref_name }}
       PLATFORM: linux-x64
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  macos-x64:
-    name: "Mac-Intel"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: publish-rerun-cli-macos-x64-${{ github.ref_name }}
-      PLATFORM: macos-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 

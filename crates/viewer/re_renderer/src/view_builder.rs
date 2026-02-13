@@ -1,30 +1,24 @@
-use parking_lot::RwLock;
 use std::sync::Arc;
 
-use crate::{
-    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
-    allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer},
-    context::{RenderContext, Renderers},
-    draw_phases::{
-        DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
-        ScreenshotProcessor,
-    },
-    global_bindings::FrameUniformBuffer,
-    queueable_draw_data::QueueableDrawData,
-    renderer::{CompositorDrawData, DebugOverlayDrawData},
-    transform::RectTransform,
-    wgpu_resources::{
-        GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
-    },
+use re_mutex::RwLock;
+
+use crate::allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer};
+use crate::context::RenderContext;
+use crate::draw_phases::{
+    DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
+    ScreenshotProcessor,
 };
+use crate::global_bindings::FrameUniformBuffer;
+use crate::queueable_draw_data::QueueableDrawData;
+use crate::renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo};
+use crate::transform::RectTransform;
+use crate::wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc};
+use crate::{DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
-
-    #[error("Picking rectangle readback was already scheduled.")]
-    PickingRectAlreadyScheduled,
 
     #[error(transparent)]
     InvalidDebugOverlay(#[from] crate::renderer::DebugOverlayError),
@@ -34,7 +28,7 @@ pub enum ViewBuilderError {
 /// Used to build up/collect various resources and then send them off for rendering of a single view.
 pub struct ViewBuilder {
     setup: ViewTargetSetup,
-    queued_draws: Vec<QueueableDrawData>,
+    draw_phase_manager: DrawPhaseManager,
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
     outline_mask_processor: Option<OutlineMaskProcessor>,
@@ -45,6 +39,8 @@ pub struct ViewBuilder {
 struct ViewTargetSetup {
     name: DebugLabel,
 
+    camera_position: glam::Vec3A,
+
     bind_group_0: GpuBindGroup,
     main_target_msaa: GpuTexture,
 
@@ -52,8 +48,6 @@ struct ViewTargetSetup {
     /// If MSAA is disabled, this is the same as `main_target_msaa`.
     main_target_resolved: GpuTexture,
     depth_buffer: GpuTexture,
-
-    frame_uniform_buffer_content: FrameUniformBuffer,
 
     resolution_in_pixel: [u32; 2],
 }
@@ -188,10 +182,26 @@ impl Projection {
     }
 }
 
+/// Aim for beauty or determinism?
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RenderMode {
+    /// Default render mode
+    #[default]
+    Beautiful,
+
+    /// Try to produce consistent results across different GPUs and drivers.
+    ///
+    /// Used for more consistent snapshot tests.
+    Deterministic,
+}
+
 /// Basic configuration for a target view.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TargetConfiguration {
     pub name: DebugLabel,
+
+    /// Aim for beauty or determinism?
+    pub render_mode: RenderMode,
 
     /// The viewport resolution in physical pixels.
     pub resolution_in_pixel: [u32; 2],
@@ -225,12 +235,19 @@ pub struct TargetConfiguration {
     /// Otherwise, this step will overwrite whatever was there before, drawing the view builder's result
     /// as an opaque rectangle.
     pub blend_with_background: bool,
+
+    /// Configuration for the picking layer if any.
+    ///
+    /// If this is `None`, no picking layer will be created.
+    /// For details see [`ViewPickingConfiguration`].
+    pub picking_config: Option<ViewPickingConfiguration>,
 }
 
 impl Default for TargetConfiguration {
     fn default() -> Self {
         Self {
             name: "default view".into(),
+            render_mode: RenderMode::Beautiful,
             resolution_in_pixel: [100, 100],
             view_from_world: Default::default(),
             projection_from_view: Projection::Perspective {
@@ -242,8 +259,31 @@ impl Default for TargetConfiguration {
             pixels_per_point: 1.0,
             outline_config: None,
             blend_with_background: false,
+            picking_config: None,
         }
     }
+}
+
+/// Configures the readback of a rectangle from the picking layer.
+///
+/// The picking result will still be valid if the rectangle is partially or fully outside of bounds.
+/// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger,
+/// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
+///
+/// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::readback_result`].
+/// To do so, you need to pass the exact same `identifier` and type of user data.
+///
+/// Received data that isn't retrieved for more than a frame will be automatically discarded.
+#[derive(Debug)]
+pub struct ViewPickingConfiguration {
+    /// The rectangle to read back from the picking layer.
+    pub picking_rect: RectInt,
+
+    /// Identifier to be passed to the readback result.
+    pub readback_identifier: GpuReadbackIdentifier,
+
+    /// Whether to draw a debug view of the picking layer when compositing the final view.
+    pub show_debug_view: bool,
 }
 
 impl ViewBuilder {
@@ -336,27 +376,33 @@ impl ViewBuilder {
     pub const DEFAULT_DEPTH_CLEAR: wgpu::LoadOp<f32> = wgpu::LoadOp::Clear(0.0);
 
     /// Default depth state for enabled depth write & read.
-    pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: Option<wgpu::DepthStencilState> =
-        Some(wgpu::DepthStencilState {
-            format: Self::MAIN_TARGET_DEPTH_FORMAT,
-            // It's important to set the depth test to GreaterEqual, not to Greater.
-            // This way, we ensure that objects that are drawn later with the exact same depth value, can overwrite earlier ones!
-            depth_compare: wgpu::CompareFunction::GreaterEqual,
-            depth_write_enabled: true,
-            stencil: wgpu::StencilState {
-                front: wgpu::StencilFaceState::IGNORE,
-                back: wgpu::StencilFaceState::IGNORE,
-                read_mask: 0,
-                write_mask: 0,
-            },
-            bias: wgpu::DepthBiasState {
-                constant: 0,
-                slope_scale: 0.0,
-                clamp: 0.0,
-            },
-        });
+    pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: wgpu::DepthStencilState = wgpu::DepthStencilState {
+        format: Self::MAIN_TARGET_DEPTH_FORMAT,
+        // It's important to set the depth test to GreaterEqual, not to Greater.
+        // This way, we ensure that objects that are drawn later with the exact same depth value, can overwrite earlier ones!
+        depth_compare: wgpu::CompareFunction::GreaterEqual,
+        depth_write_enabled: true,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState::IGNORE,
+            back: wgpu::StencilFaceState::IGNORE,
+            read_mask: 0,
+            write_mask: 0,
+        },
+        bias: wgpu::DepthBiasState {
+            constant: 0,
+            slope_scale: 0.0,
+            clamp: 0.0,
+        },
+    };
 
-    pub fn new(ctx: &RenderContext, config: TargetConfiguration) -> Self {
+    /// Default depth state for disabled depth write & read.
+    pub const MAIN_TARGET_DEFAULT_DEPTH_STATE_NO_WRITE: wgpu::DepthStencilState =
+        wgpu::DepthStencilState {
+            depth_write_enabled: false,
+            ..Self::MAIN_TARGET_DEFAULT_DEPTH_STATE
+        };
+
+    pub fn new(ctx: &RenderContext, config: TargetConfiguration) -> Result<Self, ViewBuilderError> {
         re_tracing::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
@@ -497,11 +543,19 @@ impl ViewBuilder {
             projection_from_world: projection_from_world.into(),
             camera_position,
             camera_forward,
-            tan_half_fov: tan_half_fov.into(),
             pixel_world_size_from_camera_distance,
             pixels_per_point: config.pixels_per_point,
-
-            device_tier: (ctx.device_caps().tier as u32).into(),
+            tan_half_fov,
+            device_tier: ctx.device_caps().tier as u32,
+            deterministic_rendering: match config.render_mode {
+                RenderMode::Beautiful => 0,
+                RenderMode::Deterministic => 1,
+            },
+            framebuffer_resolution: glam::vec2(
+                config.resolution_in_pixel[0] as _,
+                config.resolution_in_pixel[1] as _,
+            )
+            .into(),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
@@ -515,6 +569,8 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
+        let mut debug_overlays: Vec<QueueableDrawData> = Vec::new();
+
         let outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
             OutlineMaskProcessor::new(
                 ctx,
@@ -523,38 +579,97 @@ impl ViewBuilder {
                 config.resolution_in_pixel,
             )
         });
+        let picking_processor = if let Some(picking_config) = config.picking_config {
+            let picking_processor = PickingLayerProcessor::new(
+                ctx,
+                &config.name,
+                config.resolution_in_pixel.into(),
+                picking_config.picking_rect,
+                &frame_uniform_buffer_content,
+                picking_config.show_debug_view,
+                picking_config.readback_identifier,
+            );
 
-        let composition_draw = CompositorDrawData::new(
-            ctx,
-            &main_target_resolved,
-            outline_mask_processor
-                .as_ref()
-                .map(|p| p.final_voronoi_texture()),
-            &config.outline_config,
-            config.blend_with_background,
-        );
+            if picking_config.show_debug_view {
+                debug_overlays.push(
+                    DebugOverlayDrawData::new(
+                        ctx,
+                        &picking_processor.picking_target,
+                        config.resolution_in_pixel.into(),
+                        picking_config.picking_rect,
+                    )?
+                    .into(),
+                );
+            }
+
+            Some(picking_processor)
+        } else {
+            None
+        };
+
+        let active_draw_phases = {
+            let mut active_draw_phases = DrawPhase::Opaque
+                | DrawPhase::Background
+                | DrawPhase::Transparent
+                | DrawPhase::Compositing;
+            if config.outline_config.is_some() {
+                active_draw_phases |= DrawPhase::OutlineMask;
+            }
+            if picking_processor.is_some() {
+                active_draw_phases |= DrawPhase::PickingLayer;
+            }
+            // TODO(andreas): should not always be active.
+            // TODO(andreas): The fact that this is a draw phase is actually a bit dubious.
+            //if screenshot_processor.is_some() {
+            active_draw_phases |= DrawPhase::CompositingScreenshot;
+            //}
+
+            active_draw_phases
+        };
+
+        let draw_phase_manager = DrawPhaseManager::new(active_draw_phases);
 
         let setup = ViewTargetSetup {
             name: config.name,
+            camera_position: camera_position.into(),
             bind_group_0,
             main_target_msaa,
             main_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
-            frame_uniform_buffer_content,
         };
 
         ctx.active_frame
             .num_view_builders_created
             .fetch_add(1, std::sync::atomic::Ordering::Release);
 
-        Self {
+        let mut view_builder = Self {
             setup,
-            queued_draws: vec![composition_draw.into()],
+            draw_phase_manager,
             outline_mask_processor,
             screenshot_processor: Default::default(),
-            picking_processor: Default::default(),
+            picking_processor,
+        };
+
+        view_builder.queue_draw(
+            ctx,
+            CompositorDrawData::new(
+                ctx,
+                &view_builder.setup.main_target_resolved,
+                view_builder
+                    .outline_mask_processor
+                    .as_ref()
+                    .map(|p| p.final_voronoi_texture()),
+                &config.outline_config,
+                config.blend_with_background,
+            ),
+        );
+
+        for debug_overlay in debug_overlays {
+            view_builder.queue_draw(ctx, debug_overlay);
         }
+
+        Ok(view_builder)
     }
 
     /// Resolution in pixels as configured on view builder creation.
@@ -562,40 +677,22 @@ impl ViewBuilder {
         self.setup.resolution_in_pixel
     }
 
-    fn draw_phase(
-        &self,
-        renderers: &Renderers,
-        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
-        phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'_>,
-    ) {
-        re_tracing::profile_function!();
-
-        for queued_draw in &self.queued_draws {
-            if queued_draw.participated_phases.contains(&phase) {
-                let res = (queued_draw.draw_func)(
-                    renderers,
-                    render_pipelines,
-                    phase,
-                    pass,
-                    queued_draw.draw_data.as_ref(),
-                );
-                if let Err(err) = res {
-                    re_log::error!(renderer=%queued_draw.renderer_name, %err,
-                        "renderer failed to draw");
-                }
-            }
-        }
-    }
-
-    pub fn queue_draw(&mut self, draw_data: impl Into<QueueableDrawData>) -> &mut Self {
-        self.queued_draws.push(draw_data.into());
+    pub fn queue_draw(
+        &mut self,
+        ctx: &RenderContext,
+        draw_data: impl Into<QueueableDrawData>,
+    ) -> &mut Self {
+        let view_info = DrawableCollectionViewInfo {
+            camera_world_position: self.setup.camera_position,
+        };
+        self.draw_phase_manager
+            .add_draw_data(ctx, draw_data.into(), &view_info);
         self
     }
 
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
-        &self,
+        &mut self,
         ctx: &RenderContext,
         clear_color: Rgba,
     ) -> Result<wgpu::CommandBuffer, PoolError> {
@@ -603,26 +700,24 @@ impl ViewBuilder {
 
         // Renderers and render pipelines are locked for the entirety of this method:
         // This means it's *not* possible to add renderers or pipelines while drawing is in progress!
-        //
-        // This is primarily due to the lifetime association render passes have all passed in resources:
-        // For dynamic resources like bind groups/textures/buffers we use handles that *store* an arc
-        // to the wgpu resources to solve this ownership problem.
-        // But for render pipelines, which we want to be able the resource under a handle via reload,
-        // so we always have to do some kind of lookup prior to or during rendering.
-        // Therefore, we just lock the pool for the entirety of the draw which ensures
-        // that the lock outlives the pass.
-        //
         // Renderers can't be added anyways at this point (RendererData add their Renderer on creation),
         // so no point in taking the lock repeatedly.
         //
-        // TODO(gfx-rs/wgpu#1453): Note that this is a limitation that will be lifted in future versions of wgpu.
+        // This used to be due to the lifetime association render passes had all passed in resources,
+        // this restriction has been lifted by now in wgpu.
         // However, having our locking concentrated for the duration of a view draw
         // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
         // locking and unlocking.
+        //
+        // TODO(andreas): No longer having those lifetime issues with wgpu may still save us some locking though?
+
         let renderers = ctx.read_lock_renderers();
         let pipelines = ctx.gpu_resources.render_pipelines.resources();
 
         let setup = &self.setup;
+
+        // Prepare the drawables for drawing!
+        self.draw_phase_manager.sort_drawables();
 
         let mut encoder = ctx
             .device
@@ -639,6 +734,7 @@ impl ViewBuilder {
                 label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
+                    depth_slice: None,
                     resolve_target: needs_msaa_resolve
                         .then_some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {
@@ -677,7 +773,8 @@ impl ViewBuilder {
                 DrawPhase::Background,
                 DrawPhase::Transparent,
             ] {
-                self.draw_phase(&renderers, &pipelines, phase, &mut pass);
+                self.draw_phase_manager
+                    .draw(&renderers, &pipelines, phase, &mut pass);
             }
         }
 
@@ -695,7 +792,12 @@ impl ViewBuilder {
                 // 3: Draw call in renderer.
                 //
                 //pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(&renderers, &pipelines, DrawPhase::PickingLayer, &mut pass);
+                self.draw_phase_manager.draw(
+                    &renderers,
+                    &pipelines,
+                    DrawPhase::PickingLayer,
+                    &mut pass,
+                );
             }
             match picking_processor.end_render_pass(&mut encoder, &pipelines) {
                 Err(PickingLayerError::ResourcePoolError(err)) => {
@@ -714,7 +816,12 @@ impl ViewBuilder {
                 re_tracing::profile_scope!("outline mask pass");
                 let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(&renderers, &pipelines, DrawPhase::OutlineMask, &mut pass);
+                self.draw_phase_manager.draw(
+                    &renderers,
+                    &pipelines,
+                    DrawPhase::OutlineMask,
+                    &mut pass,
+                );
             }
             outline_mask_processor.compute_outlines(&pipelines, &mut encoder)?;
         }
@@ -723,7 +830,7 @@ impl ViewBuilder {
             {
                 let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(
+                self.draw_phase_manager.draw(
                     &renderers,
                     &pipelines,
                     DrawPhase::CompositingScreenshot,
@@ -784,75 +891,6 @@ impl ViewBuilder {
         Ok(())
     }
 
-    /// Schedules the readback of a rectangle from the picking layer.
-    ///
-    /// Needs to be called before [`ViewBuilder::draw`].
-    /// Can only be called once per frame per [`ViewBuilder`].
-    ///
-    /// The result will still be valid if the rectangle is partially or fully outside of bounds.
-    /// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger,
-    /// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
-    ///
-    /// Note that the picking layer will not be created in the first place if this isn't called.
-    ///
-    /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::readback_result`].
-    /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
-    /// ```no_run
-    /// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext};
-    /// fn schedule_picking_readback(
-    ///     ctx: &RenderContext,
-    ///     view_builder: &mut ViewBuilder,
-    ///     picking_rect: RectInt,
-    /// ) {
-    ///     view_builder.schedule_picking_rect(
-    ///         ctx, picking_rect, 42, "My screenshot".to_owned(), false,
-    ///     );
-    /// }
-    /// fn receive_screenshots(ctx: &RenderContext) {
-    ///     while let Some(result) = PickingLayerProcessor::readback_result::<String>(ctx, 42) {
-    ///         re_log::info!("Received picking_data {}", result.user_data);
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Received data that isn't retrieved for more than a frame will be automatically discarded.
-    pub fn schedule_picking_rect<T: 'static + Send + Sync>(
-        &mut self,
-        ctx: &RenderContext,
-        picking_rect: RectInt,
-        readback_identifier: GpuReadbackIdentifier,
-        readback_user_data: T,
-        show_debug_view: bool,
-    ) -> Result<(), ViewBuilderError> {
-        if self.picking_processor.is_some() {
-            return Err(ViewBuilderError::PickingRectAlreadyScheduled);
-        }
-
-        let picking_processor = PickingLayerProcessor::new(
-            ctx,
-            &self.setup.name,
-            self.setup.resolution_in_pixel.into(),
-            picking_rect,
-            &self.setup.frame_uniform_buffer_content,
-            show_debug_view,
-            readback_identifier,
-            readback_user_data,
-        );
-
-        if show_debug_view {
-            self.queue_draw(DebugOverlayDrawData::new(
-                ctx,
-                &picking_processor.picking_target,
-                self.setup.resolution_in_pixel.into(),
-                picking_rect,
-            )?);
-        }
-
-        self.picking_processor = Some(picking_processor);
-
-        Ok(())
-    }
-
     /// Composites the final result of a `ViewBuilder` to a given output `RenderPass`.
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
@@ -862,7 +900,7 @@ impl ViewBuilder {
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
 
-        self.draw_phase(
+        self.draw_phase_manager.draw(
             &ctx.read_lock_renderers(),
             &ctx.gpu_resources.render_pipelines.resources(),
             DrawPhase::Compositing,

@@ -31,7 +31,7 @@ def task(child_index: int) -> None:
         "log",
         rr.TextLog(
             f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",
-        ),  # noqa: E501 line too long
+        ),
     )
     if child_index == 0:
         rr.log(title, rr.Boxes2D(array=[5, 5, 80, 80], array_format=rr.Box2DFormat.XYWH, labels=title))

@@ -7,13 +7,14 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-In and out of process performance profiling utilities for Rerun & Redap.
+In and out of process telemetry and profiling utilities for Rerun & Redap.
 
 Performance telemetry is always disabled by default. It is gated both by a feature flag (`perf_telemetry`) and runtime configuration in the form of environment variables:
 * `TELEMETRY_ENABLED`: is performance telemetry enabled at all (default: `false`)?
 * `TRACY_ENABLED`: is the tracy integration enabled (default: `false`)? works even if `TELEMETRY_ENABLED=false`, to reduce noise in measurements.
 * `OTEL_SDK_ENABLED`: is the OpenTelemetry enabled (default: `false`)? does nothing if `TELEMETRY_ENABLED=false`.
 
+Note that despite the name, this crate also hands all log output to the telemetry backend.
 
 ## What
 
@@ -26,7 +27,7 @@ What you can or cannot do with that depends on which project you're working on (
 
 ### Redap
 
-If you have source access to the Rerun dataplatform check the Readme there.
+If you have source access to the Rerun Data Platform check the Readme there.
 
 
 ### Rerun SDK
@@ -117,7 +118,8 @@ The integration only really works with in-process profiling, and even then with 
 #### Limitations
 
 * `puffin` spans are not forwarded to the perf telemetry tools
-  While this is technically do-able (would require adding a `tracing` integration to the `puffin` crate itself), our `puffin` spans were not implemented with the kind of overhead that the `tracing` involves in mind anyway.
+  While this is technically do-able (for instance by replacing `puffin` calls with [the `profiling` crate](https://crates.io/crates/profiling)),
+  our `puffin` spans were not implemented with the kind of overhead that the `tracing` involves in mind anyway.
   A possible future approach would be a native Tracy integration for the Viewer, see `Future work` below.
 
 * The viewer will crash during shutdown when perf telemetry is enabled

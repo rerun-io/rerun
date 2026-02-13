@@ -1,4 +1,5 @@
-use re_types::{components::MarkerShape, reflection::Enum as _};
+use re_sdk_types::components::MarkerShape;
+use re_sdk_types::reflection::Enum as _;
 use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
@@ -50,7 +51,7 @@ pub(crate) fn edit_marker_shape_ui(
                         combined_response.expect("At least one marker shape should be available")
                     };
 
-                    re_ui::list_item::list_item_scope(ui, "marker_shape", list_ui)
+                    re_ui::list_item::list_item_scope(ui, "marker_shape", list_ui).inner
                 }),
         )
     } else {

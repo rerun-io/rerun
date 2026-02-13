@@ -27,6 +27,7 @@ re_format.workspace = true
 anyhow.workspace = true
 argh.workspace = true
 camino.workspace = true
+crossbeam.workspace = true
 cargo_metadata.workspace = true
 glob.workspace = true
 indicatif.workspace = true
@@ -37,9 +38,8 @@ rustdoc-json.workspace = true
 rustdoc-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
 tempfile.workspace = true
-toml = { workspace = true, features = ["parse", "preserve_order"] }
+toml = { workspace = true, features = ["parse", "preserve_order", "serde"] }
 ureq = { workspace = true, features = ["json"] }
 url.workspace = true
 wasm-bindgen-cli-support.workspace = true

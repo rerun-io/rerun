@@ -7,10 +7,12 @@ order: 3
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
 
+* [`AbsoluteTimeRange`](datatypes/absolute_time_range.md): Two [`datatypes.TimeInt`](https://rerun.io/docs/reference/types/datatypes/time_int) describing a range of time.
 * [`Angle`](datatypes/angle.md): Angle in radians.
 * [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
 * [`Blob`](datatypes/blob.md): A binary blob of data.
 * [`Bool`](datatypes/bool.md): A single boolean.
+* [`ChannelCountPair`](datatypes/channel_count_pair.md): A pair representing a channel ID and its associated message count.
 * [`ChannelDatatype`](datatypes/channel_datatype.md): The innermost datatype of an image.
 * [`ClassDescription`](datatypes/class_description.md): The description of a semantic Class.
 * [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md): A helper type for mapping [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s to class descriptions.

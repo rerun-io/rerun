@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -229,16 +230,35 @@ class BacktickLinkError(Error):
         )
 
 
+class BadDataReferenceError(Error):
+    CODE = "E005"
+
+    def __init__(self, data_reference_name: str, span: Span) -> None:
+        super().__init__(type(self).CODE, f"`{data_reference_name}` is not a valid data reference", span)
+
+    @staticmethod
+    def explain() -> str:
+        return textwrap.dedent(
+            """
+            A `data_inline_viewer` should be a valid reference.
+            """,
+        )
+
+
 EXPLAIN = {
     NoClosingTagError.CODE: NoClosingTagError.explain,
     NoPrecedingBlankLineError.CODE: NoPrecedingBlankLineError.explain,
     BlankLinesError.CODE: BlankLinesError.explain,
     BacktickLinkError.CODE: BacktickLinkError.explain,
+    BadDataReferenceError.CODE: BadDataReferenceError.explain,
 }
 
 
 @dataclass
 class ElementSpans:
+    opening_tag_content: Span
+    """Span for the opening tag content"""
+
     element: Span
     """Span from the opening tag to the closing tag"""
 
@@ -250,6 +270,9 @@ def get_non_void_element_spans(content: str, search_start: int, tagname: str) ->
     element_start = content.find(f"<{tagname}", search_start)
     if element_start == -1:
         return None
+
+    opening_tag_content_start = element_start + len(tagname) + 1
+    opening_tag_content_end = content.find(">", opening_tag_content_start)
 
     line_start = content.rfind("\n", 0, element_start)
     if line_start == -1:
@@ -265,6 +288,7 @@ def get_non_void_element_spans(content: str, search_start: int, tagname: str) ->
         return NoClosingTagError(tagname, Span(line_start, line_end))
 
     return ElementSpans(
+        opening_tag_content=Span(opening_tag_content_start, opening_tag_content_end),
         element=Span(element_start, element_end),
         line=Span(line_start, line_end),
     )
@@ -298,6 +322,8 @@ def check_preceding_newline(tagname: str, content: str, spans: ElementSpans, err
 #   </picture>
 PICTURE_BAD_SOURCE_INDENT = re.compile("(\\n\\s*)(\\n\\s+)<source")
 
+DATA_INLINE_VIEWER = "data-inline-viewer"
+
 
 def check_picture_elements(content: str, errors: list[Error]) -> None:
     search_start = 0
@@ -314,6 +340,24 @@ def check_picture_elements(content: str, errors: list[Error]) -> None:
             errors.append(BlankLinesError("picture", Span(match.start(), match.end()).offset(spans.element.start)))
 
         check_preceding_newline("picture", content, spans, errors)
+
+        tag_content = spans.opening_tag_content.slice(content)
+        data_inline_viewer = tag_content.find(DATA_INLINE_VIEWER)
+
+        if data_inline_viewer >= 0:
+            data_reference_start = tag_content.find('"', data_inline_viewer + len(DATA_INLINE_VIEWER)) + 1
+            data_reference_end = tag_content.find('"', data_reference_start)
+
+            data_reference_span = Span(data_reference_start, data_reference_end)
+            data_reference_name = data_reference_span.slice(tag_content)
+            (kind, name) = data_reference_name.split("/", 1)
+
+            valid_reference = (kind == "snippets" and glob(f"docs/snippets/all/{name}.py")) or (
+                kind == "examples" and glob(f"examples/python/{name}")
+            )
+
+            if not valid_reference:
+                errors.append(BadDataReferenceError(data_reference_name, data_reference_span))
 
         search_start = spans.element.end + 1
 
@@ -389,7 +433,7 @@ def lint(glob_pattern: str) -> None:
             print("The following invalid markdown files were found:\n")
             for error in errors:
                 print(error)
-            exit(1)
+            sys.exit(1)
         print("No problems found")
 
 

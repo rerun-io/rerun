@@ -1,5 +1,5 @@
 use re_format::{format_lat_lon, format_uint};
-use re_types::components::GeoLineString;
+use re_sdk_types::components::GeoLineString;
 use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 

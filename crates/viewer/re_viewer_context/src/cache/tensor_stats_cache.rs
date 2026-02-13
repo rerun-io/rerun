@@ -1,10 +1,11 @@
 use ahash::{HashMap, HashSet};
 use itertools::Either;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
+use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_types::{archetypes::Tensor, datatypes::TensorData};
+use re_sdk_types::archetypes::Tensor;
+use re_sdk_types::datatypes::TensorData;
 
 use crate::{Cache, TensorStats};
 
@@ -27,30 +28,27 @@ impl TensorStatsCache {
 }
 
 impl Cache for TensorStatsCache {
+    fn name(&self) -> &'static str {
+        "TensorStatsCache"
+    }
+
     fn purge_memory(&mut self) {
         // Purging the tensor stats is not worth it - these are very small objects!
     }
 
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
-    }
-
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
         let cache_keys: HashSet<Hash64> = events
             .iter()
-            .flat_map(|event| {
-                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
-                let contains_tensor_data = || {
-                    event
-                        .chunk
-                        .components()
-                        .contains_component(&Tensor::descriptor_data())
-                };
-
-                if is_deletion() && contains_tensor_data() {
-                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
+            .filter_map(|e| e.to_deletion())
+            .flat_map(|del| {
+                if del
+                    .chunk
+                    .components()
+                    .contains_component(Tensor::descriptor_data().component)
+                {
+                    Either::Left(del.chunk.row_ids().map(Hash64::hash))
                 } else {
                     Either::Right(std::iter::empty())
                 }
@@ -60,8 +58,10 @@ impl Cache for TensorStatsCache {
         self.0
             .retain(|cache_key, _per_key| !cache_keys.contains(cache_key));
     }
+}
 
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+impl re_byte_size::MemUsageTreeCapture for TensorStatsCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }

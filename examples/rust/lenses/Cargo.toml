@@ -1,0 +1,13 @@
+[package]
+name = "lenses"
+version = "0.30.0-alpha.1+dev"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun", features = ["web_viewer", "clap"] }
+
+anyhow.workspace = true
+arrow.workspace = true

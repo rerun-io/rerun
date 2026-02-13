@@ -1,19 +1,14 @@
 use re_chunk_store::RowId;
-use re_renderer::{
-    renderer::ColormappedTexture,
-    resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError},
-};
-use re_types::{
-    components::GammaCorrection,
-    datatypes::TensorData,
-    tensor_data::{TensorCastError, TensorDataType},
-};
-use re_viewer_context::{
-    ColormapWithRange,
-    gpu_bridge::{self, colormap_to_re_renderer},
-};
+use re_renderer::renderer::ColormappedTexture;
+use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError};
+use re_sdk_types::components::GammaCorrection;
+use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::tensor_data::{TensorCastError, TensorDataType};
+use re_viewer_context::ColormapWithRange;
+use re_viewer_context::gpu_bridge::{self, colormap_to_re_renderer};
 
-use crate::{dimension_mapping::TensorSliceSelection, view_class::selected_tensor_slice};
+use crate::dimension_mapping::TensorSliceSelection;
+use crate::view_class::selected_tensor_slice;
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorUploadError {
@@ -41,7 +36,7 @@ pub fn colormapped_texture(
         texture,
         range: colormap.value_range,
         decode_srgb: false,
-        multiply_rgb_with_alpha: false,
+        texture_alpha: re_renderer::renderer::TextureAlpha::Opaque,
         gamma: *gamma.0,
         color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
             colormap.colormap,

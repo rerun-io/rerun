@@ -1,0 +1,13 @@
+namespace rerun.blueprint.archetypes;
+
+/// A visualizer instruction for an entity.
+table VisualizerInstruction (
+    "attr.rerun.scope": "blueprint",
+    "attr.python.aliases": "str | Sequence[str]"
+) {
+  /// The type of the visualizer.
+  visualizer_type: rerun.blueprint.components.VisualizerType ("attr.rerun.component_required", order: 100);
+
+  /// The component mapping pairs.
+  component_map: [rerun.blueprint.components.VisualizerComponentMapping] ("attr.rerun.component_optional", nullable, order: 200);
+}

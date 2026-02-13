@@ -1,0 +1,6 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+range: [[0.0, 1.0]]
+zoom_lock: [false]

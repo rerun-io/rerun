@@ -1,50 +1,42 @@
 use re_viewer_context::DisplayMode;
 
-/// The navigation history of the viewer.
-///
-/// This object should never be exposed to directly via contexts. Instead,
-/// we retrieve the display mode and pass that around.
+/// Keeps track of the current display mode of the viewer.
 pub(crate) struct Navigation {
-    history: Vec<DisplayMode>,
-    default: DisplayMode,
+    current_mode: DisplayMode,
+    start_mode: DisplayMode,
 }
 
 impl Default for Navigation {
     fn default() -> Self {
+        let start_mode = DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone());
         Self {
-            history: Default::default(),
-            default: DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone()),
+            current_mode: start_mode.clone(),
+            start_mode,
         }
     }
 }
 
 impl Navigation {
-    // TODO(grtlr): In the future we should have something like `push_unique`, but for
-    // this we first need all display modes to contain more information.
-
-    pub fn push(&mut self, display_mode: DisplayMode) {
-        re_log::debug!("Pushed display mode `{:?}`", display_mode);
-        self.history.push(display_mode);
+    /// Resets to use the start display mode, which is also the fallback mode for
+    /// navigation.
+    ///
+    /// This is defined in the default implementation for [`Navigation`]
+    pub fn reset(&mut self) {
+        self.current_mode = self.start_mode.clone();
     }
 
-    pub fn replace(&mut self, new_mode: DisplayMode) -> Option<DisplayMode> {
-        let previous = self.history.pop();
+    pub fn replace(&mut self, new_mode: DisplayMode) -> DisplayMode {
+        let previous = std::mem::replace(&mut self.current_mode, new_mode);
 
-        if previous.as_ref().is_none_or(|prev| prev != &new_mode) {
-            re_log::trace!("Navigated from {previous:?} to {new_mode:?}");
+        if previous != *self.current() {
+            re_log::trace!("Navigated from {previous:?} to {:?}", self.current());
         }
 
-        self.history.push(new_mode);
         previous
     }
 
-    pub fn pop(&mut self) -> Option<DisplayMode> {
-        let previous = self.history.pop();
-        re_log::debug!("Popped display mode `{:?}`", previous);
-        previous
-    }
-
-    pub fn peek(&self) -> &DisplayMode {
-        self.history.last().unwrap_or(&self.default)
+    /// Current state
+    pub fn current(&self) -> &DisplayMode {
+        &self.current_mode
     }
 }

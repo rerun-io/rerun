@@ -1,0 +1,17 @@
+namespace rerun.blueprint.datatypes;
+
+/// A timeline column in a table.
+table TimelineColumn (
+  "attr.python.aliases": "datatypes.Utf8Like",
+  "attr.rust.derive": "PartialEq, Eq, Hash",
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Is this column visible?
+  ///
+  /// Defaults to true.
+  visible: rerun.datatypes.Bool (order: 100);
+
+  /// Which timeline is this?
+  timeline: rerun.datatypes.Utf8 (order: 200);
+}
+

@@ -3,28 +3,38 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import pyarrow
-import pyarrow.ipc as ipc
-from pyarrow import RecordBatch
+from pyarrow import RecordBatch, ipc
 
-from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from datetime import datetime, timedelta
 
+    import datafusion
     import numpy as np
 
     from .blueprint import BlueprintLike
 
 
 from rerun import bindings
-from rerun.error_utils import RerunOptionalDependencyError
+from rerun.error_utils import RerunMissingDependencyError
 
-from .event import (
+from ._event import (
+    ContainerSelectionItem as ContainerSelectionItem,
+    EntitySelectionItem as EntitySelectionItem,
+    PauseEvent as PauseEvent,
+    PlayEvent as PlayEvent,
+    RecordingOpenEvent as RecordingOpenEvent,
+    SelectionChangeEvent as SelectionChangeEvent,
+    SelectionItem as SelectionItem,
+    TimelineChangeEvent as TimelineChangeEvent,
+    TimeUpdateEvent as TimeUpdateEvent,
     ViewerEvent as ViewerEvent,
+    ViewSelectionItem as ViewSelectionItem,
     _viewer_event_from_json_str,
 )
 from .recording_stream import RecordingStream, get_data_recording
@@ -68,7 +78,7 @@ class Viewer:
     """
     A viewer embeddable in a notebook.
 
-    This viewer is a wrapper around the [`rerun_notebook.Viewer`][] widget.
+    This viewer is a wrapper around the `rerun_notebook.Viewer` widget.
     """
 
     def __init__(
@@ -80,6 +90,7 @@ class Viewer:
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
         use_global_recording: bool | None = None,
+        theme: Literal["dark", "light", "system"] | None = None,
     ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
@@ -87,7 +98,7 @@ class Viewer:
         Any data logged to the recording after initialization will be sent directly to the viewer.
 
         This widget can be displayed by returning it at the end of your cells execution, or immediately
-        by calling [`Viewer.display`][].
+        by calling [`rerun.notebook.Viewer.display`][].
 
         Parameters
         ----------
@@ -117,17 +128,37 @@ class Viewer:
             Settings this to `False` causes the Viewer to not pick up the global recording.
 
             Defaults to `False` if `url` is provided, and `True` otherwise.
+        theme:
+            The color theme to use. Either "dark", "light", or "system".
+
+            If not set, the viewer uses the previously persisted theme preference or defaults to "system".
 
         """
         if not HAS_NOTEBOOK:
-            raise RerunOptionalDependencyError("rerun-notebook", "notebook")
+            raise RerunMissingDependencyError("rerun-notebook", "notebook")
         self._error_widget = _ErrorWidget()
+
+        # Get access token from env variable
+        credentials = None
+        fallback_token = os.environ.get("REDAP_TOKEN", None)
+        credentials = None
+        if fallback_token is None:
+            # Get credentials from the SDK and pass the access token to wasm viewer
+            credentials = bindings.get_credentials()
+            if credentials is not None:
+                fallback_token = credentials.access_token
+
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
             url=url,
-            fallback_token=os.environ.get("REDAP_TOKEN", None),
+            fallback_token=fallback_token,
+            theme=theme,
         )
+
+        # Set full credentials if we have them so the UI can show who's logged in
+        if credentials is not None:
+            self._viewer.set_credentials(credentials.access_token, credentials.user_email)
 
         # Viewer event handling
         self._event_callbacks: list[Callable[[ViewerEvent], None]] = []
@@ -208,7 +239,7 @@ class Viewer:
         return RecordBatch.from_arrays(record_batch.columns, schema=schema)
 
     def set_application_blueprint(
-        self, application_id: str, blueprint: BlueprintLike, make_active: bool = True, make_default: bool = True
+        self, application_id: str, blueprint: BlueprintLike, *, make_active: bool = True, make_default: bool = True
     ) -> None:
         """
         Set the blueprint for the given application.
@@ -252,7 +283,7 @@ class Viewer:
     def send_table(
         self,
         id: str,
-        table: RecordBatch,
+        table: RecordBatch | list[RecordBatch] | datafusion.DataFrame,
     ) -> None:
         """
         Sends a table in the form of a dataframe to the viewer.
@@ -263,10 +294,13 @@ class Viewer:
             The name that uniquely identifies the table in the viewer.
             This name will also be shown in the recording panel.
         table:
-            The table as a single Arrow record batch.
+            The table data as an Arrow RecordBatch, list of RecordBatches, or a datafusion DataFrame.
 
         """
-        new_table = self._add_table_id(table, id)
+        from rerun._arrow import to_record_batch
+
+        record_batch = to_record_batch(table)
+        new_table = self._add_table_id(record_batch, id)
         sink = pyarrow.BufferOutputStream()
         writer = ipc.new_stream(sink, new_table.schema)
         writer.write_batch(new_table)
@@ -409,8 +443,6 @@ class Viewer:
 
         self._viewer.close_url(url)
 
-    @deprecated_param("nanoseconds", use_instead="duration or timestamp", since="0.23.0")
-    @deprecated_param("seconds", use_instead="duration or timestamp", since="0.23.0")
     def set_time_ctrl(
         self,
         *,
@@ -419,9 +451,6 @@ class Viewer:
         timestamp: int | float | datetime | np.datetime64 | None = None,
         timeline: str | None = None,
         play: bool = False,
-        # Deprecated parameters:
-        nanoseconds: int | None = None,
-        seconds: float | None = None,
     ) -> None:
         """
         Set the time control for the viewer.
@@ -445,19 +474,8 @@ class Viewer:
             Whether to start playing from the specified time point. Defaults to paused.
         timeline:
             The name of the timeline to switch to. If not provided, time will remain on the current timeline.
-        nanoseconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead, with "seconds" as the unit.
-        seconds:
-            DEPRECATED: Use `duration` or 'timestamp` instead.
 
         """
-
-        # Handle deprecated parameters:
-        if nanoseconds is not None:
-            duration = 1e-9 * nanoseconds
-        if seconds is not None:
-            duration = seconds
-
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
             raise ValueError(
                 f"set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
@@ -475,4 +493,21 @@ class Viewer:
         self._viewer.set_time_ctrl(timeline, time, play)
 
     def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
+        """
+        Register a callback to be called when a viewer event occurs.
+
+        The callback will receive a [`ViewerEvent`][rerun.notebook.ViewerEvent], which is one of:
+        [`PlayEvent`][rerun.notebook.PlayEvent], [`PauseEvent`][rerun.notebook.PauseEvent],
+        [`TimeUpdateEvent`][rerun.notebook.TimeUpdateEvent], [`TimelineChangeEvent`][rerun.notebook.TimelineChangeEvent],
+        [`SelectionChangeEvent`][rerun.notebook.SelectionChangeEvent], or [`RecordingOpenEvent`][rerun.notebook.RecordingOpenEvent].
+
+        Parameters
+        ----------
+        callback:
+            A function that takes a [`ViewerEvent`][rerun.notebook.ViewerEvent] as its only argument.
+
+        """
         self._event_callbacks.append(callback)
+
+    def set_credentials(self, access_token: str, email: str) -> None:
+        self._viewer.set_credentials(access_token, email)

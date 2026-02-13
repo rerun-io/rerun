@@ -1,25 +1,24 @@
 //! Web-specific tools used by various parts of the application.
 
+use re_log::ResultExt as _;
 use serde::Deserialize;
 use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::Window;
-
-use re_log::ResultExt as _;
 
 pub trait JsResultExt<T> {
     /// Logs an error if the result is an error and returns the result.
     fn ok_or_log_js_error(self) -> Option<T>;
 
     /// Logs an error if the result is an error and returns the result, but only once.
-    #[allow(unused)]
+    #[expect(unused)]
     fn ok_or_log_js_error_once(self) -> Option<T>;
 
     /// Log a warning if there is an `Err`, but only log the exact same message once.
-    #[allow(unused)]
+    #[expect(unused)]
     fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
 
     /// Unwraps in debug builds otherwise logs an error if the result is an error and returns the result.
-    #[allow(unused)]
+    #[expect(unused)]
     fn unwrap_debug_or_log_js_error(self) -> Option<T>;
 }
 
@@ -43,7 +42,7 @@ impl<T> JsResultExt<T> for Result<T, JsValue> {
 }
 
 /// Useful in error handlers
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
     // it's already a string
     if let Some(s) = s.as_string() {
@@ -76,6 +75,16 @@ pub fn window() -> Result<Window, JsValue> {
     web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
+/// Returns the base URL of the current page.
+///
+/// E.g. if the current URL is `https://rerun.io/viewer?url=https://example.com/recording.rrd`,
+/// this will return `https://rerun.io/viewer`.
+pub fn current_base_url() -> Result<url::Url, JsValue> {
+    let location = window()?.location().href()?;
+    let location = url::Url::parse(&location).map_err(JsError::from)?;
+    Ok(re_viewer_context::open_url::base_url(&location))
+}
+
 // Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
 #[derive(Clone, Deserialize)]
 #[repr(transparent)]
@@ -102,7 +111,7 @@ impl Callback {
 }
 
 // Deserializes from JS string or array of strings.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StringOrStringArray(Vec<String>);
 
 impl StringOrStringArray {

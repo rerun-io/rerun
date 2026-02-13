@@ -1,6 +1,10 @@
-numpy
+# NOTE: numpy has to be downgraded to be compatible with ROS packages
+# that were built against the 1.x version of python3-numpy in Ubuntu 24.04.
+
+numpy<2.0
 opencv-python
 pycollada
+pyyaml
 rerun-sdk
 scipy
 yourdfpy

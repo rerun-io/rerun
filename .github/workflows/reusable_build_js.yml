@@ -28,7 +28,7 @@ env:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "read"
@@ -37,6 +37,7 @@ permissions:
 jobs:
   build:
     name: Build rerun_js
+    timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
@@ -59,9 +60,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Install yarn dependencies
         run: pixi run yarn --cwd rerun_js install

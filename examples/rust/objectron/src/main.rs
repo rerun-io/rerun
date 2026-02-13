@@ -9,16 +9,14 @@
 //! cargo run -p objectron -- --recording chair
 //! ```
 
-use std::{
-    collections::HashMap,
-    io::Read,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::collections::HashMap;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use anyhow::Context as _;
-
-use rerun::{TimeCell, external::re_log};
+use rerun::TimeCell;
+use rerun::external::re_log;
 
 // --- Rerun logging ---
 
@@ -310,9 +308,9 @@ struct Args {
     per_frame_sleep: Option<Duration>,
 }
 
-fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloatError> {
+fn parse_duration(arg: &str) -> anyhow::Result<std::time::Duration> {
     let seconds = arg.parse()?;
-    Ok(std::time::Duration::from_secs_f64(seconds))
+    Ok(std::time::Duration::try_from_secs_f64(seconds)?)
 }
 
 fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {

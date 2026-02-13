@@ -1,0 +1,19 @@
+namespace rerun.components;
+
+// ---
+
+/// A gamma correction value to be used with a scalar value or color.
+///
+/// Used to adjust the gamma of a color or scalar value between 0 and 1 before rendering.
+/// `new_value = old_value ^ gamma`
+///
+/// Must be a positive number.
+/// Defaults to 1.0 unless otherwise specified.
+struct GammaCorrection (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float | npt.ArrayLike",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  gamma: rerun.datatypes.Float32 (order: 100);
+}

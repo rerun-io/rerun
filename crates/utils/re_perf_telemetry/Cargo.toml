@@ -42,21 +42,30 @@ tracy_enabled = []
 ## E.g. an async function that yields 50 times will be counted as 51 (the first call + 50 yields).
 tracy = ["dep:tracing-tracy"]
 
+## PyO3 integration for cross-boundary tracing
+pyo3 = ["dep:pyo3"]
+
 
 [dependencies]
 
 # External
 ahash.workspace = true
 anyhow.workspace = true
+axum.workspace = true
 base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 http.workspace = true
+memory-stats = { workspace = true, features = ["always_use_statm"] }
 opentelemetry = { workspace = true, features = ["metrics"] }
 opentelemetry-appender-tracing = { workspace = true, features = [
   "experimental_use_tracing_span_context",
 ] }
+opentelemetry-http.workspace = true
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
-opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+opentelemetry_sdk = { workspace = true, features = [
+  "rt-tokio",
+  "experimental_metrics_custom_reader",
+] }
 parking_lot.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -65,14 +74,14 @@ tower-http = { workspace = true, features = ["propagate-header", "trace"] }
 tower.workspace = true
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
-tracing-subscriber = { workspace = true, features = [
-  "fmt",
-  "env-filter",
-  "json",
-] }
+tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "json"] }
+prometheus-client.workspace = true
+tokio.workspace = true
+
 
 # External (optional)
 tracing-tracy = { workspace = true, optional = true }
+pyo3 = { workspace = true, optional = true }
 
 [lints]
 workspace = true

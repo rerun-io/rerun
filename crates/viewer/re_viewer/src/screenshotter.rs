@@ -43,7 +43,7 @@ impl Screenshotter {
         let temporary_pixels_per_points = 2.0;
 
         let scale_factor = temporary_pixels_per_points / egui_ctx.pixels_per_point();
-        let temporary_viewport_size = scale_factor * egui_ctx.screen_rect().size();
+        let temporary_viewport_size = scale_factor * egui_ctx.content_rect().size();
         egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(temporary_viewport_size));
         egui_ctx.set_pixels_per_point(temporary_pixels_per_points);
     }
@@ -66,7 +66,7 @@ impl Screenshotter {
             // Restore zoom_factor and viewport size.
 
             let scale_factor = pre_screenshot_zoom_factor / egui_ctx.zoom_factor();
-            let old_viewport_size = scale_factor * egui_ctx.screen_rect().size();
+            let old_viewport_size = scale_factor * egui_ctx.content_rect().size();
             egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(old_viewport_size));
             egui_ctx.set_zoom_factor(pre_screenshot_zoom_factor);
         }
@@ -101,6 +101,7 @@ impl Screenshotter {
             }
         } else {
             egui_ctx.copy_image(image.clone());
+            re_log::info!("Screenshot copied to clipboard");
         }
     }
 }
@@ -113,7 +114,7 @@ pub struct Screenshotter {}
 
 #[cfg(target_arch = "wasm32")]
 impl Screenshotter {
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn is_screenshotting(&self) -> bool {
         false
     }

@@ -1,16 +1,13 @@
 [package]
 name = "clock"
-version = "0.25.0-alpha.1+dev"
+version = "0.30.0-alpha.1+dev"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", features = [
-  "web_viewer",
-  "clap",
-] }
+rerun = { path = "../../../crates/top/rerun", features = ["web_viewer", "clap"] }
 
-anyhow = "1.0"
-clap = { version = "4.0", features = ["derive"] }
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }

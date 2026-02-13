@@ -1,0 +1,70 @@
+[package]
+name = "re_redap_client"
+authors.workspace = true
+description = "Official gRPC client for the Rerun Data Protocol"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+
+default = []
+
+## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).
+##
+## This only works on native.
+perf_telemetry = ["dep:re_perf_telemetry"]
+
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+re_arrow_util.workspace = true
+re_auth = { workspace = true, features = ["oauth"] }
+re_byte_size.workspace = true
+re_chunk.workspace = true
+re_format.workspace = true
+re_log_channel.workspace = true
+re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
+re_log_types.workspace = true
+re_log.workspace = true
+re_protos.workspace = true
+re_uri.workspace = true
+
+ahash.workspace = true
+arrow.workspace = true
+ehttp.workspace = true
+futures.workspace = true
+itertools.workspace = true
+jiff.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tower.workspace = true
+tracing.workspace = true
+url.workspace = true
+web-time.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_perf_telemetry = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "fs"] }
+tonic = { workspace = true, default-features = false, features = ["transport", "tls-native-roots"] }
+
+# Web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tonic-web-wasm-client.workspace = true
+tonic = { workspace = true, default-features = false }

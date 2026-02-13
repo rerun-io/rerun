@@ -104,7 +104,7 @@ def test_flush_never() -> None:
         assert sz2 == sz1, "Expected the file size to stay the same"
         assert sz3 == sz2, "Expected the file size to stay the same"
 
-        rec.flush(blocking=True)
+        rec.flush()
 
         sz4 = os.stat(rec_path).st_size
 

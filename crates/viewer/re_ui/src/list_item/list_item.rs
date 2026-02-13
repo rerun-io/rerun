@@ -1,11 +1,11 @@
 //! Core list item functionality.
 
-use egui::{Color32, NumExt as _, Response, Shape, Ui, emath::GuiRounding as _};
+use egui::emath::GuiRounding as _;
+use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui};
 
-use crate::{
-    DesignTokens, UiExt as _, design_tokens_of,
-    list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
-};
+use crate::list_item::navigation::ListItemNavigation;
+use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
+use crate::{DesignTokens, UiExt as _, design_tokens_of};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -82,6 +82,7 @@ pub struct ListVisuals {
     pub active: bool,
     pub interactive: bool,
     pub strong: bool,
+    pub openness: Option<f32>,
 }
 
 impl ListVisuals {
@@ -157,6 +158,32 @@ impl ListVisuals {
         } else {
             self.interactive_icon_tint(icon_hovered)
         }
+    }
+
+    /// Is the item collapsible?
+    pub fn is_collapsible(&self) -> bool {
+        self.openness.is_some()
+    }
+
+    /// Is the item fully collapsed?
+    ///
+    /// Returns true if the item is not collapsible.
+    pub fn collapsed(&self) -> bool {
+        self.openness.is_none_or(|openness| openness <= 0.0)
+    }
+
+    /// Is the item fully opened?
+    ///
+    /// Returns false if the item is not collapsible.
+    pub fn opened(&self) -> bool {
+        !self.collapsed()
+    }
+
+    /// Openness of the item.
+    ///
+    /// 0.0 if the item is not collapsible.
+    pub fn openness(&self) -> f32 {
+        self.openness.unwrap_or(0.0)
     }
 }
 
@@ -271,11 +298,20 @@ impl ListItem {
         self
     }
 
+    /// Did we gain focus via arrow key navigation last pass?
+    ///
+    /// Useful if you want to select items when they gain focus via arrow keys, but not via
+    /// tab.
+    pub fn gained_focus_via_arrow_key(ctx: &egui::Context, id: egui::Id) -> bool {
+        ListItemNavigation::gained_focus_via_arrow_key(ctx, id)
+    }
+
     /// Draw the item as part of a flat list.
     ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_flat<'a>(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        ui.sanity_check();
         ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
             .inner
             .response
@@ -338,6 +374,7 @@ impl ListItem {
         )
     }
 
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn show_hierarchical_with_children_impl<R>(
         mut self,
         ui: &mut Ui,
@@ -373,6 +410,9 @@ impl ListItem {
             state.toggle(ui);
         }
 
+        ListItemNavigation::with_mut(ui.ctx(), |nav| {
+            nav.parent_stack.push(id);
+        });
         let body_response = ui
             .scope(|ui| {
                 if indented {
@@ -384,6 +424,9 @@ impl ListItem {
                 }
             })
             .inner;
+        ListItemNavigation::with_mut(ui.ctx(), |nav| {
+            nav.parent_stack.pop();
+        });
 
         ShowCollapsingResponse {
             item_response: response.response,
@@ -399,6 +442,8 @@ impl ListItem {
         extra_indent: f32,
         content: Box<dyn ListItemContent + 'a>,
     ) -> ListItemResponse {
+        ui.sanity_check();
+
         let Self {
             interactive,
             selected,
@@ -455,7 +500,11 @@ impl ListItem {
         };
 
         let (allocated_id, mut rect) = ui.allocate_space(desired_size);
+        let id = id.unwrap_or(allocated_id);
+
         rect.min.x += extra_indent;
+
+        ui.sanity_check();
 
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
@@ -463,11 +512,42 @@ impl ListItem {
         let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
         // Record the max allocated width.
-        layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);
+        layout_info.register_max_item_width(ui, rect.right() - layout_info.left_x);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…
-        let mut response = ui.interact(bg_rect, allocated_id, sense);
+        let mut response = ui.interact(bg_rect, id, sense);
+
+        if interactive {
+            let focused = response.has_focus();
+            ui.memory_mut(|mem| {
+                mem.set_focus_lock_filter(
+                    response.id,
+                    EventFilter {
+                        vertical_arrows: true,
+                        ..Default::default()
+                    },
+                );
+            });
+            ListItemNavigation::with_mut(ui.ctx(), |nav| {
+                if nav.current_focused.is_none() {
+                    if focused {
+                        nav.current_focused = Some(id);
+                        nav.focused_collapsed = collapse_openness.map(|o| o < 0.5);
+                        nav.focused_parent = nav.parent_stack.last().copied();
+                    } else {
+                        nav.previous_item = Some(id);
+                    }
+                } else if nav.next_item.is_none() {
+                    nav.next_item = Some(id);
+                }
+            });
+
+            // Clicking the item focuses it, so we can do keyboard navigation
+            if response.clicked() {
+                response.request_focus();
+            }
+        }
 
         // …we must not "leak" rects that span beyond `ui.available_width()` (which is typically
         // the case for `bg_rect`), because that can have unwanted side effect. For example, it
@@ -490,16 +570,18 @@ impl ListItem {
             style_response.flags |= egui::response::Flags::HOVERED;
         }
 
+        let hovered = (style_response.hovered() || style_response.contains_pointer())
+            && interactive
+            && !drag_target
+            && !egui::DragAndDrop::has_any_payload(ui.ctx());
         let visuals = ListVisuals {
             theme: ui.theme(),
-            hovered: (style_response.hovered() || style_response.contains_pointer())
-                && interactive
-                && !drag_target
-                && !egui::DragAndDrop::has_any_payload(ui.ctx()),
+            hovered,
             selected,
             active,
             interactive,
             strong: false,
+            openness: collapse_openness,
         };
 
         let mut collapse_response = None;
@@ -514,10 +596,12 @@ impl ListItem {
             )
             .round_to_pixels(ui.pixels_per_point());
             let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_size);
+            let mut triangle_sense = egui::Sense::click();
+            triangle_sense.remove(Sense::FOCUSABLE);
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
-                id.unwrap_or(ui.id()).with("collapsing_triangle"),
-                egui::Sense::click(),
+                id.with("collapsing_triangle"),
+                triangle_sense,
             );
 
             let color = visuals.collapse_button_color(triangle_response.hovered());
@@ -569,6 +653,10 @@ impl ListItem {
                     background_frame,
                     Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),
                 );
+            }
+
+            if response.has_focus() && !selected {
+                ui.draw_focus_outline(rect.expand2(egui::vec2(tokens.text_to_icon_padding(), 0.0)));
             }
         }
 

@@ -1,8 +1,8 @@
-use re_types_core::ComponentDescriptor;
+use re_types_core::ComponentIdentifier;
 
 use crate::path::EntityPath;
 
-/// A [`EntityPath`] plus a [`ComponentDescriptor`].
+/// A [`EntityPath`] plus a [`ComponentIdentifier`].
 ///
 /// Example: `camera/left/points:Points3D:color`
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -12,15 +12,15 @@ pub struct ComponentPath {
     pub entity_path: EntityPath,
 
     /// e.g. `Points3D:color`
-    pub component_descriptor: ComponentDescriptor,
+    pub component: ComponentIdentifier,
 }
 
 impl ComponentPath {
     #[inline]
-    pub fn new(entity_path: EntityPath, component_descriptor: ComponentDescriptor) -> Self {
+    pub fn new(entity_path: EntityPath, component: ComponentIdentifier) -> Self {
         Self {
             entity_path,
-            component_descriptor,
+            component,
         }
     }
 
@@ -30,8 +30,8 @@ impl ComponentPath {
     }
 
     #[inline]
-    pub fn component_descriptor(&self) -> &ComponentDescriptor {
-        &self.component_descriptor
+    pub fn component(&self) -> &ComponentIdentifier {
+        &self.component
     }
 }
 
@@ -39,7 +39,7 @@ impl std::fmt::Display for ComponentPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.entity_path.fmt(f)?;
         f.write_str(":")?;
-        self.component_descriptor.fmt(f)?;
+        self.component.fmt(f)?;
         Ok(())
     }
 }

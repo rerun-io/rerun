@@ -16,12 +16,12 @@ Orienting and placing cylinders forms a separate transform that is applied prior
 * `radii`: [`Radius`](../components/radius.md)
 
 ### Recommended
-* `centers`: [`PoseTranslation3D`](../components/pose_translation3d.md)
+* `centers`: [`Translation3D`](../components/translation3d.md)
 * `colors`: [`Color`](../components/color.md)
 
 ### Optional
-* `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
-* `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `rotation_axis_angles`: [`RotationAxisAngle`](../components/rotation_axis_angle.md)
+* `quaternions`: [`RotationQuat`](../components/rotation_quat.md)
 * `line_radii`: [`Radius`](../components/radius.md)
 * `fill_mode`: [`FillMode`](../components/fill_mode.md)
 * `labels`: [`Text`](../components/text.md)
@@ -45,7 +45,7 @@ Orienting and placing cylinders forms a separate transform that is applied prior
 
 snippet: archetypes/cylinders3d_batch
 
-<picture data-inline-viewer="snippets/cylinders3d_batch">
+<picture data-inline-viewer="snippets/archetypes/cylinders3d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1024w.png">

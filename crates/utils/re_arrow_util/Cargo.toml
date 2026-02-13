@@ -25,11 +25,24 @@ all-features = true
 [dependencies]
 re_log.workspace = true
 re_tracing.workspace = true
+re_tuid = { workspace = true, features = ["bytemuck"] }
 
 anyhow.workspace = true
 arrow.workspace = true
+datafusion.workspace = true
 half.workspace = true
 itertools.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
+
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+comfy-table = { workspace = true, features = ["tty"] }
+
+# web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+comfy-table.workspace = true

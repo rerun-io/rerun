@@ -1,6 +1,8 @@
 //! Capture log messages and send them to some receiver over a channel.
 
-#[derive(Clone)]
+pub use crossbeam::channel::{Receiver, Sender};
+
+#[derive(Clone, Debug)]
 pub struct LogMsg {
     /// The verbosity level.
     pub level: log::Level,
@@ -15,12 +17,14 @@ pub struct LogMsg {
 /// Pipe log messages to a channel.
 pub struct ChannelLogger {
     filter: log::LevelFilter,
-    tx: parking_lot::Mutex<std::sync::mpsc::Sender<LogMsg>>,
+    tx: parking_lot::Mutex<Sender<LogMsg>>,
 }
 
 impl ChannelLogger {
-    pub fn new(filter: log::LevelFilter) -> (Self, std::sync::mpsc::Receiver<LogMsg>) {
-        let (tx, rx) = std::sync::mpsc::channel();
+    pub fn new(filter: log::LevelFilter) -> (Self, Receiver<LogMsg>) {
+        // can't block on web, so we cannot apply backpressure
+        #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))]
+        let (tx, rx) = crossbeam::channel::unbounded();
         (
             Self {
                 filter,

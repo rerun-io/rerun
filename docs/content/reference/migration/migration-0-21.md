@@ -82,7 +82,7 @@ To achieve the same effect, you can log any of the following "invalid" transform
 Previously, the `DisconnectedSpace` archetype played a double role by governing view spawn heuristics & being used as a transform placeholder.
 This led to a lot of complexity and often broke or caused confusion (see https://github.com/rerun-io/rerun/issues/6817, https://github.com/rerun-io/rerun/issues/4465, https://github.com/rerun-io/rerun/issues/4221).
 By now, explicit blueprints offer a better way to express which views should be spawned and what content they should query.
-(you can learn more about blueprints [here](https://rerun.io/docs/getting-started/configure-the-viewer/through-code-tutorial)).
+(you can learn more about blueprints [here](https://rerun.io/docs/getting-started/configure-the-viewer)).
 
 `DisconnectedSpace` will be removed in a future release.
 

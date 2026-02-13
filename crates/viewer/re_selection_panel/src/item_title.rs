@@ -1,26 +1,26 @@
 use egui::WidgetText;
-
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
-use re_types::{archetypes::RecordingInfo, components::Timestamp};
-use re_ui::{
-    SyntaxHighlighting as _, icons,
-    syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::Timestamp;
+use re_ui::syntax_highlighting::{
+    InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
 };
+use re_ui::{SyntaxHighlighting as _, icons};
 use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext, contents_name_style};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
     let ComponentPath {
         entity_path,
-        component_descriptor,
+        component,
     } = component_path;
     let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
     db.storage_engine()
         .store()
-        .entity_has_static_component(entity_path, component_descriptor)
+        .entity_has_static_component(entity_path, *component)
 }
 
 #[must_use]
@@ -62,9 +62,11 @@ impl ItemTitle {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
                     item_title.with_tooltip(
-                        SyntaxHighlightedBuilder::new(ctx.egui_ctx().style())
-                            .append(instance_path)
-                            .append(&format!(" in view '{}'", view.display_name_or_default())),
+                        SyntaxHighlightedBuilder::new()
+                            .with(instance_path)
+                            .with_body(" in view ")
+                            .with(&view.display_name_or_default())
+                            .into_widget_text(&ctx.egui_ctx().style()),
                     )
                 } else {
                     item_title
@@ -72,7 +74,7 @@ impl ItemTitle {
             }
 
             // TODO(#10566): There should be an `EntryName` in this `Item` arm.
-            Item::RedapEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
+            Item::RedapEntry(entry) => Self::new(entry.entry_id.to_string(), &icons::DATASET),
 
             // TODO(lucasmerlin): Icon?
             Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),
@@ -85,13 +87,11 @@ impl ItemTitle {
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
         let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
-            if let Some(started) = entity_db
-                .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
-            {
+            if let Some(started) = entity_db.recording_info_property::<Timestamp>(
+                RecordingInfo::descriptor_start_time().component,
+            ) {
                 let time = re_log_types::Timestamp::from(started.0)
-                    .to_jiff_zoned(ctx.app_options().timestamp_format)
-                    .strftime("%H:%M:%S")
-                    .to_string();
+                    .format_time_compact(ctx.app_options().timestamp_format);
                 format!("{} - {time}", store_id.application_id())
             } else {
                 store_id.application_id().to_string()
@@ -144,11 +144,11 @@ impl ItemTitle {
 
         let ComponentPath {
             entity_path,
-            component_descriptor,
+            component,
         } = component_path;
 
         Self::new(
-            component_descriptor.display_name(),
+            component.as_str(),
             if is_static {
                 &icons::COMPONENT_STATIC
             } else {
@@ -158,7 +158,7 @@ impl ItemTitle {
         .with_tooltip(format!(
             "{} component {} of entity '{}'",
             if is_static { "Static" } else { "Temporal" },
-            component_descriptor.display_name(),
+            component,
             entity_path
         ))
     }

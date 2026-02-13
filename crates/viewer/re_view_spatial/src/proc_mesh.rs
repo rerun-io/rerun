@@ -7,17 +7,14 @@ use std::sync::Arc;
 use glam::{Vec3, Vec3A, uvec3, vec3};
 use hexasphere::{BaseShape, Subdivided};
 use itertools::Itertools as _;
+use macaw::MeshGen;
 use ordered_float::NotNan;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::external::re_chunk::external::re_byte_size;
-use smallvec::smallvec;
-
-use macaw::MeshGen;
-use re_renderer::{
-    RenderContext,
-    mesh::{self, GpuMesh, MeshError},
-};
+use re_renderer::RenderContext;
+use re_renderer::mesh::{self, GpuMesh, MeshError};
 use re_viewer_context::Cache;
+use smallvec::smallvec;
 
 // ----------------------------------------------------------------------------
 
@@ -129,10 +126,10 @@ impl ProcMeshKey {
 /// which is to be drawn as lines rather than triangles.
 #[derive(Debug)]
 pub struct WireframeMesh {
-    #[allow(unused)]
+    #[expect(unused)]
     pub bbox: macaw::BoundingBox,
 
-    #[allow(unused)]
+    #[expect(unused)]
     pub vertex_count: usize,
 
     /// Collection of line strips making up the wireframe.
@@ -163,7 +160,7 @@ impl re_byte_size::SizeBytes for WireframeMesh {
 /// This type is cheap to clone.
 #[derive(Clone)]
 pub struct SolidMesh {
-    #[allow(unused)]
+    #[expect(unused)]
     pub bbox: macaw::BoundingBox,
 
     /// Mesh to render. Note that its colors are set to black, so that the
@@ -217,16 +214,18 @@ impl WireframeCache {
 }
 
 impl Cache for WireframeCache {
+    fn name(&self) -> &'static str {
+        "WireframeCache"
+    }
+
     fn purge_memory(&mut self) {
         self.0.clear();
     }
+}
 
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+impl re_byte_size::MemUsageTreeCapture for WireframeCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }
 
@@ -513,12 +512,34 @@ impl Cache for SolidCache {
         self.0.clear();
     }
 
-    fn bytes_used(&self) -> u64 {
-        0 // mostly VRAM
+    fn name(&self) -> &'static str {
+        "SolidCache"
     }
 
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+    fn vram_usage(&self) -> re_byte_size::MemUsageTree {
+        let mut node = re_byte_size::MemUsageNode::new();
+
+        let mut items: Vec<_> = self
+            .0
+            .iter()
+            .map(|(key, mesh)| {
+                let bytes_gpu = mesh.as_ref().map_or(0, |m| m.gpu_mesh.gpu_byte_size());
+                (format!("{key:?}"), bytes_gpu)
+            })
+            .collect();
+        items.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (item_name, bytes_gpu) in items {
+            node.add(item_name, re_byte_size::MemUsageTree::Bytes(bytes_gpu));
+        }
+
+        node.into_tree()
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for SolidCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(self.0.total_size_bytes())
     }
 }
 
@@ -526,11 +547,13 @@ impl Cache for SolidCache {
 fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, GenError> {
     re_tracing::profile_function!();
 
+    let bbox = key.simple_bounding_box();
+
     let mesh: mesh::CpuMesh = match *key {
         ProcMeshKey::Cube => {
             let mut mg = macaw::MeshGen::new();
             mg.push_cube(Vec3::splat(0.5), macaw::IsoTransform::IDENTITY);
-            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
         ProcMeshKey::Sphere {
             subdivisions,
@@ -567,6 +590,8 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                 vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
 
                 materials,
+
+                bbox,
             }
         }
         ProcMeshKey::Capsule {
@@ -597,7 +622,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                     std::f32::consts::FRAC_PI_2,
                 )),
             );
-            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
         ProcMeshKey::Cylinder {
             subdivisions,
@@ -608,7 +633,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
             let mut mg = macaw::MeshGen::new();
 
             push_cylinder_solid(&mut mg, 1.0, 2.0, mg_subdivisions);
-            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
     };
 
@@ -695,6 +720,7 @@ fn mesh_from_mesh_gen(
     label: re_renderer::DebugLabel,
     mg: MeshGen,
     render_ctx: &RenderContext,
+    bbox: macaw::BoundingBox,
 ) -> mesh::CpuMesh {
     let num_vertices = mg.positions.len();
 
@@ -715,6 +741,7 @@ fn mesh_from_mesh_gen(
         // Colors are black so that the instance `additive_tint` can set per-instance color.
         vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
         vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+        bbox,
     }
 }
 

@@ -4,6 +4,7 @@ tags = ["Lidar", "3D", "2D", "Object detection", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/480w.png"
 thumbnail_dimensions = [480, 301]
 channel = "release"
+include_in_manifest = true
 build_args = ["--seconds=5"]
 -->
 
@@ -142,7 +143,7 @@ sensor_views = [
         origin=f"world/ego_vehicle/{sensor_name}",
         # Set the image plane distance to 5m for all camera visualizations.
         defaults=[rr.Pinhole.from_fields(image_plane_distance=5.0)],
-        overrides={"world/anns": rr.Boxes3D.from_fields(fill_mode="solid")},
+        overrides={"world/anns": rr.Boxes3D(fill_mode="solid")},
     )
     for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
 ]
@@ -172,7 +173,7 @@ We programmatically create one view per sensor and arrange them in a grid layout
 
 
 ## Run the code
-To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
+To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/common#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
 ```bash
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository

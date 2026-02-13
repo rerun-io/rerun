@@ -1,6 +1,7 @@
 //! Demonstrates the most barebone usage of the Rerun SDK.
 
-use rerun::{demo_util::grid, external::glam};
+use rerun::demo_util::grid;
+use rerun::external::glam;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal").spawn()?;

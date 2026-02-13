@@ -1,5 +1,6 @@
 #include "component_batch.hpp"
 #include "component_column.hpp"
+#include "component_type_registry.hpp"
 
 #include <arrow/array/array_base.h>
 #include <arrow/c/bridge.h>
@@ -13,30 +14,15 @@ namespace rerun {
     Result<ComponentBatch> ComponentBatch::from_arrow_array(
         std::shared_ptr<arrow::Array> array, const ComponentDescriptor& descriptor
     ) {
-        static std::unordered_map<ComponentDescriptorHash, ComponentTypeHandle>
-            comp_types_per_descr;
+        static ComponentTypeRegistry comp_type_registry;
 
-        ComponentTypeHandle comp_type_handle;
-
-        auto descr_hash = descriptor.hashed();
-
-        auto search = comp_types_per_descr.find(descr_hash);
-        if (search != comp_types_per_descr.end()) {
-            comp_type_handle = search->second;
-        } else {
-            auto comp_type = ComponentType(descriptor, array->type());
-
-            const Result<ComponentTypeHandle> comp_type_handle_result =
-                comp_type.register_component();
-            RR_RETURN_NOT_OK(comp_type_handle_result.error);
-
-            comp_type_handle = comp_type_handle_result.value;
-            comp_types_per_descr.insert({descr_hash, comp_type_handle});
-        }
+        const Result<ComponentTypeHandle> comp_type_handle =
+            comp_type_registry.get_or_register(descriptor, array->type());
+        RR_RETURN_NOT_OK(comp_type_handle.error);
 
         ComponentBatch component_batch;
         component_batch.array = std::move(array);
-        component_batch.component_type = comp_type_handle;
+        component_batch.component_type = comp_type_handle.value;
         return component_batch;
     }
 

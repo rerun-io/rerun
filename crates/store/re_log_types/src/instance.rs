@@ -27,7 +27,7 @@ impl Instance {
         self.0
     }
 
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = impl Into<Self>>) -> Vec<Self> {
         it.into_iter().map(Into::into).collect::<Vec<_>>()

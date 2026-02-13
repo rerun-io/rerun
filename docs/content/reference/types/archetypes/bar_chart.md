@@ -14,6 +14,7 @@ The bar heights will be the provided values, and the x coordinates of the bars w
 ### Optional
 * `color`: [`Color`](../components/color.md)
 * `abscissa`: [`TensorData`](../components/tensor_data.md)
+* `widths`: [`Length`](../components/length.md)
 
 
 ## Can be shown in
@@ -31,7 +32,7 @@ The bar heights will be the provided values, and the x coordinates of the bars w
 
 snippet: archetypes/bar_chart
 
-<picture data-inline-viewer="snippets/bar_chart">
+<picture data-inline-viewer="snippets/archetypes/bar_chart">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1024w.png">

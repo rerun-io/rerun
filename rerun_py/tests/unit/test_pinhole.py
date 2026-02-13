@@ -32,9 +32,9 @@ def test_pinhole() -> None:
 
         print(
             f"rr.Pinhole(\n"
-            f"    image_from_camera={str(image_from_camera)}\n"
-            f"    resolution={str(resolution)}\n"
-            f"    camera_xyz={str(camera_xyz)}\n"
+            f"    image_from_camera={image_from_camera!s}\n"
+            f"    resolution={resolution!s}\n"
+            f"    camera_xyz={camera_xyz!s}\n"
             f")",
         )
         arch = rr.Pinhole(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)

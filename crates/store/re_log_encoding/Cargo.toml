@@ -1,7 +1,7 @@
 [package]
 name = "re_log_encoding"
 authors.workspace = true
-description = "Helpers for encoding and transporting Rerun log messages"
+description = "Encode/decode and serialize/deserialize RRD streams"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
@@ -21,19 +21,12 @@ all-features = true
 
 [features]
 default = []
-testing = []
 
 ## Enable loading data from an .rrd file.
-decoder = [
-  "re_log_types/serde",
-  "dep:bytes",
-  "dep:lz4_flex",
-  "dep:tokio",
-  "dep:tokio-stream",
-]
+decoder = ["re_log_types/serde", "dep:bytes", "dep:tokio", "dep:tokio-stream"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
-encoder = ["dep:lz4_flex", "re_log_types/serde"]
+encoder = ["re_log_types/serde"]
 
 ## Enable streaming of .rrd files from HTTP.
 stream_from_http = [
@@ -49,25 +42,31 @@ stream_from_http = [
 [dependencies]
 
 # Rerun:
+re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_protos.workspace = true
-re_smart_channel.workspace = true
 re_sorbet.workspace = true
+re_span.workspace = true
 re_tracing.workspace = true
+re_types_core.workspace = true
 
 # External:
 arrow = { workspace = true, features = ["ipc"] }
+crossbeam.workspace = true
+itertools.workspace = true
+lz4_flex = { workspace = true }
 parking_lot.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+xxhash-rust.workspace = true
 
 # Optional external dependencies:
 bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
-lz4_flex = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true, features = ["io-util"] }
 tokio-stream = { workspace = true, optional = true }
 web-time = { workspace = true, optional = true }
@@ -77,15 +76,13 @@ web-time = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
-web-sys = { workspace = true, optional = true, features = [
-  "Window",
-  "MessageEvent",
-] }
+web-sys = { workspace = true, optional = true, features = ["Window", "MessageEvent"] }
 
 [dev-dependencies]
-re_types.workspace = true
+re_sdk_types.workspace = true
 
 criterion.workspace = true
+insta.workspace = true
 mimalloc.workspace = true
 similar-asserts.workspace = true
 

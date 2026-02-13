@@ -32,6 +32,7 @@ setup = ["dep:env_logger", "dep:js-sys", "dep:wasm-bindgen"]
 
 [dependencies]
 log = { workspace = true, features = ["std"] }
+crossbeam.workspace = true
 log-once.workspace = true
 parking_lot.workspace = true
 
@@ -41,10 +42,7 @@ tracing = { workspace = true, features = ["log"] }
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_filter.workspace = true
-env_logger = { workspace = true, optional = true, features = [
-  "auto-color",
-  "humantime",
-] }
+env_logger = { workspace = true, optional = true, features = ["auto-color", "humantime"] }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

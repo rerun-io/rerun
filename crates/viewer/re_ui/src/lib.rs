@@ -9,47 +9,56 @@ mod command_palette;
 mod context_ext;
 mod design_tokens;
 pub mod drag_and_drop;
+pub mod egui_ext;
 pub mod filter_widget;
 mod help;
 mod hot_reload_design_tokens;
 mod icon_text;
 pub mod icons;
 pub mod list_item;
+pub mod loading_indicator;
 mod markdown_utils;
+pub mod menu;
 pub mod modal;
 pub mod notifications;
+mod relative_time_range;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+pub mod text_edit;
+pub mod time;
 mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
+mod button;
+mod combo_item;
+#[cfg(feature = "testing")]
+pub mod testing;
+
 use egui::NumExt as _;
+use re_log::debug_assert;
 
-pub use self::{
-    command::{UICommand, UICommandSender},
-    command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
-    context_ext::ContextExt,
-    design_tokens::{DesignTokens, TableStyle},
-    help::*,
-    hot_reload_design_tokens::design_tokens_of,
-    icon_text::*,
-    icons::Icon,
-    markdown_utils::*,
-    section_collapsing_header::SectionCollapsingHeader,
-    syntax_highlighting::SyntaxHighlighting,
-    time_drag_value::TimeDragValue,
-    ui_ext::UiExt,
-    ui_layout::UiLayout,
+pub use self::button::*;
+pub use self::combo_item::*;
+pub use self::command::{UICommand, UICommandSender};
+pub use self::command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl};
+pub use self::context_ext::ContextExt;
+pub use self::design_tokens::{DesignTokens, TableStyle};
+pub use self::egui_ext::widget_ext::*;
+pub use self::help::*;
+pub use self::hot_reload_design_tokens::design_tokens_of;
+pub use self::icon_text::*;
+pub use self::icons::Icon;
+pub use self::markdown_utils::*;
+pub use self::notifications::Link;
+pub use self::relative_time_range::{
+    RelativeTimeRange, relative_time_range_boundary_label_text, relative_time_range_label_text,
 };
-
-#[cfg(feature = "arrow")]
-mod arrow_ui;
-pub mod menu;
-pub mod time;
-
-#[cfg(feature = "arrow")]
-pub use self::arrow_ui::arrow_ui;
+pub use self::section_collapsing_header::SectionCollapsingHeader;
+pub use self::syntax_highlighting::SyntaxHighlighting;
+pub use self::time_drag_value::TimeDragValue;
+pub use self::ui_ext::UiExt;
+pub use self::ui_layout::UiLayout;
 
 // ---------------------------------------------------------------------------
 
@@ -101,6 +110,28 @@ pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignToken
         design_tokens_of(egui::Theme::Dark)
     } else {
         design_tokens_of(egui::Theme::Light)
+    }
+}
+
+pub trait HasDesignTokens {
+    fn tokens(&self) -> &'static DesignTokens;
+}
+
+impl HasDesignTokens for egui::Context {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of(self.theme())
+    }
+}
+
+impl HasDesignTokens for egui::Style {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(&self.visuals)
+    }
+}
+
+impl HasDesignTokens for egui::Visuals {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(self)
     }
 }
 

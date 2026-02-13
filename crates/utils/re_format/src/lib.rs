@@ -2,18 +2,37 @@
 //!
 //! TODO(emilk): move some of this numeric formatting into `emath` so we can use it in `egui_plot`.
 
-mod time;
+mod duration;
+mod plural;
+pub mod time;
 
-use std::{cmp::PartialOrd, fmt::Display};
+use std::cmp::PartialOrd;
+use std::fmt::Display;
 
-pub use time::{format_timestamp_secs, next_grid_tick_magnitude_nanos, parse_timestamp_secs};
+pub use self::duration::DurationFormatOptions;
+pub use self::plural::{format_plural_s, format_plural_signed_s};
 
 // --- Numbers ---
 
 /// The minus character: <https://www.compart.com/en/unicode/U+2212>
 ///
 /// Looks slightly different from the normal hyphen `-`.
-const MINUS: char = '−';
+pub const MINUS: char = '−';
+
+/// A thin space, used for thousands separators, like `1 234`:
+///
+/// <https://en.wikipedia.org/wiki/Thin_space>
+pub const THIN_SPACE: char = '\u{2009}';
+
+/// Prepare a string containing a number for parsing
+pub fn strip_whitespace_and_normalize(text: &str) -> String {
+    text.chars()
+        // Ignore whitespace (trailing, leading, and thousands separators):
+        .filter(|c| !c.is_whitespace())
+        // Replace special minus character with normal minus (hyphen):
+        .map(|c| if c == MINUS { '-' } else { c })
+        .collect()
+}
 
 // TODO(rust-num/num-traits#315): waiting for https://github.com/rust-num/num-traits/issues/315 to land
 pub trait UnsignedAbs {
@@ -98,7 +117,7 @@ where
 ///
 /// The returned value is for human eyes only, and can not be parsed
 /// by the normal `usize::from_str` function.
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 pub fn format_uint<Uint>(number: Uint) -> String
 where
     Uint: Display + num_traits::Unsigned,
@@ -115,8 +134,7 @@ fn add_thousands_separators(number: &str) -> String {
     while chars.peek().is_some() {
         if !result.is_empty() {
             // thousands-deliminator:
-            let thin_space = '\u{2009}'; // https://en.wikipedia.org/wiki/Thin_space
-            result.push(thin_space);
+            result.push(THIN_SPACE);
         }
         for _ in 0..3 {
             if let Some(c) = chars.next() {
@@ -161,8 +179,18 @@ pub struct FloatFormatOptions {
 }
 
 impl FloatFormatOptions {
+    /// Default options for formatting an [`half::f16`].
+    #[expect(non_upper_case_globals)]
+    pub const DEFAULT_f16: Self = Self {
+        always_sign: false,
+        precision: 5,
+        num_decimals: None,
+        strip_trailing_zeros: true,
+        min_decimals_for_thousands_separators: 6,
+    };
+
     /// Default options for formatting an [`f32`].
-    #[allow(non_upper_case_globals)]
+    #[expect(non_upper_case_globals)]
     pub const DEFAULT_f32: Self = Self {
         always_sign: false,
         precision: 7,
@@ -172,7 +200,7 @@ impl FloatFormatOptions {
     };
 
     /// Default options for formatting an [`f64`].
-    #[allow(non_upper_case_globals)]
+    #[expect(non_upper_case_globals)]
     pub const DEFAULT_f64: Self = Self {
         always_sign: false,
         precision: 15,
@@ -316,6 +344,14 @@ pub fn format_f32(value: f32) -> String {
     FloatFormatOptions::DEFAULT_f32.format(value)
 }
 
+/// Format a number with about 5 decimals of precision.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `f64::from_str` function.
+pub fn format_f16(value: half::f16) -> String {
+    FloatFormatOptions::DEFAULT_f16.format(value)
+}
+
 /// Format a latitude or longitude value.
 ///
 /// For human eyes only.
@@ -396,6 +432,30 @@ fn test_format_f64() {
 }
 
 #[test]
+fn test_format_f16() {
+    use half::f16;
+
+    let cases = [
+        (f16::from_f32(f32::NAN), "NaN"),
+        (f16::INFINITY, "∞"),
+        (f16::NEG_INFINITY, "−∞"),
+        (f16::ZERO, "0"),
+        (f16::from_f32(42.0), "42"),
+        (f16::from_f32(-42.0), "−42"),
+        (f16::from_f32(-4.20), "−4.1992"), // f16 precision limitation
+        (f16::from_f32(12_345.0), "12 344"), // f16 precision limitation
+        (f16::PI, "3.1406"),               // f16 precision limitation
+    ];
+    for (value, expected) in cases {
+        let got = format_f16(value);
+        assert_eq!(
+            got, expected,
+            "Expected to format {value} as '{expected}', but got '{got}'"
+        );
+    }
+}
+
+#[test]
 fn test_format_f64_custom() {
     let cases = [(
         FloatFormatOptions::DEFAULT_f64.with_decimals(2),
@@ -414,28 +474,14 @@ fn test_format_f64_custom() {
 /// Parses a number, ignoring whitespace (e.g. thousand separators),
 /// and treating the special minus character `MINUS` (−) as a minus sign.
 pub fn parse_f64(text: &str) -> Option<f64> {
-    let text: String = text
-        .chars()
-        // Ignore whitespace (trailing, leading, and thousands separators):
-        .filter(|c| !c.is_whitespace())
-        // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == '−' { '-' } else { c })
-        .collect();
-
+    let text = strip_whitespace_and_normalize(text);
     text.parse().ok()
 }
 
 /// Parses a number, ignoring whitespace (e.g. thousand separators),
 /// and treating the special minus character `MINUS` (−) as a minus sign.
 pub fn parse_i64(text: &str) -> Option<i64> {
-    let text: String = text
-        .chars()
-        // Ignore whitespace (trailing, leading, and thousands separators):
-        .filter(|c| !c.is_whitespace())
-        // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == '−' { '-' } else { c })
-        .collect();
-
+    let text = strip_whitespace_and_normalize(text);
     text.parse().ok()
 }
 
@@ -571,17 +617,23 @@ fn test_format_bytes() {
 }
 
 pub fn parse_bytes_base10(bytes: &str) -> Option<i64> {
+    let bytes = strip_whitespace_and_normalize(bytes);
+
+    if bytes == "0" {
+        return Some(0);
+    }
+
     // Note: intentionally case sensitive so that we don't parse `Mb` (Megabit) as `MB` (Megabyte).
     if let Some(rest) = bytes.strip_prefix(MINUS) {
         Some(-parse_bytes_base10(rest)?)
     } else if let Some(kb) = bytes.strip_suffix("kB") {
-        Some(kb.parse::<i64>().ok()? * 1_000)
+        Some((kb.parse::<f64>().ok()? * 1e3) as _)
     } else if let Some(mb) = bytes.strip_suffix("MB") {
-        Some(mb.parse::<i64>().ok()? * 1_000_000)
+        Some((mb.parse::<f64>().ok()? * 1e6) as _)
     } else if let Some(gb) = bytes.strip_suffix("GB") {
-        Some(gb.parse::<i64>().ok()? * 1_000_000_000)
+        Some((gb.parse::<f64>().ok()? * 1e9) as _)
     } else if let Some(tb) = bytes.strip_suffix("TB") {
-        Some(tb.parse::<i64>().ok()? * 1_000_000_000_000)
+        Some((tb.parse::<f64>().ok()? * 1e12) as _)
     } else if let Some(b) = bytes.strip_suffix('B') {
         Some(b.parse::<i64>().ok()?)
     } else {
@@ -592,6 +644,8 @@ pub fn parse_bytes_base10(bytes: &str) -> Option<i64> {
 #[test]
 fn test_parse_bytes_base10() {
     let test_cases = [
+        ("0", 0), // Zero requires no unit
+        ("-1B", -1),
         ("999B", 999),
         ("1000B", 1_000),
         ("1kB", 1_000),
@@ -614,17 +668,23 @@ fn test_parse_bytes_base10() {
 }
 
 pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
+    let bytes = strip_whitespace_and_normalize(bytes);
+
+    if bytes == "0" {
+        return Some(0);
+    }
+
     // Note: intentionally case sensitive so that we don't parse `Mib` (Mebibit) as `MiB` (Mebibyte).
     if let Some(rest) = bytes.strip_prefix(MINUS) {
         Some(-parse_bytes_base2(rest)?)
     } else if let Some(kb) = bytes.strip_suffix("KiB") {
-        Some(kb.parse::<i64>().ok()? * 1024)
+        Some((kb.parse::<f64>().ok()? * 1024.0) as _)
     } else if let Some(mb) = bytes.strip_suffix("MiB") {
-        Some(mb.parse::<i64>().ok()? * 1024 * 1024)
+        Some((mb.parse::<f64>().ok()? * 1024.0 * 1024.0) as _)
     } else if let Some(gb) = bytes.strip_suffix("GiB") {
-        Some(gb.parse::<i64>().ok()? * 1024 * 1024 * 1024)
+        Some((gb.parse::<f64>().ok()? * 1024.0 * 1024.0 * 1024.0) as _)
     } else if let Some(tb) = bytes.strip_suffix("TiB") {
-        Some(tb.parse::<i64>().ok()? * 1024 * 1024 * 1024 * 1024)
+        Some((tb.parse::<f64>().ok()? * 1024.0 * 1024.0 * 1024.0 * 1024.0) as _)
     } else if let Some(b) = bytes.strip_suffix('B') {
         Some(b.parse::<i64>().ok()?)
     } else {
@@ -635,6 +695,8 @@ pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
 #[test]
 fn test_parse_bytes_base2() {
     let test_cases = [
+        ("0", 0), // Zero requires no unit
+        ("-1B", -1),
         ("999B", 999),
         ("1023B", 1_023),
         ("1024B", 1_024),
@@ -665,6 +727,8 @@ pub fn parse_bytes(bytes: &str) -> Option<i64> {
 fn test_parse_bytes() {
     let test_cases = [
         // base10
+        ("0", 0), // Zero requires no unit
+        ("-1B", -1),
         ("999B", 999),
         ("1000B", 1_000),
         ("1kB", 1_000),
@@ -727,4 +791,41 @@ fn test_parse_duration() {
     assert_eq!(parse_duration("3.2s"), Ok(3.2));
     assert_eq!(parse_duration("250ms"), Ok(0.250));
     assert_eq!(parse_duration("3m"), Ok(3.0 * 60.0));
+}
+
+/// Remove the custom formatting
+///
+/// Removes the thin spaces and the special minus character. Useful when copying text.
+pub fn remove_number_formatting(s: &str) -> String {
+    s.chars()
+        .filter_map(|c| {
+            if c == MINUS {
+                Some('-')
+            } else if c == THIN_SPACE {
+                None
+            } else {
+                Some(c)
+            }
+        })
+        .collect()
+}
+
+#[test]
+fn test_remove_number_formatting() {
+    assert_eq!(
+        remove_number_formatting(&format_f32(-123_456.78)),
+        "-123456.8"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_f64(-123_456.78)),
+        "-123456.78"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_int(-123_456_789_i32)),
+        "-123456789"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_uint(123_456_789_u32)),
+        "123456789"
+    );
 }

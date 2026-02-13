@@ -1,0 +1,13 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+message_count: [0]
+schema_count: [0]
+channel_count: [0]
+attachment_count: [0]
+metadata_count: [0]
+chunk_count: [0]
+message_start_time: [0]
+message_end_time: [0]
+channel_message_counts: [[]]

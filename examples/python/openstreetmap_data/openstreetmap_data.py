@@ -41,6 +41,10 @@ def execute_query(query: str) -> dict[str, Any]:
         encoded_query = urlencode(params)
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(OVERPASS_API_URL, data=encoded_query, headers=headers)
+
+        if not response.ok:
+            raise RuntimeError(f"Overpass API request failed: {response.status_code} {response.text}")
+
         result = response.json()
 
         cache_file.write_text(json.dumps(result))

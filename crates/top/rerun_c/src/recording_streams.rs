@@ -42,10 +42,10 @@ pub static RECORDING_STREAMS: std::sync::LazyLock<Mutex<RecStreams>> =
     std::sync::LazyLock::new(Mutex::default);
 
 /// Access a C created recording stream.
-#[allow(clippy::result_large_err)]
+#[expect(clippy::result_large_err)]
 pub fn recording_stream(stream: CRecordingStream) -> Result<RecordingStream, CError> {
     RECORDING_STREAMS
         .lock()
         .get(stream)
-        .ok_or(CError::invalid_recording_stream_handle())
+        .ok_or_else(CError::invalid_recording_stream_handle)
 }

@@ -1,14 +1,13 @@
 use re_chunk::EntityPath;
+// Used all over in docstrings.
+#[expect(unused_imports)]
+use re_chunk_store::ComponentColumnDescriptor;
 use re_chunk_store::{ChunkStoreHandle, QueryExpression};
 use re_log_types::EntityPathFilter;
 use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
 use re_sorbet::ChunkColumnDescriptors;
 
 use crate::QueryHandle;
-
-// Used all over in docstrings.
-#[allow(unused_imports)]
-use re_chunk_store::ComponentColumnDescriptor;
 
 // --- Queries ---
 
@@ -29,7 +28,7 @@ impl QueryEngine<StorageEngine> {
     pub fn new(store: ChunkStoreHandle, cache: QueryCacheHandle) -> Self {
         // Safety: EntityDb's handles can never be accessed from the outside, therefore these
         // handles had to have been constructed in an external context, outside of the main app.
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         let engine = unsafe { StorageEngine::new(store, cache) };
 
         Self { engine }

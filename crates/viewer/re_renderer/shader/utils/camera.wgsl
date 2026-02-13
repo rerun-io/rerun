@@ -1,4 +1,5 @@
 #import <../global_bindings.wgsl>
+#import <../types.wgsl>
 
 // True if the camera is orthographic
 fn is_camera_orthographic() -> bool {
@@ -61,6 +62,24 @@ fn camera_ray_direction_from_screenuv(texcoord: vec2f) -> vec3f {
     let world_space_dir = (view_space_dir * frame.view_from_world).xyz;
 
     return normalize(world_space_dir);
+}
+
+// Returns the camera ray direction through given pixel coordinates.
+// (Assumes outputting to the framebuffer with resolution frame.framebuffer_resolution)
+// fragcoord: pixel coordinates (e.g., from @builtin(position))
+fn camera_ray_direction_from_fragcoord(fragcoord: vec2f) -> vec3f {
+    let texcoord = fragcoord / frame.framebuffer_resolution.xy;
+    return camera_ray_direction_from_screenuv(texcoord);
+}
+
+// Returns the camera ray through given pixel coordinates.
+// (Assumes outputting to the framebuffer with resolution frame.framebuffer_resolution)
+// fragcoord: pixel coordinates (e.g., from @builtin(position))
+fn camera_ray_from_fragcoord(fragcoord: vec2f) -> Ray {
+    var ray: Ray;
+    ray.origin = frame.camera_position;
+    ray.direction = camera_ray_direction_from_fragcoord(fragcoord);
+    return ray;
 }
 
 // Returns distance to sphere surface (x) and distance to closest ray hit (y)

@@ -1,10 +1,11 @@
 use std::ops::RangeInclusive;
 
 use egui::NumExt as _;
-use re_types::datatypes;
+use re_sdk_types::datatypes;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
-/// Generic editor for a [`re_types::datatypes::Float32`] value from zero to max float.
+/// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from zero to max float.
 pub fn edit_f32_zero_to_max(
     ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -13,7 +14,7 @@ pub fn edit_f32_zero_to_max(
     edit_f32_zero_to_max_with_suffix(ctx, ui, value, "")
 }
 
-/// Generic editor for a [`re_types::datatypes::Float32`] value from zero to max float with a suffix.
+/// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from zero to max float with a suffix.
 pub fn edit_f32_zero_to_max_with_suffix(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -27,7 +28,7 @@ pub fn edit_f32_zero_to_max_with_suffix(
     edit_f32_float_raw(ui, &mut value, 0.0..=f32::MAX, suffix)
 }
 
-/// Generic editor for a [`re_types::datatypes::Float32`] value representing a ui points value.
+/// Generic editor for a [`re_sdk_types::datatypes::Float32`] value representing a ui points value.
 pub fn edit_ui_points(
     ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -36,7 +37,7 @@ pub fn edit_ui_points(
     edit_f32_zero_to_max_with_suffix(ctx, ui, value, "pt")
 }
 
-/// Generic editor for a [`re_types::datatypes::Float32`] value from min to max float.
+/// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from min to max float.
 pub fn edit_f32_min_to_max_float(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -77,11 +78,16 @@ pub fn edit_f32_float_raw_with_speed_impl(
                 .suffix(suffix),
         )
     } else {
-        UiLayout::List.data_label(ui, format!("{}{}", re_format::format_f32(**value), suffix))
+        UiLayout::List.data_label(
+            ui,
+            SyntaxHighlightedBuilder::new()
+                .with(&**value)
+                .with_primitive(suffix),
+        )
     }
 }
 
-/// Generic editor for a [`re_types::datatypes::Float32`] value from zero to one float.
+/// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from zero to one float.
 pub fn edit_f32_zero_to_one(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -105,13 +111,13 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
                 .fixed_decimals(2),
         )
     } else {
-        UiLayout::List.data_label(ui, re_format::format_f32(**value))
+        UiLayout::List.data_label(ui, **value)
     }
 }
 
 // ---
 
-/// Generic editor for a [`re_types::datatypes::Float64`] value from zero to max float.
+/// Generic editor for a [`re_sdk_types::datatypes::Float64`] value from zero to max float.
 pub fn edit_f64_zero_to_max(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -124,7 +130,7 @@ pub fn edit_f64_zero_to_max(
     edit_f64_float_raw_impl(ui, &mut value, 0.0..=f64::MAX)
 }
 
-/// Generic editor for a [`re_types::datatypes::Float64`] value from min to max float.
+/// Generic editor for a [`re_sdk_types::datatypes::Float64`] value from min to max float.
 pub fn edit_f64_min_to_max_float(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -162,6 +168,6 @@ pub fn edit_f64_float_raw_with_speed_impl(
                 .speed(speed),
         )
     } else {
-        UiLayout::List.data_label(ui, re_format::format_f64(**value))
+        UiLayout::List.data_label(ui, **value)
     }
 }

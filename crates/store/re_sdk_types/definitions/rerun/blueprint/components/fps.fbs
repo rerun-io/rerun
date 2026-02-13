@@ -1,0 +1,15 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Frames per second for a sequence timeline.
+table Fps (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  fps: rerun.datatypes.Float64 (order: 100);
+}

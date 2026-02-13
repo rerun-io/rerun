@@ -20,11 +20,12 @@ concurrency:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 permissions:
   contents: "write"
   id-token: "write"
+  packages: "read"
 
 jobs:
   get-commit-sha:
@@ -66,9 +67,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.55.0
 
       - name: Publish packages
         env:
@@ -76,11 +77,23 @@ jobs:
         run: |
           pixi run node rerun_js/scripts/publish.mjs
 
-      - name: "Upload rerun_js to GCS"
+      - name: "Upload rerun_js to GCS (version)"
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js_package"
           destination: "rerun-builds/version/${{ inputs.release-version }}/rerun_js"
+          parent: false
+          process_gcloudignore: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+          gzip: false
+
+      # TODO(#11625): we need this for asset sync, in case the PR workflow fails (or doesn't run). See issue for details.
+      - name: "Upload rerun_js to GCS (commit)"
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: "rerun_js_package"
+          destination: "rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/rerun_js"
           parent: false
           process_gcloudignore: false
           headers: |-

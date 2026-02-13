@@ -71,9 +71,8 @@ class ClassDescriptionExt:
     # Implement the AsComponents protocol
     def as_component_batches(self) -> list[DescribedComponentBatch]:
         from ..archetypes import AnnotationContext
-        from . import ClassDescription
 
-        return AnnotationContext(cast(ClassDescription, self)).as_component_batches()
+        return AnnotationContext(cast("ClassDescription", self)).as_component_batches()
 
     @staticmethod
     def info__field_converter_override(

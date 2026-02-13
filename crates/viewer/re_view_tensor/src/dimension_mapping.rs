@@ -1,17 +1,17 @@
 use egui::NumExt as _;
-
-use re_types::{
-    blueprint::{archetypes, components::TensorDimensionIndexSlider},
-    components::{TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension},
-    datatypes::TensorDimensionSelection,
+use re_sdk_types::blueprint::archetypes;
+use re_sdk_types::blueprint::components::TensorDimensionIndexSlider;
+use re_sdk_types::components::{
+    TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension,
 };
+use re_sdk_types::datatypes::TensorDimensionSelection;
 use re_viewport_blueprint::ViewProperty;
 
 use crate::TensorDimension;
 
 /// Selection of a 2D slice of a tensor.
 ///
-/// This is practically a deserialized & validated version of [`re_types::blueprint::archetypes::TensorSliceSelection`].
+/// This is practically a deserialized & validated version of [`re_sdk_types::blueprint::archetypes::TensorSliceSelection`].
 #[derive(Clone, Debug, Hash)]
 pub struct TensorSliceSelection {
     pub width: Option<TensorWidthDimension>,
@@ -34,21 +34,21 @@ impl TensorSliceSelection {
     pub fn load_and_make_valid(
         slice_selection: &ViewProperty,
         shape: &[TensorDimension],
-    ) -> Result<Self, re_types::DeserializationError> {
+    ) -> Result<Self, re_sdk_types::DeserializationError> {
         re_tracing::profile_function!();
 
         let mut width = slice_selection.component_or_empty::<TensorWidthDimension>(
-            &archetypes::TensorSliceSelection::descriptor_width(),
+            archetypes::TensorSliceSelection::descriptor_width().component,
         )?;
         let mut height = slice_selection.component_or_empty::<TensorHeightDimension>(
-            &archetypes::TensorSliceSelection::descriptor_height(),
+            archetypes::TensorSliceSelection::descriptor_height().component,
         )?;
         let mut indices = slice_selection
             .component_array_or_empty::<TensorDimensionIndexSelection>(
-                &archetypes::TensorSliceSelection::descriptor_indices(),
+                archetypes::TensorSliceSelection::descriptor_indices().component,
             )?;
         let mut slider = slice_selection.component_array::<TensorDimensionIndexSlider>(
-            &archetypes::TensorSliceSelection::descriptor_slider(),
+            archetypes::TensorSliceSelection::descriptor_slider().component,
         )?;
 
         make_width_height_valid(shape, &mut width, &mut height);
@@ -158,7 +158,7 @@ fn make_indices_valid(
     height.inspect(|h| covered_dims[h.dimension as usize] = true);
     for (i, _) in covered_dims.into_iter().enumerate().filter(|(_, b)| !b) {
         indices.push(
-            re_types::datatypes::TensorDimensionIndexSelection {
+            re_sdk_types::datatypes::TensorDimensionIndexSelection {
                 dimension: i as u32,
                 index: shape[i].size / 2,
             }
@@ -190,7 +190,7 @@ fn make_slider_valid(
     }
 }
 
-#[allow(clippy::collapsible_else_if)]
+#[expect(clippy::collapsible_else_if)]
 fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
     assert!(shape.len() >= 2);
 
@@ -274,12 +274,10 @@ fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, 
 
 #[cfg(test)]
 mod tests {
-    use crate::TensorDimension;
-    use re_types::{
-        blueprint::components::TensorDimensionIndexSlider,
-        components::TensorDimensionIndexSelection,
-    };
+    use re_sdk_types::blueprint::components::TensorDimensionIndexSlider;
+    use re_sdk_types::components::TensorDimensionIndexSelection;
 
+    use crate::TensorDimension;
     use crate::dimension_mapping::{
         find_width_height_dim_indices, make_indices_valid, make_slider_valid,
         make_width_height_valid,

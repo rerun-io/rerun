@@ -5,10 +5,11 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 
-PIXI_VERSION = "0.41.4"
-CARGO_VERSION = "1.88.0"
-RUST_VERSION = "1.88.0"
+PIXI_VERSION = "0.55.0"
+CARGO_VERSION = "1.90.0"
+RUST_VERSION = "1.90.0"
 
 
 def check_version(cmd: str, expected: str, update: str, install: str) -> bool:
@@ -55,9 +56,9 @@ def main() -> int:
     )
 
     if success:
-        exit(0)
+        sys.exit(0)
     else:
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

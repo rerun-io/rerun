@@ -32,6 +32,8 @@ utf8
 * [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
+* [`McapChannel`](../archetypes/mcap_channel.md)
+* [`McapSchema`](../archetypes/mcap_schema.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
 * [`TextDocument`](../archetypes/text_document.md)

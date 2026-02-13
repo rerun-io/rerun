@@ -1,17 +1,24 @@
+// Run the example with `cargo r -p re_ui --example re_ui_example`
+
 mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use egui::{Modifiers, os};
+use crossbeam::channel::Receiver;
+use egui::{ComboBox, Modifiers, Widget as _, os};
+use re_ui::filter_widget::{FilterState, format_matching_text};
+use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::menu::menu_style;
+use re_ui::notifications::NotificationUi;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{
-    CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
-    IconText, UICommand, UICommandSender, UiExt as _,
-    filter_widget::{FilterState, format_matching_text},
-    icons, list_item, notifications,
+    ComboItem, ComboItemHeader, CommandPalette, CommandPaletteAction, CommandPaletteUrl,
+    ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _, UICommand, UICommandSender,
+    UiExt as _, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
-pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
+pub struct CommandSender(crossbeam::channel::Sender<UICommand>);
 
 impl UICommandSender for CommandSender {
     /// Send a command to be executed.
@@ -22,7 +29,7 @@ impl UICommandSender for CommandSender {
 }
 
 /// Receiver for the [`CommandSender`]
-pub struct CommandReceiver(std::sync::mpsc::Receiver<UICommand>);
+pub struct CommandReceiver(crossbeam::channel::Receiver<UICommand>);
 
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
@@ -35,7 +42,7 @@ impl CommandReceiver {
 
 /// Creates a new command channel.
 fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (sender, receiver) = std::sync::mpsc::channel();
+    let (sender, receiver) = crossbeam::channel::bounded(256);
     (CommandSender(sender), CommandReceiver(receiver))
 }
 
@@ -62,16 +69,16 @@ fn main() -> eframe::Result {
         native_options,
         Box::new(move |cc| {
             re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
-            Ok(Box::new(ExampleApp::new()))
+            Ok(Box::new(ExampleApp::new(cc.egui_ctx.clone())))
         }),
     )
 }
 
 pub struct ExampleApp {
-    notifications: notifications::NotificationUi,
+    notifications: NotificationUi,
 
     /// Listens to the local text log stream
-    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+    text_log_rx: Receiver<re_log::LogMsg>,
 
     tree: egui_tiles::Tree<Tab>,
 
@@ -100,7 +107,7 @@ pub struct ExampleApp {
 }
 
 impl ExampleApp {
-    fn new() -> Self {
+    fn new(ctx: egui::Context) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
 
@@ -109,7 +116,7 @@ impl ExampleApp {
         let (command_sender, command_receiver) = command_channel();
 
         Self {
-            notifications: Default::default(),
+            notifications: NotificationUi::new(ctx),
             text_log_rx,
 
             tree,
@@ -155,7 +162,7 @@ impl eframe::App for ExampleApp {
 
         self.show_text_logs_as_notifications();
 
-        self.top_bar(egui_ctx);
+        self.top_bar(_frame, egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
             .frame(egui_ctx.tokens().bottom_panel_frame())
@@ -191,6 +198,8 @@ impl eframe::App for ExampleApp {
                             Lorem ipsum sit dolor amet."
                     );
                 }
+
+                ui.loading_indicator();
             });
         };
 
@@ -249,13 +258,12 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .button(list_item::ItemMenuButton::new(
-                    &re_ui::icons::ADD,
-                    "Add",
-                    |ui| {
-                        ui.weak("empty");
-                    },
-                ))
+                .with_button(
+                    ui.small_icon_button_widget(&re_ui::icons::ADD, "Add")
+                        .on_menu(|ui| {
+                            ui.weak("empty");
+                        }),
+                )
                 .show(ui, |ui| {
                     ui.label("Some data here");
                 });
@@ -319,6 +327,12 @@ impl eframe::App for ExampleApp {
                             ..Default::default()
                         })
                         .show_inside(ui, left_panel_top_section_ui);
+                    ui.selectable_label_with_icon(
+                        &icons::ADD,
+                        "foo/bar/baz",
+                        false,
+                        re_ui::LabelStyle::Normal,
+                    );
 
                     egui::ScrollArea::both()
                         .auto_shrink([false; 2])
@@ -381,7 +395,6 @@ impl eframe::App for ExampleApp {
         while let Some(cmd) = self.command_receiver.recv() {
             self.latest_cmd = cmd.text().to_owned();
 
-            #[allow(clippy::single_match)]
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {
@@ -411,8 +424,8 @@ fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
 }
 
 impl ExampleApp {
-    fn top_bar(&mut self, egui_ctx: &egui::Context) {
-        let top_bar_style = egui_ctx.top_bar_style(false);
+    fn top_bar(&mut self, frame: &eframe::Frame, egui_ctx: &egui::Context) {
+        let top_bar_style = egui_ctx.top_bar_style(frame, false);
 
         egui::TopBottomPanel::top("top_bar")
             .frame(egui_ctx.tokens().top_panel_frame())
@@ -538,6 +551,32 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.warning_label("This is an example of a long warning label.");
             ui.success_label("This is an example of a long success label.");
             ui.info_label("This is an example of a long info label.");
+
+            ComboBox::new("combo_item_example", "")
+                .selected_text("ComboItem Example")
+                .popup_style(menu_style())
+                .height(300.0)
+                .show_ui(ui, |ui| {
+                    ui.add(ComboItemHeader::new("Recommended:"));
+
+                    ComboItem::new("vertex_normals")
+                        .error(Some("Invalid selector".to_owned()))
+                        .selected(true)
+                        .ui(ui);
+
+                    let mut code = SyntaxHighlightedBuilder::new();
+                    code.append_syntax("[")
+                        .append_primitive("0.000")
+                        .append_syntax(",")
+                        .append_primitive("0.000")
+                        .append_syntax("]");
+
+                    ui.add(ComboItemHeader::new("Other values:"));
+                    ComboItem::new("vertex_positions").ui(ui);
+                    ComboItem::new("Rerun default")
+                        .value(code.into_widget_text(ui.style()))
+                        .ui(ui);
+                });
         });
 
         ui.help_button(|ui| {

@@ -40,6 +40,7 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     let is_sorted = &sort_column.column == column;
     let direction = sort_column.direction;
 
+    //TODO(ab): this UI is really bad, we need to trash all of this in favor of the new table widget
     let (left_clicked, right_clicked) = egui::Sides::new()
         .height(tokens.table_row_height(table_style))
         .show(
@@ -50,12 +51,16 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
                 ui.button(egui::WidgetText::from(label).strong()).clicked()
             },
             |ui| {
-                ui.button(match (is_sorted, direction) {
-                    (true, SortDirection::Ascending) => "↓",
-                    (true, SortDirection::Descending) => "↑",
-                    _ => "",
-                })
-                .clicked()
+                if is_sorted {
+                    let (icon, text) = match direction {
+                        SortDirection::Ascending => (&re_ui::icons::ARROW_DOWN, "ascending sort"),
+                        SortDirection::Descending => (&re_ui::icons::ARROW_UP, "descending sort"),
+                    };
+
+                    ui.small_icon_button(icon, text).clicked()
+                } else {
+                    false
+                }
             },
         );
 

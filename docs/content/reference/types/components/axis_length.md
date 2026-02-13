@@ -22,4 +22,4 @@ float32
 
 ## Used by
 
-* [`Transform3D`](../archetypes/transform3d.md)
+* [`TransformAxes3D`](../archetypes/transform_axes3d.md)

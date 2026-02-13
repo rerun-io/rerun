@@ -1,6 +1,6 @@
 use re_viewer_context::{
-    ComponentFallbackProvider, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the view
@@ -14,7 +14,10 @@ impl IdentifiedViewSystem for EmptySystem {
 }
 
 impl VisualizerSystem for EmptySystem {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
         VisualizerQueryInfo::empty()
     }
 
@@ -23,25 +26,7 @@ impl VisualizerSystem for EmptySystem {
         _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        Ok(vec![])
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
-}
-
-impl ComponentFallbackProvider for EmptySystem {
-    fn try_provide_fallback(
-        &self,
-        _ctx: &re_viewer_context::QueryContext<'_>,
-        _component: re_types_core::ComponentType,
-    ) -> re_viewer_context::ComponentFallbackProviderResult {
-        re_viewer_context::ComponentFallbackProviderResult::ComponentNotHandled
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        Ok(VisualizerExecutionOutput::default())
     }
 }

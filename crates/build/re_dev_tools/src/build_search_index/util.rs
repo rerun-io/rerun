@@ -1,10 +1,10 @@
-use indicatif::ProgressBar;
 use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::io;
 use std::path::Path;
-use std::process::Command;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
+
+use indicatif::ProgressBar;
 
 pub trait CommandExt {
     fn with_cwd<P>(self, cwd: P) -> Self
@@ -20,13 +20,13 @@ pub trait CommandExt {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>;
 
-    #[allow(unused)]
+    #[expect(unused)]
     fn with_env<K, V>(self, key: K, val: V) -> Self
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>;
 
-    #[allow(unused)]
+    #[expect(unused)]
     fn run(self) -> io::Result<()>;
 
     fn output(self) -> anyhow::Result<Vec<u8>>;

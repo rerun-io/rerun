@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+[{integers: [2, 4, 6], strings: ["step_2", "value_0.9092974268256817", "id_2"], booleans: [true, false, false]}]

@@ -66,7 +66,9 @@ def test_binary_stream() -> None:
                 f.write(data)
 
         process = subprocess.run(
-            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"], capture_output=True
+            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"],
+            check=False,
+            capture_output=True,
         )
         if process.returncode != 0:
             print(process.stderr.decode("utf-8"))

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import inspect
 import os
-import sys
 from typing import Any
 
 import pytest
@@ -11,7 +10,7 @@ from rerun.error_utils import RerunWarning, catch_and_log_exceptions
 
 
 @catch_and_log_exceptions()
-def outer(strict: bool | None = None) -> int:
+def outer(strict: bool | None = None) -> int:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Calls an inner decorated function."""
     inner(3)
 
@@ -19,7 +18,7 @@ def outer(strict: bool | None = None) -> int:
 
 
 @catch_and_log_exceptions()
-def two_calls(strict: bool | None = None) -> None:
+def two_calls(strict: bool | None = None) -> None:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Calls an inner decorated function twice."""
     inner(3)
     inner(3)
@@ -34,7 +33,7 @@ def inner(count: int) -> None:
 
 
 @catch_and_log_exceptions()
-def uses_context(strict: bool | None = None) -> None:
+def uses_context(strict: bool | None = None) -> None:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Uses a context manager instead of a function."""
     with catch_and_log_exceptions("inner context"):
         raise ValueError("some value error")
@@ -48,9 +47,9 @@ def get_line_number() -> int:
 
 def expected_warnings(warnings: Any, mem: Any, starting_msgs: int, count: int, expected_line: int) -> None:
     for w in warnings:
-        assert w.lineno == expected_line
-        assert w.filename == __file__
-        assert "some value error" in str(w.message)
+        assert w.lineno == expected_line, f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
+        assert w.filename == __file__, f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
+        assert "some value error" in str(w.message), f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
 
 
 def test_stack_tracking() -> None:
@@ -89,10 +88,7 @@ def test_stack_tracking() -> None:
             uses_context()
             value = 42
 
-        if sys.version_info < (3, 10):
-            expected_line = get_line_number() - 3  # the last line of the context block
-        else:
-            expected_line = get_line_number() - 7  # the first line of the context block
+        expected_line = get_line_number() - 4  # the first line of the context block
         expected_warnings(warnings, mem, starting_msgs, 1, expected_line)
         # value is changed because uses_context its own exception internally
         assert value == 42
@@ -106,10 +102,7 @@ def test_stack_tracking() -> None:
             raise ValueError("some value error")
             value = 42
 
-        if sys.version_info < (3, 10):
-            expected_line = get_line_number() - 3  # the last line of the context block
-        else:
-            expected_line = get_line_number() - 7  # the open of the context manager
+        expected_line = get_line_number() - 4  # the open of the context manager
         expected_warnings(warnings, mem, starting_msgs, 1, expected_line)
         # value wasn't changed because an exception was raised
         assert value == 0

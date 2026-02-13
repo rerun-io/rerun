@@ -3,15 +3,12 @@
 use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
-use crate::{
-    DebugLabel, RenderContext, Texture2DBufferInfo,
-    renderer::DrawError,
-    wgpu_resources::{GpuTexture, TextureDesc},
-};
+use crate::renderer::DrawError;
+use crate::wgpu_resources::{GpuTexture, TextureDesc};
+use crate::{DebugLabel, RenderContext, Texture2DBufferInfo};
 
 /// Image data format that can be converted to a wgpu texture.
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.
-#[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub enum SourceImageDataFormat {
     /// The source format is already in a wgpu compatible format.
@@ -370,7 +367,7 @@ fn copy_data_to_texture(
         let bytes_per_row_unpadded = buffer_info.bytes_per_row_unpadded as usize;
         let num_padding_bytes_per_row =
             buffer_info.bytes_per_row_padded as usize - bytes_per_row_unpadded;
-        debug_assert!(
+        re_log::debug_assert!(
             num_padding_bytes_per_row > 0,
             "No padding bytes, but the unpadded buffer size is not equal to the unpadded buffer."
         );

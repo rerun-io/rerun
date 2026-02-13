@@ -1,22 +1,19 @@
 //! Performs the layout of the graph, i.e. converting an [`LayoutRequest`] into a [`Layout`].
 
 // For now we have only a single layout provider that is based on a force-directed model.
-// In the future, this could be expanded to support different (specialized layout alorithms).
+// In the future, this could be expanded to support different (specialized layout algorithms).
 // Low-hanging fruit would be tree-based layouts. But we could also think about more complex
 // layouts, such as `dot` from `graphviz`.
 
 use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj, Simulation};
-use re_log::error_once;
+use re_log::{debug_assert, debug_panic, error_once};
 
+use super::params::ForceLayoutParams;
+use super::request::NodeTemplate;
+use super::slots::{Slot, SlotKind, slotted_edges};
+use super::{EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry};
 use crate::graph::{EdgeId, NodeId};
-
-use super::{
-    EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
-    params::ForceLayoutParams,
-    request::NodeTemplate,
-    slots::{Slot, SlotKind, slotted_edges},
-};
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
     fn from(node: &'a NodeTemplate) -> Self {
@@ -208,7 +205,7 @@ impl ForceLayoutProvider {
 
             for (node, template) in &graph.nodes {
                 let pos = positions.next().unwrap_or_else(|| {
-                    debug_assert!(false, "not enough positions returned for layout request");
+                    debug_panic!("not enough positions returned for layout request");
                     error_once!("not enough positions returned for layout request");
                     Pos2::ZERO
                 });

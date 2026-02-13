@@ -1,6 +1,4 @@
 fn main() {
-    re_build_tools::export_build_info_vars_for_crate(env!("CARGO_PKG_NAME"));
-
     cfg_aliases::cfg_aliases! {
         native: { not(target_arch = "wasm32") },
         linux_arm64: { all(target_os = "linux", target_arch = "aarch64") },

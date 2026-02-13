@@ -21,6 +21,11 @@ mod log_sink;
 mod recording_stream;
 mod spawn;
 
+// ---------------
+// Public modules:
+
+pub mod blueprint;
+
 // -------------
 // Public items:
 
@@ -40,26 +45,12 @@ pub const DEFAULT_SERVER_PORT: u16 = re_uri::DEFAULT_PROXY_PORT;
 pub const DEFAULT_CONNECT_URL: &str =
     const_format::concatcp!("rerun+http://127.0.0.1:", DEFAULT_SERVER_PORT, "/proxy");
 
-/// The default address of a Rerun gRPC server which an SDK connects to.
-#[deprecated(since = "0.22.0", note = "migrate to connect_grpc")]
-pub fn default_server_addr() -> std::net::SocketAddr {
-    std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
-}
-
-/// The default amount of time to wait for the gRPC connection to resume during a flush
-#[allow(clippy::unnecessary_wraps)]
-pub fn default_flush_timeout() -> Option<std::time::Duration> {
-    // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
-    Some(std::time::Duration::from_secs(3))
-}
-
-pub use re_log_types::{
-    ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
-};
-pub use re_memory::MemoryLimit;
-pub use re_types::archetypes::RecordingInfo;
-
 pub use global::cleanup_if_forked_child;
+pub use re_log_types::{
+    ApplicationId, EntityPath, EntityPathFilter, EntityPathPart, Instance, StoreId, StoreKind,
+    entity_path,
+};
+pub use re_sdk_types::archetypes::RecordingInfo;
 
 #[cfg(not(target_arch = "wasm32"))]
 impl crate::sink::LogSink for re_log_encoding::FileSink {
@@ -68,12 +59,13 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {
-        Self::flush_blocking(self);
-    }
+    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), sink::SinkFlushError> {
+        use re_log_encoding::FileFlushError;
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+        Self::flush_blocking(self, timeout).map_err(|err| match err {
+            FileFlushError::Failed { message } => sink::SinkFlushError::Failed { message },
+            FileFlushError::Timeout => sink::SinkFlushError::Timeout,
+        })
     }
 }
 
@@ -85,16 +77,14 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// This is how you select whether the log stream ends up
 /// sent over gRPC, written to file, etc.
 pub mod sink {
-    pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
-    pub use crate::log_sink::{
-        BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
-        MultiSink,
-    };
-
-    pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};
-
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
+
+    pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
+    pub use crate::log_sink::{
+        BufferedSink, CallbackSink, GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState,
+        IntoMultiSink, LogSink, MemorySink, MemorySinkStorage, MultiSink, SinkFlushError,
+    };
 }
 
 /// Things directly related to logging.
@@ -110,17 +100,23 @@ pub mod log {
 pub mod time {
     pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
 }
-pub use time::{TimeCell, TimePoint, Timeline};
 
-pub use re_types::{
+pub use re_sdk_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
     Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
     SerializedComponentColumn,
 };
+pub use time::{TimeCell, TimePoint, Timeline};
+
+/// Transformation and reinterpretation of components.
+///
+/// # Experimental
+///
+/// This is an experimental API and may change in future releases.
+pub mod lenses;
 
 pub use re_byte_size::SizeBytes;
-
 #[cfg(feature = "data_loaders")]
 pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
@@ -132,21 +128,17 @@ pub mod web_viewer;
 #[cfg(feature = "server")]
 pub mod grpc_server;
 
+#[cfg(feature = "server")]
+pub use re_grpc_server::{MemoryLimit, PlaybackBehavior, ServerOptions};
+
 /// Re-exports of other crates.
 pub mod external {
-    pub use re_grpc_client;
-    pub use re_grpc_server;
-    pub use re_log;
-    pub use re_log_encoding;
-    pub use re_log_types;
-    pub use re_uri;
-
     pub use re_chunk::external::*;
-    pub use re_log::external::*;
-    pub use re_log_types::external::*;
-
     #[cfg(feature = "data_loaders")]
     pub use re_data_loader::{self, external::*};
+    pub use re_log::external::*;
+    pub use re_log_types::external::*;
+    pub use {re_grpc_client, re_grpc_server, re_log, re_log_encoding, re_log_types, re_uri};
 }
 
 #[cfg(feature = "web_viewer")]
@@ -216,13 +208,11 @@ pub fn new_store_info(
 ) -> re_log_types::StoreInfo {
     let store_id = StoreId::random(StoreKind::Recording, application_id.into());
 
-    re_log_types::StoreInfo {
+    re_log_types::StoreInfo::new(
         store_id,
-        cloned_from: None,
-        store_source: re_log_types::StoreSource::RustSdk {
+        re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },
-        store_version: Some(re_build_info::CrateVersion::LOCAL),
-    }
+    )
 }

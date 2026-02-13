@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -18,24 +18,40 @@ from ..datatypes import (
 )
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
+
+# Note: numpy._typing._SupportsArray exists but is private API.
+# We define our own for stability and to avoid depending on numpy internals.
+@runtime_checkable
+class SupportsDunderArray(Protocol):
+    """
+    An object that supports conversion to numpy array via __array__().
+
+    This includes torch.Tensor, JAX arrays, CuPy arrays, etc.
+    Unlike npt.ArrayLike, this excludes scalars, strings, and other non-array types.
+    """
+
+    def __array__(self) -> np.ndarray[Any, Any]: ...
+
+
 if TYPE_CHECKING:
-    ImageLike = Union[
-        npt.NDArray[np.float16],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float64],
-        npt.NDArray[np.floating],
-        npt.NDArray[np.int16],
-        npt.NDArray[np.int32],
-        npt.NDArray[np.int64],
-        npt.NDArray[np.int8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-        npt.NDArray[np.uint64],
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.integer],
-        np.ndarray[Any, np.dtype[np.floating | np.integer]],
-        PILImage.Image,
-    ]
+    ImageLike = (
+        npt.NDArray[np.float16]
+        | npt.NDArray[np.float32]
+        | npt.NDArray[np.float64]
+        | npt.NDArray[np.floating]
+        | npt.NDArray[np.int16]
+        | npt.NDArray[np.int32]
+        | npt.NDArray[np.int64]
+        | npt.NDArray[np.int8]
+        | npt.NDArray[np.uint16]
+        | npt.NDArray[np.uint32]
+        | npt.NDArray[np.uint64]
+        | npt.NDArray[np.uint8]
+        | npt.NDArray[np.integer]
+        | np.ndarray[Any, np.dtype[np.floating | np.integer]]
+        | PILImage.Image
+        | SupportsDunderArray  # Includes torch.Tensor and other array protocol objects
+    )
     from . import EncodedImage, Image
 
 
@@ -204,13 +220,13 @@ class ImageExt:
             raise ValueError(f"Provided width {width} does not match image width {_width}")
         else:
             width = _width
-        width = cast(int, width)
+        width = cast("int", width)
 
         if height is not None and height != _height:
             raise ValueError(f"Provided height {height} does not match image height {_height}")
         else:
             height = _height
-        height = cast(int, height)
+        height = cast("int", height)
 
         if color_model is None:
             if channels == 1:
@@ -272,19 +288,13 @@ class ImageExt:
                 f"Converting image with pixel_format {image_format.pixel_format} into PIL is not yet supported"
             )
 
-        buffer = self.buffer.as_arrow_array()
-
-        if len(buffer) != 1:
-            raise ValueError(f"Expected exactly 1 buffer, got {len(buffer)}")
-
-        blob_bytes = buffer[0].as_py()
-        array = np.frombuffer(blob_bytes, dtype=image_format.channel_datatype.to_np_dtype())
+        buf = self.buffer.as_arrow_array().values.to_numpy().view(image_format.channel_datatype.to_np_dtype())
 
         # Note: np array shape is always (height, width, channels)
         if image_format.color_model == ColorModel.L:
-            image = array.reshape(image_format.height, image_format.width)  # type: ignore[assignment]
+            image = buf.reshape(image_format.height, image_format.width)
         else:
-            image = array.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())  # type: ignore[assignment]
+            image = buf.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())
 
         # PIL assumes L or RGB[A]:
         if image_format.color_model == ColorModel.BGR:

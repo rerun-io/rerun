@@ -2,7 +2,7 @@
 name = "re_types_core"
 authors.workspace = true
 description = "The core traits and types that power Rerun's data model."
-edition = "2021"                                                         # TODO(#9943): Update to 2024
+edition = "2024"
 homepage.workspace = true
 include.workspace = true
 license.workspace = true

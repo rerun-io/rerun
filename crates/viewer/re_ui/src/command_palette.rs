@@ -73,7 +73,7 @@ impl CommandPalette {
             return None;
         }
 
-        let screen_rect = egui_ctx.screen_rect();
+        let screen_rect = egui_ctx.content_rect();
         let width = 300.0;
         let max_height = 320.0.at_most(screen_rect.height());
 
@@ -111,11 +111,12 @@ impl CommandPalette {
                 .lock_focus(true),
         );
         text_response.request_focus();
-        let mut scroll_to_selected_alternative = false;
-        if text_response.changed() {
+        let scroll_to_selected_alternative = if text_response.changed() {
             self.selected_alternative = 0;
-            scroll_to_selected_alternative = true;
-        }
+            true
+        } else {
+            false
+        };
 
         let selected_command = egui::ScrollArea::vertical()
             .auto_shrink([false, true])
@@ -132,6 +133,7 @@ impl CommandPalette {
     }
 
     #[must_use = "Returns the command that was selected"]
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
     fn alternatives_ui(
         &mut self,
         ui: &mut egui::Ui,

@@ -1,30 +1,21 @@
 //! Track allocations and memory use.
 
-use std::sync::{
-    LazyLock,
-    atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
-};
+use std::sync::LazyLock;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use parking_lot::Mutex;
 
-use crate::{
-    CountAndSize,
-    allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash},
-};
-
-/// Only track allocations of at least this size.
-const SMALL_SIZE: usize = 128; // TODO(emilk): make this settable by users
-
-/// Allocations smaller than are stochastically sampled.
-const MEDIUM_SIZE: usize = 4 * 1024; // TODO(emilk): make this settable by users
+use crate::CountAndSize;
+use crate::allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash};
 
 // TODO(emilk): yet another tier would maybe make sense, with a different stochastic rate.
 
-/// Statistics about extant allocations larger than [`MEDIUM_SIZE`].
+/// Statistics about extant allocations larger than [`GlobalStats::medium_size`].
 static BIG_ALLOCATION_TRACKER: LazyLock<Mutex<AllocationTracker>> =
     LazyLock::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(1)));
 
-/// Statistics about some extant allocations larger than  [`SMALL_SIZE`] but smaller than [`MEDIUM_SIZE`].
+/// Statistics about some extant allocations larger than [`GlobalStats::small_size`] but smaller than [`GlobalStats::medium_size`].
 static MEDIUM_ALLOCATION_TRACKER: LazyLock<Mutex<AllocationTracker>> =
     LazyLock::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(64)));
 
@@ -82,6 +73,13 @@ struct GlobalStats {
     /// This is expensive, but sometimes useful!
     pub track_callstacks: AtomicBool,
 
+    /// Never capture callstacks for allocations smaller than this.
+    pub small_size: AtomicUsize,
+
+    /// Allocations smaller than this are stochastically sampled.
+    /// Allocations larger than this are fully sampled.
+    pub medium_size: AtomicUsize,
+
     /// The live allocations not tracked by any [`AllocationTracker`].
     pub untracked: AtomicCountAndSize,
 
@@ -95,38 +93,80 @@ struct GlobalStats {
     pub overhead: AtomicCountAndSize,
 }
 
-// ----------------------------------------------------------------------------
-
-static GLOBAL_STATS: GlobalStats = GlobalStats {
+static GLOBAL: GlobalStats = GlobalStats {
     live: AtomicCountAndSize::zero(),
     track_callstacks: AtomicBool::new(false),
+    small_size: AtomicUsize::new(1024),
+    medium_size: AtomicUsize::new(1024 * 1024),
     untracked: AtomicCountAndSize::zero(),
     stochastically_tracked: AtomicCountAndSize::zero(),
     fully_tracked: AtomicCountAndSize::zero(),
     overhead: AtomicCountAndSize::zero(),
 };
 
+// ----------------------------------------------------------------------------
+
+/// Controls which allocations to sample.
+///
+/// By "sample" we mean "capture a callstack".
+#[derive(Clone, Copy, Debug)]
+pub struct TrackingOptions {
+    /// Never capture callstacks for allocations smaller than this.
+    pub small_size: usize,
+
+    /// Allocations smaller than this are stochastically sampled.
+    /// Allocations larger than this are fully sampled.
+    pub medium_size: usize,
+}
+
+impl Default for TrackingOptions {
+    fn default() -> Self {
+        Self {
+            small_size: 1024,
+            medium_size: 1024 * 1024,
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Total number of live allocations,
 /// and the number of live bytes allocated as tracked by [`AccountingAllocator`].
 ///
 /// Returns `None` if [`AccountingAllocator`] is not used.
 pub fn global_allocs() -> Option<CountAndSize> {
-    let count_and_size = GLOBAL_STATS.live.load();
+    let count_and_size = GLOBAL.live.load();
     (count_and_size.count > 0).then_some(count_and_size)
 }
 
 /// Are we doing (slightly expensive) tracking of the callstacks of large allocations?
 pub fn is_tracking_callstacks() -> bool {
-    GLOBAL_STATS.track_callstacks.load(Relaxed)
+    GLOBAL.track_callstacks.load(Relaxed)
+}
+
+/// For accurate results, call this BEFORE [`set_tracking_callstacks`].
+pub fn set_tracking_options(options: TrackingOptions) {
+    let TrackingOptions {
+        small_size,
+        medium_size,
+    } = options;
+
+    GLOBAL.small_size.store(small_size, Relaxed);
+    GLOBAL.medium_size.store(medium_size, Relaxed);
 }
 
 /// Should we do (slightly expensive) tracking of the callstacks of large allocations?
+///
+/// To configure it, call [`set_tracking_options`] _first_.
 ///
 /// See also [`turn_on_tracking_if_env_var`].
 ///
 /// Requires that you have installed the [`AccountingAllocator`].
 pub fn set_tracking_callstacks(track: bool) {
-    GLOBAL_STATS.track_callstacks.store(track, Relaxed);
+    let did_track = GLOBAL.track_callstacks.swap(track, Relaxed);
+    if !did_track && track {
+        re_log::info!("Turning on stochastic tracking of all allocations");
+    }
 }
 
 /// Turn on callstack tracking (slightly expensive) if a given env-var is set.
@@ -144,8 +184,13 @@ pub fn turn_on_tracking_if_env_var(env_var: &str) {
 
 // ----------------------------------------------------------------------------
 
-const MAX_CALLSTACKS: usize = 128;
+/// Max number of peak callstacks we collect
+const MAX_CALLSTACKS: usize = 32;
 
+/// Detailed statistics about memory usage.
+///
+/// Requires [`set_tracking_callstacks`] having been called.
+#[derive(Debug)]
 pub struct TrackingStatistics {
     /// Allocations smaller than these are left untracked.
     pub track_size_threshold: usize,
@@ -189,7 +234,7 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
         top_callstacks
     }
 
-    GLOBAL_STATS.track_callstacks.load(Relaxed).then(|| {
+    GLOBAL.track_callstacks.load(Relaxed).then(|| {
         IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
             // prevent double-lock of ALLOCATION_TRACKER:
             is_thread_in_allocation_tracker.set(true);
@@ -201,14 +246,16 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
                 .drain(..)
                 .chain(top_medium_callstacks.drain(..))
                 .collect();
-            top_callstacks.sort_by_key(|c| -(c.extant.size as i64));
+
+            #[expect(clippy::cast_possible_wrap)]
+            top_callstacks.sort_by_key(|c| -(c.estimated().size as i64));
 
             TrackingStatistics {
-                track_size_threshold: SMALL_SIZE,
-                untracked: GLOBAL_STATS.untracked.load(),
-                stochastically_tracked: GLOBAL_STATS.stochastically_tracked.load(),
-                fully_tracked: GLOBAL_STATS.fully_tracked.load(),
-                overhead: GLOBAL_STATS.overhead.load(),
+                track_size_threshold: GLOBAL.small_size.load(Relaxed),
+                untracked: GLOBAL.untracked.load(),
+                stochastically_tracked: GLOBAL.stochastically_tracked.load(),
+                fully_tracked: GLOBAL.fully_tracked.load(),
+                overhead: GLOBAL.overhead.load(),
                 top_callstacks,
             }
         })
@@ -240,13 +287,12 @@ impl<InnerAllocator> AccountingAllocator<InnerAllocator> {
     }
 }
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 // SAFETY:
 // We just do book-keeping and then let another allocator do all the actual work.
 unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
     for AccountingAllocator<InnerAllocator>
 {
-    #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
         // SAFETY:
         // We just do book-keeping and then let another allocator do all the actual work.
@@ -295,12 +341,12 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
 
 #[inline]
 fn note_alloc(ptr: *mut u8, size: usize) {
-    GLOBAL_STATS.live.add(size);
+    GLOBAL.live.add(size);
 
-    if GLOBAL_STATS.track_callstacks.load(Relaxed) {
-        if size < SMALL_SIZE {
+    if GLOBAL.track_callstacks.load(Relaxed) {
+        if size < GLOBAL.small_size.load(Relaxed) {
             // Too small to track.
-            GLOBAL_STATS.untracked.add(size);
+            GLOBAL.untracked.add(size);
         } else {
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
@@ -310,18 +356,18 @@ fn note_alloc(ptr: *mut u8, size: usize) {
                     is_thread_in_allocation_tracker.set(true);
 
                     let ptr_hash = PtrHash::new(ptr);
-                    if size < MEDIUM_SIZE {
-                        GLOBAL_STATS.stochastically_tracked.add(size);
+                    if size < GLOBAL.medium_size.load(Relaxed) {
+                        GLOBAL.stochastically_tracked.add(size);
                         MEDIUM_ALLOCATION_TRACKER.lock().on_alloc(ptr_hash, size);
                     } else {
-                        GLOBAL_STATS.fully_tracked.add(size);
+                        GLOBAL.fully_tracked.add(size);
                         BIG_ALLOCATION_TRACKER.lock().on_alloc(ptr_hash, size);
                     }
 
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER allocating memory.
-                    GLOBAL_STATS.overhead.add(size);
+                    GLOBAL.overhead.add(size);
                 }
             });
         }
@@ -330,12 +376,12 @@ fn note_alloc(ptr: *mut u8, size: usize) {
 
 #[inline]
 fn note_dealloc(ptr: *mut u8, size: usize) {
-    GLOBAL_STATS.live.sub(size);
+    GLOBAL.live.sub(size);
 
-    if GLOBAL_STATS.track_callstacks.load(Relaxed) {
-        if size < SMALL_SIZE {
+    if GLOBAL.track_callstacks.load(Relaxed) {
+        if size < GLOBAL.small_size.load(Relaxed) {
             // Too small to track.
-            GLOBAL_STATS.untracked.sub(size);
+            GLOBAL.untracked.sub(size);
         } else {
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
@@ -344,18 +390,18 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
                     is_thread_in_allocation_tracker.set(true);
 
                     let ptr_hash = PtrHash::new(ptr);
-                    if size < MEDIUM_SIZE {
-                        GLOBAL_STATS.stochastically_tracked.sub(size);
+                    if size < GLOBAL.medium_size.load(Relaxed) {
+                        GLOBAL.stochastically_tracked.sub(size);
                         MEDIUM_ALLOCATION_TRACKER.lock().on_dealloc(ptr_hash, size);
                     } else {
-                        GLOBAL_STATS.fully_tracked.sub(size);
+                        GLOBAL.fully_tracked.sub(size);
                         BIG_ALLOCATION_TRACKER.lock().on_dealloc(ptr_hash, size);
                     }
 
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER freeing memory.
-                    GLOBAL_STATS.overhead.sub(size);
+                    GLOBAL.overhead.sub(size);
                 }
             });
         }

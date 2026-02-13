@@ -1,0 +1,11 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+kind: [2]
+position: [[0.0, 0.0, 0.0]]
+look_target: [[0.0, 0.0, 0.0]]
+eye_up: [[0.0, 0.0, 0.0]]
+speed: [0.0]
+tracking_entity: []
+spin_speed: [0.0]

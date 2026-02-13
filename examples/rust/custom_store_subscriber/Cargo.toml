@@ -1,16 +1,13 @@
 [package]
 name = "custom_store_subscriber"
-version = "0.25.0-alpha.1+dev"
+version = "0.30.0-alpha.1+dev"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", features = [
-  "native_viewer",
-  "run",
-] }
+rerun = { path = "../../../crates/top/rerun", features = ["native_viewer", "run"] }
 
 [build-dependencies]
 re_build_tools = { path = "../../../crates/build/re_build_tools" }

@@ -1,4 +1,4 @@
-use re_types::components::EntityPath;
+use re_sdk_types::components::EntityPath;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub(crate) fn edit_or_view_entity_path(

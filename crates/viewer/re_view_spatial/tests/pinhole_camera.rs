@@ -1,11 +1,12 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_sdk_types::archetypes::Pinhole;
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::{Color, Position3D, Radius};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::Pinhole;
-use re_types::components::{Color, Radius};
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
 pub fn test_pinhole_camera() {
@@ -21,58 +22,35 @@ pub fn test_pinhole_camera() {
         )
     });
 
-    let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(&mut test_context, view_id, egui::vec2(300.0, 300.0));
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        let view =
+            ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
+        blueprint.add_view_at_root(view)
+    });
+
+    run_view_ui_and_save_snapshot(&test_context, view_id, egui::vec2(300.0, 300.0));
 }
 
-#[allow(clippy::unwrap_used)]
-fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
-            re_view_spatial::SpatialView3D::identifier(),
-            RecommendedView {
-                origin: "/world".into(),
-                query_filter: "+ $origin/**".parse().unwrap(),
-            },
-        );
-
-        let view_id = view_blueprint.id;
-
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-
-        view_id
-    })
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    size: egui::Vec2,
-) {
+fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, size: egui::Vec2) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
 
-    let raw_input = harness.input_mut();
-    // TODO(#6825): use blueprint view setup once we can control camera from blueprints.
-    raw_input
-        .events
-        .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-    raw_input.events.push(egui::Event::MouseWheel {
-        unit: egui::MouseWheelUnit::Line,
-        delta: egui::Vec2::UP * 2.0,
-        modifiers: egui::Modifiers::default(),
+    test_context.with_blueprint_ctx(|ctx, _| {
+        ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.current_blueprint(),
+            ctx.blueprint_query(),
+            view_id,
+        )
+        .save_blueprint_component(
+            &ctx,
+            &EyeControls3D::descriptor_position(),
+            &Position3D::new(1.0, 1.0, 1.0),
+        );
     });
     harness.run_steps(10);
-    let broken_pixels_fraction = 0.0045;
 
-    harness.snapshot_options(
-        "pinhole_camera",
-        &SnapshotOptions::new().failed_pixel_count_threshold(
-            (size.x * size.y * broken_pixels_fraction).round() as usize,
-        ),
-    );
+    harness.snapshot("pinhole_camera");
 }

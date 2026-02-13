@@ -3,7 +3,8 @@ title = "OpenStreetMap data"
 tags = ["Map", "Blueprint"]
 thumbnail_dimensions = [480, 480]
 thumbnail = "https://static.rerun.io/osm_data/0be94071469c49f98326d85456ed2a3af8d1733a/480w.png"
-channel = "release"
+# channel = "release" # disabled since the openstreetmap API is flaky
+# include_in_manifest = true
 -->
 
 
@@ -20,7 +21,7 @@ and display it on a [map view](https://www.rerun.io/docs/reference/types/views/m
 
 ## Run the code
 
-To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
+To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/common#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
 ```bash
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
@@ -10,14 +10,6 @@ from rerun.components import (
     Color,
     ColorBatch,
     Position2DBatch,
-)
-from rerun.datatypes import (
-    ClassIdArrayLike,
-    Float32ArrayLike,
-    KeypointIdArrayLike,
-    Rgba32ArrayLike,
-    Utf8ArrayLike,
-    Vec2DArrayLike,
 )
 
 from .common_arrays import (
@@ -37,6 +29,16 @@ from .common_arrays import (
     vec2ds_expected as positions_expected,
 )
 
+if TYPE_CHECKING:
+    from rerun.datatypes import (
+        ClassIdArrayLike,
+        Float32ArrayLike,
+        KeypointIdArrayLike,
+        Rgba32ArrayLike,
+        Utf8ArrayLike,
+        Vec2DArrayLike,
+    )
+
 
 def test_points2d() -> None:
     all_arrays = itertools.zip_longest(
@@ -53,13 +55,13 @@ def test_points2d() -> None:
         positions = positions if positions is not None else positions_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info through zip_longest
-        positions = cast(Vec2DArrayLike, positions)
-        radii = cast(Optional[Float32ArrayLike], radii)
-        colors = cast(Optional[Rgba32ArrayLike], colors)
-        labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[Float32ArrayLike], draw_order)
-        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
-        keypoint_ids = cast(Optional[KeypointIdArrayLike], keypoint_ids)
+        positions = cast("Vec2DArrayLike", positions)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        draw_order = cast("Float32ArrayLike | None", draw_order)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
+        keypoint_ids = cast("KeypointIdArrayLike | None", keypoint_ids)
 
         print(
             f"rr.Points2D(\n"

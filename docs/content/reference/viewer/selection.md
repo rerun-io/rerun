@@ -5,7 +5,7 @@ order: 2
 
 Making selections is one of the primary ways of exploring data in Rerun.
 The current selection can be changed with a mouse click on most elements of the -
-including the [Blueprint](blueprint.md), [Viewport](viewport.md),
+including the [Blueprint](blueprints.md), [Viewport](viewport.md),
 [Timeline](timeline.md)
 and even the Selection view itself.
 
@@ -34,13 +34,13 @@ The data section always shows static, raw user logged data for the currently sel
 Some objects, e.g. Views, may not have a data section and expose only Blueprint options.
 
 In contrast, the Blueprint section is timeline independent and exposes the
-[Blueprint settings](blueprint.md) of an entity in the context of a given View.
+[Blueprint settings](blueprints.md) of an entity in the context of a given View.
 To learn more about the various settings check the on-hover tooltips.
 
 Click-through selections
 ------------------------
 Making selections can be context sensitive to the current selection.
-The most common case for this is selecting instances of an entity (see also [Batch Data](../../concepts/batches.md)):
+The most common case for this is selecting instances of an entity (see also [Batch Data](../../concepts/logging-and-ingestion/batches.md)):
 E.g. in order to select a point of a point cloud in a View,
 first select the entire entity (the cloud) by clicking on one of the points.
 Once the cloud is selected, you can further refine that selection by clicking on an individual point.

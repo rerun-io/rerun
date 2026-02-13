@@ -184,7 +184,12 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-    let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    var coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+
+    if frame.deterministic_rendering == 1 {
+        coverage = step(0.5, coverage);
+    }
+
     if coverage < 0.001 {
         discard;
     }

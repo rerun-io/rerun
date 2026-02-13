@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+[{step_value: 10, nested_data: {level2: {level3: {final_value: 10 000}}}}]

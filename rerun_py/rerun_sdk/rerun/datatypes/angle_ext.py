@@ -22,8 +22,12 @@ class AngleExt:
         """
 
         if rad is not None:
-            self.radians = rad
+            radians = rad
         elif deg is not None:
-            self.radians = math.radians(deg)
+            radians = math.radians(deg)
         else:
             raise ValueError("Either `rad` or `deg` must be provided.")
+
+        self.__attrs_init__(
+            radians=radians,
+        )

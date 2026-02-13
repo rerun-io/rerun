@@ -101,11 +101,11 @@ display(viewer)
 Whenever an entity is selected in the Viewer, `selected_entities.value` changes. The payload includes other useful information,
 such as the position of the selection within a 2D or 3D view.
 
-For a more complete example, see [callbacks.ipynb](https://github.com/rerun-io/rerun/blob/main/rerun_notebook/callbacks.ipynb).
+For a more complete example, see [callbacks.ipynb](https://github.com/rerun-io/rerun/blob/main/examples/python/notebook_callbacks/notebook_callbacks.ipynb).
 
 ## Working with blueprints
 
-[Blueprints](../visualization/configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
+[Blueprints](../../getting-started/configure-the-viewer.md#programmatic-blueprints) can also be used with `notebook_show()` by providing a `blueprint`
 parameter.
 
 For example
@@ -212,5 +212,5 @@ If you encounter the issue, you can try to use the `save()` API to save the data
 
 ## Future work
 
-We are actively working on improving the notebook experience and welcome any feedback or suggestions.
+We are actively working on improving the notebook experience and welcome any [feedback or suggestions](https://rerun.io/feedback).
 The ongoing roadmap is being tracked in [GitHub issue #1815](https://github.com/rerun-io/rerun/issues/1815).

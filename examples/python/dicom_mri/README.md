@@ -4,6 +4,7 @@ tags = ["Tensor", "MRI", "DICOM"]
 thumbnail = "https://static.rerun.io/dicom-mri/d5a434f92504e8dda8af6c7f4eded2a9d662c991/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
+include_in_manifest = true
 -->
 
 Visualize a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.

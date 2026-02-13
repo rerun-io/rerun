@@ -1,0 +1,5 @@
+# See https://nexte.st/docs/configuration/
+
+[profile.default]
+# warn if a test takes longer than 30 seconds and terminate it after 2 minutes
+slow-timeout = { period = "30s", terminate-after = 4 }

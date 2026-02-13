@@ -1,0 +1,25 @@
+namespace rerun.blueprint.components;
+
+/// Name of the map provider to be used in Map views.
+enum MapProvider: ubyte (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, Eq"
+) {
+  /// Invalid value. Won't show up in generated types.
+  Invalid = 0,
+
+  /// `OpenStreetMap` is the default map provider.
+  OpenStreetMap (default),
+
+  /// Mapbox Streets is a minimalistic map designed by Mapbox.
+  MapboxStreets,
+
+  /// Mapbox Dark is a dark-themed map designed by Mapbox.
+  MapboxDark,
+
+  /// Mapbox Satellite is a satellite map designed by Mapbox.
+  MapboxSatellite,
+
+  /// Mapbox Light is a light-themed map designed by Mapbox.
+  MapboxLight,
+}

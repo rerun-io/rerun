@@ -83,7 +83,7 @@ namespace rerun {
         /// \param offsets An offset within `batch` for each array of components.
         /// The last offset is the total number of components in the batch. Meaning that this array has to be
         /// one element longer than the number of component runs.
-        /// E.g. a `ParitionedComponentBatch` with a single component would have an offset array of `[0, 1]`.
+        /// E.g. a `PartitionedComponentBatch` with a single component would have an offset array of `[0, 1]`.
         /// A `ComponentColumn` with 5 components divided into runs of length 2 and 3
         // would have an offset array of `[0, 2, 5]`.
         static Result<ComponentColumn> from_batch_with_offsets(

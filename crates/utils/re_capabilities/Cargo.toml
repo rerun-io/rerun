@@ -28,6 +28,7 @@ egui = ["dep:egui"]
 
 [dependencies]
 # Internal dependencies:
+re_log.workspace = true
 
 # External dependencies:
 document-features.workspace = true

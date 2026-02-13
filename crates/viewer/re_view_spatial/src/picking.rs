@@ -64,7 +64,7 @@ impl PickingResult {
 /// Picking context in which picking is performed.
 pub struct PickingContext {
     /// Cursor position in the UI coordinate system.
-    #[allow(unused)]
+    #[expect(unused)]
     pub pointer_in_ui: glam::Vec2,
 
     /// Cursor position on the renderer canvas in pixels.
@@ -194,7 +194,7 @@ fn picking_gpu(
     re_tracing::profile_function!();
 
     let gpu_picking_result =
-        PickingLayerProcessor::readback_result::<()>(render_ctx, gpu_readback_identifier);
+        PickingLayerProcessor::readback_result(render_ctx, gpu_readback_identifier);
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // First, figure out where on the rect the cursor is by now.

@@ -6,7 +6,7 @@ order: 3
 Timeline controls
 --------------------------
 
-The timeline controls sit at the top of the timeline panel and allow you to control the playback and what [timeline](../../concepts/timelines.md) is active.
+The timeline controls sit at the top of the timeline panel and allow you to control the playback and what [timeline](../../concepts/logging-and-ingestion/timelines.md) is active.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/timeline-controls/bacd4d3d0ff2dd812bf0502d5e03689d82711b64/480w.png">
@@ -36,7 +36,7 @@ The Streams panel can be hidden with the layout config buttons at the top right 
 </picture>
 
 
-On the right side you see circles for each logged [event](../../concepts/timelines.md) on the currently selected timeline over time.
+On the right side you see circles for each logged [event](../../concepts/logging-and-ingestion/timelines.md) on the currently selected timeline over time.
 You can use the mouse to scrub the vertical time selector line to jump to arbitrary moments in time.
 The stream view allows panning with right click and zooming with `ctrl/cmd + scroll`.
 

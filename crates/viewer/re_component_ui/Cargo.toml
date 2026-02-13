@@ -22,10 +22,11 @@ all-features = true
 re_arrow_util.workspace = true
 re_data_ui.workspace = true # Needed for `item_ui`.
 re_format.workspace = true
+re_log.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = [
+re_sdk_types = { workspace = true, features = [
   "egui_plot", # Needed to draw marker shapes.
 ] }
 re_types_core.workspace = true
@@ -35,6 +36,7 @@ re_viewer_context.workspace = true
 
 arrow.workspace = true
 egui_extras.workspace = true
+egui_dnd.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
 

@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use re_format::format_f32;
-use re_types::components::Radius;
+use re_sdk_types::components::Radius;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 use crate::response_utils::response_with_changes_of_inner;

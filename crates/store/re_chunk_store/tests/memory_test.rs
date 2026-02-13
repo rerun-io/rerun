@@ -2,11 +2,11 @@
 
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
+#![expect(clippy::cast_possible_wrap)]
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering::Relaxed},
-};
+use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 
 static LIVE_BYTES_GLOBAL: AtomicUsize = AtomicUsize::new(0);
 
@@ -23,11 +23,10 @@ pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
     allocator: std::alloc::System,
 };
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 // SAFETY:
 // We just do book-keeping and then let another allocator do all the actual work.
 unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
-    #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
         LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_add(layout.size(), Relaxed));
         LIVE_BYTES_GLOBAL.fetch_add(layout.size(), Relaxed);
@@ -68,13 +67,12 @@ fn memory_use<R>(run: impl Fn() -> R) -> (usize, usize) {
 
 // ----------------------------------------------------------------------------
 
-use re_chunk::{
-    BatcherHooks, ChunkBatcher, ChunkBatcherConfig, PendingRow,
-    external::crossbeam::channel::TryRecvError,
-};
+use re_chunk::external::crossbeam::channel::TryRecvError;
+use re_chunk::{BatcherHooks, ChunkBatcher, ChunkBatcherConfig, PendingRow};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{TimePoint, Timeline};
-use re_types::{Loggable as _, archetypes, components::Scalar};
+use re_sdk_types::components::Scalar;
+use re_sdk_types::{Loggable as _, SerializedComponentBatch, archetypes};
 
 /// The memory overhead of storing many scalars in the store.
 #[test]
@@ -107,9 +105,12 @@ fn scalar_memory_overhead() {
             let timepoint = TimePoint::default().with(Timeline::log_time(), i as i64);
             let scalars = Scalar::to_arrow([Scalar::from(i as f64)]).unwrap();
 
-            let row = PendingRow::new(
+            let row = PendingRow::from_iter(
                 timepoint,
-                std::iter::once((archetypes::Scalars::descriptor_scalars(), scalars)).collect(),
+                std::iter::once(SerializedComponentBatch::new(
+                    scalars,
+                    archetypes::Scalars::descriptor_scalars(),
+                )),
             );
 
             batcher.push_row(entity_path.clone(), row);

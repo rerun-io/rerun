@@ -1,14 +1,12 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use crossbeam::channel::{Receiver, Sender, unbounded};
+use super::{AsyncDecoder, Chunk, Result};
 
 #[cfg(with_dav1d)]
-use crate::VideoDataDescription;
+use crate::{VideoDataDescription, decode::FrameResult};
 
-use super::{AsyncDecoder, Chunk, Frame, OutputCallback, Result};
+use crate::{Receiver, Sender};
 
 enum Command {
     Chunk(Chunk),
@@ -17,6 +15,16 @@ enum Command {
     Reset(Box<VideoDataDescription>),
 
     Stop,
+}
+
+impl re_byte_size::SizeBytes for Command {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Chunk(chunk) => chunk.heap_size_bytes(),
+            Self::Reset(video_data_description) => video_data_description.heap_size_bytes(),
+            Self::Stop => 0,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -48,7 +56,7 @@ pub trait SyncDecoder {
         &mut self,
         should_stop: &std::sync::atomic::AtomicBool,
         chunk: Chunk,
-        on_output: &OutputCallback,
+        output_sender: &Sender<FrameResult>,
     );
 
     /// Clear and reset everything
@@ -71,11 +79,11 @@ impl AsyncDecoderWrapper {
     pub fn new(
         debug_name: String,
         mut sync_decoder: Box<dyn SyncDecoder + Send>,
-        on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
+        output_sender: Sender<FrameResult>,
     ) -> Self {
         re_tracing::profile_function!();
 
-        let (command_tx, command_rx) = unbounded();
+        let (command_tx, command_rx) = crate::channel(format!("{debug_name}-channel"));
         let comms = Comms::default();
 
         let thread = std::thread::Builder::new()
@@ -85,7 +93,7 @@ impl AsyncDecoderWrapper {
                 move || {
                     econtext::econtext_data!("Video", debug_name.clone());
 
-                    decoder_thread(sync_decoder.as_mut(), &comms, &command_rx, &on_output);
+                    decoder_thread(sync_decoder.as_mut(), &comms, &command_rx, &output_sender);
                     re_log::debug!("Closing decoder thread for {debug_name}");
                 }
             })
@@ -147,10 +155,8 @@ fn decoder_thread(
     decoder: &mut dyn SyncDecoder,
     comms: &Comms,
     command_rx: &Receiver<Command>,
-    on_output: &OutputCallback,
+    output_sender: &Sender<FrameResult>,
 ) {
-    #![allow(clippy::debug_assert_with_mut_call)]
-
     while let Ok(command) = command_rx.recv() {
         if comms.should_stop.load(Ordering::Acquire) {
             re_log::debug!("Should stop");
@@ -163,7 +169,7 @@ fn decoder_thread(
         match command {
             Command::Chunk(chunk) => {
                 if !has_outstanding_reset {
-                    decoder.submit_chunk(&comms.should_stop, chunk, on_output);
+                    decoder.submit_chunk(&comms.should_stop, chunk, output_sender);
                 }
             }
             Command::Reset(video_data_description) => {

@@ -1,5 +1,5 @@
-use re_types::datatypes::Utf8;
-
+use re_sdk_types::datatypes::Utf8;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic singleline string editor.
@@ -30,7 +30,7 @@ fn edit_singleline_string_impl(
         *value = edit_name.into();
         response
     } else {
-        UiLayout::List.data_label(ui, value.as_str())
+        UiLayout::List.data_label(ui, SyntaxHighlightedBuilder::new().with_string_value(value))
     }
 }
 
@@ -58,6 +58,7 @@ fn edit_multiline_string_impl(
         *value = edit_name.into();
         response
     } else {
-        UiLayout::SelectionPanel.data_label(ui, value.as_str())
+        UiLayout::SelectionPanel
+            .data_label(ui, SyntaxHighlightedBuilder::new().with_string_value(value))
     }
 }

@@ -1,17 +1,18 @@
 mod video_frame_reference;
 mod video_stream;
 
-use re_types::ViewClassIdentifier;
+use re_log_types::hash::Hash64;
+use re_log_types::{EntityPath, EntityPathHash};
+use re_renderer::renderer;
+use re_renderer::resource_managers::ImageDataDesc;
+use re_sdk_types::ViewClassIdentifier;
+use re_video::VideoPlaybackIssueSeverity;
+use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
-use re_log_types::{EntityPath, EntityPathHash, hash::Hash64};
-use re_renderer::{renderer, resource_managers::ImageDataDesc};
-use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
-
+use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D};
-
-use super::{LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
 /// Identify a video stream for a given video.
 fn video_stream_id(
@@ -34,11 +35,12 @@ fn visualize_video_frame_texture(
     world_from_entity: glam::Affine3A,
     highlight: &re_viewer_context::ViewOutlineMasks,
     fallback_video_size: glam::Vec2,
+    multiplicative_tint: egui::Rgba,
 ) {
     let re_renderer::video::VideoFrameTexture {
         texture,
         decoder_delay_state,
-        show_spinner,
+        show_loading_indicator,
         frame_info: _,
         source_pixel_format: _,
     } = video_frame_texture;
@@ -60,9 +62,9 @@ fn visualize_video_frame_texture(
         ctx.egui_ctx().request_repaint();
     }
 
-    if show_spinner {
+    if show_loading_indicator {
         // Show loading rectangle:
-        visualizer_data.loading_spinners.push(LoadingSpinner {
+        visualizer_data.loading_indicators.push(LoadingIndicator {
             center: top_left_corner_position + 0.5 * (extent_u + extent_v),
             half_extent_u: 0.5 * extent_u,
             half_extent_v: 0.5 * extent_v,
@@ -80,7 +82,8 @@ fn visualize_video_frame_texture(
                 texture_filter_minification: renderer::TextureFilterMin::Linear,
                 outline_mask: highlight.overall,
                 depth_offset,
-                ..Default::default()
+                multiplicative_tint,
+                force_draw_with_transparency: false,
             },
         };
         visualizer_data.add_pickable_rect(
@@ -93,7 +96,7 @@ fn visualize_video_frame_texture(
         );
     } else {
         // If we don't have a texture, still expand the bounding box,
-        // so the default extents of the view show the spinner in the same place as if we had a texture.
+        // so the default extents of the view show the loading indicator in the same place as if we had a texture.
         register_video_bounds_with_bounding_box(
             entity_path.hash(),
             visualizer_data,
@@ -102,19 +105,6 @@ fn visualize_video_frame_texture(
             ctx.view_class_identifier,
         );
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum VideoPlaybackIssueSeverity {
-    /// The video can't be played back due to a proper error.
-    ///
-    /// E.g. invalid data provided, decoder problems, not supported etc.
-    Error,
-
-    /// The video can't be played back right now, but it may not actually be an error.
-    ///
-    /// E.g. not having the necessary data yet.
-    Informational,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -137,6 +127,25 @@ fn show_video_playback_issue(
         video_size,
         ctx.view_class_identifier,
     );
+
+    let style = match severity {
+        VideoPlaybackIssueSeverity::Error => UiLabelStyle::Error,
+        VideoPlaybackIssueSeverity::Informational => UiLabelStyle::Default,
+        VideoPlaybackIssueSeverity::Loading => {
+            // Make sure to use the video instead of texture size here,
+            // since the texture may be a placeholder which doesn't have the full size yet.
+            let top_left_corner_position = world_from_entity.transform_point3(glam::Vec3::ZERO);
+            let extent_u = world_from_entity.transform_vector3(glam::Vec3::X * video_size.x);
+            let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y);
+
+            visualizer_data.loading_indicators.push(LoadingIndicator {
+                center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                half_extent_u: 0.5 * extent_u,
+                half_extent_v: 0.5 * extent_v,
+            });
+            return;
+        }
+    };
 
     let render_ctx = ctx.viewer_ctx.render_ctx();
 
@@ -214,10 +223,6 @@ fn show_video_playback_issue(
         egui::vec2(video_error_rect_size.x * 3.0, video_error_rect_size.y),
     );
 
-    let style = match severity {
-        VideoPlaybackIssueSeverity::Error => UiLabelStyle::Error,
-        VideoPlaybackIssueSeverity::Informational => UiLabelStyle::Default,
-    };
     visualizer_data.ui_labels.push(UiLabel {
         text: error_string,
         style,
@@ -236,6 +241,7 @@ fn show_video_playback_issue(
                 outline_mask: highlight.overall,
                 #[expect(clippy::disallowed_methods)] // Ok to just dim it
                 multiplicative_tint: egui::Rgba::from_gray(0.5),
+            force_draw_with_transparency: true,
                 ..Default::default()
             },
     };

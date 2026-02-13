@@ -1,7 +1,6 @@
 use half::f16;
 use ndarray::ArrayViewD;
-
-use re_types::tensor_data::TensorDataType;
+use re_sdk_types::tensor_data::TensorDataType;
 
 /// Stats about a tensor or image.
 #[derive(Clone, Copy, Debug)]
@@ -29,7 +28,7 @@ impl re_byte_size::SizeBytes for TensorStats {
 }
 
 impl TensorStats {
-    pub fn from_tensor(tensor: &re_types::datatypes::TensorData) -> Self {
+    pub fn from_tensor(tensor: &re_sdk_types::datatypes::TensorData) -> Self {
         re_tracing::profile_function!();
 
         macro_rules! declare_tensor_range_int {
@@ -53,7 +52,7 @@ impl TensorStats {
                         (<$typ>::INFINITY, <$typ>::NEG_INFINITY),
                         |(min, max), &value| (min.min(value), max.max(value)),
                     );
-                    #[allow(trivial_numeric_casts)]
+                    #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };
@@ -73,7 +72,7 @@ impl TensorStats {
         declare_tensor_range_float!(tensor_range_f32, f32);
         declare_tensor_range_float!(tensor_range_f64, f64);
 
-        #[allow(clippy::needless_pass_by_value)]
+        #[expect(clippy::needless_pass_by_value)]
         fn tensor_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) = tensor
@@ -97,7 +96,7 @@ impl TensorStats {
                             }
                         },
                     );
-                    #[allow(trivial_numeric_casts)]
+                    #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };
@@ -107,7 +106,7 @@ impl TensorStats {
         declare_tensor_finite_range_float!(tensor_finite_range_f32, f32);
         declare_tensor_finite_range_float!(tensor_finite_range_f64, f64);
 
-        #[allow(clippy::needless_pass_by_value)]
+        #[expect(clippy::needless_pass_by_value)]
         fn tensor_finite_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) =
@@ -176,7 +175,6 @@ impl TensorStats {
             };
 
             // If we didn't find a finite range, set it to None.
-            #[expect(clippy::return_and_then)] // false positive
             finite_range.and_then(|r| {
                 if r.0.is_finite() && r.1.is_finite() {
                     Some(r)

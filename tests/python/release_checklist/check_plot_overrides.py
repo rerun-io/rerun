@@ -14,7 +14,7 @@ This checks whether one can override all properties in a plot.
 ### Component overrides
 
 * Select `plots/cos`.
-* Override all of its properties with arbitrary values.
+* Under "Visualizer": Override all of its properties with arbitrary values.
 * Remove all these overrides.
 
 ### Visible time range overrides

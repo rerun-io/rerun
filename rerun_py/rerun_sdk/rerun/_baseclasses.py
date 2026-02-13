@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Iterator
-from typing import Generic, Protocol, TypeVar, runtime_checkable
+from typing import Generic, Protocol, TypeVar, overload, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, fields
+
 from rerun_bindings import ComponentDescriptor
 
 from .error_utils import catch_and_log_exceptions
@@ -35,7 +36,7 @@ class DescribedComponentBatch:
         """
         Returns a `pyarrow.Array` of the component data.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self._batch.as_arrow_array()
 
@@ -122,7 +123,10 @@ class Archetype(AsComponents):
 
     @classmethod
     def archetype(cls) -> str:
-        return ".".join(cls.__module__.rsplit(".", 1)[:-1] + [cls.__name__])
+        # Make sure to not include a leading "rerun_sdk.",
+        # to support both `import rerun_sdk.rerun` and `import rerun`.
+        module = cls.__module__.removeprefix("rerun_sdk.")
+        return ".".join([*module.rsplit(".", 1)[:-1], cls.__name__])
 
     @classmethod
     def archetype_short_name(cls) -> str:
@@ -261,7 +265,7 @@ class BaseBatch(Generic[T]):
         """
         The component as an arrow batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self.pa_array
 
@@ -275,12 +279,47 @@ class ComponentColumn:
     to use with the [`send_columns`][rerun.send_columns] API.
     """
 
+    @overload
+    def __init__(
+        self,
+        descriptor: str | ComponentDescriptor,
+        component_batch: ComponentBatchLike,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        descriptor: str | ComponentDescriptor,
+        component_batch: ComponentBatchLike,
+        *,
+        lengths: npt.ArrayLike,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        descriptor: str | ComponentDescriptor,
+        component_batch: ComponentBatchLike,
+        *,
+        offsets: npt.NDArray[np.int32],
+    ) -> None: ...
+
+    @overload
     def __init__(
         self,
         descriptor: str | ComponentDescriptor,
         component_batch: ComponentBatchLike,
         *,
         lengths: npt.ArrayLike | None = None,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        descriptor: str | ComponentDescriptor,
+        component_batch: ComponentBatchLike,
+        *,
+        lengths: npt.ArrayLike | None = None,
+        offsets: npt.NDArray[np.int32] | None = None,
     ) -> None:
         """
         Construct a new component column.
@@ -296,11 +335,13 @@ class ComponentColumn:
             The component descriptor for this component batch.
         component_batch:
             The component batch to partition into a column.
-
         lengths:
-            The offsets to partition the component at.
-            If specified, `lengths` must sum to the total length of the component batch.
+            The lengths of each partition. Must sum to the total length of the component batch.
             If left unspecified, it will default to unit-length batches.
+            Mutually exclusive with ``offsets``.
+        offsets:
+            Pre-computed int32 offsets array (including the leading 0).
+            Mutually exclusive with ``lengths``.
 
         """
         if isinstance(descriptor, str):
@@ -308,24 +349,30 @@ class ComponentColumn:
         elif isinstance(descriptor, ComponentDescriptor):
             descriptor = descriptor
 
+        if lengths is not None and offsets is not None:
+            raise ValueError("Cannot specify both `lengths` and `offsets`.")
+
         self.descriptor = descriptor
         self.component_batch = component_batch
 
-        if lengths is None:
-            # Normal component, no lengths -> unit-sized batches by default
-            self.lengths = np.ones(len(component_batch.as_arrow_array()), dtype=np.int32)
-        else:
-            # Normal component, lengths specified -> follow instructions
+        if offsets is not None:
+            self._offsets = offsets
+        elif lengths is not None:
             lengths = np.array(lengths)
             if lengths.ndim != 1:
                 raise ValueError("Lengths must be a 1D array.")
-            self.lengths = lengths.flatten().astype(np.int32)
+            lengths = lengths.flatten().astype(np.int32)
+            self._offsets = np.concatenate((np.array([0], dtype=np.int32), np.cumsum(lengths, dtype=np.int32)))
+        else:
+            # Default: unit-sized batches
+            n = len(component_batch.as_arrow_array())
+            self._offsets = np.arange(n + 1, dtype=np.int32)
 
     def component_descriptor(self) -> ComponentDescriptor:
         """
         Returns the complete descriptor of the component.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self.descriptor
 
@@ -333,11 +380,10 @@ class ComponentColumn:
         """
         The component as an arrow batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         array = self.component_batch.as_arrow_array()
-        offsets = np.concatenate((np.array([0], dtype="int32"), np.cumsum(self.lengths, dtype="int32")))
-        return pa.ListArray.from_arrays(offsets, array)
+        return pa.ListArray.from_arrays(self._offsets, array)
 
     def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
         """
@@ -406,7 +452,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         """
         Returns the name of the component.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
 
@@ -452,23 +498,24 @@ class ComponentMixin(ComponentBatchLike):
         """
         The pyarrow type of this batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined]
 
-    def component_type(self) -> str:
+    @classmethod
+    def component_type(cls) -> str:
         """
         Returns the name of the component.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
-        return self._BATCH_TYPE._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
+        return cls._BATCH_TYPE._COMPONENT_TYPE  # type: ignore[attr-defined, no-any-return]
 
     def as_arrow_array(self) -> pa.Array:
         """
         The component as an arrow batch.
 
-        Part of the `ComponentBatchLike` logging interface.
+        Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
         return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined]
 

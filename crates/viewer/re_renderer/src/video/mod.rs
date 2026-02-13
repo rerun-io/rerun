@@ -1,20 +1,52 @@
 mod chunk_decoder;
 mod player;
 
-pub use player::PlayerConfiguration;
-
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
-use parking_lot::Mutex;
-
+pub use chunk_decoder::VideoSampleDecoder;
+pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
-use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
+use re_mutex::Mutex;
+use re_video::{DecodeSettings, VideoDataDescription, VideoPlaybackIssueSeverity};
 
-use crate::{
-    RenderContext,
-    resource_managers::{GpuTexture2D, SourceImageDataFormat},
-};
+use crate::RenderContext;
+use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
+
+/// Detailed error for unloaded samples.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum UnloadedSampleDataError {
+    #[error("Video doesn't have any loaded samples.")]
+    NoLoadedSamples,
+
+    #[error("Frame data required for the requested sample is not loaded yet.")]
+    ExpectedSampleNotLoaded,
+}
+
+/// Detailed error for lack of sample data.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum InsufficientSampleDataError {
+    #[error("Video doesn't have any key frames.")]
+    NoKeyFrames,
+
+    #[error("Video doesn't have any samples.")]
+    NoSamples,
+
+    #[error("No key frames prior to current time.")]
+    NoKeyFramesPriorToRequestedTimestamp,
+
+    #[error("No frames prior to current time.")]
+    NoSamplesPriorToRequestedTimestamp,
+
+    #[error("Missing samples between last decoded sample and requested sample.")]
+    MissingSamples,
+
+    #[error("Duplicate sample index encountered.")]
+    DuplicateSampleIdx,
+
+    #[error("Out of order sample index encountered.")]
+    OutOfOrderSampleIdx,
+}
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -22,8 +54,11 @@ pub enum VideoPlayerError {
     #[error("The decoder is lagging behind")]
     EmptyBuffer,
 
-    #[error("Video is empty.")]
-    EmptyVideo,
+    #[error(transparent)]
+    InsufficientSampleData(#[from] InsufficientSampleDataError),
+
+    #[error(transparent)]
+    UnloadedSampleData(#[from] UnloadedSampleDataError),
 
     /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
@@ -40,15 +75,15 @@ pub enum VideoPlayerError {
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
 
-    #[error("The requested frame data is not, or no longer, available.")]
-    MissingSample,
-
     /// e.g. bad mp4, or bug in mp4 parse
     #[error("Bad data.")]
     BadData,
 
     #[error("Failed to create gpu texture from decoded video data: {0}")]
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
+
+    #[error("Decoder unexpectedly exited")]
+    DecoderUnexpectedlyExited,
 }
 
 const _: () = assert!(
@@ -63,6 +98,15 @@ impl VideoPlayerError {
         match self {
             Self::Decoding(err) => err.should_request_more_frames(),
             _ => false,
+        }
+    }
+
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
+        match self {
+            Self::UnloadedSampleData(_) => VideoPlaybackIssueSeverity::Loading,
+            Self::Decoding(decode_error) => decode_error.severity(),
+            Self::InsufficientSampleData(_) => VideoPlaybackIssueSeverity::Informational,
+            _ => VideoPlaybackIssueSeverity::Error,
         }
     }
 }
@@ -83,7 +127,7 @@ pub enum DecoderDelayState {
     /// we signal the end of the video (after which we have to restart the decoder).
     ///
     /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
-    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading spinner.
+    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading indicator.
     ///
     /// The tolerance value used for this is the sum of
     /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
@@ -130,8 +174,8 @@ pub struct VideoFrameTexture {
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub decoder_delay_state: DecoderDelayState,
 
-    /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
-    pub show_spinner: bool,
+    /// If true, this texture is so out-dated that it should have a loading indicator on top of it.
+    pub show_loading_indicator: bool,
 
     /// Format information about the original data from the video decoder.
     ///
@@ -204,7 +248,7 @@ impl re_byte_size::SizeBytes for Video {
 
 impl Drop for Video {
     fn drop(&mut self) {
-        re_log::debug!("Dropping Video {:?}", self.debug_name);
+        re_log::trace!("Dropping Video {:?}", self.debug_name);
     }
 }
 
@@ -274,12 +318,15 @@ impl Video {
     /// empty.
     ///
     /// The time is specified in seconds since the start of the video.
-    pub fn frame_at(
+    ///
+    /// `get_video_buffer` is used both to read data for frames internally, and as a way to request
+    /// what data should be loaded.
+    pub fn frame_at<'a>(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
-        video_buffers: &StableIndexDeque<&[u8]>,
+        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -306,10 +353,12 @@ impl Video {
 
         decoder_entry.used_last_frame = true;
         decoder_entry.player.frame_at(
-            render_context,
             video_time,
             &self.video_description,
-            video_buffers,
+            &mut |texture, frame| {
+                chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
+            },
+            get_video_buffer,
         )
     }
 

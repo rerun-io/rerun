@@ -36,10 +36,10 @@ class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
         )
 
     def as_component_batches(self) -> list[rr.DescribedComponentBatch]:
-        return (
-            list(self.points3d.as_component_batches())  # The components from Points3D
-            + [self.confidences]  # Custom confidence data
-        )
+        return [
+            *self.points3d.as_component_batches(),  # The components from Points3D
+            self.confidences,  # Custom confidence data
+        ]
 
 
 def log_custom_data() -> None:

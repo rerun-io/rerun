@@ -1,0 +1,16 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A timeline column in a text log table.
+table TimelineColumn (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "PartialEq, Eq, Default, Hash",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// The timeline column.
+  timeline_column: rerun.blueprint.datatypes.TimelineColumn (order: 100);
+}
+

@@ -59,7 +59,7 @@ impl LayoutRequest {
                     fixed_position: node.position(),
                 };
                 let duplicate = entity.nodes.insert(node.id(), shape);
-                debug_assert!(
+                re_log::debug_assert!(
                     duplicate.is_none(),
                     "duplicated nodes are undefined behavior"
                 );

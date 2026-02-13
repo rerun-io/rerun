@@ -1,18 +1,14 @@
 #![expect(clippy::let_underscore_untyped)]
 #![expect(clippy::let_underscore_must_use)]
 
-use std::net::SocketAddr;
-use std::net::ToSocketAddrs as _;
+use std::net::{SocketAddr, ToSocketAddrs as _};
 
 use tokio::net::TcpListener;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt as _;
-use tonic::service::Routes;
-use tonic::service::RoutesBuilder;
-use tracing::error;
-use tracing::info;
+use tonic::service::{Routes, RoutesBuilder};
+use tracing::{error, info};
 
 // ---
 
@@ -34,12 +30,13 @@ pub enum ServerError {
 pub struct Server {
     addr: SocketAddr,
     routes: Routes,
+    artificial_latency: std::time::Duration,
 }
 
 /// `ServerHandle` is a tiny helper abstraction that enables us to
 /// deal with the gRPC server lifecycle more easily.
 pub struct ServerHandle {
-    shutdown: Sender<()>,
+    shutdown: Option<Sender<()>>,
     ready: mpsc::Receiver<SocketAddr>,
     failed: mpsc::Receiver<String>,
 }
@@ -51,7 +48,7 @@ impl ServerHandle {
             ready = self.ready.recv() => {
                 match ready {
                     Some(local_addr) => {
-                        info!("Ready for connections");
+                        info!("Ready for connections.");
                         Ok(local_addr)
                     },
                     None => Err(ServerError::ReadyChannelClosedUnexpectedly)
@@ -73,9 +70,12 @@ impl ServerHandle {
         self.failed.recv().await;
     }
 
-    /// Signal to the gRPC server to shutdown.
-    pub async fn shutdown(self) {
-        let _ = self.shutdown.send(());
+    /// Signal to the gRPC server to shutdown, and then wait for it.
+    pub async fn shutdown_and_wait(mut self) {
+        if let Some(shutdown) = self.shutdown.take() {
+            shutdown.send(()).ok();
+            self.wait_for_shutdown().await;
+        }
     }
 }
 
@@ -83,24 +83,32 @@ impl Server {
     /// Starts the server and return `ServerHandle` so that caller can manage
     /// the server lifecycle.
     pub fn start(self) -> ServerHandle {
+        let Self {
+            addr,
+            routes,
+            artificial_latency,
+        } = self;
+
         let (ready_tx, ready_rx) = mpsc::channel(1);
         let (failed_tx, failed_rx) = mpsc::channel(1);
         let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
         tokio::spawn(async move {
-            let listener = if let Ok(listener) = TcpListener::bind(self.addr).await {
+            let listener = if let Ok(listener) = TcpListener::bind(addr).await {
                 #[expect(clippy::unwrap_used)]
                 let local_addr = listener.local_addr().unwrap();
-                info!("Listening on {local_addr}");
+                info!(
+                    "Listening on {local_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{local_addr}"
+                );
 
                 #[expect(clippy::unwrap_used)]
                 ready_tx.send(local_addr).await.unwrap();
                 listener
             } else {
-                error!("Failed to bind to address {}", self.addr);
+                error!("Failed to bind to address {addr}");
                 #[expect(clippy::unwrap_used)]
                 failed_tx
-                    .send(format!("Failed to bind to address {}", self.addr))
+                    .send(format!("Failed to bind to address {addr}"))
                     .await
                     .unwrap();
                 return;
@@ -117,7 +125,16 @@ impl Server {
             });
 
             let middlewares = tower::ServiceBuilder::new()
-                .layer(tonic_web::GrpcWebLayer::new()) // Support `grpc-web` clients
+                .layer({
+                    let name = Some("rerun-oss".to_owned());
+                    let version = None;
+                    let is_client = false;
+                    re_protos::headers::new_rerun_headers_layer(name, version, is_client)
+                })
+                .layer(tower_http::cors::CorsLayer::permissive()) // Allow CORS for all origins (to support web clients)
+                .layer(crate::latency_layer::LatencyLayer::new(artificial_latency))
+                // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
+                // to avoid rejecting regular HTTP requests
                 .into_inner();
 
             let mut builder = tonic::transport::Server::builder()
@@ -126,10 +143,11 @@ impl Server {
                 // we don't get surprised when things inevitably change.
                 .tcp_nodelay(true)
                 .accept_http1(true)
+                .http2_adaptive_window(Some(true)) // Optimize for high throughput
                 .layer(middlewares);
 
             let _ = builder
-                .add_routes(self.routes)
+                .add_routes(routes)
                 .serve_with_incoming_shutdown(incoming, async {
                     shutdown_rx.await.ok();
                 })
@@ -143,7 +161,7 @@ impl Server {
         });
 
         ServerHandle {
-            shutdown: shutdown_tx,
+            shutdown: Some(shutdown_tx),
             ready: ready_rx,
             failed: failed_rx,
         }
@@ -157,6 +175,8 @@ const DEFAULT_ADDRESS: &str = "127.0.0.1:51234";
 pub struct ServerBuilder {
     addr: Option<SocketAddr>,
     routes_builder: RoutesBuilder,
+    axum_routes: axum::Router,
+    artificial_latency: std::time::Duration,
 }
 
 impl ServerBuilder {
@@ -184,13 +204,45 @@ impl ServerBuilder {
         self
     }
 
+    pub fn with_http_route(mut self, path: &str, handler: axum::routing::MethodRouter) -> Self {
+        self.axum_routes = self.axum_routes.route(path, handler);
+        self
+    }
+
+    /// Add fake latency to simulate a remote server.
+    pub fn with_artificial_latency(mut self, artificial_latency: std::time::Duration) -> Self {
+        self.artificial_latency = artificial_latency;
+        self
+    }
+
     pub fn build(self) -> Server {
+        let Self {
+            addr,
+            routes_builder,
+            axum_routes,
+            artificial_latency,
+        } = self;
+
+        let grpc_routes = routes_builder.routes();
+        let grpc_routes = grpc_routes.into_axum_router();
+
+        // Apply GrpcWebLayer only to gRPC routes, not HTTP routes
+        let grpc_routes = grpc_routes.layer(tonic_web::GrpcWebLayer::new());
+
+        let routes =
+            grpc_routes
+                .merge(axum_routes)
+                .fallback(|_req: axum::extract::Request| async {
+                    use axum::response::IntoResponse as _;
+                    http::StatusCode::NOT_FOUND.into_response()
+                });
+
         Server {
             #[expect(clippy::unwrap_used)]
-            addr: self
-                .addr
-                .unwrap_or(DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
-            routes: self.routes_builder.routes(),
+            addr: addr
+                .unwrap_or_else(|| DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
+            routes: routes.into(),
+            artificial_latency,
         }
     }
 }

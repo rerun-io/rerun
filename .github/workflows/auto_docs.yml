@@ -10,7 +10,7 @@ permissions:
 
 defaults:
   run:
-    shell: bash
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 # The lack of `concurrency` is intentional.
 # We want this job to run on every commit, even if multiple are merged in a row.
@@ -34,7 +34,14 @@ jobs:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
           commit_message=$(git log --pretty=format:%s -n 1 ${{ github.sha }})
-          pr_number=$(python3 scripts/ci/parse_pr_number.py "$commit_message")
+          pr_number=$(python3 scripts/ci/parse_pr_number.py "$commit_message" 2>/dev/null || true)
+
+          # Exported commits don't have PR numbers - skip them
+          if [ -z "$pr_number" ]; then
+            echo "No PR number found in commit message, skipping"
+            echo "result=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           result=$(gh pr view $pr_number --json labels | jq -r 'any(.labels[].name; . == "deploy docs")')
           echo "result=$result" >> $GITHUB_OUTPUT

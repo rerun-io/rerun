@@ -2,10 +2,12 @@
 
 #pragma once
 
+#include "datatypes/absolute_time_range.hpp"
 #include "datatypes/angle.hpp"
 #include "datatypes/annotation_info.hpp"
 #include "datatypes/blob.hpp"
 #include "datatypes/bool.hpp"
+#include "datatypes/channel_count_pair.hpp"
 #include "datatypes/channel_datatype.hpp"
 #include "datatypes/class_description.hpp"
 #include "datatypes/class_description_map_elem.hpp"

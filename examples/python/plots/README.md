@@ -4,6 +4,7 @@ tags = ["2D", "Plots", "API example"]
 thumbnail = "https://static.rerun.io/plots/e8e51071f6409f61dc04a655d6b9e1caf8179226/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
+include_in_manifest = true
 -->
 
 This example demonstrates how to log simple plots with the Rerun SDK. Charts can be created from 1-dimensional tensors, or from time-varying scalars.

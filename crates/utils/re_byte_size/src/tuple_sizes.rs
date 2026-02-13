@@ -1,5 +1,17 @@
 use crate::SizeBytes;
 
+impl SizeBytes for () {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl<T, U> SizeBytes for (T, U)
 where
     T: SizeBytes,

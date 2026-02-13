@@ -5,6 +5,8 @@ title: "Points3D"
 
 A 3D point cloud with positions and optional colors, radii, labels, etc.
 
+If there are multiple instance poses, the entire point cloud will be repeated for each of the poses.
+
 ## Fields
 ### Required
 * `positions`: [`Position3D`](../components/position3d.md)
@@ -36,7 +38,7 @@ A 3D point cloud with positions and optional colors, radii, labels, etc.
 
 snippet: archetypes/points3d_simple
 
-<picture data-inline-viewer="snippets/points3d_simple">
+<picture data-inline-viewer="snippets/archetypes/points3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
@@ -48,7 +50,7 @@ snippet: archetypes/points3d_simple
 
 snippet: archetypes/points3d_random
 
-<picture data-inline-viewer="snippets/points3d_random">
+<picture data-inline-viewer="snippets/archetypes/points3d_random">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1024w.png">
@@ -60,7 +62,7 @@ snippet: archetypes/points3d_random
 
 snippet: archetypes/points3d_ui_radius
 
-<picture data-inline-viewer="snippets/points3d_ui_radius">
+<picture data-inline-viewer="snippets/archetypes/points3d_ui_radius">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1024w.png">
@@ -72,7 +74,7 @@ snippet: archetypes/points3d_ui_radius
 
 snippet: archetypes/points3d_row_updates
 
-<picture data-inline-viewer="snippets/points3d_row_updates">
+<picture data-inline-viewer="snippets/archetypes/points3d_row_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
@@ -84,7 +86,7 @@ snippet: archetypes/points3d_row_updates
 
 snippet: archetypes/points3d_column_updates
 
-<picture data-inline-viewer="snippets/points3d_column_updates">
+<picture data-inline-viewer="snippets/archetypes/points3d_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
@@ -96,7 +98,7 @@ snippet: archetypes/points3d_column_updates
 
 snippet: archetypes/points3d_partial_updates
 
-<picture data-inline-viewer="snippets/points3d_partial_updates">
+<picture data-inline-viewer="snippets/archetypes/points3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1024w.png">

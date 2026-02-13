@@ -5,6 +5,7 @@ description = "Log multi dimensional signals under a single entity."
 thumbnail = "https://static.rerun.io/imu_signals/64f773d238a0456a0f233abeea7e521cfb871b67/480w.jpg"
 thumbnail_dimensions = [480, 480]
 channel = "main"
+include_in_manifest = true
 build_args = ["--seconds=10"]
 -->
 

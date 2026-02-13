@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -80,12 +80,12 @@ def test_line_strips2d() -> None:
         strips = strips if strips is not None else strips_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        strips = cast(LineStrip2DArrayLike, strips)
-        radii = cast(Optional[Float32ArrayLike], radii)
-        colors = cast(Optional[Rgba32ArrayLike], colors)
-        labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[Float32Like], draw_order)
-        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        strips = cast("LineStrip2DArrayLike", strips)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        draw_order = cast("Float32Like | None", draw_order)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
 
         print(
             f"rr.LineStrips2D(\n"

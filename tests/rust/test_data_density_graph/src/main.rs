@@ -4,31 +4,27 @@
 //! cargo run -p test_data_density_graph
 //! ```
 
-use rerun::{
-    RecordingStream,
-    external::{re_chunk_store, re_log},
-};
-use rerun::{external::re_log_types::NonMinI64, time::TimeInt};
+use rerun::RecordingStream;
+use rerun::external::re_log_types::NonMinI64;
+use rerun::external::{re_chunk_store, re_log};
+use rerun::time::TimeInt;
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_test_data_density_graph")
-        .spawn_opts(
-            &rerun::SpawnOptions {
-                wait_for_bind: true,
-                extra_env: {
-                    use re_chunk_store::ChunkStoreConfig as C;
-                    vec![
-                        (C::ENV_CHUNK_MAX_BYTES.into(), "0".into()),
-                        (C::ENV_CHUNK_MAX_ROWS.into(), "0".into()),
-                        (C::ENV_CHUNK_MAX_ROWS_IF_UNSORTED.into(), "0".into()),
-                    ]
-                },
-                ..Default::default()
+        .spawn_opts(&rerun::SpawnOptions {
+            wait_for_bind: true,
+            extra_env: {
+                use re_chunk_store::ChunkStoreConfig as C;
+                vec![
+                    (C::ENV_CHUNK_MAX_BYTES.into(), "0".into()),
+                    (C::ENV_CHUNK_MAX_ROWS.into(), "0".into()),
+                    (C::ENV_CHUNK_MAX_ROWS_IF_UNSORTED.into(), "0".into()),
+                ]
             },
-            rerun::default_flush_timeout(),
-        )?;
+            ..Default::default()
+        })?;
 
     run(&rec)
 }
@@ -110,7 +106,7 @@ fn log(
         log_times.push(time);
 
         if !sorted {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             use rand::seq::SliceRandom as _;
             log_times.shuffle(&mut rng);
         }

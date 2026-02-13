@@ -2,11 +2,11 @@
 source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
 ---
-┌──────────────────────┬──────────────────────┐
-│ frame_nr             ┆ log_time             │
-│ ---                  ┆ ---                  │
-│ type: i64            ┆ type: Timestamp(ns)  │
-│ index_name: frame_nr ┆ index_name: log_time │
-│ kind: index          ┆ kind: index          │
-╞══════════════════════╪══════════════════════╡
-└──────────────────────┴──────────────────────┘
+┌──────────────────────┬──────────────────────────────┐
+│ frame_nr             ┆ log_time                     │
+│ ---                  ┆ ---                          │
+│ type: nullable i64   ┆ type: nullable Timestamp(ns) │
+│ index_name: frame_nr ┆ index_name: log_time         │
+│ kind: index          ┆ kind: index                  │
+╞══════════════════════╪══════════════════════════════╡
+└──────────────────────┴──────────────────────────────┘

@@ -1,10 +1,14 @@
+use std::ops::RangeInclusive;
 use std::sync::Arc;
 
+use arrow::array::{DurationNanosecondArray, Int64Array, TimestampNanosecondArray};
+use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::DataType as ArrowDataType;
-
-use crate::{AbsoluteTimeRange, TimestampFormat};
+use arrow::error::ArrowError;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 
 use super::TimeInt;
+use crate::{AbsoluteTimeRange, TimestampFormat};
 
 /// The type of a [`TimeInt`] or [`crate::Timeline`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
@@ -18,6 +22,18 @@ pub enum TimeType {
 
     /// Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
     TimestampNs,
+}
+
+impl re_byte_size::SizeBytes for TimeType {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl std::fmt::Display for TimeType {
@@ -41,14 +57,14 @@ impl TimeType {
     }
 
     pub fn format_sequence(time_int: TimeInt) -> String {
-        Self::Sequence.format(time_int, TimestampFormat::Utc)
+        Self::Sequence.format(time_int, TimestampFormat::utc())
     }
 
     pub fn parse_sequence(s: &str) -> Option<TimeInt> {
         match s {
             "<static>" | "static" => Some(TimeInt::STATIC),
-            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
-            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
+            "beginning" | "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "end" | "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 let s = s.strip_prefix('#').unwrap_or(s);
                 re_format::parse_i64(s).map(TimeInt::new_temporal)
@@ -60,8 +76,8 @@ impl TimeType {
     pub fn parse_time(&self, s: &str, timestamp_format: TimestampFormat) -> Option<TimeInt> {
         match s.to_lowercase().as_str() {
             "<static>" | "static" => Some(TimeInt::STATIC),
-            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
-            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
+            "beginning" | "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "end" | "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 match self {
                     Self::Sequence => {
@@ -101,22 +117,34 @@ impl TimeType {
         time_int: impl Into<TimeInt>,
         timestamp_format: TimestampFormat,
     ) -> String {
+        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
+        self.format_opt(time_int, timestamp_format, subsecond_decimals)
+    }
+
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
+    pub fn format_opt(
+        &self,
+        time_int: impl Into<TimeInt>,
+        timestamp_format: TimestampFormat,
+        subsecond_decimals: RangeInclusive<usize>,
+    ) -> String {
         let time_int = time_int.into();
         match time_int {
             TimeInt::STATIC => "<static>".into(),
-            TimeInt::MIN => "−∞".into(),
-            TimeInt::MAX => "+∞".into(),
+            TimeInt::MIN => "beginning".into(),
+            TimeInt::MAX => "end".into(),
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
-                Self::DurationNs => super::Duration::from(time_int).format_secs(),
-                Self::TimestampNs => super::Timestamp::from(time_int).format(timestamp_format),
+                Self::DurationNs => super::Duration::from(time_int).format_secs(subsecond_decimals),
+                Self::TimestampNs => super::Timestamp::from(time_int)
+                    .format_opt(timestamp_format, subsecond_decimals),
             },
         }
     }
 
     #[inline]
     pub fn format_utc(&self, time_int: TimeInt) -> String {
-        self.format(time_int, TimestampFormat::Utc)
+        self.format(time_int, TimestampFormat::utc())
     }
 
     #[inline]
@@ -134,7 +162,7 @@ impl TimeType {
 
     #[inline]
     pub fn format_range_utc(&self, time_range: AbsoluteTimeRange) -> String {
-        self.format_range(time_range, TimestampFormat::Utc)
+        self.format_range(time_range, TimestampFormat::utc())
     }
 
     /// Returns the appropriate arrow datatype to represent this timeline.
@@ -179,10 +207,10 @@ impl TimeType {
     ) -> arrow::array::ArrayRef {
         let times = times.into();
         match self {
-            Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
-            Self::DurationNs => Arc::new(arrow::array::DurationNanosecondArray::new(times, None)),
+            Self::Sequence => Arc::new(Int64Array::new(times, None)),
+            Self::DurationNs => Arc::new(DurationNanosecondArray::new(times, None)),
             // TODO(zehiko) add back timezone support (#9310)
-            Self::TimestampNs => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
+            Self::TimestampNs => Arc::new(TimestampNanosecondArray::new(times, None)),
         }
     }
 
@@ -201,7 +229,7 @@ impl TimeType {
                             Some(time.as_i64())
                         }
                     })
-                    .collect::<arrow::array::Int64Array>(),
+                    .collect::<Int64Array>(),
             ),
 
             Self::DurationNs => Arc::new(
@@ -213,7 +241,7 @@ impl TimeType {
                             Some(time.as_i64())
                         }
                     })
-                    .collect::<arrow::array::DurationNanosecondArray>(),
+                    .collect::<DurationNanosecondArray>(),
             ),
 
             Self::TimestampNs => Arc::new(
@@ -226,8 +254,27 @@ impl TimeType {
                         }
                     })
                     // TODO(zehiko) add back timezone support (#9310)
-                    .collect::<arrow::array::TimestampNanosecondArray>(),
+                    .collect::<TimestampNanosecondArray>(),
             ),
+        }
+    }
+
+    /// Take an array of time values, and based on its data type,
+    /// figure out its [`TimeType`] and contents.
+    pub fn from_arrow_array(
+        array: &dyn arrow::array::Array,
+    ) -> Result<(Self, &ScalarBuffer<i64>), ArrowError> {
+        if let Some(array) = array.downcast_array_ref::<TimestampNanosecondArray>() {
+            Ok((Self::TimestampNs, array.values()))
+        } else if let Some(array) = array.downcast_array_ref::<DurationNanosecondArray>() {
+            Ok((Self::DurationNs, array.values()))
+        } else if let Some(array) = array.downcast_array_ref::<Int64Array>() {
+            Ok((Self::Sequence, array.values()))
+        } else {
+            Err(ArrowError::SchemaError(format!(
+                "Expected one of TimestampNanosecond, DurationNanosecond, Int64, got: {}",
+                array.data_type()
+            )))
         }
     }
 }
@@ -240,8 +287,8 @@ mod tests {
     fn test_format_parse() {
         let cases = [
             (TimeInt::STATIC, "<static>"),
-            (TimeInt::MIN, "−∞"),
-            (TimeInt::MAX, "+∞"),
+            (TimeInt::MIN, "beginning"),
+            (TimeInt::MAX, "end"),
             (TimeInt::new_temporal(-42), "#−42"),
             (TimeInt::new_temporal(12345), "#12 345"),
         ];

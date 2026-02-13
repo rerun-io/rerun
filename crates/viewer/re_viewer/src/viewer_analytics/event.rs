@@ -1,9 +1,9 @@
-use crate::AppEnvironment;
-
-use re_analytics::{
-    Config, Property,
-    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
+use re_analytics::event::{
+    Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted,
 };
+use re_analytics::{Config, Property};
+
+use crate::AppEnvironment;
 
 pub fn identify(
     config: &Config,
@@ -111,7 +111,7 @@ pub fn open_recording(
         let store_version_preprocessed = if let Some(store_version) = store_version {
             store_version.to_string()
         } else {
-            re_log::debug_once!("store version is undefined for this recording, this is a bug");
+            re_log::trace_once!("store version is undefined for this recording, this is a bug");
             "undefined".to_owned()
         };
 
@@ -151,15 +151,15 @@ pub fn open_recording(
     });
 
     let data_source = entity_db.data_source.as_ref().map(|v| match v {
-        re_smart_channel::SmartChannelSource::File(_) => Some("file"), // .rrd, .png, .glb, …
-        re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => Some("http"),
-        re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => None,
-        re_smart_channel::SmartChannelSource::MessageProxy { .. } => Some("grpc"),
+        re_log_channel::LogSource::File(_) => Some("file"), // .rrd, .png, .glb, …
+        re_log_channel::LogSource::RrdHttpStream { .. } => Some("http"),
+        re_log_channel::LogSource::RedapGrpcStream { .. } => None,
+        re_log_channel::LogSource::MessageProxy { .. } => Some("grpc"),
         // vvv spawn(), connect() vvv
-        re_smart_channel::SmartChannelSource::RrdWebEventListener => Some("web_event"),
-        re_smart_channel::SmartChannelSource::JsChannel { .. } => Some("javascript"), // mediated via rerun-js
-        re_smart_channel::SmartChannelSource::Sdk => Some("sdk"),                     // show()
-        re_smart_channel::SmartChannelSource::Stdin => Some("stdin"),
+        re_log_channel::LogSource::RrdWebEvent => Some("web_event"),
+        re_log_channel::LogSource::JsChannel { .. } => Some("javascript"), // mediated via rerun-js
+        re_log_channel::LogSource::Sdk => Some("sdk"),                     // show()
+        re_log_channel::LogSource::Stdin => Some("stdin"),
     })?;
 
     Some(OpenRecording {

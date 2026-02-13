@@ -3,15 +3,13 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use arrow::array::UInt32Array as ArrowUInt32Array;
 use itertools::Itertools as _;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::build_frame_nr;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types_core::Archetype as _;
-
 use re_query::{LatestAtResults, clamped_zip_1x2};
+use re_types_core::Archetype as _;
 
 // ---
 
@@ -30,7 +28,7 @@ fn main() -> anyhow::Result<()> {
     let results: LatestAtResults = caches.latest_at(
         &query,
         &entity_path.into(),
-        MyPoints::all_components().iter(), // no generics!
+        MyPoints::all_component_identifiers(),
     );
 
     // The results can be accessed either through the low-level Chunk APIs, or the higher-level helpers.
@@ -40,13 +38,13 @@ fn main() -> anyhow::Result<()> {
     // These APIs will log errors instead of returning them.
     {
         let points = results
-            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+            .component_batch::<MyPoint>(MyPoints::descriptor_points().component)
             .context("missing")?;
         let colors = results
-            .component_batch::<MyColor>(&MyPoints::descriptor_colors())
+            .component_batch::<MyColor>(MyPoints::descriptor_colors().component)
             .unwrap_or_default();
         let labels = results
-            .component_batch::<MyLabel>(&MyPoints::descriptor_labels())
+            .component_batch::<MyLabel>(MyPoints::descriptor_labels().component)
             .unwrap_or_default();
 
         // Then apply your instance-level joining logic, if any:
@@ -66,17 +64,17 @@ fn main() -> anyhow::Result<()> {
     {
         // * `get_required` returns an error if the chunk is missing.
         // * `get` returns an option.
-        let points = results.get_required(&MyPoints::descriptor_points())?;
-        let colors = results.get(&MyPoints::descriptor_colors());
-        let labels = results.get(&MyPoints::descriptor_labels());
+        let points = results.get_required(MyPoints::descriptor_points().component)?;
+        let colors = results.get(MyPoints::descriptor_colors().component);
+        let labels = results.get(MyPoints::descriptor_labels().component);
 
         // You can always use the standard deserialization path:
         let points = points
-            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+            .component_batch::<MyPoint>(MyPoints::descriptor_points().component)
             .context("missing")??;
         let labels = labels
             .and_then(|unit| {
-                unit.component_batch::<MyLabel>(&MyPoints::descriptor_labels())?
+                unit.component_batch::<MyLabel>(MyPoints::descriptor_labels().component)?
                     .ok()
             })
             .unwrap_or_default();
@@ -85,7 +83,7 @@ fn main() -> anyhow::Result<()> {
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw(&MyPoints::descriptor_colors())
+            .component_batch_raw(MyPoints::descriptor_colors().component)
             .context("invalid")?;
         let colors = colors
             .downcast_array_ref::<ArrowUInt32Array>()

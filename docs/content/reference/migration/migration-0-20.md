@@ -61,4 +61,4 @@ The rationale behind this change is that it was easy to confuse what these funct
 
 We frequently had reports from users that were understandably expecting a serving process (`rr.serve()`) to be ready to accept connections from other processes (`rr.connect()`), when in reality the two things are completely unrelated: one is hosting a websocket server to be polled by the web-viewer, while the other is trying to connect to the TCP SDK comms pipeline.
 
-You can learn more about Rerun's application model and the different servers and ports by reading our [new documentation page on the matter](../../concepts/app-model.md).
+You can learn more about Rerun's application model and the different servers and ports by reading our [new documentation page on the matter](../../concepts/how-does-rerun-work.md).

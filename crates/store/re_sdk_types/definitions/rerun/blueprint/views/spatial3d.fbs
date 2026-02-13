@@ -1,0 +1,26 @@
+namespace rerun.blueprint.views;
+
+/// For viewing spatial 3D data.
+///
+/// \example views/spatial3d title="Use a blueprint to customize a Spatial3DView." image="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1200w.png"
+table Spatial3DView (
+    "attr.rerun.view_identifier": "3D"
+) {
+    /// Configuration for the background of the view.
+    background: rerun.blueprint.archetypes.Background (order: 1000);
+
+    /// Configuration for the 3D line grid.
+    line_grid: rerun.blueprint.archetypes.LineGrid3D (order: 2000);
+
+    /// Configuration of debug drawing in the 3D view.
+    spatial_information: rerun.blueprint.archetypes.SpatialInformation (order: 3000);
+
+    /// Configuration for the 3D eye
+    eye_controls: rerun.blueprint.archetypes.EyeControls3D (order: 4000);
+
+    /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    ///
+    /// If not specified, the default is to show the latest state of each component.
+    /// If a timeline is specified more than once, the first entry will be used.
+    time_ranges: rerun.blueprint.archetypes.VisibleTimeRanges (order: 10000);
+}

@@ -54,7 +54,7 @@ Rust's even older `serve` (deprecated since 0.20) has been removed entirely now.
 ## Component descriptors
 
 One limitation that we previously had with our data model was that it was only possible to use any `Component` once per entity path.
-This severely effected the design and flexbility of our archetypes.
+This severely effected the design and flexibility of our archetypes.
 The underlying reason for this was that the our internal datastructures used the component's type names (previously also referred to as `ComponentName`) to index into the data.
 This release changes how components are identified within the viewer and within our APIs:
 Instead of specifying the component's type name, components are now referenced by a new syntax that consists of the (short) archetype name + the archetype field name separated by a colon (`:`).

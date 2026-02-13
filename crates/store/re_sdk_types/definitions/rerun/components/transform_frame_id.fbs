@@ -1,0 +1,21 @@
+namespace rerun.components;
+
+/// A string identifier for a transform frame.
+///
+/// Transform frames may be derived from entity paths to refer to Rerun's implicit
+/// entity path driven hierarchy which is defined via [archetypes.Transform3D], [archetypes.Pinhole] etc..
+/// These implicit transform frames look like `tf#path/to/entity`.
+///
+/// Note that any [archetypes.Transform3D]s logged with both `parent_frame` and `child_frame` set
+/// describes a relationship between these parent and child transform frames, **not** the transform frame
+/// that the entity path may be using (defined by an [archetypes.CoordinateFrame]).
+table TransformFrameId (
+  "attr.rerun.state": "stable",
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  value: rerun.datatypes.Utf8 (order: 100);
+}

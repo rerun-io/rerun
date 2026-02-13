@@ -1,6 +1,5 @@
-use crate::debug_label::DebugLabel;
-
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
+use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub struct GpuBindGroupLayoutHandle; }
 

@@ -56,11 +56,11 @@ class Plane3DExt:
 
     def normal(self: Any) -> npt.NDArray[np.float32]:
         """Returns the normal vector of the plane."""
-        return cast(npt.NDArray[np.float32], self.xyzd[:3])
+        return cast("npt.NDArray[np.float32]", self.xyzd[:3])
 
     def distance(self: Any) -> float:
         """Returns the distance of the plane from the origin."""
-        return cast(float, self.xyzd[3])
+        return cast("float", self.xyzd[3])
 
     def with_distance(self: Any, distance: float) -> Plane3D:
         """Returns a new plane with the same normal but with the distance set to the given amount."""

@@ -1,5 +1,4 @@
 use egui::Vec2;
-
 use re_ui::filter_widget::FilterState;
 
 #[test]

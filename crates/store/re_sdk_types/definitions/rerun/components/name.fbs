@@ -1,0 +1,16 @@
+
+namespace rerun.components;
+
+// ---
+
+/// A display name, typically for an entity or a item like a plot series.
+table Name (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+    value: rerun.datatypes.Utf8 (order: 100);
+}

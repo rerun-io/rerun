@@ -1,3 +1,5 @@
+#![expect(clippy::cast_possible_wrap)]
+
 //! Simple benchmark suite to keep track of how the different removal methods for [`VecDeque`]
 //! behave in practice.
 
@@ -5,7 +7,6 @@ use std::collections::VecDeque;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
-
 use re_log_types::{VecDequeInsertionExt as _, VecDequeRemovalExt as _};
 
 // ---
@@ -38,7 +39,7 @@ mod constants {
     pub const NUM_MODIFIED_ELEMENTS: usize = 1_000;
 }
 
-#[allow(clippy::wildcard_imports)]
+#[expect(clippy::wildcard_imports)]
 use self::constants::*;
 
 // ---

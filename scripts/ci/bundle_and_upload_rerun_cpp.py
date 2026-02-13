@@ -41,7 +41,6 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str | None
         ("linux-arm64/librerun_c.a", "librerun_c__linux_arm64.a"),
         ("linux-x64/librerun_c.a", "librerun_c__linux_x64.a"),
         ("macos-arm64/librerun_c.a", "librerun_c__macos_arm64.a"),
-        ("macos-x64/librerun_c.a", "librerun_c__macos_x64.a"),
         ("windows-x64/rerun_c.lib", "rerun_c__win_x64.lib"),
     ]:
         if platform_filter is not None and src.startswith(platform_filter) is False:

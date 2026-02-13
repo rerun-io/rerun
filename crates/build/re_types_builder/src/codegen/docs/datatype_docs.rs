@@ -1,9 +1,7 @@
 //! Document a datatype as human-readable markdown.
 
-use crate::{
-    codegen::StringExt as _,
-    data_type::{AtomicDataType, DataType, UnionMode},
-};
+use crate::codegen::StringExt as _;
+use crate::data_type::{AtomicDataType, DataType, UnionMode};
 
 fn atomic_datatype_docs(page: &mut String, datatype: &AtomicDataType) {
     match datatype {

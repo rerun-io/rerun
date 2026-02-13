@@ -5,6 +5,7 @@ This is a guide to how to build Rerun.
 ## See also
 * [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [`TESTING.md`](TESTING.md)
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
@@ -23,12 +24,36 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.88.0` once you are done.
+Make sure `cargo --version` prints `1.90.0` once you are done.
+
+### Python/PyO3 configuration (important!)
+
+This workspace uses [PyO3](https://pyo3.rs/) for Python bindings. Many crates have a transitive
+dependency on `pyo3-build-config`, which requires a configuration file to be present.
+
+**If you see this error:**
+```
+error: failed to parse contents of PYO3_CONFIG_FILE
+caused by:
+  - 0: failed to open PyO3 config file at /path/to/rerun/rerun_py/pyo3-build.cfg
+  - 1: No such file or directory (os error 2)
+```
+
+**Run `pixi run ensure-pyo3-build-cfg` to generate the config file:**
+
+This file is normally generated automatically by pixi activation scripts, but if you're running
+`cargo` directly outside of pixi, you'll need to generate it first. The configuration is
+referenced in `.cargo/config.toml`:
+```toml
+PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
+```
+
+For more details, see [Python build configuration](#python-build-configuration-automatic) below.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.88.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.90.0
 ```
 
 ## Git-lfs
@@ -45,6 +70,27 @@ See the many resources available online more details.
 You can ensure that everything is correctly installed by running `git lfs ls-files` from the repository root.
 It should list some test snapshot files.
 
+### Useful git-lfs commands
+```
+# Install git-lfs in the repo (installs git hooks)
+git lfs install
+
+# Move a file to git lfs
+git lfs track "path/to/file/or/pattern" # OR manually edit .gitattributes
+git add --renormalize . # Moves already added files to lfs (according to .gitattributes)
+
+# Move a file from lfs to regular git
+git lfs untrack "path/to/file/or/pattern" # OR manually edit .gitattributes
+git add --renormalize . # Moves already added files to regular git (according to .gitattributes)
+
+# Push to a contributor remote (see https://github.com/cli/cli/discussions/8794#discussioncomment-8695076)
+git push --no-verify
+
+# Push git lfs files to contributor remote:
+git push origin $(git branch --show-current) && git push --no-verify && git push origin --delete $(git branch --show-current)
+```
+
+See also [this section in the egui docs](https://github.com/emilk/egui/blob/eceb0b11c9f8e68d96c33c1f4af0335b3e66376d/CONTRIBUTING.md#working-with-git-lfs).
 
 ## Validating your environment
 You can validate your environment is set up correctly by running:
@@ -80,10 +126,33 @@ Rerun is available as a package on PyPi and can be installed with `pip install r
 
 Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
-If you want to build from source, you can do so easily in the Pixi environment:
-* Run `pixi run py-build --release` to build SDK & Viewer for Python (or `pixi run py-build` for a debug build)
-* Then you can run examples from the repository, either by making the Pixi shell active with  `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run Python examples/python/minimal/minimal.py`
 
+### Building from source
+If you want to build from source, you can do so easily in the Pixi environment:
+```sh
+pixi run py-build
+```
+
+Or to create a wheel:
+```sh
+pixi run py-build-wheel
+```
+
+You can run scripts that depend on rerun within the uv environment. For example:
+```sh
+pixi run uv run examples/python/minimal/minimal.py`
+```
+
+### Running the Python examples
+You can also install all rerun example and their dependencies into the same uv environment using:
+```sh
+pixi run py-build-examples
+```
+
+Each example is installed as a target within the uv environment. For example:
+```sh
+pixi run uv run plots
+```
 
 ### Tests & tooling
 
@@ -97,6 +166,8 @@ pixi run py-lint
 # Run the formatter
 pixi run py-fmt
 ```
+
+See also [`TESTING.md`](TESTING.md) for an overview of our testing infrastructure.
 
 ### Building an installable Python wheel
 The `py-build-wheels-sdk-only` command builds a whl file:
@@ -122,6 +193,9 @@ and build all C++ artifacts with:
 ```sh
 pixi run -e cpp cpp-build-all
 ```
+
+The Pixi build commands export a `compile_commands.json` compilation database to the build directory.
+This can be useful for developer tools, e.g. for [setting up IntelliSense in VSCode](https://code.visualstudio.com/docs/cpp/configure-intellisense#_compilecommandsjson-file).
 
 ## Building the docs
 
@@ -221,3 +295,28 @@ rustflags = [
     "split-debuginfo=packed",
 ]
 ```
+
+### Python build configuration (automatic)
+
+The repository is configured to automatically generate a `PYO3_CONFIG_FILE` for stable
+Python builds. This file (`rerun_py/pyo3-build.cfg`) is automatically created when you
+first run any `pixi run` command, and ensures consistent cargo caching whether you build
+via `pixi run py-build`, `uv sync --package rerun-sdk`, or other methods.
+
+The configuration is referenced in `.cargo/config.toml`:
+```toml
+PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
+```
+
+If you need to regenerate this file (e.g., after changing Python versions), run:
+```sh
+pixi run ensure-pyo3-build-cfg
+```
+
+To inspect what configuration pyo3 is using, you can run:
+```sh
+PYO3_PRINT_CONFIG=1 pixi run py-build
+```
+
+For more details on pyo3 build configuration, see the
+[PyO3 Building and Distribution documentation](https://pyo3.rs/main/building-and-distribution.html).

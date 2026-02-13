@@ -1,16 +1,18 @@
+use std::collections::BTreeMap;
+
 use nohash_hasher::IntSet;
-
-use re_entity_db::EntityDb;
+use re_chunk_store::MissingChunkReporter;
 use re_log_types::EntityPath;
-use re_types::{ComponentType, ViewClassIdentifier};
+use re_sdk_types::ViewClassIdentifier;
+use vec1::Vec1;
 
+use super::{ViewContext, VisualizerComponentMappings};
 use crate::{
-    IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
+    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
     SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
+    VisualizableEntities,
 };
-
-use super::ViewContext;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum ViewClassLayoutPriority {
@@ -27,14 +29,26 @@ pub enum ViewClassLayoutPriority {
     High,
 }
 
-/// Context object returned by [`crate::ViewClass::visualizable_filter_context`].
-pub trait VisualizableFilterContext {
-    fn as_any(&self) -> &dyn std::any::Any;
-}
+pub struct RecommendedVisualizers(
+    /// A _stable_ mapping for which visualizers can visualize which components (with optional selectors).
+    pub BTreeMap<ViewSystemIdentifier, Vec1<VisualizerComponentMappings>>,
+);
 
-impl VisualizableFilterContext for () {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+impl RecommendedVisualizers {
+    pub fn empty() -> Self {
+        Self(Default::default())
+    }
+
+    pub fn default(visualizer: ViewSystemIdentifier) -> Self {
+        Self(std::iter::once((visualizer, Default::default())).collect())
+    }
+
+    pub fn default_many(visualizers: impl IntoIterator<Item = ViewSystemIdentifier>) -> Self {
+        let recommended = visualizers
+            .into_iter()
+            .map(|v| (v, Default::default()))
+            .collect();
+        Self(recommended)
     }
 }
 
@@ -53,6 +67,13 @@ pub trait ViewClass: Send + Sync {
     fn identifier() -> ViewClassIdentifier
     where
         Self: Sized;
+
+    /// Ordering hint for view class recommendations. Lower values are recommended *more*.
+    ///
+    /// If tied, the display name is used as a tiebreaker in lexicographical order.
+    fn recommendation_order(&self) -> i32 {
+        0
+    }
 
     /// User-facing name of this view class.
     ///
@@ -79,13 +100,6 @@ pub trait ViewClass: Send + Sync {
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
     fn new_state(&self) -> Box<dyn ViewState>;
 
-    /// Optional archetype of the View's blueprint properties.
-    ///
-    /// Blueprint components that only apply to the view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<Vec<ComponentType>> {
-        None
-    }
-
     /// Preferred aspect ratio for the ui tiles of this view.
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         None
@@ -108,7 +122,7 @@ pub trait ViewClass: Send + Sync {
     /// Determines a suitable origin given the provided set of entities.
     ///
     /// This function only considers the transform topology, disregarding the actual visualizability
-    /// of the entities (for this, use [`Self::visualizable_filter_context`]).
+    /// of the entities.
     fn recommended_origin_for_entities(
         &self,
         entities: &IntSet<EntityPath>,
@@ -120,19 +134,7 @@ pub trait ViewClass: Send + Sync {
         Some(EntityPath::common_ancestor_of(entities.iter()))
     }
 
-    /// Create context object that is passed to all of this classes visualizers
-    /// to determine whether they can be visualized
-    ///
-    /// See [`crate::VisualizerSystem::filter_visualizable_entities`].
-    fn visualizable_filter_context(
-        &self,
-        _space_origin: &EntityPath,
-        _entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn VisualizableFilterContext> {
-        Box::new(())
-    }
-
-    /// Choose the default visualizers to enable for this entity.
+    /// Auto picked visualizers for an entity if there was not explicit selection.
     ///
     /// Helpful for customizing fallback behavior for types that are insufficient
     /// to determine indicated on their own.
@@ -142,36 +144,37 @@ pub trait ViewClass: Send + Sync {
     ///
     /// This interface provides a default implementation which will return all visualizers
     /// which are both visualizable and indicated for the given entity.
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
+        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+    ) -> RecommendedVisualizers {
         let available_visualizers =
             visualizable_entities_per_visualizer
                 .iter()
                 .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
+                    if ents.contains_key(entity_path) {
                         Some(visualizer)
                     } else {
                         None
                     }
                 });
 
-        available_visualizers
+        let recommended = available_visualizers
             .filter_map(|visualizer| {
                 if indicated_entities_per_visualizer
                     .get(visualizer)
                     .is_some_and(|matching_list| matching_list.contains(entity_path))
                 {
-                    Some(*visualizer)
+                    Some((*visualizer, Default::default()))
                 } else {
                     None
                 }
             })
-            .collect()
+            .collect();
+
+        RecommendedVisualizers(recommended)
     }
 
     /// Determines which views should be spawned by default for this class.
@@ -185,12 +188,28 @@ pub trait ViewClass: Send + Sync {
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics;
 
+    /// Ui for quickly navigating the (active) visualizers for a view.
+    ///
+    /// Each view can opt-in to using this feature.
+    #[expect(clippy::type_complexity)]
+    fn visualizers_ui<'a>(
+        &'a self,
+        _ctx: &'a ViewerContext<'a>,
+        _view_id: ViewId,
+        _state: &'a mut dyn ViewState,
+        _space_origin: &'a EntityPath,
+    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
+        None
+    }
+
     /// Ui shown when the user selects a view of this class.
+    #[doc(alias = "settings_ui")]
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,
         _state: &mut dyn ViewState,
+        // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
         _space_origin: &EntityPath,
         _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -205,6 +224,7 @@ pub trait ViewClass: Send + Sync {
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,
         _state: &mut dyn ViewState,
+        // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
         _space_origin: &EntityPath,
         _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -218,49 +238,17 @@ pub trait ViewClass: Send + Sync {
     /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
     ///              In the future, we likely want to move view builder handling to `re_viewport` with
     ///              minimal configuration options exposed via [`crate::ViewClass`].
+    #[doc(alias = "paint")]
+    #[doc(alias = "render")]
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError>;
-
-    /// Determines the set of visible entities for a given view.
-    // TODO(andreas): This should be part of the View's (non-blueprint) state.
-    // Updated whenever `maybe_visualizable_entities_per_visualizer` or the view blueprint changes.
-    fn determine_visualizable_entities(
-        &self,
-        maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        entity_db: &EntityDb,
-        visualizers: &crate::VisualizerCollection,
-        space_origin: &EntityPath,
-    ) -> PerVisualizer<VisualizableEntities> {
-        re_tracing::profile_function!();
-
-        let filter_ctx = self.visualizable_filter_context(space_origin, entity_db);
-
-        PerVisualizer::<VisualizableEntities>(
-            visualizers
-                .iter_with_identifiers()
-                .map(|(visualizer_identifier, visualizer_system)| {
-                    let entities = if let Some(maybe_visualizable_entities) =
-                        maybe_visualizable_entities_per_visualizer.get(&visualizer_identifier)
-                    {
-                        visualizer_system.filter_visualizable_entities(
-                            maybe_visualizable_entities.clone(),
-                            filter_ctx.as_ref(),
-                        )
-                    } else {
-                        VisualizableEntities::default()
-                    };
-
-                    (visualizer_identifier, entities)
-                })
-                .collect(),
-        )
-    }
 }
 
 pub trait ViewClassExt<'a>: ViewClass + 'a {
@@ -269,6 +257,7 @@ pub trait ViewClassExt<'a>: ViewClass + 'a {
         viewer_ctx: &'b ViewerContext<'b>,
         view_id: ViewId,
         view_state: &'b dyn ViewState,
+        space_origin: &'b EntityPath,
     ) -> ViewContext<'b>;
 }
 
@@ -281,11 +270,14 @@ where
         viewer_ctx: &'b ViewerContext<'b>,
         view_id: ViewId,
         view_state: &'b dyn ViewState,
+        // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
+        space_origin: &'b EntityPath,
     ) -> ViewContext<'b> {
         ViewContext {
             viewer_ctx,
             view_id,
             view_class_identifier: T::identifier(),
+            space_origin,
             view_state,
             query_result: viewer_ctx.lookup_query_result(view_id),
         }
@@ -303,6 +295,10 @@ pub trait ViewState: std::any::Any + Sync + Send {
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    fn size_bytes(&self) -> u64 {
+        0 // TODO(emilk): implement this for large view statses
+    }
 }
 
 /// Implementation of an empty view state.

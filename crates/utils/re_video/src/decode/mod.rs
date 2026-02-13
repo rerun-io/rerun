@@ -87,7 +87,6 @@ mod ffmpeg_cli;
 
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::FFmpegCliDecoder;
-
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
@@ -96,7 +95,7 @@ pub use ffmpeg_cli::{
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
-use crate::{SampleIndex, Time, VideoDataDescription};
+use crate::{SampleIndex, Time, VideoDataDescription, VideoPlaybackIssueSeverity};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodeError {
@@ -127,6 +126,12 @@ pub enum DecodeError {
     BadBitsPerComponent(usize),
 }
 
+impl re_byte_size::SizeBytes for DecodeError {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl DecodeError {
     pub fn should_request_more_frames(&self) -> bool {
         // Decoders often (not always!) recover from errors and will succeed eventually.
@@ -151,13 +156,30 @@ impl DecodeError {
             Self::BadBitsPerComponent(_) => false,
         }
     }
+
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
+        match self {
+            #[cfg(with_dav1d)]
+            Self::Dav1d(err) => match err {
+                dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,
+                _ => VideoPlaybackIssueSeverity::Error,
+            },
+            #[cfg(target_arch = "wasm32")]
+            Self::WebDecoder(err) => err.severity(),
+            #[cfg(with_ffmpeg)]
+            Self::Ffmpeg(_) => VideoPlaybackIssueSeverity::Error,
+
+            Self::UnsupportedCodec(_)
+            | Self::Dav1dWithoutNasm
+            | Self::NoDav1dOnLinuxArm64
+            | Self::BadBitsPerComponent(_) => VideoPlaybackIssueSeverity::Error,
+        }
+    }
 }
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
 
-/// Callback for decoding a single frame, called by decoders upon decoding a frame or hitting an error.
-#[allow(dead_code)] // May be unused in some configurations where we don't have any decoder.
-pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
+pub type FrameResult = Result<Frame>;
 
 /// Interface for an asynchronous video decoder.
 ///
@@ -209,9 +231,9 @@ pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
-    on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
+    output_sender: crate::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
-    #![allow(unused_variables, clippy::needless_return)] // With some feature flags
+    #![allow(clippy::allow_attributes, unused_variables, clippy::needless_return)] // With some feature flags
 
     re_tracing::profile_function!();
 
@@ -224,7 +246,7 @@ pub fn new_decoder(
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
         video,
         decode_settings.hw_acceleration,
-        on_output,
+        output_sender,
     )?));
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -242,7 +264,7 @@ pub fn new_decoder(
                 return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
                     debug_name.to_owned(),
                     Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
-                    on_output,
+                    output_sender,
                 )));
             }
         }
@@ -251,7 +273,7 @@ pub fn new_decoder(
         crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
             debug_name.to_owned(),
             &video.encoding_details,
-            on_output,
+            output_sender,
             decode_settings.ffmpeg_path.clone(),
             &video.codec,
         )?)),
@@ -268,7 +290,7 @@ pub fn new_decoder(
 ///
 /// In MP4, one sample is one frame.
 pub struct Chunk {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
@@ -312,6 +334,21 @@ pub struct Chunk {
     /// Typically the time difference in presentation timestamp to the next sample.
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
+}
+
+impl re_byte_size::SizeBytes for Chunk {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            is_sync: _,
+            data,
+            sample_idx: _,
+            frame_nr: _,
+            decode_timestamp: _,
+            presentation_timestamp: _,
+            duration: _,
+        } = self;
+        data.heap_size_bytes()
+    }
 }
 
 /// Data for a decoded frame on native targets.
@@ -365,7 +402,7 @@ impl FrameContent {
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
-    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    /// The start of a new group of pictures?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
@@ -477,7 +514,7 @@ impl PixelFormat {
 /// Pixel layout used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvPixelLayout` type.
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YuvPixelLayout {
     Y_U_V444,

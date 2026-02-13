@@ -1,16 +1,16 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-
-use egui_kittest::{OsThreshold, SnapshotOptions};
+use egui_kittest::SnapshotResults;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_log_types::{Timeline, build_frame_nr};
+use re_log_types::build_frame_nr;
+use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::Points3D;
-use re_viewer_context::{CollapseScope, RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{
+    CollapseScope, RecommendedView, TimeControlCommand, ViewClass as _, ViewId,
+};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
@@ -28,13 +28,14 @@ fn basic_blueprint_panel_should_match_snapshot() {
     });
 
     let blueprint_tree = BlueprintTree::default();
-    run_blueprint_panel_and_save_snapshot(test_context, blueprint_tree, "basic_blueprint_panel");
+    run_blueprint_panel_and_save_snapshot(&test_context, blueprint_tree, "basic_blueprint_panel");
 }
 
 // ---
 
 #[test]
 fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
+    let mut snapshot_results = SnapshotResults::new();
     for (snapshot_name, should_expand) in [
         ("expand_all_blueprint_panel", true),
         ("collapse_all_blueprint_panel", false),
@@ -61,11 +62,13 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         let mut blueprint_tree = BlueprintTree::default();
 
         // set the current timeline to the timeline where data was logged to
-        test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+        );
 
         let mut harness = test_context
-            .setup_kittest_for_rendering()
-            .with_size(Vec2::new(400.0, 800.0))
+            .setup_kittest_for_rendering_ui([400.0, 800.0])
             .build_ui(|ui| {
                 test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                     re_context_menu::collapse_expand::collapse_expand_view(
@@ -80,19 +83,21 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
                         viewer_ctx.blueprint_query,
                     );
 
-                    blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                    blueprint_tree.show(
+                        viewer_ctx,
+                        &blueprint,
+                        ui,
+                        &test_context.view_states.lock(),
+                    );
                 });
 
-                test_context.handle_system_commands();
+                test_context.handle_system_commands(ui.ctx());
             });
 
         harness.run();
-        harness.snapshot_options(
-            snapshot_name,
-            // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
-            // (Software Rasterizer on CI seems fine with the default).
-            &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(0).windows(15)),
-        );
+        harness.snapshot(snapshot_name);
+
+        snapshot_results.extend_harness(&mut harness);
     }
 }
 
@@ -103,7 +108,7 @@ fn blueprint_panel_filter_active_inside_origin_should_match_snapshot() {
     let (test_context, blueprint_tree) = setup_filter_test(Some("left"));
 
     run_blueprint_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_inside_origin",
     );
@@ -114,7 +119,7 @@ fn blueprint_panel_filter_active_outside_origin_should_match_snapshot() {
     let (test_context, blueprint_tree) = setup_filter_test(Some("out"));
 
     run_blueprint_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_outside_origin",
     );
@@ -125,7 +130,7 @@ fn blueprint_panel_filter_active_above_origin_should_match_snapshot() {
     let (test_context, blueprint_tree) = setup_filter_test(Some("path"));
 
     run_blueprint_panel_and_save_snapshot(
-        test_context,
+        &test_context,
         blueprint_tree,
         "blueprint_panel_filter_active_above_origin",
     );
@@ -161,7 +166,7 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
         let blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
-        blueprint_tree.show(ctx, &blueprint, ui);
+        blueprint_tree.show(ctx, &blueprint, ui, &test_context.view_states.lock());
     });
 
     if let Some(query) = query {
@@ -182,16 +187,18 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
 }
 
 fn run_blueprint_panel_and_save_snapshot(
-    mut test_context: TestContext,
+    test_context: &TestContext,
     mut blueprint_tree: BlueprintTree,
     snapshot_name: &str,
 ) {
     // set the current timeline to the timeline where data was logged to
-    test_context.set_active_timeline(Timeline::new_sequence("frame_nr"));
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    );
 
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(Vec2::new(400.0, 800.0))
+        .setup_kittest_for_rendering_ui([400.0, 800.0])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let blueprint = ViewportBlueprint::from_db(
@@ -199,19 +206,12 @@ fn run_blueprint_panel_and_save_snapshot(
                     viewer_ctx.blueprint_query,
                 );
 
-                blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                blueprint_tree.show(viewer_ctx, &blueprint, ui, &test_context.view_states.lock());
             });
 
-            test_context.handle_system_commands();
+            test_context.handle_system_commands(ui.ctx());
         });
 
     harness.run();
-    harness.snapshot_options(
-        snapshot_name,
-        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
-        // (Software Rasterizer on CI seems fine with the default).
-        &SnapshotOptions::new()
-            .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
-            .failed_pixel_count_threshold(OsThreshold::new(0).windows(15)),
-    );
+    harness.snapshot(snapshot_name);
 }

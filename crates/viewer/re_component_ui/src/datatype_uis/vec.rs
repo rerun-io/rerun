@@ -1,7 +1,8 @@
 use std::ops::RangeInclusive;
 
 use egui::NumExt as _;
-use re_types::datatypes;
+use re_sdk_types::datatypes;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
 pub fn edit_or_view_vec2d(
@@ -62,11 +63,12 @@ pub fn edit_or_view_vec2d_raw(
     } else {
         UiLayout::List.data_label(
             ui,
-            format!(
-                "[{}, {}]",
-                re_format::format_f32(x),
-                re_format::format_f32(y),
-            ),
+            SyntaxHighlightedBuilder::new()
+                .with_syntax("[")
+                .with(&x)
+                .with_syntax(", ")
+                .with(&y)
+                .with_syntax("]"),
         )
     }
 }
@@ -99,12 +101,14 @@ pub fn edit_or_view_vec3d_raw(
     } else {
         UiLayout::List.data_label(
             ui,
-            format!(
-                "[{}, {}, {}]",
-                re_format::format_f32(x),
-                re_format::format_f32(y),
-                re_format::format_f32(z),
-            ),
+            SyntaxHighlightedBuilder::new()
+                .with_syntax("[")
+                .with(&x)
+                .with_syntax(", ")
+                .with(&y)
+                .with_syntax(", ")
+                .with(&z)
+                .with_syntax("]"),
         )
     }
 }

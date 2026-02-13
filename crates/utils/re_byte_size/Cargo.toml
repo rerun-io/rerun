@@ -20,10 +20,19 @@ all-features = true
 
 
 [features]
+glam = ["dep:glam"]
 
 
 [dependencies]
-# TODO(emilk): make some of these opt-in
 arrow.workspace = true
 half.workspace = true
+parking_lot.workspace = true
 smallvec.workspace = true
+vec1.workspace = true # Small enough to always depend on it.
+
+# Optional dependencies:
+glam = { workspace = true, optional = true }
+
+
+[dev-dependencies]
+insta.workspace = true

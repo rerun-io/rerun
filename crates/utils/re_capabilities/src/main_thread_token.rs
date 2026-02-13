@@ -34,10 +34,10 @@ impl MainThreadToken {
         // but there is nothing preventing a user from also naming another thread "main".
         // In any case, since `MainThreadToken` is just best-effort, we only check this in debug builds.
         #[cfg(not(target_arch = "wasm32"))]
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             std::thread::current().name(),
             Some("main"),
-            "DEBUG ASSERT: Trying to construct a MainThreadToken on a thread that is not the main thread!"
+            "Trying to construct a MainThreadToken on a thread that is not the main thread!"
         );
 
         Self {

@@ -140,20 +140,6 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
     }
 }
 
-// NOTE: Needed because `quote!()` interprets the option otherwise.
-pub struct OptionTokenizer<T>(pub Option<T>);
-
-impl<T: quote::ToTokens> quote::ToTokens for OptionTokenizer<T> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some(v) = &self.0 {
-            quote!(Some(#v))
-        } else {
-            quote!(None)
-        }
-        .to_tokens(tokens);
-    }
-}
-
 pub struct StrStrMapTokenizer<'a>(pub &'a std::collections::BTreeMap<String, String>);
 
 impl quote::ToTokens for StrStrMapTokenizer<'_> {

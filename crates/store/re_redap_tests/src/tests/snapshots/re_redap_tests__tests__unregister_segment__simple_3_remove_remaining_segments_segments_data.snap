@@ -1,0 +1,8 @@
+---
+source: crates/store/re_redap_tests/src/tests/unregister_segment.rs
+expression: "filtered_batch.filter_columns_by(|f|\nf.metadata().get(\"rerun:index_kind\").is_none()).unwrap().format_snapshot(false)"
+---
+┌──────────────────┬───────────────────┬──────────────────┐
+│ rerun_segment_id ┆ rerun_layer_names ┆ rerun_num_chunks │
+╞══════════════════╪═══════════════════╪══════════════════╡
+└──────────────────┴───────────────────┴──────────────────┘

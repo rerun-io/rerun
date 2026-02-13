@@ -16,7 +16,7 @@ Keyframes may require additional data, for details see [`components.VideoCodec`]
 
 ## Arrow datatype
 ```
-binary
+List<uint8>
 ```
 
 ## API reference links

@@ -16,7 +16,7 @@ A view of a single text document, for use with [`archetypes.TextDocument`](https
 
 snippet: views/text_document
 
-<picture data-inline-viewer="snippets/text_document">
+<picture data-inline-viewer="snippets/views/text_document">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1024w.png">

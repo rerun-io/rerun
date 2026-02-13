@@ -1,15 +1,15 @@
 use smallvec::smallvec;
 
-use crate::{
-    RenderContext,
-    allocator::create_and_fill_uniform_buffer,
-    include_shader_module,
-    renderer::{DrawData, DrawError, Renderer, screen_triangle_vertex_shader},
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
-    },
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::renderer::{
+    DrawData, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer,
+    screen_triangle_vertex_shader,
 };
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{DrawableCollector, RenderContext, include_shader_module};
 
 /// Supported chroma subsampling input formats.
 ///
@@ -36,7 +36,7 @@ use crate::{
 /// <https://en.wikipedia.org/wiki/Chroma_subsampling#Sampling_systems_and_ratios/>
 ///
 /// Keep indices in sync with `yuv_converter.wgsl`
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub enum YuvPixelLayout {
     // ---------------------------
@@ -290,7 +290,7 @@ impl YuvPixelLayout {
         // at least as long as the data is Bt.709 or Bt.601.
         // In other words: The conversions implementations we have today expect 0-255 as the value range.
 
-        #[allow(clippy::match_same_arms)]
+        #[expect(clippy::match_same_arms)]
         match self {
             // Only thing that makes sense for 8 bit planar data is the R8Uint format.
             Self::Y_U_V444 | Self::Y_U_V422 | Self::Y_U_V420 => wgpu::TextureFormat::R8Uint,
@@ -349,6 +349,15 @@ pub struct YuvFormatConversionTask {
 
 impl DrawData for YuvFormatConversionTask {
     type Renderer = YuvFormatConverter;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        _collector: &mut DrawableCollector<'_>,
+    ) {
+        // Doesn't participate in regular rendering.\
+        // TODO(andreas): Maybe this shouldn't miss-use the `DrawData`/`Renderer` interface?
+    }
 }
 
 impl YuvFormatConversionTask {
@@ -427,6 +436,7 @@ impl YuvFormatConversionTask {
                 label: self.target_texture.creation_desc.label.get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.target_texture.default_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -440,7 +450,10 @@ impl YuvFormatConversionTask {
             &ctx.gpu_resources.render_pipelines.resources(),
             crate::draw_phases::DrawPhase::Opaque, // Don't care about the phase.
             &mut pass,
-            &self,
+            &[DrawInstruction {
+                draw_data: &self,
+                drawables: &[],
+            }],
         )
     }
 }
@@ -537,19 +550,17 @@ impl Renderer for YuvFormatConverter {
         render_pipelines: &crate::wgpu_resources::GpuRenderPipelinePoolAccessor<'_>,
         _phase: crate::draw_phases::DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(0, &draw_data.bind_group, &[]);
-        pass.draw(0..3, 0..1);
+
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            pass.set_bind_group(0, &draw_data.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+        }
 
         Ok(())
-    }
-
-    fn participated_phases() -> &'static [crate::draw_phases::DrawPhase] {
-        // Doesn't participate in regular rendering.
-        &[]
     }
 }

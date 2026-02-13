@@ -130,12 +130,17 @@ pub struct MyPoint {
 }
 
 impl MyPoint {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
         it.into_iter()
             .map(|i| Self::new(i as f32, i as f32))
             .collect()
+    }
+
+    #[inline]
+    pub fn partial_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::partial("my_point")
     }
 }
 
@@ -153,6 +158,11 @@ impl SizeBytes for MyPoint {
     fn heap_size_bytes(&self) -> u64 {
         let Self { x: _, y: _ } = self;
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
@@ -198,23 +208,17 @@ impl Loggable for MyPoint {
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
             .downcast_array_ref::<arrow::array::StructArray>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::StructArray,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::StructArray>)?;
 
         let x_array = array.columns()[0].as_ref();
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
             .downcast_array_ref::<arrow::array::Float32Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float32Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float32Array>)?;
         let ys = y_array
             .downcast_array_ref::<arrow::array::Float32Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float32Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float32Array>)?;
 
         Ok(xs
             .iter()
@@ -246,7 +250,7 @@ pub struct MyPoint64 {
 }
 
 impl MyPoint64 {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
         it.into_iter()
@@ -274,6 +278,11 @@ impl SizeBytes for MyPoint64 {
     fn heap_size_bytes(&self) -> u64 {
         let Self { x: _, y: _ } = self;
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
@@ -319,23 +328,17 @@ impl Loggable for MyPoint64 {
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
             .downcast_array_ref::<arrow::array::StructArray>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::StructArray,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::StructArray>)?;
 
         let x_array = array.columns()[0].as_ref();
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
             .downcast_array_ref::<arrow::array::Float64Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float64Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float64Array>)?;
         let ys = y_array
             .downcast_array_ref::<arrow::array::Float64Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float64Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float64Array>)?;
 
         Ok(xs
             .iter()
@@ -365,7 +368,7 @@ impl Component for MyPoint64 {
 pub struct MyColor(pub u32);
 
 impl MyColor {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
         it.into_iter().map(Self).collect()
@@ -393,6 +396,11 @@ impl SizeBytes for MyColor {
     fn heap_size_bytes(&self) -> u64 {
         let Self(_) = self;
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
@@ -490,7 +498,7 @@ impl Component for MyLabel {
 pub struct MyIndex(pub u64);
 
 impl MyIndex {
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
         it.into_iter().map(Self).collect()
@@ -513,6 +521,11 @@ impl SizeBytes for MyIndex {
     fn heap_size_bytes(&self) -> u64 {
         let Self(_) = self;
         0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 

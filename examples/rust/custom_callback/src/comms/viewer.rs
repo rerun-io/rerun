@@ -1,15 +1,12 @@
-use std::{collections::VecDeque, sync::Arc, time::Duration};
-
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
-    net::TcpStream,
-    sync::{
-        Mutex, Notify,
-        mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
-    },
-};
+use std::collections::VecDeque;
+use std::sync::Arc;
+use std::time::Duration;
 
 use rerun::external::{re_error, re_log};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
+use tokio::net::TcpStream;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::{Mutex, Notify};
 
 use super::protocol::Message;
 
@@ -66,6 +63,7 @@ impl ControlViewerHandle {
 
 impl ControlViewer {
     pub async fn connect(address: String) -> tokio::io::Result<Self> {
+        #[expect(clippy::disallowed_methods)] // an unbounded_channel is ok for this example
         let (tx, rx) = unbounded_channel();
         Ok(Self {
             address,

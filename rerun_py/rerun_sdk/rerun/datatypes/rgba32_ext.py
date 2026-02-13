@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from ..color_conversion import u8_array_to_rgba
+from .._color_conversion import u8_array_to_rgba
 from ..error_utils import RerunWarning
 
 if TYPE_CHECKING:
@@ -82,19 +82,18 @@ class Rgba32Ext:
                         if arr.size not in (3, 4):
                             # We assume this is packed ints
                             arr = arr.astype(np.uint32)
+                        # Otherwise, if all the values are less than 256
+                        elif np.max(arr) < 256:
+                            # Then treat it as a single color
+                            arr = arr.reshape((1, -1))
                         else:
-                            # Otherwise, if all the values are less than 256
-                            if np.max(arr) < 256:
-                                # Then treat it as a single color
-                                arr = arr.reshape((1, -1))
-                            else:
-                                # But if not, then send a warning to the user
-                                warnings.warn(
-                                    f"Ambiguous input for colors of length {arr.size}. If using 0xRRGGBBAA values, please wrap as np.array with dtype=np.uint32",
-                                    category=RerunWarning,
-                                    stacklevel=7,
-                                )
-                                arr = arr.astype(np.uint32)
+                            # But if not, then send a warning to the user
+                            warnings.warn(
+                                f"Ambiguous input for colors of length {arr.size}. If using 0xRRGGBBAA values, please wrap as np.array with dtype=np.uint32",
+                                category=RerunWarning,
+                                stacklevel=7,
+                            )
+                            arr = arr.astype(np.uint32)
 
                     elif arr.dtype != np.uint32:
                         if len(arr.shape) <= 1:
@@ -121,7 +120,7 @@ class Rgba32Ext:
                 except (IndexError, ValueError):
                     pass
 
-                # Fially, handle heterogeneous sequence of Rgba32-like object,
+                # Finally, handle heterogeneous sequence of Rgba32-like object,
                 # such as Rgba32 instances, ints, sub-sequence, etc.
                 #
                 # Note how this is simplified by the flexible implementation of

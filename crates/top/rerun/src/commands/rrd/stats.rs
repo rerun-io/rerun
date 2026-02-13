@@ -1,6 +1,6 @@
 use ahash::{HashMap, HashMapExt as _};
 use itertools::Itertools as _;
-
+use re_log_encoding::ToApplication as _;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
 
 use crate::commands::read_raw_rrd_streams_from_file_or_stdin;
@@ -60,9 +60,8 @@ impl StatsCommand {
                     let mut uncompressed = Vec::new();
 
                     const COMPRESSION_NONE: i32 =
-                        re_protos::log_msg::v1alpha1::Compression::None as _;
-                    const COMPRESSION_LZ4: i32 =
-                        re_protos::log_msg::v1alpha1::Compression::Lz4 as _;
+                        re_protos::common::v1alpha1::Compression::None as _;
+                    const COMPRESSION_LZ4: i32 = re_protos::common::v1alpha1::Compression::Lz4 as _;
 
                     match msg.compression {
                         COMPRESSION_NONE => {}
@@ -356,6 +355,7 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             uncompressed_size,
             encoding: _,
             payload,
+            is_static: _,
         } = arrow_msg;
 
         let ipc_schema_size_bytes = {
@@ -388,12 +388,14 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
         };
 
         let app = if app {
-            let decoded = re_log_encoding::protobuf_conversions::arrow_msg_from_proto(arrow_msg)?;
+            let decoded = arrow_msg.to_application(())?;
 
             let schema = decoded.batch.schema();
 
             let entity_path = {
-                let entity_path = schema.metadata().get("rerun:entity_path");
+                let entity_path = schema
+                    .metadata()
+                    .get(re_sorbet::metadata::SORBET_ENTITY_PATH);
                 let entity_path =
                     entity_path.or_else(|| schema.metadata().get("rerun.entity_path"));
                 entity_path.map(ToOwned::to_owned).unwrap_or_default()
@@ -401,24 +403,24 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
 
             // TODO(cmc): shortest and longest range covered per timeline would be welcome addition,
             // something like the following, but generic:
-            if false {
-                if let Some(log_tick) = decoded.batch.column_by_name("log_tick") {
-                    let log_tick = log_tick
-                        .as_any()
-                        .downcast_ref::<arrow::array::Int64Array>()
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("`log_tick` is not a Int64Array, somehow")
-                        })?;
-                    let _min = log_tick.values().iter().copied().min().unwrap_or_default();
-                    let _max = log_tick.values().iter().copied().max().unwrap_or_default();
-                }
+            if false && let Some(log_tick) = decoded.batch.column_by_name("log_tick") {
+                let log_tick = log_tick
+                    .as_any()
+                    .downcast_ref::<arrow::array::Int64Array>()
+                    .ok_or_else(|| anyhow::anyhow!("`log_tick` is not a Int64Array, somehow"))?;
+                let _min = log_tick.values().iter().copied().min().unwrap_or_default();
+                let _max = log_tick.values().iter().copied().max().unwrap_or_default();
             }
 
             let indexes = schema
                 .fields
                 .iter()
                 .filter(|&field| {
-                    field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("index")
+                    field
+                        .metadata()
+                        .get(re_sorbet::metadata::RERUN_KIND)
+                        .map(|s| s.as_str())
+                        == Some("index")
                         || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("index")
                 })
                 .map(|field| field.name().to_owned())
@@ -429,7 +431,11 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
                 .fields
                 .iter()
                 .filter(|&field| {
-                    field.metadata().get("rerun:kind").map(|s| s.as_str()) == Some("data")
+                    field
+                        .metadata()
+                        .get(re_sorbet::metadata::RERUN_KIND)
+                        .map(|s| s.as_str())
+                        == Some("data")
                         || field.metadata().get("rerun.kind").map(|s| s.as_str()) == Some("data")
                 })
                 .map(|field| field.name().to_owned())
@@ -454,10 +460,10 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             app,
             transport: ChunkStatsTransport {
                 ipc_size_bytes_compressed: payload.len() as _,
-                ipc_size_bytes_uncompressed: *uncompressed_size as _,
+                ipc_size_bytes_uncompressed: *uncompressed_size,
 
                 ipc_schema_size_bytes,
-                ipc_data_size_bytes: *uncompressed_size as u64 - ipc_schema_size_bytes,
+                ipc_data_size_bytes: *uncompressed_size - ipc_schema_size_bytes,
             },
         }));
     }

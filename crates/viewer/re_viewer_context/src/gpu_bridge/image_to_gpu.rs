@@ -3,28 +3,24 @@
 use std::borrow::Cow;
 
 use anyhow::Context as _;
-use egui::{Rangef, util::hash};
+use egui::Rangef;
+use egui::util::hash;
+use half::f16;
+use re_renderer::device_caps::DeviceCaps;
+use re_renderer::renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha};
+use re_renderer::resource_managers::{
+    ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+};
+use re_renderer::{RenderContext, pad_rgb_to_rgba};
+use re_sdk_types::components::ClassId;
+use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
+use re_sdk_types::image::ImageKind;
 use wgpu::TextureFormat;
 
-use re_renderer::{
-    RenderContext,
-    device_caps::DeviceCaps,
-    pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::{
-        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
-    },
-};
-use re_types::components::ClassId;
-use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
-use re_types::image::ImageKind;
-
-use crate::{
-    Annotations, ImageInfo, ImageStats, gpu_bridge::colormap::colormap_to_re_renderer,
-    image_info::ColormapWithRange,
-};
-
 use super::get_or_create_texture;
+use crate::gpu_bridge::colormap::colormap_to_re_renderer;
+use crate::image_info::ColormapWithRange;
+use crate::{Annotations, ImageInfo, ImageStats};
 
 // ----------------------------------------------------------------------------
 
@@ -141,21 +137,25 @@ fn color_image_to_gpu(
         ColorMapper::OffRGB
     };
 
-    // Assume that the texture has a separate (non-pre-multiplied) alpha.
-    // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
-    let multiply_rgb_with_alpha = image_format.has_alpha();
+    let texture_alpha = if image_format.has_alpha() {
+        // Assume that the texture has a separate (non-pre-multiplied) alpha.
+        // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
+        TextureAlpha::SeparateAlpha
+    } else {
+        TextureAlpha::Opaque
+    };
 
     let gamma = 1.0;
 
     re_log::trace_once!(
-        "color_tensor_to_gpu {debug_name:?}, range: {range:?}, decode_srgb: {decode_srgb:?}, multiply_rgb_with_alpha: {multiply_rgb_with_alpha:?}, gamma: {gamma:?}, color_mapper: {color_mapper:?}",
+        "color_tensor_to_gpu {debug_name:?}, range: {range:?}, decode_srgb: {decode_srgb:?}, texture_alpha: {texture_alpha:?}, gamma: {gamma:?}, color_mapper: {color_mapper:?}",
     );
 
     Ok(ColormappedTexture {
         texture: texture_handle,
         range: [range.min, range.max],
         decode_srgb,
-        multiply_rgb_with_alpha,
+        texture_alpha,
         gamma,
         color_mapper,
         shader_decoding,
@@ -165,27 +165,9 @@ fn color_image_to_gpu(
 /// Get a valid, finite range for the gpu to use.
 // TODO(#4624): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
 pub fn image_data_range_heuristic(image_stats: &ImageStats, image_format: &ImageFormat) -> Rangef {
-    let (min, max) = image_stats.finite_range;
+    let (min, max) = super::data_range_heuristic(image_stats.finite_range, image_format.is_float());
 
-    let min = min as f32;
-    let max = max as f32;
-
-    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
-    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    if image_format.is_float() && 0.0 <= min && max <= 1.0 {
-        // Float values that are all between 0 and 1, assume that this is the range.
-        Rangef::new(0.0, 1.0)
-    } else if 0.0 <= min && max <= 255.0 {
-        // If all values are between 0 and 255, assume this is the range.
-        // (This is very common, independent of the data type)
-        Rangef::new(0.0, 255.0)
-    } else if min == max {
-        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        Rangef::new(min - 1.0, max + 1.0)
-    } else {
-        // Use range as is if nothing matches.
-        Rangef::new(min, max)
-    }
+    Rangef::new(min as f32, max as f32)
 }
 
 /// Return whether an image should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
@@ -196,7 +178,6 @@ fn image_decode_srgb_gamma_heuristic(image_stats: &ImageStats, image_format: Ima
     } else {
         let (min, max) = image_stats.finite_range;
 
-        #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
             true
@@ -251,8 +232,8 @@ pub fn texture_creation_desc_from_color_image<'a>(
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(&image.buffer);
         let coefficients = match pixel_format.yuv_matrix_coefficients() {
-            re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
-            re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
+            re_sdk_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+            re_sdk_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
         };
 
         let range = if pixel_format.is_limited_yuv_range() {
@@ -319,11 +300,15 @@ pub fn texture_creation_desc_from_color_image<'a>(
         let datatype = image.format.datatype();
 
         match (color_model, datatype) {
+            (ColorModel::L, ChannelDatatype::U8) => (
+                cast_slice_to_cow(&image.buffer),
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::R8Unorm),
+            ),
             // sRGB(A) handling is done by `ColormappedTexture`.
             // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (ColorModel::RGB, ChannelDatatype::U8) => (
-                pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
+                pad_rgb_to_rgba(&image.buffer, 0).into(),
                 SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
             ),
             (ColorModel::RGBA, ChannelDatatype::U8) => (
@@ -345,7 +330,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
             //
             // See also [`required_shader_decode`] which lists this case as a format that does not need to be decoded.
             (ColorModel::BGR, ChannelDatatype::U8) => {
-                let padded_data = pad_rgb_to_rgba(&image.buffer, u8::MAX).into();
+                let padded_data = pad_rgb_to_rgba(&image.buffer, 0).into();
                 let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
                 {
                     TextureFormat::Rgba8Unorm
@@ -429,7 +414,7 @@ fn depth_image_to_gpu(
         texture,
         range: value_range,
         decode_srgb: false,
-        multiply_rgb_with_alpha: false,
+        texture_alpha: TextureAlpha::Opaque,
         gamma: 1.0,
         color_mapper: ColorMapper::Function(colormap_to_re_renderer(colormap)),
         shader_decoding: None,
@@ -505,7 +490,7 @@ fn segmentation_image_to_gpu(
         texture: main_texture_handle,
         range: [0.0, (colormap_width * colormap_height) as f32],
         decode_srgb: false, // Setting this to true would affect the class ids, not the color they resolve to.
-        multiply_rgb_with_alpha: false, // already premultiplied!
+        texture_alpha: TextureAlpha::AlreadyPremultiplied,
         gamma: 1.0,
         color_mapper: ColorMapper::Texture(colormap_texture_handle),
         shader_decoding: None,
@@ -558,37 +543,30 @@ fn general_texture_creation_desc_from_image<'a>(
         // BGR->RGB conversion is done in the shader.
         ColorModel::RGB | ColorModel::BGR => {
             // There are no 3-channel textures in wgpu, so we need to pad to 4 channels.
-            // What should we pad with? It depends on whether or not the shader interprets these as alpha.
-            // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
-            // TODO(emilk): tell the shader to ignore the alpha channel instead!
+            // What should we pad with?
+            // It doesn't matter - we tell the shader to ignore the alpha channel.
 
             match datatype {
-                ChannelDatatype::U8 => (
-                    pad_rgb_to_rgba(buf, u8::MAX).into(),
-                    TextureFormat::Rgba8Uint,
-                ),
-                ChannelDatatype::U16 => (pad_cast_img(image, u16::MAX), TextureFormat::Rgba16Uint),
-                ChannelDatatype::U32 => (pad_cast_img(image, u32::MAX), TextureFormat::Rgba32Uint),
+                ChannelDatatype::U8 => (pad_rgb_to_rgba(buf, 0).into(), TextureFormat::Rgba8Uint),
+                ChannelDatatype::U16 => (pad_cast_img::<u16>(image), TextureFormat::Rgba16Uint),
+                ChannelDatatype::U32 => (pad_cast_img::<u32>(image), TextureFormat::Rgba32Uint),
                 ChannelDatatype::U64 => (
-                    pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: u64| x as f32),
+                    pad_and_narrow_and_cast(&image.to_slice(), |x: u64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
-                ChannelDatatype::I8 => (pad_cast_img(image, i8::MAX), TextureFormat::Rgba8Sint),
-                ChannelDatatype::I16 => (pad_cast_img(image, i16::MAX), TextureFormat::Rgba16Sint),
-                ChannelDatatype::I32 => (pad_cast_img(image, i32::MAX), TextureFormat::Rgba32Sint),
+                ChannelDatatype::I8 => (pad_cast_img::<i8>(image), TextureFormat::Rgba8Sint),
+                ChannelDatatype::I16 => (pad_cast_img::<i16>(image), TextureFormat::Rgba16Sint),
+                ChannelDatatype::I32 => (pad_cast_img::<i32>(image), TextureFormat::Rgba32Sint),
                 ChannelDatatype::I64 => (
-                    pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: i64| x as f32),
+                    pad_and_narrow_and_cast(&image.to_slice(), |x: i64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
-                ChannelDatatype::F16 => (
-                    pad_cast_img(image, half::f16::from_f32(1.0)),
-                    TextureFormat::Rgba16Float,
-                ),
-                ChannelDatatype::F32 => (pad_cast_img(image, 1.0_f32), TextureFormat::Rgba32Float),
+                ChannelDatatype::F16 => (pad_cast_img::<f16>(image), TextureFormat::Rgba16Float),
+                ChannelDatatype::F32 => (pad_cast_img::<f32>(image), TextureFormat::Rgba32Float),
                 ChannelDatatype::F64 => (
-                    pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: f64| x as f32),
+                    pad_and_narrow_and_cast(&image.to_slice(), |x: f64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
             }
@@ -671,29 +649,30 @@ fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
 }
 
 /// Pad an RGB image to RGBA and cast the results to bytes.
-fn pad_and_cast<T: Copy + bytemuck::Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
+fn pad_and_cast<T: Copy + bytemuck::Pod + Default>(data: &[T]) -> Cow<'static, [u8]> {
     re_tracing::profile_function!();
     // TODO(emilk): optimize by combining the two steps into one; avoiding one allocation and memcpy
-    let padded: Vec<T> = pad_rgb_to_rgba(data, pad);
+    let padded: Vec<T> = pad_rgb_to_rgba(data, T::default());
     let bytes: Vec<u8> = bytemuck::pod_collect_to_vec(&padded);
     bytes.into()
 }
 
 /// Pad an RGB image to RGBA and cast the results to bytes.
-fn pad_cast_img<T: Copy + bytemuck::Pod>(img: &ImageInfo, pad: T) -> Cow<'static, [u8]> {
-    pad_and_cast(&img.to_slice(), pad)
+fn pad_cast_img<T: Copy + bytemuck::Pod + Default>(img: &ImageInfo) -> Cow<'static, [u8]> {
+    pad_and_cast::<T>(&img.to_slice())
 }
 
-fn pad_and_narrow_and_cast<T: Copy + bytemuck::Pod>(
+fn pad_and_narrow_and_cast<T: Copy + bytemuck::Pod + Default>(
     data: &[T],
-    pad: f32,
     narrow: impl Fn(T) -> f32,
 ) -> Cow<'static, [u8]> {
     re_tracing::profile_function!();
 
+    let alpha = 0.0; // The shader should just ignore it
+
     let floats: Vec<f32> = data
         .chunks_exact(3)
-        .flat_map(|chunk| [narrow(chunk[0]), narrow(chunk[1]), narrow(chunk[2]), pad])
+        .flat_map(|chunk| [narrow(chunk[0]), narrow(chunk[1]), narrow(chunk[2]), alpha])
         .collect();
     bytemuck::pod_collect_to_vec(&floats).into()
 }

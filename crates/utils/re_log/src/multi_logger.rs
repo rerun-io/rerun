@@ -1,6 +1,7 @@
 //! Have multiple loggers implementing [`log::Log`] at once.
 
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::SeqCst;
 
 static MULTI_LOGGER: MultiLogger = MultiLogger::new();
 

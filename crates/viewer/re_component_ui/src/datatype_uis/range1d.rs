@@ -1,6 +1,6 @@
 use egui::NumExt as _;
-
-use re_types::datatypes::Range1D;
+use re_sdk_types::datatypes::Range1D;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
 pub fn edit_view_range1d(
@@ -43,11 +43,10 @@ fn edit_view_range1d_impl(
         let [min, max] = value.0;
         UiLayout::List.data_label(
             ui,
-            format!(
-                "{} - {}",
-                re_format::format_f64(min),
-                re_format::format_f64(max)
-            ),
+            SyntaxHighlightedBuilder::new()
+                .with(&min)
+                .with_syntax(" - ")
+                .with(&max),
         )
     }
 }

@@ -24,6 +24,8 @@ serde = ["dep:serde"]
 
 
 [dependencies]
+re_byte_size.workspace = true
+
 ahash.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true

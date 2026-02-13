@@ -1,20 +1,16 @@
-#![allow(clippy::unwrap_used)] // build tool, so okay here
+#![expect(clippy::unwrap_used)] // build tool, so okay here
 
-use super::Context;
-use super::DocumentData;
-use super::DocumentKind;
-use crate::build_search_index::util::CommandExt as _;
-use crate::build_search_index::util::ProgressBarExt as _;
-use camino::Utf8PathBuf;
-use itertools::Itertools as _;
-use roxmltree::Children;
-use roxmltree::Descendants;
-use roxmltree::Document;
-use roxmltree::Node;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::read_to_string;
 use std::process::Command;
+
+use camino::Utf8PathBuf;
+use itertools::Itertools as _;
+use roxmltree::{Children, Descendants, Document, Node};
+
+use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::{CommandExt as _, ProgressBarExt as _};
 
 macro_rules! document {
     ($dom:ident, $path:expr) => {

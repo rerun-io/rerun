@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 re_format.workspace = true
+re_memory.workspace = true
 rerun = { workspace = true, features = ["sdk", "image"] }
 
 mimalloc.workspace = true

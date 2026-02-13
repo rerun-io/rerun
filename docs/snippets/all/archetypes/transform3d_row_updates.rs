@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &[
             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
                 .with_fill_mode(rerun::FillMode::Solid) as &dyn rerun::AsComponents,
-            &rerun::Transform3D::default().with_axis_length(10.0),
+            &rerun::TransformAxes3D::new(10.0),
         ],
     )?;
 

@@ -3,6 +3,14 @@
   "large_button_icon_size": 12,
   "large_button_corner_radius": 6,
   "small_icon_size": 14,
+  "visualizer_list_color_box_size": 14,
+  "modal_button_width": 50,
+  "default_modal_width": 400,
+
+  "spatial_label_bg_opacity": 0.5,
+
+  "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
+  "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill
 
   "Alias": {
     "native_frame_stroke": {
@@ -46,6 +54,10 @@
       "color": "{Blue.700}"
     },
 
+    "viewport_background": {
+      "color": "{Gray.0}"
+    },
+
     "highlight_color": {
       // Background color for widgets that should catch the user's attention
       "color": "{Blue.500}",
@@ -58,9 +70,7 @@
     "section_header_color": {
       "color": "{Gray.200}"
     },
-    "loop_selection_color": {
-      "color": "#012569B2"
-    },
+
     "loop_everything_color": {
       "color": "#02502D"
     },
@@ -90,6 +100,15 @@
     },
     "selection_stroke_color": {
       "color": "{Blue.900}" // TODO(emilk): should we unify this with text_color_on_primary?
+    },
+    "focus_outline_stroke": {
+      "color": "{Blue.400}",
+      "width": 1
+    },
+    "focus_halo_stroke": {
+      "color": "{Blue.350}",
+      "alpha": 75,
+      "width": 2
     },
 
     "panel_bg_color": {
@@ -125,6 +144,10 @@
     "table_interaction_noninteractive_bg_stroke": {
       "color": "{Gray.200}"
     },
+    "table_interaction_row_selection_fill": {
+      "color": "{Blue.750}",
+      "alpha": 25
+    },
     "table_sort_icon_color": {
       "color": "{Blue.450}"
     },
@@ -156,7 +179,7 @@
     },
 
     "floating_color": {
-      "color": "{Gray.250}"
+      "color": "{Gray.200}"
     },
     "faint_bg_color": {
       "color": "{Gray.150}"
@@ -222,6 +245,9 @@
     "density_graph_unselected": {
       "color": "{Gray.700}"
     },
+    "density_graph_outside_valid_ranges": {
+      "color": "{Gray.300}"
+    },
 
     "axis_color_x": {
       "color": "{Red.600}"
@@ -269,6 +295,64 @@
     "list_item_collapse_default": {
       "color": "{Gray.700}"
     },
+
+    "visualizer_list_title_text_color": {
+      "color": "{Gray.1000}"
+    },
+    "visualizer_list_path_text_color": {
+      "color": "{Gray.550}"
+    },
+    "visualizer_list_color_box_stroke": {
+      "color": "{Gray.800}",
+      "width": 1
+    },
+    "visualizer_list_pill_bg_color": {
+      "color": "{Gray.200}"
+    },
+    "visualizer_list_pill_bg_color_hovered": {
+      "color": "{Gray.250}"
+    },
+
+    //array indices
+    "code_index_color": {
+      "color": "#CC9CC6"
+    },
+
+    // null
+    "code_null_color": {
+      "color": "#C8A973"
+    },
+    // numbers, bool
+    "code_primitive_color": {
+      "color": "#84BE99"
+    },
+
+    "code_string_color": {
+      "color": "#A1AAE1"
+    },
+
+    // TODO(ab, katya): review these
+    "code_keyword_color": {
+      "color": "#C8A973",
+    },
+
+    "table_filter_frame_stroke": {
+      "color": "{Gray.400}",
+      "width": 1
+    },
+
+    "bg_fill_inverse": {
+      "color": "{Gray.800}"
+    },
+    "bg_fill_inverse-hover": {
+      "color": "{Gray.850}"
+    },
+    "text_inverse": {
+      "color": "{Gray.250}"
+    },
+    "icon_inverse": {
+      "color": "{Gray.250}"
+    },
   },
 
   "alert_success": {
@@ -276,12 +360,11 @@
        "color": "{Green.500}",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "{Green.500}",
-       "alpha": 125,
-    },
     "icon": {
        "color": "{Green.500}"
+    },
+    "text": {
+       "color": "{Green.900}"
     },
   },
   "alert_info": {
@@ -289,12 +372,11 @@
        "color": "{Blue.500}",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "{Blue.500}",
-       "alpha": 125,
-    },
     "icon": {
        "color": "{Blue.500}"
+    },
+    "text": {
+       "color": "{Blue.900}"
     },
   },
   "alert_warning": {
@@ -302,12 +384,11 @@
        "color": "#DF7700",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "#DF7700",
-       "alpha": 125,
-    },
     "icon": {
        "color": "#DF7700"
+    },
+    "text": {
+       "color": "#FFD28A"
     },
   },
   "alert_error": {
@@ -315,12 +396,11 @@
        "color": "{Red.500}",
        "alpha": 50,
     },
-    "stroke": {
-       "color": "{Red.500}",
-       "alpha": 125,
-    },
     "icon": {
        "color": "{Red.500}"
+    },
+    "text": {
+       "color": "{Red.900}"
     },
   },
 

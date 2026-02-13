@@ -1,0 +1,70 @@
+namespace rerun.components;
+
+/// Colormap for mapping scalar values within a given range to a color.
+///
+/// This provides a number of popular pre-defined colormaps.
+/// In the future, the Rerun Viewer will allow users to define their own colormaps,
+/// but currently the Viewer is limited to the types defined here.
+enum Colormap: ubyte {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// A simple black to white gradient.
+    ///
+    /// This is a sRGB gray gradient which is perceptually uniform.
+    Grayscale,
+
+    /// The Inferno colormap from Matplotlib.
+    ///
+    /// This is a perceptually uniform colormap.
+    /// It interpolates from black to red to bright yellow.
+    Inferno,
+
+    /// The Magma colormap from Matplotlib.
+    ///
+    /// This is a perceptually uniform colormap.
+    /// It interpolates from black to purple to white.
+    Magma,
+
+    /// The Plasma colormap from Matplotlib.
+    ///
+    /// This is a perceptually uniform colormap.
+    /// It interpolates from dark blue to purple to yellow.
+    Plasma,
+
+    /// Google's Turbo colormap map.
+    ///
+    /// This is a perceptually non-uniform rainbow colormap addressing many issues of
+    /// more traditional rainbow colormaps like Jet.
+    /// It is more perceptually uniform without sharp transitions and is more colorblind-friendly.
+    /// Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
+    Turbo (default),
+
+    /// The Viridis colormap from Matplotlib
+    ///
+    /// This is a perceptually uniform colormap which is robust to color blindness.
+    /// It interpolates from dark purple to green to yellow.
+    Viridis,
+
+    /// Rasmusgo's Cyan to Yellow colormap
+    ///
+    /// This is a perceptually uniform colormap which is robust to color blindness.
+    /// It is especially suited for visualizing signed values.
+    /// It interpolates from cyan to blue to dark gray to brass to yellow.
+    CyanToYellow,
+
+    /// The Spectral colormap from Matplotlib.
+    ///
+    /// This is a diverging colormap, often used to visualize data with a meaningful center point,
+    /// where deviations from that center are important to highlight.
+    /// It interpolates from red to orange to yellow to green to blue to violet.
+    Spectral,
+
+    /// The Twilight colormap from Matplotlib.
+    ///
+    /// This is a perceptually uniform cyclic colormap from Matplotlib, it is useful for
+    /// visualizing periodic or cyclic data.
+    ///
+    /// It interpolates from white to blue to purple to red to orange and back to white.
+    Twilight,
+}

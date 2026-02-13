@@ -6,7 +6,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_build_info::CrateVersion;
-use re_log_encoding::EncodingOptions;
+use re_log_encoding::rrd::EncodingOptions;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct MigrateCommand {
@@ -47,13 +47,13 @@ impl MigrateCommand {
         let failures: Vec<(Utf8PathBuf, anyhow::Error)> = path_to_input_rrds
             .par_iter()
             .filter_map(|original_path| {
-                if let Err(err) = migrate_file_at(original_path) {
-                    progress.inc(1);
+                let result = if let Err(err) = migrate_file_at(original_path) {
                     Some((original_path.clone(), err))
                 } else {
-                    progress.inc(1);
                     None
-                }
+                };
+                progress.inc(1);
+                result
             })
             .collect();
 
@@ -103,7 +103,7 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
     let from_file =
         std::fs::File::open(from_path).with_context(|| format!("Failed to open {from_path:?}"))?;
 
-    let decoder = re_log_encoding::decoder::Decoder::new(std::io::BufReader::new(from_file))?;
+    let decoder = re_log_encoding::DecoderApp::decode_eager(std::io::BufReader::new(from_file))?;
 
     let mut errors = indexmap::IndexSet::new();
 
@@ -151,7 +151,7 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
 
     let mut buffered_writer = std::io::BufWriter::new(new_file);
 
-    re_log_encoding::encoder::encode(
+    re_log_encoding::Encoder::encode_into(
         CrateVersion::LOCAL,
         EncodingOptions::PROTOBUF_COMPRESSED,
         messages,

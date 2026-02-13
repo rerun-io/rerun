@@ -1,5 +1,7 @@
 //! Update specific properties of a transform over time.
 
+use rerun::AsComponents;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_partial_updates").spawn()?;
@@ -9,8 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "box",
         &[
             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
-                .with_fill_mode(rerun::FillMode::Solid) as &dyn rerun::AsComponents,
-            &rerun::Transform3D::default().with_axis_length(10.0),
+                .with_fill_mode(rerun::FillMode::Solid) as &dyn AsComponents,
         ],
     )?;
 
@@ -19,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let rad = truncated_radians((deg * 4) as f32);
         rec.log(
             "box",
-            &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+            &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
                 [0.0, 1.0, 0.0],
                 rerun::Angle::from_radians(rad),
             )),
@@ -30,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for t in 0..=50 {
         rec.log(
             "box",
-            &rerun::Transform3D::update_fields().with_translation([0.0, 0.0, t as f32 / 10.0]),
+            &rerun::Transform3D::new().with_translation([0.0, 0.0, t as f32 / 10.0]),
         )?;
     }
 
@@ -39,18 +40,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let rad = truncated_radians(((deg + 45) * 4) as f32);
         rec.log(
             "box",
-            &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+            &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
                 [0.0, 1.0, 0.0],
                 rerun::Angle::from_radians(rad),
             )),
         )?;
     }
 
-    // Clear all of the box's attributes, and reset its axis length.
-    rec.log(
-        "box",
-        &rerun::Transform3D::clear_fields().with_axis_length(15.0),
-    )?;
+    // Clear all of the box's attributes.
+    rec.log("box", &rerun::Transform3D::clear_fields())?;
 
     Ok(())
 }

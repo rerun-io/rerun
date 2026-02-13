@@ -10,14 +10,12 @@
 //! We could render the same image with subpixel moved camera in order to get super-sampling without hitting texture size limitations.
 //! Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
 
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
-use crate::{
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
-    allocator::GpuReadbackError,
-    texture_info::Texture2DBufferInfo,
-    wgpu_resources::{GpuTexture, TextureDesc},
-};
+use crate::allocator::GpuReadbackError;
+use crate::texture_info::Texture2DBufferInfo;
+use crate::wgpu_resources::{GpuTexture, TextureDesc};
+use crate::{DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext};
 
 /// Type used as user data on the gpu readback belt.
 struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
@@ -88,6 +86,7 @@ impl ScreenshotProcessor {
             label: DebugLabel::from(format!("{view_name} - screenshot")).get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.screenshot_texture.default_view,
+                depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),

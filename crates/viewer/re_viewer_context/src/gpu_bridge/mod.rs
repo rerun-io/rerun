@@ -9,12 +9,7 @@ pub use image_to_gpu::{
     image_data_range_heuristic, image_to_gpu, required_shader_decode,
     texture_creation_desc_from_color_image,
 };
-pub use re_renderer_callback::new_renderer_callback;
-
-use crate::TensorStats;
-
 // ----------------------------------------------------------------------------
-
 use re_renderer::{
     RenderContext, ViewBuilder,
     renderer::{ColormappedTexture, RectangleOptions},
@@ -22,18 +17,20 @@ use re_renderer::{
         GpuTexture2D, ImageDataDesc, ImageDataToTextureError, TextureManager2DError,
     },
 };
+pub use re_renderer_callback::new_renderer_callback;
+
+use crate::TensorStats;
 
 // ----------------------------------------------------------------------------
 
 /// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 pub fn tensor_decode_srgb_gamma_heuristic(
     tensor_stats: &TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
+    data_type: re_sdk_types::tensor_data::TensorDataType,
     channels: u32,
 ) -> bool {
     if matches!(channels, 1 | 3 | 4) {
         let (min, max) = tensor_stats.finite_range;
-        #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
             true
@@ -45,6 +42,28 @@ pub fn tensor_decode_srgb_gamma_heuristic(
         }
     } else {
         false
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Get a valid, finite range for the gpu to use.
+pub fn data_range_heuristic((min, max): (f64, f64), is_float: bool) -> (f64, f64) {
+    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
+    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
+    if is_float && 0.0 <= min && max <= 1.0 {
+        // Float values that are all between 0 and 1, assume that this is the range.
+        (0.0, 1.0)
+    } else if 0.0 <= min && max <= 255.0 {
+        // If all values are between 0 and 255, assume this is the range.
+        // (This is very common, independent of the data type)
+        (0.0, 255.0)
+    } else if min == max {
+        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
+        (min - 1.0, max + 1.0)
+    } else {
+        // Use range as is if nothing matches.
+        (min, max)
     }
 }
 
@@ -149,16 +168,15 @@ pub fn render_image(
         },
         viewport_transformation: re_renderer::RectTransform::IDENTITY,
         pixels_per_point,
-        outline_config: None,
-        blend_with_background: false,
+        ..Default::default()
     };
 
-    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config)?;
 
-    view_builder.queue_draw(re_renderer::renderer::RectangleDrawData::new(
+    view_builder.queue_draw(
         render_ctx,
-        &[textured_rectangle],
-    )?);
+        re_renderer::renderer::RectangleDrawData::new(render_ctx, &[textured_rectangle])?,
+    );
 
     egui_painter.add(new_renderer_callback(
         view_builder,

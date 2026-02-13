@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -9,19 +9,19 @@ from ..components import ImageFormat
 from ..datatypes import ChannelDatatype, Float32Like
 
 if TYPE_CHECKING:
-    ImageLike = Union[
-        npt.NDArray[np.float16],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float64],
-        npt.NDArray[np.int16],
-        npt.NDArray[np.int32],
-        npt.NDArray[np.int64],
-        npt.NDArray[np.int8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-        npt.NDArray[np.uint64],
-        npt.NDArray[np.uint8],
-    ]
+    ImageLike = (
+        npt.NDArray[np.float16]
+        | npt.NDArray[np.float32]
+        | npt.NDArray[np.float64]
+        | npt.NDArray[np.int16]
+        | npt.NDArray[np.int32]
+        | npt.NDArray[np.int64]
+        | npt.NDArray[np.int8]
+        | npt.NDArray[np.uint16]
+        | npt.NDArray[np.uint32]
+        | npt.NDArray[np.uint64]
+        | npt.NDArray[np.uint8]
+    )
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
@@ -44,6 +44,7 @@ class SegmentationImageExt:
         image: ImageLike,
         *,
         opacity: Float32Like | None = None,
+        draw_order: Float32Like | None = None,
     ) -> None:
         image = _to_numpy(image)
 
@@ -72,4 +73,5 @@ class SegmentationImageExt:
                 channel_datatype=datatype,
             ),
             opacity=opacity,
+            draw_order=draw_order,
         )

@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-
 use re_log::ResultExt as _;
-use re_log_encoding::encoder::encode_as_bytes_local;
+use re_log_encoding::Encoder;
 use re_log_types::LogMsg;
 
 use crate::RecordingStream;
+use crate::log_sink::SinkFlushError;
 use crate::sink::LogSink;
 
 /// The storage used by [`BinaryStreamSink`].
@@ -42,22 +42,23 @@ impl BinaryStreamStorage {
             return None;
         }
 
-        encode_as_bytes_local(inner.drain(..).map(Ok)).ok_or_log_error()
+        Encoder::encode(inner.drain(..).map(Ok)).ok_or_log_error()
     }
 
     /// Flush the batcher and log encoder to guarantee that all logged messages
     /// have been written to the stream.
-    ///
-    /// This will block until the flush is complete.
     #[inline]
-    pub fn flush(&self) {
-        self.rec.flush_blocking();
+    pub fn flush(&self, timeout: std::time::Duration) -> Result<(), SinkFlushError> {
+        self.rec.flush_with_timeout(timeout)
     }
 }
 
 impl Drop for BinaryStreamStorage {
     fn drop(&mut self) {
-        self.flush();
+        if let Err(err) = self.flush(std::time::Duration::MAX) {
+            re_log::error!("Failed to flush BinaryStreamStorage: {err}");
+        }
+
         let bytes = self.read();
 
         if let Some(bytes) = bytes {
@@ -100,9 +101,7 @@ impl LogSink for BinaryStreamSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+    fn flush_blocking(&self, _timeout: std::time::Duration) -> Result<(), SinkFlushError> {
+        Ok(())
     }
 }

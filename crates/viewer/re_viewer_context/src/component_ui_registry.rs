@@ -1,16 +1,16 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-
-use re_chunk::{RowId, TimePoint, UnitChunkShared};
+use re_chunk::{ComponentIdentifier, RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
-use re_log::ResultExt as _;
+use re_log::{ResultExt as _, debug_assert_eq};
 use re_log_types::{Instance, StoreId};
-use re_types::{ComponentDescriptor, ComponentType};
+use re_sdk_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
+use crate::blueprint_helpers::BlueprintContext as _;
+use crate::{MaybeMutRef, QueryContext, ViewerContext};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {
@@ -31,6 +31,22 @@ bitflags::bitflags! {
 
         /// Edit the component over multiple [`re_ui::list_item::ListItem`]s.
         const MultiLineEditor = 0b0000100;
+
+        /// Edit multiple values (arrays) of this component at once.
+        const MultiValueEditor = 0b0001000;
+    }
+}
+
+impl ComponentUiTypes {
+    /// Whether an edit UI is available.
+    ///
+    /// If `multi_value` is true, requires a [`Self::MultiValueEditor`] to be registered.
+    pub fn has_edit_ui(&self, multi_value: bool) -> bool {
+        if multi_value {
+            self.contains(Self::MultiValueEditor)
+        } else {
+            self.intersects(Self::SingleLineEditor | Self::MultiLineEditor)
+        }
     }
 }
 
@@ -65,17 +81,14 @@ re_string_interner::declare_new_type!(
 /// The identifier under which component UIs are registered.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 enum ComponentUiIdentifier {
-    /// Component UI for a specific component.
+    /// Component UI for a specific component type.
     Component(ComponentType),
+
+    /// Component UI for an array of a specific component type.
+    ComponentArray(ComponentType),
 
     /// Component UI explicitly opted into by providing a variant name.
     Variant(VariantName),
-}
-
-impl From<ComponentType> for ComponentUiIdentifier {
-    fn from(name: ComponentType) -> Self {
-        Self::Component(name)
-    }
 }
 
 impl From<VariantName> for ComponentUiIdentifier {
@@ -101,6 +114,13 @@ pub type UntypedComponentEditOrViewCallback = Box<
         + Send
         + Sync,
 >;
+
+/// Result of trying to show an edit UI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TryShowEditUiResult {
+    Shown { edited_value: bool },
+    NotShown,
+}
 
 /// How to display components in a Ui.
 pub struct ComponentUiRegistry {
@@ -176,7 +196,7 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_singleline_edit_or_view<C: re_types::Component>(
+    pub fn add_singleline_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
         + Send
@@ -204,7 +224,7 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_multiline_edit_or_view<C: re_types::Component>(
+    pub fn add_multiline_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
         + Send
@@ -215,7 +235,67 @@ impl ComponentUiRegistry {
         self.add_editor_ui(multiline, callback);
     }
 
-    fn add_editor_ui<C: re_types::Component>(
+    /// Registers how to view, and maybe edit, a given component array in the UI in a single list item line.
+    ///
+    /// If the component array already has a singleline editor registered, the new callback replaces the old one.
+    ///
+    /// The value is only updated if the editor callback returns a `egui::Response::changed`.
+    /// On the flip side, this means that even if the data has not changed it may be written back to the store.
+    /// This can be relevant for transitioning from a fallback or default value to a custom value even if they are equal.
+    ///
+    /// Design principles for writing editors:
+    /// * This is the value column function for a [`re_ui::list_item::PropertyContent`], behave accordingly!
+    ///     * Unless you introduce hierarchy yourself, use [`re_ui::list_item::ListItem::show_flat`].
+    /// * Don't show a tooltip, this is solved at a higher level.
+    /// * Try not to assume context of the component beyond its inherent semantics
+    ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
+    /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
+    ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
+    pub fn add_singleline_array_edit_or_view<C: re_sdk_types::Component>(
+        &mut self,
+        callback: impl Fn(
+            &ViewerContext<'_>,
+            &mut egui::Ui,
+            &mut MaybeMutRef<'_, Vec<C>>,
+        ) -> egui::Response
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let multiline = false;
+        self.add_array_editor_ui(multiline, callback);
+    }
+
+    /// Registers how to view, and maybe edit, a given component array in the UI with multiple list items.
+    ///
+    /// If the component array already has a singleline editor registered, the new callback replaces the old one.
+    ///
+    /// The value is only updated if the editor callback returns a `egui::Response::changed`.
+    /// On the flip side, this means that even if the data has not changed it may be written back to the store.
+    /// This can be relevant for transitioning from a fallback or default value to a custom value even if they are equal.
+    ///
+    /// Design principles for writing editors:
+    /// * This is the content function for hierarchical [`re_ui::list_item::ListItem`], behave accordingly!
+    /// * Try not to assume context of the component beyond its inherent semantics
+    ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
+    /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
+    ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
+    pub fn add_multiline_array_edit_or_view<C: re_sdk_types::Component>(
+        &mut self,
+        callback: impl Fn(
+            &ViewerContext<'_>,
+            &mut egui::Ui,
+            &mut MaybeMutRef<'_, Vec<C>>,
+        ) -> egui::Response
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let multiline = true;
+        self.add_array_editor_ui(multiline, callback);
+    }
+
+    fn add_editor_ui<C: re_sdk_types::Component>(
         &mut self,
         multiline: bool,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
@@ -239,7 +319,7 @@ impl ComponentUiRegistry {
                             callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_value));
 
                         if response.changed() {
-                            use re_types::ComponentBatch as _;
+                            use re_sdk_types::ComponentBatch as _;
                             deserialized_value.to_arrow().ok_or_log_error_once()
                         } else {
                             None
@@ -249,12 +329,70 @@ impl ComponentUiRegistry {
             },
         );
 
+        self.insert_untyped_callback(
+            ComponentUiIdentifier::Component(C::name()),
+            multiline,
+            untyped_callback,
+        );
+    }
+
+    fn add_array_editor_ui<C: re_sdk_types::Component>(
+        &mut self,
+        multiline: bool,
+        callback: impl Fn(
+            &ViewerContext<'_>,
+            &mut egui::Ui,
+            &mut MaybeMutRef<'_, Vec<C>>,
+        ) -> egui::Response
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
+            move |ctx, ui, _component_descriptor, _row_id, value, edit_or_view| {
+                // if we end up being called with a mismatching component, its likely a bug.
+                debug_assert_eq!(_component_descriptor.component_type, Some(C::name()));
+
+                let mut deserialized_values = try_deserialize_array(value)?;
+                match edit_or_view {
+                    EditOrView::View => {
+                        callback(ctx, ui, &mut MaybeMutRef::Ref(&deserialized_values));
+                        None
+                    }
+                    EditOrView::Edit => {
+                        let response =
+                            callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_values));
+
+                        if response.changed() {
+                            use re_sdk_types::ComponentBatch as _;
+                            deserialized_values.to_arrow().ok_or_log_error_once()
+                        } else {
+                            None
+                        }
+                    }
+                }
+            },
+        );
+
+        self.insert_untyped_callback(
+            ComponentUiIdentifier::ComponentArray(C::name()),
+            multiline,
+            untyped_callback,
+        );
+    }
+
+    fn insert_untyped_callback(
+        &mut self,
+        component_type: ComponentUiIdentifier,
+        multiline: bool,
+        untyped_callback: UntypedComponentEditOrViewCallback,
+    ) {
         if multiline {
             &mut self.component_multiline_edit_or_view
         } else {
             &mut self.component_singleline_edit_or_view
         }
-        .insert(C::name().into(), untyped_callback);
+        .insert(component_type, untyped_callback);
     }
 
     /// Registers singleline UI to view Arrow data using a specific [`VariantName`].
@@ -264,7 +402,7 @@ impl ComponentUiRegistry {
         callback: impl Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            &ComponentDescriptor,
+            ComponentIdentifier,
             Option<RowId>,
             &dyn arrow::array::Array,
         ) -> Result<(), Box<dyn std::error::Error>>
@@ -283,14 +421,19 @@ impl ComponentUiRegistry {
                     }
                 }
 
-                let res = callback(ctx, ui, component_descriptor, row_id, value);
+                let res = callback(ctx, ui, component_descriptor.component, row_id, value);
 
                 if let Err(err) = res {
                     re_log::error_once!(
                         "UI for variant {variant_name} failed to display the provided data {err}"
                     );
 
-                    fallback_ui(ui, UiLayout::List, value);
+                    fallback_ui(
+                        ui,
+                        UiLayout::List,
+                        ctx.app_options().timestamp_format,
+                        value,
+                    );
                 }
 
                 None
@@ -312,15 +455,32 @@ impl ComponentUiRegistry {
         }
         if self
             .component_singleline_edit_or_view
-            .contains_key(&name.into())
+            .contains_key(&ComponentUiIdentifier::Component(name))
         {
             types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::SingleLineEditor;
         }
         if self
             .component_multiline_edit_or_view
-            .contains_key(&name.into())
+            .contains_key(&ComponentUiIdentifier::Component(name))
         {
             types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::MultiLineEditor;
+        }
+
+        if self
+            .component_singleline_edit_or_view
+            .contains_key(&ComponentUiIdentifier::ComponentArray(name))
+        {
+            types |= ComponentUiTypes::DisplayUi
+                | ComponentUiTypes::SingleLineEditor
+                | ComponentUiTypes::MultiValueEditor;
+        }
+        if self
+            .component_multiline_edit_or_view
+            .contains_key(&ComponentUiIdentifier::ComponentArray(name))
+        {
+            types |= ComponentUiTypes::DisplayUi
+                | ComponentUiTypes::MultiLineEditor
+                | ComponentUiTypes::MultiValueEditor;
         }
 
         types
@@ -330,7 +490,7 @@ impl ComponentUiRegistry {
     ///
     /// Has a fallback to show an info text if the instance is not specific,
     /// but in these cases `LatestAtComponentResults::data_ui` should be used instead!
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn component_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -343,10 +503,12 @@ impl ComponentUiRegistry {
         unit: &UnitChunkShared,
         instance: &Instance,
     ) {
+        ui.sanity_check();
+
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let Some(array) = unit.component_batch_raw(component_descr) else {
+        let Some(array) = unit.component_batch_raw(component_descr.component) else {
             re_log::error_once!("Couldn't get {component_descr}: missing");
             ui.error_with_details_on_hover(format!("Couldn't get {component_descr}: missing"));
             return;
@@ -354,7 +516,12 @@ impl ComponentUiRegistry {
 
         // Component UI can only show a single instance.
         if array.is_empty() || (instance.is_all() && array.len() > 1) {
-            fallback_ui(ui, ui_layout, array.as_ref());
+            fallback_ui(
+                ui,
+                ui_layout,
+                ctx.app_options().timestamp_format,
+                array.as_ref(),
+            );
             return;
         }
 
@@ -381,10 +548,52 @@ impl ComponentUiRegistry {
             unit.row_id(),
             component_raw.as_ref(),
         );
+
+        ui.sanity_check();
+    }
+
+    /// Tries to lookup a ui callback with the given constraints.
+    #[expect(clippy::fn_params_excessive_bools)] // private function 🤷‍♂️
+    fn untyped_component_ui_callback(
+        &self,
+        component_type: ComponentType,
+        allow_multiline: bool,
+        is_single_value: bool,
+    ) -> Option<&UntypedComponentEditOrViewCallback> {
+        let ui_identifier = ComponentUiIdentifier::Component(component_type);
+        let array_ui_identifier = ComponentUiIdentifier::ComponentArray(component_type);
+
+        if allow_multiline {
+            self.component_multiline_edit_or_view
+                .get(&array_ui_identifier)
+                .or_else(|| {
+                    self.component_singleline_edit_or_view
+                        .get(&array_ui_identifier)
+                })
+                .or_else(|| {
+                    if is_single_value {
+                        self.component_multiline_edit_or_view
+                            .get(&ui_identifier)
+                            .or_else(|| self.component_singleline_edit_or_view.get(&ui_identifier))
+                    } else {
+                        None
+                    }
+                })
+        } else {
+            self.component_singleline_edit_or_view
+                .get(&array_ui_identifier)
+                .or_else(|| {
+                    if is_single_value {
+                        self.component_singleline_edit_or_view.get(&ui_identifier)
+                    } else {
+                        None
+                    }
+                })
+        }
     }
 
     /// Show a UI for a single raw component.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn component_ui_raw(
         &self,
         ctx: &ViewerContext<'_>,
@@ -398,11 +607,6 @@ impl ComponentUiRegistry {
         component_raw: &dyn arrow::array::Array,
     ) {
         re_tracing::profile_function!(component_descr.display_name());
-
-        if component_raw.len() != 1 {
-            fallback_ui(ui, ui_layout, component_raw);
-            return;
-        }
 
         // Prefer the versatile UI callback if there is one.
         if let Some(ui_callback) = component_descr
@@ -425,17 +629,14 @@ impl ComponentUiRegistry {
 
         // Fallback to the more specialized UI callbacks (which are only available for known components).
         if let Some(component_type) = component_descr.component_type {
-            let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
-                self.component_multiline_edit_or_view
-                    .get(&component_type.into())
-                    .or_else(|| {
-                        self.component_singleline_edit_or_view
-                            .get(&component_type.into())
-                    })
-            } else {
-                self.component_singleline_edit_or_view
-                    .get(&component_type.into())
-            };
+            let allow_multiline = ui_layout == UiLayout::SelectionPanel;
+            let is_single_value = component_raw.len() == 1;
+            let edit_or_view_ui = self.untyped_component_ui_callback(
+                component_type,
+                allow_multiline,
+                is_single_value,
+            );
+
             if let Some(edit_or_view_ui) = edit_or_view_ui {
                 // Use it in view mode (no mutation).
                 (*edit_or_view_ui)(
@@ -450,11 +651,16 @@ impl ComponentUiRegistry {
             }
         }
 
-        fallback_ui(ui, ui_layout, component_raw);
+        fallback_ui(
+            ui,
+            ui_layout,
+            ctx.app_options().timestamp_format,
+            component_raw,
+        );
     }
 
     /// Show a UI corresponding to the provided variant name.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn variant_ui_raw(
         &self,
         ctx: &ViewerContext<'_>,
@@ -499,7 +705,12 @@ impl ComponentUiRegistry {
             //TODO(ab): should we instead revert to using the component based ui?
         }
 
-        fallback_ui(ui, ui_layout, component_raw);
+        fallback_ui(
+            ui,
+            ui_layout,
+            ctx.app_options().timestamp_format,
+            component_raw,
+        );
     }
 
     /// Show a multi-line editor for this instance of this component.
@@ -507,7 +718,7 @@ impl ComponentUiRegistry {
     /// Changes will be written to the blueprint store at the given override path.
     /// Any change is expected to be effective next frame and passed in via the `component_query_result` parameter.
     /// (Otherwise, this method is agnostic to where the component data is stored.)
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn multiline_edit_ui(
         &self,
         ctx: &QueryContext<'_>,
@@ -517,7 +728,6 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = true;
         self.edit_ui(
@@ -528,7 +738,6 @@ impl ComponentUiRegistry {
             component_descr,
             row_id,
             component_array,
-            fallback_provider,
             multiline,
         );
     }
@@ -538,7 +747,7 @@ impl ComponentUiRegistry {
     /// Changes will be written to the blueprint store at the given override path.
     /// Any change is expected to be effective next frame and passed in via the `component_query_result` parameter.
     /// (Otherwise, this method is agnostic to where the component data is stored.)
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn singleline_edit_ui(
         &self,
         ctx: &QueryContext<'_>,
@@ -548,7 +757,6 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_query_result: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = false;
         self.edit_ui(
@@ -559,12 +767,11 @@ impl ComponentUiRegistry {
             component_descr,
             row_id,
             component_query_result,
-            fallback_provider,
             multiline,
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn edit_ui(
         &self,
         ctx: &QueryContext<'_>,
@@ -574,7 +781,6 @@ impl ComponentUiRegistry {
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
-        fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
     ) {
         re_tracing::profile_function!(component_descr.display_name());
@@ -596,13 +802,17 @@ impl ComponentUiRegistry {
         if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
             run_with(component_array);
         } else {
-            let fallback = fallback_provider.fallback_for(ctx, component_descr);
+            let fallback = ctx.viewer_ctx().component_fallback_registry.fallback_for(
+                component_descr.component,
+                component_descr.component_type,
+                ctx,
+            );
             run_with(fallback.as_ref());
         }
     }
 
     /// For blueprint editing
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn edit_ui_raw(
         &self,
         ctx: &QueryContext<'_>,
@@ -614,7 +824,7 @@ impl ComponentUiRegistry {
         component_raw: &dyn arrow::array::Array,
         allow_multiline: bool,
     ) {
-        if !self.try_show_edit_ui(
+        if self.try_show_edit_ui(
             ctx.viewer_ctx(),
             ui,
             EditTarget {
@@ -625,13 +835,14 @@ impl ComponentUiRegistry {
             component_raw,
             component_descr.clone(),
             allow_multiline,
-        ) {
+        ) == TryShowEditUiResult::NotShown
+        {
             // Even if we can't edit the component, it's still helpful to show what the value is.
             self.component_ui_raw(
                 ctx.viewer_ctx(),
                 ui,
                 UiLayout::List,
-                ctx.query,
+                &ctx.query,
                 origin_db,
                 ctx.target_entity_path,
                 component_descr,
@@ -643,8 +854,8 @@ impl ComponentUiRegistry {
 
     /// Tries to show a UI for editing a component.
     ///
-    /// Returns `true` if the passed component is a single value and has a registered
-    /// editor for multiline or singleline editing respectively.
+    /// Returns `TryShowEditUiResult::Shown` if there's an editor for the passed component.
+    /// Note that single values may have different editors registered than arrays of values.
     pub fn try_show_edit_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -653,37 +864,22 @@ impl ComponentUiRegistry {
         raw_current_value: &dyn arrow::array::Array,
         component_descr: ComponentDescriptor,
         allow_multiline: bool,
-    ) -> bool {
+    ) -> TryShowEditUiResult {
         re_tracing::profile_function!(component_descr.display_name());
-        let EditTarget {
-            store_id,
-            timepoint,
-            entity_path,
-        } = target;
 
         // We use the component type to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)
-        let Some(ui_identifier) = component_descr.component_type else {
-            return false;
+        let Some(component_type) = component_descr.component_type else {
+            return TryShowEditUiResult::NotShown;
         };
 
-        if raw_current_value.len() != 1 {
-            return false;
-        }
+        let is_single_value = raw_current_value.len() == 1;
 
-        let edit_or_view = if allow_multiline {
-            self.component_multiline_edit_or_view
-                .get(&ui_identifier.into())
-                .or_else(|| {
-                    self.component_singleline_edit_or_view
-                        .get(&ui_identifier.into())
-                })
-        } else {
-            self.component_singleline_edit_or_view
-                .get(&ui_identifier.into())
-        };
+        let edit_or_view =
+            self.untyped_component_ui_callback(component_type, allow_multiline, is_single_value);
 
         if let Some(edit_or_view) = edit_or_view {
+            let mut edited_value = false;
             if let Some(updated) = (*edit_or_view)(
                 ctx,
                 ui,
@@ -692,6 +888,13 @@ impl ComponentUiRegistry {
                 raw_current_value,
                 EditOrView::Edit,
             ) {
+                edited_value = true;
+
+                let EditTarget {
+                    store_id,
+                    timepoint,
+                    entity_path,
+                } = target;
                 ctx.append_array_to_store(
                     store_id,
                     timepoint,
@@ -700,42 +903,55 @@ impl ComponentUiRegistry {
                     updated,
                 );
             }
-            return true;
+            TryShowEditUiResult::Shown { edited_value }
+        } else {
+            TryShowEditUiResult::NotShown
         }
-
-        false
     }
 }
 
-fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
+fn try_deserialize_array<C: re_sdk_types::Component>(
+    value: &dyn arrow::array::Array,
+) -> Option<Vec<C>> {
     let component_type = C::name();
     let deserialized = C::from_arrow(value);
     match deserialized {
-        Ok(values) => {
-            if values.len() > 1 {
-                // Whatever we did prior to calling this should have taken care if it!
-                re_log::error_once!(
-                    "Can only edit a single value at a time, got {} values for editing {component_type}",
-                    values.len()
-                );
-            }
-            if let Some(v) = values.into_iter().next() {
-                Some(v)
-            } else {
-                re_log::warn_once!(
-                    "Editor UI for {component_type} needs a start value to operate on."
-                );
-                None
-            }
-        }
+        Ok(values) => Some(values),
         Err(err) => {
-            re_log::error_once!("Failed to deserialize component of type {component_type}: {err}",);
+            re_log::error_once!(
+                "Failed to deserialize component of type {component_type}: {err:#}",
+            );
             None
         }
     }
 }
 
+fn try_deserialize<C: re_sdk_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
+    let component_type = C::name();
+
+    let values = try_deserialize_array::<C>(value)?;
+
+    if values.len() > 1 {
+        // Whatever we did prior to calling this should have taken care if it!
+        re_log::error_once!(
+            "Can only edit a single value at a time, got {} values for editing {component_type}",
+            values.len()
+        );
+    }
+    if let Some(v) = values.into_iter().next() {
+        Some(v)
+    } else {
+        re_log::warn_once!("Editor UI for {component_type} needs a start value to operate on.");
+        None
+    }
+}
+
 /// The ui we fall back to if everything else fails.
-fn fallback_ui(ui: &mut egui::Ui, ui_layout: UiLayout, component: &dyn arrow::array::Array) {
-    re_ui::arrow_ui(ui, ui_layout, component);
+fn fallback_ui(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    timestamp_format: re_log_types::TimestampFormat,
+    component: &dyn arrow::array::Array,
+) {
+    re_arrow_ui::arrow_ui(ui, ui_layout, timestamp_format, component);
 }

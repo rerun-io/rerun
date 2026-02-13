@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from github import Github
 
@@ -40,7 +41,7 @@ def main() -> None:
         print("Unchecked checkboxes found:")
         for checkbox in checkboxes:
             print(f"  {checkbox}")
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

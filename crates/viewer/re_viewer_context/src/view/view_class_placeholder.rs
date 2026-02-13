@@ -1,5 +1,6 @@
 use re_chunk::EntityPath;
-use re_types::ViewClassIdentifier;
+use re_chunk_store::MissingChunkReporter;
+use re_sdk_types::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 
 use crate::{
@@ -54,6 +55,7 @@ impl ViewClass for ViewClassPlaceholder {
     fn ui(
         &self,
         _ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         _state: &mut dyn ViewState,
         _query: &ViewQuery<'_>,
@@ -79,5 +81,3 @@ impl ViewClass for ViewClassPlaceholder {
         Ok(())
     }
 }
-
-crate::impl_component_fallback_provider!(ViewClassPlaceholder => []);

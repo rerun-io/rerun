@@ -2,7 +2,7 @@ mod blueprint;
 mod ui;
 
 use re_chunk_store::ColumnDescriptor;
-use re_types::blueprint::archetypes;
+use re_sdk_types::blueprint::archetypes;
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
 

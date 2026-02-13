@@ -18,7 +18,7 @@ FetchContent_MakeAvailable(rerun_sdk)
 
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
 all Rerun C++ sources and headers, as well as CMake build instructions for them.
-By default this will also download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++. See [Install arrow-cpp](arrow_cpp_install.md) to learn more about this step and how to use an existing install.
+By default this will also download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++. See [Install Arrow C++](arrow_cpp_install.md) to learn more about this step and how to use an existing install.
 
 We recommend this `FetchContent` workflow for all usecases since it is the easiest and works without any additional configuration.
 All other workflows and configuration are there to best address more specific needs a project setup may haves.
@@ -36,7 +36,6 @@ If you want to match the behavior of `rerun_cpp_sdk.zip`, these libraries should
  - Linux, x64: `librerun_c__linux_x64.a`
  - Linux, Arm64: `librerun_c__linux_arm64.a`
  - Windows, x64: `rerun_c__win_x64.lib`
- - Mac, Intel: `librerun_c__macos_x64.a`
  - Mac, Apple Silicon: `librerun_c__macos_arm64.a`
 
 Or if you have a different build/download mechanism, you can point directly to the library by setting `RERUN_C_LIB`
@@ -87,7 +86,7 @@ Unless noted otherwise, a CMake install of `rerun_sdk` does **not** expose any o
 ## RERUN_DOWNLOAD_AND_BUILD_ARROW
 If enabled, will download a pinned version of the Apache Arrow C++ library and add it to the build.
 Otherwise, `find_package` will be used to search for a pre-installed Arrow library.
-For more information see the howto guide on [installing arrow-cpp](arrow_cpp_install.md).
+For more information see the howto guide on [installing Arrow C++](arrow_cpp_install.md).
 
 Defaults to `ON`.
 

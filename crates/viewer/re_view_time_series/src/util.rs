@@ -1,14 +1,29 @@
 use re_log_types::AbsoluteTimeRange;
-use re_types::{
-    components::AggregationPolicy,
-    datatypes::{TimeRange, TimeRangeBoundary},
-};
-use re_viewer_context::{ViewQuery, ViewerContext, external::re_entity_db::InstancePath};
+use re_log_types::external::arrow;
+use re_sdk_types::blueprint::archetypes::TimeAxis;
+use re_sdk_types::blueprint::components::{LinkAxis, VisualizerInstructionId};
+use re_sdk_types::components::AggregationPolicy;
+use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
+use re_viewer_context::external::re_entity_db::InstancePath;
+use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
+use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-use crate::{
-    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
-    aggregation::{AverageAggregator, MinMaxAggregator},
-};
+use crate::aggregation::{AverageAggregator, MinMaxAggregator};
+use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
+
+pub fn series_supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
+    [
+        arrow::datatypes::DataType::Float32,
+        arrow::datatypes::DataType::Float64,
+        arrow::datatypes::DataType::Int8,
+        arrow::datatypes::DataType::Int32,
+        arrow::datatypes::DataType::Int64,
+        arrow::datatypes::DataType::UInt8,
+        arrow::datatypes::DataType::UInt32,
+        arrow::datatypes::DataType::UInt64,
+        // TODO(andreas): Support bool types?
+    ]
+}
 
 /// Find the number of time units per physical pixel.
 pub fn determine_time_per_pixel(
@@ -28,21 +43,27 @@ pub fn determine_time_per_pixel(
 }
 
 pub fn determine_time_range(
-    time_cursor: re_log_types::TimeInt,
-    time_offset: i64,
+    ctx: &ViewContext<'_>,
     data_result: &re_viewer_context::DataResult,
-    plot_mem: Option<&egui_plot::PlotMemory>,
-) -> AbsoluteTimeRange {
+) -> Result<AbsoluteTimeRange, ViewPropertyQueryError> {
+    let current_time = ctx
+        .viewer_ctx
+        .time_ctrl
+        .time_int()
+        .unwrap_or(re_log_types::TimeInt::ZERO);
+
     let query_range = data_result.query_range();
 
     // Latest-at doesn't make sense for time series and should also never happen.
     let visible_time_range = match query_range {
         re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
         re_viewer_context::QueryRange::LatestAt => {
-            re_log::error_once!(
-                "Unexpected LatestAt query for time series data result at path {:?}",
-                data_result.entity_path
-            );
+            if cfg!(debug_assertions) {
+                re_log::error_once!(
+                    "[DEBUG] Unexpected LatestAt query for time series data result at path {:?}",
+                    data_result.entity_path
+                );
+            }
             TimeRange {
                 start: TimeRangeBoundary::AT_CURSOR,
                 end: TimeRangeBoundary::AT_CURSOR,
@@ -50,29 +71,42 @@ pub fn determine_time_range(
         }
     };
 
-    let mut time_range =
-        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
+    let data_time_range =
+        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, current_time);
 
-    let is_auto_bounds = plot_mem.is_some_and(|mem| mem.auto_bounds.x || mem.auto_bounds.y);
-    let plot_bounds = plot_mem.map(|mem| {
-        let bounds = mem.bounds().range_x();
-        let x_min = bounds.start().floor() as i64;
-        let x_max = bounds.end().ceil() as i64;
-        // We offset the time values of the plot so that unix timestamps don't run out of precision.
-        (
-            x_min.saturating_add(time_offset),
-            x_max.saturating_add(time_offset),
+    let time_axis = ViewProperty::from_archetype::<TimeAxis>(
+        ctx.viewer_ctx.blueprint_db(),
+        ctx.viewer_ctx.blueprint_query,
+        ctx.view_id,
+    );
+
+    let link_x_axis =
+        time_axis.component_or_fallback::<LinkAxis>(ctx, TimeAxis::descriptor_link().component)?;
+
+    let time_range_property = match link_x_axis {
+        LinkAxis::Independent => &time_axis,
+        LinkAxis::LinkToGlobal => &ViewProperty::from_archetype::<TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query(),
+            re_viewer_context::GLOBAL_VIEW_ID,
+        ),
+    };
+
+    let view_time_range = time_range_property
+        .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
+            re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
         )
-    });
+        .ok()
+        .flatten();
 
-    // If we're not in auto mode, which is the mode where the query drives the bounds of the plot,
-    // then we want the bounds of the plots to drive the query!
-    if !is_auto_bounds && let Some((x_min, x_max)) = plot_bounds {
-        time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
-        time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
-    }
+    let view_time_range = view_time_range
+        .map(|range| AbsoluteTimeRange::from_relative_time_range(&range, current_time))
+        // If we don't have an overridden time range, we want to show everything.
+        .unwrap_or(AbsoluteTimeRange::EVERYTHING);
 
-    time_range
+    Ok(view_time_range
+        .intersection(data_time_range)
+        .unwrap_or(AbsoluteTimeRange::EMPTY))
 }
 
 // We have a bunch of raw points, and now we need to group them into individual series.
@@ -89,16 +123,30 @@ pub fn points_to_series(
     series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
-) {
+    visualizer_instruction_id: VisualizerInstructionId,
+) -> Result<(), String> {
     re_tracing::profile_scope!("secondary", &instance_path.to_string());
+
     if points.is_empty() {
-        return;
+        // No values being present is not an error, maybe data comes in later!
+        return Ok(());
+    }
+
+    // Filter out static times if any slipped in.
+    // It's enough to check the first one since an entire column has to be either temporal or static.
+    if let Some(first) = points.first()
+        && first.time == re_log_types::TimeInt::STATIC.as_i64()
+    {
+        return Err("Can't plot data that was logged statically in a time series since there's no temporal dimension.".to_owned());
     }
 
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
     let min_time = store
         .entity_min_time(&query.timeline, &instance_path.entity_path)
-        .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+        .map_or_else(
+            || points.first().map_or(0, |p| p.time),
+            |time| time.as_i64(),
+        );
 
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter
@@ -109,7 +157,6 @@ pub fn points_to_series(
 
         all_series.push(PlotSeries {
             visible,
-            id: egui::Id::new(&instance_path),
             label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
@@ -119,6 +166,7 @@ pub fn points_to_series(
             aggregator,
             aggregation_factor,
             min_time,
+            visualizer_instruction_id,
         });
     } else {
         add_series_runs(
@@ -130,8 +178,11 @@ pub fn points_to_series(
             aggregation_factor,
             min_time,
             all_series,
+            visualizer_instruction_id,
         );
     }
+
+    Ok(())
 }
 
 /// Apply the given aggregation to the provided points.
@@ -162,7 +213,6 @@ pub fn apply_aggregation(
     let points = if should_aggregate {
         re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
-        #[allow(clippy::match_same_arms)] // readability
         match aggregator {
             AggregationPolicy::Off => points,
             AggregationPolicy::Average => {
@@ -201,7 +251,7 @@ pub fn apply_aggregation(
 }
 
 #[expect(clippy::too_many_arguments)]
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
     visible: bool,
@@ -212,16 +262,14 @@ fn add_series_runs(
     aggregation_factor: f64,
     min_time: i64,
     all_series: &mut Vec<PlotSeries>,
+    visualizer_instruction_id: VisualizerInstructionId,
 ) {
     re_tracing::profile_function!();
-
-    let id = egui::Id::new(&instance_path);
 
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
         visible,
-        id,
         label: series_label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
@@ -231,9 +279,11 @@ fn add_series_runs(
         aggregator,
         aggregation_factor,
         min_time,
+        visualizer_instruction_id,
     };
 
     for (i, p) in points.into_iter().enumerate() {
+        #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
 
@@ -247,7 +297,6 @@ fn add_series_runs(
                 &mut series,
                 PlotSeries {
                     visible,
-                    id,
                     label: series_label.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
@@ -257,13 +306,14 @@ fn add_series_runs(
                     aggregator,
                     aggregation_factor,
                     min_time,
+                    visualizer_instruction_id,
                 },
             );
 
             let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
             let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
 
-            #[allow(clippy::unwrap_used)] // prev_series.points can't be empty here
+            #[expect(clippy::unwrap_used)] // prev_series.points can't be empty here
             let prev_point = *prev_series.points.last().unwrap();
             all_series.push(prev_series);
 

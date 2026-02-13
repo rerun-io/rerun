@@ -1,0 +1,73 @@
+# serializer version: 1
+# name: test_entry_names_with_hidden
+  list([
+    '__bp_***',
+    'test_dataset',
+  ])
+# ---
+# name: test_entry_names_with_hidden.1
+  list([
+    '__entries',
+    'test_table',
+  ])
+# ---
+# name: test_entry_names_with_hidden.2
+  list([
+    '__bp_***',
+    '__entries',
+    'test_dataset',
+    'test_table',
+  ])
+# ---
+# name: test_entry_names_without_hidden
+  list([
+    'test_dataset',
+  ])
+# ---
+# name: test_entry_names_without_hidden.1
+  list([
+    'test_table',
+  ])
+# ---
+# name: test_entry_names_without_hidden.2
+  list([
+    'test_dataset',
+    'test_table',
+  ])
+# ---
+# name: test_entries_with_hidden
+  list([
+    '__bp_***',
+    'test_dataset',
+  ])
+# ---
+# name: test_entries_with_hidden.1
+  list([
+    '__entries',
+    'test_table',
+  ])
+# ---
+# name: test_entries_with_hidden.2
+  list([
+    '__bp_***',
+    '__entries',
+    'test_dataset',
+    'test_table',
+  ])
+# ---
+# name: test_entries_without_hidden
+  list([
+    'test_dataset',
+  ])
+# ---
+# name: test_entries_without_hidden.1
+  list([
+    'test_table',
+  ])
+# ---
+# name: test_entries_without_hidden.2
+  list([
+    'test_dataset',
+    'test_table',
+  ])
+# ---

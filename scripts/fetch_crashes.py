@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from collections import defaultdict
 from typing import Any
 
@@ -112,7 +113,7 @@ for event in ["crash-panic", "crash-signal"]:
 
     if response.status_code != 200:
         print("Request failed with status code:", response.status_code)
-        exit(1)
+        sys.exit(1)
 
     results += response.json()["results"]
 
@@ -163,7 +164,7 @@ for backtrace, props in backtrace_list:
         "\n"
         "Backtrace:\n"
         "```\n"
-        f"   {backtrace.decode('utf-8')}\n"
+        f"   {backtrace}\n"
         "```\n"
         "-------------------------------------------------------------------------------\n",
     )

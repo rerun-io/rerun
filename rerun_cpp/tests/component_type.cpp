@@ -21,14 +21,14 @@ SCENARIO("Component type registration" TEST_TAG) {
         }
     }
 
-    GIVEN("A component type with a null name") {
+    GIVEN("A component type with an empty name") {
         rerun::ComponentType type(std::string_view(), arrow::float64());
 
         WHEN("it is registered") {
             auto result = type.register_component();
 
-            THEN("it fails with UnexpectedNullArgument") {
-                CHECK(result.error.code == rerun::ErrorCode::UnexpectedNullArgument);
+            THEN("it fails with InvalidStringArgument") {
+                CHECK(result.error.code == rerun::ErrorCode::InvalidStringArgument);
             }
         }
     }

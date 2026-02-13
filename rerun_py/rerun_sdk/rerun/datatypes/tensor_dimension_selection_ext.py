@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from .tensor_dimension_selection import TensorDimensionSelectionArrayLike
 
 
@@ -40,7 +41,7 @@ class TensorDimensionSelectionExt:
             data = [TensorDimensionSelection(dimension=x) for x in range(data)]
         elif isinstance(data, int):
             data = [TensorDimensionSelection(dimension=data)]
-        data = cast(Sequence[TensorDimensionSelection], data)
+        data = cast("Sequence[TensorDimensionSelection]", data)
 
         return pa.StructArray.from_arrays(
             [

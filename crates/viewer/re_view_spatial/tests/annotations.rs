@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -17,10 +17,22 @@ pub fn test_annotations() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::AnnotationContext::new([
-                    (0, "black", re_types::datatypes::Rgba32::from_rgb(0, 0, 0)),
-                    (1, "red", re_types::datatypes::Rgba32::from_rgb(255, 0, 0)),
-                    (2, "green", re_types::datatypes::Rgba32::from_rgb(0, 255, 0)),
+                &re_sdk_types::archetypes::AnnotationContext::new([
+                    (
+                        0,
+                        "black",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 0),
+                    ),
+                    (
+                        1,
+                        "red",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(255, 0, 0),
+                    ),
+                    (
+                        2,
+                        "green",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 255, 0),
+                    ),
                 ]),
             )
         });
@@ -30,7 +42,7 @@ pub fn test_annotations() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Boxes2D::from_mins_and_sizes(
+                &re_sdk_types::archetypes::Boxes2D::from_mins_and_sizes(
                     [(200.0, 50.0), (75.0, 150.0)],
                     [(30.0, 30.0), (20.0, 20.0)],
                 )
@@ -46,7 +58,7 @@ pub fn test_annotations() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::SegmentationImage::try_from(image)
+                &re_sdk_types::archetypes::SegmentationImage::try_from(image)
                     .unwrap()
                     .with_draw_order(0.0),
             )
@@ -59,7 +71,7 @@ pub fn test_annotations() {
         ))
     });
     run_view_ui_and_save_snapshot(
-        &mut test_context,
+        &test_context,
         view_id,
         "annotations",
         // We need quite a bunch of pixels to be able to stack the double hover pop-ups.
@@ -79,14 +91,13 @@ fn get_test_context() -> TestContext {
 }
 
 fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
+    test_context: &TestContext,
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
+        .setup_kittest_for_rendering_3d(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -148,10 +159,7 @@ fn run_view_ui_and_save_snapshot(
                 .push(egui::Event::PointerMoved((175.0, 450.).into()));
             harness.run();
 
-            harness.snapshot_options(
-                &name,
-                &SnapshotOptions::new().failed_pixel_count_threshold(1),
-            );
+            harness.snapshot(&name);
         }
 
         {

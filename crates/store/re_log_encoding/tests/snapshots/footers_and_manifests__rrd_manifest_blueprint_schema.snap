@@ -1,0 +1,41 @@
+---
+source: crates/store/re_log_encoding/tests/footers_and_manifests.rs
+expression: rrd_manifest_blueprint_sequential.data.format_schema_snapshot()
+---
+TimePanelBlueprint:fps:has_static_data: bool [
+    rerun:archetype: "rerun.blueprint.archetypes.TimePanelBlueprint"
+    rerun:component: "TimePanelBlueprint:fps"
+    rerun:component_type: "rerun.blueprint.components.Fps"
+    rerun:index: "rerun:static"
+]
+chunk_byte_offset: u64
+chunk_byte_size: u64
+chunk_byte_size_uncompressed: u64
+chunk_entity_path: Utf8
+chunk_id: FixedSizeBinary[16]
+chunk_is_static: bool
+chunk_num_rows: u64
+frame_nr:TimePanelBlueprint:fps:end: nullable i64 [
+    rerun:archetype: "rerun.blueprint.archetypes.TimePanelBlueprint"
+    rerun:component: "TimePanelBlueprint:fps"
+    rerun:component_type: "rerun.blueprint.components.Fps"
+    rerun:index: "frame_nr"
+]
+frame_nr:TimePanelBlueprint:fps:num_rows: nullable u64 [
+    rerun:archetype: "rerun.blueprint.archetypes.TimePanelBlueprint"
+    rerun:component: "TimePanelBlueprint:fps"
+    rerun:component_type: "rerun.blueprint.components.Fps"
+    rerun:index: "frame_nr"
+]
+frame_nr:TimePanelBlueprint:fps:start: nullable i64 [
+    rerun:archetype: "rerun.blueprint.archetypes.TimePanelBlueprint"
+    rerun:component: "TimePanelBlueprint:fps"
+    rerun:component_type: "rerun.blueprint.components.Fps"
+    rerun:index: "frame_nr"
+]
+frame_nr:end: nullable i64 [
+    rerun:index: "frame_nr"
+]
+frame_nr:start: nullable i64 [
+    rerun:index: "frame_nr"
+]

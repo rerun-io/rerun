@@ -4,6 +4,20 @@ package rerun.log_msg.v1alpha1;
 
 import "rerun/v1alpha1/common.proto";
 
+// There are 3 different `LogMsg`-related types that you will very often encounter: `re_log_types::LogMsg`,
+// `re_protos::log_msg::v1alpha1::LogMsg` and `re_protos::log_msg::v1alpha1::log_msg::Msg`.
+//
+// Mixing them up is a common source of pain and confusion, so let's go over what each does:
+// * `re_log_types::LogMsg` is the application-level type that we use all across the viewer
+//   codebase. It can be obtained by calling `to_application()` on one of the transport-level
+//   `LogMsg` types which, among many other things, will perform Chunk/Sorbet-level migrations.
+//   `re_log_types::LogMsg` isn't used in Redap, where everything is done at the transport-level, always.
+// * `re_protos::log_msg::v1alpha1::LogMsg` is the transport-level definition of `LogMsg`. It is an
+//   artifact of how `oneof` works in Protobuf: all it does is carry a `re_protos::log_msg::v1alpha1::log_msg::Msg`.
+//   For that reason, it is never directly used, except by the legacy SDK comms protocol.
+// * Finally, `re_protos::log_msg::v1alpha1::log_msg::Msg` is the real transport-level type that we
+//   care about. It is used all over the place when encoding and decoding RRD streams.
+//
 // TODO(#8631): Remove `LogMsg`
 message LogMsg {
   oneof msg {
@@ -27,17 +41,6 @@ message SetStoreInfo {
   StoreInfo info = 2;
 }
 
-// The type of compression used on the payload.
-enum Compression {
-  COMPRESSION_UNSPECIFIED = 0;
-
-  // No compression.
-  COMPRESSION_NONE = 1;
-
-  // LZ4 block compression.
-  COMPRESSION_LZ4 = 2;
-}
-
 // The encoding of the message payload.
 enum Encoding {
   // We don't know what encoding the payload is in.
@@ -56,15 +59,18 @@ message ArrowMsg {
   optional rerun.common.v1alpha1.Tuid chunk_id = 6;
 
   // Compression algorithm used.
-  Compression compression = 2;
+  rerun.common.v1alpha1.Compression compression = 2;
 
-  int32 uncompressed_size = 3;
+  uint64 uncompressed_size = 3;
 
   // Encoding of the payload.
   Encoding encoding = 4;
 
   // Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
   bytes payload = 5;
+
+  // If true, this is guaranteed to be a chunk containing only static data.
+  optional bool is_static = 7;
 }
 
 // Corresponds to `LogMsg::BlueprintActivationCommand`.
@@ -209,4 +215,63 @@ message StoreVersion {
   //
   // See `CrateVersion` in `re_build_info`.
   int32 crate_version_bits = 1;
+}
+
+// This is the payload that is carried in messages of type `::End` in RRD streams.
+//
+// It keeps track of various useful information about the associated recording.
+//
+// During normal operations, there can only be a single `::End` message in an RRD stream, and
+// therefore a single `RrdFooter`.
+// It is possible to break that invariant by concatenating streams using external tools,
+// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
+// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd merge > all_my_recordings.rrd`,
+// would once again guarantee that only one `::End` message is present though.
+// I.e. that invariant holds as long as one stays within our ecosystem of tools.
+//
+// This is a transport-level type, the associated application-level type can be found
+// in `re_log_encoding::RrdFooter`.
+message RrdFooter {
+  // All the `RrdManifest`s that were found in this RRD stream.
+  //
+  // Each `RrdManifest` corresponds to one, and exactly one, recording.
+  //
+  // The order is unspecified.
+  repeated RrdManifest manifests = 1;
+}
+
+// This is the payload found in `RrdFooter`s.
+//
+// Each `RrdManifest` corresponds to one, and exactly one, RRD stream (i.e. recording).
+// This restriction exists to make working with multiple RRD streams much simpler: due to the way
+// the Rerun data model works, filtering rows of data from a manifest can have hard-to-predict
+// second order effects on the schema of the stream as a whole.
+// By keeping manifests for different recordings separate, we remove the need to filter per
+// recording ID, greatly simplifying the process.
+//
+// This is a transport-level type, the associated application-level type can be found
+// in `re_log_encoding::RrdManifest`.
+message RrdManifest {
+  // The recording ID that was used to identify the original recording.
+  //
+  // This is extracted from the `SetStoreInfo` message of the associated RRD stream.
+  rerun.common.v1alpha1.StoreId store_id = 1;
+
+  // The Sorbet schema of the associated RRD stream.
+  //
+  // ⚠️ This is the Sorbet schema of the recording being indexed by this manifest, *not* the
+  // schema of `Self::manifest`.
+  rerun.common.v1alpha1.Schema sorbet_schema = 2;
+
+  // The SHA256 hash of the Sorbet schema of the associated RRD stream.
+  //
+  // This is always computed by sorting the fields of the schema by name first.
+  optional bytes sorbet_schema_sha256 = 3;
+
+  // The complete manifest for the associated RRD stream.
+  //
+  // Each row in this dataframe describes a unique chunk (ID, offset, size, timeline & component stats, etc).
+  // This can be used to compute relevancy queries (latest-at, range, dataframe), without needing to load
+  // any of the actual data in memory.
+  rerun.common.v1alpha1.DataframePart data = 4;
 }

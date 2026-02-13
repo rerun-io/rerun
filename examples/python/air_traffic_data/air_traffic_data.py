@@ -367,6 +367,9 @@ class MeasurementBatchLogger:
         entity_path = f"aircraft/{icao_id}"
         df = df["timestamp", "ground_status"].drop_nulls()
 
+        if df.height == 0:
+            return
+
         timestamps = rr.TimeColumn("unix_time", timestamp=df["timestamp"].to_numpy())
         columns = rr.AnyValues.columns(ground_status=df["ground_status"].to_numpy())
 
@@ -375,6 +378,9 @@ class MeasurementBatchLogger:
     def log_metadata(self, df: polars.DataFrame, icao_id: str) -> None:
         entity_path = f"aircraft/{icao_id}"
         df = df["timestamp", "course", "ground_speed", "vertical_speed"].drop_nulls()
+
+        if df.height == 0:
+            return
 
         metadata = rr.AnyValues.columns(
             course=df["course"].to_numpy(),

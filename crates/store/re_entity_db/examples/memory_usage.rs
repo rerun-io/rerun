@@ -1,7 +1,8 @@
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+// TODO(#3408): remove unwrap()
+#![expect(clippy::unwrap_used)]
 
-use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 
 thread_local! {
     static LIVE_BYTES_IN_THREAD: AtomicUsize = const { AtomicUsize::new(0) };
@@ -16,11 +17,10 @@ static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
     allocator: std::alloc::System,
 };
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 // SAFETY:
 // We just do book-keeping and then let another allocator do all the actual work.
 unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
-    #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
         LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_add(layout.size(), Relaxed));
 
@@ -52,10 +52,8 @@ fn live_bytes() -> usize {
 // ----------------------------------------------------------------------------
 
 use re_chunk::{Chunk, RowId};
-use re_log_types::{
-    StoreId, StoreKind, entity_path,
-    example_components::{MyPoint, MyPoints},
-};
+use re_log_types::example_components::{MyPoint, MyPoints};
+use re_log_types::{StoreId, StoreKind, entity_path};
 
 fn main() {
     log_messages();
@@ -69,8 +67,8 @@ fn log_messages() {
 
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
-        let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-        re_log_encoding::encoder::encode_ref(
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+        re_log_encoding::Encoder::encode_into(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
             std::iter::once(log_msg).map(Ok),
@@ -81,8 +79,7 @@ fn log_messages() {
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
-        let mut messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
-            .unwrap()
+        let mut messages = re_log_encoding::Decoder::decode_lazy(&mut bytes)
             .collect::<Result<Vec<LogMsg>, _>>()
             .unwrap();
         assert!(bytes.is_empty());

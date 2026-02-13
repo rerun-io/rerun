@@ -1,0 +1,164 @@
+---
+source: crates/store/re_tf/src/transform_forest.rs
+expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
+---
+[
+    (
+        tf#/,
+        Ok(
+            TreeTransform {
+                root: tf#/,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            0.002,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: DVec3(
+                            0.0,
+                            0.004,
+                            0.0,
+                        ),
+                        z_axis: DVec3(
+                            0.0,
+                            0.0,
+                            0.003,
+                        ),
+                    },
+                    translation: DVec3(
+                        49.998,
+                        100.0,
+                        -1.5,
+                    ),
+                },
+            },
+        ),
+    ),
+    (
+        tf#/top,
+        Ok(
+            TreeTransform {
+                root: tf#/,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            0.002,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: DVec3(
+                            0.0,
+                            0.004,
+                            0.0,
+                        ),
+                        z_axis: DVec3(
+                            0.0,
+                            0.0,
+                            0.003,
+                        ),
+                    },
+                    translation: DVec3(
+                        50.0,
+                        100.0,
+                        -1.5,
+                    ),
+                },
+            },
+        ),
+    ),
+    (
+        tf#/top/pinhole,
+        Err(
+            NoPathBetweenFrames {
+                target: tf#/top/pure_leaf_pinhole,
+                src: tf#/top/pinhole,
+                target_root: tf#/top/pure_leaf_pinhole,
+                source_root: tf#/top/pinhole,
+            },
+        ),
+    ),
+    (
+        tf#/top/child3d,
+        Ok(
+            TreeTransform {
+                root: tf#/,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            0.002,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: DVec3(
+                            0.0,
+                            0.004,
+                            0.0,
+                        ),
+                        z_axis: DVec3(
+                            0.0,
+                            0.0,
+                            0.003,
+                        ),
+                    },
+                    translation: DVec3(
+                        50.0,
+                        100.0,
+                        -1.497,
+                    ),
+                },
+            },
+        ),
+    ),
+    (
+        TransformFrameIdHash(D01893A02DC02A5F),
+        Err(
+            UnknownSourceFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
+    (
+        tf#/top/pinhole/child2d,
+        Err(
+            NoPathBetweenFrames {
+                target: tf#/top/pure_leaf_pinhole,
+                src: tf#/top/pinhole/child2d,
+                target_root: tf#/top/pure_leaf_pinhole,
+                source_root: tf#/top/pinhole,
+            },
+        ),
+    ),
+    (
+        tf#/top/pure_leaf_pinhole,
+        Ok(
+            TreeTransform {
+                root: tf#/top/pure_leaf_pinhole,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            1.0,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: DVec3(
+                            0.0,
+                            1.0,
+                            0.0,
+                        ),
+                        z_axis: DVec3(
+                            0.0,
+                            0.0,
+                            1.0,
+                        ),
+                    },
+                    translation: DVec3(
+                        0.0,
+                        0.0,
+                        0.0,
+                    ),
+                },
+            },
+        ),
+    ),
+]

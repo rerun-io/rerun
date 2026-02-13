@@ -11,14 +11,14 @@ Overview
 --------------------------
 ![screenshot of the Viewer with different parts annotated](https://static.rerun.io/a5e708e4bbd2c0b182f7f9103ab42c85e55f8982_viewer-overview.png)
 
-### [Blueprint](blueprint.md)
+### [Blueprint](blueprints.md)
 The Blueprint view is where you see and edit the Blueprint for the whole viewer, i.e. what is shown in the Viewer (and how it is shown).
 
 ### [Selection](selection.md)
 The Selection view let's you see details and edit configurations of the current selection(s).
 
 ### [Timeline](timeline.md)
-The timeline panel gives you controls over what point in time you're looking at on which [timeline](../../concepts/timelines.md) for the rest of the viewer.
+The timeline panel gives you controls over what point in time you're looking at on which [timeline](../../concepts/logging-and-ingestion/timelines.md) for the rest of the viewer.
 Additionally, it gives you an overview of all events on a given timeline.
 
 ### [Viewport](viewport.md)

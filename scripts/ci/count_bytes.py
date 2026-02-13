@@ -9,10 +9,10 @@ Use the script:
     python3 scripts/ci/count_bytes.py --help
 
     python3 scripts/ci/count_bytes.py \
-        "Wasm":web_viewer/re_viewer_bg.wasm
+        "Wasm":crates/viewer/re_web_viewer_server/web_viewer/re_viewer_bg.wasm
 
     python3 scripts/ci/count_bytes.py --format=github \
-        "Wasm":web_viewer/re_viewer_bg.wasm
+        "Wasm":crates/viewer/re_web_viewer_server/web_viewer/re_viewer_bg.wasm
 """
 
 from __future__ import annotations
@@ -51,26 +51,28 @@ def get_divisor(unit: str) -> int:
 
 def render_table_dict(data: list[dict[str, str]]) -> str:
     keys = data[0].keys()
-    column_widths = [max(len(key), max(len(str(row[key])) for row in data)) for key in keys]
+    column_widths = [max(len(key), *(len(str(row[key])) for row in data)) for key in keys]
     separator = "|" + "|".join("-" * (width + 2) for width in column_widths)
-    header_row = "|".join(f" {key.center(width)} " for key, width in zip(keys, column_widths))
+    header_row = "|".join(f" {key.center(width)} " for key, width in zip(keys, column_widths, strict=False))
 
     table = f"|{header_row}|\n{separator}|\n"
     for row in data:
-        row_str = "|".join(f" {str(row.get(key, '')).ljust(width)} " for key, width in zip(keys, column_widths))
+        row_str = "|".join(
+            f" {str(row.get(key, '')).ljust(width)} " for key, width in zip(keys, column_widths, strict=False)
+        )
         table += f"|{row_str}|\n"
 
     return table
 
 
 def render_table_rows(rows: list[Any], headers: list[str]) -> str:
-    column_widths = [max(len(str(item)) for item in col) for col in zip(*([tuple(headers)] + rows))]
+    column_widths = [max(len(str(item)) for item in col) for col in zip(*([tuple(headers), *rows]), strict=False)]
     separator = "|" + "|".join("-" * (width + 2) for width in column_widths)
-    header_row = "|".join(f" {header.center(width)} " for header, width in zip(headers, column_widths))
+    header_row = "|".join(f" {header.center(width)} " for header, width in zip(headers, column_widths, strict=False))
 
     table = f"|{header_row}|\n{separator}|\n"
     for row in rows:
-        row_str = "|".join(f" {str(item).ljust(width)} " for item, width in zip(row, column_widths))
+        row_str = "|".join(f" {str(item).ljust(width)} " for item, width in zip(row, column_widths, strict=False))
         table += f"|{row_str}|\n"
 
     return table

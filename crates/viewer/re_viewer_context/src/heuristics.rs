@@ -1,9 +1,8 @@
-use crate::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, RecommendedView, ViewClass,
-    ViewSpawnHeuristics, ViewerContext, VisualizerSystem,
-};
-
 use re_log_types::EntityPath;
+
+use crate::{
+    IdentifiedViewSystem, RecommendedView, ViewSpawnHeuristics, ViewerContext, VisualizerSystem,
+};
 
 /// Spawns a view for each single entity which is visualizable & indicator-matching for a given visualizer.
 ///
@@ -11,7 +10,6 @@ use re_log_types::EntityPath;
 /// to spawn a view for every single entity that is visualizable with a given visualizer.
 pub fn suggest_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
-    view: &dyn ViewClass,
     include_entity: &dyn Fn(&EntityPath) -> bool,
 ) -> ViewSpawnHeuristics
 where
@@ -25,26 +23,18 @@ where
     else {
         return ViewSpawnHeuristics::empty();
     };
-    let Some(maybe_visualizable_entities) = ctx
-        .maybe_visualizable_entities_per_visualizer
+    let Some(visualizable_entities) = ctx
+        .visualizable_entities_per_visualizer
         .get(&TVisualizer::identifier())
     else {
         return ViewSpawnHeuristics::empty();
     };
 
-    let visualizer = TVisualizer::default();
-    let recommended_views = maybe_visualizable_entities
-        .intersection(indicator_matching_entities)
+    let recommended_views = indicator_matching_entities
+        .iter()
+        .filter(|entity| visualizable_entities.contains_key(entity))
         .filter_map(|entity| {
-            let context = view.visualizable_filter_context(entity, ctx.recording());
-            if !visualizer
-                .filter_visualizable_entities(
-                    MaybeVisualizableEntities(std::iter::once(entity.clone()).collect()),
-                    context.as_ref(),
-                )
-                .is_empty()
-                && include_entity(entity)
-            {
+            if include_entity(entity) {
                 Some(RecommendedView::new_single_entity(entity.clone()))
             } else {
                 None

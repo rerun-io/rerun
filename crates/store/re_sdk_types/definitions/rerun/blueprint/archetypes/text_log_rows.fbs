@@ -1,0 +1,16 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration of the text log rows.
+table TextLogRows (
+  "attr.rerun.scope": "blueprint"
+) {
+  // --- Optional ---
+
+  /// Log levels to display.
+  ///
+  /// Defaults to showing all logged levels.
+  filter_by_log_level: [rerun.components.TextLogLevel] ("attr.rerun.component_optional", nullable, order: 100);
+}
+
+

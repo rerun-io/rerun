@@ -12,6 +12,9 @@ pub struct TimeCell {
     pub value: NonMinI64,
 }
 
+// We shouldn't implement display for this as it's too ambiguous, instead create specific functions.
+static_assertions::assert_not_impl_any!(TimeCell: std::fmt::Display);
+
 impl TimeCell {
     pub const ZERO_DURATION: Self = Self {
         typ: TimeType::DurationNs,
@@ -174,14 +177,30 @@ impl TimeCell {
             TimeType::Sequence => typ.format(value, timestamp_format),
         }
     }
-}
 
-impl std::fmt::Display for TimeCell {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn format(&self, timestamp_format: super::TimestampFormat) -> String {
+        let Self { typ, value } = *self;
+
+        match typ {
+            TimeType::DurationNs => {
+                crate::Duration::from_nanos(value.into()).format_subsecond_as_relative()
+            }
+
+            TimeType::TimestampNs => {
+                crate::Timestamp::from_nanos_since_epoch(value.into()).format(timestamp_format)
+            }
+
+            TimeType::Sequence => typ.format(value, timestamp_format),
+        }
+    }
+
+    /// Special format which avoids forbidden & special characters in a url.
+    pub fn format_url(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use std::fmt::Display as _;
         match self.typ {
             // NOTE: we avoid special characters here so we can put these formats in an URI
             TimeType::Sequence => write!(f, "{}", self.value),
-            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).fmt(f),
+            TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).format_url(f),
             TimeType::TimestampNs => crate::Timestamp::from_nanos_since_epoch(self.value.get())
                 .format_iso()
                 .fmt(f),
@@ -216,22 +235,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_iso_format_and_parse() {
-        assert_eq!(
-            "1234".parse::<TimeCell>().unwrap(),
-            TimeCell::from_sequence(1234)
-        );
+    fn test_time_cell_format_and_parse() {
+        let test_cases = [
+            ("1234", TimeCell::from_sequence(1234)),
+            ("10.134567s", TimeCell::from_duration_nanos(10_134_567_000)),
+            (
+                "2022-01-01T00:00:03.123456789Z",
+                TimeCell::from_timestamp_nanos_since_epoch(1_640_995_203_123_456_789),
+            ),
+        ];
 
-        assert_eq!(
-            "10.134567s".parse::<TimeCell>().unwrap(),
-            TimeCell::from_duration_nanos(10_134_567_000)
-        );
+        struct UrlFormat(TimeCell);
 
-        assert_eq!(
-            "2022-01-01T00:00:03.123456789Z"
-                .parse::<TimeCell>()
-                .unwrap(),
-            TimeCell::from_timestamp_nanos_since_epoch(1_640_995_203_123_456_789)
-        );
+        impl std::fmt::Display for UrlFormat {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.format_url(f)
+            }
+        }
+
+        for (string, cell) in test_cases {
+            assert_eq!(TimeCell::from_str(string).unwrap(), cell);
+            assert_eq!(
+                TimeCell::from_str(&UrlFormat(cell).to_string()).unwrap(),
+                cell
+            );
+        }
     }
 }

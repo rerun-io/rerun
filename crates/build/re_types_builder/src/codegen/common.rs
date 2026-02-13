@@ -157,7 +157,7 @@ impl<'a> ImageStack<'a> {
 
     /// Set the snippet ID.
     ///
-    /// If set, the resulting `<picture>` element will have the `data-inline-viewr`
+    /// If set, the resulting `<picture>` element will have the `data-inline-viewer`
     /// attribute set with the value of this ID.
     /// `data-inline-viewer` is not set for `<img>` elements.
     #[inline]

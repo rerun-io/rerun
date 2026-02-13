@@ -50,6 +50,9 @@ pub struct BuildInfo {
     ///
     /// Empty if unknown.
     pub datetime: Cow<'static, str>,
+
+    /// True if this is a debug build.
+    pub is_debug_build: bool,
 }
 
 impl BuildInfo {
@@ -88,6 +91,7 @@ impl std::fmt::Display for BuildInfo {
             is_in_rerun_workspace: _,
             target_triple,
             datetime,
+            is_debug_build,
         } = self;
 
         let rustc_version = (!rustc_version.is_empty()).then(|| format!("rustc {rustc_version}"));
@@ -123,7 +127,7 @@ impl std::fmt::Display for BuildInfo {
             write!(f, ", built {datetime}")?;
         }
 
-        if cfg!(debug_assertions) {
+        if *is_debug_build {
             write!(f, " (debug)")?;
         }
 
@@ -177,6 +181,7 @@ fn crate_version_from_build_info_string() {
         is_in_rerun_workspace: true,
         target_triple: "x86_64-unknown-linux-gnu".into(),
         datetime: "".into(),
+        is_debug_build: true,
     };
 
     let build_info_str = build_info.to_string();

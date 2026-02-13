@@ -1,0 +1,14 @@
+
+namespace rerun.blueprint.components;
+
+/// A timeline identified by its name.
+table TimelineName (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    value: rerun.datatypes.Utf8 (order: 100);
+}

@@ -1,12 +1,11 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use arrow::{
-    array::{
-        ArrayRef as ArrowArrayRef, AsArray as _, RecordBatch as ArrowRecordBatch,
-        RecordBatchOptions as ArrowRecordBatchOptions,
-    },
-    datatypes::{Field as ArrowField, FieldRef as ArrowFieldRef, Schema as ArrowSchema},
+use arrow::array::{
+    ArrayRef as ArrowArrayRef, AsArray as _, RecordBatch as ArrowRecordBatch,
+    RecordBatchOptions as ArrowRecordBatchOptions,
 };
+use arrow::datatypes::{Field as ArrowField, FieldRef as ArrowFieldRef, Schema as ArrowSchema};
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 use re_tuid::Tuid;

@@ -1,0 +1,11 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+blob: [[0]]
+media_type: [application/octet-stream]
+meter: [1.0]
+colormap: [5]
+depth_range: [[0.0, 1.7976931348623157e308]]
+point_fill_ratio: [1.0]
+draw_order: [-20.0]

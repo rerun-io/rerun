@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::io::{self, ErrorKind};
+
+use serde::{Deserialize, Serialize};
 
 /// Messages that can be sent between the client and server.
 #[derive(Serialize, Deserialize, Debug, Clone)]

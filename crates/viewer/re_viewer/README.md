@@ -11,4 +11,4 @@ This is the main crate with all the GUI.
 
 This can be compiled as a web-app by building for Wasm. To run it natively, use the `rerun` binary.
 
-Talks to the server over gRPC (using `re_grpc_client`).
+Talks to the server over gRPC (using `re_redap_client`).

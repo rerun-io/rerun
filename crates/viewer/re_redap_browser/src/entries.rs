@@ -4,119 +4,21 @@ use std::task::Poll;
 
 use ahash::HashMap;
 use datafusion::catalog::TableProvider;
-use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
-
-use re_dataframe_ui::RequestedObject;
-use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistryHandle, StreamError};
-use re_log_encoding::codec::CodecError;
+use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
+use re_datafusion::{SegmentTableProvider, TableEntryTableProvider};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
-use re_protos::catalog::v1alpha1::ext::{EntryDetails, TableEntry};
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest, ext::DatasetEntry};
+use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::external::prost;
-use re_protos::external::prost::Name as _;
-use re_sorbet::SorbetError;
+use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
 
-pub type EntryResult<T> = Result<T, EntryError>;
-
-#[expect(clippy::enum_variant_names)]
-#[derive(Debug, thiserror::Error)]
-pub enum EntryError {
-    /// You usually want to use [`EntryError::tonic_status`] instead
-    /// (there are multiple variants holding [`tonic::Status`]).
-    #[error(transparent)]
-    TonicError(Box<tonic::Status>),
-
-    #[error(transparent)]
-    ConnectionError(#[from] ConnectionError),
-
-    #[error(transparent)]
-    StreamError(#[from] StreamError),
-
-    #[error(transparent)]
-    TypeConversionError(#[from] TypeConversionError),
-
-    #[error(transparent)]
-    CodecError(#[from] CodecError),
-
-    #[error(transparent)]
-    SorbetError(#[from] SorbetError),
-
-    #[error(transparent)]
-    DataFusionError(Box<DataFusionError>),
-}
-
-const _: () = assert!(
-    std::mem::size_of::<EntryError>() <= 80,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);
-
-impl From<tonic::Status> for EntryError {
-    fn from(status: tonic::Status) -> Self {
-        Self::TonicError(Box::new(status))
-    }
-}
-
-impl From<DataFusionError> for EntryError {
-    fn from(err: DataFusionError) -> Self {
-        Self::DataFusionError(Box::new(err))
-    }
-}
-
-impl EntryError {
-    fn tonic_status(&self) -> Option<&tonic::Status> {
-        // Be explicit here so we don't miss any future variants that might have a `tonic::Status`.
-        match self {
-            Self::TonicError(status) => Some(status.as_ref()),
-            Self::StreamError(StreamError::TonicStatus(status)) => Some(status.as_ref()),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::StreamError(StreamError::Transport(_)) => None,
-            Self::StreamError(
-                StreamError::ConnectionError(_)
-                | StreamError::Tokio(_)
-                | StreamError::CodecError(_)
-                | StreamError::ChunkError(_)
-                | StreamError::DecodeError(_)
-                | StreamError::InvalidUri(_)
-                | StreamError::InvalidSorbetSchema(_)
-                | StreamError::TypeConversionError(_)
-                | StreamError::MissingChunkData
-                | StreamError::MissingDataframeColumn(_)
-                | StreamError::MissingData(_)
-                | StreamError::ArrowError(_),
-            )
-            | Self::ConnectionError(_)
-            | Self::TypeConversionError(_)
-            | Self::CodecError(_)
-            | Self::SorbetError(_)
-            | Self::DataFusionError(_) => None,
-        }
-    }
-
-    pub fn is_missing_token(&self) -> bool {
-        if let Some(status) = self.tonic_status() {
-            status.code() == tonic::Code::Unauthenticated
-                && status.message() == re_auth::ERROR_MESSAGE_MISSING_CREDENTIALS
-        } else {
-            false
-        }
-    }
-
-    pub fn is_wrong_token(&self) -> bool {
-        if let Some(status) = self.tonic_status() {
-            status.code() == tonic::Code::Unauthenticated
-                && status.message() == re_auth::ERROR_MESSAGE_INVALID_CREDENTIALS
-        } else {
-            false
-        }
-    }
-}
+pub type EntryResult<T = ()> = Result<T, ApiError>;
 
 pub struct Dataset {
     pub dataset_entry: DatasetEntry,
@@ -202,8 +104,12 @@ impl Entries {
         origin: re_uri::Origin,
         session_context: Arc<SessionContext>,
     ) -> Self {
-        let entries_fut =
-            fetch_entries_and_register_tables(connection_registry, origin, session_context);
+        let entries_fut = fetch_entries_and_register_tables(
+            connection_registry,
+            origin,
+            session_context,
+            runtime.clone(),
+        );
 
         Self {
             entries: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), entries_fut),
@@ -218,7 +124,7 @@ impl Entries {
         self.entries.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
-    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &EntryError>> {
+    pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &ApiError>> {
         self.entries
             .try_as_ref()
             .map_or(Poll::Pending, |r| match r {
@@ -232,29 +138,23 @@ async fn fetch_entries_and_register_tables(
     connection_registry: ConnectionRegistryHandle,
     origin: re_uri::Origin,
     session_ctx: Arc<SessionContext>,
+    runtime: AsyncRuntimeHandle,
 ) -> EntryResult<HashMap<EntryId, Entry>> {
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
-        .inner()
-        .find_entries(FindEntriesRequest {
-            filter: Some(EntryFilter {
-                id: None,
-                name: None,
-                entry_kind: None,
-            }),
+        .find_entries(EntryFilter {
+            id: None,
+            name: None,
+            entry_kind: None,
         })
-        .await?
-        .into_inner()
-        .entries
-        .into_iter()
-        .map(TryInto::try_into)
-        .collect::<Result<Vec<EntryDetails>, _>>()?;
+        .await?;
 
     let origin_ref = &origin;
+    let runtime_ref = &runtime;
     let futures_iter = entries
         .into_iter()
-        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e));
+        .filter_map(move |e| fetch_entry_details(client.clone(), origin_ref, e, runtime_ref));
 
     let mut entries = HashMap::default();
 
@@ -262,15 +162,22 @@ async fn fetch_entries_and_register_tables(
     while let Some((details, result)) = futures_unordered.next().await {
         let id = details.id;
         let inner_result = result.map(|(inner, provider)| {
-            session_ctx.register_table(&details.name, provider).ok();
+            // Create cached provider that reads from the raw table
+            let cached_provider = StreamingCacheTableProvider::new(provider, runtime.clone());
+
+            // Register cached provider with original name (in default schema)
+            session_ctx
+                .register_table(&details.name, Arc::new(cached_provider))
+                .ok();
+
             inner
         });
 
         let is_system_table = match &inner_result {
-            Ok(EntryInner::Table(table)) => {
-                table.table_entry.provider_details.type_url
-                    == re_protos::catalog::v1alpha1::SystemTable::type_url()
-            }
+            Ok(EntryInner::Table(table)) => matches!(
+                table.table_entry.provider_details,
+                ProviderDetails::SystemTable(_)
+            ),
             Err(_) | Ok(EntryInner::Dataset(_)) => false,
         };
         if !is_system_table {
@@ -296,6 +203,7 @@ fn fetch_entry_details(
     client: ConnectionClient,
     origin: &re_uri::Origin,
     entry: EntryDetails,
+    runtime: &AsyncRuntimeHandle,
 ) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
     // We could also box the future but then we'd need to use `.boxed()` natively and
     // `.boxed_local()` on wasm. Either passes the `Send` type info transparently.
@@ -312,7 +220,7 @@ fn fetch_entry_details(
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin)
+            fetch_table_details(client, entry.id, origin, runtime)
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -322,9 +230,13 @@ fn fetch_entry_details(
 
         EntryKind::Unspecified => {
             let kind = entry.kind;
+            let err = TypeConversionError::from(prost::UnknownEnumValue(kind as i32));
             Some(Right(future::ready((
                 entry,
-                Err(TypeConversionError::from(prost::UnknownEnumValue(kind as i32)).into()),
+                Err(ApiError::serialization_with_source(
+                    err,
+                    "unknown entry kind",
+                )),
             ))))
         }
     }
@@ -343,26 +255,39 @@ async fn fetch_dataset_details(
             origin: origin.clone(),
         })?;
 
-    let table_provider = PartitionTableProvider::new(client, id)
+    let table_provider = SegmentTableProvider::new(client, id)
         .into_provider()
-        .await?;
+        .await
+        .map_err(|err| {
+            ApiError::internal_with_source(err, "failed creating segment table provider")
+        })?;
 
     Ok((result, table_provider))
 }
 
+#[cfg_attr(target_arch = "wasm32", expect(unused_variables))]
 async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: &re_uri::Origin,
+    runtime: &AsyncRuntimeHandle,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
     let result = client.read_table_entry(id).await.map(|table_entry| Table {
         table_entry,
         origin: origin.clone(),
     })?;
 
-    let table_provider = TableEntryTableProvider::new(client, id)
+    #[cfg(target_arch = "wasm32")]
+    let runtime = None;
+    #[cfg(not(target_arch = "wasm32"))]
+    let runtime = Some(runtime.inner().clone());
+
+    let table_provider = TableEntryTableProvider::new(client, id, runtime)
         .into_provider()
-        .await?;
+        .await
+        .map_err(|err| {
+            ApiError::internal_with_source(err, "failed creating table-entry table provider")
+        })?;
 
     Ok((result, table_provider))
 }

@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub trait WasmNotSend: Send {}
 
@@ -26,6 +28,12 @@ pub enum AsyncRuntimeError {
 pub struct AsyncRuntimeHandle {
     #[cfg(not(target_arch = "wasm32"))]
     tokio: tokio::runtime::Handle,
+}
+
+impl Debug for AsyncRuntimeHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AsyncRuntimeHandle").finish()
+    }
 }
 
 impl AsyncRuntimeHandle {

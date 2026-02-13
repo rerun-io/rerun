@@ -1,6 +1,7 @@
 use re_log_types::Timestamp;
-use re_types::datatypes;
+use re_sdk_types::datatypes;
 use re_ui::UiLayout;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::MaybeMutRef;
 
 pub fn view_timestamp(
@@ -11,6 +12,7 @@ pub fn view_timestamp(
     let value: &datatypes::TimeInt = value;
     UiLayout::List.data_label(
         ui,
-        Timestamp::from(*value).format(ctx.app_options().timestamp_format),
+        SyntaxHighlightedBuilder::new()
+            .with_primitive(&Timestamp::from(*value).format(ctx.app_options().timestamp_format)),
     )
 }

@@ -13,7 +13,7 @@ use crate::{SerializationResult, SerializedComponentBatch};
 ///
 /// Have a look at our [Custom Data Loader] example to learn more about handwritten bundles.
 ///
-/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/store/re_types/definitions/rerun
+/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/store/re_sdk_types/definitions/rerun
 /// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data_loader
 /// [`Component`]: [crate::Component]
 pub trait AsComponents {
@@ -52,7 +52,7 @@ pub trait AsComponents {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn assert_object_safe() {
     let _: &dyn AsComponents;
 }
@@ -126,16 +126,16 @@ impl AsComponents for Vec<Box<dyn AsComponents>> {
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let _ = (&comp as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn single_ascomponents() {}
 
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let _ = (&[comp] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn single_ascomponents_wrapped() {
     // This is non-sense (and more importantly: dangerous): a single component shouldn't be able to
     // autocast straight to a collection of batches.
@@ -145,8 +145,8 @@ fn single_ascomponents_wrapped() {
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let _ = (&[comp, comp, comp] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn single_ascomponents_wrapped_many() {
     // This is non-sense (and more importantly: dangerous): a single component shouldn't be able to
     // autocast straight to a collection of batches.
@@ -157,8 +157,8 @@ fn single_ascomponents_wrapped_many() {
 /// let comps = vec![comp, comp, comp];
 /// let _ = (&comps as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_ascomponents() {}
 
 /// ```compile_fail
@@ -166,8 +166,8 @@ fn many_ascomponents() {}
 /// let comps = vec![comp, comp, comp];
 /// let _ = (&[comps] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_ascomponents_wrapped() {}
 
 /// ```compile_fail
@@ -175,8 +175,8 @@ fn many_ascomponents_wrapped() {}
 /// let comps = vec![comp, comp, comp];
 /// let _ = (&[comps] as &dyn re_types_core::ComponentBatch).to_arrow();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_componentbatch_wrapped() {}
 
 /// ```compile_fail
@@ -184,8 +184,8 @@ fn many_componentbatch_wrapped() {}
 /// let comps = vec![comp, comp, comp];
 /// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::AsComponents).as_serialized_batches();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_ascomponents_wrapped_many() {}
 
 /// ```compile_fail
@@ -193,17 +193,16 @@ fn many_ascomponents_wrapped_many() {}
 /// let comps = vec![comp, comp, comp];
 /// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::ComponentBatch).to_arrow();
 /// ```
-#[allow(dead_code)]
-#[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
+#[expect(dead_code)]
+#[expect(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
 fn many_componentbatch_wrapped_many() {}
 
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
-    use arrow::array::{
-        types::UInt32Type, Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray,
-    };
+    use arrow::array::types::UInt32Type;
+    use arrow::array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray};
     use itertools::Itertools as _;
     use similar_asserts::assert_eq;
 
@@ -268,7 +267,6 @@ mod tests {
         }
     }
 
-    #[allow(dead_code)]
     fn data() -> (MyColor, MyColor, MyColor, Vec<MyColor>) {
         let red = MyColor(0xDD0000FF);
         let green = MyColor(0x00DD00FF);

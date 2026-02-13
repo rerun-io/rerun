@@ -1,12 +1,13 @@
 use itertools::Itertools as _;
+use re_renderer::RenderContext;
+use re_renderer::mesh::GpuMesh;
+use re_sdk_types::components::MediaType;
+use re_sdk_types::datatypes;
+use re_view::clamped_vec_or;
+use re_viewer_context::gpu_bridge::texture_creation_desc_from_color_image;
+use re_viewer_context::{ImageInfo, StoredBlobCacheKey};
 
-use re_renderer::{RenderContext, mesh::GpuMesh};
-use re_types::{components::MediaType, datatypes};
-use re_viewer_context::{
-    ImageInfo, StoredBlobCacheKey, gpu_bridge::texture_creation_desc_from_color_image,
-};
-
-use crate::{mesh_cache::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
+use crate::caches::AnyMesh;
 
 #[derive(Debug, Clone)]
 pub struct NativeAsset3D<'a> {
@@ -52,6 +53,7 @@ impl LoadedMesh {
         mesh: AnyMesh<'_>,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
             AnyMesh::Asset { asset } => Ok(Self::load_asset3d(name, asset, render_ctx)?),
@@ -78,6 +80,7 @@ impl LoadedMesh {
             .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
 
         let mut cpu_model = match media_type.as_str() {
+            MediaType::DAE => re_renderer::importer::dae::load_dae_from_buffer(bytes, render_ctx)?,
             MediaType::GLTF | MediaType::GLB => {
                 re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
             }
@@ -95,13 +98,13 @@ impl LoadedMesh {
             }
         }
 
-        let bbox = cpu_model.calculate_bounding_box();
+        let bbox = cpu_model.bbox;
         let mesh_instances = cpu_model.into_gpu_meshes(render_ctx)?;
 
         Ok(Self {
             name,
-            bbox,
             mesh_instances,
+            bbox,
         })
     }
 
@@ -153,7 +156,7 @@ impl LoadedMesh {
 
         let vertex_normals = if let Some(normals) = vertex_normals {
             re_tracing::profile_scope!("collect_normals");
-            clamped_vec_or(normals, num_positions, &glam::Vec3::ZERO)
+            clamped_vec_or(normals, num_positions, &glam::Vec3::ZERO).into()
         } else {
             // TODO(andreas): Calculate normals
             vec![glam::Vec3::ZERO; num_positions]
@@ -161,7 +164,7 @@ impl LoadedMesh {
 
         let vertex_texcoords = if let Some(texcoords) = vertex_texcoords {
             re_tracing::profile_scope!("collect_texcoords");
-            clamped_vec_or(texcoords, num_positions, &glam::Vec2::ZERO)
+            clamped_vec_or(texcoords, num_positions, &glam::Vec2::ZERO).into()
         } else {
             vec![glam::Vec2::ZERO; num_positions]
         };
@@ -198,6 +201,7 @@ impl LoadedMesh {
                 albedo,
                 albedo_factor: albedo_factor.unwrap_or(datatypes::Rgba32::WHITE).into(),
             }],
+            bbox,
         };
 
         let mesh_instances = vec![re_renderer::renderer::GpuMeshInstance::new(
@@ -206,12 +210,12 @@ impl LoadedMesh {
 
         Ok(Self {
             name,
-            bbox,
             mesh_instances,
+            bbox,
         })
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -240,7 +244,7 @@ fn try_get_or_create_albedo_texture(
         buffer_content_hash: StoredBlobCacheKey::ZERO, // unused
         buffer: albedo_texture_buffer.clone(),         // shallow clone
         format: *albedo_texture_format,
-        kind: re_types::image::ImageKind::Color,
+        kind: re_sdk_types::image::ImageKind::Color,
     };
 
     if re_viewer_context::gpu_bridge::required_shader_decode(

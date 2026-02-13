@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -14,19 +14,19 @@ from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 if TYPE_CHECKING:
     from .. import datatypes
 
-    ImageLike = Union[
-        npt.NDArray[np.float16],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float64],
-        npt.NDArray[np.int16],
-        npt.NDArray[np.int32],
-        npt.NDArray[np.int64],
-        npt.NDArray[np.int8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-        npt.NDArray[np.uint64],
-        npt.NDArray[np.uint8],
-    ]
+    ImageLike = (
+        npt.NDArray[np.float16]
+        | npt.NDArray[np.float32]
+        | npt.NDArray[np.float64]
+        | npt.NDArray[np.int16]
+        | npt.NDArray[np.int32]
+        | npt.NDArray[np.int64]
+        | npt.NDArray[np.int8]
+        | npt.NDArray[np.uint16]
+        | npt.NDArray[np.uint32]
+        | npt.NDArray[np.uint64]
+        | npt.NDArray[np.uint8]
+    )
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
@@ -93,13 +93,15 @@ class Mesh3DExt:
             albedo_texture = _to_numpy(albedo_texture)
 
             if len(albedo_texture.shape) != 3:
-                _send_warning_or_raise("Bad albedo texture shape: {albedo_texture.shape}")
+                _send_warning_or_raise(f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 dimensions")
             else:
                 h = albedo_texture.shape[0]
                 w = albedo_texture.shape[1]
                 c = albedo_texture.shape[2]
                 if c not in (3, 4):
-                    _send_warning_or_raise("Bad albedo texture shape: {albedo_texture.shape}")
+                    _send_warning_or_raise(
+                        f"Bad albedo texture shape: {albedo_texture.shape}, expected 3 or 4 channels"
+                    )
                 else:
                     color_model = ColorModel.RGB if c == 3 else ColorModel.RGBA
                     try:

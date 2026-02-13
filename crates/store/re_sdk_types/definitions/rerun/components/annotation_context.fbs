@@ -1,0 +1,19 @@
+namespace rerun.components;
+
+// ---
+
+/// The annotation context provides additional information on how to display entities.
+///
+/// Entities can use [datatypes.ClassId]s and [datatypes.KeypointId]s to provide annotations, and
+/// the labels and colors will be looked up in the appropriate
+/// annotation context. We use the *first* annotation context we find in the
+/// path-hierarchy when searching up through the ancestors of a given entity
+/// path.
+table AnnotationContext (
+  "attr.python.aliases": "datatypes.ClassDescriptionArrayLike | Sequence[datatypes.ClassDescriptionMapElemLike]",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "Default, Eq, PartialEq"
+) {
+  /// List of class descriptions, mapping class indices to class names, colors etc.
+  class_map: [rerun.datatypes.ClassDescriptionMapElem] (order: 100);
+}

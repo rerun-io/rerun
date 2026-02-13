@@ -1,8 +1,6 @@
 use std::ops::RangeInclusive;
 
 use egui::{NumExt as _, Response};
-
-use re_entity_db::TimeHistogram;
 use re_log_types::{TimeInt, TimeType, TimestampFormat};
 
 /// Drag value widget for editing time values for both sequence and temporal timelines.
@@ -33,10 +31,8 @@ pub struct TimeDragValue {
 }
 
 impl TimeDragValue {
-    pub fn from_time_histogram(times: &TimeHistogram) -> Self {
-        Self::from_time_range(
-            times.min_key().unwrap_or_default()..=times.max_key().unwrap_or_default(),
-        )
+    pub fn from_abs_time_range(times: re_log_types::AbsoluteTimeRange) -> Self {
+        Self::from_time_range(times.min.as_i64()..=times.max.as_i64())
     }
 
     pub fn from_time_range(range: RangeInclusive<i64>) -> Self {
@@ -44,7 +40,7 @@ impl TimeDragValue {
         let base_time = time_range_base_time(*range.start(), span);
         let (unit_symbol, unit_factor) = unit_from_span(span);
 
-        // `abs_range` is used by the DragValue when editing an absolute time, its bound expended to
+        // `abs_range` is used by the DragValue when editing an absolute time, its bound expanded to
         // the nearest unit to minimize glitches.
         let abs_range =
             round_down(*range.start(), unit_factor)..=round_up(*range.end(), unit_factor);
@@ -128,6 +124,7 @@ impl TimeDragValue {
         let mut value_i64 = value.as_i64();
         let response = ui.add(
             egui::DragValue::new(&mut value_i64)
+                .clamp_existing_to_range(false)
                 .range(time_range)
                 .speed(speed),
         );
@@ -193,6 +190,7 @@ impl TimeDragValue {
 
         let drag_value_response = ui.add(
             egui::DragValue::new(&mut time_unit)
+                .clamp_existing_to_range(false)
                 .range(time_range)
                 .speed(speed)
                 .suffix(self.unit_symbol),

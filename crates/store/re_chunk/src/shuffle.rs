@@ -1,9 +1,6 @@
-use arrow::{
-    array::{Array as ArrowArray, ListArray as ArrowListArray},
-    buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer},
-};
+use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
+use arrow::buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer};
 use itertools::Itertools as _;
-
 use re_log_types::TimelineName;
 
 use crate::{Chunk, TimeColumn};
@@ -100,7 +97,7 @@ impl Chunk {
         );
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // dev only
+        #[expect(clippy::unwrap_used)] // dev only
         self.sanity_check().unwrap();
     }
 
@@ -148,7 +145,7 @@ impl Chunk {
         );
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // dev only
+        #[expect(clippy::unwrap_used)] // dev only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -164,7 +161,8 @@ impl Chunk {
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
 
-        use rand::{SeedableRng as _, seq::SliceRandom as _};
+        use rand::SeedableRng as _;
+        use rand::seq::SliceRandom as _;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let swaps = {
@@ -246,7 +244,7 @@ impl Chunk {
         // Reminder: these are all `ListArray`s.
         re_tracing::profile_scope!("components (offsets & data)");
         {
-            for original in components.values_mut() {
+            for original in components.list_arrays_mut() {
                 let sorted_arrays = swaps
                     .iter()
                     .copied()
@@ -260,7 +258,7 @@ impl Chunk {
                 let datatype = original.data_type().clone();
                 let offsets =
                     ArrowOffsets::from_lengths(sorted_arrays.iter().map(|array| array.len()));
-                #[allow(clippy::unwrap_used)] // these are slices of the same outer array
+                #[expect(clippy::unwrap_used)] // these are slices of the same outer array
                 let values = re_arrow_util::concat_arrays(&sorted_arrays).unwrap();
                 let validity = original
                     .nulls()
@@ -306,14 +304,11 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::{
-        EntityPath, Timeline,
-        example_components::{MyColor, MyPoint, MyPoints},
-    };
-
-    use crate::{ChunkId, RowId};
+    use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, Timeline};
 
     use super::*;
+    use crate::{ChunkId, RowId};
 
     #[test]
     fn sort() -> anyhow::Result<()> {

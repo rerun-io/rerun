@@ -112,7 +112,7 @@ impl<T> StableIndexDeque<T> {
     /// Beware of using `.iter().enumerate()` as it will not respect the index offset.
     /// Use [`Self::iter_indexed`] instead.
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &T> {
         self.vec.iter()
     }
 
@@ -133,9 +133,27 @@ impl<T> StableIndexDeque<T> {
     /// v.pop_front();
     /// assert_eq!(v.iter_indexed().collect::<Vec<_>>(), vec![(1, &1)]);
     /// ```
-    pub fn iter_indexed(&self) -> impl Iterator<Item = (usize, &T)> {
+    pub fn iter_indexed(&self) -> impl DoubleEndedIterator<Item = (usize, &T)> + ExactSizeIterator {
+        let offset = self.index_offset;
         self.vec
             .iter()
+            .enumerate()
+            .map(move |(i, v)| (i + offset, v))
+    }
+
+    /// Like `iter_mut().enumerate()` but with the index offset applied.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..2).collect::<StableIndexDeque<i32>>();
+    /// v.pop_front();
+    /// assert_eq!(v.iter_indexed_mut().collect::<Vec<_>>(), vec![(1usize, &mut 1i32)]);
+    /// ```
+    pub fn iter_indexed_mut(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = (usize, &mut T)> + ExactSizeIterator {
+        self.vec
+            .iter_mut()
             .enumerate()
             .map(|(i, v)| (i + self.index_offset, v))
     }
@@ -298,29 +316,6 @@ impl<T> StableIndexDeque<T> {
         self.vec.len()
     }
 
-    /// Returns the index of the latest element in a deque that is less than or equal to the given sorted key.
-    ///
-    /// Returns the index of:
-    /// - The index of `needle` in `v`, if it exists
-    /// - The index of the first element in `v` that is lesser than `needle`, if it exists
-    /// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-    pub fn latest_at_idx<K: Ord>(&self, key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
-        if self.is_empty() {
-            return None;
-        }
-
-        let idx = self.partition_point(|x| key(x) <= *needle);
-
-        if idx == self.min_index() {
-            // If idx is the smallest possible value, then all elements are greater than the needle
-            if &key(&self[idx]) > needle {
-                return None;
-            }
-        }
-
-        Some(idx.saturating_sub(1))
-    }
-
     /// Iterates over an index range which is truncated to a valid range in the list.
     ///
     /// ```
@@ -332,13 +327,34 @@ impl<T> StableIndexDeque<T> {
     /// assert_eq!(v.iter_index_range_clamped(&(3..5)).collect::<Vec<_>>(), vec![(3, &3), (4, &4)]);
     /// ```
     #[inline]
-    pub fn iter_index_range_clamped(
-        &self,
+    pub fn iter_index_range_clamped<'a>(
+        &'a self,
         range: &std::ops::Range<usize>,
-    ) -> impl Iterator<Item = (usize, &T)> {
+    ) -> impl DoubleEndedIterator<Item = (usize, &'a T)> + ExactSizeIterator + use<'a, T> {
         let range_start = range.start.saturating_sub(self.index_offset);
         let num_elements = range.end - range.start;
         self.iter_indexed().skip(range_start).take(num_elements)
+    }
+
+    /// Mutably iterates over an index range which is truncated to a valid range in
+    /// the list.
+    ///
+    /// ```
+    /// # use re_video::StableIndexDeque;
+    /// let mut v = (0..5).collect::<StableIndexDeque<i32>>();
+    /// v.pop_front();
+    /// assert_eq!(v.iter_index_range_clamped_mut(&(0..5)).collect::<Vec<_>>(), vec![(1, &mut 1), (2, &mut 2), (3, &mut 3), (4, &mut 4)]);
+    /// assert_eq!(v.iter_index_range_clamped_mut(&(2..4)).collect::<Vec<_>>(), vec![(2, &mut 2), (3, &mut 3)]);
+    /// assert_eq!(v.iter_index_range_clamped_mut(&(3..5)).collect::<Vec<_>>(), vec![(3, &mut 3), (4, &mut 4)]);
+    /// ```
+    #[inline]
+    pub fn iter_index_range_clamped_mut<'a>(
+        &'a mut self,
+        range: &std::ops::Range<usize>,
+    ) -> impl DoubleEndedIterator<Item = (usize, &'a mut T)> + ExactSizeIterator + use<'a, T> {
+        let range_start = range.start.saturating_sub(self.index_offset);
+        let num_elements = range.end - range.start;
+        self.iter_indexed_mut().skip(range_start).take(num_elements)
     }
 }
 
@@ -397,39 +413,5 @@ mod tests {
         assert_eq!(vec.next_index(), 2);
         assert_eq!(vec.num_elements(), 0);
         assert_eq!(vec.min_index(), 2);
-    }
-
-    #[test]
-    fn test_latest_at_idx() {
-        let mut v = (1..11).collect::<StableIndexDeque<i32>>();
-        assert_eq!(v.latest_at_idx(|v| *v, &0), None);
-        assert_eq!(v.latest_at_idx(|v| *v, &1), Some(0));
-        assert_eq!(v.latest_at_idx(|v| *v, &2), Some(1));
-        assert_eq!(v.latest_at_idx(|v| *v, &3), Some(2));
-        assert_eq!(v.latest_at_idx(|v| *v, &4), Some(3));
-        assert_eq!(v.latest_at_idx(|v| *v, &5), Some(4));
-        assert_eq!(v.latest_at_idx(|v| *v, &6), Some(5));
-        assert_eq!(v.latest_at_idx(|v| *v, &7), Some(6));
-        assert_eq!(v.latest_at_idx(|v| *v, &8), Some(7));
-        assert_eq!(v.latest_at_idx(|v| *v, &9), Some(8));
-        assert_eq!(v.latest_at_idx(|v| *v, &10), Some(9));
-        assert_eq!(v.latest_at_idx(|v| *v, &11), Some(9));
-        assert_eq!(v.latest_at_idx(|v| *v, &1000), Some(9));
-
-        // Index offset should be respected.
-        v.pop_front();
-        assert_eq!(v.latest_at_idx(|v| *v, &0), None);
-        assert_eq!(v.latest_at_idx(|v| *v, &1), None);
-        assert_eq!(v.latest_at_idx(|v| *v, &2), Some(1));
-        assert_eq!(v.latest_at_idx(|v| *v, &3), Some(2));
-        assert_eq!(v.latest_at_idx(|v| *v, &4), Some(3));
-        assert_eq!(v.latest_at_idx(|v| *v, &5), Some(4));
-        assert_eq!(v.latest_at_idx(|v| *v, &6), Some(5));
-        assert_eq!(v.latest_at_idx(|v| *v, &7), Some(6));
-        assert_eq!(v.latest_at_idx(|v| *v, &8), Some(7));
-        assert_eq!(v.latest_at_idx(|v| *v, &9), Some(8));
-        assert_eq!(v.latest_at_idx(|v| *v, &10), Some(9));
-        assert_eq!(v.latest_at_idx(|v| *v, &11), Some(9));
-        assert_eq!(v.latest_at_idx(|v| *v, &1000), Some(9));
     }
 }

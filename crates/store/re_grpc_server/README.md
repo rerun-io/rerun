@@ -7,4 +7,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Server implementation of an in-memory Storage Node.
+Server for the legacy StoreHub API.

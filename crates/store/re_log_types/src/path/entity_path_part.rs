@@ -28,6 +28,12 @@ pub struct EntityPathPart(
     InternedString,
 );
 
+impl re_byte_size::SizeBytes for EntityPathPart {
+    fn heap_size_bytes(&self) -> u64 {
+        0 // it's interned
+    }
+}
+
 impl EntityPathPart {
     /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.
     #[inline]

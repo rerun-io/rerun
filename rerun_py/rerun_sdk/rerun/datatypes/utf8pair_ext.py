@@ -7,8 +7,22 @@ import pyarrow as pa
 
 if TYPE_CHECKING:
     from . import (
+        Utf8Pair,
         Utf8PairArrayLike,
+        Utf8PairLike,
     )
+
+
+def _utf8_pair_converter(data: Utf8PairLike) -> Utf8Pair:
+    from . import Utf8Pair
+
+    if isinstance(data, Utf8Pair):
+        return data
+    # Assume it's a tuple-like (key, value) or dict entry
+    elif hasattr(data, "__len__") and len(data) == 2:
+        return Utf8Pair(first=data[0], second=data[1])
+    else:
+        raise ValueError(f"Cannot convert {type(data)} to Utf8Pair")
 
 
 class Utf8PairExt:
@@ -16,7 +30,7 @@ class Utf8PairExt:
 
     @staticmethod
     def native_to_pa_array_override(data: Utf8PairArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Utf8, Utf8Batch, Utf8Pair
+        from . import Utf8Batch, Utf8Pair
 
         if isinstance(data, Utf8Pair):
             first_string_batch = Utf8Batch(data.first)
@@ -29,15 +43,9 @@ class Utf8PairExt:
             second_string_batch = Utf8Batch(data[:, 1])
         else:
             # non-numpy Sequence[Utf8Pair | Tuple(Utf8Like, Utf8Like)]
-            first_strings: list[Utf8 | str] = []
-            second_strings: list[Utf8 | str] = []
-            for item in data:
-                if isinstance(item, Utf8Pair):
-                    first_strings.append(item.first)
-                    second_strings.append(item.second)
-                else:
-                    first_strings.append(item[0])
-                    second_strings.append(item[1])
+            converted_pairs = [_utf8_pair_converter(item) for item in data]
+            first_strings = [pair.first for pair in converted_pairs]
+            second_strings = [pair.second for pair in converted_pairs]
             first_string_batch = Utf8Batch(first_strings)
             second_string_batch = Utf8Batch(second_strings)
 

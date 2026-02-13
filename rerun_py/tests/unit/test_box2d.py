@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,6 @@ from rerun.components import (
     HalfSize2DBatch,
     Position2DBatch,
 )
-from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -31,6 +30,9 @@ from .common_arrays import (
     vec2ds_expected as half_sizes_expected,
 )
 
+if TYPE_CHECKING:
+    from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
+
 
 def test_boxes2d() -> None:
     all_arrays = itertools.zip_longest(
@@ -47,13 +49,13 @@ def test_boxes2d() -> None:
         half_sizes = half_sizes if half_sizes is not None else half_sizes_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        half_sizes = cast(Vec2DArrayLike, half_sizes)
-        centers = cast(Vec2DArrayLike, centers)
-        radii = cast(Optional[Float32ArrayLike], radii)
-        colors = cast(Optional[Rgba32ArrayLike], colors)
-        labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[Float32ArrayLike], draw_order)
-        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        half_sizes = cast("Vec2DArrayLike", half_sizes)
+        centers = cast("Vec2DArrayLike", centers)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
+        labels = cast("Utf8ArrayLike | None", labels)
+        draw_order = cast("Float32ArrayLike | None", draw_order)
+        class_ids = cast("ClassIdArrayLike | None", class_ids)
 
         print(
             f"rr.Boxes2D(\n"

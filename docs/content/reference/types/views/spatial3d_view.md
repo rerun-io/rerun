@@ -21,11 +21,22 @@ Configuration for the 3D line grid.
 * `plane`: In what plane the grid is drawn.
 * `stroke_width`: How thick the lines should be in ui units.
 * `color`: Color used for the grid.
+### `spatial_information`
+Configuration of debug drawing in the 3D view.
+
+* `target_frame`: The target reference frame for all transformations.
+* `show_axes`: Whether axes should be shown at the origin.
+* `show_bounding_box`: Whether the bounding box should be shown.
 ### `eye_controls`
 Configuration for the 3D eye
 
 * `kind`: The kind of the eye for the spatial 3D view.
+* `position`: The cameras current position.
+* `look_target`: The position the camera is currently looking at.
+* `eye_up`: The up-axis of the eye itself, in world-space.
 * `speed`: Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).
+* `tracking_entity`: Currently tracked entity.
+* `spin_speed`: What speed, if any, the camera should spin around the eye-up axis.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -41,7 +52,7 @@ If a timeline is specified more than once, the first entry will be used.
 
 snippet: views/spatial3d
 
-<picture data-inline-viewer="snippets/spatial3d">
+<picture data-inline-viewer="snippets/views/spatial3d">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1024w.png">
@@ -58,6 +69,7 @@ snippet: views/spatial3d
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Clear`](../archetypes/clear.md)
+* [`CoordinateFrame`](../archetypes/coordinate_frame.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
@@ -66,11 +78,13 @@ snippet: views/spatial3d
 * [`Pinhole`](../archetypes/pinhole.md)
 * [`Points3D`](../archetypes/points3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)
+* [`TransformAxes3D`](../archetypes/transform_axes3d.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)
 * [`Arrows2D`](../archetypes/arrows2d.md) (if logged under a projection)
 * [`AssetVideo`](../archetypes/asset_video.md) (if logged under a projection)
 * [`Boxes2D`](../archetypes/boxes2d.md) (if logged under a projection)
 * [`DepthImage`](../archetypes/depth_image.md) (if logged under a projection)
+* [`EncodedDepthImage`](../archetypes/encoded_depth_image.md) (if logged under a projection)
 * [`EncodedImage`](../archetypes/encoded_image.md) (if logged under a projection)
 * [`Image`](../archetypes/image.md) (if logged under a projection)
 * [`LineStrips2D`](../archetypes/line_strips2d.md) (if logged under a projection)

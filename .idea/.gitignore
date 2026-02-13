@@ -1,0 +1,17 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# RustRover generated files
+misc.xml
+prettier.xml
+rust.xml
+# We may want to share some inspection profiles, but by default ignore
+inspectionProfiles/*xml
+
+# This is too disruptive
+/*.iml

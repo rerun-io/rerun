@@ -53,7 +53,7 @@ def compare_tensors(left: Any, right: Any, check_fields: list[int]) -> None:
 def test_tensor() -> None:
     expected = tensor_data_expected()
 
-    for input, check_fields in zip(TENSOR_DATA_INPUTS, CHECK_FIELDS):
+    for input, check_fields in zip(TENSOR_DATA_INPUTS, CHECK_FIELDS, strict=False):
         arch = rr.Tensor(data=input)
 
         compare_tensors(arch.data, expected, check_fields)

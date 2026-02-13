@@ -17,7 +17,7 @@ namespace rerun {
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
         static Boxes3D from_centers_and_half_sizes(
-            Collection<components::PoseTranslation3D> centers,
+            Collection<components::Translation3D> centers,
             Collection<components::HalfSize3D> half_sizes
         ) {
             return Boxes3D()
@@ -39,7 +39,7 @@ namespace rerun {
         /// from the input data.
         /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
-            Collection<components::PoseTranslation3D> centers,
+            Collection<components::Translation3D> centers,
             const std::vector<datatypes::Vec3D>& sizes
         ) {
             return from_sizes(std::move(sizes)).with_centers(std::move(centers));
@@ -74,7 +74,7 @@ namespace rerun {
             auto num_components = std::min(mins.size(), sizes.size());
 
             std::vector<components::HalfSize3D> half_sizes;
-            std::vector<components::PoseTranslation3D> centers;
+            std::vector<components::Translation3D> centers;
             half_sizes.reserve(num_components);
             centers.reserve(num_components);
 

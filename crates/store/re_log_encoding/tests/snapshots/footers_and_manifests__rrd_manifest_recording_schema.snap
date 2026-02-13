@@ -1,0 +1,155 @@
+---
+source: crates/store/re_log_encoding/tests/footers_and_manifests.rs
+expression: rrd_manifest_recording_sequential.data.format_schema_snapshot()
+---
+chunk_byte_offset: u64
+chunk_byte_size: u64
+chunk_byte_size_uncompressed: u64
+chunk_entity_path: Utf8
+chunk_id: FixedSizeBinary[16]
+chunk_is_static: bool
+chunk_num_rows: u64
+elapsed_time:end: nullable Duration(ns) [
+    rerun:index: "elapsed time"
+]
+elapsed_time:example_MyPoints:colors:end: nullable Duration(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "elapsed time"
+]
+elapsed_time:example_MyPoints:colors:num_rows: nullable u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "elapsed time"
+]
+elapsed_time:example_MyPoints:colors:start: nullable Duration(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "elapsed time"
+]
+elapsed_time:example_MyPoints:points:end: nullable Duration(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "elapsed time"
+]
+elapsed_time:example_MyPoints:points:num_rows: nullable u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "elapsed time"
+]
+elapsed_time:example_MyPoints:points:start: nullable Duration(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "elapsed time"
+]
+elapsed_time:start: nullable Duration(ns) [
+    rerun:index: "elapsed time"
+]
+example_MyPoints:colors:has_static_data: bool [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "rerun:static"
+]
+example_MyPoints:labels:has_static_data: bool [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:labels"
+    rerun:component_type: "example.MyLabel"
+    rerun:index: "rerun:static"
+]
+example_MyPoints:points:has_static_data: bool [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "rerun:static"
+]
+frame_nr:end: nullable i64 [
+    rerun:index: "frame_nr"
+]
+frame_nr:example_MyPoints:colors:end: nullable i64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "frame_nr"
+]
+frame_nr:example_MyPoints:colors:num_rows: nullable u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "frame_nr"
+]
+frame_nr:example_MyPoints:colors:start: nullable i64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "frame_nr"
+]
+frame_nr:example_MyPoints:points:end: nullable i64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "frame_nr"
+]
+frame_nr:example_MyPoints:points:num_rows: nullable u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "frame_nr"
+]
+frame_nr:example_MyPoints:points:start: nullable i64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "frame_nr"
+]
+frame_nr:start: nullable i64 [
+    rerun:index: "frame_nr"
+]
+log_time:end: nullable Timestamp(ns) [
+    rerun:index: "log_time"
+]
+log_time:example_MyPoints:colors:end: nullable Timestamp(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "log_time"
+]
+log_time:example_MyPoints:colors:num_rows: nullable u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "log_time"
+]
+log_time:example_MyPoints:colors:start: nullable Timestamp(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "log_time"
+]
+log_time:example_MyPoints:points:end: nullable Timestamp(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "log_time"
+]
+log_time:example_MyPoints:points:num_rows: nullable u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "log_time"
+]
+log_time:example_MyPoints:points:start: nullable Timestamp(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "log_time"
+]
+log_time:start: nullable Timestamp(ns) [
+    rerun:index: "log_time"
+]

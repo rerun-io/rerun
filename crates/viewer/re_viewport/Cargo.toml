@@ -25,6 +25,7 @@ testing = []
 [dependencies]
 re_context_menu.workspace = true
 re_entity_db.workspace = true
+re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_renderer = { workspace = true, default-features = false, features = [
@@ -34,7 +35,7 @@ re_renderer = { workspace = true, default-features = false, features = [
 ] }
 re_view.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true

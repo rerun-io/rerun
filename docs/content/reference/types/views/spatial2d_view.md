@@ -33,7 +33,7 @@ If a timeline is specified more than once, the first entry will be used.
 
 snippet: views/spatial2d
 
-<picture data-inline-viewer="snippets/spatial2d">
+<picture data-inline-viewer="snippets/views/spatial2d">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1024w.png">
@@ -49,7 +49,9 @@ snippet: views/spatial2d
 * [`AssetVideo`](../archetypes/asset_video.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Clear`](../archetypes/clear.md)
+* [`CoordinateFrame`](../archetypes/coordinate_frame.md)
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)

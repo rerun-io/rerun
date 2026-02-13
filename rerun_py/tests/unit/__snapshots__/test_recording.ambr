@@ -1,0 +1,35 @@
+# serializer version: 1
+# name: test_schema_recording
+  '''
+  Index(timeline:log_tick)
+  Index(timeline:log_time)
+  Index(timeline:my_index)
+  Column name: /points:Points3D:colors
+  	Entity path: /points
+  	Archetype: rerun.archetypes.Points3D
+  	Component type: rerun.components.Color
+  	Component: Points3D:colors
+  Column name: /points:Points3D:positions
+  	Entity path: /points
+  	Archetype: rerun.archetypes.Points3D
+  	Component type: rerun.components.Position3D
+  	Component: Points3D:positions
+  Column name: /points:Points3D:radii
+  	Entity path: /points
+  	Archetype: rerun.archetypes.Points3D
+  	Component type: rerun.components.Radius
+  	Component: Points3D:radii
+  Column name: /static_text:TextLog:text
+  	Entity path: /static_text
+  	Archetype: rerun.archetypes.TextLog
+  	Component type: rerun.components.Text
+  	Component: TextLog:text
+  	Static: true
+  Column name: property:RecordingInfo:start_time
+  	Entity path: /__properties
+  	Archetype: rerun.archetypes.RecordingInfo
+  	Component type: rerun.components.Timestamp
+  	Component: RecordingInfo:start_time
+  	Static: true
+  '''
+# ---

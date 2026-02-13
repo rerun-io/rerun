@@ -1,22 +1,29 @@
-use std::{
-    hash::{Hash as _, Hasher as _},
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::hash::{Hash as _, Hasher as _};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
-use arrow::array::{Array as ArrowArray, ArrayRef};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
-use re_types_core::ComponentDescriptor;
+use re_quota_channel::{Receiver, Sender};
+use re_types_core::{ComponentIdentifier, SerializedComponentBatch, SerializedComponentColumn};
 
-use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
+use crate::chunk::ChunkComponents;
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
+
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum BatcherFlushError {
+    #[error("Batcher stopped before flushing completed")]
+    Closed,
+
+    #[error("Batcher flush timed out - not all messages were sent.")]
+    Timeout,
+}
 
 /// Errors that can occur when creating/manipulating a [`ChunkBatcher`].
 #[derive(thiserror::Error, Debug)]
@@ -48,14 +55,14 @@ pub struct BatcherHooks {
     /// including the new one.
     ///
     /// Used for testing.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     pub on_insert: Option<Arc<dyn Fn(&[PendingRow]) + Send + Sync>>,
 
     /// Called when the batcher's configuration changes.
     ///
     /// Called for initial configuration as well as subsequent changes.
     /// Used for testing.
-    #[allow(clippy::type_complexity)]
+    #[expect(clippy::type_complexity)]
     pub on_config_change: Option<Arc<dyn Fn(&ChunkBatcherConfig) + Send + Sync>>,
 
     /// Callback to be run when an Arrow Chunk goes out of scope.
@@ -118,7 +125,7 @@ impl std::fmt::Debug for BatcherHooks {
 /// Defines the different thresholds of the associated [`ChunkBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -140,17 +147,13 @@ pub struct ChunkBatcherConfig {
     /// unsorted.
     pub chunk_max_rows_if_unsorted: u64,
 
-    /// Size of the internal channel of commands.
+    /// The maximum number of bytes allowed to be in a queue/channel
+    /// before we apply backpressure.
     ///
-    /// Unbounded if left unspecified.
-    /// Once a batcher is created, this property cannot be changed.
-    pub max_commands_in_flight: Option<u64>,
-
-    /// Size of the internal channel of [`Chunk`]s.
+    /// This is divided in two by the input and output channels.
     ///
-    /// Unbounded if left unspecified.
-    /// Once a batcher is created, this property cannot be changed.
-    pub max_chunks_in_flight: Option<u64>,
+    /// If a single chunk exceeds this size it will still be processed.
+    pub max_bytes_in_flight: u64,
 }
 
 impl Default for ChunkBatcherConfig {
@@ -166,8 +169,7 @@ impl ChunkBatcherConfig {
         flush_num_bytes: 1024 * 1024, // 1 MiB
         flush_num_rows: u64::MAX,
         chunk_max_rows_if_unsorted: 256,
-        max_commands_in_flight: None,
-        max_chunks_in_flight: None,
+        max_bytes_in_flight: 100 * 1024 * 1024, // Apply backpressure
     };
 
     /// Low-latency configuration, preferred when streaming directly to a viewer.
@@ -182,8 +184,7 @@ impl ChunkBatcherConfig {
         flush_num_bytes: 0,
         flush_num_rows: 0,
         chunk_max_rows_if_unsorted: 256,
-        max_commands_in_flight: None,
-        max_chunks_in_flight: None,
+        ..Self::DEFAULT
     };
 
     /// Never flushes unless manually told to (or hitting one the builtin invariants).
@@ -192,8 +193,7 @@ impl ChunkBatcherConfig {
         flush_num_bytes: u64::MAX,
         flush_num_rows: u64::MAX,
         chunk_max_rows_if_unsorted: 256,
-        max_commands_in_flight: None,
-        max_chunks_in_flight: None,
+        ..Self::DEFAULT
     };
 
     /// Environment variable to configure [`Self::flush_tick`].
@@ -228,7 +228,7 @@ impl ChunkBatcherConfig {
     ///
     /// See [`Self::ENV_FLUSH_TICK`], [`Self::ENV_FLUSH_NUM_BYTES`], [`Self::ENV_FLUSH_NUM_BYTES`].
     pub fn apply_env(&self) -> ChunkBatcherResult<Self> {
-        let mut new = self.clone();
+        let mut new = *self;
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_TICK) {
             let flush_duration_secs: f64 =
@@ -238,7 +238,13 @@ impl ChunkBatcherConfig {
                     err: Box::new(err),
                 })?;
 
-            new.flush_tick = Duration::from_secs_f64(flush_duration_secs);
+            new.flush_tick = Duration::try_from_secs_f64(flush_duration_secs).map_err(|err| {
+                ChunkBatcherError::ParseConfig {
+                    name: Self::ENV_FLUSH_TICK,
+                    value: s.clone(),
+                    err: Box::new(err),
+                }
+            })?;
         }
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_NUM_BYTES) {
@@ -289,7 +295,7 @@ impl ChunkBatcherConfig {
 
 #[test]
 fn chunk_batcher_config() {
-    #![allow(unsafe_code)] // It's only a test
+    #![expect(unsafe_code)] // It's only a test
 
     // Detect breaking changes in our environment variables.
     // SAFETY: it's a test
@@ -402,15 +408,27 @@ impl Drop for ChunkBatcherInner {
 enum Command {
     AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
-    Flush(Sender<()>),
+    Flush {
+        on_done: crossbeam::channel::Sender<()>,
+    },
     UpdateConfig(ChunkBatcherConfig),
     Shutdown,
 }
 
+impl re_byte_size::SizeBytes for Command {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::AppendChunk(chunk) => chunk.heap_size_bytes(),
+            Self::AppendRow(_, row) => row.heap_size_bytes(),
+            Self::Flush { .. } | Self::UpdateConfig(_) | Self::Shutdown => 0,
+        }
+    }
+}
+
 impl Command {
-    fn flush() -> (Self, Receiver<()>) {
-        let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
-        (Self::Flush(tx), rx)
+    fn flush() -> (Self, crossbeam::channel::Receiver<()>) {
+        let (tx, rx) = crossbeam::channel::bounded(1); // oneshot
+        (Self::Flush { on_done: tx }, rx)
     }
 }
 
@@ -420,26 +438,17 @@ impl ChunkBatcher {
     /// The returned object must be kept in scope: dropping it will trigger a clean shutdown of the
     /// batcher.
     #[must_use = "Batching threads will automatically shutdown when this object is dropped"]
-    #[allow(clippy::needless_pass_by_value)]
     pub fn new(config: ChunkBatcherConfig, hooks: BatcherHooks) -> ChunkBatcherResult<Self> {
-        let (tx_cmds, rx_cmd) = match config.max_commands_in_flight {
-            Some(cap) => crossbeam::channel::bounded(cap as _),
-            None => crossbeam::channel::unbounded(),
-        };
-
-        let (tx_chunk, rx_chunks) = match config.max_chunks_in_flight {
-            Some(cap) => crossbeam::channel::bounded(cap as _),
-            None => crossbeam::channel::unbounded(),
-        };
+        let (tx_cmds, rx_cmd) =
+            re_quota_channel::channel("batcher_input", config.max_bytes_in_flight / 2);
+        let (tx_chunk, rx_chunks) =
+            re_quota_channel::channel("batcher_output", config.max_bytes_in_flight / 2);
 
         let cmds_to_chunks_handle = {
             const NAME: &str = "ChunkBatcher::cmds_to_chunks";
             std::thread::Builder::new()
                 .name(NAME.into())
-                .spawn({
-                    let config = config.clone();
-                    move || batching_thread(config, hooks, rx_cmd, tx_chunk)
-                })
+                .spawn(move || batching_thread(config, hooks, rx_cmd, tx_chunk))
                 .map_err(|err| ChunkBatcherError::SpawnThread {
                     name: NAME,
                     err: Box::new(err),
@@ -488,8 +497,8 @@ impl ChunkBatcher {
     ///
     /// See [`ChunkBatcher`] docs for ordering semantics and multithreading guarantees.
     #[inline]
-    pub fn flush_blocking(&self) {
-        self.inner.flush_blocking();
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), BatcherFlushError> {
+        self.inner.flush_blocking(timeout)
     }
 
     /// Updates the batcher's configuration as far as possible.
@@ -507,7 +516,7 @@ impl ChunkBatcher {
     pub fn chunks(&self) -> Receiver<Chunk> {
         // NOTE: `rx_chunks` is only ever taken when the batcher as a whole is dropped, at which
         // point it is impossible to call this method.
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         self.inner.rx_chunks.clone().unwrap()
     }
 }
@@ -526,10 +535,16 @@ impl ChunkBatcherInner {
         self.send_cmd(flush_cmd);
     }
 
-    fn flush_blocking(&self) {
-        let (flush_cmd, oneshot) = Command::flush();
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), BatcherFlushError> {
+        use crossbeam::channel::RecvTimeoutError;
+
+        let (flush_cmd, on_done) = Command::flush();
         self.send_cmd(flush_cmd);
-        oneshot.recv().ok();
+
+        on_done.recv_timeout(timeout).map_err(|err| match err {
+            RecvTimeoutError::Timeout => BatcherFlushError::Timeout,
+            RecvTimeoutError::Disconnected => BatcherFlushError::Closed,
+        })
     }
 
     fn update_config(&self, config: ChunkBatcherConfig) {
@@ -543,7 +558,7 @@ impl ChunkBatcherInner {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[expect(clippy::needless_pass_by_value)]
 fn batching_thread(
     mut config: ChunkBatcherConfig,
     hooks: BatcherHooks,
@@ -643,18 +658,20 @@ fn batching_thread(
     // so that the next tick will not unnecessarily fire early.
     let mut skip_next_tick = false;
 
-    use crossbeam::select;
     loop {
-        select! {
-            recv(rx_cmd) -> cmd => {
+        crossbeam::select! {
+            recv(rx_cmd.inner()) -> cmd => {
                 let Ok(cmd) = cmd else {
                     // All command senders are gone, which can only happen if the
                     // `ChunkBatcher` itself has been dropped.
                     break;
                 };
 
+                let re_quota_channel::SizedMessage { msg, size_bytes } = cmd;
 
-                match cmd {
+                rx_cmd.manual_on_receive(size_bytes);
+
+                match msg {
                     Command::AppendChunk(chunk) => {
                         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
                         // as long the batching thread is alive… which is where we currently are.
@@ -687,20 +704,20 @@ fn batching_thread(
                         }
                     },
 
-                    Command::Flush(oneshot) => {
+                    Command::Flush{ on_done } => {
                         skip_next_tick = true;
                         for acc in accs.values_mut() {
                             do_flush_all(acc, &tx_chunk, "manual", config.chunk_max_rows_if_unsorted);
                         }
-                        drop(oneshot); // signals the oneshot
+                        on_done.send(()).ok();
                     },
 
                     Command::UpdateConfig(new_config) => {
                         // Warn if properties changed that we can't change here.
-                        if config.max_commands_in_flight != new_config.max_commands_in_flight ||
-                            config.max_chunks_in_flight != new_config.max_chunks_in_flight {
-                            re_log::warn!("Cannot change max commands/chunks in flight after batcher has been created. Previous max commands/chunks: {:?}/{:?}, new max commands/chunks: {:?}/{:?}",
-                                            config.max_commands_in_flight, config.max_chunks_in_flight, new_config.max_commands_in_flight, new_config.max_chunks_in_flight);
+                        if config.max_bytes_in_flight != new_config.max_bytes_in_flight {
+                            re_log::warn!("Cannot change max_bytes_in_flight after batcher has been created. \
+                                Previous max_bytes_in_flight: {:?}, new max_bytes_in_flight: {:?}",
+                                config.max_bytes_in_flight, new_config.max_bytes_in_flight);
                         }
 
                         re_log::trace!("Updated batcher config: {:?}", new_config);
@@ -762,17 +779,34 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: IntMap<ComponentDescriptor, ArrayRef>,
+    pub components: IntMap<ComponentIdentifier, SerializedComponentBatch>,
 }
 
 impl PendingRow {
     #[inline]
-    pub fn new(timepoint: TimePoint, components: IntMap<ComponentDescriptor, ArrayRef>) -> Self {
+    pub fn new(
+        timepoint: TimePoint,
+        components: IntMap<ComponentIdentifier, SerializedComponentBatch>,
+    ) -> Self {
         Self {
             row_id: RowId::new(),
             timepoint,
             components,
         }
+    }
+
+    #[inline]
+    pub fn from_iter(
+        timepoint: TimePoint,
+        components: impl IntoIterator<Item = SerializedComponentBatch>,
+    ) -> Self {
+        Self::new(
+            timepoint,
+            components
+                .into_iter()
+                .map(|component| (component.descriptor.component, component))
+                .collect(),
+        )
     }
 }
 
@@ -814,10 +848,10 @@ impl PendingRow {
             .collect();
 
         let mut per_desc = ChunkComponents::default();
-        for (component_desc, array) in components {
-            let list_array = arrays_to_list_array_opt(&[Some(&*array as _)]);
+        for (_component, batch) in components {
+            let list_array = arrays_to_list_array_opt(&[Some(&*batch.array as _)]);
             if let Some(list_array) = list_array {
-                per_desc.insert(component_desc, list_array);
+                per_desc.insert(SerializedComponentColumn::new(list_array, batch.descriptor));
             }
         }
 
@@ -903,7 +937,7 @@ impl PendingRow {
                     let mut hasher = ahash::AHasher::default();
                     row.components
                         .values()
-                        .for_each(|array| array.data_type().hash(&mut hasher));
+                        .for_each(|batch| batch.array.data_type().hash(&mut hasher));
                     per_datatype_set
                         .entry(hasher.finish())
                         .or_default()
@@ -921,11 +955,12 @@ impl PendingRow {
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
-                let mut all_components: IntMap<ComponentDescriptor, Vec<Option<&dyn ArrowArray>>> =
-                    IntMap::default();
+                let mut all_components: IntMap<ComponentIdentifier, _> = IntMap::default();
                 for row in &rows {
-                    for component_desc in row.components.keys() {
-                        all_components.entry(component_desc.clone()).or_default();
+                    for (component, batch) in &row.components {
+                        all_components
+                            .entry(*component)
+                            .or_insert_with(|| (batch.descriptor.clone(), Vec::new()));
                     }
                 }
 
@@ -961,15 +996,18 @@ impl PendingRow {
                                     .map(|(name, time_column)| (name, time_column.finish()))
                                     .collect(),
                                 {
-                                    let mut per_desc = ChunkComponents::default();
-                                    for (component_desc, arrays) in std::mem::take(&mut components)
+                                    let mut per_component = ChunkComponents::default();
+                                    for (_component, (desc, arrays)) in
+                                        std::mem::take(&mut components)
                                     {
                                         let list_array = arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
-                                            per_desc.insert(component_desc, list_array);
+                                            per_component.insert(SerializedComponentColumn::new(
+                                                list_array, desc,
+                                            ));
                                         }
                                     }
-                                    per_desc
+                                    per_component
                                 },
                             ));
 
@@ -986,13 +1024,13 @@ impl PendingRow {
                         time_column.push(cell.into());
                     }
 
-                    for (component_desc, arrays) in &mut components {
+                    for (component, (_desc, arrays)) in &mut components {
                         // NOTE: This will push `None` if the row doesn't actually hold a value for this
                         // component -- these are sparse list arrays!
                         arrays.push(
                             row_components
-                                .get(component_desc)
-                                .map(|array| &**array as &dyn ArrowArray),
+                                .get(component)
+                                .map(|batch| &*batch.array as _),
                         );
                     }
                 }
@@ -1008,10 +1046,10 @@ impl PendingRow {
                         .collect(),
                     {
                         let mut per_desc = ChunkComponents::default();
-                        for (component_desc, arrays) in components {
+                        for (_component, (desc, arrays)) in components {
                             let list_array = arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
-                                per_desc.insert(component_desc, list_array);
+                                per_desc.insert(SerializedComponentColumn::new(list_array, desc));
                             }
                         }
                         per_desc
@@ -1085,9 +1123,8 @@ impl PendingTimeColumn {
 #[cfg(test)]
 mod tests {
     use crossbeam::channel::TryRecvError;
-
     use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
-    use re_types_core::Loggable as _;
+    use re_types_core::{ComponentDescriptor, Loggable as _};
 
     use super::*;
 
@@ -1115,24 +1152,24 @@ mod tests {
         let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
 
         let components1 = [
-            (MyPoints::descriptor_points(), points1.clone()),
-            (MyPoints::descriptor_labels(), labels1.clone()),
-            (MyIndex::partial_descriptor(), indices1.clone()),
+            SerializedComponentBatch::new(points1.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels1.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices1.clone(), MyIndex::partial_descriptor()),
         ];
         let components2 = [
-            (MyPoints::descriptor_points(), points2.clone()),
-            (MyPoints::descriptor_labels(), labels2.clone()),
-            (MyIndex::partial_descriptor(), indices2.clone()),
+            SerializedComponentBatch::new(points2.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels2.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices2.clone(), MyIndex::partial_descriptor()),
         ];
         let components3 = [
-            (MyPoints::descriptor_points(), points3.clone()),
-            (MyPoints::descriptor_labels(), labels3.clone()),
-            (MyIndex::partial_descriptor(), indices3.clone()),
+            SerializedComponentBatch::new(points3.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels3.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices3.clone(), MyIndex::partial_descriptor()),
         ];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1201,7 +1238,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::len_zero)]
+    #[expect(clippy::len_zero)]
     fn simple_but_hashes_might_not_match() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
@@ -1224,24 +1261,24 @@ mod tests {
         let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
 
         let components1 = [
-            (MyIndex::partial_descriptor(), indices1.clone()),
-            (MyPoints::descriptor_points(), points1.clone()),
-            (MyPoints::descriptor_labels(), labels1.clone()),
+            SerializedComponentBatch::new(indices1.clone(), MyIndex::partial_descriptor()),
+            SerializedComponentBatch::new(points1.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels1.clone(), MyPoints::descriptor_labels()),
         ];
         let components2 = [
-            (MyPoints::descriptor_points(), points2.clone()),
-            (MyPoints::descriptor_labels(), labels2.clone()),
-            (MyIndex::partial_descriptor(), indices2.clone()),
+            SerializedComponentBatch::new(points2.clone(), MyPoints::descriptor_points()),
+            SerializedComponentBatch::new(labels2.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices2.clone(), MyIndex::partial_descriptor()),
         ];
         let components3 = [
-            (MyPoints::descriptor_labels(), labels3.clone()),
-            (MyIndex::partial_descriptor(), indices3.clone()),
-            (MyPoints::descriptor_points(), points3.clone()),
+            SerializedComponentBatch::new(labels3.clone(), MyPoints::descriptor_labels()),
+            SerializedComponentBatch::new(indices3.clone(), MyIndex::partial_descriptor()),
+            SerializedComponentBatch::new(points3.clone(), MyPoints::descriptor_points()),
         ];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1282,7 +1319,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::zero_sized_map_values)]
+    #[expect(clippy::zero_sized_map_values)]
     fn intmap_order_is_deterministic() {
         let descriptors = [
             MyPoints::descriptor_points(),
@@ -1323,13 +1360,22 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(static_.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(static_.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(static_.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(static_.clone(), components1);
+        let row2 = PendingRow::from_iter(static_.clone(), components2);
+        let row3 = PendingRow::from_iter(static_.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1398,13 +1444,22 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "ent1".into();
         let entity_path2: EntityPath = "ent2".into();
@@ -1506,13 +1561,22 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1615,13 +1679,22 @@ mod tests {
             MyPoint64::to_arrow([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())]; // same name, different datatype
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )]; // same name, different datatype
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint1.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint2.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint3.clone(), components3);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1736,15 +1809,27 @@ mod tests {
         let points4 =
             MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
-        let components4 = [(MyPoints::descriptor_points(), points4.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components4 = [SerializedComponentBatch::new(
+            points4.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint4.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint1.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint2.clone(), components3);
+        let row4 = PendingRow::from_iter(timepoint3.clone(), components4);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1843,15 +1928,27 @@ mod tests {
         let points4 =
             MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
-        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
-        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
-        let components4 = [(MyPoints::descriptor_points(), points4.clone())];
+        let components1 = [SerializedComponentBatch::new(
+            points1.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components2 = [SerializedComponentBatch::new(
+            points2.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components3 = [SerializedComponentBatch::new(
+            points3.clone(),
+            MyPoints::descriptor_points(),
+        )];
+        let components4 = [SerializedComponentBatch::new(
+            points4.clone(),
+            MyPoints::descriptor_points(),
+        )];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
+        let row1 = PendingRow::from_iter(timepoint4.clone(), components1);
+        let row2 = PendingRow::from_iter(timepoint1.clone(), components2);
+        let row3 = PendingRow::from_iter(timepoint2.clone(), components3);
+        let row4 = PendingRow::from_iter(timepoint3.clone(), components4);
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());

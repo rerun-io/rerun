@@ -1,0 +1,15 @@
+namespace rerun.blueprint.views;
+
+/// A bar chart view.
+///
+/// \example views/bar_chart title="Use a blueprint to create a BarChartView." image="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1200w.png"
+table BarChartView (
+    "attr.rerun.view_identifier": "BarChart"
+) {
+    /// Configures the legend of the plot.
+    plot_legend: rerun.blueprint.archetypes.PlotLegend (order: 2000);
+
+
+    /// Configures the background of the plot.
+    background: rerun.blueprint.archetypes.PlotBackground (order: 3000);
+}

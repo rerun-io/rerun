@@ -1,41 +1,36 @@
-use std::{
-    collections::BTreeSet,
-    sync::{
-        OnceLock,
-        atomic::{AtomicU64, Ordering},
-    },
-};
+use std::collections::BTreeSet;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use arrow::array::RecordBatchOptions;
-use arrow::{
-    array::{
-        ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
-        PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch,
-    },
-    buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::{
-        DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
-        SchemaRef as ArrowSchemaRef,
-    },
+use arrow::array::{
+    ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+    PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
+};
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
+use arrow::datatypes::{
+    DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
+    SchemaRef as ArrowSchemaRef,
 };
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
+use re_chunk::external::arrow::array::ArrayRef;
 use re_chunk::{
-    Chunk, EntityPath, RangeQuery, RowId, TimeInt, TimelineName, UnitChunkShared,
-    external::arrow::array::ArrayRef,
+    Chunk, ComponentIdentifier, EntityPath, RangeQuery, RowId, TimeInt, TimelineName,
+    UnitChunkShared,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
     IndexValue, QueryExpression, SparseFillStrategy,
 };
+use re_log::{debug_assert, debug_assert_eq, debug_panic};
 use re_log_types::AbsoluteTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
 };
-use re_types_core::{ComponentDescriptor, Loggable as _, archetypes, arrow_helpers::as_array_ref};
+use re_types_core::arrow_helpers::as_array_ref;
+use re_types_core::{Loggable as _, SerializedComponentColumn, archetypes};
 
 // ---
 
@@ -257,19 +252,19 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         let mut chunk = chunk.clone();
                         // Only way this could fail is if the number of rows did not match.
-                        #[allow(clippy::unwrap_used)]
+                        #[expect(clippy::unwrap_used)]
                         chunk
-                            .add_component(
+                            .add_component(SerializedComponentColumn::new(
+                                re_arrow_util::new_list_array_of_empties(
+                                    &child_datatype,
+                                    chunk.num_rows(),
+                                ),
                                 re_types_core::ComponentDescriptor {
                                     component_type: descr.component_type,
                                     archetype: descr.archetype,
                                     component: descr.component,
                                 },
-                                re_arrow_util::new_list_array_of_empties(
-                                    &child_datatype,
-                                    chunk.num_rows(),
-                                ),
-                            )
+                            ))
                             .unwrap();
 
                         (AtomicU64::new(0), chunk)
@@ -345,17 +340,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        let component_descriptor = store
-                            .entity_component_descriptor(
-                                &descr.entity_path,
-                                descr.archetype,
-                                descr.component,
-                            )
-                            .into_iter()
-                            .next()?;
-
                         let results =
-                            cache.latest_at(&query, &descr.entity_path, [&component_descriptor]);
+                            cache.latest_at(&query, &descr.entity_path, [descr.component]);
 
                         results.components.into_values().next()
                     }
@@ -380,7 +366,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn compute_user_selection(
         &self,
         view_contents: &[ColumnDescriptor],
@@ -399,10 +385,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             None
                         }
                     })
-                    .unwrap_or((
-                        usize::MAX,
-                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                    )),
+                    .unwrap_or_else(|| {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                        )
+                    }),
 
                 ColumnSelector::Time(selected_column) => {
                     let TimeColumnSelector {
@@ -485,7 +473,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 ColumnDescriptor::Component(column) => {
                     let chunks = self
-                        .fetch_chunks(store, cache, query, &column.entity_path, [&column.into()])
+                        .fetch_chunks(store, cache, query, &column.entity_path, [column.component])
                         .unwrap_or_default();
 
                     if let Some(pov) = self.query.filtered_is_not_null.as_ref()
@@ -537,7 +525,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
             let list_array = chunk
                 .components()
-                .get(&archetypes::Clear::descriptor_is_recursive())?;
+                .get_array(archetypes::Clear::descriptor_is_recursive().component)?;
 
             let values = list_array
                 .values()
@@ -548,6 +536,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .iter()
                     .enumerate()
                     .filter_map(|(index, is_recursive)| {
+                        // can't fail - we're iterating over a 32-bit container
+                        #[expect(clippy::cast_possible_wrap)]
                         (is_recursive == Some(true)).then_some(index as i32)
                     })
                     .collect_vec(),
@@ -558,7 +548,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             (!chunk.is_empty()).then_some(chunk)
         }
 
-        let component_descrs = [&archetypes::Clear::descriptor_is_recursive()];
+        let components = [archetypes::Clear::descriptor_is_recursive().component];
 
         // All unique entity paths present in the view contents.
         let entity_paths: IntSet<EntityPath> = view_contents
@@ -572,7 +562,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 // For the entity itself, any chunk that contains clear data is relevant, recursive or not.
                 // Just fetch everything we find.
                 let flat_chunks = self
-                    .fetch_chunks(store, cache, query, entity_path, component_descrs)
+                    .fetch_chunks(store, cache, query, entity_path, components)
                     .map(|chunks| {
                         chunks
                             .into_iter()
@@ -583,7 +573,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 let recursive_chunks =
                     entity_path_ancestors(entity_path).flat_map(|ancestor_path| {
-                        self.fetch_chunks(store, cache, query, &ancestor_path, component_descrs)
+                        self.fetch_chunks(store, cache, query, &ancestor_path, components)
                             .into_iter() // option
                             .flat_map(|chunks| chunks.into_iter().map(|(_cursor, chunk)| chunk))
                             // NOTE: Ancestors' chunks are only relevant for the rows where `ClearIsRecursive=true`.
@@ -603,13 +593,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .collect()
     }
 
-    fn fetch_chunks<'a>(
+    fn fetch_chunks(
         &self,
         _store: &ChunkStore,
         cache: &QueryCache,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = &'a ComponentDescriptor>,
+        components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> Option<Vec<(AtomicU64, Chunk)>> {
         // NOTE: Keep in mind that the range APIs natively make sure that we will
         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
@@ -617,7 +607,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results = cache.range(query, entity_path, component_descrs);
+        let results = cache.range(query, entity_path, components);
 
         debug_assert!(
             results.components.len() <= 1,
@@ -1021,12 +1011,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .get(selected_idx)
                     .map(|(view_idx, _)| *view_idx)
                 else {
-                    debug_assert!(false, "selected_idx out of bounds");
+                    debug_panic!("selected_idx out of bounds");
                     continue;
                 };
 
                 let Some(streaming_state) = view_streaming_state.get_mut(view_idx) else {
-                    debug_assert!(false, "view_idx out of bounds");
+                    debug_panic!("view_idx out of bounds");
                     continue;
                 };
 
@@ -1066,20 +1056,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
-                    let component_descriptor = store
-                        .entity_component_descriptor(
-                            &descr.entity_path,
-                            descr.archetype,
-                            descr.component,
-                        )
-                        .into_iter()
-                        .next()?;
-
-                    let results = cache.latest_at(
-                        &query,
-                        &descr.entity_path.clone(),
-                        [&component_descriptor],
-                    );
+                    let results =
+                        cache.latest_at(&query, &descr.entity_path.clone(), [descr.component]);
 
                     *streaming_state = results
                         .components
@@ -1182,9 +1160,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         s.chunk
                             .components()
-                            .iter()
+                            .list_arrays()
                             .next()
-                            .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
+                            .map(|list_array| list_array.slice(s.cursor as usize, 1))
 
                     }
 
@@ -1199,7 +1177,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         } else {
                             None
                         })?;
-                        unit.components().get(&component_desc).cloned()
+                        unit.components().get_array(component_desc.component).cloned()
                     }
                 };
 
@@ -1294,7 +1272,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let row_count = row.first().map(|a| a.len()).unwrap_or(0);
 
         // If we managed to get a row, then the state must be initialized already.
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
         ArrowRecordBatch::try_new_with_options(
@@ -1308,25 +1286,22 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn iter(&self) -> impl Iterator<Item = Vec<ArrowArrayRef>> + '_ {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
+    #[expect(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_iter(self) -> impl Iterator<Item = Vec<ArrowArrayRef>> {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn batch_iter(&self) -> impl Iterator<Item = ArrowRecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
-    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_batch_iter(self) -> impl Iterator<Item = ArrowRecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }
@@ -1335,31 +1310,27 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 // ---
 
 #[cfg(test)]
-#[allow(clippy::iter_on_single_items)]
+#[expect(clippy::iter_on_single_items)]
 mod tests {
     use std::sync::Arc;
 
     use arrow::array::{StringArray, UInt32Array};
     use arrow::compute::concat_batches;
     use insta::assert_snapshot;
-
+    use re_arrow_util::format_record_batch;
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
         AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, TimeInt,
     };
-    use re_format_arrow::format_record_batch;
-    use re_log_types::{
-        EntityPath, Timeline, build_frame_nr, build_log_time,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, Timeline, build_frame_nr, build_log_time};
     use re_query::StorageEngine;
+    use re_sdk_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_sorbet::ComponentColumnSelector;
-    use re_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_types_core::components;
 
-    use crate::{QueryCache, QueryEngine};
-
     use super::*;
+    use crate::{QueryCache, QueryEngine};
 
     /// Implement `Display` for `ArrowRecordBatch`
     struct DisplayRB(ArrowRecordBatch);
@@ -1368,7 +1339,8 @@ mod tests {
         #[inline]
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let width = 200;
-            re_format_arrow::format_record_batch_with_width(&self.0, Some(width)).fmt(f)
+            re_arrow_util::format_record_batch_with_width(&self.0, Some(width), f.sign_minus())
+                .fmt(f)
         }
     }
 
@@ -2322,9 +2294,9 @@ mod tests {
         );
 
         let any_values = AnyValues::default()
-            .with_field("yak", Arc::new(StringArray::from(vec!["yuk"])))
-            .with_field("foo", Arc::new(StringArray::from(vec!["bar"])))
-            .with_field("baz", Arc::new(UInt32Array::from(vec![42u32])));
+            .with_component_from_data("yak", Arc::new(StringArray::from(vec!["yuk"])))
+            .with_component_from_data("foo", Arc::new(StringArray::from(vec!["bar"])))
+            .with_component_from_data("baz", Arc::new(UInt32Array::from(vec![42u32])));
 
         let entity_path = EntityPath::from("test");
 
@@ -2487,13 +2459,12 @@ mod tests {
                     std::task::RawWaker::new(std::ptr::null(), &VTABLE)
                 };
 
-                #[allow(unsafe_code)]
+                #[expect(unsafe_code)]
                 let mut cx = std::task::Context::from_waker(
                     // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
                     unsafe {
-                        std::mem::transmute::<&std::task::RawWaker, &std::task::Waker>(
-                            &RAW_WAKER_NOOP,
-                        )
+                        &*std::ptr::from_ref::<std::task::RawWaker>(&RAW_WAKER_NOOP)
+                            .cast::<std::task::Waker>()
                     },
                 );
 

@@ -1,0 +1,50 @@
+namespace rerun.archetypes;
+
+/// A depth image encoded with a codec (e.g. RVL or PNG).
+///
+/// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
+///
+/// \example archetypes/encoded_depth_image title="Encoded depth image" image="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1200w.png"
+table EncodedDepthImage(
+  "attr.rerun.visualizer": "EncodedDepthImage",
+  "attr.docs.category": "Image & tensor",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// The encoded depth payload.
+  ///
+  /// Supported are:
+  /// * single channel PNG
+  /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
+  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Media type of the blob, e.g.:
+  ///
+  ///  * `application/rvl` (RVL-compressed 16-bit)
+  ///  * `image/png`
+  media_type: rerun.components.MediaType ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Conversion from native units to meters (e.g. `0.001` for millimeters).
+  ///
+  /// If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
+  meter: rerun.components.DepthMeter ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// Optional colormap for visualization of decoded depth.
+  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional visualization range for depth values.
+  depth_range: rerun.components.ValueRange ("attr.rerun.component_optional", nullable, order: 3050);
+
+  /// Optional point fill ratio for point-cloud projection.
+  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional 2D draw order.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3200);
+}

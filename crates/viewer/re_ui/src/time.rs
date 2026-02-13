@@ -1,5 +1,7 @@
-use re_log_types::{Timestamp, TimestampFormat};
 use std::ops::Sub as _;
+
+use re_format::format_plural_s;
+use re_log_types::{Timestamp, TimestampFormat};
 
 /// Formats a duration in a short, readable format, e.g. ("1 hour ago" or "2 minutes ago")
 ///
@@ -13,13 +15,7 @@ pub fn format_duration_short(timestamp: Timestamp, fallback_format: TimestampFor
     let duration = Timestamp::now().sub(timestamp);
     let seconds = duration.as_secs_f64() as u64;
 
-    let format_plural = |n: u64, unit: &str| {
-        if n == 1 {
-            format!("{n} {unit} ago")
-        } else {
-            format!("{n} {unit}s ago")
-        }
-    };
+    let format_plural = |n: u64, unit: &'static str| format!("{} ago", format_plural_s(n, unit));
 
     if seconds < 10 {
         "just now".to_owned()
@@ -49,6 +45,18 @@ pub fn short_duration_ui(
     format: TimestampFormat,
     show: impl FnOnce(&mut egui::Ui, String) -> egui::Response,
 ) -> egui::Response {
+    // Remember to update the ui so it doesn't say "just now" forever:
+    let age = timestamp.elapsed().as_secs_f64();
+    let repaint_in_sec = if age < 60.0 {
+        1
+    } else if age < 3600.0 {
+        60
+    } else {
+        3600
+    };
+    ui.ctx()
+        .request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
+
     let short = format_duration_short(timestamp, format);
     show(ui, short).on_hover_text(timestamp.format(format))
 }

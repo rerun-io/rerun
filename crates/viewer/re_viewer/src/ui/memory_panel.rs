@@ -1,21 +1,50 @@
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_format::{format_bytes, format_uint};
-use re_memory::{MemoryLimit, MemoryUse, util::sec_since_start};
+use re_memory::MemoryLimit;
+use re_memory::util::sec_since_start;
 use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
 use re_viewer_context::store_hub::StoreHubStats;
 
+use super::memory_history::MemoryHistory;
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
-use super::memory_history::MemoryHistory;
-
 // ----------------------------------------------------------------------------
+
+/// Which view to show in the memory panel.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum_macros::EnumIter)]
+enum MemoryViewTab {
+    #[default]
+    Flamegraph,
+
+    TimeGraph,
+
+    Stores,
+
+    AllocationTracking,
+
+    Gpu,
+}
+
+impl MemoryViewTab {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Flamegraph => "Flamegraph",
+            Self::TimeGraph => "Over time",
+            Self::Stores => "Recordings",
+            Self::AllocationTracking => "Allocation tracking",
+            Self::Gpu => "GPU",
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct MemoryPanel {
     history: MemoryHistory,
     memory_purge_times: Vec<f64>,
+    selected_tab: MemoryViewTab,
+    include_rss_in_flamegraph: bool,
 }
 
 impl MemoryPanel {
@@ -35,11 +64,11 @@ impl MemoryPanel {
         self.memory_purge_times.push(sec_since_start());
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn ui(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
+        mem_usage_tree: Option<re_byte_size::NamedMemUsageTree>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
     ) {
@@ -48,89 +77,94 @@ impl MemoryPanel {
         // We show realtime stats, so keep showing the latest!
         ui.ctx().request_repaint();
 
-        egui::SidePanel::left("not_the_plot")
-            .resizable(false)
-            .min_width(250.0)
-            .default_width(300.0)
-            .show_inside(ui, |ui| {
-                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
-            });
+        ui.add_space(4.0);
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
-            ui.label("🗠 Rerun Viewer memory use over time");
-            self.plot(ui, limit);
+        // Tab selector at the top
+        ui.horizontal_wrapped(|ui| {
+            use strum::IntoEnumIterator as _;
+            for tab in MemoryViewTab::iter() {
+                ui.selectable_value(&mut self.selected_tab, tab, tab.label());
+            }
         });
+
+        ui.separator();
+
+        match self.selected_tab {
+            MemoryViewTab::Flamegraph => {
+                memory_tree_ui(ui, mem_usage_tree, &mut self.include_rss_in_flamegraph);
+            }
+            MemoryViewTab::TimeGraph => {
+                ui.label("🗠 Rerun Viewer memory use over time");
+                self.plot(ui, limit);
+            }
+            MemoryViewTab::Stores => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        Self::store_stats_ui(ui, store_stats);
+                    });
+            }
+            MemoryViewTab::AllocationTracking => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        Self::allocation_tracking_ui(ui);
+                    });
+            }
+            MemoryViewTab::Gpu => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        Self::gpu_stats(ui, gpu_resource_stats);
+                    });
+            }
+        }
     }
 
-    fn left_side(
-        ui: &mut egui::Ui,
-        limit: &MemoryLimit,
-        gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: Option<&StoreHubStats>,
-    ) {
-        ui.strong("Rerun Viewer resource usage");
-
-        ui.separator();
-        ui.collapsing("CPU Resources", |ui| {
-            Self::cpu_stats(ui, limit);
-        });
-
-        ui.separator();
-        ui.collapsing("GPU Resources", |ui| {
-            Self::gpu_stats(ui, gpu_resource_stats);
-        });
-
+    fn store_stats_ui(ui: &mut egui::Ui, store_stats: Option<&StoreHubStats>) {
         if let Some(store_stats) = store_stats {
-            ui.separator();
-
             for (store_id, store_stats) in &store_stats.store_stats {
                 let title = format!("{} {}", store_id.kind(), store_id.recording_id());
                 ui.collapsing_header(&title, false, |ui| {
                     ui.collapsing("Datastore Resources", |ui| {
-                        Self::store_stats(ui, &store_stats.store_config, &store_stats.store_stats);
+                        Self::chunk_store_stats(
+                            ui,
+                            &store_stats.store_config,
+                            &store_stats.store_stats,
+                        );
                     });
 
                     ui.separator();
                     ui.collapsing("Primary Query Caches", |ui| {
                         Self::caches_stats(ui, &store_stats.query_cache_stats);
                     });
+
+                    ui.separator();
+                    ui.collapsing("Viewer Caches", |ui| {
+                        ui.label(format!(
+                            "GPU Memory: {}",
+                            format_bytes(store_stats.cache_vram_usage.size_bytes() as f64)
+                        ));
+
+                        // TODO(emilk): in the future we could have a VRAM flamegraph here
+                    });
                 });
             }
+        } else {
+            ui.label("No store statistics available.");
         }
     }
 
-    fn cpu_stats(ui: &mut egui::Ui, limit: &MemoryLimit) {
-        if let Some(max_bytes) = limit.max_bytes {
-            ui.label(format!("Memory limit: {}", format_bytes(max_bytes as _)));
-        } else {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 0.0;
-                ui.label("You can set an upper limit of RAM use with the command-line option ");
-                ui.code("--memory-limit");
-            });
-            ui.separator();
-        }
-
-        let mem_use = MemoryUse::capture();
-
-        if mem_use.resident.is_some() || mem_use.counted.is_some() {
-            if let Some(resident) = mem_use.resident {
-                ui.label(format!("resident: {}", format_bytes(resident as _)))
-                    .on_hover_text("Resident Set Size (or Working Set on Windows). Memory in RAM and not in swap.");
-            }
-
-            if let Some(counted) = mem_use.counted {
-                ui.label(format!("counted: {}", format_bytes(counted as _)))
-                    .on_hover_text("Live bytes, counted by our own allocator");
-            } else if cfg!(debug_assertions) {
-                ui.label("Memory-tracking allocator not installed.");
-            }
-        }
-
+    fn allocation_tracking_ui(ui: &mut egui::Ui) {
         let mut is_tracking_callstacks = re_memory::accounting_allocator::is_tracking_callstacks();
-        ui.re_checkbox(&mut is_tracking_callstacks, "Detailed allocation tracking")
-            .on_hover_text("This will slow down the program");
+        ui.re_checkbox(
+            &mut is_tracking_callstacks,
+            "Enable detailed allocation tracking",
+        )
+        .on_hover_text("This will slow down the program");
         re_memory::accounting_allocator::set_tracking_callstacks(is_tracking_callstacks);
+
+        ui.add_space(8.0);
 
         if let Some(tracking_stats) = re_memory::accounting_allocator::tracking_stats() {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -143,6 +177,9 @@ impl MemoryPanel {
     }
 
     fn gpu_stats(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+        ui.strong("GPU Resources");
+        ui.separator();
+
         egui::Grid::new("gpu resource grid")
             .num_columns(2)
             .show(ui, |ui| {
@@ -192,7 +229,7 @@ impl MemoryPanel {
             });
     }
 
-    fn store_stats(
+    fn chunk_store_stats(
         ui: &mut egui::Ui,
         store_config: &ChunkStoreConfig,
         store_stats: &ChunkStoreStats,
@@ -275,7 +312,7 @@ impl MemoryPanel {
                                 } = stats;
 
                                 ui.label(cache_key.entity_path.to_string());
-                                ui.label(cache_key.component_descr.to_string());
+                                ui.label(cache_key.component.to_string());
                                 ui.label(re_format::format_uint(total_chunks));
                                 ui.label(re_format::format_bytes(total_effective_size_bytes as _));
                                 ui.label(re_format::format_bytes(total_actual_size_bytes as _));
@@ -313,7 +350,7 @@ impl MemoryPanel {
                                 } = stats;
 
                                 ui.label(cache_key.entity_path.to_string());
-                                ui.label(cache_key.component_descr.to_string());
+                                ui.label(cache_key.component.to_string());
                                 ui.label(re_format::format_uint(total_chunks));
                                 ui.label(re_format::format_bytes(total_effective_size_bytes as _));
                                 ui.label(re_format::format_bytes(total_actual_size_bytes as _));
@@ -401,7 +438,7 @@ impl MemoryPanel {
 
         use itertools::Itertools as _;
 
-        fn to_line<'a>(name: &str, history: &egui::util::History<i64>) -> egui_plot::Line<'a> {
+        fn to_line<'a>(name: &str, history: &egui::util::History<u64>) -> egui_plot::Line<'a> {
             egui_plot::Line::new(
                 name,
                 history
@@ -423,8 +460,9 @@ impl MemoryPanel {
             .include_y(0.0)
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
-                if let Some(max_bytes) = limit.max_bytes {
-                    plot_ui.hline(egui_plot::HLine::new("Limit", max_bytes as f64).width(2.0));
+                if limit.is_limited() {
+                    plot_ui
+                        .hline(egui_plot::HLine::new("Limit", limit.as_bytes() as f64).width(2.0));
                 }
 
                 for &time in &self.memory_purge_times {
@@ -442,18 +480,20 @@ impl MemoryPanel {
                     counted_blueprints,
                     counted_recordings,
                     counted_query_caches,
-                    counted_viewer_caches,
                     counted_table_stores,
                 } = &self.history;
 
                 plot_ui.line(to_line("Resident", resident).width(1.5));
                 plot_ui.line(to_line("Allocator", counted_allocator).width(1.5));
                 plot_ui.line(to_line("VRAM", counted_vram).width(1.5));
-                plot_ui.line(to_line("Blueprints", counted_blueprints).width(1.5));
                 plot_ui.line(to_line("Recordings", counted_recordings).width(1.5));
-                plot_ui.line(to_line("Query caches", counted_query_caches).width(1.5));
-                plot_ui.line(to_line("Viewer caches", counted_viewer_caches).width(1.5));
-                plot_ui.line(to_line("Table stores", counted_table_stores).width(1.5));
+
+                if false {
+                    // Intentionally omitted because they are uninteresting and clutter things up too much
+                    plot_ui.line(to_line("Blueprints", counted_blueprints).width(1.5));
+                    plot_ui.line(to_line("Query caches", counted_query_caches).width(1.5));
+                    plot_ui.line(to_line("Table stores", counted_table_stores).width(1.5));
+                }
             });
     }
 }
@@ -464,29 +504,26 @@ fn summarize_callstack(callstack: &str) -> String {
         ("w_store::store::ComponentBucket>::archive", "archive"),
         ("ChunkStore>::insert", "ChunkStore"),
         ("EntityDb", "EntityDb"),
-        ("EntityDb", "EntityDb"),
         ("EntityTree", "EntityTree"),
         ("::LogMsg>::deserialize", "LogMsg"),
         ("::TimePoint>::deserialize", "TimePoint"),
         ("ImageCache", "ImageCache"),
         ("gltf", "gltf"),
+        ("tokio::sync::broadcast::channel", "channel"),
+        ("grpc", "grpc"),
         ("image::image", "image"),
+        ("ImageDecodeCache", "ImageDecodeCache"),
         ("epaint::text::text_layout", "text_layout"),
         ("egui_wgpu", "egui_wgpu"),
+        ("decode_arrow", "decode_arrow"),
+        ("transform_resolution_cache", "transform_resolution_cache"),
         ("wgpu_hal", "wgpu_hal"),
         ("prepare_staging_buffer", "prepare_staging_buffer"),
         // -----
         // Very general:
         ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),
         ("epaint::texture_atlas", "egui font texture"),
-        (
-            "alloc::collections::btree::map::BTreeSet<K,V,A>",
-            "BTreeSet",
-        ),
-        (
-            "alloc::collections::btree::map::BTreeMap<K,V,A>",
-            "BTreeMap",
-        ),
+        ("alloc::collections::btree", "BTree"),
         ("std::collections::hash::map::HashMap<K,V,S>", "HashMap"),
     ];
 
@@ -499,4 +536,64 @@ fn summarize_callstack(callstack: &str) -> String {
     }
 
     all_summaries.join(", ")
+}
+
+pub fn memory_tree_ui(
+    ui: &mut egui::Ui,
+    tree: Option<re_byte_size::NamedMemUsageTree>,
+    include_rss: &mut bool,
+) {
+    // Add explanation at the top
+    ui.horizontal(|ui| {
+        ui.label("Memory flamegraph visualizing the memory usage tree.");
+        ui.hyperlink_to(
+            "Learn more",
+            "https://docs.rs/re_byte_size/latest/re_byte_size/trait.MemUsageTreeCapture.html?speculative-link",
+        );
+
+        #[expect(dead_code)]
+        fn foo(_: &dyn re_byte_size::MemUsageTreeCapture) {
+            // This function is only here so we remember to update the link above if the trait name changes.
+        }
+    });
+
+    ui.label("Double-click to reset view, scroll to zoom, drag to pan.");
+
+    ui.re_checkbox(include_rss, "Include RSS")
+        .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory use as reported by the OS. This may be a lot bigger than what is actually _used_ because our allocator (mimalloc) retains pages in case they are needed again.");
+
+    ui.separator();
+
+    let Some(mut tree) = tree else {
+        ui.label("No memory usage tree available.");
+        return;
+    };
+
+    let re_memory::MemoryUse { resident, counted } = re_memory::MemoryUse::capture();
+
+    let include_counted = true; // What our allocator counts. Perfectly accurate.
+
+    if include_counted && let Some(counted) = counted {
+        tree = re_byte_size::NamedMemUsageTree::new(
+            "counted",
+            re_byte_size::MemUsageNode::new()
+                .with_named_child(tree)
+                .with_total_size_bytes(counted),
+        );
+    }
+
+    if *include_rss && let Some(resident) = resident {
+        tree = re_byte_size::NamedMemUsageTree::new(
+            "RSS",
+            re_byte_size::MemUsageNode::new()
+                .with_named_child(tree)
+                .with_total_size_bytes(resident),
+        );
+    }
+
+    egui::ScrollArea::vertical()
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            re_memory_view::memory_flamegraph_ui(ui, &tree);
+        });
 }

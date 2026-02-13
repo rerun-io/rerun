@@ -1,13 +1,8 @@
-use crate::{
-    ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER, Object, Objects, Reporter,
-    codegen::{
-        Target,
-        common::StringExt as _,
-        python::{quote_doc_lines, quote_obj_docs},
-    },
-};
-
 use super::ExtensionClass;
+use crate::codegen::Target;
+use crate::codegen::common::StringExt as _;
+use crate::codegen::python::{quote_doc_lines, quote_obj_docs};
+use crate::{ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER, Object, Objects, Reporter};
 
 pub fn code_for_view(
     reporter: &Reporter,
@@ -28,7 +23,7 @@ from ... import datatypes
 from ... import components
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from ..api import View, ViewContentsLike
+from ..api import View, ViewContentsLike, VisualizerLike
 ",
         1,
     );
@@ -59,7 +54,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     name: Utf8Like | None = None,
     visible: datatypes.BoolLike | None = None,
     defaults: Iterable[AsComponents | Iterable[DescribedComponentBatch]] | None = None,
-    overrides: Mapping[EntityPathLike, AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]]] | None = None,
+    overrides: Mapping[EntityPathLike, VisualizerLike | Iterable[VisualizerLike]] | None = None,
     "#
     .to_owned();
 
@@ -139,10 +134,12 @@ It is recommended to use the archetype's `from_fields` method instead and only s
         ),
         (
             "overrides",
-            "Dictionary of overrides to apply to the view. The key is the path to the entity where the override
-should be applied. The value is a list of archetypes or (described) component batches to apply to the entity.
+            "Dictionary of visualizer overrides to apply to the view. The key is the path to the entity where the override
+should be applied. The value is a list of visualizers which should be enabled for that entity, or a single visualizer.
 
-It is recommended to use the archetype's `from_fields` method instead and only specify the fields that you need.
+Each visualizer can be configured with arbitrary overrides and mappings.
+
+For any entity mentioned in this map, visualizers are no longer added automatically based on the entity's components.
 
 Important note: the path must be a fully qualified entity path starting at the root. The override paths
 do not yet support `$origin` relative paths or glob expressions.

@@ -1,0 +1,17 @@
+namespace rerun.blueprint.views;
+
+/// A view of a text log, for use with [archetypes.TextLog].
+///
+/// \example views/text_log title="Use a blueprint to show a TextLogView." image="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1200w.png"
+table TextLogView (
+  "attr.rerun.view_identifier": "TextLog"
+) {
+  /// The columns to display in the view.
+  columns: rerun.blueprint.archetypes.TextLogColumns (order: 1000);
+
+  /// Filter for rows to display in the view.
+  rows: rerun.blueprint.archetypes.TextLogRows (order: 2000);
+
+  /// Formatting options for the text log view.
+  format_options: rerun.blueprint.archetypes.TextLogFormat (order: 3000);
+}

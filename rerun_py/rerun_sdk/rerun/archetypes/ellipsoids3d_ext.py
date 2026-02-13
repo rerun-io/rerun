@@ -45,12 +45,10 @@ class Ellipsoids3DExt:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the ellipsoids.
         line_radii:

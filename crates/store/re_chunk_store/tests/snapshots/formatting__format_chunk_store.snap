@@ -7,30 +7,34 @@ ChunkStore {
     config: ChunkStoreConfig { enable_changelog: true, chunk_max_bytes: 393216, chunk_max_rows: 4096, chunk_max_rows_if_unsorted: 1024 }
     stats: {
         num_chunks: 1
-        total_size_bytes: 1.1 KiB
+        total_size_bytes: 1.5 KiB
         num_rows: 1
         num_events: 2
     }
-    chunks: [
-        ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-        │ METADATA:                                                                                                                                                                     │
-        │ * entity_path: /this/that                                                                                                                                                     │
-        │ * heap_size_bytes: 944                                                                                                                                                        │
-        │ * id: chunk_0000000000661EFDf2e3b19f7c045f15                                                                                                                                  │
+    physical chunks: [
+        chunk_0000000000661EFDf2e3b19f7c045f15 (status:loaded static:no)
+            origin:<volatile> (cannot be re-fetched)
+        ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+        │ METADATA:                                                                                                                                                                       │
+        │ * entity_path: /this/that                                                                                                                                                       │
+        │ * heap_size_bytes: [**REDACTED**]                                                                                                                                              │
+        │ * id: chunk_0000000000661EFDf2e3b19f7c045f15                                                                                                                                    │
         │ * version: [**REDACTED**]                                                                                                                                                     │
-        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-        │ ┌─────────────────────────────────────────────┬──────────────────────┬───────────────────────────────┬─────────────────────────────────┬────────────────────────────────────┐ │
-        │ │ RowId                                       ┆ frame_nr             ┆ log_time                      ┆ my_index                        ┆ example.MyPoints:colors            │ │
-        │ │ ---                                         ┆ ---                  ┆ ---                           ┆ ---                             ┆ ---                                │ │
-        │ │ type: FixedSizeBinary[16]                   ┆ type: i64            ┆ type: Timestamp(ns)           ┆ type: List[nullable u64]        ┆ type: List[nullable u32]           │ │
-        │ │ ARROW:extension:metadata:                   ┆ index_name: frame_nr ┆ index_name: log_time          ┆ component: my_index             ┆ archetype: example.MyPoints        │ │
-        │ │ {"namespace":"row"}                         ┆ is_sorted: true      ┆ is_sorted: true               ┆ component_type: example.MyIndex ┆ component: example.MyPoints:colors │ │
-        │ │ ARROW:extension:name: TUID                  ┆ kind: index          ┆ kind: index                   ┆ kind: data                      ┆ component_type: example.MyColor    │ │
-        │ │ is_sorted: true                             ┆                      ┆                               ┆                                 ┆ kind: data                         │ │
-        │ │ kind: control                               ┆                      ┆                               ┆                                 ┆                                    │ │
-        │ ╞═════════════════════════════════════════════╪══════════════════════╪═══════════════════════════════╪═════════════════════════════════╪════════════════════════════════════╡ │
-        │ │ row_0000000067816A6Bb4b8c1254d40007b        ┆ 1                    ┆ 2025-01-10T18:43:42.123456789 ┆ [0, 1, 2]                       ┆ [0, 1, 2]                          │ │
-        │ └─────────────────────────────────────────────┴──────────────────────┴───────────────────────────────┴─────────────────────────────────┴────────────────────────────────────┘ │
-        └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ ┌─────────────────────────────────────────────┬──────────────────────┬───────────────────────────────┬───────────────────────────────────┬────────────────────────────────────┐ │
+        │ │ RowId                                       ┆ frame_nr             ┆ log_time                      ┆ my_index                          ┆ example.MyPoints:colors            │ │
+        │ │ ---                                         ┆ ---                  ┆ ---                           ┆ ---                               ┆ ---                                │ │
+        │ │ type: FixedSizeBinary[16]                   ┆ type: nullable i64   ┆ type: nullable Timestamp(ns)  ┆ type: nullable List[nullable u64] ┆ type: nullable List[nullable u32]  │ │
+        │ │ ARROW:extension:metadata:                   ┆ index_name: frame_nr ┆ index_name: log_time          ┆ component: my_index               ┆ archetype: example.MyPoints        │ │
+        │ │ {"namespace":"row"}                         ┆ is_sorted: true      ┆ is_sorted: true               ┆ component_type: example.MyIndex   ┆ component: example.MyPoints:colors │ │
+        │ │ ARROW:extension:name: TUID                  ┆ kind: index          ┆ kind: index                   ┆ kind: data                        ┆ component_type: example.MyColor    │ │
+        │ │ is_sorted: true                             ┆                      ┆                               ┆                                   ┆ kind: data                         │ │
+        │ │ kind: control                               ┆                      ┆                               ┆                                   ┆                                    │ │
+        │ ╞═════════════════════════════════════════════╪══════════════════════╪═══════════════════════════════╪═══════════════════════════════════╪════════════════════════════════════╡ │
+        │ │ row_0000000067816A6Bb4b8c1254d40007b        ┆ 1                    ┆ 2025-01-10T18:43:42.123456789 ┆ [0, 1, 2]                         ┆ [0, 1, 2]                          │ │
+        │ └─────────────────────────────────────────────┴──────────────────────┴───────────────────────────────┴───────────────────────────────────┴────────────────────────────────────┘ │
+        └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    ]
+    virtual chunks: [
     ]
 }

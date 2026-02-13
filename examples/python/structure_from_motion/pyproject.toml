@@ -2,13 +2,7 @@
 name = "structure_from_motion"
 version = "0.1.0"
 readme = "README.md"
-dependencies = [
-  "opencv-python>4.6",
-  "numpy",
-  "requests>=2.31,<3",
-  "rerun-sdk",
-  "tqdm",
-]
+dependencies = ["opencv-python>4.6", "numpy", "requests>=2.31,<3", "rerun-sdk", "tqdm"]
 
 [project.scripts]
 structure_from_motion = "structure_from_motion.__main__:main"

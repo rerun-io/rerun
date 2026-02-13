@@ -11,7 +11,7 @@ A binary blob of data.
 
 ## Arrow datatype
 ```
-binary
+List<uint8>
 ```
 
 ## API reference links
@@ -24,4 +24,7 @@ binary
 
 * [`Asset3D`](../archetypes/asset3d.md)
 * [`AssetVideo`](../archetypes/asset_video.md)
+* [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
+* [`McapMessage`](../archetypes/mcap_message.md)
+* [`McapSchema`](../archetypes/mcap_schema.md)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import collections
 from math import prod
-from typing import TYPE_CHECKING, Any, Final, Protocol, Union
+from typing import TYPE_CHECKING, Any, Final, Protocol
 
 import numpy as np
 import numpy.typing as npt
@@ -23,10 +23,12 @@ class TorchTensorLike(Protocol):
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike
+    from . import TensorBufferLike, TensorDataArrayLike
 
-    TensorLike = Union[TensorDataLike, TorchTensorLike]
+    TensorLike = npt.ArrayLike | TorchTensorLike
     """Type helper for a tensor-like object that can be logged to Rerun."""
+else:
+    TensorLike = Any
 
 
 def _to_numpy(tensor: TensorLike) -> npt.NDArray[Any]:
@@ -117,34 +119,43 @@ class TensorDataExt:
                 resolved_shape = list(array.shape)
 
         if resolved_shape is not None:
-            self.shape: npt.NDArray[np.uint64] = resolved_shape
+            store_shape: npt.NDArray[np.uint64] = np.asarray(resolved_shape, dtype=np.uint64)
         else:
             # This shouldn't be possible but typing can't figure it out
             raise ValueError("No shape provided.")
 
         if buffer is not None:
-            self.buffer = _tensor_data__buffer__special_field_converter_override(buffer)
+            store_buffer = _tensor_data__buffer__special_field_converter_override(buffer)
         elif array is not None:
-            self.buffer = TensorBuffer(array.flatten())
+            store_buffer = TensorBuffer(array.flatten())
+        else:
+            # This shouldn't be possible but typing can't figure it out
+            raise ValueError("No buffer provided.")
 
-        self.names: list[str] | None = None
+        store_names: list[str] | None = None
         if dim_names:
-            if len(self.shape) == len(dim_names):
-                self.names = dim_names
+            if len(store_shape) == len(dim_names):
+                store_names = list(dim_names)
             else:
                 _send_warning_or_raise(
                     (
-                        f"len(shape) = {len(self.shape)} != "
+                        f"len(shape) = {len(store_shape)} != "
                         f"len(dim_names) = {len(dim_names)}. Ignoring tensor dimension names."
                     ),
                     2,
                 )
 
-        expected_buffer_size = prod(d for d in self.shape)
-        if len(self.buffer.inner) != expected_buffer_size:
+        expected_buffer_size = prod(d for d in store_shape)
+        if len(store_buffer.inner) != expected_buffer_size:
             raise ValueError(
-                f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}",
+                f"Shape and buffer size do not match. {len(store_buffer.inner)} {store_shape}->{expected_buffer_size}",
             )
+
+        self.__attrs_init__(
+            shape=store_shape,
+            buffer=store_buffer,
+            names=store_names,
+        )
 
     ################################################################################
     # Arrow converters
@@ -186,7 +197,7 @@ class TensorDataExt:
             fields=data_type.fields,
         ).cast(data_type)
 
-    def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
+    def numpy(self: Any, force: bool) -> npt.NDArray[Any]:  # noqa: ARG002 TODO(jleibs): why is `force` here?
         """Convert the TensorData back to a numpy array."""
         dims = list(self.shape)
         return self.buffer.inner.reshape(dims)  # type: ignore[no-any-return]

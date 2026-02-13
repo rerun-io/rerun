@@ -1,0 +1,14 @@
+
+namespace rerun.components;
+
+// ---
+
+/// A position in 2D space.
+struct Position2D (
+  "attr.python.aliases": "npt.NDArray[np.float32] | Sequence[float] | Tuple[float, float]",
+  "attr.python.array_aliases": "npt.NDArray[np.float32] | Sequence[float]",
+  "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  xy: rerun.datatypes.Vec2D (order: 100);
+}

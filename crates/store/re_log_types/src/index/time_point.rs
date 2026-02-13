@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, btree_map};
 
-use super::{NonMinI64, TimeCell, TimeInt, Timeline, TimelineName};
+use super::{NonMinI64, TimeCell, TimeInt, Timeline};
+use crate::TimelineName;
 
 /// A point in time on any number of [`Timeline`]s.
 ///

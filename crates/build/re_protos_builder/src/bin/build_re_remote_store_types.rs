@@ -3,7 +3,7 @@
 //! It is easiest to call this using `pixi run codegen-protos`,
 //! which will set up the necessary tools.
 
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 use camino::Utf8Path;
 
@@ -31,8 +31,8 @@ fn main() {
     let mut proto_paths = std::fs::read_dir(definitions_dir_path.join(INPUT_V1ALPHA1_DIR))
         .unwrap()
         .map(|v| {
-            v.unwrap()
-                .path()
+            Utf8Path::from_path(&v.unwrap().path())
+                .unwrap()
                 .strip_prefix(&definitions_dir_path)
                 .unwrap()
                 .to_owned()
@@ -50,6 +50,6 @@ fn main() {
     re_protos_builder::generate_rust_code(
         definitions_dir_path,
         &proto_paths,
-        rust_generated_output_dir_path,
+        &rust_generated_output_dir_path,
     );
 }

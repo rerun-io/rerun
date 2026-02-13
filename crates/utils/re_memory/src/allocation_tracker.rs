@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use crate::{Backtrace, BacktraceHash};
-
-use crate::CountAndSize;
+use crate::{Backtrace, BacktraceHash, CountAndSize};
 
 // ----------------------------------------------------------------------------
 
@@ -31,6 +29,12 @@ pub struct ReadableBacktrace {
     readable: Arc<str>,
 }
 
+impl std::fmt::Debug for ReadableBacktrace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.readable.fmt(f)
+    }
+}
+
 impl std::fmt::Display for ReadableBacktrace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.readable.fmt(f)
@@ -38,18 +42,28 @@ impl std::fmt::Display for ReadableBacktrace {
 }
 
 impl ReadableBacktrace {
+    #[allow(clippy::allow_attributes, unused_mut)] // wasm vs native diff
     fn new(mut backtrace: Backtrace) -> Self {
-        #![allow(unused_mut)] // difference between native and wasm
         Self {
             readable: backtrace.format(),
         }
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        &self.readable
+    }
+
+    #[inline]
+    pub fn as_arc_str(&self) -> &Arc<str> {
+        &self.readable
     }
 }
 
 // ----------------------------------------------------------------------------
 
 /// Per-callstack statistics.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CallstackStatistics {
     /// For when we print this statistic.
     pub readable_backtrace: ReadableBacktrace,
@@ -68,6 +82,16 @@ pub struct CallstackStatistics {
     pub extant: CountAndSize,
 }
 
+impl CallstackStatistics {
+    pub fn estimated(&self) -> CountAndSize {
+        let CountAndSize { count, size } = self.extant;
+        CountAndSize {
+            count: count.saturating_mul(self.stochastic_rate),
+            size: size.saturating_mul(self.stochastic_rate),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Track the callstacks of allocations.
@@ -79,7 +103,7 @@ pub struct AllocationTracker {
     readable_backtraces: nohash_hasher::IntMap<BacktraceHash, ReadableBacktrace>,
 
     /// Current live allocations.
-    live_allocs: ahash::HashMap<PtrHash, BacktraceHash>,
+    live_allocs: nohash_hasher::IntMap<PtrHash, BacktraceHash>,
 
     /// How much memory is allocated by each callstack?
     callstack_stats: nohash_hasher::IntMap<BacktraceHash, CountAndSize>,
@@ -97,6 +121,7 @@ impl AllocationTracker {
         }
     }
 
+    #[inline(always)]
     fn should_sample(&self, ptr: PtrHash) -> bool {
         ptr.0 & (self.stochastic_rate as u64 - 1) == 0
     }
@@ -153,7 +178,10 @@ impl AllocationTracker {
                 })
             })
             .collect();
-        vec.sort_by_key(|stats| -(stats.extant.size as i64));
+
+        // TODO(emilk): this could be faster with `select_nth_unstable`
+        #[expect(clippy::cast_possible_wrap)]
+        vec.sort_by_key(|stats| -(stats.estimated().size as i64));
         vec.truncate(n);
         vec.shrink_to_fit();
         vec

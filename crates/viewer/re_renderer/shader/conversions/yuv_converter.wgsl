@@ -36,7 +36,7 @@ const YUV_RANGE_FULL = 1u;
 
 /// Returns sRGB from YUV color.
 ///
-/// This conversion mirrors the function in `crates/store/re_types/src/datatypes/tensor_data_ext.rs`
+/// This conversion mirrors the function in `crates/store/re_sdk_types/src/datatypes/tensor_data_ext.rs`
 ///
 /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
 fn srgb_from_yuv(yuv: vec3f, yuv_matrix_coefficients: u32, range: u32) -> vec3f {

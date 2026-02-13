@@ -1,28 +1,20 @@
 use itertools::Itertools as _;
-
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Points2D,
-    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels},
-};
+use re_sdk_types::archetypes::Points2D;
+use re_sdk_types::components::{ClassId, Color, KeypointId, Position2D, Radius, ShowLabels};
+use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{load_keypoint_connections, process_radius_slice},
-};
-
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_2d_entities,
-    utilities::{LabeledBatch, process_labels_2d},
-};
+use super::SpatialViewVisualizerData;
+use super::utilities::{LabeledBatch, process_labels_2d};
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
 // ---
 
@@ -47,7 +39,7 @@ impl Points2DVisualizer {
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Points2DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
@@ -78,12 +70,19 @@ impl Points2DVisualizer {
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
-            let colors =
-                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
+            let colors = process_color_slice(
+                ctx,
+                Points2D::descriptor_colors().component,
+                num_instances,
+                &annotation_infos,
+                data.colors,
+            );
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, Points2D::name());
+                .single_transform_required_for_entity(entity_path, Points2D::name())
+                .as_affine3a();
+
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
@@ -138,7 +137,9 @@ impl Points2DVisualizer {
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels.unwrap_or_else(|| {
+                        typed_fallback_for(ctx, Points2D::descriptor_show_labels().component)
+                    }),
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -174,17 +175,11 @@ impl IdentifiedViewSystem for Points2DVisualizer {
 }
 
 impl VisualizerSystem for Points2DVisualizer {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Points2D>()
-    }
-
-    fn filter_visualizable_entities(
+    fn visualizer_query_info(
         &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Points2D>()
     }
 
     fn execute(
@@ -192,7 +187,9 @@ impl VisualizerSystem for Points2DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
+
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
         point_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -205,21 +202,22 @@ impl VisualizerSystem for Points2DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
+        use super::entity_iterator::process_archetype;
         process_archetype::<Self, Points2D, _>(
             ctx,
             view_query,
             context_systems,
+            &output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_position_chunks) =
-                    results.get_required_chunks(Points2D::descriptor_positions())
-                else {
+                let all_positions =
+                    results.iter_required(Points2D::descriptor_positions().component);
+                if all_positions.is_empty() {
                     return Ok(());
-                };
+                }
 
-                let num_positions = all_position_chunks
+                let num_positions = all_positions
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
                     .map(|points| points.len())
@@ -230,19 +228,18 @@ impl VisualizerSystem for Points2DVisualizer {
                 }
 
                 point_builder.reserve(num_positions)?;
-
-                let timeline = ctx.query.timeline();
-                let all_positions_indexed = iter_slices::<[f32; 2]>(&all_position_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Points2D::descriptor_colors());
-                let all_radii = results.iter_as(timeline, Points2D::descriptor_radii());
-                let all_labels = results.iter_as(timeline, Points2D::descriptor_labels());
-                let all_class_ids = results.iter_as(timeline, Points2D::descriptor_class_ids());
+                let all_colors = results.iter_optional(Points2D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Points2D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Points2D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_optional(Points2D::descriptor_class_ids().component);
                 let all_keypoint_ids =
-                    results.iter_as(timeline, Points2D::descriptor_keypoint_ids());
-                let all_show_labels = results.iter_as(timeline, Points2D::descriptor_show_labels());
+                    results.iter_optional(Points2D::descriptor_keypoint_ids().component);
+                let all_show_labels =
+                    results.iter_optional(Points2D::descriptor_show_labels().component);
 
                 let data = re_query::range_zip_1x6(
-                    all_positions_indexed,
+                    all_positions.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
@@ -288,45 +285,13 @@ impl VisualizerSystem for Points2DVisualizer {
             },
         )?;
 
-        Ok(vec![
+        Ok(output.with_draw_data([
             point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
-        ])
+        ]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.data.as_any())
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        self
-    }
 }
-
-impl TypedComponentFallbackProvider<Color> for Points2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        auto_color_for_entity_path(ctx.target_entity_path)
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for Points2DVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_POINTS2D
-    }
-}
-
-impl TypedComponentFallbackProvider<ShowLabels> for Points2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback(
-            ctx,
-            &Points2D::descriptor_positions(),
-            &Points2D::descriptor_labels(),
-        )
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => [Color, DrawOrder, ShowLabels]);

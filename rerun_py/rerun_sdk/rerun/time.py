@@ -4,8 +4,9 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, overload
 
 import numpy as np
+import pyarrow as pa
+
 import rerun_bindings as bindings
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 if TYPE_CHECKING:
     from rerun.recording_stream import RecordingStream
@@ -42,7 +43,7 @@ def set_time(
     recording: RecordingStream | None = None,
     sequence: int | None = None,
     duration: int | float | timedelta | np.timedelta64 | None = None,
-    timestamp: int | float | datetime | np.datetime64 | None = None,
+    timestamp: int | float | datetime | np.datetime64 | pa.TimestampScalar | None = None,
 ) -> None:
     """
     Set the current time of a timeline for this thread.
@@ -127,7 +128,7 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
 
 
 def to_nanos_since_epoch(
-    timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64,
+    timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64 | pa.TimestampScalar,
 ) -> int:
     # Only allowing f64 since anything less has way too little precision for measuring time since 1970
     if isinstance(timestamp, (int, np.integer, float, np.float64)):
@@ -135,6 +136,11 @@ def to_nanos_since_epoch(
             raise ValueError("set_time: Expected seconds since unix epoch, but it looks like this is in milliseconds")
         return int(np.round(1e9 * timestamp))  # Interpret as seconds and convert to nanos
     elif isinstance(timestamp, datetime):
+        # Special case pandas to avoid loss of precision
+        if hasattr(timestamp, "to_datetime64"):
+            datetime64: np.datetime64 = timestamp.to_datetime64()
+            return int(datetime64.astype("datetime64[ns]").astype("int64"))
+
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         else:
@@ -144,146 +150,12 @@ def to_nanos_since_epoch(
         return int(np.round(1e9 * (timestamp - epoch).total_seconds()))
     elif isinstance(timestamp, np.datetime64):
         return int(timestamp.astype("datetime64[ns]").astype("int64"))
+    elif isinstance(timestamp, pa.TimestampScalar):
+        return int(timestamp.value)
     else:
         raise TypeError(
-            f"set_time: timestamp must be an int, float, datetime, or numpy.datetime64 object, got {type(timestamp)}",
+            f"set_time: timestamp must be an int, float, datetime, numpy.datetime64, or pyarrow.TimestampScalar object, got {type(timestamp)}",
         )
-
-
-@deprecated(
-    """Use `set_time(sequence=…)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-)
-def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:
-    """
-    DEPRECATED: Set the current time for this thread as an integer sequence.
-
-    Used for all subsequent logging on the same thread,
-    until the next call to `set_time_sequence`.
-
-    For example: `set_time_sequence("frame_nr", frame_nr)`.
-
-    You can remove a timeline again using `disable_timeline("frame_nr")`.
-
-    There is no requirement of monotonicity. You can move the time backwards if you like.
-
-    This function marks the timeline as being of a _squential_ type.
-    You should not use the temporal functions ([`rerun.set_time_seconds`][], [`rerun.set_time_nanos`][])
-    on the same timeline, as that will produce undefined behavior.
-
-    Parameters
-    ----------
-    timeline : str
-        The name of the timeline to set the time for.
-    sequence : int
-        The current time on the timeline in integer units.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-    bindings.set_time_sequence(
-        timeline,
-        sequence,
-        recording=recording.to_native() if recording is not None else None,
-    )
-
-
-@deprecated(
-    """Use `set_time(timestamp=seconds)` or `set_time(duration=seconds)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-)
-def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
-    """
-    DEPRECATED: Set the current time for this thread in seconds.
-
-    Used for all subsequent logging on the same thread,
-    until the next call to [`rerun.set_time_seconds`][] or [`rerun.set_time_nanos`][].
-
-    For example: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
-
-    You can remove a timeline again using `disable_timeline("capture_time")`.
-
-    Very large values will automatically be interpreted as seconds since unix epoch (1970-01-01).
-    Small values (less than a few years) will be interpreted as relative
-    some unknown point in time, and will be shown as e.g. `+3.132s`.
-
-    The bindings has a built-in time which is `log_time`, and is logged as seconds
-    since unix epoch.
-
-    There is no requirement of monotonicity. You can move the time backwards if you like.
-
-    This function marks the timeline as being of a _temporal_ type.
-    You should not use the sequential function [`rerun.set_time_sequence`][]
-    on the same timeline, as that will produce undefined behavior.
-
-    Parameters
-    ----------
-    timeline : str
-        The name of the timeline to set the time for.
-    seconds : float
-        The current time on the timeline in seconds.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    bindings.set_time_timestamp_nanos_since_epoch(
-        timeline,
-        int(seconds * 1e9),
-        recording=recording.to_native() if recording is not None else None,
-    )
-
-
-@deprecated(
-    """Use `set_time(timestamp=1e-9 * nanos)` or `set_time(duration=1e-9 * nanos)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
-)
-def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
-    """
-    DEPRECATED: Set the current time for this thread.
-
-    Used for all subsequent logging on the same thread,
-    until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
-
-    For example: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
-
-    You can remove a timeline again using `disable_timeline("capture_time")`.
-
-    Very large values will automatically be interpreted as nanoseconds since unix epoch (1970-01-01).
-    Small values (less than a few years) will be interpreted as relative
-    some unknown point in time, and will be shown as e.g. `+3.132s`.
-
-    The bindings has a built-in time which is `log_time`, and is logged as nanos since
-    unix epoch.
-
-    There is no requirement of monotonicity. You can move the time backwards if you like.
-
-    This function marks the timeline as being of a _temporal_ type.
-    You should not use the sequential function [`rerun.set_time_sequence`][]
-    on the same timeline, as that will produce undefined behavior.
-
-    Parameters
-    ----------
-    timeline : str
-        The name of the timeline to set the time for.
-    nanos : int
-        The current time on the timeline in nanoseconds.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    bindings.set_time_timestamp_nanos_since_epoch(
-        timeline,
-        nanos,
-        recording=recording.to_native() if recording is not None else None,
-    )
 
 
 # TODO(emilk): rename to something with the word `index`, and maybe unify with `reset_time`?

@@ -11,10 +11,10 @@ DEST_DIR="tests/assets/rrd"
 
 # TODO(emilk): only update missing files
 echo "Generating example .rrd files…"
-pixi run -e examples build-examples rrd --channel main ${DEST_DIR}/examples
+pixi run build-examples rrd --install --channel main ${DEST_DIR}/examples
 
 echo "Generating snippet .rrd files…"
-pixi run -e py docs/snippets/compare_snippet_output.py --no-py --no-cpp --write-missing-backward-assets
+pixi run uvpy docs/snippets/compare_snippet_output.py --no-py --no-cpp --write-missing-backward-assets
 
 echo "Adding new .rrd files to git…"
 find "${DEST_DIR}" -type f -name "*.rrd" -exec git add -f {} \;

@@ -1,0 +1,7 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+line_strings: [[]]
+radii: [-2.0]
+colors: [3161148927]

@@ -2,7 +2,7 @@
 //!
 //! This is semantically equivalent to the `image_row_updates` example, albeit much faster.
 
-use ndarray::{s, Array, ShapeBuilder as _};
+use ndarray::{Array, ShapeBuilder as _, s};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_column_updates").spawn()?;

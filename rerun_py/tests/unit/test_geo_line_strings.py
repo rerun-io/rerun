@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -71,9 +71,9 @@ def test_geo_line_strings() -> None:
         strips = strips if strips is not None else geo_line_strings_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info through zip_longest
-        strips = cast(GeoLineStringArrayLike, strips)
-        radii = cast(Optional[Float32ArrayLike], radii)
-        colors = cast(Optional[Rgba32ArrayLike], colors)
+        strips = cast("GeoLineStringArrayLike", strips)
+        radii = cast("Float32ArrayLike | None", radii)
+        colors = cast("Rgba32ArrayLike | None", colors)
 
         print(f"rr.GeoLineStrings(\n    lat_lon={strips}\n    radii={radii!r}\n    colors={colors!r}\n)")
         arch = rr.GeoLineStrings(

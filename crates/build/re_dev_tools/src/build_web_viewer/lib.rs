@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
 
 //! Build the Rerun web-viewer .wasm and generate the .js bindings for it.
 
@@ -18,7 +18,12 @@ pub fn workspace_root() -> Utf8PathBuf {
 }
 
 pub fn default_build_dir() -> Utf8PathBuf {
-    workspace_root().join("web_viewer")
+    // crates/viewer/re_web_viewer_server/web_viewer
+    workspace_root()
+        .join("crates")
+        .join("viewer")
+        .join("re_web_viewer_server")
+        .join("web_viewer")
 }
 
 fn target_directory() -> Utf8PathBuf {
@@ -69,6 +74,7 @@ impl argh::FromArgValue for Target {
 ///
 /// If `debug_symbols` is set, debug symbols are kept even in release builds,
 /// allowing for better callstacks on panics, as well as in-browser profiling of the wasm.
+#[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
 pub fn build(
     profile: Profile,
     debug_symbols: bool,
@@ -114,7 +120,6 @@ pub fn build(
         let mut cmd = std::process::Command::new("cargo");
         cmd.args([
             "build",
-            "--quiet",
             &format!("--package={crate_name}"),
             "--lib",
             "--target=wasm32-unknown-unknown",

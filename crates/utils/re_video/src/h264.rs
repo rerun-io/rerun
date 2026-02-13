@@ -1,17 +1,15 @@
 //! General H.264 utilities.
 
-use h264_reader::{
-    annexb::AnnexBReader,
-    nal::{self, Nal as _},
-    push::NalInterest,
-};
+use h264_reader::annexb::AnnexBReader;
+use h264_reader::nal::{self, Nal as _};
+use h264_reader::push::NalInterest;
 
+use crate::nalu::{
+    ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
+    write_length_prefixed_nalus_to_annexb_stream,
+};
 use crate::{
     ChromaSubsamplingModes, Chunk, DetectGopStartError, GopStartDetection, VideoEncodingDetails,
-    nalu::{
-        ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
-        write_length_prefixed_nalus_to_annexb_stream,
-    },
 };
 
 /// Retrieve [`VideoEncodingDetails`] from a H.264 SPS.
@@ -143,21 +141,22 @@ pub fn detect_h264_annexb_gop(
     }
 }
 
-pub fn write_avc_chunk_to_nalu_stream(
+/// Write an H.264 chunk to an Annex B stream without state tracking.
+///
+/// This is a fully re-entrant utility that allows explicit control over parameter set emission.
+/// Typically you'd pass `chunk.is_sync` to emit parameter sets for IDR frames only.
+pub fn write_avc_chunk_to_annexb(
     avcc: &re_mp4::Avc1Box,
     nalu_stream: &mut dyn std::io::Write,
+    emit_parameter_sets: bool,
     chunk: &Chunk,
-    state: &mut AnnexBStreamState,
 ) -> Result<(), AnnexBStreamWriteError> {
     re_tracing::profile_function!();
 
     let avcc = &avcc.avcc;
 
-    // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
-    // just as it is the case with MP4 data.
-    // In order to have every IDR frame be able to be fully re-entrant, we need to prepend the SPS & PPS NAL units.
-    // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
-    if chunk.is_sync && !state.previous_frame_was_idr {
+    // Emit SPS & PPS parameter sets if requested
+    if emit_parameter_sets {
         for sps in &avcc.sequence_parameter_sets {
             nalu_stream.write_all(ANNEXB_NAL_START_CODE)?;
             nalu_stream.write_all(&sps.bytes)?;
@@ -166,9 +165,6 @@ pub fn write_avc_chunk_to_nalu_stream(
             nalu_stream.write_all(ANNEXB_NAL_START_CODE)?;
             nalu_stream.write_all(&pps.bytes)?;
         }
-        state.previous_frame_was_idr = true;
-    } else {
-        state.previous_frame_was_idr = false;
     }
 
     // Each NAL unit in mp4 is prefixed with a length prefix.
@@ -176,6 +172,26 @@ pub fn write_avc_chunk_to_nalu_stream(
     let length_prefix_size = avcc.length_size_minus_one as usize + 1;
 
     write_length_prefixed_nalus_to_annexb_stream(nalu_stream, &chunk.data, length_prefix_size)
+}
+
+pub fn write_avc_chunk_to_nalu_stream(
+    avcc: &re_mp4::Avc1Box,
+    nalu_stream: &mut dyn std::io::Write,
+    chunk: &Chunk,
+    state: &mut AnnexBStreamState,
+) -> Result<(), AnnexBStreamWriteError> {
+    re_tracing::profile_function!();
+
+    // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
+    // just as it is the case with MP4 data.
+    // In order to have every IDR frame be able to be fully re-entrant, we need to prepend the SPS & PPS NAL units.
+    // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
+    let emit_parameter_sets = chunk.is_sync && !state.previous_frame_was_idr;
+
+    write_avc_chunk_to_annexb(avcc, nalu_stream, emit_parameter_sets, chunk)?;
+    state.previous_frame_was_idr = emit_parameter_sets;
+
+    Ok(())
 }
 
 #[cfg(test)]

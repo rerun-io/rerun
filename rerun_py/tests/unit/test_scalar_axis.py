@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Optional, cast
+from typing import cast
 
 import numpy as np
 import rerun as rr
@@ -32,14 +32,11 @@ def test_scalar_axis() -> None:
     )
 
     for range, zoom_lock in all_arrays:
-        range = cast(Optional[rr.datatypes.Range1DLike], range)
-        zoom_lock = cast(Optional[rr.datatypes.Bool], zoom_lock)
+        range = cast("rr.datatypes.Range1DLike | None", range)
+        zoom_lock = cast("rr.datatypes.Bool | None", zoom_lock)
 
         print(
-            f"rr.ScalarAxis(\n"
-            f"    range={range!r}\n"  #
-            f"    zoom_lock={zoom_lock!r}\n"
-            f")",
+            f"rr.ScalarAxis(\n    range={range!r}\n    zoom_lock={zoom_lock!r}\n)",
         )
         arch = rrb.ScalarAxis(
             range=range,

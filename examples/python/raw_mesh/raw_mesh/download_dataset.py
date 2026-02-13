@@ -85,7 +85,7 @@ def download_mcguire_sample(package: str, name: str) -> Path:
 
 def download_glb_sample(name: str) -> Path:
     """Downloads a sample glb mesh and returns the path it was downloaded to."""
-    url = f"https://github.com/KhronosGroup/glTF-Sample-Models/blob/189f80d/2.0/{name}/glTF-Binary/{name}.glb?raw=true"  # noqa: E501 line too long
+    url = f"https://github.com/KhronosGroup/glTF-Sample-Models/blob/189f80d/2.0/{name}/glTF-Binary/{name}.glb?raw=true"
 
     def download(url: str, path: Path) -> None:
         if not os.path.exists(path):

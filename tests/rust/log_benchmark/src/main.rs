@@ -27,9 +27,10 @@
 //!
 
 use clap::Parser as _;
-use rerun::external::re_log;
 
 use crate::image::ImageCommand;
+use crate::scalars::ScalarsCommand;
+use crate::transform3d::Transform3DCommand;
 
 mod boxes3d_batch;
 mod image;
@@ -37,6 +38,8 @@ mod points3d_large_batch;
 mod points3d_many_individual;
 mod points3d_shared;
 mod scalars;
+mod transform3d;
+mod very_large_chunk;
 
 // ---
 
@@ -53,7 +56,7 @@ pub fn lcg(lcg_state: &mut i64) -> i64 {
 #[derive(Debug, Clone, clap::Subcommand)]
 enum Benchmark {
     #[command(name = "scalars")]
-    Scalars,
+    Scalars(ScalarsCommand),
 
     #[command(name = "points3d_large_batch")]
     Points3DLargeBatch,
@@ -66,6 +69,12 @@ enum Benchmark {
 
     #[command(name = "image")]
     Image(ImageCommand),
+
+    #[command(name = "transform3d")]
+    Transform3D(Transform3DCommand),
+
+    #[command(name = "very_large_chunk")]
+    VeryLargeChunk,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -79,14 +88,17 @@ struct Args {
     #[clap(long, default_value = "false")]
     profile: bool,
 
-    /// If true, connect to a running Rerun viewer
-    /// instead of writing to a memory buffer.
+    /// If true, connect to a running Rerun viewer instead of writing to a memory buffer.
     #[clap(long, default_value = "false")]
     connect: bool,
+
+    /// If true, perform an encode/decode roundtrip on the logged data.
+    #[clap(long, default_value = "false")]
+    check: bool,
 }
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_logging();
+    rerun::external::re_log::setup_logging();
 
     #[cfg(debug_assertions)]
     println!("WARNING: Debug build, timings will be inaccurate!");
@@ -95,6 +107,7 @@ fn main() -> anyhow::Result<()> {
         benchmark,
         profile,
         connect,
+        check,
     } = Args::parse();
 
     // Start profiler first thing:
@@ -103,7 +116,7 @@ fn main() -> anyhow::Result<()> {
         profiler.start();
     }
 
-    let (rec, _storage) = if connect {
+    let (rec, storage) = if connect {
         let rec = rerun::RecordingStreamBuilder::new("rerun_example_benchmark").connect_grpc()?;
         (rec, None)
     } else {
@@ -115,14 +128,37 @@ fn main() -> anyhow::Result<()> {
     println!("Running benchmark: {benchmark:?}");
 
     match benchmark {
-        Benchmark::Scalars => scalars::run(&rec)?,
+        Benchmark::Scalars(cmd) => cmd.run(&rec)?,
         Benchmark::Points3DLargeBatch => points3d_large_batch::run(&rec)?,
         Benchmark::Points3DManyIndividual => points3d_many_individual::run(&rec)?,
         Benchmark::Boxes3D => boxes3d_batch::run(&rec)?,
         Benchmark::Image(cmd) => cmd.run(&rec)?,
+        Benchmark::Transform3D(cmd) => cmd.run(&rec)?,
+        Benchmark::VeryLargeChunk => very_large_chunk::run(&rec)?,
     }
 
-    rec.flush_blocking();
+    rec.flush_blocking()?;
+
+    // Being able to log fast isn't particularly useful if the data happens to be corrupt at the
+    // other end, so make sure we can encode/decode everything that was logged.
+    if check && let Some(storage) = storage {
+        use rerun::external::re_log_encoding;
+        use rerun::external::re_log_encoding::ToTransport as _;
+        let msgs: anyhow::Result<Vec<_>> = storage
+            .take()
+            .into_iter()
+            .map(|msg| Ok(msg.to_transport(re_log_encoding::rrd::Compression::LZ4)?))
+            .collect();
+
+        use rerun::external::re_log_encoding::ToApplication as _;
+        let mut app_id_injector = re_log_encoding::DummyApplicationIdInjector::new("dummy");
+        let msgs: anyhow::Result<Vec<_>> = msgs?
+            .into_iter()
+            .map(|msg| Ok(msg.to_application((&mut app_id_injector, None))?))
+            .collect();
+
+        let _ = msgs?;
+    }
 
     Ok(())
 }

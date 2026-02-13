@@ -3,7 +3,7 @@ use re_log_types::ApplicationId;
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
 pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
-    re_viewer_context::santitize_file_name(&app_id.as_str().to_lowercase())
+    re_viewer_context::sanitize_file_name(&app_id.as_str().to_lowercase())
 }
 
 /// Determine the default path for a blueprint based on its `ApplicationId`
@@ -67,8 +67,8 @@ pub fn encode_to_file(
     let mut file = std::fs::File::create(path)
         .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut file)
+    let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+    re_log_encoding::Encoder::encode_into(version, encoding_options, messages, &mut file)
         .map(|_| ())
         .context("Message encode")
 }

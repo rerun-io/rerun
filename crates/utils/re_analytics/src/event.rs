@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 
-use re_build_info::BuildInfo;
+use re_build_info::{BuildInfo, CrateVersion};
 use url::Url;
 
 use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
@@ -23,6 +23,8 @@ use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
 /// Used in `re_crash_handler`.
 pub struct CrashPanic {
     pub build_info: BuildInfo,
+
+    /// Anonymized
     pub callstack: String,
     pub message: Option<String>,
     pub file_line: Option<String>,
@@ -102,7 +104,7 @@ pub struct Identify {
 impl Event for Identify {
     const NAME: &'static str = "$identify";
 
-    const KIND: EventKind = EventKind::Update;
+    const KIND: EventKind = EventKind::Identify;
 }
 
 impl Properties for Identify {
@@ -430,6 +432,196 @@ impl Event for SettingsOpened {
 impl Properties for SettingsOpened {
     fn serialize(self, _event: &mut AnalyticsEvent) {
         let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
+/// Links the current anonymous analytics ID to an authenticated user.
+///
+/// This is sent when a user logs in, allowing us to connect their
+/// pre-login anonymous activity with their authenticated identity.
+pub struct SetPersonProperty {
+    pub email: String,
+
+    /// The user's organization ID from the JWT claims.
+    pub organization_id: String,
+}
+
+impl Event for SetPersonProperty {
+    const NAME: &'static str = "$set";
+
+    const KIND: EventKind = EventKind::SetPersonProperties;
+}
+
+impl Properties for SetPersonProperty {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            email,
+            organization_id,
+        } = self;
+        event.insert("email", email);
+        event.insert("organization_id", organization_id);
+    }
+}
+
+// -----------------------------------------------
+
+/// Tracks when a data source is loaded from the viewer.
+///
+/// This is sent when a user opens a file, URL, or other data source.
+pub struct LoadDataSource {
+    /// The type of data source being loaded (e.g., "file", "http" etc.).
+    pub source_type: &'static str,
+
+    /// The file extension if applicable (e.g., "rrd", "png", "glb").
+    /// None for non-file sources like stdin or gRPC streams.
+    pub file_extension: Option<String>,
+
+    /// How the file was opened (e.g., "cli", "`file_dialog`" etc.).
+    /// Only applicable for file-based sources.
+    pub file_source: Option<&'static str>,
+
+    /// Whether the data source stream was started successfully.
+    pub started_successfully: bool,
+}
+
+impl Event for LoadDataSource {
+    const NAME: &'static str = "load_data_source";
+}
+
+impl Properties for LoadDataSource {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            source_type,
+            file_extension,
+            file_source,
+            started_successfully,
+        } = self;
+
+        event.insert("source_type", source_type);
+        event.insert_opt("file_extension", file_extension);
+        event.insert_opt("file_source", file_source.map(|s| s.to_owned()));
+        event.insert("started_successfully", started_successfully);
+    }
+}
+
+// -----------------------------------------------
+
+/// Tracks CLI command invocations.
+///
+/// This is sent when a user runs the Rerun CLI with any command.
+#[derive(Default)]
+pub struct CliCommandInvoked {
+    /// The main command (e.g., "rrd", "auth", "mcap").
+    /// "viewer" is used when no subcommand is specified.
+    pub command: &'static str,
+
+    /// The subcommand if any (e.g., "compact", "merge", "login").
+    pub subcommand: Option<&'static str>,
+
+    // --- Flags ---
+    pub web_viewer: bool,
+    pub serve_web: bool,
+    pub serve_grpc: bool,
+    pub connect: bool,
+    pub save: bool,
+    pub screenshot_to: bool,
+    pub newest_first: bool,
+    pub persist_state_disabled: bool,
+    pub profile: bool,
+    pub expect_data_soon: bool,
+    pub hide_welcome_screen: bool,
+    pub detach_process: bool,
+    pub test_receive: bool,
+}
+
+impl Event for CliCommandInvoked {
+    const NAME: &'static str = "cli_command_invoked";
+}
+
+impl Properties for CliCommandInvoked {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            command,
+            subcommand,
+            web_viewer,
+            serve_web,
+            serve_grpc,
+            connect,
+            save,
+            screenshot_to,
+            newest_first,
+            persist_state_disabled,
+            profile,
+            expect_data_soon,
+            hide_welcome_screen,
+            detach_process,
+            test_receive,
+        } = self;
+
+        event.insert("command", command);
+        event.insert_opt("subcommand", subcommand.map(|s| s.to_owned()));
+        event.insert("web_viewer", web_viewer);
+        event.insert("serve_web", serve_web);
+        event.insert("serve_grpc", serve_grpc);
+        event.insert("connect", connect);
+        event.insert("save", save);
+        event.insert("screenshot_to", screenshot_to);
+        event.insert("newest_first", newest_first);
+        event.insert("persist_state_disabled", persist_state_disabled);
+        event.insert("profile", profile);
+        event.insert("expect_data_soon", expect_data_soon);
+        event.insert("hide_welcome_screen", hide_welcome_screen);
+        event.insert("detach_process", detach_process);
+        event.insert("test_receive", test_receive);
+    }
+}
+
+// -----------------------------------------------
+
+/// Tracks navigation clicks on the welcome screen cards.
+///
+/// This event is sent when users click on cards on the welcome screen,
+/// such as documentation links or cloud-related call-to-actions (CTAs).
+pub struct WelcomeScreenNavigation {
+    /// Type of the card. E.g. "docs", "redap".
+    pub card_type: String,
+
+    /// The destination URL that was navigated to.
+    /// Empty string if the click was on a CTA that opened a modal instead.
+    pub destination: String,
+
+    /// Whether this was a click on a cloud modal CTA (e.g. "Add server", "Login").
+    pub cta_cloud: bool,
+
+    /// Whether the user is logged in.
+    pub is_logged_in: bool,
+
+    /// Whether there is a server added.
+    pub has_server: bool,
+}
+
+impl Event for WelcomeScreenNavigation {
+    const NAME: &'static str = "welcome_navigation";
+}
+
+impl Properties for WelcomeScreenNavigation {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            card_type,
+            destination,
+            cta_cloud,
+            is_logged_in,
+            has_server,
+        } = self;
+
+        event.insert("card_type", card_type);
+        event.insert("destination", destination);
+        event.insert("cta_cloud", cta_cloud);
+        event.insert("is_logged_in", is_logged_in);
+        event.insert("has_server", has_server);
+        event.insert("rerun_version", CrateVersion::LOCAL.to_string());
     }
 }
 

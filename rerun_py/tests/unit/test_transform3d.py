@@ -3,9 +3,10 @@ from __future__ import annotations
 import itertools
 import math
 from fractions import Fraction
-from typing import Optional, cast
+from typing import cast
 
 import numpy as np
+import pytest
 import rerun as rr
 import torch
 from rerun.datatypes import (
@@ -69,7 +70,6 @@ def test_transform3d() -> None:
     rotation_axis_angle_original = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
     quaternion_arrays = [None, Quaternion(xyzw=[1, 2, 3, 4])]
     scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0], rr.Scale3D([1.0, 2.0, 3.0])]
-    axis_lengths = [None, 1, 1.0]
     relations = [
         None,
         rr.TransformRelation.ParentFromChild,
@@ -79,13 +79,12 @@ def test_transform3d() -> None:
     ]
 
     all_arrays = itertools.zip_longest(
-        VEC_3D_INPUT + [None],
+        [*VEC_3D_INPUT, None],
         rotation_axis_angle_original,
         quaternion_arrays,
         scale_arrays,
-        MAT_3X3_INPUT + [None],
+        [*MAT_3X3_INPUT, None],
         relations,
-        axis_lengths,
     )
 
     for (
@@ -95,24 +94,21 @@ def test_transform3d() -> None:
         scale,
         mat3x3,
         relation,
-        axis_length,
     ) in all_arrays:
-        translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
-        quaternion = cast(Optional[rr.datatypes.QuaternionLike], quaternion)
-        scale = cast(Optional[rr.datatypes.Vec3DLike], scale)
-        mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
-        relation = cast(Optional[rr.components.TransformRelationLike], relations)
-        axis_length = cast(Optional[rr.datatypes.Float32Like], axis_length)
+        translation = cast("rr.datatypes.Vec3DLike | None", translation)
+        quaternion = cast("rr.datatypes.QuaternionLike | None", quaternion)
+        scale = cast("rr.datatypes.Vec3DLike | None", scale)
+        mat3x3 = cast("rr.datatypes.Mat3x3Like | None", mat3x3)
+        relation = cast("rr.components.TransformRelationLike | None", relations)
 
         print(
             f"rr.Transform3D(\n"
-            f"    translation={translation!r}\n"  #
-            f"    rotation_axis_angle={rotation_axis_angle!r}\n"  #
-            f"    quaternion={quaternion!r}\n"  #
-            f"    scale={scale!r}\n"  #
-            f"    mat3x3={mat3x3!r}\n"  #
-            f"    relation={relation!r}\n"  #
-            f"    axis_length={axis_length!r}\n"  #
+            f"    translation={translation!r}\n"
+            f"    rotation_axis_angle={rotation_axis_angle!r}\n"
+            f"    quaternion={quaternion!r}\n"
+            f"    scale={scale!r}\n"
+            f"    mat3x3={mat3x3!r}\n"
+            f"    relation={relation!r}\n"
             f")",
         )
         arch = rr.Transform3D(
@@ -122,27 +118,35 @@ def test_transform3d() -> None:
             scale=scale,
             mat3x3=mat3x3,
             relation=relation,
-            axis_length=axis_length,
         )
         print(f"{arch}\n")
 
-        assert arch.scale == rr.components.Scale3DBatch(none_empty_or_value(scale, rr.components.Scale3D(scale)))
-        assert arch.rotation_axis_angle == rr.components.RotationAxisAngleBatch(
-            none_empty_or_value(rotation_axis_angle, rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10))),
+        assert arch.scale == none_empty_or_value(scale, rr.components.Scale3DBatch(rr.components.Scale3D(scale)))
+        assert arch.rotation_axis_angle == none_empty_or_value(
+            rotation_axis_angle,
+            rr.components.RotationAxisAngleBatch(rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10))),
         )
-        assert arch.quaternion == rr.components.RotationQuatBatch(
-            none_empty_or_value(quaternion, rr.components.RotationQuat(xyzw=[1, 2, 3, 4])),
+        assert arch.quaternion == none_empty_or_value(
+            quaternion,
+            rr.components.RotationQuatBatch(rr.components.RotationQuat(xyzw=[1, 2, 3, 4])),
         )
-        assert arch.translation == rr.components.Translation3DBatch(
-            none_empty_or_value(translation, rr.components.Translation3D([1, 2, 3])),
+        assert arch.translation == none_empty_or_value(
+            translation,
+            rr.components.Translation3DBatch(rr.components.Translation3D([1, 2, 3])),
         )
-        assert arch.mat3x3 == rr.components.TransformMat3x3Batch(
-            none_empty_or_value(mat3x3, rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
-        )
-        assert arch.axis_length == rr.components.AxisLengthBatch(
-            none_empty_or_value(axis_length, rr.components.AxisLength(1.0)),
+        assert arch.mat3x3 == none_empty_or_value(
+            mat3x3,
+            rr.components.TransformMat3x3Batch(rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
         )
         assert arch.relation == rr.components.TransformRelationBatch(relation)
+
+
+def test_transform_axes_3d() -> None:
+    axis_lengths = [1, 1.0]
+
+    for axis_length in axis_lengths:
+        axes = rr.TransformAxes3D(axis_length)
+        assert axes.axis_length == rr.components.AxisLengthBatch(rr.components.AxisLength(axis_length))
 
 
 def test_transform_mat3x3_snippets() -> None:
@@ -216,7 +220,8 @@ MAT_3X3_CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
 ]
 
 
-def test_transform3d_mat3x3_columns() -> None:
-    for input, expected in MAT_3X3_CASES:
-        data = [*rr.Transform3D.columns(mat3x3=input)]
-        assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(expected))
+@pytest.mark.parametrize("matrix_input, matrix_expected", MAT_3X3_CASES)
+def test_transform3d_mat3x3_columns(matrix_input: Float64ArrayLike, matrix_expected: Float64ArrayLike) -> None:
+    print(matrix_input)
+    data = [*rr.Transform3D.columns(mat3x3=matrix_input)]
+    assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(matrix_expected))

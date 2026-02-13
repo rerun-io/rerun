@@ -5,9 +5,8 @@
 //!  cargo run -p minimal_options -- --help
 //! ```
 
-use rerun::external::re_log;
-
 use rerun::demo_util::grid;
+use rerun::external::re_log;
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

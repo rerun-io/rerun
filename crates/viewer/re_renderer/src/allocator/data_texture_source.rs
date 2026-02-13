@@ -1,11 +1,9 @@
 use bytemuck::Pod;
-
-use crate::{
-    DebugLabel, RenderContext,
-    wgpu_resources::{self, GpuTexture},
-};
+use re_log::debug_assert;
 
 use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
+use crate::wgpu_resources::{self, GpuTexture};
+use crate::{DebugLabel, RenderContext};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum DataTextureSourceWriteError {
@@ -99,7 +97,6 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 
     /// The number of elements that can be written without allocating more memory.
     #[inline]
-    #[allow(unused)]
     pub fn capacity(&self) -> usize {
         self.buffers.iter().map(|b| b.capacity()).sum()
     }
@@ -340,7 +337,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         debug_assert!(!texture_format.has_depth_aspect());
         debug_assert!(!texture_format.has_stencil_aspect());
         debug_assert!(!texture_format.is_compressed());
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             texture_format
                 .block_copy_size(None)
                 .expect("Depth/stencil formats are not supported as data textures"),

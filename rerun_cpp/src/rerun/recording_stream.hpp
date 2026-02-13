@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint> // uint32_t etc.
 #include <filesystem>
+#include <limits>
 #include <optional>
 #include <string_view>
 #include <type_traits>
@@ -21,6 +22,17 @@ namespace rerun {
     enum class StoreKind {
         Recording,
         Blueprint,
+    };
+
+    /// What happens when a client connects to a gRPC server?
+    enum class PlaybackBehavior {
+        /// Start playing back all the old data first,
+        /// and only after start sending anything that happened since.
+        OldestFirst,
+
+        /// Prioritize the newest arriving messages,
+        /// replaying the history later, starting with the newest.
+        NewestFirst,
     };
 
     /// A `RecordingStream` handles everything related to logging data into Rerun.
@@ -158,31 +170,22 @@ namespace rerun {
         /// \param url The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
         /// and the pathname must be `/proxy`. The default is `rerun+http://127.0.0.1:9876/proxy`.
         ///
-        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// This function returns immediately.
-        Error connect_grpc(
-            std::string_view url = "rerun+http://127.0.0.1:9876/proxy",
-            float flush_timeout_sec = 2.0
-        ) const;
+        Error connect_grpc(std::string_view url = "rerun+http://127.0.0.1:9876/proxy") const;
 
         /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
         ///
         /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-        /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+        /// You can control the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
-        ///
-        /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
-        /// on the same machine, otherwise you're potentially doubling your memory usage!
         ///
         /// Returns the URI of the gRPC server so you can connect to it from a viewer.
         ///
         /// This function returns immediately.
         Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
-            std::string_view server_memory_limit = "25%"
+            std::string_view server_memory_limit = "1GiB",
+            PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst
         ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
@@ -191,12 +194,8 @@ namespace rerun {
         /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
         /// that viewer instead of starting a new one.
         ///
-        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// \param options See `rerun::SpawnOptions` for more information.
-        Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
+        Error spawn(const SpawnOptions& options = {}) const;
 
         /// @see RecordingStream::spawn
         template <typename TRep, typename TPeriod>
@@ -233,8 +232,14 @@ namespace rerun {
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
+        /// \param timeout_sec The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. If you pass in FLT_MAX or infinity,
+        /// the function will block until it either succeeds or fails.
+        ///
+        /// Returns an error if we fail to flush all previously sent log messages.
+        ///
         /// See `RecordingStream` docs for ordering semantics and multithreading guarantees.
-        void flush_blocking() const;
+        Error flush_blocking(float timeout_sec = std::numeric_limits<float>::infinity()) const;
 
         /// @}
 

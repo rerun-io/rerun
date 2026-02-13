@@ -1,0 +1,23 @@
+
+namespace rerun.components;
+
+// ---
+
+/// The severity level of a text log message.
+///
+/// Recommended to be one of:
+/// * `"CRITICAL"`
+/// * `"ERROR"`
+/// * `"WARN"`
+/// * `"INFO"`
+/// * `"DEBUG"`
+/// * `"TRACE"`
+table TextLogLevel (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  value: rerun.datatypes.Utf8 (order: 100);
+}

@@ -194,9 +194,9 @@ impl Task {
             TaskStatus::Succeeded => Ok(ControlFlow::Break(())),
 
             TaskStatus::Failed => {
-                #[allow(clippy::unwrap_used)]
+                #[expect(clippy::unwrap_used)]
                 let msg = self.error.as_ref().unwrap().message.as_str();
-                anyhow::bail!("task failed: {}", msg)
+                anyhow::bail!("task failed: {msg}")
             }
             TaskStatus::Canceled => anyhow::bail!("task was canceled"),
         }

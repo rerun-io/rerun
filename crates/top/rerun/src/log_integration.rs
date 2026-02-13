@@ -1,7 +1,8 @@
 //! Integrates the Rerun SDK with the [`log`] crate.
 
 use log::Log as _;
-use re_types::{archetypes::TextLog, components::TextLogLevel};
+use re_sdk_types::archetypes::TextLog;
+use re_sdk_types::components::TextLogLevel;
 
 use crate::RecordingStream;
 
@@ -117,7 +118,7 @@ impl log::Log for Logger {
 
     #[inline]
     fn flush(&self) {
-        self.rec.flush_blocking();
+        self.rec.flush_blocking().ok();
     }
 }
 

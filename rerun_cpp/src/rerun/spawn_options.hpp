@@ -31,8 +31,8 @@ namespace rerun {
         /// When this limit is reached, Rerun will drop the oldest data.
         /// Example: `16GB` or `50%` (of system total).
         ///
-        /// Defaults to `0B`.
-        std::string_view server_memory_limit = "0B";
+        /// Defaults to `1GiB`.
+        std::string_view server_memory_limit = "1GiB";
 
         /// Hide the normal Rerun welcome screen.
         ///

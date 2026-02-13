@@ -1,0 +1,14 @@
+
+namespace rerun.components;
+
+// ---
+
+/// A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
+struct LatLon (
+  "attr.python.aliases": "npt.NDArray[np.float32] | Sequence[float] | Tuple[float, float]",
+  "attr.python.array_aliases": "npt.NDArray[np.float32] | Sequence[float]",
+  "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  lat_lon: rerun.datatypes.DVec2D (order: 100);
+}

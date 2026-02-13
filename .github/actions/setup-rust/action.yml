@@ -44,14 +44,14 @@ runs:
       if: ${{ runner.os == 'macOS' }}
       run: |
         echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
-      shell: bash
+      shell: bash --noprofile --norc -euo pipefail {0}
 
     - name: Check clang version
       if: ${{ runner.os == 'macOS' }}
       run: |
         clang --version
         which clang
-      shell: bash
+      shell: bash --noprofile --norc -euo pipefail {0}
 
     - name: Set up GCP credentials
       uses: google-github-actions/auth@v2
@@ -60,7 +60,7 @@ runs:
         service_account: ${{ inputs.service_account }}
 
     - name: Ensure correct version of Rust is installed
-      shell: bash
+      shell: bash --noprofile --norc -euo pipefail {0}
       run: |
         # This is the only way to force rustup to install the version of Rust
         # and the components/targets specified in our `rust-toolchain` file.
@@ -69,32 +69,27 @@ runs:
 
     - name: Install additional targets
       if: ${{ inputs.targets != '' }}
-      shell: bash
+      shell: bash --noprofile --norc -euo pipefail {0}
       run: rustup target add ${{ inputs.targets }}
 
     - name: Install additional toolchains
       if: ${{ inputs.toolchains }}
-      shell: bash
+      shell: bash --noprofile --norc -euo pipefail {0}
       run: |
         for toolchain in ${{ inputs.toolchains }}; do
           rustup install $toolchain
         done
 
     - name: Set up sccache
-      uses: rerun-io/sccache-action@v0.7.1
+      uses: rerun-io/sccache-action@v0.8.0
       with:
-        version: "v0.7.7"
+        version: "v0.10.0"
         use_gcs: true
         gcs_bucket: rerun-sccache
         gcs_read_only: false
 
-    - name: Display sccache config
-      shell: bash
-      run: |
-        cat $HOME/.config/sccache/config
-
     - name: Verify sccache
-      shell: bash
+      shell: bash --noprofile --norc -euo pipefail {0}
       run: |
         sccache --show-stats
 

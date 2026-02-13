@@ -1,8 +1,9 @@
-// TODO(#6330): remove unwrap()
+// TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 
 use re_entity_db::TimeHistogram;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
+use vec1::Vec1;
 
 /// A piece-wise linear view of a single timeline.
 ///
@@ -10,7 +11,7 @@ use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
 /// which we collapse in order to present a compressed view of the data.
 #[derive(Clone, Debug)]
 pub(crate) struct TimelineAxis {
-    pub ranges: vec1::Vec1<AbsoluteTimeRange>,
+    pub ranges: Vec1<AbsoluteTimeRange>,
 }
 
 impl TimelineAxis {
@@ -19,20 +20,16 @@ impl TimelineAxis {
         re_tracing::profile_function!();
         assert!(!times.is_empty());
         let gap_threshold = gap_size_heuristic(time_type, times);
+
         Self {
             ranges: create_ranges(times, gap_threshold),
         }
     }
 
-    /// Total uncollapsed time.
+    /// Total uncollapsed time within a certain bound.
     #[inline]
     pub fn sum_time_lengths(&self) -> u64 {
         self.ranges.iter().map(|t| t.abs_length()).sum()
-    }
-
-    #[inline]
-    pub fn min(&self) -> TimeInt {
-        self.ranges.first().min()
     }
 }
 
@@ -176,11 +173,13 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<Absolu
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use re_chunk_store::AbsoluteTimeRange;
+    use re_log_types::Timeline;
+
+    use super::*;
 
     fn ranges(times: &[i64]) -> vec1::Vec1<AbsoluteTimeRange> {
-        let mut time_histogram = TimeHistogram::default();
+        let mut time_histogram = TimeHistogram::new(Timeline::log_tick());
         for &time in times {
             time_histogram.increment(time, 1);
         }

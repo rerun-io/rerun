@@ -1,0 +1,23 @@
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// Configuration for the time (X) axis of a plot.
+table TimeAxis (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Optional ---
+
+    /// How should the horizontal/X/time axis be linked across multiple plots?
+    ///
+    /// Linking with global will ignore `view_range`.
+    link: rerun.blueprint.components.LinkAxis ("attr.rerun.component_optional", nullable, order: 2300);
+
+    /// The view range of the horizontal/X/time axis.
+    view_range: rerun.blueprint.components.TimeRange ("attr.rerun.component_optional", nullable, order: 2400);
+
+
+    /// If enabled, the X axis range will remain locked to the specified range when zooming.
+    zoom_lock: rerun.blueprint.components.LockRangeDuringZoom ("attr.rerun.component_optional", nullable, order: 2500);
+}

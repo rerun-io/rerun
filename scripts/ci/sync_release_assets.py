@@ -14,14 +14,15 @@ You can also run it manually if you want to update a specific release's assets:
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from typing import TYPE_CHECKING, cast
 
 from github import Github
-from github.GitRelease import GitRelease
 from google.cloud import storage
 
 if TYPE_CHECKING:
+    from github.GitRelease import GitRelease
     from github.Repository import Repository
 
 Assets = dict[str, storage.Blob]
@@ -113,10 +114,6 @@ def fetch_binary_assets(
                 f"librerun_c-{tag}-aarch64-apple-darwin.a",
                 f"commit/{commit_short}/rerun_c/macos-arm64/librerun_c.a",
             ),
-            (
-                f"librerun_c-{tag}-x86_64-apple-darwin.a",
-                f"commit/{commit_short}/rerun_c/macos-x64/librerun_c.a",
-            ),
         ]
         for name, blob_url in rerun_c_blobs:
             blob = bucket.get_blob(blob_url)
@@ -166,10 +163,6 @@ def fetch_binary_assets(
             (
                 f"rerun-cli-{tag}-aarch64-apple-darwin",
                 f"commit/{commit_short}/rerun-cli/macos-arm64/rerun",
-            ),
-            (
-                f"rerun-cli-{tag}-x86_64-apple-darwin",
-                f"commit/{commit_short}/rerun-cli/macos-x64/rerun",
             ),
         ]
         for name, blob_url in rerun_cli_blobs:
@@ -273,8 +266,17 @@ def main() -> None:
 
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
-    release = cast(GitRelease, get_any_release(repo, args.github_release))
+    release = cast("GitRelease", get_any_release(repo, args.github_release))
     commit = {tag.name: tag.commit for tag in repo.get_tags()}[args.github_release]
+
+    if release.body is None:
+        print(
+            "Release has no body - make sure to add release notes! "
+            "You might also run into this if you created the release manually "
+            "and not from the draft created by the release job, please check.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(
         f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…',

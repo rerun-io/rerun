@@ -4,9 +4,8 @@ use arrow::array::{
 };
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_log_types::TimelineName;
-use re_types_core::ComponentDescriptor;
+use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -16,17 +15,13 @@ use crate::{Chunk, RowId, TimeColumn};
 // Most of them are indirectly stressed by our higher-level query tests anyhow.
 
 impl Chunk {
-    /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentDescriptor`].
+    /// Returns the cell corresponding to the specified [`RowId`] for a given [`re_types_core::ComponentIdentifier`].
     ///
     /// This is `O(log(n))` if `self.is_sorted()`, and `O(n)` otherwise.
     ///
     /// Reminder: duplicated `RowId`s results in undefined behavior.
-    pub fn cell(
-        &self,
-        row_id: RowId,
-        component_desc: &ComponentDescriptor,
-    ) -> Option<ArrowArrayRef> {
-        let list_array = self.components.get(component_desc)?;
+    pub fn cell(&self, row_id: RowId, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
+        let list_array = self.components.get_array(component)?;
 
         if self.is_sorted() {
             let row_ids = self.row_ids_slice();
@@ -38,7 +33,7 @@ impl Chunk {
         }
     }
 
-    /// Slices the [`Chunk`] vertically.
+    /// Shallow-slices the [`Chunk`] vertically.
     ///
     /// The result is a new [`Chunk`] with the same columns and (potentially) less rows.
     ///
@@ -47,10 +42,56 @@ impl Chunk {
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    ///
+    /// ## When to use shallow vs. deep slicing?
+    ///
+    /// This operation is shallow and therefore always O(1), which implicitly means that it cannot
+    /// ever modify the values of the offsets themselves.
+    /// Since the offsets are left untouched, the original unsliced data must always be kept around
+    /// too, _even if the sliced data were to be written to disk_.
+    /// Similarly, the byte sizes reported by e.g. `Chunk::heap_size_bytes` might not always make intuitive
+    /// sense, and should be used very carefully.
+    ///
+    /// For these reasons, shallow slicing should only be used in the context of short-term, in-memory storage
+    /// (e.g. when slicing the results of a query).
+    /// When slicing data for long-term storage, whether in-memory or on disk, see [`Self::row_sliced_deep`] instead.
     #[must_use]
-    #[inline]
-    pub fn row_sliced(&self, index: usize, len: usize) -> Self {
-        re_tracing::profile_function!();
+    pub fn row_sliced_shallow(&self, index: usize, len: usize) -> Self {
+        let deep = false;
+        self.row_sliced_impl(index, len, deep)
+    }
+
+    /// Deep-slices the [`Chunk`] vertically.
+    ///
+    /// The result is a new [`Chunk`] with the same columns and (potentially) less rows.
+    ///
+    /// This cannot fail nor panic: `index` and `len` will be capped so that they cannot
+    /// run out of bounds.
+    /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    ///
+    /// ## When to use shallow vs. deep slicing?
+    ///
+    /// This operation is deep and therefore always O(N).
+    ///
+    /// The underlying data, offsets, bitmaps and other buffers required will be reallocated, copied around,
+    /// and patched as much as required so that the resulting physical data becomes as packed as possible for
+    /// the desired slice.
+    /// Similarly, the byte sizes reported by e.g. `Chunk::heap_size_bytes` should always match intuitive expectations.
+    ///
+    /// These characteristics make deep slicing very useful for longer term data, whether it's stored
+    /// in-memory (e.g. in a `ChunkStore`), or on disk.
+    /// When slicing data for short-term needs (e.g. slicing the results of a query) prefer [`Self::row_sliced_shallow`] instead.
+    #[must_use]
+    pub fn row_sliced_deep(&self, index: usize, len: usize) -> Self {
+        let deep = true;
+        self.row_sliced_impl(index, len, deep)
+    }
+
+    #[must_use]
+    fn row_sliced_impl(&self, index: usize, len: usize, deep: bool) -> Self {
+        re_tracing::profile_function!(if deep { "deep" } else { "shallow" });
 
         let Self {
             id,
@@ -83,15 +124,26 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted,
-            row_ids: row_ids.clone().slice(index, len),
+            row_ids: if deep {
+                re_arrow_util::deep_slice_array(row_ids, index, len)
+            } else {
+                row_ids.slice(index, len)
+            },
             timelines: timelines
                 .iter()
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    (component_desc.clone(), list_array.clone().slice(index, len))
+                .values()
+                .map(|column| {
+                    SerializedComponentColumn::new(
+                        if deep {
+                            re_arrow_util::deep_slice_array(&column.list_array, index, len)
+                        } else {
+                            column.list_array.slice(index, len)
+                        },
+                        column.descriptor.clone(),
+                    )
                 })
                 .collect(),
         };
@@ -118,7 +170,7 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -161,24 +213,24 @@ impl Chunk {
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
     }
 
-    /// Slices the [`Chunk`] horizontally by keeping only the selected `component_descr`.
+    /// Slices the [`Chunk`] horizontally by keeping only the selected `component`.
     ///
     /// The result is a new [`Chunk`] with the same rows and (at-most) one component column.
     /// All non-component columns will be kept as-is.
     ///
-    /// If `component_descr` is not found within the [`Chunk`], the end result will be the same as the
+    /// If `component` is not found within the [`Chunk`], the end result will be the same as the
     /// current chunk but without any component column.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn component_sliced(&self, component_descr: &ComponentDescriptor) -> Self {
+    pub fn component_sliced(&self, component: ComponentIdentifier) -> Self {
         let Self {
             id,
             entity_path,
@@ -196,17 +248,20 @@ impl Chunk {
             is_sorted: *is_sorted,
             row_ids: row_ids.clone(),
             timelines: timelines.clone(),
-            components: crate::ChunkComponents(
-                components
-                    .get(component_descr)
-                    .map(|list_array| (component_descr.clone(), list_array.clone()))
-                    .into_iter()
-                    .collect(),
-            ),
+            components: components
+                .get(component)
+                .map(|column| {
+                    SerializedComponentColumn::new(
+                        column.list_array.clone(),
+                        column.descriptor.clone(),
+                    )
+                })
+                .into_iter()
+                .collect(),
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -249,26 +304,29 @@ impl Chunk {
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
     }
 
-    /// Densifies the [`Chunk`] vertically based on the `component_descriptor` column.
+    /// Densifies the [`Chunk`] vertically based on the `component_pov` column.
     ///
-    /// Densifying here means dropping all rows where the associated value in the `component_descriptor`
+    /// Densifying here means dropping all rows where the associated value in the `component_pov`
     /// column is null.
     ///
-    /// The result is a new [`Chunk`] where the `component_descriptor` column is guaranteed to be dense.
+    /// The result is a new [`Chunk`] where the `component_pov` column is guaranteed to be dense.
     ///
-    /// If `component_descriptor` doesn't exist in this [`Chunk`], or if it is already dense, this method
+    /// If `component_pov` doesn't exist in this [`Chunk`], or if it is already dense, this method
     /// is a no-op.
+    ///
+    /// Returns `false` if the operation was a no-op (i.e. the chunk was already dense), true otherwise
+    /// (i.e. the data had to be reallocated).
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn densified(&self, component_descr_pov: &ComponentDescriptor) -> Self {
+    pub fn densified(&self, component_pov: ComponentIdentifier) -> (Self, bool) {
         let Self {
             id,
             entity_path,
@@ -280,15 +338,15 @@ impl Chunk {
         } = self;
 
         if self.is_empty() {
-            return self.clone();
+            return (self.clone(), false);
         }
 
-        let Some(component_list_array) = self.components.get(component_descr_pov) else {
-            return self.clone();
+        let Some(component_list_array) = self.components.get_array(component_pov) else {
+            return (self.clone(), false);
         };
 
         let Some(validity) = component_list_array.nulls() else {
-            return self.clone();
+            return (self.clone(), false);
         };
 
         re_tracing::profile_function!();
@@ -308,10 +366,11 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::filter_array(list_array, &validity_filter);
-                    let filtered = if component_desc == component_descr_pov {
+                .values()
+                .map(|column| {
+                    let filtered =
+                        re_arrow_util::filter_array(&column.list_array, &validity_filter);
+                    let filtered = if column.descriptor.component == component_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
                         // This will allow further operations on this densified chunk to take some
@@ -322,7 +381,7 @@ impl Chunk {
                         filtered
                     };
 
-                    (component_desc.clone(), filtered)
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -345,10 +404,10 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
-        chunk
+        (chunk, true)
     }
 
     /// Empties the [`Chunk`] vertically.
@@ -382,13 +441,16 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let field = match list_array.data_type() {
+                .values()
+                .map(|column| {
+                    let field = match column.list_array.data_type() {
                         arrow::datatypes::DataType::List(field) => field.clone(),
                         _ => unreachable!("This is always s list array"),
                     };
-                    (component_desc.clone(), ArrowListArray::new_null(field, 0))
+                    SerializedComponentColumn::new(
+                        ArrowListArray::new_null(field, 0),
+                        column.descriptor.clone(),
+                    )
                 })
                 .collect(),
         }
@@ -446,7 +508,7 @@ impl Chunk {
         }
 
         if self.is_static() {
-            return self.row_sliced(self.num_rows().saturating_sub(1), 1);
+            return self.row_sliced_shallow(self.num_rows().saturating_sub(1), 1);
         }
 
         let Some(time_column) = self.timelines.get(index) else {
@@ -462,7 +524,12 @@ impl Chunk {
                 .dedup_with_count()
                 .map(|(count, _time)| {
                     i += count;
-                    i.saturating_sub(1) as i32
+
+                    // input is a 32-bit array, so this can't overflow/wrap
+                    #[expect(clippy::cast_possible_wrap)]
+                    {
+                        i.saturating_sub(1) as i32
+                    }
                 })
                 .collect_vec();
             arrow::array::Int32Array::from(indices)
@@ -484,16 +551,16 @@ impl Chunk {
                 .collect(),
             components: self
                 .components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::take_array(list_array, &indices);
-                    (component_desc.clone(), filtered)
+                .values()
+                .map(|column| {
+                    let filtered = re_arrow_util::take_array(&column.list_array, &indices);
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         {
             chunk.sanity_check().unwrap();
         }
@@ -555,10 +622,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let filtered = re_arrow_util::filter_array(list_array, filter);
-                    (component_desc.clone(), filtered)
+                .values()
+                .map(|column| {
+                    let filtered = re_arrow_util::filter_array(&column.list_array, filter);
+                    SerializedComponentColumn::new(filtered, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -581,7 +648,7 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         Some(chunk)
@@ -638,10 +705,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_desc, list_array)| {
-                    let taken = re_arrow_util::take_array(list_array, indices);
-                    (component_desc.clone(), taken)
+                .values()
+                .map(|column| {
+                    let taken = re_arrow_util::take_array(&column.list_array, indices);
+                    SerializedComponentColumn::new(taken, column.descriptor.clone())
                 })
                 .collect(),
         };
@@ -664,7 +731,7 @@ impl Chunk {
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
-        #[allow(clippy::unwrap_used)] // debug-only
+        #[expect(clippy::unwrap_used)] // debug-only
         chunk.sanity_check().unwrap();
 
         chunk
@@ -813,18 +880,23 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::cast_possible_wrap)]
+
     use itertools::Itertools as _;
     use re_log_types::{
         TimePoint,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
 
-    use crate::{Chunk, RowId, Timeline};
-
     use super::*;
+    use crate::{Chunk, RowId, Timeline};
 
     #[test]
     fn cell() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::ZERO.incremented_by(10);
@@ -917,29 +989,29 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-            (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-            (row_id2, MyPoints::descriptor_labels(), Some(labels4 as _)),
-            (row_id3, MyPoints::descriptor_colors(), None),
-            (row_id4, MyPoints::descriptor_labels(), Some(labels2 as _)),
-            (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
+            (row_id1, mypoints_points_component, Some(points1 as _)),
+            (row_id2, mypoints_labels_component, Some(labels4 as _)),
+            (row_id3, mypoints_colors_component, None),
+            (row_id4, mypoints_labels_component, Some(labels2 as _)),
+            (row_id5, mypoints_colors_component, Some(colors5 as _)),
         ];
 
         assert!(!chunk.is_sorted());
-        for (row_id, component_desc, expected) in expectations {
+        for (row_id, component, expected) in expectations {
             let expected = expected
                 .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-            eprintln!("{component_desc} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+            eprintln!("{component} @ {row_id}");
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
         }
 
         chunk.sort_if_unsorted();
         assert!(chunk.is_sorted());
 
-        for (row_id, component_desc, expected) in expectations {
+        for (row_id, component, expected) in expectations {
             let expected = expected
                 .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-            eprintln!("{component_desc} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+            eprintln!("{component} @ {row_id}");
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
         }
 
         Ok(())
@@ -947,6 +1019,10 @@ mod tests {
 
     #[test]
     fn dedupe_temporal() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::new();
@@ -1044,20 +1120,20 @@ mod tests {
             assert_eq!(2, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
                 //
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_desc, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_desc} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1067,28 +1143,28 @@ mod tests {
             assert_eq!(5, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-                (row_id1, MyPoints::descriptor_colors(), None),
-                (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
-                (row_id2, MyPoints::descriptor_points(), None),
-                (row_id2, MyPoints::descriptor_colors(), None),
-                (row_id2, MyPoints::descriptor_labels(), Some(labels2 as _)),
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
-                (row_id4, MyPoints::descriptor_points(), None),
-                (row_id4, MyPoints::descriptor_colors(), Some(colors4 as _)),
-                (row_id4, MyPoints::descriptor_labels(), Some(labels4 as _)),
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id1, mypoints_points_component, Some(points1 as _)),
+                (row_id1, mypoints_colors_component, None),
+                (row_id1, mypoints_labels_component, Some(labels1 as _)),
+                (row_id2, mypoints_points_component, None),
+                (row_id2, mypoints_colors_component, None),
+                (row_id2, mypoints_labels_component, Some(labels2 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
+                (row_id4, mypoints_points_component, None),
+                (row_id4, mypoints_colors_component, Some(colors4 as _)),
+                (row_id4, mypoints_labels_component, Some(labels4 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_desc, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_desc} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1097,6 +1173,10 @@ mod tests {
 
     #[test]
     fn dedupe_static() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::new();
@@ -1175,16 +1255,16 @@ mod tests {
             assert_eq!(1, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_descr, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_descr} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_descr));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1194,16 +1274,16 @@ mod tests {
             assert_eq!(1, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_type, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_type} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_type));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1212,6 +1292,10 @@ mod tests {
 
     #[test]
     fn filtered() -> anyhow::Result<()> {
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
+
         let entity_path = "my/entity";
 
         let row_id1 = RowId::new();
@@ -1315,24 +1399,24 @@ mod tests {
             );
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-                (row_id1, MyPoints::descriptor_colors(), None),
-                (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
+                (row_id1, mypoints_points_component, Some(points1 as _)),
+                (row_id1, mypoints_colors_component, None),
+                (row_id1, mypoints_labels_component, Some(labels1 as _)),
                 //
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
                 //
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_type, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_type} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_type));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1360,6 +1444,10 @@ mod tests {
     #[test]
     fn taken() -> anyhow::Result<()> {
         use arrow::array::Int32Array as ArrowInt32Array;
+
+        let mypoints_points_component = MyPoints::descriptor_points().component;
+        let mypoints_colors_component = MyPoints::descriptor_colors().component;
+        let mypoints_labels_component = MyPoints::descriptor_labels().component;
 
         let entity_path = "my/entity";
 
@@ -1464,24 +1552,24 @@ mod tests {
             assert_eq!(indices.len(), got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
-                (row_id1, MyPoints::descriptor_colors(), None),
-                (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
+                (row_id1, mypoints_points_component, Some(points1 as _)),
+                (row_id1, mypoints_colors_component, None),
+                (row_id1, mypoints_labels_component, Some(labels1 as _)),
                 //
-                (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
-                (row_id3, MyPoints::descriptor_colors(), None),
-                (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
+                (row_id3, mypoints_points_component, Some(points3 as _)),
+                (row_id3, mypoints_colors_component, None),
+                (row_id3, mypoints_labels_component, Some(labels3 as _)),
                 //
-                (row_id5, MyPoints::descriptor_points(), None),
-                (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
-                (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
+                (row_id5, mypoints_points_component, None),
+                (row_id5, mypoints_colors_component, Some(colors5 as _)),
+                (row_id5, mypoints_labels_component, Some(labels5 as _)),
             ];
 
-            for (row_id, component_type, expected) in expectations {
+            for (row_id, component, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
-                eprintln!("{component_type} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_type));
+                eprintln!("{component} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
             }
         }
 
@@ -1494,6 +1582,122 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(indices.len(), got.num_rows());
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn slice_memory_size_conservation() -> anyhow::Result<()> {
+        use arrow::array::{ListArray as ArrowListArray, UInt8Array as ArrowUInt8Array};
+        use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+        use re_byte_size::SizeBytes as _;
+        use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
+
+        // Create a chunk with 3 rows of raw blob data with different sizes
+        let entity_path = "test/entity";
+
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+
+        // Create blob data of different sizes
+        let blob_size_1 = 10_000; // 10KB
+        let blob_size_2 = 20_000; // 20KB
+        let blob_size_3 = 30_000; // 30KB
+
+        let blob_data_1: Vec<u8> = (0..blob_size_1 as u8).cycle().take(blob_size_1).collect();
+        let blob_data_2: Vec<u8> = (0..blob_size_2 as u8).cycle().take(blob_size_2).collect();
+        let blob_data_3: Vec<u8> = (0..blob_size_3 as u8).cycle().take(blob_size_3).collect();
+
+        // Combine all blob data for the ListArray
+        let mut all_blob_data: Vec<u8> = Vec::new();
+        all_blob_data.extend(&blob_data_1);
+        all_blob_data.extend(&blob_data_2);
+        all_blob_data.extend(&blob_data_3);
+
+        // Create the inner UInt8Array containing all blob data
+        let values_array = ArrowUInt8Array::from(all_blob_data);
+
+        // Create the ListArray
+        let list_array = ArrowListArray::new(
+            arrow::datatypes::Field::new("item", arrow::datatypes::DataType::UInt8, false).into(),
+            ArrowOffsetBuffer::from_lengths([blob_size_1, blob_size_2, blob_size_3]),
+            std::sync::Arc::new(values_array),
+            None,
+        );
+
+        // Create component descriptor
+        let blob_descriptor = ComponentDescriptor::partial("blob");
+
+        // Create component column
+        let component_column = SerializedComponentColumn::new(list_array, blob_descriptor);
+
+        // Create the chunk manually with raw component data
+        let chunk = Chunk::new(
+            crate::ChunkId::new(),
+            re_log_types::EntityPath::from(entity_path),
+            Some(true), // is_sorted
+            RowId::arrow_from_slice(&[row_id1, row_id2, row_id3]),
+            std::iter::once((
+                *Timeline::new_sequence("frame").name(),
+                crate::TimeColumn::new_sequence("frame", [1, 2, 3]),
+            ))
+            .collect(),
+            std::iter::once(component_column).collect(),
+        )?;
+
+        let original_size = chunk.heap_size_bytes();
+        eprintln!("Original chunk size: {original_size} bytes");
+
+        // Create 3 single-row slices
+        let slice1 = chunk.row_sliced_deep(0, 1);
+        let slice2 = chunk.row_sliced_deep(1, 1);
+        let slice3 = chunk.row_sliced_deep(2, 1);
+
+        let slice1_size = slice1.heap_size_bytes();
+        let slice2_size = slice2.heap_size_bytes();
+        let slice3_size = slice3.heap_size_bytes();
+
+        eprintln!("Slice 1 size: {slice1_size} bytes ({blob_size_1} byte blob)");
+        eprintln!("Slice 2 size: {slice2_size} bytes ({blob_size_2} byte blob)");
+        eprintln!("Slice 3 size: {slice3_size} bytes ({blob_size_3} byte blob)");
+
+        let total_slice_size = slice1_size + slice2_size + slice3_size;
+        eprintln!("Total slices size: {total_slice_size} bytes");
+
+        // The slices should add up to approximately the original size
+        // We allow some overhead for metadata duplication (row IDs, timeline data, etc.)
+        // but the component data should be accurately sliced
+        let acceptable_overhead = 2600; // bytes for metadata overhead (increased for raw arrays)
+
+        assert!(
+            total_slice_size <= original_size + acceptable_overhead,
+            "Slices total size ({total_slice_size}) should not exceed original size ({original_size}) by more than {acceptable_overhead} bytes of overhead",
+        );
+
+        // Each slice should be proportional to its data size
+        // The slice with 30KB should be larger than the slice with 10KB
+        assert!(
+            slice3_size > slice1_size,
+            "Slice 3 with {blob_size_3} bytes ({slice3_size} total bytes) should be larger than slice 1 with {blob_size_1} bytes ({slice1_size} total bytes)",
+        );
+
+        assert!(
+            slice2_size > slice1_size,
+            "Slice 2 with {blob_size_2} bytes ({slice2_size} total bytes) should be larger than slice 1 with {blob_size_1} bytes ({slice1_size} total bytes)",
+        );
+
+        // Verify that the sliced data actually reflects the expected blob sizes
+        // The component data size should be roughly proportional to the blob sizes
+        let size_ratio_3_to_1 = slice3_size as f64 / slice1_size as f64;
+        let expected_ratio_3_to_1 = blob_size_3 as f64 / blob_size_1 as f64; // 3.0
+
+        assert!(
+            size_ratio_3_to_1 > 2.0 && size_ratio_3_to_1 < 4.0,
+            "Size ratio between slice 3 and slice 1 ({size_ratio_3_to_1:.2}) should be close to expected blob ratio ({expected_ratio_3_to_1:.2})",
+        );
+
+        eprintln!("✓ Raw arrow array slice memory calculation test passed!");
 
         Ok(())
     }

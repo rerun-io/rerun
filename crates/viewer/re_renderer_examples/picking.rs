@@ -2,11 +2,11 @@
 
 use itertools::Itertools as _;
 use rand::Rng as _;
+use re_renderer::renderer::GpuMeshInstance;
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{
     Color32, GpuReadbackIdentifier, PickingLayerId, PickingLayerInstanceId, PickingLayerProcessor,
-    PointCloudBuilder, RectInt, Size,
-    renderer::GpuMeshInstance,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
+    PointCloudBuilder, RectInt, Size, ViewPickingConfiguration,
 };
 
 mod framework;
@@ -27,9 +27,9 @@ struct Picking {
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     re_renderer::Hsva {
-        h: rnd.r#gen::<f32>(),
-        s: rnd.r#gen::<f32>() * 0.5 + 0.5,
-        v: rnd.r#gen::<f32>() * 0.5 + 0.5,
+        h: rnd.random::<f32>(),
+        s: rnd.random::<f32>() * 0.5 + 0.5,
+        v: rnd.random::<f32>() * 0.5 + 0.5,
         a: 1.0,
     }
     .into()
@@ -65,9 +65,9 @@ impl framework::Example for Picking {
                 positions: (0..point_count)
                     .map(|_| {
                         glam::vec3(
-                            rnd.gen_range(random_point_range.clone()),
-                            rnd.gen_range(random_point_range.clone()),
-                            rnd.gen_range(random_point_range.clone()),
+                            rnd.random_range(random_point_range.clone()),
+                            rnd.random_range(random_point_range.clone()),
+                            rnd.random_range(random_point_range.clone()),
                         )
                     })
                     .collect_vec(),
@@ -100,7 +100,7 @@ impl framework::Example for Picking {
         pixels_per_point: f32,
     ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         if let Some(picking_result) =
-            PickingLayerProcessor::readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
+            PickingLayerProcessor::readback_result(re_ctx, READBACK_IDENTIFIER)
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the closest object of interest.
             let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
@@ -119,6 +119,18 @@ impl framework::Example for Picking {
         // TODO(#1426): unify camera logic between examples.
         let camera_position = glam::vec3(1.0, 3.5, 7.0);
 
+        // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
+        // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
+        let picking_rect_size = 31;
+        let picking_config = ViewPickingConfiguration {
+            picking_rect: RectInt::from_middle_and_extent(
+                self.picking_position.as_ivec2(),
+                glam::uvec2(picking_rect_size, picking_rect_size),
+            ),
+            readback_identifier: READBACK_IDENTIFIER,
+            show_debug_view: false,
+        };
+
         let mut view_builder = ViewBuilder::new(
             re_ctx,
             TargetConfiguration {
@@ -129,7 +141,7 @@ impl framework::Example for Picking {
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
@@ -137,18 +149,10 @@ impl framework::Example for Picking {
                 },
                 pixels_per_point,
                 outline_config: None,
+                picking_config: Some(picking_config),
                 ..Default::default()
             },
-        );
-
-        // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
-        // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
-        let picking_rect_size = 31;
-        let picking_rect = RectInt::from_middle_and_extent(
-            self.picking_position.as_ivec2(),
-            glam::uvec2(picking_rect_size, picking_rect_size),
-        );
-        view_builder.schedule_picking_rect(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)?;
+        )?;
 
         let mut point_builder = PointCloudBuilder::new(re_ctx);
         point_builder.reserve(self.point_sets.iter().map(|set| set.positions.len()).sum())?;
@@ -163,7 +167,7 @@ impl framework::Example for Picking {
                     &point_set.picking_ids,
                 );
         }
-        view_builder.queue_draw(point_builder.into_draw_data()?);
+        view_builder.queue_draw(re_ctx, point_builder.into_draw_data()?);
 
         let instances = self
             .model_mesh_instances
@@ -175,19 +179,20 @@ impl framework::Example for Picking {
                 additive_tint: if self.mesh_is_hovered {
                     Color32::DEBUG_COLOR
                 } else {
-                    Color32::TRANSPARENT
+                    Color32::BLACK
                 },
                 outline_mask_ids: Default::default(),
             })
             .collect_vec();
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+        view_builder.queue_draw(
             re_ctx,
-            Default::default(),
-        ));
-        view_builder.queue_draw(re_renderer::renderer::MeshDrawData::new(
-            re_ctx, &instances,
-        )?);
+            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default()),
+        );
+        view_builder.queue_draw(
+            re_ctx,
+            re_renderer::renderer::MeshDrawData::new(re_ctx, &instances)?,
+        );
 
         let command_buffer = view_builder.draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 

@@ -1,0 +1,12 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+translation: [[0.0, 0.0, 0.0]]
+rotation_axis_angle: [{axis: [1.0, 0.0, 0.0], angle: 0.0}]
+quaternion: [[0.0, 0.0, 0.0, 1.0]]
+scale: [[1.0, 1.0, 1.0]]
+mat3x3: [[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]]
+relation: [1]
+child_frame: [tf#/stockholm/södermalm/slussen]
+parent_frame: [tf#/stockholm/södermalm]

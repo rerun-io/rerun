@@ -12,17 +12,16 @@
 
 // TODO(cmc): this should only run for release builds
 
-#![allow(clippy::disallowed_types)] // False positives for using files on Wasm
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::allow_attributes, clippy::disallowed_types)] // False positives for using files on Wasm
+#![expect(clippy::unwrap_used)]
 
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, bail, ensure};
-use walkdir::{DirEntry, WalkDir};
-
 use re_build_tools::{
     Environment, get_and_track_env_var, rerun_if_changed, write_file_if_necessary,
 };
+use walkdir::{DirEntry, WalkDir};
 
 // ---
 
@@ -92,9 +91,8 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
             let clause_path = std::fs::canonicalize(clause_path)?;
             ensure!(
                 clause_path.starts_with(&root_path),
-                "trying to import {:?} which lives outside of the workspace, \
-                    this is illegal in release and/or Wasm builds!",
-                clause_path
+                "trying to import {clause_path:?} which lives outside of the workspace, \
+                    this is illegal in release and/or Wasm builds!"
             );
 
             Ok::<_, anyhow::Error>(())
@@ -105,7 +103,7 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
 // ---
 
 fn should_run(environment: Environment) -> bool {
-    #![allow(clippy::match_same_arms)]
+    #![expect(clippy::match_same_arms)]
 
     match environment {
         // we should have been run before publishing

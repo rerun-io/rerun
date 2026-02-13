@@ -1,0 +1,48 @@
+namespace rerun.archetypes;
+
+
+/// An image encoded as e.g. a JPEG or PNG.
+///
+/// Rerun also supports uncompressed images with the [archetypes.Image].
+/// For images that refer to video frames see [archetypes.VideoFrameReference].
+///
+/// \py To compress an image, use [`rerun.Image.compress`][].
+///
+/// \example archetypes/encoded_image title="Encoded image" image="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png"
+table EncodedImage (
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Image & tensor",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "EncodedImage",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// The encoded content of some image file, e.g. a PNG or JPEG.
+  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// The Media Type of the asset.
+  ///
+  /// Supported values:
+  /// * `image/jpeg`
+  /// * `image/png`
+  ///
+  /// If omitted, the viewer will try to guess from the data blob.
+  /// If it cannot guess, it won't be able to render the asset.
+  media_type: rerun.components.MediaType  ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// Opacity of the image, useful for layering several media.
+  ///
+  /// Defaults to 1.0 (fully opaque).
+  opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// An optional floating point value that specifies the 2D drawing order.
+  ///
+  /// Objects with higher values are drawn on top of those with lower values.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
+}

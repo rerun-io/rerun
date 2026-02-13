@@ -1,0 +1,14 @@
+namespace rerun.datatypes;
+
+/// A double-precision 64-bit IEEE 754 floating point number.
+struct Float64 (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]",
+  "attr.rust.derive": "Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.override_crate": "re_types_core",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  value: double (order: 100);
+}

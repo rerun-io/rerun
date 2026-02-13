@@ -4,6 +4,7 @@ tags = ["Graph", "Layout", "Node-link diagrams", "Bubble charts"]
 thumbnail = "https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
+include_in_manifest = true
 -->
 
 This example shows different types of graphs (and layouts) that you can visualize using Rerun.

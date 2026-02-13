@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rerun.io</title>
+  </head>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #0f0f0f;
+      color: #b2b2bb;
+
+      font-family:
+        Plus Jakarta Sans,
+        -apple-system,
+        BlinkMacSystemFont,
+        Segoe UI,
+        Roboto,
+        Oxygen,
+        Ubuntu,
+        Cantarell,
+        Fira Sans,
+        Droid Sans,
+        Helvetica Neue,
+        sans-serif;
+      font-size: 17px;
+      font-weight: 425;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    code {
+      padding: 0.15rem 0.33rem;
+      font-size: 0.85em;
+      border: 1px solid rgba(255, 255, 255, 0.125);
+      background: #0c0c0c;
+      font-family: monospace;
+      color: #fff;
+    }
+  </style>
+  <body>
+    <main id="content">$MESSAGE$</main>
+    <script>
+      const new_url = new URL(window.location.href);
+      new_url.hash = "";
+      new_url.search = "";
+      history.replaceState(history.state, "", new_url.toString());
+    </script>
+  </body>
+</html>

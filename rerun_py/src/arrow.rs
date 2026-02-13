@@ -1,32 +1,21 @@
 //! Methods for handling Arrow datamodel log ingest
 
 use std::borrow::Cow;
-use std::sync::Arc;
 
-use arrow::array::RecordBatchIterator;
-use arrow::record_batch::RecordBatchReader;
-use arrow::{
-    array::{
-        ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
-        make_array,
-    },
-    buffer::OffsetBuffer as ArrowOffsetBuffer,
-    datatypes::Field as ArrowField,
-    pyarrow::PyArrowType,
+use arrow::array::{
+    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, make_array,
 };
-use datafusion::prelude::SessionContext;
-use pyo3::{
-    Bound, PyAny, PyResult,
-    exceptions::PyRuntimeError,
-    types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString},
-};
-
+use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+use arrow::datatypes::Field as ArrowField;
+use arrow::pyarrow::PyArrowType;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString};
+use pyo3::{Bound, PyAny, PyResult};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
-use re_sdk::{ComponentDescriptor, EntityPath, Timeline, external::nohash_hasher::IntMap};
-
-use crate::catalog::to_py_err;
+use re_sdk::external::nohash_hasher::IntMap;
+use re_sdk::{ComponentDescriptor, EntityPath, Timeline};
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
@@ -79,7 +68,8 @@ pub fn build_row_from_components(
     for (component_descr, array) in components_per_descr {
         let component_descr = descriptor_to_rust(&component_descr)?;
         let list_array = array_to_rust(&array)?;
-        components.insert(component_descr, list_array);
+        let batch = re_sdk::SerializedComponentBatch::new(list_array, component_descr);
+        components.insert(batch.descriptor.component, batch);
     }
 
     Ok(PendingRow {
@@ -175,30 +165,4 @@ pub fn build_chunk_from_components(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     Ok(chunk)
-}
-
-/// Convert a Datafusion table provider to an Arrow `RecordBatchReader`.
-//TODO(ab): WARNING — this reads the entire table into memory
-pub async fn datafusion_table_provider_to_arrow_reader(
-    table_provider: Arc<dyn datafusion::catalog::TableProvider + Send>,
-) -> PyResult<Box<dyn RecordBatchReader + Send>> {
-    let schema = table_provider.schema();
-
-    let session_context = SessionContext::new();
-    session_context
-        .register_table("__table__", table_provider)
-        .map_err(to_py_err)?;
-
-    let record_batches = session_context
-        .table("__table__")
-        .await
-        .map_err(to_py_err)?
-        .collect()
-        .await
-        .map_err(to_py_err)?;
-
-    Ok(Box::new(RecordBatchIterator::new(
-        record_batches.into_iter().map(Result::Ok),
-        schema,
-    )))
 }

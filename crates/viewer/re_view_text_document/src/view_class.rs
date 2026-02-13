@@ -1,10 +1,10 @@
 use egui::{Label, Sense};
-
-use re_types::{View as _, ViewClassIdentifier};
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
+use re_viewer_context::external::re_log_types::EntityPath;
 use re_viewer_context::{
-    Item, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, external::re_log_types::EntityPath,
+    Item, SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistryError, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
     suggest_view_for_each_entity,
 };
 
@@ -41,7 +41,7 @@ impl ViewState for TextDocumentViewState {
 #[derive(Default)]
 pub struct TextDocumentView;
 
-type ViewType = re_types::blueprint::views::TextDocumentView;
+type ViewType = re_sdk_types::blueprint::views::TextDocumentView;
 
 impl ViewClass for TextDocumentView {
     fn identifier() -> ViewClassIdentifier {
@@ -107,12 +107,13 @@ impl ViewClass for TextDocumentView {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
-        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, include_entity)
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -151,8 +152,8 @@ impl ViewClass for TextDocumentView {
         }
 
         if clicked {
-            ctx.selection_state()
-                .set_selection(Item::View(query.view_id));
+            ctx.command_sender()
+                .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
         Ok(())
@@ -170,7 +171,7 @@ fn text_document_ui(
     } else if text_document.text_entries.len() == 1 {
         let TextDocumentEntry { body, media_type } = &text_document.text_entries[0];
 
-        if media_type == &re_types::components::MediaType::markdown() {
+        if media_type == &re_sdk_types::components::MediaType::markdown() {
             re_tracing::profile_scope!("egui_commonmark");
 
             // Make sure headers are big:

@@ -1,6 +1,5 @@
 use half::f16;
-
-use re_types::datatypes::ChannelDatatype;
+use re_sdk_types::datatypes::ChannelDatatype;
 
 use crate::ImageInfo;
 
@@ -57,7 +56,7 @@ impl ImageStats {
                         (<$typ>::INFINITY, <$typ>::NEG_INFINITY),
                         |(min, max), &value| (min.min(value), max.max(value)),
                     );
-                    #[allow(trivial_numeric_casts)]
+                    #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };
@@ -77,7 +76,6 @@ impl ImageStats {
         declare_slice_range_float!(slice_range_f32, f32);
         declare_slice_range_float!(slice_range_f64, f64);
 
-        #[allow(clippy::needless_pass_by_value)]
         fn slice_range_f16(slice: &[f16]) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) = slice
@@ -102,7 +100,7 @@ impl ImageStats {
                             }
                         },
                     );
-                    #[allow(trivial_numeric_casts)]
+                    #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     (min as f64, max as f64)
                 }
             };
@@ -112,7 +110,6 @@ impl ImageStats {
         declare_slice_finite_range_float!(slice_finite_range_f32, f32);
         declare_slice_finite_range_float!(slice_finite_range_f64, f64);
 
-        #[allow(clippy::needless_pass_by_value)]
         fn slice_finite_range_f16(slice: &[f16]) -> (f64, f64) {
             re_tracing::profile_function!();
             let (min, max) =

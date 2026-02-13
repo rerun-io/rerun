@@ -3,7 +3,7 @@ import {
   type Panel,
   type PanelState,
   WebViewer,
-  type WebViewerOptions,
+  type AppOptions,
 } from "@rerun-io/web-viewer";
 
 import type { AnyModel, Render } from "@anywidget/types";
@@ -22,6 +22,7 @@ interface WidgetModel {
   _panel_states?: PanelStates;
 
   _fallback_token?: string;
+  _theme?: string;
 }
 
 type Opt<T> = T | null | undefined;
@@ -53,7 +54,8 @@ class ViewerWidget {
   viewer: WebViewer = new WebViewer();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
-  options: WebViewerOptions = {
+  options: AppOptions = {
+    notebook: true,
     hide_welcome_screen: true,
     width: "100%",
     height: "100%",
@@ -73,6 +75,7 @@ class ViewerWidget {
     model.on("msg:custom", this.on_custom_message);
 
     this.options.fallback_token = model.get("_fallback_token");
+    this.options.theme = model.get("_theme") as AppOptions["theme"];
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 
@@ -134,6 +137,10 @@ class ViewerWidget {
       }
       case "close_url": {
         this.viewer.close(msg.url)
+        break;
+      }
+      case "set_credentials": {
+        this.viewer.set_credentials(msg.access_token, msg.email)
         break;
       }
       default: {

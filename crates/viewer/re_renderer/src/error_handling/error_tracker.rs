@@ -1,9 +1,9 @@
 use ahash::HashMap;
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
+use super::handle_async_error;
+use super::wgpu_core_error::WgpuCoreWrappedContextError;
 use crate::device_caps::WgpuBackendType;
-
-use super::{handle_async_error, wgpu_core_error::WgpuCoreWrappedContextError};
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum ContextError {
@@ -18,7 +18,7 @@ pub struct ErrorEntry {
 
     /// Description of the error.
     // TODO(#4507): Expecting to need this once we use this in views. Also very useful for debugging.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     description: String,
 }
 

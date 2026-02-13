@@ -1,13 +1,11 @@
 use ahash::{HashMap, HashSet};
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 
-use crate::{
-    RenderContext,
-    resource_managers::ImageDataDesc,
-    wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
-};
-
-use super::{ImageDataToTextureError, image_data_to_texture::transfer_image_data_to_texture};
+use super::ImageDataToTextureError;
+use super::image_data_to_texture::transfer_image_data_to_texture;
+use crate::RenderContext;
+use crate::resource_managers::ImageDataDesc;
+use crate::wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc};
 
 /// Handle to a 2D resource.
 ///
@@ -207,7 +205,7 @@ impl TextureManager2D {
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU.
     /// TODO(jleibs): All usages of this should be replaced with `get_or_create`, which is strictly preferable
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub fn create(
         &self,
         render_ctx: &RenderContext,

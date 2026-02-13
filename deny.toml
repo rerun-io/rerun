@@ -5,6 +5,8 @@
 #
 # Install: `cargo install cargo-deny`
 # Check: `cargo deny check`.
+#
+# For finding duplicate dependencies:  cargo deny check bans --hide-inclusion-graph
 
 
 # Note: running just `cargo deny check` without a `--target` can result in
@@ -29,9 +31,11 @@ all-features = true
 [advisories]
 version = 2
 ignore = [
-  "RUSTSEC-2024-0384", # Waiting for https://github.com/console-rs/indicatif/pull/666
   "RUSTSEC-2024-0436", # https://rustsec.org/advisories/RUSTSEC-2024-0436 - paste is unmaintained - https://github.com/dtolnay/paste
   "RUSTSEC-2024-0014", # https://rustsec.org/advisories/RUSTSEC-2024-0014 - generational-arena is unmaintained
+  "RUSTSEC-2025-0141", # https://rustsec.org/advisories/RUSTSEC-2025-0141 - bincode is unmaintained - https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md
+  # TODO(quickwit-oss/tantivy#2796): Remove when changes trickle down to `lance`.
+  "RUSTSEC-2026-0002", # https://rustsec.org/advisories/RUSTSEC-2026-0002 - lance uses an old version of `lru`
 ]
 
 
@@ -41,38 +45,68 @@ wildcards = "allow" # We use them for examples
 deny = [
   { name = "cgmath", reason = "We use glam" },
   { name = "cmake", reason = "Never again" },
-  { name = "criterion", reason = "Only allowed as a dev-dependency for testing." },
   { name = "derive_more", reason = "Is very slow to compile; see https://github.com/rerun-io/rerun/issues/1316" },
   { name = "egui_glow", reason = "We use wgpu" },
-  { name = "insta", reason = "Only allowed as a dev-dependency for testing." },
   { name = "openssl-sys", reason = "We prefer rustls" },
   { name = "openssl", reason = "We prefer rustls" },
 
   # We have to allow egui_kittest since we use it behind a `testing` feature flag, rather than just as a dev-dependency.
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
+
+  # We have to allow insta because it's used by `re_redap_tests`, which contains test code
+  #{ name = "insta", reason = "Only allowed as a dev-dependency for testing." },
 ]
 skip = [
-  { name = "base64" },           # Too popular
-  { name = "block2" },           # Old version via rfd
-  { name = "cargo_metadata" },   # Older version used by ply-rs. It's small, and it's build-time only!
-  { name = "core-foundation" },  # Currently, e.g. `webbrowser` and `winit` use different versions.
-  { name = "hashbrown" },        # Old version used by polar-rs
-  { name = "libloading" },       # datafusion-ffi needs an older version than wgpu
-  { name = "objc2-app-kit" },    # `accesskit_macos` uses a different version than `arboard`
+  { name = "base64" }, # Too popular
+  { name = "block2" }, # Old version via rfd
+  { name = "bzip2" }, # Remove after https://github.com/apache/datafusion/pull/17509 closes
+  { name = "console" }, # smallish
+  { name = "cargo-platform" }, # used by rustdoc-json
+  { name = "cargo_metadata" }, # used by rustdoc-json
+  { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
+  { name = "core-graphics-types" }, # wgpu requires 0.2 while winit is still on 0.1
+  { name = "downcast-rs" }, # eco-system is transitioning from 1 to 2
+  { name = "event-listener" }, # remove after https://github.com/lance-format/lance/pull/4834 closes
+  { name = "gimli" }, # wasm-bindgen
+  { name = "hashbrown" }, # Old version used by polar-rs
+  { name = "itertools" }, # Too popular
+  { name = "libloading" }, # datafusion-ffi needs an older version than wgpu
+  { name = "lru" }, # because of lance
+  { name = "lz4_flex" }, # the Arrow ecosystem is a bit behind, but it's fine, this is a very tiny, flat dependency
+  { name = "memmap2" }, # because of walkers
+  { name = "nom" }, # lance
+  { name = "objc2-app-kit" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
-  { name = "objc2" },            # `accesskit_macos` uses a different version than `arboard`
-  { name = "ordered-float" },    # Old version being used by parquet, but super small!
-  { name = "pollster" },         # rfd is still on 0.3
-  { name = "pulldown-cmark" },   # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
-  { name = "redox_syscall" },    # Plenty of versions in the wild
-  { name = "rustc-hash" },       # numpy with compatible pyo3 requires different version than wgpu
+  { name = "objc2" }, # `accesskit_macos` uses a different version than `arboard`
+  { name = "ordered-float" }, # Old version being used by parquet, but super small!
+  { name = "petgraph" }, # Remove after next release due to https://github.com/tokio-rs/prost/pull/1327
+  { name = "prost-build" }, # waiting new lance update
+  { name = "prost-derive" }, # waiting new lance update
+  { name = "prost-types" }, # waiting new lance update
+  { name = "prost" }, # waiting new lance update
+  { name = "quick-xml" }, # because of urdf-rs
+  { name = "redox_syscall" }, # Plenty of versions in the wild
+  { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu
+  { name = "socket2" }, # tonic, axum, …
+  { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
+  { name = "rustix" }, # tantivy uses an old version.
+  { name = "linux-raw-sys" }, # because of two rustix versions.
+  { name = "bitflags" }, # core-graphics & png uses an older version.
+  { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
-  { name = "re_perf_telemetry" }, # All the telemetry stack (tracing, otel, etc) carry a lot of old dependencies, it's all feature flagged though.
-  { name = "quick-xml" },         # Old version via rfd
-  { name = "walkers" },           # TODO(#7876): suppress that when `walkers` is updated
-  { name = "windows" },           # Latest sysinfo uses 0.57 max, latest wgpu uses 0.58. See also https://github.com/GuillaumeGomez/sysinfo/pull/1338.
-  { name = "zbus" },              # Old version via rfd
+  { name = "petgraph" }, # b/c lance
+  { name = "phf" }, # b/c mime_guess2
+  { name = "rand_distr" }, # from ndarray-rand
+  { name = "skeptic" }, # dev-dependency
+  { name = "thiserror" }, # Waiting for eco-system to switch to 2.0
+  { name = "toml" }, # b/c cargo_metadata
+  { name = "webpki-roots" }, # need to update ureq
+  { name = "windows-sys" }, # Impossible
+  { name = "windows-targets" }, # Impossible
+  { name = "windows" }, # Impossible
+  { name = "zerocopy" }, # Need to update re_rav1d
+  # NOTE: `skip-tree` skips the whole tree! Consider adding to just `skip` instead (scroll up!)
 ]
 
 [licenses]
@@ -80,22 +114,23 @@ version = 2
 private = { ignore = true }
 confidence-threshold = 0.93 # We want really high confidence when inferring licenses from text
 allow = [
+  "0BSD", # https://opensource.org/license/0bsd
   "Apache-2.0 WITH LLVM-exception", # https://spdx.org/licenses/LLVM-exception.html
-  "Apache-2.0",                     # https://tldrlegal.com/license/apache-license-2.0-(apache-2.0)
-  "BSD-2-Clause",                   # https://tldrlegal.com/license/bsd-2-clause-license-(freebsd)
-  "BSD-3-Clause",                   # https://tldrlegal.com/license/bsd-3-clause-license-(revised)
-  "BSL-1.0",                        # https://tldrlegal.com/license/boost-software-license-1.0-explained
-  "CC0-1.0",                        # https://creativecommons.org/publicdomain/zero/1.0/
-  "CDLA-Permissive-2.0",            # https://cdla.dev/permissive-2-0/
-  "ISC",                            # https://www.tldrlegal.com/license/isc-license
-  "MIT-0",                          # https://choosealicense.com/licenses/mit-0/
-  "MIT",                            # https://tldrlegal.com/license/mit-license
-  "MPL-2.0",                        # https://www.mozilla.org/en-US/MPL/2.0/FAQ/ - see Q11. Used by webpki-roots on Linux.
-  "OFL-1.1",                        # https://spdx.org/licenses/OFL-1.1.html
-  "Ubuntu-font-1.0",                # https://ubuntu.com/legal/font-licence
-  "Unicode-3.0",                    # https://www.unicode.org/license.txt
-  "Unicode-DFS-2016",               # https://spdx.org/licenses/Unicode-DFS-2016.html
-  "Zlib",                           # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
+  "Apache-2.0", # https://tldrlegal.com/license/apache-license-2.0-(apache-2.0)
+  "BSD-2-Clause", # https://tldrlegal.com/license/bsd-2-clause-license-(freebsd)
+  "BSD-3-Clause", # https://tldrlegal.com/license/bsd-3-clause-license-(revised)
+  "BSL-1.0", # https://tldrlegal.com/license/boost-software-license-1.0-explained
+  "CC0-1.0", # https://creativecommons.org/publicdomain/zero/1.0/
+  "CDLA-Permissive-2.0", # https://cdla.dev/permissive-2-0/
+  "ISC", # https://www.tldrlegal.com/license/isc-license
+  "MIT-0", # https://choosealicense.com/licenses/mit-0/
+  "MIT", # https://tldrlegal.com/license/mit-license
+  "MPL-2.0", # https://www.mozilla.org/en-US/MPL/2.0/FAQ/ - see Q11. Used by webpki-roots on Linux.
+  "OFL-1.1", # https://spdx.org/licenses/OFL-1.1.html
+  "Ubuntu-font-1.0", # https://ubuntu.com/legal/font-licence
+  "Unicode-3.0", # https://www.unicode.org/license.txt
+  "Zlib", # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
+  "bzip2-1.0.6", # https://github.com/trifectatechfoundation/libbzip2-rs/blob/v0.2.2/COPYING
 ]
 exceptions = []
 
@@ -108,7 +143,6 @@ license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
-
 
 [sources]
 unknown-registry = "deny"

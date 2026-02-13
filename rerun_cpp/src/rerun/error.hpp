@@ -26,6 +26,7 @@ namespace rerun {
     /// Status codes returned by the SDK as part of `Status`.
     ///
     /// Category codes are used to group errors together, but are never returned directly.
+    // ⚠️ Remember to also update `enum CErrorCode` AND `uint32_t rr_error_code` !
     enum class ErrorCode : uint32_t {
         Ok = 0x0000'0000,
         OutOfMemory,
@@ -40,10 +41,11 @@ namespace rerun {
         InvalidRecordingStreamHandle,
         InvalidSocketAddress,
         InvalidComponentTypeHandle,
+        InvalidTimeArgument,
         InvalidTensorDimension,
         InvalidComponent,
+        InvalidServerUrl = 0x0000'0001a,
         FileRead,
-        InvalidServerUrl,
         InvalidMemoryLimit,
 
         // Recording stream errors
@@ -55,6 +57,8 @@ namespace rerun {
         RecordingStreamSpawnFailure,
         RecordingStreamChunkValidationFailure,
         RecordingStreamServeGrpcFailure,
+        RecordingStreamFlushTimeout,
+        RecordingStreamFlushFailure,
 
         // Arrow data processing errors.
         _CategoryArrow = 0x0000'1000,

@@ -1,0 +1,14 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+half_sizes: [[1.0, 1.0, 1.0]]
+centers: [[0.0, 0.0, 0.0]]
+rotation_axis_angles: [{axis: [1.0, 0.0, 0.0], angle: 0.0}]
+quaternions: [[0.0, 0.0, 0.0, 1.0]]
+colors: [3161148927]
+radii: [-1.5]
+fill_mode: [1]
+labels: []
+show_labels: [true]
+class_ids: [0]

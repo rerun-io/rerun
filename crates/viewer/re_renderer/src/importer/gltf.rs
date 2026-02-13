@@ -3,11 +3,9 @@ use gltf::texture::WrappingMode;
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
-use crate::{
-    CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul,
-    mesh::{CpuMesh, Material, MeshError},
-    resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2D},
-};
+use crate::mesh::{CpuMesh, Material, MeshError};
+use crate::resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2D};
+use crate::{CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul};
 
 #[derive(thiserror::Error, Debug)]
 pub enum GltfImportError {
@@ -132,7 +130,7 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
     use gltf::image::Format;
     use wgpu::TextureFormat;
 
-    #[allow(clippy::match_same_arms)]
+    #[expect(clippy::match_same_arms)]
     match format {
         Format::R8 => Some(TextureFormat::R8Unorm),
         Format::R8G8 => Some(TextureFormat::Rg8Unorm),
@@ -280,6 +278,8 @@ fn import_mesh(
         return Err(GltfImportError::NoTrianglePrimitives { mesh_name });
     }
 
+    let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+
     let mesh = CpuMesh {
         label: mesh.name().into(),
         triangle_indices,
@@ -288,6 +288,7 @@ fn import_mesh(
         vertex_normals,
         vertex_texcoords,
         materials,
+        bbox,
     };
 
     mesh.sanity_check()?;
