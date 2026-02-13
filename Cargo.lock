@@ -10350,6 +10350,7 @@ dependencies = [
 name = "re_view_time_series"
 version = "0.30.0-alpha.1+dev"
 dependencies = [
+ "arrayvec",
  "egui",
  "egui_plot",
  "itertools 0.14.0",

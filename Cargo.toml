@@ -190,6 +190,7 @@ walkers = "0.50.0"
 ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.13"
+arrayvec = "0.7"
 array-init = "2.1"
 arrow = { version = "56.1", default-features = false, features = [
   # NOTE: Similar to `datafusion`, we enable many features on a workspace level

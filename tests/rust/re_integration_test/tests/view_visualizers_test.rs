@@ -229,6 +229,18 @@ pub async fn test_view_visualizers_multi_scalar() {
         });
     }
 
+    // Log an entity with 2 scalar values per timestamp
+    for i in 0..50 {
+        let t = i as f64 / 50.0;
+        harness.log_entity("multi/double", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, i)],
+                &re_sdk_types::archetypes::Scalars::new([(t * TAU).sin(), (t * TAU).cos()]),
+            )
+        });
+    }
+
     // Log a single-scalar entity for comparison
     for i in 0..50 {
         let t = i as f64 / 50.0;

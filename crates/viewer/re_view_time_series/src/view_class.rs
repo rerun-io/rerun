@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use arrayvec::ArrayVec;
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
@@ -18,7 +19,9 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, SeriesVisible, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
+use re_sdk_types::{
+    ComponentBatch as _, ComponentIdentifier, Loggable as _, View as _, ViewClassIdentifier,
+};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
@@ -42,6 +45,9 @@ use crate::naming::{SeriesInfo, SeriesNamesContext};
 use crate::point_visualizer_system::SeriesPointsSystem;
 
 // ---
+
+/// We only show this many colors directly.
+const NUM_SHOWN_VISUALIZER_COLORS: usize = 2;
 
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
@@ -867,24 +873,8 @@ impl ViewClass for TimeSeriesView {
                                             );
                                         });
 
-                                    // Color box on the right, vertically centered on the labels.
-                                    if let Some(series_color) = series_color {
-                                        let size = ui.tokens().visualizer_list_color_box_size;
-                                        let rect = egui::Rect::from_center_size(
-                                            egui::pos2(
-                                                ui.max_rect().right() - size / 2.0,
-                                                labels.response.rect.center().y,
-                                            ),
-                                            egui::vec2(size, size),
-                                        );
-                                        ui.painter().rect(
-                                            rect,
-                                            3.0,
-                                            series_color,
-                                            ui.tokens().visualizer_list_color_box_stroke,
-                                            egui::StrokeKind::Outside,
-                                        );
-                                    }
+                                    // Color box(es) on the right, vertically centered on the labels.
+                                    series_color.ui(ui, labels.response.rect.center().y);
                                 }
                                 let response = frame
                                     .allocate_space(ui)
@@ -1468,34 +1458,121 @@ fn get_time_series_name(
     strip_instance_number(&first_name)
 }
 
-/// Returns the color for a time series visualizer based on the specific visualizer type.
+/// List of colors for a time series visualizer.
+#[derive(Default)]
+struct TimeSeriesColors {
+    instance_count: usize,
+    colors: ArrayVec<egui::Color32, NUM_SHOWN_VISUALIZER_COLORS>,
+}
+
+impl TimeSeriesColors {
+    // TODO(RR-3745): Don't calculate positions here, find a more egui-friendly way to do this.
+    /// Draws color boxes (and an optional "+N" badge) right-aligned and vertically centered on
+    /// the given `center_y`.
+    fn ui(&self, ui: &egui::Ui, center_y: f32) {
+        if self.colors.is_empty() {
+            return;
+        }
+
+        let size = ui.tokens().visualizer_list_color_box_size;
+        let color_box_size = egui::vec2(size, size);
+        let spacing = 4.0;
+
+        let num_boxes = if self.instance_count > 2 {
+            1
+        } else {
+            self.colors.len()
+        };
+
+        // Draw "+N" badge when there are more than 2 instances
+        let mut right_edge = ui.max_rect().right();
+        if self.instance_count > 2 {
+            let badge_text = format!("+{}", self.instance_count - 1);
+            let galley = ui.painter().layout_no_wrap(
+                badge_text,
+                egui::FontId::proportional(10.5),
+                ui.tokens().visualizer_list_path_text_color,
+            );
+            let badge_rect = egui::Rect::from_center_size(
+                egui::pos2(right_edge - galley.size().x / 2.0, center_y),
+                galley.size(),
+            );
+            ui.painter()
+                .galley(badge_rect.min, galley, egui::Color32::WHITE);
+            right_edge -= badge_rect.width() + spacing;
+        }
+
+        // Draw color boxes from right to left
+        for color in self.colors[..num_boxes].iter().rev() {
+            let rect = egui::Rect::from_center_size(
+                egui::pos2(right_edge - size / 2.0, center_y),
+                color_box_size,
+            );
+            ui.painter().rect(
+                rect,
+                3.0,
+                *color,
+                ui.tokens().visualizer_list_color_box_stroke,
+                egui::StrokeKind::Outside,
+            );
+            right_edge -= size + spacing;
+        }
+    }
+}
+
+/// Returns the colors of time series plots.
 fn get_time_series_color(
     ctx: &re_viewer_context::ViewContext<'_>,
     data_result: &re_viewer_context::DataResult,
     instruction: &re_viewer_context::VisualizerInstruction,
-) -> Option<egui::Color32> {
-    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
+) -> TimeSeriesColors {
+    let color_component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
         SeriesLines::descriptor_colors().component
     } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
         SeriesPoints::descriptor_colors().component
     } else {
-        return None;
+        // Unkownn visualizer type, don't show any colors
+        return TimeSeriesColors::default();
     };
 
-    let query_result = re_view::latest_at_with_blueprint_resolved_data(
+    // Get the colors for each instance
+    let query = ctx.current_query();
+    let color_result = re_view::latest_at_with_blueprint_resolved_data(
         ctx,
         None,
-        &ctx.current_query(),
+        &query,
         data_result,
-        [component],
+        [color_component],
         Some(instruction),
     );
-    Some(
-        // TODO(RR-3571): We should get multiple instances here.
-        query_result
-            .get_mono_with_fallback::<Color>(component)
-            .into(),
-    )
+
+    let raw_color_cell = if let Some(color_cells) = color_result.get_raw_cell(color_component) {
+        // We have color data either in the store or as overrides
+        color_cells
+    } else {
+        // No color data in the store or overrides, use the fallback
+        ctx.viewer_ctx.component_fallback_registry.fallback_for(
+            color_component,
+            Some(<Color as re_sdk_types::Component>::name()),
+            &ctx.query_context(data_result, query, instruction.id),
+        )
+    };
+
+    let Ok(color_components) = Color::from_arrow(&raw_color_cell) else {
+        re_log::error_once!("Failed to cast color array to Color");
+        return TimeSeriesColors::default();
+    };
+
+    let colors = color_components
+        .iter()
+        .map(|&value| value.into()) // Color is ABGR, egui uses to RGBA, can't use bytemuck here.
+        .take(NUM_SHOWN_VISUALIZER_COLORS)
+        .collect();
+
+    TimeSeriesColors {
+        instance_count: color_components.len(),
+        colors,
+    }
 }
 
 #[cfg(test)]
