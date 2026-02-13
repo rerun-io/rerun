@@ -5,6 +5,7 @@
 
 msrv = "1.90"
 
+allow-panic-in-tests = true
 allow-unwrap-in-tests = true
 
 # https://doc.rust-lang.org/nightly/clippy/lint_configuration.html#avoid-breaking-exported-api

@@ -19,10 +19,12 @@ pub trait FileSystem {
 
     fn exists(&self, path: impl AsRef<Path>) -> bool;
 
+    #[expect(clippy::panic)]
     fn create_dir_all(&self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
         panic!("create_dir_all() is not supported on this backend")
     }
 
+    #[expect(clippy::panic)]
     fn create_file(
         &self,
         _path: impl AsRef<Path>,
