@@ -12,6 +12,9 @@ pub enum Error {
     #[error(transparent)]
     StoreLoadError(#[from] re_entity_db::StoreLoadError),
 
+    #[error("Invalid entry name: {0}")]
+    InvalidEntryName(String),
+
     #[error("Entry name '{0}' already exists")]
     DuplicateEntryNameError(String),
 
@@ -111,6 +114,8 @@ impl From<Error> for tonic::Status {
             Error::FailedToEncodeChunkKey(_) | Error::FailedToExtractProperties(_) => {
                 Self::internal(format!("{err:#}"))
             }
+
+            Error::InvalidEntryName(_) => Self::invalid_argument(format!("{err:#}")),
 
             Error::DuplicateEntryNameError(_)
             | Error::DuplicateEntryIdError(_)

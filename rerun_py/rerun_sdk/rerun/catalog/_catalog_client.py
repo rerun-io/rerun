@@ -253,7 +253,12 @@ class CatalogClient:
     # ---
 
     def create_dataset(self, name: str) -> DatasetEntry:
-        """Creates a new dataset with the given name."""
+        """
+        Creates a new dataset with the given name.
+
+        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces,
+        and must be at most 180 characters long.
+        """
 
         from . import DatasetEntry
 
@@ -268,6 +273,9 @@ class CatalogClient:
         name
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
+
+            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces,
+            and must be at most 180 characters long.
 
         url
             The URL of the Lance table to register.
@@ -286,6 +294,9 @@ class CatalogClient:
         name
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
+
+            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces,
+            and must be at most 180 characters long.
 
         schema
             The schema of the table to create.

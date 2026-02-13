@@ -248,6 +248,9 @@ impl InMemoryStore {
     }
 
     pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: String) -> Result<(), Error> {
+        re_protos::cloud::v1alpha1::ext::validate_entry_name(&entry_name)
+            .map_err(Error::InvalidEntryName)?;
+
         if let Some(existing_entry_id) = self.id_by_name.get(&entry_name) {
             return if existing_entry_id == &entry_id {
                 // nothing to do, the rename is a no-op
@@ -312,6 +315,9 @@ impl InMemoryStore {
         dataset_name: String,
         dataset_id: Option<EntryId>,
     ) -> Result<&mut Dataset, Error> {
+        re_protos::cloud::v1alpha1::ext::validate_entry_name(&dataset_name)
+            .map_err(Error::InvalidEntryName)?;
+
         let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
         let blueprint_dataset_id = EntryId::new();
         let blueprint_dataset_name = format!("__bp_{dataset_id}");
@@ -482,6 +488,9 @@ impl InMemoryStore {
         url: &url::Url,
         schema: SchemaRef,
     ) -> Result<TableEntry, Error> {
+        re_protos::cloud::v1alpha1::ext::validate_entry_name(name)
+            .map_err(Error::InvalidEntryName)?;
+
         re_log::debug!(name, "create_table");
         if self.id_by_name.contains_key(name) {
             return Err(Error::DuplicateEntryNameError(name.to_owned()));

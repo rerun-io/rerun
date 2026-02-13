@@ -84,7 +84,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     let status = create_dataset_entry(
         &service,
         CreateDatasetEntryRequest {
-            name: "this name is for sure not used, but the id might".to_owned(),
+            name: "this name is for sure not used but the id might".to_owned(),
             id: Some(entry_details.id),
         },
     )

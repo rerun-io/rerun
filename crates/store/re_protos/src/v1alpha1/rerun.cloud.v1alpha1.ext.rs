@@ -684,6 +684,39 @@ impl crate::cloud::v1alpha1::EntryFilter {
 
 // --- EntryDetails ---
 
+/// Maximum length of an entry name.
+const MAX_ENTRY_NAME_LENGTH: usize = 180;
+
+/// Validate an entry name.
+///
+/// Entry names must:
+/// - Be at most 180 characters long
+/// - Only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces
+///
+// TODO(RR-3719): Entry names should support a broader set of characters.
+pub fn validate_entry_name(name: &str) -> Result<(), String> {
+    if name.len() > MAX_ENTRY_NAME_LENGTH {
+        return Err(format!(
+            "name '{name}' exceeds maximum length of {MAX_ENTRY_NAME_LENGTH} characters (got {})",
+            name.len()
+        ));
+    }
+
+    if let Some(ch) = name.chars().find(|c| {
+        !c.is_ascii_alphanumeric()
+            && *c != '_'
+            && *c != '-'
+            && *c != '.'
+            && *c != ' '
+            && *c != '['
+            && *c != ']'
+    }) {
+        return Err(format!("name '{name}' contains invalid character '{ch}'"));
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct EntryDetails {
     pub id: re_log_types::EntryId,
