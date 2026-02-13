@@ -196,11 +196,7 @@ impl ChunkStore {
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if !self.is_root_chunk(&chunk.id()) {
-            if cfg!(debug_assertions) {
-                re_log::warn_once!("Attempted to insert non-root chunk (this has no effect)");
-            } else {
-                re_log::debug_once!("Attempted to insert non-root chunk (this has no effect)");
-            }
+            re_log::debug_warn_once!("Attempted to insert non-root chunk (this has no effect)");
             return Ok(vec![]);
         }
 

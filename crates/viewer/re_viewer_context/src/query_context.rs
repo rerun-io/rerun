@@ -299,11 +299,7 @@ static EMPTY_QUERY: LazyLock<DataQueryResult> = LazyLock::new(Default::default);
 impl ViewerContext<'_> {
     pub fn lookup_query_result(&self, id: ViewId) -> &DataQueryResult {
         self.query_results.get(&id).unwrap_or_else(|| {
-            if cfg!(debug_assertions) {
-                re_log::warn!("Tried looking up a query that doesn't exist: {:?}", id);
-            } else {
-                re_log::debug!("Tried looking up a query that doesn't exist: {:?}", id);
-            }
+            re_log::debug_warn!("Tried looking up a query that doesn't exist: {id:?}");
             &EMPTY_QUERY
         })
     }

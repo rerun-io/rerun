@@ -602,11 +602,7 @@ impl RrdManifestIndex {
 fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
     match store_kind {
         StoreKind::Recording => {
-            if cfg!(debug_assertions) {
-                re_log::warn_once!("[DEBUG] {warning}");
-            } else {
-                re_log::debug_once!("{warning}");
-            }
+            re_log::debug_warn_once!("{warning}");
         }
         StoreKind::Blueprint => {
             // We edit blueprint by generating new chunks in the viewer.

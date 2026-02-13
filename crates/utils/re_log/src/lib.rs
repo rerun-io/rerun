@@ -44,6 +44,66 @@ pub use setup::{setup_logging, setup_logging_with_filter};
 // The tracing macros support more syntax features than the log, that's why we use them:
 pub use tracing::{debug, error, info, trace, warn};
 
+/// Log a warning in debug builds, or a debug message in release builds.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(debug_assertions)]
+#[macro_export]
+macro_rules! debug_warn {
+    ($($arg:tt)+) => {
+        $crate::warn!("DEBUG: {}", format_args!($($arg)+))
+    };
+}
+
+/// Log a warning in debug builds, or a debug message in release builds.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(not(debug_assertions))]
+#[macro_export]
+macro_rules! debug_warn {
+    ($($arg:tt)+) => {
+        $crate::debug!($($arg)+)
+    };
+}
+
+/// Like [`debug_warn!`], but only logs once per call site.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(debug_assertions)]
+#[macro_export]
+macro_rules! debug_warn_once {
+    ($($arg:tt)+) => {
+        $crate::warn_once!("DEBUG: {}", format_args!($($arg)+))
+    };
+}
+
+/// Like [`debug_warn!`], but only logs once per call site.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(not(debug_assertions))]
+#[macro_export]
+macro_rules! debug_warn_once {
+    ($($arg:tt)+) => {
+        $crate::debug_once!($($arg)+)
+    };
+}
+
 /// Re-exports of other crates.
 pub mod external {
     pub use log;

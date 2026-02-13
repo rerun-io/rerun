@@ -758,18 +758,12 @@ impl QueryResults {
     #[track_caller]
     pub fn into_iter_verbose(self) -> impl Iterator<Item = Arc<Chunk>> {
         if self.is_partial() {
-            const MSG: &str =
-                "iterating partial query results: some data has been silently discarded";
-            if cfg!(debug_assertions) {
-                let location = std::panic::Location::caller();
-                re_log::warn_once!(
-                    "{}:{} DEBUG WARNING: {MSG}",
-                    location.file(),
-                    location.line()
-                );
-            } else {
-                re_log::debug_once!("{MSG}");
-            }
+            let location = std::panic::Location::caller();
+            re_log::debug_warn_once!(
+                "{}:{}: iterating partial query results: some data has been silently discarded",
+                location.file(),
+                location.line()
+            );
         }
 
         self.chunks.into_iter()

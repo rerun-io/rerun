@@ -376,12 +376,10 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             // This shouldn't happen, but better safe than sorry:
             // TODO(#4433): This should go to analytics
 
-            if cfg!(debug_assertions) {
-                re_log::warn_once!(
-                    "Visualizers for view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
-                    view_blueprint.display_name_or_default()
-                );
-            }
+            re_log::debug_warn_once!(
+                "Visualizers for view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
+                view_blueprint.display_name_or_default()
+            );
 
             let ctx: &'a ViewerContext<'_> = self.ctx;
             let view = view_blueprint;

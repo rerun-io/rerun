@@ -311,12 +311,10 @@ impl ImageInfo {
             // But it can happen, e.g. when logging a `1x1xu8` image followed by a `1x1xf32` image
             // to the same entity path, and they are put in the same chunk.
 
-            if cfg!(debug_assertions) {
-                re_log::warn_once!(
-                    "The image buffer was not aligned to the element type {}",
-                    std::any::type_name::<T>()
-                );
-            }
+            re_log::debug_warn_once!(
+                "The image buffer was not aligned to the element type {}",
+                std::any::type_name::<T>()
+            );
             re_tracing::profile_scope!("copy_image_buffer");
 
             let mut dest = vec![T::zeroed(); num_elements];

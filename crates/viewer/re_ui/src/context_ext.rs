@@ -127,9 +127,9 @@ pub trait ContextExt {
                 } = metrics;
                 traffic_lights_size
             } else {
-                if cfg!(debug_assertions) {
-                    re_log::warn_once!("Failed to measure the size of the mac traffic light area");
-                }
+                re_log::debug_warn_once!(
+                    "Failed to measure the size of the mac traffic light area"
+                );
                 traffic_button_sizes_fallback
             }
         } else {
