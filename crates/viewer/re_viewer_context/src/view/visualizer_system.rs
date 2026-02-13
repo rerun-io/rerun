@@ -44,6 +44,9 @@ pub type DatatypeSet = std::collections::BTreeSet<arrow::datatypes::DataType>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnyPhysicalDatatypeRequirement {
+    /// The required component that this requirement is targeting.
+    pub target_component: ComponentIdentifier,
+
     /// The semantic type the visualizer is working with.
     ///
     /// Matches with the semantic type are generally preferred.

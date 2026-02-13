@@ -1,5 +1,5 @@
 use arrow::datatypes::DataType;
-use itertools::Itertools as _;
+use itertools::{Either, Itertools as _};
 use re_chunk::ComponentIdentifier;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::EntityPath;
@@ -17,10 +17,11 @@ use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, TryShowEditUiResult,
-    UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection, VisualizerComponentSource,
-    VisualizerInstruction, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
-    VisualizerViewReport,
+    AnyPhysicalDatatypeRequirement, BlueprintContext as _, DataResult, DatatypeMatch,
+    PerVisualizerTypeInViewClass, TryShowEditUiResult, UiLayout, ViewContext, ViewSystemIdentifier,
+    VisualizableEntities, VisualizableReason, VisualizerCollection, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerInstruction, VisualizerQueryInfo,
+    VisualizerReportSeverity, VisualizerSystem, VisualizerViewReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -40,7 +41,7 @@ pub fn visualizer_ui(
         ui.error_label("Entity not found in view");
         return;
     };
-    let all_visualizers = ctx.new_visualizer_collection();
+    let view_visualizers = ctx.new_visualizer_collection();
     let active_visualizers: Vec<_> = data_result
         .visualizer_instructions
         .iter()
@@ -91,7 +92,7 @@ specific to the visualizer and the current view type.";
                 ui,
                 &data_result,
                 &active_visualizers,
-                &all_visualizers,
+                &view_visualizers,
                 visualizer_errors,
             );
         });
@@ -804,6 +805,13 @@ fn menu_add_new_visualizer(
 
     for visualizer_type in available_visualizers {
         if ui.button(visualizer_type.as_str()).clicked() {
+            let component_mappings = component_mappings_for_new_visualizer(
+                ctx,
+                active_visualizers,
+                visualizer_type,
+                &data_result.entity_path,
+            );
+
             // To add a visualizer we have to do two things:
             // * add a visualizer type information for that new visualizer instruction
             // * add an element to the list of active visualizer ids
@@ -811,7 +819,7 @@ fn menu_add_new_visualizer(
                 VisualizerInstructionId::new_random(),
                 *visualizer_type,
                 override_base_path,
-                re_viewer_context::VisualizerComponentMappings::default(),
+                component_mappings,
             );
             let active_visualizer_archetype = ActiveVisualizers::new(
                 active_visualizers
@@ -846,6 +854,120 @@ fn menu_add_new_visualizer(
             ui.close();
         }
     }
+}
+
+/// Returns true if the proposed mapping is fully covered by an existing visualizer.
+fn is_mapping_already_in_use(
+    active_visualizers: &[VisualizerInstruction],
+    mapping: &VisualizerComponentMappings,
+) -> bool {
+    active_visualizers.iter().any(|active_visualizer| {
+        mapping.iter().all(|(mapping_src, mapping_target)| {
+            active_visualizer.component_mappings.get(mapping_src) == Some(mapping_target)
+        })
+    })
+}
+
+fn component_mappings_for_new_visualizer(
+    ctx: &ViewContext<'_>,
+    active_visualizers: &[VisualizerInstruction],
+    visualizer_type: &ViewSystemIdentifier,
+    entity_path: &EntityPath,
+) -> VisualizerComponentMappings {
+    // Get recommended visualizers with their component mappings so we can use them
+    // when the user adds a new visualizer.
+    let visualizable_entities_per_visualizer = ctx
+        .viewer_ctx
+        .collect_visualizable_entities_for_view_class(ctx.view_class_identifier);
+    let recommended_visualizers = ctx.view_class().recommended_visualizers_for_entity(
+        entity_path,
+        &visualizable_entities_per_visualizer,
+        ctx.viewer_ctx.indicated_entities_per_visualizer,
+    );
+    let component_mapping_recommendations = recommended_visualizers.0.get(visualizer_type).cloned();
+
+    // Chain in all possible mappings.
+    let all_mapping_candidates = component_mapping_recommendations
+        .into_iter()
+        .flatten()
+        .chain(
+            component_mappings_for_required_components_from_visualizability(
+                *visualizer_type,
+                entity_path,
+                &visualizable_entities_per_visualizer,
+            ),
+        );
+
+    // Now out of this list of all mappings, pick the best one!
+    //
+    // Reminder: Complex prioritization is already done for recommended visualizers, so we only should do very loose prioritization beyond that!
+    all_mapping_candidates
+        .min_by_key(|mappings| {
+            let is_trivial_mapping = mappings.is_empty()
+                || mappings
+                    .iter()
+                    .all(|(target, source)| source.is_identity_mapping(*target));
+
+            (
+                is_mapping_already_in_use(active_visualizers, mappings), // prefer mappings that haven't shown up yet
+                !is_trivial_mapping, // prefer mappings that are completely trivial (false sorts earlier)
+            )
+        })
+        .unwrap_or_default()
+}
+
+/// Derives component mappings from the visualizability reason when no explicit recommendation exists.
+fn component_mappings_for_required_components_from_visualizability(
+    visualizer_type: ViewSystemIdentifier,
+    entity_path: &EntityPath,
+    visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+) -> impl Iterator<Item = VisualizerComponentMappings> {
+    // Look up why this entity is visualizable for this visualizer type.
+    let reason = visualizable_entities_per_visualizer
+        .get(&visualizer_type)
+        .and_then(|entities| entities.get(entity_path));
+
+    let Some(VisualizableReason::DatatypeMatchAny {
+        matches,
+        target_component,
+    }) = reason
+    else {
+        if reason.is_none() {
+            re_log::debug_panic!(
+                "Entity {entity_path:?} is not visualizable for {visualizer_type:?}, but was offered as an available visualizer"
+            );
+            re_log::warn_once!(
+                "Entity {entity_path:?} is not visualizable for {visualizer_type:?}"
+            );
+        }
+        // For non-datatype-match reasons (ExactMatchAll, ExactMatchAny, Always),
+        // the default identity mapping is correct as it will pick in builtin components.
+        return Either::Left(std::iter::once(VisualizerComponentMappings::default()));
+    };
+
+    // Set up an expression for all possible mappings given this visualization reason.
+    Either::Right(
+        matches
+            .iter()
+            .flat_map(|(source_component, match_info)| match match_info {
+                DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } if !selectors.is_empty() => {
+                    Either::Left(selectors.iter().map(|(selector, _)| {
+                        VisualizerComponentSource::SourceComponent {
+                            source_component: *source_component,
+                            selector: selector.to_string(),
+                        }
+                    }))
+                }
+
+                _ => Either::Right(std::iter::once(
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: *source_component,
+                        selector: String::new(),
+                    },
+                )),
+            })
+            .map(|mapping| std::iter::once((*target_component, mapping)).collect()),
+    )
 }
 
 /// Lists all visualizers that are _not_ active for the given entity but could be.

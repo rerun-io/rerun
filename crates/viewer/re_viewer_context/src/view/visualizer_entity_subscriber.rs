@@ -266,6 +266,7 @@ fn process_entity_components(
         }
 
         Requirement::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
+            target_component,
             semantic_type,
             physical_types,
             allow_static_data,
@@ -294,6 +295,7 @@ fn process_entity_components(
                         &mut store_mapping.visualizable_entities,
                         &entity_path,
                         c.descriptor.component,
+                        *target_component,
                         match_info,
                         visualizer,
                     );
@@ -357,12 +359,18 @@ fn insert_datatype_match(
     visualizable_entities: &mut VisualizableEntities,
     entity_path: &EntityPath,
     component: ComponentIdentifier,
+    target_component: ComponentIdentifier,
     match_info: DatatypeMatch,
     visualizer: &ViewSystemIdentifier,
 ) {
     match visualizable_entities.0.entry(entity_path.clone()) {
         Entry::Occupied(mut occupied_entry) => {
-            if let VisualizableReason::DatatypeMatchAny { matches } = occupied_entry.get_mut() {
+            if let VisualizableReason::DatatypeMatchAny {
+                matches,
+                target_component: previous_target,
+            } = occupied_entry.get_mut()
+            {
+                re_log::debug_assert_eq!(&target_component, previous_target);
                 matches.insert(component, match_info);
             } else {
                 debug_panic!(
@@ -373,6 +381,7 @@ fn insert_datatype_match(
 
         Entry::Vacant(vacant_entry) => {
             vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
+                target_component,
                 matches: std::iter::once((component, match_info)).collect(),
             });
         }

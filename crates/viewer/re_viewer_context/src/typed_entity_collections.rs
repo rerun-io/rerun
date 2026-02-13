@@ -72,6 +72,12 @@ pub enum VisualizableReason {
 
     /// [`crate::RequiredComponents::AnyPhysicalDatatype`] matched for this entity with the given components.
     DatatypeMatchAny {
+        /// The component that needs to be mapped to one of the matches.
+        target_component: ComponentIdentifier,
+
+        /// Matches that the target component should map to.
+        ///
+        /// Guaranteed to have at least one entry.
         matches: IntMap<ComponentIdentifier, DatatypeMatch>,
     },
 }
@@ -81,7 +87,7 @@ impl VisualizableReason {
     pub fn full_native_match(&self, component_identifier: ComponentIdentifier) -> bool {
         match self {
             Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
-            Self::DatatypeMatchAny { matches } => matches
+            Self::DatatypeMatchAny { matches, .. } => matches
                 .get(&component_identifier)
                 .map(|info| matches!(info, DatatypeMatch::NativeSemantics { .. }))
                 .unwrap_or(false),

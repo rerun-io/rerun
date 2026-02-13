@@ -39,6 +39,7 @@ impl VisualizerSystem for SeriesLinesSystem {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesLines::name().into(),
             required: AnyPhysicalDatatypeRequirement {
+                target_component: archetypes::Scalars::descriptor_scalars().component,
                 semantic_type: components::Scalar::name(),
                 physical_types: util::series_supported_datatypes().into_iter().collect(),
                 allow_static_data: false,

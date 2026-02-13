@@ -973,7 +973,11 @@ const RECOMMENDED_DATATYPES: &[DataType] =
 fn all_scalar_mappings(
     reason: &VisualizableReason,
 ) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
-    let re_viewer_context::VisualizableReason::DatatypeMatchAny { matches } = reason else {
+    let re_viewer_context::VisualizableReason::DatatypeMatchAny {
+        target_component: _,
+        matches,
+    } = reason
+    else {
         return Either::Left(std::iter::empty());
     };
 
@@ -1525,6 +1529,7 @@ mod tests {
         let viz = build_visualizable_entities(
             &entity_path,
             VisualizableReason::DatatypeMatchAny {
+                target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
                     DatatypeMatch::PhysicalDatatypeOnly {
@@ -1550,6 +1555,7 @@ mod tests {
         let viz = build_visualizable_entities(
             &entity_path,
             VisualizableReason::DatatypeMatchAny {
+                target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
                     DatatypeMatch::NativeSemantics {
