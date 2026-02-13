@@ -253,32 +253,37 @@ impl VideoStreamCache {
             ChunkStoreDiff::VirtualAddition(_) => Ok(()),
         };
 
-        if cfg!(debug_assertions)
-            && let Err(err) = video_data.sanity_check()
+        let encoding_details_changed = encoding_details_before != video_data.encoding_details;
+        if encoding_details_changed
+            && let Some(before) = encoding_details_before
+            && let Some(after) = &video_data.encoding_details
         {
-            panic!(
-                "VideoDataDescription sanity check stream at {:?} failed: {err}",
-                event.delta_chunk().map(|c| c.entity_path())
+            let name = event
+                .delta_chunk()
+                .map(|c| c.entity_path().to_string())
+                .unwrap_or_else(|| "<UNKNOWN>".to_owned());
+            re_log::error_once!(
+                "The video stream codec details of {name:?} changed (from {before:?} to {after:?}). This is not supported."
             );
         }
 
-        if encoding_details_before != video_data.encoding_details {
-            if let Some(before) = encoding_details_before
-                && let Some(after) = &video_data.encoding_details
-            {
-                let name = event
-                    .delta_chunk()
-                    .map(|c| c.entity_path().to_string())
-                    .unwrap_or_else(|| "<UNKNOWN>".to_owned());
-                re_log::error_once!(
-                    "The video stream codec details of {name:?} changed (from {before:?} to {after:?}). This is not supported."
-                );
-            }
+        let _ = video_data;
+
+        if encoding_details_changed {
             video_renderer.reset_all_decoders();
         }
 
         match result {
-            Ok(()) => {}
+            Ok(()) => {
+                if cfg!(debug_assertions)
+                    && let Err(err) = video_renderer.data_descr().sanity_check()
+                {
+                    panic!(
+                        "VideoDataDescription sanity check stream at {:?} failed: {err}",
+                        event.delta_chunk().map(|c| c.entity_path())
+                    );
+                }
+            }
             Err(VideoStreamProcessingError::OutOfOrderSamples) => {
                 re_log::debug!("Found out of order samples");
                 drop(video_stream);
