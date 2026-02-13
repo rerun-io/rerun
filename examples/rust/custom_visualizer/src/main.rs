@@ -1,8 +1,8 @@
 //! This example shows how to add custom Views to the Rerun Viewer.
 
 use rerun::external::{
-    glam, re_crash_handler, re_grpc_server, re_log, re_memory, re_smart_channel,
-    re_types::{self, View as _},
+    glam, re_crash_handler, re_grpc_server, re_log, re_log_channel, re_memory,
+    re_sdk_types::{self, View as _},
     re_viewer, tokio,
 };
 
@@ -31,10 +31,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
-    // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let (grpc_rx, _) = re_grpc_server::spawn_with_recv(
+    // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
+    let grpc_rx = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
-        "75%".parse()?,
+        re_grpc_server::ServerOptions::default(),
         re_grpc_server::shutdown::never(),
     );
 
@@ -71,13 +71,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.add_log_receiver(builtin_recording_rx);
 
             // Register a custom visualizer for the builtin 3D view.
-            app.view_class_registry()
-                .register_visualizer::<CustomVisualizer>(
-                    re_types::blueprint::views::Spatial3DView::identifier(),
-                )
-                .unwrap();
+            app.extend_view_class(
+                re_sdk_types::blueprint::views::Spatial3DView::identifier(),
+                |registrator| {
+                    registrator.register_visualizer::<CustomVisualizer>()
+                },
+            )
+            .unwrap();
 
-            Box::new(app)
+            Ok(Box::new(app))
         }),
         None,
     )?;
@@ -85,25 +87,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn builtin_recording(
-) -> Result<re_smart_channel::Receiver<rerun::log::LogMsg>, rerun::RecordingStreamError> {
+pub fn builtin_recording() -> Result<re_log_channel::LogReceiver, rerun::RecordingStreamError> {
     // TODO(andreas): Would be great if there was a log sink that's directly tied to a smartchannel
     // so that this could run in the background.
     let (rec, memory_sink) =
         rerun::RecordingStreamBuilder::new("rerun_example_custom_visualizer").memory()?;
 
-    // Log an entity with two custom ???TODO??.
+    // Log an entity with the custom archetype.
     rec.log_static(
         "custom",
-        // &custom_archetype::Custom::new([[0.0, 0.0, 0.0], [2.0, 2.0, 2.0]]).with_colors([
-        //     rerun::Color::from_rgb(255, 0, 0),
-        //     rerun::Color::from_rgb(0, 0, 255),
-        // ]),
         &custom_archetype::Custom::new([[0.0, 0.0, 0.0]])
             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
     )?;
 
-    // Log a solid box to demonstrate interaction of the custom ???TODO?? with existing view contents.
+    // Log a solid box to demonstrate interaction of the custom shape with existing view contents.
     rec.log_static(
         "box",
         &rerun::Boxes3D::from_half_sizes([[0.5, 0.5, 0.5]])
@@ -124,15 +121,13 @@ pub fn builtin_recording(
         )?;
     }
 
-    // Forward the content of the memory recording to a smartchannel.
-    let (builtin_recording_tx, builtin_recording_rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::Sdk,
-        re_smart_channel::SmartChannelSource::Sdk,
-    );
-    rec.flush_blocking();
+    // Forward the content of the memory recording to a log channel.
+    let (builtin_recording_tx, builtin_recording_rx) =
+        re_log_channel::log_channel(re_log_channel::LogSource::Sdk);
+    rec.flush_blocking().ok();
     for msg in memory_sink.take() {
         builtin_recording_tx
-            .send(msg)
+            .send(re_log_channel::DataSourceMessage::LogMsg(msg))
             .expect("Failed to send message to builtin recording");
     }
 

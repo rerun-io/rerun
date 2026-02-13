@@ -1,4 +1,4 @@
-use rerun::{external::re_types::try_serialize_field, Component};
+use rerun::{external::re_sdk_types::try_serialize_field, Component};
 
 /// Custom archetype for drawing ??TODO?? in the 3D view.
 #[derive(Default)]

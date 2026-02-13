@@ -8,7 +8,7 @@ use rerun::external::{
     },
 };
 
-/// Implements a simple custom [`re_renderer::renderer::Renderer`] for drawing some shader defined 3D ??TODO??.
+/// Implements a simple custom [`re_renderer::renderer::Renderer`] for drawing some shader defined 3D shape.
 pub struct CustomRenderer {
     bind_group_layout: re_renderer::GpuBindGroupLayoutHandle,
 
@@ -36,7 +36,7 @@ mod gpu_data {
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 7],
     }
 }
-/// GPU draw data for drawing ??TODO?? instances using [`CustomRenderer`].
+/// GPU draw data for drawing custom instances using [`CustomRenderer`].
 ///
 /// Note that a single draw data is used for many instances of the same drawable.
 #[derive(Clone)]
@@ -58,6 +58,35 @@ struct Instance {
 
 impl re_renderer::renderer::DrawData for CustomDrawData {
     type Renderer = CustomRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &re_renderer::renderer::DrawableCollectionViewInfo,
+        collector: &mut re_renderer::DrawableCollector<'_>,
+    ) {
+        use re_renderer::renderer::DrawDataDrawable;
+
+        // Register one drawable per instance for the opaque, picking, and outline phases.
+        for (i, instance) in self.instances.iter().enumerate() {
+            collector.add_drawable(
+                re_renderer::DrawPhase::Opaque | re_renderer::DrawPhase::PickingLayer,
+                DrawDataDrawable {
+                    distance_sort_key: 0.0,
+                    draw_data_payload: i as u32,
+                },
+            );
+
+            if instance.has_outline {
+                collector.add_drawable(
+                    re_renderer::DrawPhase::OutlineMask,
+                    DrawDataDrawable {
+                        distance_sort_key: 0.0,
+                        draw_data_payload: i as u32,
+                    },
+                );
+            }
+        }
+    }
 }
 
 impl CustomDrawData {
@@ -69,7 +98,7 @@ impl CustomDrawData {
     }
 
     /// Adds an instance to this draw data.
-    #[allow(clippy::too_many_arguments)] // TODO:?
+    #[allow(clippy::too_many_arguments)]
     pub fn add(
         &mut self,
         ctx: &re_renderer::RenderContext,
@@ -160,7 +189,7 @@ impl re_renderer::renderer::Renderer for CustomRenderer {
                 re_renderer::ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into()
             )],
             primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: re_renderer::ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(re_renderer::ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: re_renderer::ViewBuilder::main_target_default_msaa_state(
                 ctx.render_config(),
                 false,
@@ -209,7 +238,7 @@ impl re_renderer::renderer::Renderer for CustomRenderer {
         render_pipelines: &re_renderer::GpuRenderPipelinePoolAccessor<'_>,
         phase: re_renderer::DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &CustomDrawData,
+        draw_instructions: &[re_renderer::renderer::DrawInstruction<'_, CustomDrawData>],
     ) -> Result<(), re_renderer::renderer::DrawError> {
         let pipeline_handle = match phase {
             re_renderer::DrawPhase::Opaque => self.render_pipeline_color,
@@ -221,23 +250,21 @@ impl re_renderer::renderer::Renderer for CustomRenderer {
         let pipeline = render_pipelines.get(pipeline_handle)?;
         pass.set_pipeline(pipeline);
 
-        for instance in &draw_data.instances {
-            if phase == re_renderer::DrawPhase::OutlineMask && !instance.has_outline {
-                continue;
-            }
+        for instruction in draw_instructions {
+            for drawable in instruction.drawables {
+                let instance_index = drawable.draw_data_payload as usize;
+                if let Some(instance) = instruction.draw_data.instances.get(instance_index) {
+                    if phase == re_renderer::DrawPhase::OutlineMask && !instance.has_outline {
+                        continue;
+                    }
 
-            pass.set_bind_group(1, &instance.bind_group, &[]);
-            pass.draw(0..3, 0..1);
+                    pass.set_bind_group(1, &instance.bind_group, &[]);
+                    pass.draw(0..3, 0..1);
+                }
+            }
         }
 
         Ok(())
     }
 
-    fn participated_phases() -> &'static [re_renderer::DrawPhase] {
-        &[
-            re_renderer::DrawPhase::Opaque,
-            re_renderer::DrawPhase::OutlineMask,
-            re_renderer::DrawPhase::PickingLayer,
-        ]
-    }
 }

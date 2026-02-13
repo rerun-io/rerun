@@ -16,6 +16,7 @@ analytics = ["rerun/analytics"]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",
   "run",
+  "server",
 ] }
 
 # Can't rely on export from `rerun` crate since proc macros can't be re-exported.
