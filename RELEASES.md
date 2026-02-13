@@ -98,6 +98,8 @@ After cherry-picking a commit into the patch, please make sure to remove the `co
 
 ### 4. Update [`CHANGELOG.md`](./CHANGELOG.md)
 
+⚠️ Skip this step when preparing an alpha release.
+
 Update the change log. It should include:
 
 -   A one-line summary of the release
@@ -113,6 +115,8 @@ Update the change log. It should include:
 -   Make sure the changelog includes instructions for handling any breaking changes
 
 ### 5. Clean up documentation links
+
+⚠️ Skip this step when preparing an alpha release.
 
 Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
 
