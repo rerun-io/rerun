@@ -212,7 +212,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
         match component_sources.entry(*component) {
             std::collections::hash_map::Entry::Occupied(_) => {}
             std::collections::hash_map::Entry::Vacant(entry) => {
-                let source = if overrides.get(*component).is_some() {
+                let source = if has_non_empty_override(&overrides, *component) {
                     ComponentSourceKind::Override
                 } else if store_results.components.contains_key(component) {
                     ComponentSourceKind::SourceComponent
@@ -361,7 +361,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         match component_sources.entry(*component) {
             std::collections::hash_map::Entry::Occupied(_) => {}
             std::collections::hash_map::Entry::Vacant(entry) => {
-                let source = if overrides.get(*component).is_some() {
+                let source = if has_non_empty_override(&overrides, *component) {
                     ComponentSourceKind::Override
                 } else if store_results.components.contains_key(component) {
                     ComponentSourceKind::SourceComponent
@@ -433,6 +433,19 @@ pub fn query_archetype_with_history<'a>(
             (latest_query, results).into()
         }
     }
+}
+
+/// Returns `true` if the given component has a non-empty override.
+///
+/// When overrides are cleared, they are set to `[]` (an empty arrow array),
+/// so we must treat empty overrides as if the override never existed.
+/// Note that this is only relevant for auto-determined sources:
+/// if the override was explicitly selected, this distinction doesn't matter.
+fn has_non_empty_override(overrides: &LatestAtResults, component: ComponentIdentifier) -> bool {
+    overrides
+        .get(component)
+        .and_then(|chunk| chunk.non_empty_component_batch_raw(component))
+        .is_some()
 }
 
 fn query_overrides(

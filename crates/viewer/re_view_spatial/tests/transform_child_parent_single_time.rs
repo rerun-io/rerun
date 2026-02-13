@@ -201,6 +201,80 @@ fn test_transform_many_child_parent_relations_on_single_time_and_entity_with_coo
     test_harness.snapshot("transform_many_child_parent_relations_on_single_time_and_entity_with_coordinate_frame_overrides");
 }
 
+/// Tests that cleared overrides (empty `[]` arrays) are treated as if no override exists.
+///
+/// When overrides are cleared, they are written as empty arrow arrays (`[]`).
+/// The auto-determination of component sources must treat these as absent,
+/// falling through to the store value instead.
+/// This test sets up coordinate frames in the store, writes overrides, then clears them.
+/// The result should be identical to the case where no overrides were ever set.
+#[test]
+fn test_transform_cleared_coordinate_frame_overrides_fall_through_to_store() {
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
+
+    // Everything on the same timestamp!
+    let timeline = Timeline::new_sequence("time");
+    let time = TimePoint::from([(timeline, 0)]);
+
+    log_boxes(&mut test_context, &time);
+    log_transforms(&mut test_context, &time);
+
+    // All boxes have their coordinate frame in the store.
+    for name in ["red", "green", "blue"] {
+        test_context.log_entity(name, |builder| {
+            builder.with_archetype_auto_row(
+                time.clone(),
+                &archetypes::CoordinateFrame::new(format!("{name}_frame")),
+            )
+        });
+    }
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [
+            TimeControlCommand::SetActiveTimeline(*timeline.name()),
+            TimeControlCommand::SetTime(0.into()),
+        ],
+    );
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_blueprint =
+            ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
+
+        let view_id = view_blueprint.id;
+        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        setup_camera(ctx, view_id);
+
+        // Set overrides for green and blue frames:
+        for name in ["green", "blue"] {
+            ctx.save_blueprint_archetype(
+                ViewContents::base_override_path_for_entity(view_id, &name.into()).clone(),
+                &archetypes::CoordinateFrame::new("nonsense_that_should_be_cleared"),
+            );
+        }
+
+        view_id
+    });
+
+    // Now clear the overrides again on green.
+    test_context.setup_viewport_blueprint(|ctx, _blueprint| {
+        ctx.clear_blueprint_component(
+            ViewContents::base_override_path_for_entity(view_id, &"green".into()),
+            archetypes::CoordinateFrame::descriptor_frame(),
+        );
+    });
+
+    let mut test_harness = test_context
+        .setup_kittest_for_rendering_3d(egui::vec2(300.0, 300.0))
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+    test_harness.run();
+
+    // Should see red (no change) and green (cleared), but not blue which has a nonsense frameid override.
+    test_harness.snapshot("transform_cleared_coordinate_frame_overrides_fall_through_to_store");
+}
+
 /// Tests correct display of transform axes for transformations that have a set child frame.
 #[test]
 fn test_transform_axes_for_explicit_transforms() {
