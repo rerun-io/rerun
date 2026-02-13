@@ -495,6 +495,7 @@ cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 PYTHONWARNINGS=error && ./bu
 cpp-build-and-test-all = { depends-on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
 cpp-fmt = "fd --extension h --extension hpp --extension c  --extension cpp --exec clang-format -i"
+cpp-fmt-check = "fd --extension h --extension hpp --extension c  --extension cpp --exec clang-format --dry-run --Werror"
 
 [feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."

@@ -220,12 +220,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run clang format on all relevant files
-        uses: jidicula/clang-format-action@v4.11.0
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
-          clang-format-version: "16"
-          # Only check c/cpp/h/hpp (default checks also .proto and others)
-          include-regex: ^.*\.(c|cpp|h|hpp)$
+          pixi-version: v0.55.0
+          environments: cpp
+
+      - name: Run clang format on all relevant files
+        run: pixi run -e cpp cpp-fmt-check
 
   cpp-tests:
     name: C++ tests
