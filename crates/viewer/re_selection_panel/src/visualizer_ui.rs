@@ -254,8 +254,26 @@ fn visualizer_components(
         let target_component = unmapped_component_descr.component;
 
         // Query override & default since we need them later on.
-        let raw_default =
-            raw_default_or_fallback(&query_ctx, &query_result, unmapped_component_descr);
+        let is_target_required = if let Some(archetype) = unmapped_component_descr.archetype
+            && let Some(archetype_reflection) =
+                ctx.viewer_ctx.reflection().archetypes.get(&archetype)
+        {
+            archetype_reflection
+                .required_fields()
+                .any(|field| &field.component_descriptor(archetype) == unmapped_component_descr)
+        } else {
+            false
+        };
+
+        let raw_default = || -> ArrayRef {
+            if is_target_required {
+                // In this context, we're only concerned with displaying an empty array, so it can be _any_ empty array.
+                // This would have to change if we add data type information in this place to the UI as well.
+                std::sync::Arc::new(arrow::array::NullArray::new(0))
+            } else {
+                raw_default_or_fallback(&query_ctx, &query_result, unmapped_component_descr)
+            }
+        };
 
         // Current value as a raw arrow array + row id + error if any.
         // We're only interested in a single row, so first chunk is always enough.
@@ -279,11 +297,11 @@ fn visualizer_components(
                     {
                         (current_value_row_id, raw_current_value_array, None)
                     } else {
-                        (None, raw_default.clone(), None)
+                        (None, raw_default(), None)
                     }
                 }
 
-                Err(err) => (None, raw_default.clone(), Some(err)),
+                Err(err) => (None, raw_default(), Some(err)),
             };
 
         // Any mapping errors should already be in the `component_reports` below, since the visualizers should
@@ -340,6 +358,7 @@ fn visualizer_components(
         };
 
         let add_children = |ui: &mut egui::Ui| {
+            let raw_default = raw_default();
             // Source component (if available).
             source_component_ui(
                 ui,
@@ -353,6 +372,7 @@ fn visualizer_components(
                     .iter()
                     .find(|report| report.severity == VisualizerReportSeverity::Error)
                     .map(|report| report.summary.clone()),
+                is_target_required,
             );
         };
 
@@ -534,6 +554,7 @@ fn source_component_ui(
     query_info: &VisualizerQueryInfo,
     raw_default: &ArrayRef,
     current_selection_error: Option<String>,
+    is_required_component: bool,
 ) {
     let current = current_component_source(query_result, instruction, component_descr.component);
 
@@ -554,6 +575,7 @@ fn source_component_ui(
                             raw_default,
                             &current,
                             current_selection_error,
+                            is_required_component,
                         );
                     });
                 response.response.widget_info(|| {
@@ -580,23 +602,11 @@ fn source_component_items_ui(
     raw_default: &ArrayRef,
     current: &VisualizerComponentSource,
     mut current_selection_error: Option<String>,
+    is_required_component: bool,
 ) {
     let query_ctx = query_result.query_context();
     let view_ctx = query_ctx.view_ctx;
     let viewer_ctx = view_ctx.viewer_ctx;
-
-    let reflection = viewer_ctx.reflection();
-
-    let is_required_component = if let Some(component_archetype) = component_descr.archetype
-        && let Some(archetype_reflection) = reflection.archetypes.get(&component_archetype)
-        && archetype_reflection
-            .required_fields()
-            .any(|field| field.component(component_archetype) == component_descr.component)
-    {
-        true
-    } else {
-        false
-    };
 
     let mut options = collect_source_component_options(
         view_ctx,
@@ -701,9 +711,9 @@ fn current_component_source(
             }
         }
         None => {
-            debug_assert!(
+            re_log::debug_assert!(
                 false,
-                "DEBUG ASSERT: Expected component {component:?} to be resolved to a source kind in the query result",
+                "Expected component {component:?} to be resolved to a source kind in the query result",
             );
             VisualizerComponentSource::Default
         }
