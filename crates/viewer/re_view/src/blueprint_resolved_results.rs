@@ -23,7 +23,9 @@ use crate::{
 /// Although overrides are never temporal, when accessed via the [`crate::BlueprintResolvedResultsExt`] trait
 /// they will be merged into the results appropriately.
 pub struct BlueprintResolvedLatestAtResults<'a> {
-    pub overrides: LatestAtResults,
+    // Don't expose overrides/store results directly, since we may not query all overrides/store results
+    // indiscrimnently depending on the active mapping (as of writing that is not yet the case, but it's an optimization we want to do).
+    pub(crate) overrides: LatestAtResults,
     pub(crate) store_results: LatestAtResults,
     pub view_defaults: &'a LatestAtResults,
 
@@ -276,6 +278,16 @@ impl BlueprintResolvedLatestAtResults<'_> {
             .viewer_ctx()
             .component_fallback_registry
             .fallback_for(component, component_type, self.query_context())
+    }
+
+    /// Returns the source of the given component, i.e. whether it came from an override, the store results, or defaults.
+    ///
+    /// Returns `None` if the component isn't in use at all.
+    pub fn component_source_kind_for(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<&Result<ComponentSourceKind, ComponentMappingError>> {
+        self.component_sources.get(&component)
     }
 }
 

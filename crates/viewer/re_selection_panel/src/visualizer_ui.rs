@@ -6,6 +6,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -252,10 +253,6 @@ fn visualizer_components(
         let target_component = unmapped_component_descr.component;
 
         // Query override & default since we need them later on.
-        let raw_override = query_result.overrides.get(target_component).and_then(|c| {
-            c.non_empty_component_batch_raw(target_component)
-                .map(|(_, arr)| arr)
-        });
         let raw_default =
             raw_default_or_fallback(&query_ctx, &query_result, unmapped_component_descr);
 
@@ -344,13 +341,12 @@ fn visualizer_components(
         let add_children = |ui: &mut egui::Ui| {
             // Source component (if available).
             source_component_ui(
-                ctx,
                 ui,
+                &query_result,
                 &entity_components_with_datatype,
                 unmapped_component_descr,
                 instruction,
                 &query_info,
-                &raw_override,
                 &raw_default,
                 component_reports
                     .iter()
@@ -380,7 +376,6 @@ fn visualizer_components(
                         ui,
                         unmapped_component_descr.clone(),
                         &instruction.override_path,
-                        &raw_override,
                         raw_current_value_array.clone(),
                     );
                 })
@@ -530,22 +525,16 @@ fn collect_source_component_options(
 
 #[expect(clippy::too_many_arguments)]
 fn source_component_ui(
-    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
+    query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     component_descr: &ComponentDescriptor,
     instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
-    raw_override: &Option<ArrayRef>,
     raw_default: &ArrayRef,
     current_selection_error: Option<String>,
 ) {
-    let current = current_component_source(
-        instruction,
-        &component_descr.component,
-        raw_override.is_some(),
-        entity_components_with_datatype,
-    );
+    let current = current_component_source(query_result, instruction, component_descr.component);
 
     ui.push_id("source_component", |ui| {
         ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
@@ -555,13 +544,12 @@ fn source_component_ui(
                     .popup_style(menu_style())
                     .show_ui(ui, |ui| {
                         source_component_items_ui(
-                            ctx,
                             ui,
+                            query_result,
                             entity_components_with_datatype,
                             component_descr,
                             instruction,
                             query_info,
-                            raw_override,
                             raw_default,
                             &current,
                             current_selection_error,
@@ -582,18 +570,21 @@ fn source_component_ui(
 
 #[expect(clippy::too_many_arguments)]
 fn source_component_items_ui(
-    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
+    query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
     component_descr: &ComponentDescriptor,
     instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
-    raw_override: &Option<ArrayRef>,
     raw_default: &ArrayRef,
     current: &VisualizerComponentSource,
     mut current_selection_error: Option<String>,
 ) {
-    let reflection = ctx.viewer_ctx.reflection();
+    let query_ctx = query_result.query_context();
+    let view_ctx = query_ctx.view_ctx;
+    let viewer_ctx = view_ctx.viewer_ctx;
+
+    let reflection = viewer_ctx.reflection();
 
     let is_required_component = if let Some(component_archetype) = component_descr.archetype
         && let Some(archetype_reflection) = reflection.archetypes.get(&component_archetype)
@@ -607,7 +598,7 @@ fn source_component_items_ui(
     };
 
     let mut options = collect_source_component_options(
-        ctx,
+        view_ctx,
         entity_components_with_datatype,
         component_descr,
         is_required_component,
@@ -615,11 +606,14 @@ fn source_component_items_ui(
     );
 
     let has_editor = component_descr.component_type.is_some_and(|ct| {
-        ctx.viewer_ctx
+        viewer_ctx
             .component_ui_registry()
             .registered_ui_types(ct)
             .has_edit_ui(raw_default.len() > 1)
     });
+
+    let raw_override = viewer_ctx
+        .raw_latest_at_in_current_blueprint(&instruction.override_path, component_descr.component);
 
     if !is_required_component {
         options.push(VisualizerComponentSource::Default);
@@ -651,13 +645,18 @@ fn source_component_items_ui(
         }
 
         if ui.add(item).clicked() {
-            save_component_mapping(ctx, instruction, source.clone(), component_descr.component);
+            save_component_mapping(
+                view_ctx,
+                instruction,
+                source.clone(),
+                component_descr.component,
+            );
 
             if add_custom {
                 // Persist the override value right away, so the `add_custom` check can rely on the override value being in the blueprint store.
                 // This also makes behavior generally more consistent - imagine what if the default flickers for some reason:
                 // this will make it so that override doesn't flicker until one edits the value.
-                ctx.save_blueprint_array(
+                view_ctx.save_blueprint_array(
                     instruction.override_path.clone(),
                     component_descr.clone(),
                     raw_default.clone(),
@@ -671,40 +670,43 @@ fn source_component_items_ui(
 /// Determines which component source is currently active.
 ///
 /// If none is encoded in the visualizer instruction, we apply the same logic as `re_view::query`.
-/// TODO(andreas): Can we deduplicate this somehow?
-fn current_component_source<'a>(
-    instruction: &'a VisualizerInstruction,
-    component: &'a ComponentIdentifier,
-    has_override: bool,
-    entity_components_with_datatype: &'a [(ComponentIdentifier, DataType)],
+fn current_component_source(
+    query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
+    instruction: &VisualizerInstruction,
+    component: ComponentIdentifier,
 ) -> VisualizerComponentSource {
-    // Use mapping if available.
-    if let Some(mapping) = instruction.component_mappings.get(component) {
+    // Use explicit mapping if available.
+    if let Some(mapping) = instruction.component_mappings.get(&component) {
         return mapping.clone();
     }
 
-    // Otherwise we follow the stack of:
-    // * override
-    // * store
-    // * default / fallback
-    // And pick the first one that is available.
-
-    if has_override {
-        return VisualizerComponentSource::Override;
+    // Otherwise check what the query did resolve to.
+    match query_result.component_source_kind_for(component) {
+        Some(Ok(ComponentSourceKind::SourceComponent)) => {
+            // The query resolved to a source component, but there is no explicit mapping, so it must be a builtin source.
+            VisualizerComponentSource::SourceComponent {
+                source_component: component,
+                selector: String::new(),
+            }
+        }
+        Some(Ok(ComponentSourceKind::Override)) => VisualizerComponentSource::Override,
+        Some(Ok(ComponentSourceKind::Default)) => VisualizerComponentSource::Default,
+        Some(Err(_)) => {
+            // There's no explicit mapping and there was a component mapping error. Can only mean that this was the standard source component.
+            // TODO(andreas): Shaky argumentation. Override and default could also fail? If not now, maybe in the future?
+            VisualizerComponentSource::SourceComponent {
+                source_component: component,
+                selector: String::new(),
+            }
+        }
+        None => {
+            debug_assert!(
+                false,
+                "DEBUG ASSERT: Expected component {component:?} to be resolved to a source kind in the query result",
+            );
+            VisualizerComponentSource::Default
+        }
     }
-
-    // Any exact match in the store?
-    if entity_components_with_datatype
-        .iter()
-        .any(|(id, _)| id == component)
-    {
-        return VisualizerComponentSource::SourceComponent {
-            source_component: *component,
-            selector: String::new(),
-        };
-    }
-
-    VisualizerComponentSource::Default
 }
 
 fn component_source_string(source: &VisualizerComponentSource) -> String {
@@ -747,16 +749,9 @@ fn menu_more(
     ui: &mut egui::Ui,
     component_descr: ComponentDescriptor,
     override_path: &EntityPath,
-    raw_override: &Option<ArrayRef>,
     raw_current_value: ArrayRef,
 ) {
-    reset_override_button(
-        ctx,
-        ui,
-        component_descr.clone(),
-        override_path,
-        raw_override,
-    );
+    reset_override_button(ctx, ui, component_descr.clone(), override_path);
 
     if ui.button("Make default for current view").clicked() {
         ctx.save_blueprint_array(
@@ -773,15 +768,18 @@ pub fn reset_override_button(
     ui: &mut egui::Ui,
     component_descr: ComponentDescriptor,
     override_path: &EntityPath,
-    raw_override: &Option<ArrayRef>,
 ) {
-    let override_differs_from_default = raw_override
-        != &ctx
-            .viewer_ctx
-            .raw_latest_at_in_default_blueprint(override_path, component_descr.component);
+    let component = component_descr.component;
+    let raw_override = ctx
+        .viewer_ctx
+        .raw_latest_at_in_current_blueprint(override_path, component);
+    let raw_override_default_blueprint = ctx
+        .viewer_ctx
+        .raw_latest_at_in_default_blueprint(override_path, component);
+
     if ui
         .add_enabled(
-            override_differs_from_default,
+            raw_override != raw_override_default_blueprint,
             egui::Button::new("Reset override to default blueprint"),
         )
         .on_hover_text("Resets the override to what is specified in the default blueprint")

@@ -211,6 +211,18 @@ pub trait BlueprintContext {
             .send_system(SystemCommand::AppendToStore(store_id, vec![chunk]));
     }
 
+    /// Queries a raw component from the currently active blueprint.
+    fn raw_latest_at_in_current_blueprint(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> Option<ArrayRef> {
+        self.current_blueprint()
+            .latest_at(self.blueprint_query(), entity_path, [component])
+            .get(component)?
+            .component_batch_raw(component)
+    }
+
     /// Queries a raw component from the default blueprint.
     fn raw_latest_at_in_default_blueprint(
         &self,

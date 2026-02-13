@@ -550,33 +550,14 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
         None, // coordinate frames aren't associated with any particular visualizer
     );
 
-    let override_path = data_result.override_base_path();
-
-    let result_override = query_result.overrides.get(component);
-    let raw_override = result_override
-        .and_then(|c| c.non_empty_component_batch_raw(component))
-        .map(|(_, array)| array);
-
     let Some(frame_id_before) = query_result
         .get_mono::<TransformFrameId>(component)
         .map(|f| f.to_string())
-        .or_else(|| {
-            if raw_override.is_some() {
-                Some(String::new())
-            } else {
-                None
-            }
-        })
     else {
         return;
     };
 
-    let mut frame_id = if raw_override.is_some() {
-        frame_id_before.clone()
-    } else {
-        String::new()
-    };
-
+    let mut frame_id = frame_id_before.clone();
     let property_content = list_item::PropertyContent::new("Coordinate frame")
         .value_fn(|ui, _| {
             // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
@@ -600,8 +581,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
                 ctx,
                 ui,
                 component_descr.clone(),
-                override_path,
-                &raw_override,
+                data_result.override_base_path(),
             );
         });
 
@@ -614,21 +594,10 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             );
         });
 
-    if raw_override.is_some() {
-        if frame_id.is_empty() {
-            ctx.clear_blueprint_component(override_path.clone(), component_descr);
-        } else if frame_id_before != frame_id {
-            // Save as blueprint override.
-            ctx.save_blueprint_component(
-                override_path.clone(),
-                &component_descr,
-                &TransformFrameId::new(&frame_id),
-            );
-        }
-    } else if !frame_id.is_empty() {
+    if frame_id_before != frame_id {
         // Save as blueprint override.
         ctx.save_blueprint_component(
-            override_path.clone(),
+            data_result.override_base_path().clone(),
             &component_descr,
             &TransformFrameId::new(&frame_id),
         );
