@@ -37,6 +37,9 @@ pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
 
+// Export some other types that are useful for extensions.
+pub use contexts::TransformTreeContext;
+
 mod view_kind {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum SpatialViewKind {

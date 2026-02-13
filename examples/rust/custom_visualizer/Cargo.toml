@@ -1,0 +1,26 @@
+[package]
+name = "custom_visualizer"
+version = "0.24.0-alpha.3+dev"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[features]
+default = []
+
+# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
+analytics = ["rerun/analytics"]
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
+  "native_viewer",
+  "run",
+  "server",
+] }
+
+# Can't rely on export from `rerun` crate since proc macros can't be re-exported.
+bytemuck = "1"
+
+# mimalloc is a much faster allocator:
+mimalloc = "0.1.43"
