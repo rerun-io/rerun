@@ -123,7 +123,7 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         **Note**: entry names must be unique within the catalog. If the new name is not unique, an error will be raised.
 
-        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces,
+        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
         and must be at most 180 characters long.
 
         Parameters

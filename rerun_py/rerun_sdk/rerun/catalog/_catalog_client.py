@@ -256,7 +256,7 @@ class CatalogClient:
         """
         Creates a new dataset with the given name.
 
-        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces,
+        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
         and must be at most 180 characters long.
         """
 
@@ -274,7 +274,7 @@ class CatalogClient:
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
 
-            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces,
+            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
             and must be at most 180 characters long.
 
         url
@@ -295,7 +295,7 @@ class CatalogClient:
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
 
-            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces,
+            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
             and must be at most 180 characters long.
 
         schema

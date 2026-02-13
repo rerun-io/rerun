@@ -710,6 +710,7 @@ pub fn validate_entry_name(name: &str) -> Result<(), String> {
             && *c != ' '
             && *c != '['
             && *c != ']'
+            && *c != ':'
     }) {
         return Err(format!("name '{name}' contains invalid character '{ch}'"));
     }
