@@ -1,5 +1,36 @@
 # Rerun changelog
 
+## [0.29.2](https://github.com/rerun-io/rerun/compare/0.29.1...0.29.2) - 2026-02-13 - Bug fixes and documentation update
+
+### ✨ Overview & highlights
+
+This patch release contains bug fixes and adds a documentation guide with an example for [converting existing data to Rerun](https://rerun.io/docs/howto/logging-and-ingestion/convert-existing-data).
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Fix performance regression with `--server-memory-limit 0` [cefbdf6](https://github.com/rerun-io/rerun/commit/cefbdf65bdde603b19c2c4d1855ea78916afd979)
+
+#### 🐍 Python API
+- notebook: Re-export viewer event types [51d949e](https://github.com/rerun-io/rerun/commit/51d949e9bad07fcb2c47c02e8c57da35262f9c44)
+
+#### 🪳 Bug fixes
+- Fix table config button symbol for light-mode [57b0121](https://github.com/rerun-io/rerun/commit/57b0121cf23993e48ab780f12fbcbddb433fb78a)
+- Fix drag-and-drop of `.mcap` files on web [#12631](https://github.com/rerun-io/rerun/pull/12631)
+- Ensure we report file loading errors on web [7fd794e](https://github.com/rerun-io/rerun/commit/7fd794ed39f480764da6c4a6c01b47426265cbf0)
+
+#### 🌁 Viewer improvements
+- Show error when rerun_js viewer panics or fails to load [04e7ae8](https://github.com/rerun-io/rerun/commit/04e7ae8fe761b2e982c55575f62dc4925e6afead)
+
+#### 📚 Docs
+- Add snippet demonstrating conversion of custom MCAP protobuf file to RRD [53fbeeb](https://github.com/rerun-io/rerun/commit/53fbeeb7ee0485242b504fb666bd7b6f8cc8e90a)
+- Add documentation for converting custom data to RRD using log/send_column [815d45c](https://github.com/rerun-io/rerun/commit/815d45c25e23851629f2ab77d9c8446e5aa87da0)
+
+#### 🖼 UI improvements
+- Fix moving text cursor with cmd-arrows [13f7124](https://github.com/rerun-io/rerun/commit/13f71249f36ba9a5b5d99cfbc54630bf1041f898)
+- Improve error messages regarding arrow datatypes [48f4637](https://github.com/rerun-io/rerun/commit/48f4637e7f95ef11d9dd55309dd3cda3afe26733)
+
+
 ## [0.29.1](https://github.com/rerun-io/rerun/compare/0.29.0...0.29.1) - 2026-02-06 - Improved labels, bug fixes & performance improvements
 
 ### ✨ Overview & highlights
