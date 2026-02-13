@@ -94,6 +94,10 @@ class ComponentColumnDescriptor:
         """
 
     @property
+    def is_property(self) -> bool:
+        """Is this column a property?"""  # noqa: D400
+
+    @property
     def component_type(self) -> str | None:
         """
         The component type, if any.
@@ -102,7 +106,7 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def archetype(self) -> str:
+    def archetype(self) -> str | None:
         """
         The archetype name, if any.
 

@@ -59,6 +59,12 @@ impl PyComponentColumnDescriptor {
         self.0.entity_path.to_string()
     }
 
+    /// Is this column a property?
+    #[getter]
+    fn is_property(&self) -> bool {
+        self.0.entity_path.is_property()
+    }
+
     /// The component.
     ///
     /// This property is read-only.

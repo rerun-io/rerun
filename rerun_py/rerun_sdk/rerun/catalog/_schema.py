@@ -56,6 +56,52 @@ class Schema:
         """
         return self._internal.component_columns()
 
+    def archetypes(self, *, include_properties: bool = False) -> list[str]:
+        """
+        Return a list of all the archetypes in the schema.
+
+        Parameters
+        ----------
+        include_properties:
+            If `True`, archetypes used in properties are included.
+
+        """
+
+        archetypes = {col.archetype for col in self.component_columns() if include_properties or not col.is_property}
+        return sorted(a for a in archetypes if a is not None)
+
+    def component_types(self, *, include_properties: bool = False) -> list[str]:
+        """
+        Return a list of all the component types in the schema.
+
+        Parameters
+        ----------
+        include_properties:
+            If `True`, component types used in properties are included.
+
+        """
+
+        component_types = {
+            col.component_type for col in self.component_columns() if include_properties or not col.is_property
+        }
+        return sorted(comp for comp in component_types if comp is not None)
+
+    def entity_paths(self, *, include_properties: bool = False) -> list[str]:
+        """
+        Return a sorted list of all unique entity paths in the schema. By default, the properties are not included.
+
+        Parameters
+        ----------
+        include_properties:
+            If `True`, include property entities (`/__properties/*`)
+
+        """
+
+        entity_paths = {
+            col.entity_path for col in self.component_columns() if include_properties or not col.is_property
+        }
+        return sorted(entity_paths)
+
     def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
         """
         Look up the column descriptor for a specific entity path and component.

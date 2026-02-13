@@ -97,6 +97,81 @@ def test_schema_recording(tmp_path: pathlib.Path, snapshot: syrupy.SnapshotAsser
     assert schema.component_columns()[col].is_static is True
 
 
+def test_schema_entity_paths(tmp_path: pathlib.Path) -> None:
+    """Test Schema.entity_paths() returns a sorted list of unique entity paths."""
+
+    rrd = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+        rec.send_property("my_prop", rr.AnyValues(prop=123))
+
+    recording = rr.recording.load_recording(rrd)
+    schema = recording.schema()
+
+    assert schema.entity_paths() == ["/points", "/static_text"]
+    assert schema.entity_paths(include_properties=True) == [
+        "/__properties",
+        "/__properties/my_prop",
+        "/points",
+        "/static_text",
+    ]
+
+
+def test_schema_archetypes(tmp_path: pathlib.Path) -> None:
+    """Test Schema.archetypes() returns a sorted list of unique archetype names."""
+
+    rrd = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+        rec.send_property("my_prop", rr.Points2D([[0, 2]]))
+
+    recording = rr.recording.load_recording(rrd)
+    schema = recording.schema()
+
+    assert schema.archetypes() == ["rerun.archetypes.Points3D", "rerun.archetypes.TextLog"]
+    assert schema.archetypes(include_properties=True) == [
+        "rerun.archetypes.Points2D",
+        "rerun.archetypes.Points3D",
+        "rerun.archetypes.RecordingInfo",
+        "rerun.archetypes.TextLog",
+    ]
+
+
+def test_schema_component_types(tmp_path: pathlib.Path) -> None:
+    """Test Schema.component_types() returns a sorted list of unique component types."""
+
+    rrd = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+        rec.send_property("my_prop", rr.Points2D([[0, 2]]))
+
+    recording = rr.recording.load_recording(rrd)
+    schema = recording.schema()
+
+    assert schema.component_types() == [
+        "rerun.components.Position3D",
+        "rerun.components.Text",
+    ]
+    assert schema.component_types(include_properties=True) == [
+        "rerun.components.Position2D",
+        "rerun.components.Position3D",
+        "rerun.components.Text",
+        "rerun.components.Timestamp",
+    ]
+
+
 def test_load_recording_path_types(tmp_path: pathlib.Path) -> None:
     """Test that load_recording accepts both str and Path."""
 
