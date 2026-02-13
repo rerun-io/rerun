@@ -35,6 +35,7 @@ def test_dataset_view_filter_segments(readonly_test_dataset: DatasetEntry) -> No
     assert sorted(view.segment_ids()) == filter_segments
 
 
+@pytest.mark.local_only
 @pytest.mark.creates_table
 def test_dataset_view_filter_segments_with_dataframe(
     readonly_test_dataset: DatasetEntry, entry_factory: EntryFactory, tmp_path: Path

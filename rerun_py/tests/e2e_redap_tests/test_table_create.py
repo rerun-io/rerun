@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from e2e_redap_tests.conftest import EntryFactory, PrefilledCatalog
 
 
+@pytest.mark.local_only
 @pytest.mark.creates_table
 def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     table_name = "created_table"
@@ -26,6 +27,7 @@ def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> No
     assert returned_schema == original_schema
 
 
+@pytest.mark.local_only
 @pytest.mark.creates_table
 def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path: pathlib.Path) -> None:
     table_name = "dataset_to_table"
@@ -51,6 +53,8 @@ def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path
         assert returned_field.metadata == original_field.metadata
 
 
+@pytest.mark.local_only
+@pytest.mark.creates_table
 def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: pathlib.Path) -> None:
     table_name = "my_catalog.my_schema.created_table"
 

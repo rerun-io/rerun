@@ -56,6 +56,7 @@ def recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
     return create_recordings
 
 
+@pytest.mark.local_only
 def test_registration_invalidargs(
     catalog_client: CatalogClient, temp_empty_file: str, temp_empty_directory: str
 ) -> None:
