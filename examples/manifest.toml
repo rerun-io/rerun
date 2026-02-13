@@ -167,6 +167,7 @@ examples = [
   "air_traffic_data",
   "imu_signals",
   "eye_control",
+  "webpage",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included
