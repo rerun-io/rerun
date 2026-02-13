@@ -20,7 +20,7 @@ The `send_table` API provides a straightforward way to send tabular data to the 
 
 For complete examples of using `send_table`, please refer to:
 
-- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/python/notebook/send_table.ipynb)
+- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/send_table.ipynb)
 - [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)
 
 ## Prerequisites
