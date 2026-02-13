@@ -274,10 +274,18 @@ impl App {
             state.app_options.show_metrics = false;
         }
 
+        let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
+            re_log::error!(
+                "Failed to create list of serialized default values for components: {err}"
+            );
+            Default::default()
+        });
+
         let mut component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
         let view_class_registry = crate::default_views::create_view_class_registry(
+            &reflection,
             &state.app_options,
             &mut component_fallback_registry,
         )
@@ -339,13 +347,6 @@ impl App {
         }
 
         let panel_state_overrides = startup_options.panel_state_overrides;
-
-        let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
-            re_log::error!(
-                "Failed to create list of serialized default values for components: {err}"
-            );
-            Default::default()
-        });
 
         let event_dispatcher = startup_options
             .on_event
@@ -648,6 +649,7 @@ impl App {
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
         self.view_class_registry.add_class::<T>(
+            &self.reflection,
             &self.state.app_options,
             &mut self.component_fallback_registry,
         )

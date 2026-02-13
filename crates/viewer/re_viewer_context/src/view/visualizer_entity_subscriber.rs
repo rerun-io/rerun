@@ -1,8 +1,9 @@
 use std::collections::hash_map::Entry;
+use std::sync::Arc;
 
 use ahash::HashMap;
 use bit_vec::BitVec;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use re_arrow_combinators::extract_nested_fields;
 use re_chunk::{ArchetypeName, ComponentIdentifier, ComponentType};
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
@@ -40,6 +41,13 @@ pub struct VisualizerEntitySubscriber {
     ///
     /// See [`crate::VisualizerQueryInfo::required`]
     requirement: Requirement,
+
+    /// Lists all known builtin enums components.
+    ///
+    /// Used by [`Requirement::AnyPhysicalDatatype`] to skip physical-only matches
+    /// for enum types (which should only match via native semantics).
+    // TODO(andreas): It would be great if we could just always access the latest reflection data, but this is really hard to pipe through to a store subscriber.
+    known_builtin_enum_components: Arc<IntSet<ComponentType>>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
 }
@@ -130,6 +138,7 @@ impl From<RequiredComponents> for Requirement {
 impl VisualizerEntitySubscriber {
     pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(
         visualizer: &T,
+        known_builtin_enum_components: Arc<IntSet<ComponentType>>,
         app_options: &crate::AppOptions,
     ) -> Self {
         let visualizer_query_info = visualizer.visualizer_query_info(app_options);
@@ -138,6 +147,7 @@ impl VisualizerEntitySubscriber {
             visualizer: T::identifier(),
             relevant_archetype: visualizer_query_info.relevant_archetype,
             requirement: visualizer_query_info.required.into(),
+            known_builtin_enum_components,
             per_store_mapping: Default::default(),
         }
     }
@@ -170,6 +180,7 @@ fn process_entity_components(
     relevant_archetype: Option<ArchetypeName>,
     requirement: &Requirement,
     visualizer: &ViewSystemIdentifier,
+    known_enum_types: &IntSet<ComponentType>,
     store_mapping: &mut VisualizerEntityMapping,
     store_id: &StoreId,
     re_chunk_store::ChunkMeta {
@@ -283,6 +294,7 @@ fn process_entity_components(
                 };
 
                 if let Some(match_info) = check_datatype_match(
+                    known_enum_types,
                     arrow_datatype,
                     c.descriptor.component_type,
                     semantic_type,
@@ -313,6 +325,7 @@ fn process_entity_components(
 
 /// Check if an Arrow datatype matches the physical/semantic requirements.
 fn check_datatype_match(
+    known_enum_types: &IntSet<ComponentType>,
     arrow_datatype: &arrow::datatypes::DataType,
     component_type: Option<ComponentType>,
     semantic_type: &ComponentType,
@@ -321,6 +334,15 @@ fn check_datatype_match(
 ) -> Option<DatatypeMatch> {
     let is_physical_match = physical_types.contains(arrow_datatype);
     let is_semantic_match = component_type == Some(*semantic_type);
+
+    // Builtin enum types (registered in the reflection) should only
+    // match via native semantics, never via physical datatype alone.
+    // This prevents e.g. a `rerun.components.FillMode` (UInt8) from
+    // being picked up by a visualizer that happens to accept UInt8 data.
+    let is_known_enum = component_type.is_some_and(|ct| known_enum_types.contains(&ct));
+    if is_known_enum && !is_semantic_match {
+        return None;
+    }
 
     match (is_physical_match, is_semantic_match) {
         (false, false) => {
@@ -427,6 +449,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         self.relevant_archetype,
                         &self.requirement,
                         &self.visualizer,
+                        &self.known_builtin_enum_components,
                         store_mapping,
                         &event.store_id,
                         add.chunk_meta(),
@@ -438,6 +461,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                             self.relevant_archetype,
                             &self.requirement,
                             &self.visualizer,
+                            &self.known_builtin_enum_components,
                             store_mapping,
                             &event.store_id,
                             meta,

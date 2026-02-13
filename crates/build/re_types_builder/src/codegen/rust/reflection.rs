@@ -159,12 +159,14 @@ fn generate_component_reflection(
             quote! { None }
         };
 
+        let is_enum = obj.is_enum();
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
                 deprecation_summary: #deprecation_summary,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_datatype(),
+                is_enum: #is_enum,
                 verify_arrow_array: #type_name::verify_arrow_array,
             }
         };

@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
-use re_chunk::ComponentIdentifier;
+use nohash_hasher::{IntMap, IntSet};
+use re_chunk::{ComponentIdentifier, ComponentType};
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_sdk_types::ViewClassIdentifier;
 
@@ -40,6 +42,7 @@ pub struct ViewSystemRegistrator<'a> {
     context_systems: HashSet<ViewSystemIdentifier>,
     visualizers: HashSet<ViewSystemIdentifier>,
     pub app_options: &'a crate::AppOptions,
+    known_builtin_enum_components: Arc<IntSet<ComponentType>>,
 }
 
 impl ViewSystemRegistrator<'_> {
@@ -99,14 +102,18 @@ impl ViewSystemRegistrator<'_> {
 
         if self.visualizers.insert(T::identifier()) {
             let app_options = self.app_options;
+            let known_builtin_enum_components = Arc::clone(&self.known_builtin_enum_components);
             self.registry
                 .visualizers
                 .entry(T::identifier())
                 .or_insert_with(move || {
                     let visualizer = T::default();
-                    let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
-                        VisualizerEntitySubscriber::new(&visualizer, app_options),
-                    ));
+                    let entity_subscriber_handle =
+                        ChunkStore::register_subscriber(Box::new(VisualizerEntitySubscriber::new(
+                            &visualizer,
+                            known_builtin_enum_components,
+                            app_options,
+                        )));
 
                     VisualizerTypeRegistryEntry {
                         factory_method: Box::new(|| Box::<T>::default()),
@@ -216,10 +223,20 @@ impl ViewClassRegistry {
     /// registered views & visualizers.
     pub fn add_class<T: ViewClass + Default + 'static>(
         &mut self,
+        reflection: &re_types_core::reflection::Reflection,
         app_options: &crate::AppOptions,
         fallback_registry: &mut FallbackProviderRegistry,
     ) -> Result<(), ViewClassRegistryError> {
         let class = Box::<T>::default();
+
+        let known_builtin_enum_components: Arc<IntSet<ComponentType>> = Arc::new(
+            reflection
+                .components
+                .iter()
+                .filter(|(_, r)| r.is_enum)
+                .map(|(ct, _)| *ct)
+                .collect(),
+        );
 
         let mut registrator = ViewSystemRegistrator {
             registry: self,
@@ -228,6 +245,7 @@ impl ViewClassRegistry {
             visualizers: Default::default(),
             fallback_registry,
             app_options,
+            known_builtin_enum_components,
         };
 
         class.on_register(&mut registrator)?;
@@ -239,6 +257,7 @@ impl ViewClassRegistry {
             visualizers,
             fallback_registry: _,
             app_options: _,
+            known_builtin_enum_components: _,
         } = registrator;
 
         if self

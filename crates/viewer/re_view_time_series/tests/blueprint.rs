@@ -508,6 +508,71 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
     }
 }
 
+/// Builtin enum components (like `MarkerShape`, which is `UInt8`) should NOT be visualizable by the
+/// time series view, even when the blueprint explicitly maps them to the scalar slot.
+///
+/// `MarkerShape` has a `UInt8` physical representation which overlaps with scalar-compatible types,
+/// but it's a known enum and has no meaningful numeric interpretation for plotting.
+#[test]
+pub fn test_builtin_enum_not_visualizable_as_scalar() {
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<TimeSeriesView>();
+
+    let timeline = test_context.active_timeline().unwrap();
+
+    // Log only a MarkerShape component (`UInt8` enum) on a temporal timeline.
+    for i in 0..5 {
+        test_context.log_entity("plots/markers_only", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom").with_component::<components::MarkerShape>(
+                    "markers",
+                    [components::MarkerShape::Circle],
+                ),
+            )
+        });
+    }
+
+    // Explicitly set up a SeriesLines visualizer that maps the MarkerShape component to scalar.
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
+
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+
+        ctx.save_visualizers(
+            &EntityPath::from("plots/markers_only"),
+            view.id,
+            [SeriesLines::new().visualizer().with_mappings([
+                blueprint::components::VisualizerComponentMapping(VisualizerComponentMapping {
+                    target: Scalars::descriptor_scalars().component.as_str().into(),
+                    source_kind: ComponentSourceKind::SourceComponent,
+                    source_component: Some("custom:markers".into()),
+                    selector: None,
+                }),
+            ])],
+        );
+
+        blueprint.add_view_at_root(view)
+    });
+
+    let query_result = test_context
+        .query_results
+        .get(&view_id)
+        .expect("View should have query results");
+    let data_result_tree = &query_result.tree;
+
+    // The entity should not be visualizable at all, because MarkerShape is a known
+    // builtin enum and should be filtered out at the subscriber level despite being UInt8.
+    let result =
+        data_result_tree.lookup_result_by_path(EntityPath::from("plots/markers_only").hash());
+
+    assert!(
+        result.is_none() || result.is_some_and(|r| r.visualizer_instructions.is_empty()),
+        "Entity with only a builtin enum component (MarkerShape/UInt8) should not have any \
+         active visualizers, even when explicitly configured in the blueprint, but got: {result:?}",
+    );
+}
+
 fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
