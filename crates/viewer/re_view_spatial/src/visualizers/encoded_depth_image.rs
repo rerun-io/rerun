@@ -4,7 +4,7 @@ use re_log_types::EntityPathHash;
 use re_sdk_types::{
     Archetype as _,
     archetypes::EncodedDepthImage,
-    components::{Blob, Colormap, MediaType},
+    components::{Blob, Colormap, MagnificationFilter, MediaType},
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, ViewContext, ViewContextCollection, ViewQuery,
@@ -93,6 +93,8 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     results.iter_optional(EncodedDepthImage::descriptor_meter().component);
                 let all_fill_ratios = results
                     .iter_optional(EncodedDepthImage::descriptor_point_fill_ratio().component);
+                let all_magnification_filters = results
+                    .iter_optional(EncodedDepthImage::descriptor_magnification_filter().component);
 
                 for (
                     (_time, row_id),
@@ -102,13 +104,15 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     value_range,
                     depth_meter,
                     fill_ratio,
-                ) in re_query::range_zip_1x5(
+                    magnification_filter,
+                ) in re_query::range_zip_1x6(
                     all_blobs.slice::<&[u8]>(),
                     all_media_types.slice::<String>(),
                     all_colormaps.slice::<u8>(),
                     all_value_ranges.slice::<[f64; 2]>(),
                     all_depth_meters.slice::<f32>(),
                     all_fill_ratios.slice::<f32>(),
+                    all_magnification_filters.slice::<u8>(),
                 ) {
                     let Some(blob) = blobs.first() else {
                         // If missing we already reported an error.
@@ -144,6 +148,9 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         fill_ratio: first_copied(fill_ratio).map(Into::into),
                         colormap: first_copied(colormap).and_then(Colormap::from_u8),
                         value_range: first_copied(value_range),
+                        magnification_filter: first_copied(magnification_filter)
+                            .and_then(MagnificationFilter::from_u8)
+                            .unwrap_or_default(),
                     };
 
                     let mut report_error = |error: String| {

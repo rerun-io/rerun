@@ -76,6 +76,11 @@ pub struct EncodedImage {
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<SerializedComponentBatch>,
+
+    /// Optional magnification filter used when zooming in on the image.
+    ///
+    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
 impl EncodedImage {
@@ -126,6 +131,18 @@ impl EncodedImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
+    ///
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
+    #[inline]
+    pub fn descriptor_magnification_filter() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.EncodedImage".into()),
+            component: "EncodedImage:magnification_filter".into(),
+            component_type: Some("rerun.components.MagnificationFilter".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -134,27 +151,29 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
     std::sync::LazyLock::new(|| [EncodedImage::descriptor_media_type()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedImage::descriptor_opacity(),
             EncodedImage::descriptor_draw_order(),
+            EncodedImage::descriptor_magnification_filter(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedImage::descriptor_blob(),
             EncodedImage::descriptor_media_type(),
             EncodedImage::descriptor_opacity(),
             EncodedImage::descriptor_draw_order(),
+            EncodedImage::descriptor_magnification_filter(),
         ]
     });
 
 impl EncodedImage {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 impl ::re_types_core::Archetype for EncodedImage {
@@ -211,11 +230,20 @@ impl ::re_types_core::Archetype for EncodedImage {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
+        let magnification_filter = arrays_by_descr
+            .get(&Self::descriptor_magnification_filter())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_magnification_filter(),
+                )
+            });
         Ok(Self {
             blob,
             media_type,
             opacity,
             draw_order,
+            magnification_filter,
         })
     }
 }
@@ -229,6 +257,7 @@ impl ::re_types_core::AsComponents for EncodedImage {
             self.media_type.clone(),
             self.opacity.clone(),
             self.draw_order.clone(),
+            self.magnification_filter.clone(),
         ]
         .into_iter()
         .flatten()
@@ -254,6 +283,7 @@ impl EncodedImage {
             media_type: None,
             opacity: None,
             draw_order: None,
+            magnification_filter: None,
         }
     }
 
@@ -283,6 +313,10 @@ impl EncodedImage {
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
                 Self::descriptor_draw_order(),
+            )),
+            magnification_filter: Some(SerializedComponentBatch::new(
+                crate::components::MagnificationFilter::arrow_empty(),
+                Self::descriptor_magnification_filter(),
             )),
         }
     }
@@ -318,6 +352,9 @@ impl EncodedImage {
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.magnification_filter
+                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -334,11 +371,13 @@ impl EncodedImage {
         let len_media_type = self.media_type.as_ref().map(|b| b.array.len());
         let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_blob)
             .or(len_media_type)
             .or(len_opacity)
             .or(len_draw_order)
+            .or(len_magnification_filter)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -433,6 +472,39 @@ impl EncodedImage {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
+
+    /// Optional magnification filter used when zooming in on the image.
+    ///
+    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    #[inline]
+    pub fn with_magnification_filter(
+        mut self,
+        magnification_filter: impl Into<crate::components::MagnificationFilter>,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            [magnification_filter],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_magnification_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_magnification_filter(
+        mut self,
+        magnification_filter: impl IntoIterator<
+            Item = impl Into<crate::components::MagnificationFilter>,
+        >,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            magnification_filter,
+        );
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for EncodedImage {
@@ -442,5 +514,6 @@ impl ::re_byte_size::SizeBytes for EncodedImage {
             + self.media_type.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
+            + self.magnification_filter.heap_size_bytes()
     }
 }

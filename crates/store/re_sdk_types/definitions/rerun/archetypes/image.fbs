@@ -53,4 +53,9 @@ table Image (
   /// Objects with higher values are drawn on top of those with lower values.
   /// Defaults to `-10.0`.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional magnification filter used when zooming in on the image.
+  ///
+  /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+  magnification_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 3200);
 }

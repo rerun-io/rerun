@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
 
-    from .. import datatypes
+    from .. import components, datatypes
     from ..datatypes import Float32Like
 
     ImageLike = (
@@ -38,6 +38,7 @@ class EncodedImageExt:
         media_type: datatypes.Utf8Like | None = None,
         opacity: Float32Like | None = None,
         draw_order: Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> None:
         """
         Create a new instance of the EncodedImage archetype.
@@ -91,7 +92,7 @@ class EncodedImageExt:
                 if media_type is None:
                     media_type = MediaType.guess_from_path(path)
 
-            self.__attrs_init__(blob=blob, media_type=media_type, draw_order=draw_order, opacity=opacity)
+            self.__attrs_init__(blob=blob, media_type=media_type, draw_order=draw_order, opacity=opacity, magnification_filter=magnification_filter)
             return
 
         self.__attrs_clear__()
