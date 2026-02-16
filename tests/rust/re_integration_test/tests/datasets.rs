@@ -104,7 +104,7 @@ pub async fn start_with_dataset_url() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-pub async fn start_with_segment_url_with_fragment() {
+pub async fn start_with_segment_fragment_url() {
     let (server, segment_id) = TestServer::spawn().await.with_test_data().await;
 
     let dataset_id =
@@ -147,6 +147,12 @@ pub async fn start_with_segment_url_with_fragment() {
     );
 
     harness.set_selection_panel_opened(false);
+
+    // Redact the loading bar, since it is racy
+    harness.mask(egui::Rect::from_x_y_ranges(
+        egui::Rangef::new(190.0, 1024.0),
+        egui::Rangef::new(604.0, 606.0),
+    ));
 
     // Redact timeline data because we have no way to consistently wait for it to arrive
     harness.mask(egui::Rect::from_x_y_ranges(

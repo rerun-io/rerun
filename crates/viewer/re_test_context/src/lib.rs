@@ -597,7 +597,7 @@ impl TestContext {
             let _err = rrd_manifest.prefetch_chunks(
                 storage_engine.store(),
                 &re_entity_db::ChunkPrefetchOptions {
-                    total_uncompressed_byte_budget: 0,
+                    total_uncompressed_byte_budget: 0, // So that we don't try to load anything
                     ..Default::default()
                 },
                 TimelinePoint::from((*timeline, TimeInt::ZERO)),

@@ -3214,6 +3214,35 @@ impl App {
         for store_id in store_ids {
             let db = store_hub.entity_db_mut(&store_id);
 
+            if cfg!(debug_assertions) && db.can_fetch_chunks_from_redap() {
+                // Some sanity checks:
+                let storage_engine = db.storage_engine();
+                let store = storage_engine.store();
+
+                #[expect(clippy::iter_over_hash_type)] // sanity checks don't care about order
+                for missing_chunk_id in store.take_tracked_chunk_ids().missing_virtual {
+                    let roots = store.find_root_chunks(&missing_chunk_id);
+                    debug_assert!(!roots.is_empty(), "Missing chunk has no roots");
+
+                    let all_roots_are_fully_loaded = roots.iter().all(|root_id| {
+                        let root_info = db.rrd_manifest_index().root_chunk_info(root_id);
+                        if let Some(root_info) = root_info {
+                            root_info.is_fully_loaded()
+                        } else {
+                            re_log::debug_warn_once!("Failed to find root chunk");
+                            false
+                        }
+                    });
+
+                    if all_roots_are_fully_loaded {
+                        re_log::debug_warn_once!(
+                            "A chunk was reported missing, but all its roots are marked as fully loaded. Missing: {missing_chunk_id}, roots: {roots:?}, Chunk lineage: {}",
+                            store.format_lineage(&missing_chunk_id)
+                        );
+                    }
+                }
+            }
+
             if db.can_fetch_chunks_from_redap() {
                 re_tracing::profile_scope!("recording");
 

@@ -7,12 +7,15 @@ use nohash_hasher::IntSet;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
+use re_log::debug_assert;
 use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreKind, TimelinePoint};
 use re_mutex::Mutex;
 
-use crate::chunk_requests::ChunkBatchRequest;
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
+use crate::{
+    chunk_requests::ChunkBatchRequest, rrd_manifest_index::chunk_prioritizer::PrioritiziationState,
+};
 
 mod chunk_prioritizer;
 mod sorted_temporal_chunks;
@@ -28,7 +31,11 @@ use sorted_temporal_chunks::SortedTemporalChunks;
 /// The order here is used for priority to show the state in the ui (lower is more prioritized)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum LoadState {
-    /// The chunk is not loaded, nor being loaded.
+    /// The chunk is not fully loaded, nor being loaded.
+    ///
+    /// It may be that we've previously loaded this chunk,
+    /// split it on ingestion, removed part of it.
+    /// In that case, we consider the chunk [`Self::Unloaded`].
     #[default]
     Unloaded,
 
@@ -37,16 +44,13 @@ enum LoadState {
     /// TODO(emilk): move this state to [`ChunkRequests`]
     InTransit,
 
-    /// We have the chole chunk in memory.
-    Loaded,
+    /// We have the whole chunk in memory.
+    FullyLoaded,
 }
 
 impl LoadState {
-    pub fn is_unloaded(&self) -> bool {
-        match self {
-            Self::Unloaded | Self::InTransit => true,
-            Self::Loaded => false,
-        }
+    pub fn is_fully_loaded(self) -> bool {
+        self == Self::FullyLoaded
     }
 }
 
@@ -72,6 +76,10 @@ impl RootChunkInfo {
             row_id: row_idx,
             temporals: Default::default(),
         }
+    }
+
+    pub fn is_fully_loaded(&self) -> bool {
+        self.state.is_fully_loaded()
     }
 }
 
@@ -283,7 +291,7 @@ impl RrdManifestIndex {
         let is_unloaded = |id| {
             self.root_chunks
                 .get(&id)
-                .is_none_or(|c| c.state.is_unloaded())
+                .is_none_or(|c| !c.state.is_fully_loaded())
         };
 
         // Skip fully updating if timeline didn't change.
@@ -369,12 +377,6 @@ impl RrdManifestIndex {
         self.manifest.as_deref()
     }
 
-    pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {
-        if let Some(root_info) = self.root_chunks.get_mut(&chunk_id) {
-            root_info.state = LoadState::Loaded;
-        }
-    }
-
     pub fn on_events(&mut self, store: &ChunkStore, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
@@ -392,11 +394,16 @@ impl RrdManifestIndex {
                     //
                     // Picking the unprocessed chunk gives us a better chance of not even needing to walk
                     // back the tree at all.
-                    self.mark_as(store, &add.chunk_before_processing.id(), LoadState::Loaded);
+                    self.mark_roots_as(
+                        store,
+                        &add.chunk_before_processing.id(),
+                        LoadState::FullyLoaded,
+                    );
                 }
 
                 ChunkStoreDiff::Deletion(del) => {
-                    self.mark_as(store, &del.chunk.id(), LoadState::Unloaded);
+                    // If we deleted part of a root, we mark the whole root as unloaded.
+                    self.mark_roots_as(store, &del.chunk.id(), LoadState::Unloaded);
                 }
 
                 ChunkStoreDiff::VirtualAddition(_) => {}
@@ -404,51 +411,45 @@ impl RrdManifestIndex {
         }
     }
 
-    fn mark_as(&mut self, store: &ChunkStore, chunk_id: &ChunkId, state: LoadState) {
+    fn mark_roots_as(&mut self, store: &ChunkStore, chunk_id: &ChunkId, new_state: LoadState) {
         let store_kind = store.id().kind();
 
-        let loaded_ranges = &mut self.loaded_ranges;
-        let mut update_ranges = |chunk_id| {
-            if let Some(loaded_ranges) = loaded_ranges {
-                match state {
-                    LoadState::Unloaded => {
-                        loaded_ranges.ranges.on_chunk_unloaded(
-                            &chunk_id,
-                            &self.chunk_prioritizer.component_paths_from_root_id,
-                        );
-                    }
-                    LoadState::InTransit => {}
-                    LoadState::Loaded => {
-                        loaded_ranges.ranges.on_chunk_loaded(
-                            &chunk_id,
-                            &self.chunk_prioritizer.component_paths_from_root_id,
-                        );
-                    }
-                }
-            }
-        };
+        let root_chunk_ids = store.find_root_chunks(chunk_id);
 
-        if let Some(chunk_info) = self.root_chunks.get_mut(chunk_id) {
-            chunk_info.state = state;
-            update_ranges(*chunk_id);
+        if root_chunk_ids.is_empty() {
+            warn_when_editing_recording(
+                store_kind,
+                "Added chunk that was not part of the chunk index",
+            );
         } else {
-            let root_chunk_ids = store.find_root_chunks(chunk_id);
-            if root_chunk_ids.is_empty() {
-                warn_when_editing_recording(
-                    store_kind,
-                    "Added chunk that was not part of the chunk index",
-                );
-            } else {
-                for chunk_id in root_chunk_ids {
-                    if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
-                        update_ranges(chunk_id);
-                        chunk_info.state = state;
-                    } else {
-                        warn_when_editing_recording(
-                            store_kind,
-                            "Added chunk that was not part of the chunk index",
-                        );
+            for chunk_id in root_chunk_ids {
+                if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
+                    chunk_info.state = new_state;
+
+                    if let Some(loaded_ranges) = &mut self.loaded_ranges {
+                        match new_state {
+                            LoadState::Unloaded => {
+                                // TODO(RR-3743): fix the extra decrements that can happen
+                                // when we evict _parts_ of a root chunk multiple times.
+                                loaded_ranges.ranges.on_chunk_unloaded(
+                                    &chunk_id,
+                                    &self.chunk_prioritizer.component_paths_from_root_id,
+                                );
+                            }
+                            LoadState::InTransit => {}
+                            LoadState::FullyLoaded => {
+                                loaded_ranges.ranges.on_chunk_loaded(
+                                    &chunk_id,
+                                    &self.chunk_prioritizer.component_paths_from_root_id,
+                                );
+                            }
+                        }
                     }
+                } else {
+                    warn_when_editing_recording(
+                        store_kind,
+                        "Added chunk that was not part of the chunk index",
+                    );
                 }
             }
         }
@@ -504,9 +505,9 @@ impl RrdManifestIndex {
         let used_and_missing = store.take_tracked_chunk_ids(); // Note: this mutates the store (kind of).
 
         if let Some(manifest) = &self.manifest {
-            let to_load = self.chunk_prioritizer.prioritize_and_prefetch(
+            let (state, to_load) = self.chunk_prioritizer.prioritize_and_prefetch(
                 store,
-                used_and_missing,
+                &used_and_missing,
                 options,
                 time_cursor,
                 manifest,
@@ -530,6 +531,25 @@ impl RrdManifestIndex {
             }
 
             self.update_loaded_ranges(time_cursor.name);
+
+            // Sanity checking:
+            match state {
+                PrioritiziationState::TransitBudgetFilled
+                | PrioritiziationState::MemoryBudgetFilled => {}
+                PrioritiziationState::AllChunksLoadedOrInTransit => {
+                    for (root_chunk_id, chunk_info) in &self.root_chunks {
+                        debug_assert!(
+                            chunk_info.state != LoadState::Unloaded,
+                            "All root chunks should be either loading or already loaded"
+                        );
+                        debug_assert!(
+                            self.chunk_prioritizer
+                                .protected_root_chunks()
+                                .contains(root_chunk_id)
+                        );
+                    }
+                }
+            }
 
             Ok(())
         } else {
@@ -590,11 +610,17 @@ impl RrdManifestIndex {
     fn is_chunk_unloaded(&self, chunk_id: &ChunkId) -> bool {
         self.root_chunks
             .get(chunk_id)
-            .is_none_or(|c| c.state.is_unloaded())
+            .is_none_or(|c| !c.state.is_fully_loaded())
     }
 
     pub fn full_uncompressed_size(&self) -> u64 {
         self.full_uncompressed_size
+    }
+
+    /// Have we downloaded the entire recording?
+    pub fn is_fully_loaded(&self) -> bool {
+        self.root_chunks()
+            .all(|chunk| chunk.state == LoadState::FullyLoaded)
     }
 }
 

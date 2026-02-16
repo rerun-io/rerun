@@ -437,7 +437,7 @@ impl ChunkStoreHandle {
 
 /// This keeps track of all missing virtual [`ChunkId`]s and all
 /// used physical [`ChunkId`]s.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct QueriedChunkIdTracker {
     /// Used physical chunks.
     pub used_physical: HashSet<ChunkId>,
@@ -936,6 +936,11 @@ impl ChunkStore {
     /// Use [`Self::find_root_chunks`] to find the original chunks that those IDs descended from.
     pub fn take_tracked_chunk_ids(&self) -> QueriedChunkIdTracker {
         std::mem::take(&mut self.queried_chunk_id_tracker.write())
+    }
+
+    /// See [`Self::take_tracked_chunk_ids`] for more details.
+    pub fn tracked_chunk_ids(&self) -> QueriedChunkIdTracker {
+        self.queried_chunk_id_tracker.read().clone()
     }
 
     /// Signal that the chunk was used and should not be evicted by gc.

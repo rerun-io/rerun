@@ -201,19 +201,19 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
     {
         ui.grid_left_hand_label("Size");
 
-        let total_size_bytes = db.total_size_bytes();
-        let static_size = if db.rrd_manifest_index().has_manifest() {
+        let current_size_bytes = db.total_size_bytes();
+        let full_size_bytes = if db.rrd_manifest_index().has_manifest() {
             db.rrd_manifest_index()
                 .full_uncompressed_size()
-                .at_least(total_size_bytes)
+                .at_least(current_size_bytes)
         } else {
-            total_size_bytes
+            current_size_bytes
         };
 
-        ui.label(format_bytes(static_size as _)).on_hover_text(
+        ui.label(format_bytes(full_size_bytes as _)).on_hover_text(
             "Approximate size in RAM (decompressed).\n\
-                        If you hover an entity in the streams view (bottom panel) you can see the \
-                        size of individual entities.",
+            If you hover an entity in the streams view (bottom panel) you can see the \
+            size of individual entities.",
         );
         ui.end_row();
 
@@ -221,23 +221,46 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
             ui.grid_left_hand_label("Downloaded");
 
             let memory_limit = ctx.global_context.memory_limit;
-            let max_downloaded = if memory_limit.is_limited() {
-                memory_limit.as_bytes()
+            let max_downloaded_bytes = if db.rrd_manifest_index().is_fully_loaded() {
+                full_size_bytes
             } else {
-                static_size
+                u64::min(full_size_bytes, memory_limit.as_bytes())
             };
 
-            let current = format_bytes(total_size_bytes as _);
-            let max_downloaded = format_bytes(max_downloaded as _);
+            let current_size = format_bytes(current_size_bytes as _);
+            let max_downloaded = format_bytes(max_downloaded_bytes as _);
 
             ui.horizontal(|ui| {
-                ui.label(format!("{current} / {max_downloaded}"));
+                let mut num_root_chunks = 0_usize;
+                let mut num_fully_loaded = 0_usize;
+                for info in db.rrd_manifest_index().root_chunks() {
+                    num_root_chunks += 1;
+                    if info.is_fully_loaded() {
+                        num_fully_loaded += 1;
+                    }
+                }
 
-                if memory_limit.is_limited() {
-                    let rect = ui.small_icon(&re_ui::icons::INFO, Some(ui.visuals().text_color()));
+                if num_fully_loaded == num_root_chunks {
+                    ui.label("100%");
+                } else {
+                    ui.label(format!("{current_size} / {max_downloaded}"));
 
-                    ui.allocate_rect(rect, egui::Sense::hover())
-                        .on_hover_text(format!("Download limited to {memory_limit} memory budget"));
+                    if max_downloaded_bytes < full_size_bytes {
+                        let rect =
+                            ui.small_icon(&re_ui::icons::INFO, Some(ui.visuals().text_color()));
+
+                        ui.allocate_rect(rect, egui::Sense::hover())
+                            .on_hover_text(format!(
+                                "Download limited to {memory_limit} memory budget"
+                            ));
+                    }
+
+                    ui.label(format!(
+                        "({} / {} chunks)",
+                        format_uint(num_fully_loaded),
+                        format_uint(num_root_chunks)
+                    ));
+                    ui.end_row();
                 }
             });
 

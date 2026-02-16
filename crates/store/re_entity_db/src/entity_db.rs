@@ -701,8 +701,6 @@ impl EntityDb {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
 
-        self.rrd_manifest_index.mark_as_loaded(chunk.id());
-
         self.on_store_events(&store_events);
 
         // We inform the stats last, since it measures e2e latency.
@@ -781,7 +779,7 @@ impl EntityDb {
         let protected_chunks = self
             .rrd_manifest_index
             .chunk_prioritizer()
-            .desired_physical_chunks()
+            .protected_physical_chunks()
             .clone();
 
         let store_events = self.gc(&GarbageCollectionOptions {
