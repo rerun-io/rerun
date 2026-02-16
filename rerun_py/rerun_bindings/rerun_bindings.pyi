@@ -926,6 +926,9 @@ class EntryId:
     def __str__(self) -> str:
         """Return str(self)."""
 
+    def as_bytes(self) -> bytes:
+        """Return the raw 16-byte representation."""
+
 class EntryKind:
     """The kinds of entries that can be stored in the catalog."""
 
@@ -1056,6 +1059,12 @@ class DatasetEntryInternal:
         cleanup_before: datetime | None = None,
         unsafe_allow_recent_cleanup: bool = False,
     ) -> None: ...
+
+class SegmentUrlUdfInternal:
+    """Rust-backed ScalarUDF for building segment URLs."""
+
+    def __datafusion_scalar_udf__(self) -> Any:
+        """Scalar UDF pycapsule."""
 
 class DatasetViewInternal:
     """Internal Rust implementation of DatasetView."""

@@ -71,6 +71,7 @@ re_memory.workspace = true
 re_sdk = { workspace = true, features = ["data_loaders"] }
 re_sorbet.workspace = true
 re_tuid.workspace = true
+re_types_core.workspace = true
 re_uri.workspace = true
 re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }

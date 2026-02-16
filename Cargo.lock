@@ -10955,6 +10955,7 @@ dependencies = [
  "re_server",
  "re_sorbet",
  "re_tuid",
+ "re_types_core",
  "re_uri",
  "re_video",
  "re_web_viewer_server",

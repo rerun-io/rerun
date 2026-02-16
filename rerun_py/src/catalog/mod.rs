@@ -13,6 +13,7 @@ mod index_columns;
 mod indexes;
 mod registration_handle;
 mod schema;
+mod segment_url_udf;
 mod table_entry;
 mod table_provider_adapter;
 mod trace_context;
@@ -37,6 +38,7 @@ pub use self::indexes::{
 };
 pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistrationIterator};
 pub use self::schema::PySchemaInternal;
+pub use self::segment_url_udf::PySegmentUrlUdfInternal;
 pub use self::table_entry::{PyTableEntryInternal, PyTableInsertModeInternal};
 pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
 pub use self::type_aliases::{AnyComponentColumn, IndexValuesLike, PyIndexValuesLikeInternal};
@@ -54,6 +56,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyRegistrationHandleInternal>()?;
     m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyTableProviderAdapterInternal>()?;
+    m.add_class::<PySegmentUrlUdfInternal>()?;
     m.add_class::<PyDatasetViewInternal>()?;
     m.add_class::<PyRerunHtmlTable>()?;
 

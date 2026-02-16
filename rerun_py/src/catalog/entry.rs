@@ -32,6 +32,11 @@ impl PyEntryId {
     pub fn __str__(&self) -> String {
         self.id.to_string()
     }
+
+    /// Return the raw 16-byte representation.
+    pub fn as_bytes<'py>(&self, py: Python<'py>) -> pyo3::Bound<'py, pyo3::types::PyBytes> {
+        pyo3::types::PyBytes::new(py, &self.id.id.as_bytes())
+    }
 }
 
 impl From<EntryId> for PyEntryId {
