@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::SegmentationImage;
-use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::components::{ImageFormat, MagnificationFilter, Opacity};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, ViewContext, ViewContextCollection, ViewQuery,
@@ -112,6 +112,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         &image,
                         colormap,
                         multiplicative_tint,
+                        MagnificationFilter::default(),
                         SegmentationImage::name(),
                     ) {
                         Ok(textured_rect) => {

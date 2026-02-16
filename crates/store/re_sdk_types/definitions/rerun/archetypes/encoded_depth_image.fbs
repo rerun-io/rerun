@@ -47,4 +47,9 @@ table EncodedDepthImage(
 
   /// Optional 2D draw order.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Optional magnification filter used when zooming in on the image.
+  ///
+  /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+  magnification_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 3300);
 }

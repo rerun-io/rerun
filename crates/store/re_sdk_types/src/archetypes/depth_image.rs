@@ -118,6 +118,11 @@ pub struct DepthImage {
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-20.0`.
     pub draw_order: Option<SerializedComponentBatch>,
+
+    /// Optional magnification filter used when zooming in on the image.
+    ///
+    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
 impl DepthImage {
@@ -204,6 +209,18 @@ impl DepthImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
+    ///
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
+    #[inline]
+    pub fn descriptor_magnification_filter() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.DepthImage".into()),
+            component: "DepthImage:magnification_filter".into(),
+            component_type: Some("rerun.components.MagnificationFilter".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
@@ -217,7 +234,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             DepthImage::descriptor_meter(),
@@ -225,10 +242,11 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             DepthImage::descriptor_depth_range(),
             DepthImage::descriptor_point_fill_ratio(),
             DepthImage::descriptor_draw_order(),
+            DepthImage::descriptor_magnification_filter(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             DepthImage::descriptor_buffer(),
@@ -238,12 +256,13 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             DepthImage::descriptor_depth_range(),
             DepthImage::descriptor_point_fill_ratio(),
             DepthImage::descriptor_draw_order(),
+            DepthImage::descriptor_magnification_filter(),
         ]
     });
 
 impl DepthImage {
-    /// The total number of components in the archetype: 2 required, 0 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 2 required, 0 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for DepthImage {
@@ -311,6 +330,14 @@ impl ::re_types_core::Archetype for DepthImage {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
+        let magnification_filter = arrays_by_descr
+            .get(&Self::descriptor_magnification_filter())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_magnification_filter(),
+                )
+            });
         Ok(Self {
             buffer,
             format,
@@ -319,6 +346,7 @@ impl ::re_types_core::Archetype for DepthImage {
             depth_range,
             point_fill_ratio,
             draw_order,
+            magnification_filter,
         })
     }
 }
@@ -335,6 +363,7 @@ impl ::re_types_core::AsComponents for DepthImage {
             self.depth_range.clone(),
             self.point_fill_ratio.clone(),
             self.draw_order.clone(),
+            self.magnification_filter.clone(),
         ]
         .into_iter()
         .flatten()
@@ -366,6 +395,7 @@ impl DepthImage {
             depth_range: None,
             point_fill_ratio: None,
             draw_order: None,
+            magnification_filter: None,
         }
     }
 
@@ -407,6 +437,10 @@ impl DepthImage {
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
                 Self::descriptor_draw_order(),
+            )),
+            magnification_filter: Some(SerializedComponentBatch::new(
+                crate::components::MagnificationFilter::arrow_empty(),
+                Self::descriptor_magnification_filter(),
             )),
         }
     }
@@ -451,6 +485,9 @@ impl DepthImage {
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.magnification_filter
+                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -470,6 +507,7 @@ impl DepthImage {
         let len_depth_range = self.depth_range.as_ref().map(|b| b.array.len());
         let len_point_fill_ratio = self.point_fill_ratio.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_buffer)
             .or(len_format)
@@ -478,6 +516,7 @@ impl DepthImage {
             .or(len_depth_range)
             .or(len_point_fill_ratio)
             .or(len_draw_order)
+            .or(len_magnification_filter)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -658,6 +697,39 @@ impl DepthImage {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
+
+    /// Optional magnification filter used when zooming in on the image.
+    ///
+    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    #[inline]
+    pub fn with_magnification_filter(
+        mut self,
+        magnification_filter: impl Into<crate::components::MagnificationFilter>,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            [magnification_filter],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_magnification_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_magnification_filter(
+        mut self,
+        magnification_filter: impl IntoIterator<
+            Item = impl Into<crate::components::MagnificationFilter>,
+        >,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            magnification_filter,
+        );
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for DepthImage {
@@ -670,5 +742,6 @@ impl ::re_byte_size::SizeBytes for DepthImage {
             + self.depth_range.heap_size_bytes()
             + self.point_fill_ratio.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
+            + self.magnification_filter.heap_size_bytes()
     }
 }

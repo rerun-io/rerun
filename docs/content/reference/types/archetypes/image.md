@@ -26,6 +26,7 @@ row-major, interleaved-pixel image format.
 ### Optional
 * `opacity`: [`Opacity`](../components/opacity.md)
 * `draw_order`: [`DrawOrder`](../components/draw_order.md)
+* `magnification_filter`: [`MagnificationFilter`](../components/magnification_filter.md)
 
 
 ## Can be shown in
