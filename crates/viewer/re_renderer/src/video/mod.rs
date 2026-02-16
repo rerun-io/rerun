@@ -272,6 +272,10 @@ impl Video {
         }
     }
 
+    pub fn debug_name(&self) -> &str {
+        &self.debug_name
+    }
+
     /// The video description.
     #[inline]
     pub fn data_descr(&self) -> &re_video::VideoDataDescription {

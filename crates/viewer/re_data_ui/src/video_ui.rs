@@ -387,12 +387,21 @@ fn decoded_frame_ui<'a>(
                 ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
             }
 
-            if show_loading_indicator {
-                re_ui::loading_indicator::paint_loading_indicator_inside(
-                    ui,
-                    egui::Align2::CENTER_CENTER,
-                    response.rect,
+            {
+                let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
+                let loading_indicator_opacity = ui.ctx().animate_bool(
+                    ui.id().with((video_id, "loading_indicator")),
+                    show_loading_indicator,
                 );
+
+                if 0.0 < loading_indicator_opacity {
+                    re_ui::loading_indicator::paint_loading_indicator_inside(
+                        ui,
+                        egui::Align2::CENTER_CENTER,
+                        response.rect,
+                        loading_indicator_opacity,
+                    );
+                }
             }
         }
 

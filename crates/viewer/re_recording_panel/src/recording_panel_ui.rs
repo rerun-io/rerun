@@ -679,6 +679,7 @@ fn receiver_ui(
                 ui,
                 egui::Align2::CENTER_CENTER,
                 rect,
+                1.0,
             );
         })
         .with_buttons(|ui| {

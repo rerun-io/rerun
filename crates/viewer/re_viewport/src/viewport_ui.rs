@@ -430,15 +430,23 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             });
         });
 
-        if missing_chunk_reporter.any_missing()
-            && self.ctx.recording().can_fetch_chunks_from_redap()
         {
-            let view_rect = response.response.rect;
-            re_ui::loading_indicator::paint_loading_indicator_inside(
-                ui,
-                egui::Align2::RIGHT_TOP,
-                view_rect,
-            );
+            let show_loading_indicator = missing_chunk_reporter.any_missing()
+                && self.ctx.recording().can_fetch_chunks_from_redap();
+
+            let loading_indicator_opacity = ui
+                .ctx()
+                .animate_bool(ui.id().with("loading_indicator"), show_loading_indicator);
+
+            if 0.0 < loading_indicator_opacity {
+                let view_rect = response.response.rect;
+                re_ui::loading_indicator::paint_loading_indicator_inside(
+                    ui,
+                    egui::Align2::RIGHT_TOP,
+                    view_rect,
+                    loading_indicator_opacity,
+                );
+            }
         }
 
         response.response.widget_info(|| {

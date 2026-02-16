@@ -32,7 +32,8 @@ pub fn loading_indicator_ui(ui: &mut egui::Ui) -> egui::Response {
     let r = calc_radius(ui.available_size_before_wrap());
     let size = r * Vec2::new(WIDTH_IN_R, HEIGHT_IN_R);
     let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
-    paint_loading_indicator_inside(ui, Align2::CENTER_CENTER, rect);
+    let opacity = 1.0;
+    paint_loading_indicator_inside(ui, Align2::CENTER_CENTER, rect, opacity);
     response
 }
 
@@ -52,7 +53,16 @@ pub fn calc_radius(available_space: Vec2) -> f32 {
 
 /// Paint a reasonably sized loading indicator in the given rectangle, anchored at the given pivot point.
 #[doc(alias = "spinner")]
-pub fn paint_loading_indicator_inside(ui: &egui::Ui, anchor: Align2, container_rect: Rect) {
+pub fn paint_loading_indicator_inside(
+    ui: &egui::Ui,
+    anchor: Align2,
+    container_rect: Rect,
+    opacity: f32,
+) {
+    if opacity <= 0.0 {
+        return;
+    }
+
     re_tracing::profile_function!();
 
     let r_pts = calc_radius(container_rect.size());
@@ -84,7 +94,7 @@ pub fn paint_loading_indicator_inside(ui: &egui::Ui, anchor: Align2, container_r
         };
         let alpha = if phase < 0.5 { 2.0 * phase } else { 1.0 };
 
-        let color = on_color.linear_multiply(alpha);
+        let color = on_color.linear_multiply(opacity * alpha);
         let center = rect_pts.left_top()
             + Vec2::new(
                 outside_padding_pts + r_pts + i as f32 * (2.0 * r_pts + between_padding_pts),
