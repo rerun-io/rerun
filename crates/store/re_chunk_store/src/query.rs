@@ -689,7 +689,12 @@ impl QueryResults {
                     "A chunk was reported missing, with no known lineage: {chunk_id}"
                 );
                 if !store.split_on_ingest.contains(chunk_id) {
-                    re_log::debug_warn_once!(
+                    if cfg!(debug_assertions) {
+                        re_log::warn_once!(
+                            "Tried to report a chunk missing that was the source of a split"
+                        );
+                    }
+                    re_log::debug_once!(
                         "Tried to report a chunk missing that was the source of a split: {chunk_id}"
                     );
                 }
