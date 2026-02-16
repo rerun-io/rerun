@@ -825,6 +825,10 @@ impl ViewClass for TimeSeriesView {
                     };
                     let pill_margin = egui::Margin::symmetric(8, 6);
                     for instruction in &node.data_result.visualizer_instructions {
+                        if !node.data_result.visible {
+                            continue;
+                        }
+
                         ui.add_space(10.0);
 
                         let entity_path = &node.data_result.entity_path;
