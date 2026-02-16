@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Image;
-use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::components::{ImageFormat, MagnificationFilter, Opacity};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -30,6 +30,7 @@ impl Default for ImageVisualizer {
 struct ImageComponentData {
     image: ImageInfo,
     opacity: Option<Opacity>,
+    magnification_filter: MagnificationFilter,
 }
 
 impl IdentifiedViewSystem for ImageVisualizer {
@@ -99,28 +100,41 @@ impl ImageVisualizer {
             return;
         }
         let all_opacities = results.iter_optional(Image::descriptor_opacity().component);
+        let all_magnification_filters =
+            results.iter_optional(Image::descriptor_magnification_filter().component);
 
-        let data = re_query::range_zip_1x2(
+        let data = re_query::range_zip_1x3(
             all_buffers.slice::<&[u8]>(),
             all_formats.component_slow::<ImageFormat>(),
             all_opacities.slice::<f32>(),
+            all_magnification_filters.slice::<u8>(),
         )
-        .filter_map(|((_time, row_id), buffers, formats, opacities)| {
-            let buffer = buffers.first()?;
+        .filter_map(
+            |((_time, row_id), buffers, formats, opacities, magnification_filters)| {
+                let buffer = buffers.first()?;
 
-            Some(ImageComponentData {
-                image: ImageInfo::from_stored_blob(
-                    row_id,
-                    Image::descriptor_buffer().component,
-                    buffer.clone().into(),
-                    first_copied(formats.as_deref())?.0,
-                    ImageKind::Color,
-                ),
-                opacity: first_copied(opacities).map(Into::into),
-            })
-        });
+                Some(ImageComponentData {
+                    image: ImageInfo::from_stored_blob(
+                        row_id,
+                        Image::descriptor_buffer().component,
+                        buffer.clone().into(),
+                        first_copied(formats.as_deref())?.0,
+                        ImageKind::Color,
+                    ),
+                    opacity: first_copied(opacities).map(Into::into),
+                    magnification_filter: first_copied(magnification_filters)
+                        .and_then(MagnificationFilter::from_u8)
+                        .unwrap_or_default(),
+                })
+            },
+        );
 
-        for ImageComponentData { image, opacity } in data {
+        for ImageComponentData {
+            image,
+            opacity,
+            magnification_filter,
+        } in data
+        {
             let opacity = opacity
                 .unwrap_or_else(|| typed_fallback_for(ctx, Image::descriptor_opacity().component));
             #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
@@ -135,6 +149,7 @@ impl ImageVisualizer {
                 &image,
                 colormap,
                 multiplicative_tint,
+                magnification_filter,
                 Image::name(),
             ) {
                 Ok(textured_rect) => {

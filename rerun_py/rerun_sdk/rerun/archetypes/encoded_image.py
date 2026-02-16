@@ -71,6 +71,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             media_type=None,
             opacity=None,
             draw_order=None,
+            magnification_filter=None,
         )
 
     @classmethod
@@ -89,6 +90,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         media_type: datatypes.Utf8Like | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> EncodedImage:
         """
         Update only some specific fields of a `EncodedImage`.
@@ -116,6 +118,10 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -126,6 +132,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
                 "media_type": media_type,
                 "opacity": opacity,
                 "draw_order": draw_order,
+                "magnification_filter": magnification_filter,
             }
 
             if clear_unset:
@@ -150,6 +157,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         media_type: datatypes.Utf8ArrayLike | None = None,
         opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
+        magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -180,6 +188,10 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -190,6 +202,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
                 media_type=media_type,
                 opacity=opacity,
                 draw_order=draw_order,
+                magnification_filter=magnification_filter,
             )
 
         batches = inst.as_component_batches()
@@ -201,6 +214,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
             "EncodedImage:media_type": media_type,
             "EncodedImage:opacity": opacity,
             "EncodedImage:draw_order": draw_order,
+            "EncodedImage:magnification_filter": magnification_filter,
         }
         columns = []
 
@@ -275,6 +289,17 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     # An optional floating point value that specifies the 2D drawing order.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    magnification_filter: components.MagnificationFilterBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
+    )
+    # Optional magnification filter used when zooming in on the image.
+    #
+    # Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

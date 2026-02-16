@@ -110,6 +110,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
             format=None,
             opacity=None,
             draw_order=None,
+            magnification_filter=None,
         )
 
     @classmethod
@@ -128,6 +129,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
         format: datatypes.ImageFormatLike | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> Image:
         """
         Update only some specific fields of a `Image`.
@@ -149,6 +151,10 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-10.0`.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -159,6 +165,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
                 "format": format,
                 "opacity": opacity,
                 "draw_order": draw_order,
+                "magnification_filter": magnification_filter,
             }
 
             if clear_unset:
@@ -183,6 +190,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
         format: datatypes.ImageFormatArrayLike | None = None,
         opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
+        magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -207,6 +215,10 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-10.0`.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -217,6 +229,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
                 format=format,
                 opacity=opacity,
                 draw_order=draw_order,
+                magnification_filter=magnification_filter,
             )
 
         batches = inst.as_component_batches()
@@ -228,6 +241,7 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
             "Image:format": format,
             "Image:opacity": opacity,
             "Image:draw_order": draw_order,
+            "Image:magnification_filter": magnification_filter,
         }
         columns = []
 
@@ -296,6 +310,17 @@ class Image(ImageExt, Archetype, VisualizableArchetype):
     #
     # Objects with higher values are drawn on top of those with lower values.
     # Defaults to `-10.0`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    magnification_filter: components.MagnificationFilterBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
+    )
+    # Optional magnification filter used when zooming in on the image.
+    #
+    # Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

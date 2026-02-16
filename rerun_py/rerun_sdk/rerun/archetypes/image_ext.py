@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 from PIL import Image as PILImage
 
+from .. import components
 from ..components import ImageFormat
 from ..datatypes import (
     ChannelDatatype,
@@ -87,6 +88,7 @@ class ImageExt:
         # Any any of these:
         opacity: Float32Like | None = None,
         draw_order: Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> None:
         """
         Create a new image with a given format.
@@ -157,6 +159,7 @@ class ImageExt:
                     format=ImageFormat(width=width, height=height, pixel_format=pixel_format),
                     opacity=opacity,
                     draw_order=draw_order,
+                    magnification_filter=magnification_filter,
                 )
                 return
             else:
@@ -191,6 +194,7 @@ class ImageExt:
                     ),
                     opacity=opacity,
                     draw_order=draw_order,
+                    magnification_filter=magnification_filter,
                 )
                 return
 
@@ -262,6 +266,7 @@ class ImageExt:
             ),
             opacity=opacity,
             draw_order=draw_order,
+            magnification_filter=magnification_filter,
         )
 
     def image_format(self: Any) -> ImageFormat:
