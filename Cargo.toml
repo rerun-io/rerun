@@ -181,7 +181,7 @@ emath = "0.33.3"
 # other egui crates:
 egui_commonmark = { version = "0.22.0", default-features = false }
 egui_dnd = { version = "0.14.0" }
-egui_plot = "0.34.0" # https://github.com/emilk/egui_plot
+egui_plot = "0.34.1" # https://github.com/emilk/egui_plot
 egui_table = "0.6.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.14.1" # https://github.com/rerun-io/egui_tiles
 walkers = "0.50.0"
@@ -877,8 +877,8 @@ unnecessary_debug_formatting = "allow"
 # emath = { path = "../../egui/crates/emath" }
 # wgpu = { path = "../../wgpu/wgpu" }
 
-# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
-# egui_plot = { path = "../../egui_plot/egui_plot" }
+#egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "legend-id-keying" }
+#egui_plot = { path = "../../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }

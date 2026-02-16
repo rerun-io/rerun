@@ -711,8 +711,7 @@ fn current_component_source(
             }
         }
         None => {
-            re_log::debug_assert!(
-                false,
+            re_log::debug_panic!(
                 "Expected component {component:?} to be resolved to a source kind in the query result",
             );
             VisualizerComponentSource::Default

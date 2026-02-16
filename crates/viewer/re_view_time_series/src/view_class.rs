@@ -657,6 +657,8 @@ impl ViewClass for TimeSeriesView {
                 plot = plot.legend(
                     Legend::default()
                         .position(legend_corner.into())
+                        .follow_insertion_order(true)
+                        .grouping(egui_plot::LegendGrouping::ById)
                         .color_conflict_handling(ColorConflictHandling::PickFirst),
                 );
             }
