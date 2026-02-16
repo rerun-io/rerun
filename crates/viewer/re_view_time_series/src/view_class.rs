@@ -1513,7 +1513,7 @@ impl TimeSeriesColors {
                 3.0,
                 *color,
                 ui.tokens().visualizer_list_color_box_stroke,
-                egui::StrokeKind::Outside,
+                egui::StrokeKind::Inside,
             );
             right_edge -= size + spacing;
         }

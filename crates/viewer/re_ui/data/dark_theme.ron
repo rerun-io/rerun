@@ -303,8 +303,10 @@
       "color": "{Gray.550}"
     },
     "visualizer_list_color_box_stroke": {
-      "color": "{Gray.800}",
-      "width": 1
+      "color": "{Gray.0}",
+      "width": 1,
+      // 51/255 ≈ 20%
+      "alpha": 51
     },
     "visualizer_list_pill_bg_color": {
       "color": "{Gray.200}"
