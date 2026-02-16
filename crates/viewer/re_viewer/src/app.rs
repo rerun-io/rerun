@@ -3235,8 +3235,11 @@ impl App {
                     });
 
                     if all_roots_are_fully_loaded {
-                        re_log::debug_warn_once!(
-                            "A chunk was reported missing, but all its roots are marked as fully loaded. Missing: {missing_chunk_id}, roots: {roots:?}, Chunk lineage: {}",
+                        re_log::warn_once!(
+                            "A chunk was reported missing, but all its roots are marked as fully loaded."
+                        );
+                        re_log::debug_once!(
+                            "Missing: {missing_chunk_id}, roots: {roots:?}, Chunk lineage: {}",
                             store.format_lineage(&missing_chunk_id)
                         );
                     }

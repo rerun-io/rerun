@@ -37,19 +37,16 @@ use crate::Loggable as _;
 /// think carefully about your `RowId`s in these cases.
 #[repr(C, align(1))]
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    bytemuck::AnyBitPattern,
-    bytemuck::NoUninit,
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::AnyBitPattern, bytemuck::NoUninit,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ChunkId(pub(crate) re_tuid::Tuid);
+
+impl std::fmt::Debug for ChunkId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "chunk_{}", self.0)
+    }
+}
 
 impl std::fmt::Display for ChunkId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

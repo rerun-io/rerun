@@ -652,7 +652,16 @@ fn handle_split_chunk_addition(
         },
     );
 
-    drop(samples);
+    if cfg!(debug_assertions) {
+        let samples = samples.collect::<Vec<_>>();
+
+        debug_assert!(
+            samples.is_empty(),
+            "Expected no additional samples after processing split chunk, got {samples:?}"
+        );
+    } else {
+        drop(samples);
+    }
 
     if let Some(known_range) = known_chunk_ranges.get(&split_chunk.id()) {
         let res = read_samples_from_known_chunk(

@@ -38,7 +38,8 @@ impl ChunkStore {
             chunks_per_chunk_id: _,      // physical data only
             chunk_ids_per_min_row_id: _, // physical data only
             chunks_lineage,
-            dangling_splits: _,   // cannot split during virtual insert
+            dangling_splits: _, // cannot split during virtual insert
+            split_on_ingest: _,
             leaky_compactions: _, // cannot compact during virtual insert
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
@@ -374,6 +375,8 @@ impl ChunkStore {
                 // dangling splits later on if the parent get re-inserted.
                 self.dangling_splits
                     .insert(chunk.id(), split_chunks.iter().map(|c| c.id()).collect());
+
+                self.split_on_ingest.insert(chunk.id());
 
                 for split_chunk in &split_chunks {
                     let siblings = split_chunks
@@ -975,6 +978,7 @@ impl ChunkStore {
             chunks_per_chunk_id,
             chunks_lineage: _, // lineage metadata must never be dropped, regardless
             dangling_splits: _, // this counts as lineage metadata too
+            split_on_ingest: _, // we only ever add to this
             leaky_compactions: _, // this counts as lineage metadata too
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,

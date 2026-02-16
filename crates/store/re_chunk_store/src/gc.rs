@@ -502,7 +502,8 @@ impl ChunkStore {
             chunks_per_chunk_id: _,      // handled by shallow impl
             chunk_ids_per_min_row_id: _, // handled by shallow impl
             chunks_lineage,              // purely additive
-            dangling_splits: _,          // purely additive
+            dangling_splits: _,          // not GCed
+            split_on_ingest: _,          // purely additive
             leaky_compactions: _,        // purely additive
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
@@ -666,6 +667,7 @@ impl ChunkStore {
             chunk_ids_per_min_row_id,
             chunks_lineage: _,                              // virtual
             dangling_splits: _,                             // virtual
+            split_on_ingest: _,                             // only additive, used for debug-asserts
             leaky_compactions: _,                           // virtual
             temporal_chunk_ids_per_entity_per_component: _, // virtual
             temporal_chunk_ids_per_entity: _,               // virtual

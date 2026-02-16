@@ -20,7 +20,7 @@ use crate::CodecResult;
 /// and does not duplicate the actual data.
 ///
 /// Use [`RrdManifest::try_new`] to create an instance from a [`RawRrdManifest`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct RrdManifest {
     raw: RawRrdManifest,
 
@@ -35,6 +35,12 @@ pub struct RrdManifest {
 
     static_data_map: RrdManifestStaticMap,
     temporal_data_map: RrdManifestTemporalMap,
+}
+
+impl std::fmt::Debug for RrdManifest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RrdManifest").finish_non_exhaustive()
+    }
 }
 
 impl re_byte_size::SizeBytes for RrdManifest {

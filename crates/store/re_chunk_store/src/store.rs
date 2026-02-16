@@ -7,6 +7,7 @@ use arrow::datatypes::DataType as ArrowDataType;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
+use re_log::debug_assert;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
@@ -544,10 +545,15 @@ pub struct ChunkStore {
     /// * performance of the query engine
     /// * hard to reason about for downstream consumers building secondary datastructures (e.g. video cache)
     ///
-    /// This is purely additive: never garbage collected.
-    ///
     /// `HashMap<OriginalChunkId, SplitChunkIds>`
     pub(crate) dangling_splits: HashMap<ChunkId, Vec<ChunkId>>,
+
+    /// All chunks that were split on-ingestion.
+    ///
+    /// This is like [`Self::dangling_splits`], but is only ever added to.
+    ///
+    /// This is only used for sanity checks.
+    pub(crate) split_on_ingest: HashSet<ChunkId>,
 
     /// Anytime a chunk gets compacted with another during insertion, this is recorded here.
     ///
@@ -662,6 +668,7 @@ impl Clone for ChunkStore {
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
             chunks_lineage: self.chunks_lineage.clone(),
             dangling_splits: self.dangling_splits.clone(),
+            split_on_ingest: self.split_on_ingest.clone(),
             leaky_compactions: self.leaky_compactions.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
@@ -690,6 +697,7 @@ impl std::fmt::Display for ChunkStore {
             chunk_ids_per_min_row_id,
             chunks_lineage,
             dangling_splits: _,
+            split_on_ingest: _,
             leaky_compactions: _,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
@@ -771,6 +779,7 @@ impl ChunkStore {
             chunk_ids_per_min_row_id: Default::default(),
             chunks_lineage: Default::default(),
             dangling_splits: Default::default(),
+            split_on_ingest: Default::default(),
             leaky_compactions: Default::default(),
             chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
@@ -831,7 +840,13 @@ impl ChunkStore {
 
     /// Get a *physical* chunk based on its ID and track the chunk as either
     /// used or missing, to signal that it should be kept or fetched.
+    #[track_caller]
     pub fn use_physical_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+        debug_assert!(
+            !self.split_on_ingest.contains(id),
+            "Asked for a physical chunk, but this chunk was split on ingestion and was never physical: {id}"
+        );
+
         let chunk = self.physical_chunk(id);
 
         if chunk.is_some() {
@@ -945,6 +960,8 @@ impl ChunkStore {
 
     /// Signal that the chunk was used and should not be evicted by gc.
     pub fn report_used_physical_chunk_id(&self, chunk_id: ChunkId) {
+        debug_assert!(self.physical_chunk(&chunk_id).is_some());
+
         self.queried_chunk_id_tracker
             .write()
             .used_physical
@@ -952,7 +969,18 @@ impl ChunkStore {
     }
 
     /// Signal that a chunk is missing and should be fetched when possible.
+    #[track_caller]
     pub fn report_missing_virtual_chunk_id(&self, chunk_id: ChunkId) {
+        debug_assert!(
+            self.chunks_lineage.contains_key(&chunk_id),
+            "A chunk was reported missing, with no known lineage: {chunk_id}"
+        );
+        if !self.split_on_ingest.contains(&chunk_id) {
+            re_log::debug_warn_once!(
+                "Tried to report a chunk missing that was the source of a split: {chunk_id}"
+            );
+        }
+
         self.queried_chunk_id_tracker
             .write()
             .missing_virtual

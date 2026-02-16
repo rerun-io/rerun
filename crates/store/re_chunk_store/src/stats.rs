@@ -372,6 +372,7 @@ impl SizeBytes for ChunkStore {
             chunk_ids_per_min_row_id,
             chunks_lineage,
             dangling_splits,
+            split_on_ingest,
             leaky_compactions,
             temporal_physical_chunks_stats,
             static_chunks_stats,
@@ -438,6 +439,10 @@ impl SizeBytes for ChunkStore {
             + {
                 profile_scope!("dangling_splits");
                 dangling_splits.heap_size_bytes()
+            }
+            + {
+                profile_scope!("split_on_ingest");
+                split_on_ingest.heap_size_bytes()
             }
             + {
                 profile_scope!("leaky_compactions");

@@ -181,7 +181,7 @@ impl ChunkDirectLineage {
 /// underlying data remains in local memory, such as when firing store events (so that the data
 /// doesn't get garbage collected before every downstream consumer has had a chance to process it).
 /// Use the `Into<ChunkDirectLineage>` to generate a [`ChunkDirectLineage`] instead.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum ChunkDirectLineageReport {
     /// This chunk resulted from the splitting of that other chunk. It must have siblings, somewhere.
     ///
@@ -213,7 +213,7 @@ pub enum ChunkDirectLineageReport {
     ///
     /// If a chunk descends from a split, it can never take part in a compaction event again.
     ///
-    /// Value: `(parent, siblings)`.
+    /// Value: parents
     CompactedFrom(BTreeMap<ChunkId, Arc<Chunk>>),
 
     /// This chunk's data was originally fetched from an RRD manifest.
@@ -226,6 +226,26 @@ pub enum ChunkDirectLineageReport {
     ///
     /// Once garbage collected, this data will be unrecoverable.
     Volatile,
+}
+
+impl std::fmt::Debug for ChunkDirectLineageReport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SplitFrom(parent, siblings) => f
+                .debug_struct("SplitFrom")
+                .field("parent", &parent.id())
+                .field("siblings", &siblings.iter().map(|c| c.id()).format(", "))
+                .finish(),
+            Self::CompactedFrom(map) => f
+                .debug_map()
+                .entries(map.iter().map(|(k, v)| (k, v.id())))
+                .finish(),
+            Self::ReferencedFrom(_manifest) => {
+                f.debug_tuple("ReferencedFrom").finish_non_exhaustive()
+            }
+            Self::Volatile => write!(f, "Volatile"),
+        }
+    }
 }
 
 impl ChunkStore {

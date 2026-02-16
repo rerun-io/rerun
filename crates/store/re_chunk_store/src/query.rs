@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
+use re_log::debug_assert;
 use saturating_cast::SaturatingCast as _;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
@@ -682,6 +683,18 @@ impl QueryResults {
         if report_mode == ChunkTrackingMode::Report {
             let mut tracker = store.queried_chunk_id_tracker.write();
 
+            for chunk_id in &this.missing_virtual {
+                debug_assert!(
+                    store.chunks_lineage.contains_key(chunk_id),
+                    "A chunk was reported missing, with no known lineage: {chunk_id}"
+                );
+                if !store.split_on_ingest.contains(chunk_id) {
+                    re_log::debug_warn_once!(
+                        "Tried to report a chunk missing that was the source of a split: {chunk_id}"
+                    );
+                }
+            }
+
             tracker
                 .missing_virtual
                 .extend(this.missing_virtual.iter().copied());
@@ -691,7 +704,7 @@ impl QueryResults {
                 .extend(this.chunks.iter().map(|c| c.id()));
         }
 
-        re_log::debug_assert!(
+        debug_assert!(
             this.chunks
                 .iter()
                 .map(|chunk| chunk.id())

@@ -215,7 +215,6 @@ impl FromIterator<SerializedComponentColumn> for ChunkComponents {
 ///
 /// This is the in-memory representation of a chunk, optimized for efficient manipulation of the
 /// data within. For transport, see [`re_sorbet::ChunkBatch`] instead.
-#[derive(Debug)]
 pub struct Chunk {
     pub(crate) id: ChunkId,
 
@@ -246,6 +245,37 @@ pub struct Chunk {
     ///
     /// Sparse so that we can e.g. log a `Position` at one timestamp but not a `Color`.
     pub(crate) components: ChunkComponents,
+}
+
+impl std::fmt::Debug for Chunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            id,
+            entity_path,
+            heap_size_bytes,
+            is_sorted,
+            row_ids: _, // printed nicely formatted
+            timelines,
+            components,
+        } = self;
+
+        if f.alternate() {
+            f.debug_struct("Chunk")
+                .field("id", id)
+                .field("entity_path", entity_path)
+                .field("heap_size_bytes", &heap_size_bytes.load(Ordering::Relaxed))
+                .field("is_sorted", is_sorted)
+                .field("row_ids", &self.row_ids_slice())
+                .field("timelines", timelines)
+                .field("components", components)
+                .finish()
+        } else {
+            f.debug_struct("Chunk")
+                .field("id", id)
+                .field("entity_path", entity_path)
+                .finish_non_exhaustive()
+        }
+    }
 }
 
 impl PartialEq for Chunk {

@@ -230,7 +230,7 @@ impl ChunkStoreDiff {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ChunkStoreDiffAddition {
     /// The chunk that was added, *unaltered*.
     ///
@@ -281,6 +281,21 @@ pub struct ChunkStoreDiffAddition {
     /// This is not necessarily a compaction or split-off: the original root-level chunk might have
     /// been inserted as-is.
     pub direct_lineage: ChunkDirectLineageReport,
+}
+
+impl std::fmt::Debug for ChunkStoreDiffAddition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            chunk_before_processing,
+            chunk_after_processing,
+            direct_lineage,
+        } = self;
+        f.debug_struct("ChunkStoreDiffAddition")
+            .field("chunk_before_processing", &chunk_before_processing.id())
+            .field("chunk_after_processing", &chunk_after_processing.id())
+            .field("direct_lineage", direct_lineage)
+            .finish()
+    }
 }
 
 impl PartialEq for ChunkStoreDiffAddition {
@@ -478,7 +493,7 @@ impl ChunkStoreDiffVirtualAddition {
 /// A clear, on the other hand, is the act of logging an empty [`re_types_core::ComponentBatch`],
 /// either directly using the logging APIs, or indirectly through the use of a
 /// [`re_types_core::archetypes::Clear`] archetype.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ChunkStoreDiffDeletion {
     /// The chunk that was removed.
     //
@@ -486,6 +501,15 @@ pub struct ChunkStoreDiffDeletion {
     // downstream subscribers get a chance to inspect the data in the chunk before it gets permanently
     // deallocated.
     pub chunk: Arc<Chunk>,
+}
+
+impl std::fmt::Debug for ChunkStoreDiffDeletion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { chunk } = self;
+        f.debug_tuple("ChunkStoreDiffDeletion")
+            .field(&chunk.id())
+            .finish()
+    }
 }
 
 impl PartialEq for ChunkStoreDiffDeletion {
