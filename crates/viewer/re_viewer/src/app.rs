@@ -3220,7 +3220,7 @@ impl App {
                 let store = storage_engine.store();
 
                 #[expect(clippy::iter_over_hash_type)] // sanity checks don't care about order
-                for missing_chunk_id in store.take_tracked_chunk_ids().missing_virtual {
+                for missing_chunk_id in store.tracked_chunk_ids().missing_virtual {
                     let roots = store.find_root_chunks(&missing_chunk_id);
                     debug_assert!(!roots.is_empty(), "Missing chunk has no roots");
 
