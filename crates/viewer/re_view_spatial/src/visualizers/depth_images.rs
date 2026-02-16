@@ -4,7 +4,7 @@ use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_sdk_types::archetypes::DepthImage;
-use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
+use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat, MagnificationFilter};
 use re_sdk_types::{Archetype as _, ArchetypeName, ComponentIdentifier};
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
@@ -47,6 +47,7 @@ pub struct DepthImageComponentData {
     pub fill_ratio: Option<FillRatio>,
     pub colormap: Option<Colormap>,
     pub value_range: Option<[f64; 2]>,
+    pub magnification_filter: MagnificationFilter,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -72,6 +73,7 @@ pub fn process_depth_image_data(
         fill_ratio,
         colormap,
         value_range,
+        magnification_filter,
     } = component_data;
 
     let depth_meter =
@@ -104,6 +106,7 @@ pub fn process_depth_image_data(
         &image_info,
         Some(&colormap_with_range),
         re_renderer::Rgba::WHITE,
+        magnification_filter,
         archetype_name,
     ) {
         Ok(textured_rect) => textured_rect,
@@ -271,6 +274,8 @@ impl VisualizerSystem for DepthImageVisualizer {
                     results.iter_optional(DepthImage::descriptor_meter().component);
                 let all_fill_ratios =
                     results.iter_optional(DepthImage::descriptor_point_fill_ratio().component);
+                let all_magnification_filters =
+                    results.iter_optional(DepthImage::descriptor_magnification_filter().component);
 
                 for (
                     (_time, row_id),
@@ -280,13 +285,15 @@ impl VisualizerSystem for DepthImageVisualizer {
                     value_range,
                     depth_meter,
                     fill_ratio,
-                ) in re_query::range_zip_1x5(
+                    magnification_filter,
+                ) in re_query::range_zip_1x6(
                     all_buffers.slice::<&[u8]>(),
                     all_formats.component_slow::<ImageFormat>(),
                     all_colormaps.slice::<u8>(),
                     all_value_ranges.slice::<[f64; 2]>(),
                     all_depth_meters.slice::<f32>(),
                     all_fill_ratios.slice::<f32>(),
+                    all_magnification_filters.slice::<u8>(),
                 ) {
                     let Some(buffer) = buffers.first() else {
                         results.report_error("Depth image buffer is empty.");
@@ -309,6 +316,9 @@ impl VisualizerSystem for DepthImageVisualizer {
                         fill_ratio: first_copied(fill_ratio).map(Into::into),
                         colormap: first_copied(colormap).and_then(Colormap::from_u8),
                         value_range: first_copied(value_range),
+                        magnification_filter: first_copied(magnification_filter)
+                            .and_then(MagnificationFilter::from_u8)
+                            .unwrap_or_default(),
                     };
 
                     let mut report_error = |error: String| {

@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::EncodedImage;
-use re_sdk_types::components::{MediaType, Opacity};
+use re_sdk_types::components::{MagnificationFilter, MediaType, Opacity};
 use re_view::VisualizerInstructionQueryResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,
@@ -92,12 +92,17 @@ impl EncodedImageVisualizer {
         let all_media_types =
             results.iter_optional(EncodedImage::descriptor_media_type().component);
         let all_opacities = results.iter_optional(EncodedImage::descriptor_opacity().component);
+        let all_magnification_filters =
+            results.iter_optional(EncodedImage::descriptor_magnification_filter().component);
 
-        for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
-            all_blobs.slice::<&[u8]>(),
-            all_media_types.slice::<String>(),
-            all_opacities.slice::<f32>(),
-        ) {
+        for ((_time, tensor_data_row_id), blobs, media_types, opacities, magnification_filters) in
+            re_query::range_zip_1x3(
+                all_blobs.slice::<&[u8]>(),
+                all_media_types.slice::<String>(),
+                all_opacities.slice::<f32>(),
+                all_magnification_filters.slice::<u8>(),
+            )
+        {
             let Some(blob) = blobs.first() else {
                 continue;
             };
@@ -134,6 +139,11 @@ impl EncodedImageVisualizer {
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
             let colormap = None;
 
+            let magnification_filter = magnification_filters
+                .and_then(|f| f.first().copied())
+                .and_then(MagnificationFilter::from_u8)
+                .unwrap_or_default();
+
             match textured_rect_from_image(
                 ctx.viewer_ctx(),
                 entity_path,
@@ -141,6 +151,7 @@ impl EncodedImageVisualizer {
                 &image,
                 colormap,
                 multiplicative_tint,
+                magnification_filter,
                 EncodedImage::name(),
             ) {
                 Ok(textured_rect) => {

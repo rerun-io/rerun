@@ -29,3 +29,9 @@ uint8
  * 🦀 [Rust API docs for `MagnificationFilter`](https://docs.rs/rerun/latest/rerun/components/enum.MagnificationFilter.html)
 
 
+## Used by
+
+* [`DepthImage`](../archetypes/depth_image.md)
+* [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
+* [`EncodedImage`](../archetypes/encoded_image.md)
+* [`Image`](../archetypes/image.md)

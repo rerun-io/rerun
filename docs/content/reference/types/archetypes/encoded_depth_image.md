@@ -21,6 +21,7 @@ Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`]
 * `depth_range`: [`ValueRange`](../components/value_range.md)
 * `point_fill_ratio`: [`FillRatio`](../components/fill_ratio.md)
 * `draw_order`: [`DrawOrder`](../components/draw_order.md)
+* `magnification_filter`: [`MagnificationFilter`](../components/magnification_filter.md)
 
 
 ## Can be shown in

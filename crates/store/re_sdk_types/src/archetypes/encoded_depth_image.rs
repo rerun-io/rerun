@@ -95,6 +95,11 @@ pub struct EncodedDepthImage {
 
     /// Optional 2D draw order.
     pub draw_order: Option<SerializedComponentBatch>,
+
+    /// Optional magnification filter used when zooming in on the image.
+    ///
+    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
 impl EncodedDepthImage {
@@ -181,6 +186,18 @@ impl EncodedDepthImage {
             component_type: Some("rerun.components.DrawOrder".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
+    ///
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
+    #[inline]
+    pub fn descriptor_magnification_filter() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+            component: "EncodedDepthImage:magnification_filter".into(),
+            component_type: Some("rerun.components.MagnificationFilter".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -194,17 +211,18 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]
         ]
     });
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedDepthImage::descriptor_colormap(),
             EncodedDepthImage::descriptor_depth_range(),
             EncodedDepthImage::descriptor_point_fill_ratio(),
             EncodedDepthImage::descriptor_draw_order(),
+            EncodedDepthImage::descriptor_magnification_filter(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedDepthImage::descriptor_blob(),
@@ -214,12 +232,13 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             EncodedDepthImage::descriptor_depth_range(),
             EncodedDepthImage::descriptor_point_fill_ratio(),
             EncodedDepthImage::descriptor_draw_order(),
+            EncodedDepthImage::descriptor_magnification_filter(),
         ]
     });
 
 impl EncodedDepthImage {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for EncodedDepthImage {
@@ -289,6 +308,14 @@ impl ::re_types_core::Archetype for EncodedDepthImage {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
+        let magnification_filter = arrays_by_descr
+            .get(&Self::descriptor_magnification_filter())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_magnification_filter(),
+                )
+            });
         Ok(Self {
             blob,
             media_type,
@@ -297,6 +324,7 @@ impl ::re_types_core::Archetype for EncodedDepthImage {
             depth_range,
             point_fill_ratio,
             draw_order,
+            magnification_filter,
         })
     }
 }
@@ -313,6 +341,7 @@ impl ::re_types_core::AsComponents for EncodedDepthImage {
             self.depth_range.clone(),
             self.point_fill_ratio.clone(),
             self.draw_order.clone(),
+            self.magnification_filter.clone(),
         ]
         .into_iter()
         .flatten()
@@ -341,6 +370,7 @@ impl EncodedDepthImage {
             depth_range: None,
             point_fill_ratio: None,
             draw_order: None,
+            magnification_filter: None,
         }
     }
 
@@ -382,6 +412,10 @@ impl EncodedDepthImage {
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
                 Self::descriptor_draw_order(),
+            )),
+            magnification_filter: Some(SerializedComponentBatch::new(
+                crate::components::MagnificationFilter::arrow_empty(),
+                Self::descriptor_magnification_filter(),
             )),
         }
     }
@@ -426,6 +460,9 @@ impl EncodedDepthImage {
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.magnification_filter
+                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -445,6 +482,7 @@ impl EncodedDepthImage {
         let len_depth_range = self.depth_range.as_ref().map(|b| b.array.len());
         let len_point_fill_ratio = self.point_fill_ratio.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_blob)
             .or(len_media_type)
@@ -453,6 +491,7 @@ impl EncodedDepthImage {
             .or(len_depth_range)
             .or(len_point_fill_ratio)
             .or(len_draw_order)
+            .or(len_magnification_filter)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -613,6 +652,39 @@ impl EncodedDepthImage {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
+
+    /// Optional magnification filter used when zooming in on the image.
+    ///
+    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    #[inline]
+    pub fn with_magnification_filter(
+        mut self,
+        magnification_filter: impl Into<crate::components::MagnificationFilter>,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            [magnification_filter],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_magnification_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_magnification_filter(
+        mut self,
+        magnification_filter: impl IntoIterator<
+            Item = impl Into<crate::components::MagnificationFilter>,
+        >,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            magnification_filter,
+        );
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for EncodedDepthImage {
@@ -625,5 +697,6 @@ impl ::re_byte_size::SizeBytes for EncodedDepthImage {
             + self.depth_range.heap_size_bytes()
             + self.point_fill_ratio.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
+            + self.magnification_filter.heap_size_bytes()
     }
 }

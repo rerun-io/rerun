@@ -12,6 +12,7 @@
 #include "../components/fill_ratio.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
+#include "../components/magnification_filter.hpp"
 #include "../components/value_range.hpp"
 #include "../image_utils.hpp"
 #include "../result.hpp"
@@ -124,6 +125,11 @@ namespace rerun::archetypes {
         /// Defaults to `-20.0`.
         std::optional<ComponentBatch> draw_order;
 
+        /// Optional magnification filter used when zooming in on the image.
+        ///
+        /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+        std::optional<ComponentBatch> magnification_filter;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.DepthImage";
@@ -162,6 +168,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
             ArchetypeName, "DepthImage:draw_order",
             Loggable<rerun::components::DrawOrder>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `magnification_filter` field.
+        static constexpr auto Descriptor_magnification_filter = ComponentDescriptor(
+            ArchetypeName, "DepthImage:magnification_filter",
+            Loggable<rerun::components::MagnificationFilter>::ComponentType
         );
 
       public: // START of extensions from depth_image_ext.cpp:
@@ -386,6 +397,35 @@ namespace rerun::archetypes {
         ) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional magnification filter used when zooming in on the image.
+        ///
+        /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+        DepthImage with_magnification_filter(
+            const rerun::components::MagnificationFilter& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `magnification_filter` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_magnification_filter` should
+        /// be used when logging a single row's worth of data.
+        DepthImage with_many_magnification_filter(
+            const Collection<rerun::components::MagnificationFilter>& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
             return std::move(*this);
         }
 

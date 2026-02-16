@@ -83,6 +83,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             depth_range=None,
             point_fill_ratio=None,
             draw_order=None,
+            magnification_filter=None,
         )
 
     @classmethod
@@ -104,6 +105,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
         depth_range: datatypes.Range1DLike | None = None,
         point_fill_ratio: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> DepthImage:
         """
         Update only some specific fields of a `DepthImage`.
@@ -155,6 +157,10 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -168,6 +174,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
                 "depth_range": depth_range,
                 "point_fill_ratio": point_fill_ratio,
                 "draw_order": draw_order,
+                "magnification_filter": magnification_filter,
             }
 
             if clear_unset:
@@ -195,6 +202,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
         depth_range: datatypes.Range1DArrayLike | None = None,
         point_fill_ratio: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
+        magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -249,6 +257,10 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -262,6 +274,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
                 depth_range=depth_range,
                 point_fill_ratio=point_fill_ratio,
                 draw_order=draw_order,
+                magnification_filter=magnification_filter,
             )
 
         batches = inst.as_component_batches()
@@ -276,6 +289,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             "DepthImage:depth_range": depth_range,
             "DepthImage:point_fill_ratio": point_fill_ratio,
             "DepthImage:draw_order": draw_order,
+            "DepthImage:magnification_filter": magnification_filter,
         }
         columns = []
 
@@ -395,6 +409,17 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
     #
     # Objects with higher values are drawn on top of those with lower values.
     # Defaults to `-20.0`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    magnification_filter: components.MagnificationFilterBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
+    )
+    # Optional magnification filter used when zooming in on the image.
+    #
+    # Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

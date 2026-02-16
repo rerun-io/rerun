@@ -88,6 +88,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         depth_range: datatypes.Range1DLike | None = None,
         point_fill_ratio: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> None:
         """
         Create a new instance of the EncodedDepthImage archetype.
@@ -117,6 +118,10 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
             Optional point fill ratio for point-cloud projection.
         draw_order:
             Optional 2D draw order.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -130,6 +135,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
                 depth_range=depth_range,
                 point_fill_ratio=point_fill_ratio,
                 draw_order=draw_order,
+                magnification_filter=magnification_filter,
             )
             return
         self.__attrs_clear__()
@@ -144,6 +150,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
             depth_range=None,
             point_fill_ratio=None,
             draw_order=None,
+            magnification_filter=None,
         )
 
     @classmethod
@@ -165,6 +172,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         depth_range: datatypes.Range1DLike | None = None,
         point_fill_ratio: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> EncodedDepthImage:
         """
         Update only some specific fields of a `EncodedDepthImage`.
@@ -196,6 +204,10 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
             Optional point fill ratio for point-cloud projection.
         draw_order:
             Optional 2D draw order.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -209,6 +221,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
                 "depth_range": depth_range,
                 "point_fill_ratio": point_fill_ratio,
                 "draw_order": draw_order,
+                "magnification_filter": magnification_filter,
             }
 
             if clear_unset:
@@ -236,6 +249,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         depth_range: datatypes.Range1DArrayLike | None = None,
         point_fill_ratio: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
+        magnification_filter: components.MagnificationFilterArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -270,6 +284,10 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
             Optional point fill ratio for point-cloud projection.
         draw_order:
             Optional 2D draw order.
+        magnification_filter:
+            Optional magnification filter used when zooming in on the image.
+
+            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
 
         """
 
@@ -283,6 +301,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
                 depth_range=depth_range,
                 point_fill_ratio=point_fill_ratio,
                 draw_order=draw_order,
+                magnification_filter=magnification_filter,
             )
 
         batches = inst.as_component_batches()
@@ -297,6 +316,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
             "EncodedDepthImage:depth_range": depth_range,
             "EncodedDepthImage:point_fill_ratio": point_fill_ratio,
             "EncodedDepthImage:draw_order": draw_order,
+            "EncodedDepthImage:magnification_filter": magnification_filter,
         }
         columns = []
 
@@ -396,6 +416,17 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
     )
     # Optional 2D draw order.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    magnification_filter: components.MagnificationFilterBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
+    )
+    # Optional magnification filter used when zooming in on the image.
+    #
+    # Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

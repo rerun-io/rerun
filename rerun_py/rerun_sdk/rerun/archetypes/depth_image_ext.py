@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import numpy.typing as npt
 
+from .. import components
 from ..components import ColormapLike, ImageFormat
 from ..datatypes import ChannelDatatype, Float32Like
 
@@ -51,6 +52,7 @@ class DepthImageExt:
         depth_range: Range1DLike | None = None,
         point_fill_ratio: Float32Like | None = None,
         draw_order: Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> None:
         """
         Create a new instance of the DepthImage archetype.
@@ -130,4 +132,5 @@ class DepthImageExt:
             depth_range=depth_range,
             point_fill_ratio=point_fill_ratio,
             draw_order=draw_order,
+            magnification_filter=magnification_filter,
         )
