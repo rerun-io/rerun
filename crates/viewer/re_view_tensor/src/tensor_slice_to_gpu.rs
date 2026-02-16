@@ -166,5 +166,6 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
         data: bytemuck::pod_collect_to_vec(&pixels).into(),
         format: format.into(),
         width_height: [width as u32, height as u32],
+        alpha_channel_usage: re_renderer::AlphaChannelUsage::Opaque,
     })
 }

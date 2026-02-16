@@ -83,7 +83,6 @@ fn visualize_video_frame_texture(
                 outline_mask: highlight.overall,
                 depth_offset,
                 multiplicative_tint,
-                force_draw_with_transparency: false,
             },
         };
         visualizer_data.add_pickable_rect(
@@ -176,6 +175,7 @@ fn show_video_playback_issue(
                         video_error_image.width() as _,
                         video_error_image.height() as _,
                     ],
+                    alpha_channel_usage: re_renderer::AlphaChannelUsage::AlphaChannelInUse,
                 })
             },
         );
@@ -241,7 +241,6 @@ fn show_video_playback_issue(
                 outline_mask: highlight.overall,
                 #[expect(clippy::disallowed_methods)] // Ok to just dim it
                 multiplicative_tint: egui::Rgba::from_gray(0.5),
-            force_draw_with_transparency: true,
                 ..Default::default()
             },
     };

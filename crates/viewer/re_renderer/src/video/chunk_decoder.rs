@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use re_video::{Chunk, Frame, FrameContent, Receiver, Sender, Time, VideoDataDescription};
 
 use crate::RenderContext;
-use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
+use crate::resource_managers::{AlphaChannelUsage, GpuTexture2D, SourceImageDataFormat};
 use crate::video::player::{TimedDecodingError, VideoTexture};
 use crate::video::{InsufficientSampleDataError, VideoPlayerError};
 use crate::wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc};
@@ -278,27 +278,31 @@ fn alloc_video_frame_texture(
     width: u32,
     height: u32,
 ) -> GpuTexture2D {
-    let Some(texture) = GpuTexture2D::new(pool.alloc(
-        device,
-        &TextureDesc {
-            label: "video".into(),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
+    let Some(texture) = GpuTexture2D::new(
+        pool.alloc(
+            device,
+            &TextureDesc {
+                label: "video".into(),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
+                // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
+                usage: wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
             },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
-            // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
-            usage: wgpu::TextureUsages::COPY_DST
-                | wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::RENDER_ATTACHMENT,
-        },
-    )) else {
+        ),
+        // Technically, there are video codecs with alpha channel, but it's super rare.
+        AlphaChannelUsage::Opaque,
+    ) else {
         // We set the dimension to `2D` above, so this should never happen.
         unreachable!();
     };
@@ -429,6 +433,8 @@ fn copy_native_video_frame_to_texture(
             data: std::borrow::Cow::Borrowed(frame.data.as_slice()),
             format,
             width_height: [frame.width, frame.height],
+            // Technically, there are video codecs with alpha channel, but it's super rare.
+            alpha_channel_usage: AlphaChannelUsage::Opaque,
         },
         target_texture,
     )?;

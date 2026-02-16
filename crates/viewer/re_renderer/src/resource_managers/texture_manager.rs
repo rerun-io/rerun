@@ -7,43 +7,90 @@ use crate::RenderContext;
 use crate::resource_managers::ImageDataDesc;
 use crate::wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc};
 
+/// What is known about the alpha channel usage of a [`GpuTexture2D`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlphaChannelUsage {
+    /// It is not known whether the alpha channel is in use.
+    DontKnow,
+
+    /// Either the texture format has no alpha channel,
+    /// or the alpha channel is known to be set to 1.0 everywhere (fully opaque).
+    Opaque,
+
+    /// The alpha channel is known to contain values less than 1.0.
+    AlphaChannelInUse,
+}
+
 /// Handle to a 2D resource.
 ///
 /// Currently, this is solely a more strongly typed regular gpu texture handle.
 #[derive(Clone)]
-pub struct GpuTexture2D(GpuTexture);
+pub struct GpuTexture2D {
+    texture: GpuTexture,
+    alpha_channel_usage: AlphaChannelUsage,
+}
 
 impl std::fmt::Debug for GpuTexture2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("GpuTexture2D").field(&self.0.handle).finish()
+        let Self {
+            texture,
+            alpha_channel_usage,
+        } = self;
+        f.debug_struct("GpuTexture2D")
+            .field("handle", &texture.handle)
+            .field("alpha_channel_usage", alpha_channel_usage)
+            .finish()
     }
 }
 
 impl GpuTexture2D {
     /// Returns `None` if the `texture` is not 2D.
-    pub fn new(texture: GpuTexture) -> Option<Self> {
+    pub fn new(texture: GpuTexture, alpha_channel_usage: AlphaChannelUsage) -> Option<Self> {
         if texture.texture.dimension() != wgpu::TextureDimension::D2 {
             return None;
         }
 
-        Some(Self(texture))
+        let has_alpha_channel = texture_format_has_alpha_channel(texture.texture.format());
+
+        let alpha_channel_usage = if has_alpha_channel {
+            alpha_channel_usage
+        } else {
+            re_log::debug_assert!(
+                alpha_channel_usage != AlphaChannelUsage::AlphaChannelInUse,
+                "alpha_channel_usage is AlphaChannelInUse but texture format {:?} has no alpha channel",
+                texture.texture.format()
+            );
+
+            AlphaChannelUsage::Opaque
+        };
+
+        Some(Self {
+            texture,
+            alpha_channel_usage,
+        })
     }
 
     #[inline]
     pub fn handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
-        self.0.handle
+        self.texture.handle
+    }
+
+    /// What is known about the alpha channel state of this texture.
+    #[inline]
+    pub fn alpha_channel_usage(&self) -> AlphaChannelUsage {
+        self.alpha_channel_usage
     }
 
     /// Width of the texture.
     #[inline]
     pub fn width(&self) -> u32 {
-        self.0.texture.width()
+        self.texture.texture.width()
     }
 
     /// Height of the texture.
     #[inline]
     pub fn height(&self) -> u32 {
-        self.0.texture.height()
+        self.texture.texture.height()
     }
 
     /// Width and height of the texture.
@@ -54,14 +101,14 @@ impl GpuTexture2D {
 
     #[inline]
     pub fn format(&self) -> wgpu::TextureFormat {
-        self.0.texture.format()
+        self.texture.texture.format()
     }
 }
 
 impl AsRef<GpuTexture> for GpuTexture2D {
     #[inline(always)]
     fn as_ref(&self) -> &GpuTexture {
-        &self.0
+        &self.texture
     }
 }
 
@@ -70,14 +117,14 @@ impl std::ops::Deref for GpuTexture2D {
 
     #[inline(always)]
     fn deref(&self) -> &GpuTexture {
-        &self.0
+        &self.texture
     }
 }
 
 impl std::borrow::Borrow<GpuTexture> for GpuTexture2D {
     #[inline(always)]
     fn borrow(&self) -> &GpuTexture {
-        &self.0
+        &self.texture
     }
 }
 
@@ -151,25 +198,28 @@ impl TextureManager2D {
 
         // Create the single pixel white texture ad hoc - at this point during initialization we don't have
         // the render context yet and thus can't use the higher level `transfer_image_data_to_texture` function.
-        let white_texture_unorm = GpuTexture2D(texture_pool.alloc(
-            device,
-            &TextureDesc {
-                label: "white pixel - unorm".into(),
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
-                    depth_or_array_layers: 1,
+        let white_texture_unorm = GpuTexture2D {
+            alpha_channel_usage: AlphaChannelUsage::Opaque,
+            texture: texture_pool.alloc(
+                device,
+                &TextureDesc {
+                    label: "white pixel - unorm".into(),
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    size: wgpu::Extent3d {
+                        width: 1,
+                        height: 1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            },
-        ));
+            ),
+        };
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
-                texture: &white_texture_unorm.texture,
+                texture: &white_texture_unorm.texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -227,10 +277,11 @@ impl TextureManager2D {
         // Currently we don't store any data in the texture manager.
         // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
+        let alpha_channel_usage = creation_desc.alpha_channel_usage;
         let texture =
             creation_desc.create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
         transfer_image_data_to_texture(render_ctx, creation_desc, &texture)?;
-        Ok(GpuTexture2D(texture))
+        Ok(GpuTexture2D::new(texture, alpha_channel_usage).expect("Texture is known to be 2D"))
     }
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
@@ -276,10 +327,16 @@ impl TextureManager2D {
                 let tex_creation_desc = try_create_texture_desc()
                     .map_err(|err| TextureManager2DError::DataCreation(err))?;
 
+                let alpha_channel_usage = tex_creation_desc.alpha_channel_usage;
                 let texture = tex_creation_desc
                     .create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
                 transfer_image_data_to_texture(render_ctx, tex_creation_desc, &texture)?;
-                entry.insert(GpuTexture2D(texture)).clone()
+                entry
+                    .insert(GpuTexture2D {
+                        texture,
+                        alpha_channel_usage,
+                    })
+                    .clone()
             }
         };
 
@@ -294,26 +351,123 @@ impl TextureManager2D {
 
     /// Returns a single pixel white pixel with an rgba8unorm format.
     pub fn white_texture_unorm(&self) -> &GpuTexture {
-        &self.white_texture_unorm.0
+        &self.white_texture_unorm.texture
     }
 
     /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Unorm`].
     pub fn zeroed_texture_float(&self) -> &GpuTexture {
-        &self.zeroed_texture_float.0
+        &self.zeroed_texture_float.texture
     }
 
     /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Sint`].
     pub fn zeroed_texture_sint(&self) -> &GpuTexture {
-        &self.zeroed_texture_sint.0
+        &self.zeroed_texture_sint.texture
     }
 
     /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Uint`].
     pub fn zeroed_texture_uint(&self) -> &GpuTexture {
-        &self.zeroed_texture_uint.0
+        &self.zeroed_texture_uint.texture
     }
 
     pub(crate) fn begin_frame(&self, _frame_index: u64) {
         self.inner.lock().begin_frame(_frame_index);
+    }
+}
+
+/// Returns whether the given [`wgpu::TextureFormat`] has an alpha channel.
+fn texture_format_has_alpha_channel(format: wgpu::TextureFormat) -> bool {
+    // As of writing, the set of formats with four channels is identical to the set of formats with alpha.
+    // But for all we know this may change in the future, so let's be on the safe side.
+    #[expect(clippy::match_same_arms)]
+    match format {
+        // Uncompressed color formats with alpha
+        wgpu::TextureFormat::Rgba8Unorm
+        | wgpu::TextureFormat::Rgba8UnormSrgb
+        | wgpu::TextureFormat::Rgba8Snorm
+        | wgpu::TextureFormat::Rgba8Uint
+        | wgpu::TextureFormat::Rgba8Sint
+        | wgpu::TextureFormat::Bgra8Unorm
+        | wgpu::TextureFormat::Bgra8UnormSrgb
+        | wgpu::TextureFormat::Rgb10a2Uint
+        | wgpu::TextureFormat::Rgb10a2Unorm
+        | wgpu::TextureFormat::Rgba16Uint
+        | wgpu::TextureFormat::Rgba16Sint
+        | wgpu::TextureFormat::Rgba16Unorm
+        | wgpu::TextureFormat::Rgba16Snorm
+        | wgpu::TextureFormat::Rgba16Float
+        | wgpu::TextureFormat::Rgba32Uint
+        | wgpu::TextureFormat::Rgba32Sint
+        | wgpu::TextureFormat::Rgba32Float => true,
+
+        // Compressed formats with alpha
+        wgpu::TextureFormat::Bc1RgbaUnorm
+        | wgpu::TextureFormat::Bc1RgbaUnormSrgb
+        | wgpu::TextureFormat::Bc2RgbaUnorm
+        | wgpu::TextureFormat::Bc2RgbaUnormSrgb
+        | wgpu::TextureFormat::Bc3RgbaUnorm
+        | wgpu::TextureFormat::Bc3RgbaUnormSrgb
+        | wgpu::TextureFormat::Bc7RgbaUnorm
+        | wgpu::TextureFormat::Bc7RgbaUnormSrgb
+        | wgpu::TextureFormat::Etc2Rgb8A1Unorm
+        | wgpu::TextureFormat::Etc2Rgb8A1UnormSrgb
+        | wgpu::TextureFormat::Etc2Rgba8Unorm
+        | wgpu::TextureFormat::Etc2Rgba8UnormSrgb
+        | wgpu::TextureFormat::Astc { .. } => true,
+
+        // 1- and 2-channel formats (no alpha)
+        wgpu::TextureFormat::R8Unorm
+        | wgpu::TextureFormat::R8Snorm
+        | wgpu::TextureFormat::R8Uint
+        | wgpu::TextureFormat::R8Sint
+        | wgpu::TextureFormat::R16Uint
+        | wgpu::TextureFormat::R16Sint
+        | wgpu::TextureFormat::R16Unorm
+        | wgpu::TextureFormat::R16Snorm
+        | wgpu::TextureFormat::R16Float
+        | wgpu::TextureFormat::Rg8Unorm
+        | wgpu::TextureFormat::Rg8Snorm
+        | wgpu::TextureFormat::Rg8Uint
+        | wgpu::TextureFormat::Rg8Sint
+        | wgpu::TextureFormat::R32Uint
+        | wgpu::TextureFormat::R32Sint
+        | wgpu::TextureFormat::R32Float
+        | wgpu::TextureFormat::Rg16Uint
+        | wgpu::TextureFormat::Rg16Sint
+        | wgpu::TextureFormat::Rg16Unorm
+        | wgpu::TextureFormat::Rg16Snorm
+        | wgpu::TextureFormat::Rg16Float
+        | wgpu::TextureFormat::R64Uint
+        | wgpu::TextureFormat::Rg32Uint
+        | wgpu::TextureFormat::Rg32Sint
+        | wgpu::TextureFormat::Rg32Float => false,
+
+        // Packed formats without alpha
+        wgpu::TextureFormat::Rgb9e5Ufloat | wgpu::TextureFormat::Rg11b10Ufloat => false,
+
+        // Depth/stencil formats
+        wgpu::TextureFormat::Stencil8
+        | wgpu::TextureFormat::Depth16Unorm
+        | wgpu::TextureFormat::Depth24Plus
+        | wgpu::TextureFormat::Depth24PlusStencil8
+        | wgpu::TextureFormat::Depth32Float
+        | wgpu::TextureFormat::Depth32FloatStencil8 => false,
+
+        // Video formats
+        wgpu::TextureFormat::NV12 | wgpu::TextureFormat::P010 => false,
+
+        // Compressed formats without alpha
+        wgpu::TextureFormat::Bc4RUnorm
+        | wgpu::TextureFormat::Bc4RSnorm
+        | wgpu::TextureFormat::Bc5RgUnorm
+        | wgpu::TextureFormat::Bc5RgSnorm
+        | wgpu::TextureFormat::Bc6hRgbUfloat
+        | wgpu::TextureFormat::Bc6hRgbFloat
+        | wgpu::TextureFormat::Etc2Rgb8Unorm
+        | wgpu::TextureFormat::Etc2Rgb8UnormSrgb
+        | wgpu::TextureFormat::EacR11Unorm
+        | wgpu::TextureFormat::EacR11Snorm
+        | wgpu::TextureFormat::EacRg11Unorm
+        | wgpu::TextureFormat::EacRg11Snorm => false,
     }
 }
 
@@ -323,20 +477,27 @@ fn create_zero_texture(
     format: wgpu::TextureFormat,
 ) -> GpuTexture2D {
     // Wgpu zeros out new textures automatically
-    GpuTexture2D(texture_pool.alloc(
-        device,
-        &TextureDesc {
-            label: format!("zeroed pixel {format:?}").into(),
-            format,
-            size: wgpu::Extent3d {
-                width: 1,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+    GpuTexture2D {
+        alpha_channel_usage: if texture_format_has_alpha_channel(format) {
+            AlphaChannelUsage::AlphaChannelInUse
+        } else {
+            AlphaChannelUsage::Opaque
         },
-    ))
+        texture: texture_pool.alloc(
+            device,
+            &TextureDesc {
+                label: format!("zeroed pixel {format:?}").into(),
+                format,
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            },
+        ),
+    }
 }

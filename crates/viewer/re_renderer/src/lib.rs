@@ -90,6 +90,7 @@ pub use draw_phases::{
     OutlineMaskProcessor, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,
     PickingLayerProcessor, ScreenshotProcessor,
 };
+pub use resource_managers::AlphaChannelUsage;
 // Re-export used color types directly.
 pub use ecolor::{Color32, Hsva, Rgba};
 pub use global_bindings::GlobalBindings;

@@ -4,6 +4,7 @@ use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
 use crate::renderer::DrawError;
+use crate::resource_managers::AlphaChannelUsage;
 use crate::wgpu_resources::{GpuTexture, TextureDesc};
 use crate::{DebugLabel, RenderContext, Texture2DBufferInfo};
 
@@ -120,6 +121,9 @@ pub struct ImageDataDesc<'a> {
     /// With the output always being a ("mainstream" gpu readable) texture format, the output texture's
     /// width/height is the semantic width/height of the image data!
     pub width_height: [u32; 2],
+
+    /// Information about how the alpha channel is used, if it exists.
+    pub alpha_channel_usage: AlphaChannelUsage,
     //generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
 }
 
@@ -134,6 +138,7 @@ impl ImageDataDesc<'_> {
             data,
             format,
             width_height,
+            alpha_channel_usage: _,
         } = self;
 
         if !target_texture_desc
@@ -264,6 +269,7 @@ pub fn transfer_image_data_to_texture(
         data,
         format: source_format,
         width_height: output_width_height,
+        alpha_channel_usage: _, // TODO(#12223): Determine `AlphaChannelUsage` if it is set to `DontKnow`.
     } = image_data;
 
     // Determine size of the texture the image data is uploaded into.

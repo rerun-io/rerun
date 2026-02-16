@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use smallvec::SmallVec;
 
 use crate::mesh::{CpuMesh, Material, MeshError};
-use crate::resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2D};
+use crate::resource_managers::{AlphaChannelUsage, GpuTexture2D, ImageDataDesc, TextureManager2D};
 use crate::{CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul};
 
 #[derive(thiserror::Error, Debug)]
@@ -91,6 +91,7 @@ pub fn load_gltf_from_buffer(
             data: data.into(),
             format: format.into(),
             width_height: [image.width, image.height],
+            alpha_channel_usage: AlphaChannelUsage::DontKnow,
         };
 
         images_as_textures.push(match ctx.texture_manager_2d.create(ctx, texture) {
