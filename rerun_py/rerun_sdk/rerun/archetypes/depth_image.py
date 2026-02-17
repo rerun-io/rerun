@@ -158,7 +158,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
         magnification_filter:
-            Optional magnification filter used when zooming in on the image.
+            Optional filter used when the image is scaled.
 
             Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
 
@@ -258,7 +258,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
         magnification_filter:
-            Optional magnification filter used when zooming in on the image.
+            Optional filter used when the image is scaled.
 
             Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
 
@@ -417,7 +417,7 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
         default=None,
         converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
-    # Optional magnification filter used when zooming in on the image.
+    # Optional filter used when the image is scaled.
     #
     # Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     #
