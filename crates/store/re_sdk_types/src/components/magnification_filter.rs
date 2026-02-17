@@ -22,23 +22,26 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
+/// **Component**: Filter used when a single texel/pixel of an image is displayed larger than a single screen pixel.
+///
+/// This happens when zooming into an image, when displaying a low-resolution image in a large area,
+/// or when viewing an image up close in 3D space.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum MagnificationFilter {
     /// Show the nearest pixel value.
     ///
-    /// This will give a blocky appearance when zooming in.
+    /// This will give a blocky appearance when the image is scaled up.
     /// Used as default when rendering 2D images.
     #[default]
     Nearest = 1,
 
-    /// Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.
+    /// Linearly interpolate the nearest neighbors, creating a smoother look when the image is scaled up.
     ///
     /// Used as default for mesh rendering.
     Linear = 2,
 
-    /// Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.
+    /// Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.
     ///
     /// This is more expensive than linear filtering but produces sharper results with less blurring.
     Bicubic = 3,
@@ -148,13 +151,13 @@ impl ::re_types_core::reflection::Enum for MagnificationFilter {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::Nearest => {
-                "Show the nearest pixel value.\n\nThis will give a blocky appearance when zooming in.\nUsed as default when rendering 2D images."
+                "Show the nearest pixel value.\n\nThis will give a blocky appearance when the image is scaled up.\nUsed as default when rendering 2D images."
             }
             Self::Linear => {
-                "Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.\n\nUsed as default for mesh rendering."
+                "Linearly interpolate the nearest neighbors, creating a smoother look when the image is scaled up.\n\nUsed as default for mesh rendering."
             }
             Self::Bicubic => {
-                "Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.\n\nThis is more expensive than linear filtering but produces sharper results with less blurring."
+                "Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.\n\nThis is more expensive than linear filtering but produces sharper results with less blurring."
             }
         }
     }
