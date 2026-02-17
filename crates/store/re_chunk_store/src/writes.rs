@@ -286,6 +286,29 @@ impl ChunkStore {
             }
         }
 
+        if matches!(
+            self.direct_lineage(&chunk.id()),
+            Some(&ChunkDirectLineage::ReferencedFrom(_))
+        ) {
+            // If we reach here, then a chunk that was previously virtually inserted using `insert_rrd_manifest`
+            // is about to be physically inserted for real.
+            //
+            // We don't know what's gonna to happen to this chunk during its insertion: it might be
+            // added as-is, or be compacted into another existing chunk, or immediately be split into
+            // smaller chunks.
+            // If the chunk doesn't get inserted as-is, for whatever reason, then it will leave behind
+            // it the ghost indexes from its original virtual insertion, which will lead downstream
+            // systems to believe that some chunk is missing, forever, even though it's not: it just has
+            // been inserted under a different name.
+            //
+            // The fix is simple: always unconditionally clean up the indexes when a virtual chunk
+            // gets physically inserted.
+            _ = self.remove_chunks_deep(vec![chunk.clone()], None);
+            // We ignore the deletion events, since a virtual insertion doesn't fire events in the first place.
+            // Note that in order to reach here, the chunk must be virtual, otherwise this method
+            // would have returned early due to the duped chunk ID check.
+        }
+
         // If this chunk has already been inserted before, and yielded a bunch of smaller splits, then we
         // need to make sure that all these splits are now gone, so we don't end up with unnecessary
         // fragmented overlaps affecting performance for no good reason.
@@ -372,7 +395,7 @@ impl ChunkStore {
                 re_tracing::profile_scope!("add-splits");
 
                 // For a split, we keep track of our descendents so that we can accurately drop
-                // dangling splits later on if the parent get re-inserted.
+                // dangling splits later on if the parent gets re-inserted.
                 self.dangling_splits
                     .insert(chunk.id(), split_chunks.iter().map(|c| c.id()).collect());
 
