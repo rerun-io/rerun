@@ -13,7 +13,7 @@ use re_viewer_context::{
 };
 
 use super::entity_iterator::process_archetype;
-use super::{SpatialViewVisualizerData, textured_rect_from_image};
+use super::{SpatialViewVisualizerData, TexturedRectParams, textured_rect_from_image};
 use crate::contexts::{SpatialSceneVisualizerInstructionContext, TransformTreeContext};
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::first_copied;
@@ -103,11 +103,13 @@ pub fn process_depth_image_data(
         ctx.viewer_ctx(),
         entity_path,
         ent_context,
-        &image_info,
-        Some(&colormap_with_range),
-        re_renderer::Rgba::WHITE,
-        magnification_filter,
-        archetype_name,
+        &TexturedRectParams {
+            image: &image_info,
+            colormap: Some(&colormap_with_range),
+            multiplicative_tint: re_renderer::Rgba::WHITE,
+            magnification_filter,
+            archetype_name,
+        },
     ) {
         Ok(textured_rect) => textured_rect,
         Err(err) => {

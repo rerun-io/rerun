@@ -30,7 +30,7 @@ use re_sdk_types::{ComponentDescriptor, archetypes};
 pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
 pub use utilities::{
     SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
-    process_labels_3d, textured_rect_from_image,
+    TexturedRectParams, process_labels_3d, textured_rect_from_image,
 };
 
 /// Shows a loading animation in a spatial view.
