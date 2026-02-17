@@ -7,17 +7,29 @@ use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, ViewerCon
 
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 
+pub struct TexturedRectParams<'a> {
+    pub image: &'a ImageInfo,
+    pub colormap: Option<&'a ColormapWithRange>,
+    pub multiplicative_tint: egui::Rgba,
+    pub magnification_filter: MagnificationFilter,
+    pub archetype_name: ArchetypeName,
+}
+
 pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
-    image: &ImageInfo,
-    colormap: Option<&ColormapWithRange>,
-    multiplicative_tint: egui::Rgba,
-    magnification_filter: MagnificationFilter,
-    archetype_name: ArchetypeName,
+    params: &TexturedRectParams<'_>,
 ) -> anyhow::Result<renderer::TexturedRect> {
     re_tracing::profile_function!();
+
+    let TexturedRectParams {
+        image,
+        colormap,
+        multiplicative_tint,
+        magnification_filter,
+        archetype_name,
+    } = *params;
 
     let debug_name = ent_path.to_string();
     let image_stats = ctx

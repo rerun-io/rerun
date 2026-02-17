@@ -12,7 +12,7 @@ use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{first_copied, textured_rect_from_image};
+use crate::visualizers::{TexturedRectParams, first_copied, textured_rect_from_image};
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct ImageVisualizer {
@@ -146,11 +146,13 @@ impl ImageVisualizer {
                 ctx.viewer_ctx(),
                 entity_path,
                 spatial_ctx,
-                &image,
-                colormap,
-                multiplicative_tint,
-                magnification_filter,
-                Image::name(),
+                &TexturedRectParams {
+                    image: &image,
+                    colormap,
+                    multiplicative_tint,
+                    magnification_filter,
+                    archetype_name: Image::name(),
+                },
             ) {
                 Ok(textured_rect) => {
                     self.data.add_pickable_rect(
