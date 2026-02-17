@@ -1182,7 +1182,6 @@ impl TimePanel {
                     .send_system(SystemCommand::SetSelection(item.to_item().into()));
 
                 time_commands.push(TimeControlCommand::SetTime(hovered_time.into()));
-                time_commands.push(TimeControlCommand::Pause);
             } else {
                 ctx.selection_state().set_hovered(item.to_item());
             }
@@ -2063,7 +2062,6 @@ impl TimePanel {
             && let Some(time) = hovered_time
         {
             time_commands.push(TimeControlCommand::SetTime(time));
-            time_commands.push(TimeControlCommand::Pause);
         }
 
         // Show hover preview, and right-click context menu:
