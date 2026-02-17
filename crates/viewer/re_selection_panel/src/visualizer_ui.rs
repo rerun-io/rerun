@@ -645,7 +645,7 @@ fn source_component_items_ui(
         let add_custom = *source == VisualizerComponentSource::Override && raw_override.is_none();
         let selected = source == current;
         let label = if add_custom {
-            "Add Custom".to_owned()
+            "Add custom…".to_owned()
         } else {
             component_source_string(source)
         };
