@@ -119,7 +119,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         draw_order:
             Optional 2D draw order.
         magnification_filter:
-            Optional magnification filter used when zooming in on the image.
+            Optional filter used when the image is scaled.
 
             Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
 
@@ -205,7 +205,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         draw_order:
             Optional 2D draw order.
         magnification_filter:
-            Optional magnification filter used when zooming in on the image.
+            Optional filter used when the image is scaled.
 
             Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
 
@@ -285,7 +285,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         draw_order:
             Optional 2D draw order.
         magnification_filter:
-            Optional magnification filter used when zooming in on the image.
+            Optional filter used when the image is scaled.
 
             Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
 
@@ -424,7 +424,7 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         default=None,
         converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
-    # Optional magnification filter used when zooming in on the image.
+    # Optional filter used when the image is scaled.
     #
     # Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     #

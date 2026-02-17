@@ -113,7 +113,7 @@ namespace rerun::archetypes {
         /// Optional 2D draw order.
         std::optional<ComponentBatch> draw_order;
 
-        /// Optional magnification filter used when zooming in on the image.
+        /// Optional filter used when the image is scaled.
         ///
         /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
         std::optional<ComponentBatch> magnification_filter;
@@ -321,7 +321,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional magnification filter used when zooming in on the image.
+        /// Optional filter used when the image is scaled.
         ///
         /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
         EncodedDepthImage with_magnification_filter(

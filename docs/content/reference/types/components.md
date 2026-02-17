@@ -49,7 +49,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
 * [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.
 * [`LinearSpeed`](components/linear_speed.md): Linear speed, used for translation speed for example.
-* [`MagnificationFilter`](components/magnification_filter.md): Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
+* [`MagnificationFilter`](components/magnification_filter.md): Filter used when a single texel/pixel of an image is displayed larger than a single screen pixel.
 * [`MarkerShape`](components/marker_shape.md): The visual appearance of a point in e.g. a 2D plot.
 * [`MarkerSize`](components/marker_size.md): Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 * [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.
