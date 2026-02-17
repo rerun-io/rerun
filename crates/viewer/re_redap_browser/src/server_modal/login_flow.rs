@@ -23,12 +23,32 @@ pub enum LoginFlowResult {
 }
 
 impl LoginFlow {
-    pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
-        State::open(ui).map(|state| Self {
+    pub fn open(egui_ctx: &egui::Context) -> Result<Self, String> {
+        State::open(egui_ctx).map(|state| Self {
             state,
             #[cfg(target_arch = "wasm32")]
             started: false,
         })
+    }
+
+    /// Create and immediately start the login flow (opens popup on web, opens browser on native).
+    pub fn open_and_start(egui_ctx: &egui::Context) -> Result<Self, String> {
+        let mut flow = Self::open(egui_ctx)?;
+        flow.state.start()?;
+        #[cfg(target_arch = "wasm32")]
+        {
+            flow.started = true;
+        }
+        Ok(flow)
+    }
+
+    /// Poll for completion without rendering any UI.
+    pub fn poll(&mut self) -> Option<LoginFlowResult> {
+        match self.state.done() {
+            Ok(Some(_credentials)) => Some(LoginFlowResult::Success),
+            Ok(None) => None,
+            Err(err) => Some(LoginFlowResult::Failure(err)),
+        }
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, cmd: &CommandSender) -> Option<LoginFlowResult> {

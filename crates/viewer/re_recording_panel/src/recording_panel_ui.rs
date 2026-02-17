@@ -356,11 +356,19 @@ fn server_entries_ui(
             }));
         }
 
-        ServerEntriesData::Error(error_string) => {
+        ServerEntriesData::Error {
+            message,
+            is_auth_error,
+        } => {
+            let (label, color) = if *is_auth_error {
+                ("Authentication required", ui.visuals().weak_text_color())
+            } else {
+                ("Failed to load entries", ui.visuals().error_fg_color)
+            };
             ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-                egui::RichText::new("Failed to load entries").color(ui.visuals().error_fg_color),
+                egui::RichText::new(label).color(color),
             ))
-            .on_hover_text(error_string);
+            .on_hover_text(message);
         }
 
         ServerEntriesData::Loaded {

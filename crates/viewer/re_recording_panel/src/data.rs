@@ -311,7 +311,10 @@ impl<'a> ServerData<'a> {
 pub enum ServerEntriesData<'a> {
     Loading,
 
-    Error(String),
+    Error {
+        message: String,
+        is_auth_error: bool,
+    },
 
     Loaded {
         dataset_entries: Vec<DatasetData<'a>>,
@@ -418,7 +421,10 @@ impl<'a> ServerEntriesData<'a> {
                 }
             }
 
-            Poll::Ready(Err(err)) => Self::Error(err.to_string()),
+            Poll::Ready(Err(err)) => Self::Error {
+                message: err.to_string(),
+                is_auth_error: err.is_client_credentials_error(),
+            },
 
             Poll::Pending => Self::Loading,
         }
@@ -430,7 +436,7 @@ impl<'a> ServerEntriesData<'a> {
                 dataset_entries, ..
             } => Either::Left(dataset_entries.iter()),
 
-            Self::Error(..) | Self::Loading => Either::Right(iter::empty()),
+            Self::Error { .. } | Self::Loading => Either::Right(iter::empty()),
         }
     }
 }

@@ -19,7 +19,7 @@ use re_viewer_context::{
 
 use crate::context::Context;
 use crate::entries::{Dataset, Entries, Entry, Table};
-use crate::server_modal::{ServerModal, ServerModalMode};
+use crate::server_modal::{LoginFlow, LoginFlowResult, ServerModal, ServerModalMode};
 
 pub struct Server {
     origin: re_uri::Origin,
@@ -127,10 +127,23 @@ impl Server {
     }
 
     /// Central panel UI for when a server is selected.
-    fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
+    fn server_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        has_active_login_flow: bool,
+    ) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                error_ui(viewer_ctx, ctx, ui, &self.origin, err);
+                error_ui(
+                    viewer_ctx,
+                    ctx,
+                    ui,
+                    &self.origin,
+                    err,
+                    has_active_login_flow,
+                );
             });
             return;
         }
@@ -250,42 +263,9 @@ fn error_ui(
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
     err: &re_redap_client::ApiError,
+    has_active_login_flow: bool,
 ) {
-    let edit_alert = |ui: &mut egui::Ui, message: &str, edit_message: &str| {
-        Alert::warning().show(ui, |ui| {
-            ui.vertical(|ui| {
-                ui.strong(message);
-                if ui
-                    .link(RichText::new(edit_message).strong().underline())
-                    .clicked()
-                {
-                    ctx.command_sender
-                        .send(Command::OpenEditServerModal(EditRedapServerModalCommand {
-                            origin: origin.clone(),
-                            open_on_success: None,
-                            title: None,
-                        }))
-                        .ok();
-                }
-            });
-        });
-    };
-
     if let Some(conn_err) = err.as_client_credentials_error() {
-        let logged_in = viewer_ctx.global_context.logged_in();
-
-        let has_token = !matches!(
-            conn_err,
-            ClientCredentialsError::UnauthenticatedMissingToken { .. }
-        );
-
-        let edit_message = match (logged_in, has_token) {
-            (true, true) => "Edit login or token",
-            (true, false) => "Edit login or add token",
-            (false, true) => "Log in or edit token",
-            (false, false) => "Log in or add token",
-        };
-
         let message = match conn_err {
             ClientCredentialsError::RefreshError { .. } => {
                 "There was an error refreshing your credentials"
@@ -310,15 +290,107 @@ fn error_ui(
             ClientCredentialsError::HostMismatch(_) => "The token is not allowed for this server",
         };
 
-        edit_alert(ui, message, edit_message);
+        let show_login = match conn_err {
+            ClientCredentialsError::RefreshError(_)
+            | ClientCredentialsError::SessionExpired
+            | ClientCredentialsError::UnauthenticatedMissingToken(_)
+            | ClientCredentialsError::UnauthenticatedBadToken { .. } => true,
+            ClientCredentialsError::HostMismatch(_) => false,
+        };
+
+        if show_login {
+            Alert::info().show(ui, |ui| {
+                ui.vertical(|ui| {
+                    ui.strong(message);
+
+                    ui.add_space(8.0);
+                    if has_active_login_flow {
+                        ui.horizontal(|ui| {
+                            ui.loading_indicator();
+                            ui.label("Waiting for login…");
+                        });
+                    } else {
+                        ui.horizontal(|ui| {
+                            if let Some(auth) = viewer_ctx.global_context.auth_context {
+                                // User is already logged in — offer to use stored credentials
+                                if ui
+                                    .add(
+                                        re_ui::ReButton::new(format!("Continue as {}", auth.email))
+                                            .primary()
+                                            .small(),
+                                    )
+                                    .clicked()
+                                {
+                                    ctx.command_sender
+                                        .send(Command::UseStoredCredentials(origin.clone()))
+                                        .ok();
+                                }
+                            } else {
+                                // User is not logged in — start login flow
+                                if ui
+                                    .add(re_ui::ReButton::new("Log in").primary().small())
+                                    .clicked()
+                                {
+                                    ctx.command_sender
+                                        .send(Command::StartLoginFlow(origin.clone()))
+                                        .ok();
+                                }
+                            }
+                            if ui
+                                .add(re_ui::ReButton::new("Edit connection").small())
+                                .clicked()
+                            {
+                                ctx.command_sender
+                                    .send(Command::OpenEditServerModal(
+                                        EditRedapServerModalCommand {
+                                            origin: origin.clone(),
+                                            open_on_success: None,
+                                            title: None,
+                                        },
+                                    ))
+                                    .ok();
+                            }
+                        });
+                    }
+                });
+            });
+        } else {
+            warning_with_edit_button(ctx, ui, origin, message);
+        }
     } else if matches!(
         &err.kind,
         re_redap_client::ApiErrorKind::InvalidServer | re_redap_client::ApiErrorKind::Connection
     ) {
-        edit_alert(ui, &err.to_string(), "Edit server settings");
+        warning_with_edit_button(ctx, ui, origin, &err.to_string());
     } else {
         ui.error_label(err.to_string());
     }
+}
+
+fn warning_with_edit_button(
+    ctx: &Context<'_>,
+    ui: &mut egui::Ui,
+    origin: &re_uri::Origin,
+    message: &str,
+) {
+    Alert::warning().show(ui, |ui| {
+        ui.vertical(|ui| {
+            ui.strong(message);
+            ui.add_space(8.0);
+            if ui
+                .add(re_ui::ReButton::new("Edit connection").small())
+                .clicked()
+            {
+                ctx.command_sender
+                    .send(Command::OpenEditServerModal(EditRedapServerModalCommand {
+                        origin: origin.clone(),
+                        open_on_success: None,
+                        title: None,
+                    }))
+                    .ok();
+            }
+        });
+    });
 }
 
 /// All servers known to the viewer, and their catalog data.
@@ -334,6 +406,11 @@ pub struct RedapServers {
     command_receiver: crossbeam::channel::Receiver<Command>,
 
     server_modal_ui: ServerModal,
+
+    /// Active inline login flow with the origin it was started for.
+    ///
+    /// That origin will get the token and be refreshed on login.
+    inline_login_flow: Option<(re_uri::Origin, Box<LoginFlow>)>,
 }
 
 impl serde::Serialize for RedapServers {
@@ -377,6 +454,7 @@ impl Default for RedapServers {
             command_sender,
             command_receiver,
             server_modal_ui: Default::default(),
+            inline_login_flow: None,
         }
     }
 }
@@ -421,6 +499,12 @@ pub enum Command {
     RemoveServer(re_uri::Origin),
 
     RefreshCollection(re_uri::Origin),
+
+    /// Start an inline login flow for a server.
+    StartLoginFlow(re_uri::Origin),
+
+    /// Use the stored account credentials for a server and refresh.
+    UseStoredCredentials(re_uri::Origin),
 }
 
 impl RedapServers {
@@ -456,6 +540,7 @@ impl RedapServers {
     }
 
     pub fn logout(&mut self) {
+        self.inline_login_flow = None;
         self.server_modal_ui.logout();
         // Log out from the servers that used the accounts token.
         for server in self.servers.values() {
@@ -494,6 +579,24 @@ impl RedapServers {
         });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(connection_registry, runtime, egui_ctx, command);
+        }
+
+        // Poll inline login flow
+        if let Some((origin, flow)) = &mut self.inline_login_flow
+            && let Some(result) = flow.poll()
+        {
+            let origin = origin.clone();
+            match result {
+                LoginFlowResult::Success => {
+                    self.command_sender
+                        .send(Command::UseStoredCredentials(origin))
+                        .ok();
+                }
+                LoginFlowResult::Failure(err) => {
+                    re_log::warn!("Login failed: {err}");
+                }
+            }
+            self.inline_login_flow = None;
         }
 
         for server in self.servers.values_mut() {
@@ -560,6 +663,26 @@ impl RedapServers {
                     server.refresh_entries(runtime, egui_ctx);
                 });
             }
+
+            Command::StartLoginFlow(origin) => {
+                if self.inline_login_flow.is_none() {
+                    match LoginFlow::open_and_start(egui_ctx) {
+                        Ok(flow) => {
+                            self.inline_login_flow = Some((origin, Box::new(flow)));
+                        }
+                        Err(err) => {
+                            re_log::error!("Failed to start login: {err}");
+                        }
+                    }
+                }
+            }
+
+            Command::UseStoredCredentials(origin) => {
+                connection_registry.set_credentials(&origin, re_redap_client::Credentials::Stored);
+                self.command_sender
+                    .send(Command::RefreshCollection(origin))
+                    .ok();
+            }
         }
     }
 
@@ -570,8 +693,9 @@ impl RedapServers {
         origin: &re_uri::Origin,
     ) {
         if let Some(server) = self.servers.get(origin) {
+            let has_login_flow = self.has_active_login_flow(origin);
             self.with_ctx(|ctx| {
-                server.server_ui(viewer_ctx, ctx, ui);
+                server.server_ui(viewer_ctx, ctx, ui, has_login_flow);
             });
         } else {
             viewer_ctx.revert_to_default_display_mode();
@@ -640,6 +764,12 @@ impl RedapServers {
         if let Err(err) = result {
             re_log::warn_once!("Failed to send command: {err}");
         }
+    }
+
+    fn has_active_login_flow(&self, origin: &re_uri::Origin) -> bool {
+        self.inline_login_flow
+            .as_ref()
+            .is_some_and(|(o, _)| o == origin)
     }
 
     #[inline]

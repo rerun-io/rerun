@@ -135,8 +135,8 @@ impl State {
         Ok(None)
     }
 
-    #[expect(clippy::needless_pass_by_ref_mut, clippy::unnecessary_wraps)]
-    pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
+    #[expect(clippy::unnecessary_wraps)]
+    pub fn open(egui_ctx: &egui::Context) -> Result<Self, String> {
         let parent_window = web_sys::window().expect("no window available");
         let pkce = Rc::new(Pkce::new());
         let state = Uuid::new_v4().to_string();
@@ -152,7 +152,7 @@ impl State {
             let result = Rc::clone(&result);
             let pkce = pkce.clone();
             let stored_state = state.clone();
-            let egui_ctx = ui.ctx().clone();
+            let egui_ctx = egui_ctx.clone();
             move |e: web_sys::StorageEvent| {
                 AsyncRuntimeHandle::new_web().spawn_future(try_handle_storage_event(
                     e,

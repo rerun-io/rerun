@@ -16,7 +16,7 @@ use crate::context::Context;
 use crate::servers::Command;
 
 mod login_flow;
-use login_flow::{LoginFlow, LoginFlowResult};
+pub use login_flow::{LoginFlow, LoginFlowResult};
 
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
@@ -70,8 +70,8 @@ impl Authentication {
         }
     }
 
-    fn start_login_flow(&mut self, ui: &mut egui::Ui) {
-        match LoginFlow::open(ui) {
+    fn start_login_flow(&mut self, ui: &egui::Ui) {
+        match LoginFlow::open(ui.ctx()) {
             Ok(flow) => {
                 self.kind = AuthKind::RerunAccount(Some(Box::new(flow)));
                 self.error = None;

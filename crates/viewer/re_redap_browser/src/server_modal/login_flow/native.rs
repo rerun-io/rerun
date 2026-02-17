@@ -96,7 +96,13 @@ impl State {
         }
     }
 
-    pub fn open(_ui: &mut egui::Ui) -> Result<Self, String> {
+    #[expect(clippy::needless_pass_by_ref_mut)] // compat with web api
+    pub fn start(&mut self) -> Result<(), String> {
+        webbrowser::open(self.callback_server.get_login_url()).map_err(|err| err.to_string())?;
+        Ok(())
+    }
+
+    pub fn open(_egui_ctx: &egui::Context) -> Result<Self, String> {
         let pkce = Pkce::new();
 
         // Whenever the modal is open, we always keep the callback server running:
