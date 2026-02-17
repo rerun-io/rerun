@@ -17,6 +17,11 @@ Linearly interpolate the nearest neighbors, creating a smoother look when zoomin
 
 Used as default for mesh rendering.
 
+#### `Bicubic` = 3
+Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.
+
+This is more expensive than linear filtering but produces sharper results with less blurring.
+
 
 ## Arrow datatype
 ```

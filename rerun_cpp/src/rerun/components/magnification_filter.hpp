@@ -33,6 +33,11 @@ namespace rerun::components {
         ///
         /// Used as default for mesh rendering.
         Linear = 2,
+
+        /// Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.
+        ///
+        /// This is more expensive than linear filtering but produces sharper results with less blurring.
+        Bicubic = 3,
     };
 } // namespace rerun::components
 

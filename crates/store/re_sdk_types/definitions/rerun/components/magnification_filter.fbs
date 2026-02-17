@@ -15,4 +15,9 @@ enum MagnificationFilter: ubyte {
     ///
     /// Used as default for mesh rendering.
     Linear,
+
+    /// Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.
+    ///
+    /// This is more expensive than linear filtering but produces sharper results with less blurring.
+    Bicubic,
 }

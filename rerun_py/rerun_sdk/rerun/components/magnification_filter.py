@@ -39,6 +39,13 @@ class MagnificationFilter(Enum):
     Used as default for mesh rendering.
     """
 
+    Bicubic = 3
+    """
+    Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.
+
+    This is more expensive than linear filtering but produces sharper results with less blurring.
+    """
+
     @classmethod
     def auto(cls, val: str | int | MagnificationFilter) -> MagnificationFilter:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -60,11 +67,16 @@ class MagnificationFilter(Enum):
         return self.name
 
 
-MagnificationFilterLike = MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int
+MagnificationFilterLike = (
+    MagnificationFilter | Literal["Bicubic", "Linear", "Nearest", "bicubic", "linear", "nearest"] | int
+)
 """A type alias for any MagnificationFilter-like object."""
 
 MagnificationFilterArrayLike = (
-    MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int | Sequence[MagnificationFilterLike]
+    MagnificationFilter
+    | Literal["Bicubic", "Linear", "Nearest", "bicubic", "linear", "nearest"]
+    | int
+    | Sequence[MagnificationFilterLike]
 )
 """A type alias for any MagnificationFilter-like array object."""
 

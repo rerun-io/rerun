@@ -50,6 +50,6 @@ table EncodedDepthImage(
 
   /// Optional magnification filter used when zooming in on the image.
   ///
-  /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+  /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
   magnification_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 3300);
 }

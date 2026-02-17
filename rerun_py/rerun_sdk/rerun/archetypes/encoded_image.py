@@ -121,7 +121,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         magnification_filter:
             Optional magnification filter used when zooming in on the image.
 
-            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
 
         """
 
@@ -191,7 +191,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         magnification_filter:
             Optional magnification filter used when zooming in on the image.
 
-            Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
 
         """
 
@@ -299,7 +299,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     )
     # Optional magnification filter used when zooming in on the image.
     #
-    # Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    # Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
