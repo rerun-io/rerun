@@ -158,9 +158,11 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
         magnification_filter:
-            Optional filter used when the image is scaled.
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
 
-            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+            The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+
+            Has no effect in 3D views.
 
         """
 
@@ -258,9 +260,11 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
             Objects with higher values are drawn on top of those with lower values.
             Defaults to `-20.0`.
         magnification_filter:
-            Optional filter used when the image is scaled.
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
 
-            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+            The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+
+            Has no effect in 3D views.
 
         """
 
@@ -417,9 +421,11 @@ class DepthImage(DepthImageExt, Archetype, VisualizableArchetype):
         default=None,
         converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
-    # Optional filter used when the image is scaled.
+    # Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
     #
-    # Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+    # The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+    #
+    # Has no effect in 3D views.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

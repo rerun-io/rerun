@@ -119,9 +119,11 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         draw_order:
             Optional 2D draw order.
         magnification_filter:
-            Optional filter used when the image is scaled.
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
 
-            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+            The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+
+            Has no effect in 3D views.
 
         """
 
@@ -205,9 +207,11 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         draw_order:
             Optional 2D draw order.
         magnification_filter:
-            Optional filter used when the image is scaled.
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
 
-            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+            The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+
+            Has no effect in 3D views.
 
         """
 
@@ -285,9 +289,11 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         draw_order:
             Optional 2D draw order.
         magnification_filter:
-            Optional filter used when the image is scaled.
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
 
-            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+            The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+
+            Has no effect in 3D views.
 
         """
 
@@ -424,9 +430,11 @@ class EncodedDepthImage(Archetype, VisualizableArchetype):
         default=None,
         converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
-    # Optional filter used when the image is scaled.
+    # Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
     #
-    # Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+    # The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+    #
+    # Has no effect in 3D views.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

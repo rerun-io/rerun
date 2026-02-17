@@ -152,9 +152,7 @@ pub struct Image {
     /// Defaults to `-10.0`.
     pub draw_order: Option<SerializedComponentBatch>,
 
-    /// Optional filter used when the image is scaled.
-    ///
-    /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
     pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
@@ -543,9 +541,7 @@ impl Image {
         self
     }
 
-    /// Optional filter used when the image is scaled.
-    ///
-    /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
     #[inline]
     pub fn with_magnification_filter(
         mut self,
