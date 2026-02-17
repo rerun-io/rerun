@@ -348,6 +348,13 @@ pub struct TimeControl {
     /// Ignored when [`Self::playing`] is `false`.
     following: bool,
 
+    /// If `true`, and we're [`Self::playing`], then we only advance
+    /// the time cursor once we have all the data needed loaded locally.
+    ///
+    /// This is a larger-than-ram feature: only once we have loaded
+    /// the necessary data from redap do we start playback.
+    wait_for_data: bool,
+
     speed: f32,
 
     loop_mode: LoopMode,
@@ -365,11 +372,31 @@ impl Default for TimeControl {
             states: Default::default(),
             playing: true,
             following: true,
+            wait_for_data: true,
             speed: 1.0,
             loop_mode: LoopMode::Off,
             highlighted_range: None,
         }
     }
+}
+
+/// Parameters for [`TimeControl::update`].
+pub struct TimeControlUpdateParams {
+    /// The time step in seconds.
+    pub stable_dt: f32,
+
+    /// Is more data expected to arrive (e.g. still connected to a data source)?
+    ///
+    /// Set to true e.g. when viewing live data,
+    /// or we're still downloading a recording.
+    pub more_data_is_streaming_in: bool,
+
+    /// True if we're waiting for chunks to be downloaded,
+    /// and they are expected to come (eventually).
+    pub is_buffering: bool,
+
+    /// Should we diff state changes to trigger callbacks?
+    pub should_diff_state: bool,
 }
 
 #[must_use]
@@ -525,15 +552,19 @@ impl TimeControl {
 
     /// Create [`TimeControlCommand`]s to move the time forward (if playing), and perhaps pause if
     /// we've reached the end.
-    #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     pub fn update(
         &mut self,
         timeline_histograms: &TimeHistogramPerTimeline,
-        stable_dt: f32,
-        more_data_is_coming: bool,
-        should_diff_state: bool,
+        params: &TimeControlUpdateParams,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) -> TimeControlResponse {
+        let TimeControlUpdateParams {
+            stable_dt,
+            more_data_is_streaming_in,
+            is_buffering,
+            should_diff_state,
+        } = *params;
+
         let (old_playing, old_timeline, old_state) = (
             self.playing,
             self.timeline().copied(),
@@ -565,63 +596,64 @@ impl TimeControl {
                 });
 
                 state.last_paused_time = Some(state.time);
+                self.wait_for_data = true; // in case we hit play again!
                 NeedsRepaint::No
             }
-            PlayState::Playing => {
-                let dt = stable_dt.min(0.1) * self.speed;
 
+            PlayState::Playing => {
                 let state = self
                     .states
                     .entry(*self.timeline_name())
                     .or_insert_with(|| TimeState::new(full_range.min()));
 
-                if self.loop_mode == LoopMode::Off && full_range.max() <= state.time {
-                    // We've reached the end of the data
-                    self.update_time(full_range.max().into());
+                if self.wait_for_data && is_buffering {
+                    // Do not move time cursor until we are done buffering
+                    NeedsRepaint::No
+                } else {
+                    self.wait_for_data = false; // Don't auto-pause once we are actually playing
 
-                    if more_data_is_coming {
-                        // then let's wait for it without pausing!
-                        return self.apply_state_diff_if_needed(
-                            TimeControlResponse::no_repaint(), // ui will wake up when more data arrives
-                            should_diff_state,
-                            timeline_histograms,
-                            old_timeline,
-                            old_playing,
-                            old_state,
-                        );
+                    let dt = stable_dt.min(0.1) * self.speed;
+
+                    if self.loop_mode == LoopMode::Off && full_range.max() <= state.time {
+                        // We've reached the end of the data
+                        self.update_time(full_range.max().into());
+
+                        if more_data_is_streaming_in {
+                            // then let's wait for it without pausing!
+                        } else {
+                            self.pause(blueprint_ctx);
+                        }
+                        NeedsRepaint::No
                     } else {
-                        self.pause(blueprint_ctx);
-                        return TimeControlResponse::no_repaint();
+                        let mut new_time = state.time;
+
+                        let loop_range = match self.loop_mode {
+                            LoopMode::Off => None,
+                            LoopMode::Selection => state.time_selection,
+                            LoopMode::All => Some(full_range.into()),
+                        };
+
+                        match self.timeline.timeline().map(|t| t.typ()) {
+                            Some(TimeType::Sequence) => {
+                                new_time += TimeReal::from(state.fps * dt);
+                            }
+                            Some(TimeType::DurationNs | TimeType::TimestampNs) => {
+                                new_time += TimeReal::from(Duration::from_secs(dt));
+                            }
+                            None => {}
+                        }
+
+                        if let Some(loop_range) = loop_range
+                            && loop_range.max < new_time
+                        {
+                            new_time = loop_range.min; // loop!
+                        }
+
+                        self.update_time(new_time);
+
+                        NeedsRepaint::Yes
                     }
                 }
-
-                let mut new_time = state.time;
-
-                let loop_range = match self.loop_mode {
-                    LoopMode::Off => None,
-                    LoopMode::Selection => state.time_selection,
-                    LoopMode::All => Some(full_range.into()),
-                };
-
-                match self.timeline.timeline().map(|t| t.typ()) {
-                    Some(TimeType::Sequence) => {
-                        new_time += TimeReal::from(state.fps * dt);
-                    }
-                    Some(TimeType::DurationNs | TimeType::TimestampNs) => {
-                        new_time += TimeReal::from(Duration::from_secs(dt));
-                    }
-                    None => {}
-                }
-
-                if let Some(loop_range) = loop_range
-                    && loop_range.max < new_time
-                {
-                    new_time = loop_range.min; // loop!
-                }
-
-                self.update_time(new_time);
-
-                NeedsRepaint::Yes
             }
             PlayState::Following => {
                 // Set the time to the max:
@@ -996,6 +1028,7 @@ impl TimeControl {
                     .entry(*self.timeline_name())
                     .or_insert_with(|| TimeState::new(*time))
                     .time = *time;
+                self.wait_for_data = true;
 
                 if repaint {
                     NeedsRepaint::Yes
@@ -1047,6 +1080,7 @@ impl TimeControl {
             PlayState::Playing => {
                 self.playing = true;
                 self.following = false;
+                self.wait_for_data = true;
 
                 // Start from beginning if we are at the end:
                 if let Some(timeline_histograms) = timeline_histograms

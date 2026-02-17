@@ -443,11 +443,7 @@ pub fn paint_loaded_indicator_bar(
         .timeline_range(time_ctrl.timeline_name())
         .unwrap_or(AbsoluteTimeRange::EMPTY);
 
-    let is_loading = db.can_fetch_chunks_from_redap()
-        && db
-            .rrd_manifest_index()
-            .chunk_prioritizer()
-            .any_missing_chunks();
+    let is_loading = db.is_buffering();
 
     if is_loading
         && let Some(start) = time_ranges_ui.x_from_time(full_time_range.min.into())

@@ -1394,6 +1394,10 @@ impl TimePanel {
                         rate = 0.0;
                     }
 
+                    if 0.0 < rate {
+                        ui.ctx().request_repaint(); // Show latest estimate
+                    }
+
                     let staleness = 1.0 - freshness;
                     let gamma = 1.0 - staleness * staleness;
                     ui.label(

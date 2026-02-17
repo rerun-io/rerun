@@ -313,6 +313,32 @@ impl EntityDb {
             && self.can_fetch_chunks_from_redap()
     }
 
+    /// True if we're are currently waiting for necessary
+    /// data to be loaded before we can show it.
+    pub fn is_buffering(&self) -> bool {
+        if self.is_currently_downloading_manifest() {
+            return true;
+        }
+
+        if !self.can_fetch_chunks_from_redap() {
+            return false;
+        }
+
+        if self.num_rows() == 0 {
+            return true; // waiting for initial data
+        }
+
+        if let Some(state) = self
+            .rrd_manifest_index()
+            .chunk_prioritizer()
+            .latest_result()
+        {
+            !state.all_required_are_loaded
+        } else {
+            true // no prefetch done yet
+        }
+    }
+
     #[inline]
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
         self.set_store_info.as_ref()
@@ -779,7 +805,8 @@ impl EntityDb {
         let protected_chunks = self
             .rrd_manifest_index
             .chunk_prioritizer()
-            .protected_physical_chunks()
+            .protected_chunks()
+            .physical
             .clone();
 
         let store_events = self.gc(&GarbageCollectionOptions {

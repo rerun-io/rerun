@@ -17,17 +17,30 @@ use crate::{
     sorted_range_map::SortedRangeMap,
 };
 
-pub enum PrioritiziationState {
+#[derive(Clone, Copy, Default)]
+pub struct PrioritizationState {
     /// We're not allowed to have more things in-transit (on-wire)
     /// right now.
-    TransitBudgetFilled,
+    pub transit_budget_filled: bool,
 
     /// We cannot fit the whole recording into memory.
-    MemoryBudgetFilled,
+    pub memory_budget_filled: bool,
 
+    /// Some individual chunks exceed the total memory budget.
+    pub some_chunks_too_big: bool,
+
+    /// Are all required chunks fully loaded?
+    ///
+    /// If true, there are no missing chunks.
+    pub all_required_are_loaded: bool,
+}
+
+impl PrioritizationState {
     /// The whole recording fits in memory,
-    /// and the full download of it has started
-    AllChunksLoadedOrInTransit,
+    /// and the full download of it has started.
+    pub fn all_chunks_loaded_or_in_transit(&self) -> bool {
+        !self.transit_budget_filled && !self.memory_budget_filled && !self.some_chunks_too_big
+    }
 }
 
 /// Errors that can occur during prefetching.
@@ -259,6 +272,37 @@ fn warn_entity_exceeds_memory(entity_path: &str) {
     }
 }
 
+struct RemainingByteBudget {
+    remaining_bytes: u64,
+}
+
+impl RemainingByteBudget {
+    /// Try to fit `bytes` into the remaining budget.
+    ///
+    /// Returns `true` if it fits (even partially), `false` if the budget is exhausted.
+    fn try_fit_into_budget(&mut self, bytes: u64, required: bool) -> bool {
+        self.remaining_bytes = self.remaining_bytes.saturating_sub(bytes);
+
+        if self.remaining_bytes == 0 {
+            if required {
+                if cfg!(target_arch = "wasm32") {
+                    re_log::warn_once!(
+                        "Viewing the required data would take more memory than the current budget. Use the native viewer for a higher budget."
+                    );
+                } else {
+                    re_log::warn_once!(
+                        "Viewing the required data would take more memory than the current budget. Increase the memory budget to view this recording."
+                    );
+                }
+            }
+
+            false
+        } else {
+            true
+        }
+    }
+}
+
 /// Chunk that we've prioritized in `chunks_in_priority`.
 struct PrioritizedRootChunk {
     /// If this chunk came from `used_physical` or `missing_virtual` it's required
@@ -316,23 +360,35 @@ impl re_byte_size::SizeBytes for ComponentPathKey {
     }
 }
 
-#[derive(Default)]
-#[cfg_attr(feature = "testing", derive(Clone))]
-pub struct ChunkPrioritizer {
+#[derive(Clone, Default)]
+pub struct ProtectedChunks {
     /// All root chunks that we have an interest in having loaded,
     /// (or at least a part of them).
     ///
     /// These chunks are protected from _canceling_,
     /// i.e. we won't cancel the download of these chunks.
-    protected_root_chunks: HashSet<ChunkId>,
+    pub roots: HashSet<ChunkId>,
 
     /// All physical chunks that are 'in' the memory limit.
     ///
     /// These chunks are protected from being gc'd.
-    protected_physical_chunks: HashSet<ChunkId>,
+    pub physical: HashSet<ChunkId>,
+}
 
-    /// Tracks whether the viewer was missing any chunks last time we prioritized chunks.
-    any_missing_chunks: bool,
+impl re_byte_size::SizeBytes for ProtectedChunks {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { roots, physical } = self;
+        roots.heap_size_bytes() + physical.heap_size_bytes()
+    }
+}
+
+#[derive(Default)]
+#[cfg_attr(feature = "testing", derive(Clone))]
+pub struct ChunkPrioritizer {
+    protected_chunks: ProtectedChunks,
+
+    /// Result of the latest call to [`Self::prioritize_and_prefetch`].
+    latest_result: Option<PrioritizationState>,
 
     /// Chunks that are in the progress of being downloaded.
     chunk_requests: ChunkRequests,
@@ -355,9 +411,8 @@ pub struct ChunkPrioritizer {
 impl re_byte_size::SizeBytes for ChunkPrioritizer {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            protected_root_chunks,
-            protected_physical_chunks,
-            any_missing_chunks: _,
+            protected_chunks,
+            latest_result: _,
             chunk_requests: _, // not yet implemented
             root_chunk_intervals: virtual_chunk_intervals,
             static_chunk_ids,
@@ -366,8 +421,7 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
             components_of_interest,
         } = self;
 
-        protected_root_chunks.heap_size_bytes()
-            + protected_physical_chunks.heap_size_bytes()
+        protected_chunks.heap_size_bytes()
             + virtual_chunk_intervals.heap_size_bytes()
             + static_chunk_ids.heap_size_bytes()
             + high_priority_chunks.heap_size_bytes()
@@ -412,9 +466,9 @@ impl ChunkPrioritizer {
         }
     }
 
-    /// Returns true if the chunk store had missing chunks last time we prioritized chunks.
-    pub fn any_missing_chunks(&self) -> bool {
-        self.any_missing_chunks
+    /// Result of the latest call to [`Self::prioritize_and_prefetch`].
+    pub fn latest_result(&self) -> Option<PrioritizationState> {
+        self.latest_result
     }
 
     /// Find all chunk IDs that contain components with the given prefix.
@@ -499,19 +553,8 @@ impl ChunkPrioritizer {
         &mut self.chunk_requests
     }
 
-    /// All root chunks that we have an interest in having loaded,
-    /// (or at least a part of them).
-    ///
-    /// These chunks are protected from _canceling_,
-    /// i.e. we won't cancel the download of these chunks.
-    pub fn protected_root_chunks(&self) -> &HashSet<ChunkId> {
-        &self.protected_root_chunks
-    }
-
-    /// The hashset of chunks that should be protected from being
-    /// evicted by gc now.
-    pub fn protected_physical_chunks(&self) -> &HashSet<ChunkId> {
-        &self.protected_physical_chunks
+    pub fn protected_chunks(&self) -> &ProtectedChunks {
+        &self.protected_chunks
     }
 
     /// An iterator over root chunks in priority order.
@@ -619,7 +662,7 @@ impl ChunkPrioritizer {
     ///
     /// We go through these chunks until we hit [`ChunkPrefetchOptions::total_uncompressed_byte_budget`]
     /// and prefetch missing chunks until we hit [`ChunkPrefetchOptions::max_bytes_on_wire_at_once`].
-    /// Returns all batches that should be loaded
+    /// Returns all batches that should be loaded.
     #[must_use = "Load the returned batches"]
     pub fn prioritize_and_prefetch(
         &mut self,
@@ -629,62 +672,47 @@ impl ChunkPrioritizer {
         time_cursor: TimelinePoint,
         manifest: &RrdManifest,
         root_chunks: &HashMap<ChunkId, RootChunkInfo>,
-    ) -> Result<(PrioritiziationState, Vec<(RecordBatch, RequestInfo)>), PrefetchError> {
+    ) -> Result<Vec<(RecordBatch, RequestInfo)>, PrefetchError> {
         re_tracing::profile_function!();
-
-        self.any_missing_chunks = !used_and_missing.missing_virtual.is_empty();
 
         let mut chunk_batcher = ChunkRequestBatcher::new(manifest, &self.chunk_requests, options);
 
-        if chunk_batcher.remaining_bytes_in_on_wire_budget == 0 {
+        if let Some(latest_result) = &mut self.latest_result
+            && chunk_batcher.remaining_bytes_in_on_wire_budget == 0
+        {
             // Early-out: too many bytes already in-transit.
+
+            if !used_and_missing.missing_virtual.is_empty() {
+                latest_result.all_required_are_loaded = false;
+            }
+
             self.protect_used_and_missing(store, used_and_missing);
-            return Ok((PrioritiziationState::TransitBudgetFilled, vec![]));
+            return Ok(vec![]);
         }
 
         self.update_components_of_interest(store, used_and_missing);
 
         // We will re-calculate these:
-        self.protected_root_chunks.clear();
-        self.protected_physical_chunks.clear(); // <- Things we put in here will also be subtracted from remaining_byte_budget
+        self.protected_chunks.roots.clear();
+        self.protected_chunks.physical.clear(); // <- Things we put in here will also be subtracted from remaining_byte_budget
 
         self.protect_used_and_missing(store, used_and_missing);
 
-        let mut remaining_byte_budget = options.total_uncompressed_byte_budget;
-
-        // Can we still fit this much bytes in memory with our new prioritization?
-        let mut try_use_uncompressed_bytes = |bytes, required: bool| {
-            remaining_byte_budget = remaining_byte_budget.saturating_sub(bytes);
-
-            if remaining_byte_budget == 0 {
-                if required {
-                    if cfg!(target_arch = "wasm32") {
-                        re_log::warn_once!(
-                            "Viewing the required data would take more memory than the current budget. Use the native viewer for a higher budget."
-                        );
-                    } else {
-                        re_log::warn_once!(
-                            "Viewing the required data would take more memory than the current budget. Increase the memory budget to view this recording."
-                        );
-                    }
-                }
-
-                false
-            } else {
-                true
-            }
+        let mut remaining_byte_budget = RemainingByteBudget {
+            remaining_bytes: options.total_uncompressed_byte_budget,
         };
 
         // Start by going through the actually used physical chunks:
         for &physical_chunk_id in &used_and_missing.used_physical {
             debug_assert!(
-                self.protected_physical_chunks.contains(&physical_chunk_id),
+                self.protected_chunks.physical.contains(&physical_chunk_id),
                 "We added it earlier"
             );
 
             if let Some(chunk) = store.physical_chunk(&physical_chunk_id) {
                 let required = true;
-                try_use_uncompressed_bytes(Chunk::total_size_bytes(chunk.as_ref()), required);
+                remaining_byte_budget
+                    .try_fit_into_budget(Chunk::total_size_bytes(chunk.as_ref()), required);
             } else {
                 re_log::debug_warn_once!("Couldn't get physical chunk from chunk store");
             }
@@ -707,19 +735,53 @@ impl ChunkPrioritizer {
             root_chunks_on_timeline,
         );
 
+        let state = Self::fill_byte_budget(
+            &mut self.protected_chunks,
+            store,
+            options,
+            manifest,
+            root_chunks,
+            &mut chunk_batcher,
+            &mut remaining_byte_budget,
+            root_chunk_ids_in_priority_order,
+        )?;
+        self.latest_result = Some(state);
+
+        chunk_batcher.finish()
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    fn fill_byte_budget(
+        protected_chunks: &mut ProtectedChunks,
+        store: &ChunkStore,
+        options: &ChunkPrefetchOptions,
+        manifest: &RrdManifest,
+        root_chunks: &HashMap<ChunkId, RootChunkInfo>,
+        chunk_batcher: &mut ChunkRequestBatcher<'_>,
+        remaining_byte_budget: &mut RemainingByteBudget,
+        mut root_chunk_ids_in_priority_order: impl Iterator<Item = PrioritizedRootChunk>,
+    ) -> Result<PrioritizationState, PrefetchError> {
+        re_tracing::profile_function!();
+
         let entity_paths = manifest.col_chunk_entity_path_raw();
 
         let mut visited_root_chunks: HashSet<ChunkId> = Default::default();
 
         let mut physical_chunks_scratch = Vec::new(); // scratch space to save on reallocations
 
-        let mut some_chunks_too_big = false;
+        let mut state = PrioritizationState {
+            transit_budget_filled: false,
+            memory_budget_filled: false,
+            some_chunks_too_big: false,
+            all_required_are_loaded: true,
+        };
 
-        for PrioritizedRootChunk {
-            required,
-            root_chunk_id,
-        } in root_chunk_ids_in_priority_order
-        {
+        for next in root_chunk_ids_in_priority_order.by_ref() {
+            let PrioritizedRootChunk {
+                required,
+                root_chunk_id,
+            } = next;
+
             if !visited_root_chunks.insert(root_chunk_id) {
                 continue; // We've already handled this chunk earlier in the priority order.
             }
@@ -733,6 +795,10 @@ impl ChunkPrioritizer {
 
             match root_chunk.state {
                 LoadState::Unloaded | LoadState::InTransit => {
+                    if required {
+                        state.all_required_are_loaded = false;
+                    }
+
                     let row_idx = root_chunk.row_id;
 
                     // We count only the chunks we are interested in as being part of the memory budget.
@@ -742,15 +808,14 @@ impl ChunkPrioritizer {
 
                     if options.total_uncompressed_byte_budget < uncompressed_chunk_size {
                         warn_entity_exceeds_memory(entity_paths.value(row_idx));
-                        some_chunks_too_big = true;
+                        state.some_chunks_too_big = true;
                         continue;
                     }
 
-                    if !try_use_uncompressed_bytes(uncompressed_chunk_size, required) {
-                        return Ok((
-                            PrioritiziationState::MemoryBudgetFilled,
-                            chunk_batcher.finish()?,
-                        ));
+                    if !remaining_byte_budget.try_fit_into_budget(uncompressed_chunk_size, required)
+                    {
+                        state.memory_budget_filled = true;
+                        break;
                     }
 
                     if root_chunk.state == LoadState::Unloaded
@@ -764,22 +829,21 @@ impl ChunkPrioritizer {
                         // chunks inbetween we have to download first. After
                         // which we won't stop prioritizing which chunks should
                         // be in memory here.
-                        return Ok((
-                            PrioritiziationState::TransitBudgetFilled,
-                            chunk_batcher.finish()?,
-                        ));
+                        state.transit_budget_filled = true;
+                        break;
                     }
 
-                    self.protected_root_chunks.insert(root_chunk_id);
-                    self.protected_physical_chunks
+                    protected_chunks.roots.insert(root_chunk_id);
+                    protected_chunks
+                        .physical
                         .extend(physical_chunks_scratch.drain(..));
                 }
 
                 LoadState::FullyLoaded => {
-                    self.protected_root_chunks.insert(root_chunk_id);
+                    protected_chunks.roots.insert(root_chunk_id);
 
                     for chunk_id in physical_chunks_scratch.drain(..) {
-                        if self.protected_physical_chunks.contains(&chunk_id) {
+                        if protected_chunks.physical.contains(&chunk_id) {
                             continue; // Already counted as part of our byte budget
                         }
 
@@ -790,29 +854,27 @@ impl ChunkPrioritizer {
                             continue;
                         };
 
-                        if !try_use_uncompressed_bytes(
-                            Chunk::total_size_bytes(chunk.as_ref()),
-                            required,
-                        ) {
-                            return Ok((
-                                PrioritiziationState::MemoryBudgetFilled,
-                                chunk_batcher.finish()?,
-                            ));
+                        if !remaining_byte_budget
+                            .try_fit_into_budget(Chunk::total_size_bytes(chunk.as_ref()), required)
+                        {
+                            state.memory_budget_filled = true;
+                            break;
                         }
 
-                        self.protected_physical_chunks.insert(chunk_id);
+                        protected_chunks.physical.insert(chunk_id);
                     }
                 }
             }
         }
 
-        let state = if some_chunks_too_big {
-            PrioritiziationState::MemoryBudgetFilled
-        } else {
-            PrioritiziationState::AllChunksLoadedOrInTransit
-        };
+        if root_chunk_ids_in_priority_order
+            .next()
+            .is_some_and(|next| next.required)
+        {
+            state.all_required_are_loaded = false;
+        }
 
-        Ok((state, chunk_batcher.finish()?))
+        Ok(state)
     }
 
     fn update_components_of_interest(
@@ -865,13 +927,13 @@ impl ChunkPrioritizer {
             // We don't need to add the root(s) of this to the `protected_root_chunks`.
             // It is fine to cancel the download of the root(s),
             // as long as we don't GC this particular physical chunk.
-            self.protected_physical_chunks.insert(*physical_chunk_id);
+            self.protected_chunks.physical.insert(*physical_chunk_id);
         }
 
         for chunk_id in missing_virtual {
             // Do not cancel any downloads of any roots of this missing chunk:
             for root_id in store.find_root_chunks(chunk_id) {
-                self.protected_root_chunks.insert(root_id);
+                self.protected_chunks.roots.insert(root_id);
             }
         }
     }
@@ -880,6 +942,6 @@ impl ChunkPrioritizer {
     #[must_use = "Returns root chunks whose download got cancelled. Mark them as unloaded!"]
     pub fn cancel_outdated_requests(&mut self, egui_now_time: f64) -> Vec<ChunkId> {
         self.chunk_requests
-            .cancel_outdated_requests(egui_now_time, &self.protected_root_chunks)
+            .cancel_outdated_requests(egui_now_time, &self.protected_chunks.roots)
     }
 }

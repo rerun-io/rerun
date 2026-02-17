@@ -571,10 +571,11 @@ impl App {
                 blueprint_query,
             };
 
-            let dt = self.egui_ctx.input(|i| i.stable_dt);
+            let stable_dt = self.egui_ctx.input(|i| i.stable_dt);
+
             if let Some(recording) = store_hub.active_recording() {
                 // Are we still connected to the data source for the current store?
-                let more_data_is_coming =
+                let more_data_is_streaming_in =
                     recording.data_source.as_ref().is_some_and(|store_source| {
                         self.rx_log
                             .sources()
@@ -587,12 +588,14 @@ impl App {
                 // The state diffs are used to trigger callbacks if they are configured.
                 // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
                 // we want to diff state changes.
-                let should_diff_state = true;
                 let response = time_ctrl.update(
                     recording.timeline_histograms(),
-                    dt,
-                    more_data_is_coming,
-                    should_diff_state,
+                    &re_viewer_context::TimeControlUpdateParams {
+                        stable_dt,
+                        more_data_is_streaming_in,
+                        is_buffering: recording.is_buffering(),
+                        should_diff_state: true,
+                    },
                     Some(&bp_ctx),
                 );
 
@@ -604,8 +607,6 @@ impl App {
             }
 
             if self.app_options().inspect_blueprint_timeline {
-                let more_data_is_coming = true;
-                let should_diff_state = false;
                 // We ignore most things from the time control response for the blueprint but still
                 // need to repaint if requested.
                 let re_viewer_context::TimeControlResponse {
@@ -615,9 +616,12 @@ impl App {
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
                     bp_ctx.current_blueprint.timeline_histograms(),
-                    dt,
-                    more_data_is_coming,
-                    should_diff_state,
+                    &re_viewer_context::TimeControlUpdateParams {
+                        stable_dt,
+                        more_data_is_streaming_in: true,
+                        is_buffering: false,
+                        should_diff_state: false,
+                    },
                     None::<&AppBlueprintCtx<'_>>,
                 );
 

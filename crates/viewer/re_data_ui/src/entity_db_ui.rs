@@ -107,6 +107,17 @@ impl crate::DataUi for EntityDb {
                 chunk_requests_ui(ui, self.rrd_manifest_index());
             });
         }
+
+        if cfg!(debug_assertions) && !ctx.global_context.is_test {
+            ui.collapsing_header("Debug info", true, |ui| {
+                ui.weak("(only visible in debug builds)");
+                egui::Grid::new("debug-info").show(ui, |ui| {
+                    ui.label("is_buffering");
+                    ui.label(self.is_buffering().to_string());
+                    ui.end_row();
+                });
+            });
+        }
     }
 }
 
@@ -361,6 +372,9 @@ fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
         ui.label("Speed");
         if let Some(bytes_per_second) = chunk_requests.bandwidth() {
             ui.label(format!("{}/s", format_bytes(bytes_per_second)));
+            if 0.0 < bytes_per_second {
+                ui.ctx().request_repaint(); // Show latest estimate
+            }
         }
         ui.end_row();
 

@@ -731,6 +731,7 @@ impl LatestAtCache {
         if results.is_partial() {
             // Contrary to range results, partial latest-at results cannot ever be correct on their own,
             // therefore we must give up the current query entirely.
+            // TODO(RR-3762): return latest physical chunk, while still reporting missing virtual chunks
             return (None, results.missing_virtual);
         }
 

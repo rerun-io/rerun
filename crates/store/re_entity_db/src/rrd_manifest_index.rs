@@ -12,10 +12,8 @@ use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreKind, TimelinePoint};
 use re_mutex::Mutex;
 
+use crate::chunk_requests::ChunkBatchRequest;
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
-use crate::{
-    chunk_requests::ChunkBatchRequest, rrd_manifest_index::chunk_prioritizer::PrioritiziationState,
-};
 
 mod chunk_prioritizer;
 mod sorted_temporal_chunks;
@@ -505,7 +503,7 @@ impl RrdManifestIndex {
         let used_and_missing = store.take_tracked_chunk_ids(); // Note: this mutates the store (kind of).
 
         if let Some(manifest) = &self.manifest {
-            let (state, to_load) = self.chunk_prioritizer.prioritize_and_prefetch(
+            let to_load = self.chunk_prioritizer.prioritize_and_prefetch(
                 store,
                 &used_and_missing,
                 options,
@@ -533,21 +531,20 @@ impl RrdManifestIndex {
             self.update_loaded_ranges(time_cursor.name);
 
             // Sanity checking:
-            match state {
-                PrioritiziationState::TransitBudgetFilled
-                | PrioritiziationState::MemoryBudgetFilled => {}
-                PrioritiziationState::AllChunksLoadedOrInTransit => {
-                    for (root_chunk_id, chunk_info) in &self.root_chunks {
-                        debug_assert!(
-                            chunk_info.state != LoadState::Unloaded,
-                            "All root chunks should be either loading or already loaded"
-                        );
-                        debug_assert!(
-                            self.chunk_prioritizer
-                                .protected_root_chunks()
-                                .contains(root_chunk_id)
-                        );
-                    }
+            if let Some(state) = self.chunk_prioritizer.latest_result()
+                && state.all_chunks_loaded_or_in_transit()
+            {
+                for (root_chunk_id, chunk_info) in &self.root_chunks {
+                    debug_assert!(
+                        chunk_info.state != LoadState::Unloaded,
+                        "All root chunks should be either loading or already loaded"
+                    );
+                    debug_assert!(
+                        self.chunk_prioritizer
+                            .protected_chunks()
+                            .roots
+                            .contains(root_chunk_id)
+                    );
                 }
             }
 
