@@ -12,8 +12,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout,
-    ViewId, ViewerContext,
+    DataResultInteractionAddress, HoverHighlight, Item, SystemCommand, SystemCommandSender as _,
+    TimeControlCommand, UiLayout, ViewId, ViewerContext,
 };
 
 use super::DataUi as _;
@@ -267,7 +267,11 @@ fn instance_path_button_to_ex(
     with_icon: bool,
 ) -> egui::Response {
     let item = if let Some(view_id) = view_id {
-        Item::DataResult(view_id, instance_path.clone())
+        Item::DataResult(DataResultInteractionAddress {
+            view_id,
+            instance_path: instance_path.clone(),
+            visualizer: None,
+        })
     } else {
         Item::InstancePath(instance_path.clone())
     };
@@ -466,7 +470,10 @@ pub fn data_blueprint_button_to(
     view_id: ViewId,
     entity_path: &EntityPath,
 ) -> egui::Response {
-    let item = Item::DataResult(view_id, InstancePath::entity_all(entity_path.clone()));
+    let item = Item::DataResult(DataResultInteractionAddress::from_entity_path(
+        view_id,
+        entity_path.clone(),
+    ));
     let response = ui
         .selectable_label(ctx.is_selected_or_loading(&item), text)
         .on_hover_ui(|ui| {

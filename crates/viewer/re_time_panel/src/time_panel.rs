@@ -135,6 +135,7 @@ pub struct TimePanel {
     ///
     /// IMPORTANT: Always make sure that the item will be drawn this or next frame when setting this
     /// to `Some`, so that this flag is immediately consumed.
+    #[serde(skip)]
     scroll_to_me_item: Option<Item>,
 
     /// If the timestamp is being edited, the current value.

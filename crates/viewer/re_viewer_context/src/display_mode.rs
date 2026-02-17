@@ -83,7 +83,7 @@ impl DisplayMode {
             | Item::ComponentPath(_)
             | Item::Container(_)
             | Item::View(_)
-            | Item::DataResult(_, _) => None,
+            | Item::DataResult(_) => None,
         }
     }
 

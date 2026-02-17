@@ -27,11 +27,11 @@ use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    BlueprintContext as _, DatatypeMatch, IdentifiedViewSystem as _, IndicatedEntities, Item,
-    PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, RecommendedView,
-    RecommendedVisualizers, SystemCommandSender as _, SystemExecutionOutput, TimeControlCommand,
-    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
+    IndicatedEntities, Item, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
+    RecommendedView, RecommendedVisualizers, SystemCommandSender as _, SystemExecutionOutput,
+    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
     VisualizerComponentMappings, VisualizerComponentSource,
 };
@@ -411,10 +411,20 @@ impl ViewClass for TimeSeriesView {
 
         // Note that a several plot items can point to the same entity path and in some cases even to the same instance path!
         // (e.g. when plotting both lines & points with the same entity/instance path)
-        let plot_item_id_to_instance_path: HashMap<egui::Id, InstancePath> = all_plot_series
-            .iter()
-            .map(|series| (series.id(), series.instance_path.clone()))
-            .collect();
+        let plot_item_id_to_data_result_address: HashMap<egui::Id, DataResultInteractionAddress> =
+            all_plot_series
+                .iter()
+                .map(|series| {
+                    (
+                        series.id(),
+                        DataResultInteractionAddress {
+                            view_id: query.view_id,
+                            instance_path: series.instance_path.clone(),
+                            visualizer: Some(series.visualizer_instruction_id),
+                        },
+                    )
+                })
+                .collect();
 
         let current_time = ctx.time_ctrl.time_i64();
         let Some(timeline) = ctx.time_ctrl.timeline() else {
@@ -706,10 +716,10 @@ impl ViewClass for TimeSeriesView {
 
             // Interact with the plot items (lines, scatters, etc.)
             let hovered_data_result = hovered_plot_item
-                .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
-                .map(|instance_path| {
-                    re_viewer_context::Item::DataResult(query.view_id, instance_path.clone())
-                });
+                .and_then(|hovered_plot_item| {
+                    plot_item_id_to_data_result_address.get(&hovered_plot_item)
+                })
+                .map(|address| re_viewer_context::Item::DataResult(address.clone()));
             if let Some(hovered) = hovered_data_result.clone().or_else(|| {
                 if response.hovered() {
                     Some(re_viewer_context::Item::View(query.view_id))
@@ -831,107 +841,7 @@ impl ViewClass for TimeSeriesView {
 
                         ui.add_space(10.0);
 
-                        let entity_path = &node.data_result.entity_path;
-
-                        let full_path = entity_path
-                            .to_string()
-                            .strip_prefix('/')
-                            .map(|s| s.to_owned())
-                            .unwrap_or_else(|| entity_path.to_string());
-
-                        let series_color =
-                            get_time_series_color(&ctx, &node.data_result, instruction);
-
-                        let display_name =
-                            get_time_series_name(&ctx, &node.data_result, instruction);
-
-                        // Estimate the pill height so Sides can vertically center
-                        // both sides (pill on the left, trash button on the right).
-                        let pill_height = 2.0 * ui.text_style_height(&egui::TextStyle::Body)
-                            + ui.spacing().item_spacing.y
-                            + pill_margin.sum().y;
-
-                        egui::Sides::new().height(pill_height).shrink_left().show(
-                            ui,
-                            |ui| {
-                                let mut frame = egui::Frame::default()
-                                    .fill(ui.tokens().visualizer_list_pill_bg_color)
-                                    .corner_radius(4.0)
-                                    .inner_margin(pill_margin)
-                                    .begin(ui);
-                                {
-                                    let ui = &mut frame.content_ui;
-                                    ui.set_width(ui.available_width());
-
-                                    // Disable text selection so hovering the text only hovers the pill
-                                    ui.style_mut().interaction.selectable_labels = false;
-
-                                    // Visualizer name and entity path
-                                    let labels =
-                                        ui.vertical(|ui| {
-                                            ui.label(egui::RichText::new(&display_name).color(
-                                                ui.tokens().visualizer_list_title_text_color,
-                                            ));
-                                            ui.label(
-                                                egui::RichText::new(&full_path).size(10.5).color(
-                                                    ui.tokens().visualizer_list_path_text_color,
-                                                ),
-                                            );
-                                        });
-
-                                    // Color box(es) on the right, vertically centered on the labels.
-                                    series_color.ui(ui, labels.response.rect.center().y);
-                                }
-                                let response = frame
-                                    .allocate_space(ui)
-                                    .interact(egui::Sense::click())
-                                    .on_hover_cursor(egui::CursorIcon::PointingHand);
-                                if response.hovered() {
-                                    frame.frame.fill =
-                                        ui.tokens().visualizer_list_pill_bg_color_hovered;
-                                }
-                                if response.clicked() {
-                                    let instance_path = InstancePath::from(entity_path.clone());
-                                    ctx.viewer_ctx.command_sender().send_system(
-                                        re_viewer_context::SystemCommand::set_selection(
-                                            Item::DataResult(ctx.view_id, instance_path),
-                                        ),
-                                    );
-                                }
-                                frame.paint(ui);
-                            },
-                            |ui| {
-                                // Trashcan button to remove this visualizer.
-                                let remove_response =
-                                    ui.small_icon_button(&re_ui::icons::TRASH, "Remove visualizer");
-                                if remove_response.clicked() {
-                                    let override_base_path = &node.data_result.override_base_path;
-
-                                    let active_visualizers = node
-                                        .data_result
-                                        .visualizer_instructions
-                                        .iter()
-                                        .filter(|v| v.id != instruction.id)
-                                        .collect::<Vec<_>>();
-
-                                    let archetype = ActiveVisualizers::new(
-                                        active_visualizers.iter().map(|v| v.id.0),
-                                    );
-
-                                    ctx.save_blueprint_archetype(
-                                        override_base_path.clone(),
-                                        &archetype,
-                                    );
-
-                                    // Ensure the remaining instructions are persisted so that their
-                                    // types and mappings are available on the next frame.
-                                    for visualizer_instruction in active_visualizers {
-                                        visualizer_instruction
-                                            .write_instruction_to_blueprint(ctx.viewer_ctx);
-                                    }
-                                }
-                            },
-                        );
+                        visualizer_ui_element(ui, &ctx, node, pill_margin, instruction);
                     }
                 }
             });
@@ -939,6 +849,127 @@ impl ViewClass for TimeSeriesView {
 
         Some(Box::new(visualizer_ui))
     }
+}
+
+fn visualizer_ui_element(
+    ui: &mut egui::Ui,
+    ctx: &re_viewer_context::ViewContext<'_>,
+    node: &re_viewer_context::DataResultNode,
+    pill_margin: egui::Margin,
+    instruction: &re_viewer_context::VisualizerInstruction,
+) {
+    let entity_path = &node.data_result.entity_path;
+
+    let full_path = entity_path
+        .to_string()
+        .strip_prefix('/')
+        .map(|s| s.to_owned())
+        .unwrap_or_else(|| entity_path.to_string());
+
+    let series_color = get_time_series_color(ctx, &node.data_result, instruction);
+    let display_name = get_time_series_name(ctx, &node.data_result, instruction);
+
+    // Estimate the pill height so Sides can vertically center
+    // both sides (pill on the left, trash button on the right).
+    let pill_height = 2.0 * ui.text_style_height(&egui::TextStyle::Body)
+        + ui.spacing().item_spacing.y
+        + pill_margin.sum().y;
+
+    egui::Sides::new().height(pill_height).shrink_left().show(
+        ui,
+        |ui| {
+            let mut frame = egui::Frame::default()
+                .fill(ui.tokens().visualizer_list_pill_bg_color)
+                .corner_radius(4.0)
+                .inner_margin(pill_margin)
+                .begin(ui);
+            {
+                let ui = &mut frame.content_ui;
+                ui.set_width(ui.available_width());
+
+                // Disable text selection so hovering the text only hovers the pill
+                ui.style_mut().interaction.selectable_labels = false;
+
+                // Visualizer name and entity path
+                let labels = ui.vertical(|ui| {
+                    ui.label(
+                        egui::RichText::new(&display_name)
+                            .color(ui.tokens().visualizer_list_title_text_color),
+                    );
+                    ui.label(
+                        egui::RichText::new(&full_path)
+                            .size(10.5)
+                            .color(ui.tokens().visualizer_list_path_text_color),
+                    );
+                });
+
+                // Color box(es) on the right, vertically centered on the labels.
+                series_color.ui(ui, labels.response.rect.center().y);
+            }
+            let response = frame
+                .allocate_space(ui)
+                .interact(egui::Sense::click())
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+
+            let is_highlighted = ctx
+                .viewer_ctx
+                .hovered()
+                .iter()
+                .any(|(hovered, _hover_ctx)| {
+                    if let Item::DataResult(address) = hovered {
+                        address.view_id == ctx.view_id
+                            && address.instance_path.entity_path == *entity_path // Don't care about instance id here.
+                            && address.visualizer.is_none_or(|vid| vid == instruction.id)
+                    } else {
+                        false
+                    }
+                });
+            if is_highlighted {
+                frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
+            }
+
+            let item = Item::DataResult(DataResultInteractionAddress {
+                view_id: ctx.view_id,
+                instance_path: InstancePath::from(entity_path.clone()),
+                visualizer: Some(instruction.id),
+            });
+
+            if response.hovered() {
+                frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
+                ctx.viewer_ctx.selection_state.set_hovered(item.clone());
+            }
+            if response.clicked() {
+                ctx.viewer_ctx
+                    .command_sender()
+                    .send_system(re_viewer_context::SystemCommand::set_selection(item));
+            }
+            frame.paint(ui);
+        },
+        |ui| {
+            // Trashcan button to remove this visualizer.
+            let remove_response = ui.small_icon_button(&re_ui::icons::TRASH, "Remove visualizer");
+            if remove_response.clicked() {
+                let override_base_path = &node.data_result.override_base_path;
+
+                let active_visualizers = node
+                    .data_result
+                    .visualizer_instructions
+                    .iter()
+                    .filter(|v| v.id != instruction.id)
+                    .collect::<Vec<_>>();
+
+                let archetype = ActiveVisualizers::new(active_visualizers.iter().map(|v| v.id.0));
+
+                ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
+
+                // Ensure the remaining instructions are persisted so that their
+                // types and mappings are available on the next frame.
+                for visualizer_instruction in active_visualizers {
+                    visualizer_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
+                }
+            }
+        },
+    );
 }
 
 /// Returns a priority score for a given Arrow datatype.
@@ -1304,7 +1335,10 @@ fn add_series_to_plot(
 
         let interaction_highlight = highlights
             .entity_highlight(series.instance_path.entity_path.hash())
-            .index_highlight(series.instance_path.instance);
+            .index_highlight(
+                series.instance_path.instance,
+                series.visualizer_instruction_id,
+            );
         let highlight = interaction_highlight.any();
 
         match series.kind {

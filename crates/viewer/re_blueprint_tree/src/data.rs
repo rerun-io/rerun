@@ -18,8 +18,8 @@ use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
-    CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
-    ViewId, ViewerContext, VisitorControlFlow,
+    CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult,
+    DataResultInteractionAddress, DataResultNode, Item, ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint};
 use smallvec::SmallVec;
@@ -580,7 +580,10 @@ impl DataResultData {
     }
 
     pub fn item(&self) -> Item {
-        Item::DataResult(self.view_id, self.instance_path())
+        Item::DataResult(DataResultInteractionAddress::from_entity_path(
+            self.view_id,
+            self.entity_path.clone(),
+        ))
     }
 
     pub fn instance_path(&self) -> InstancePath {

@@ -15,9 +15,9 @@ use re_ui::{
 };
 use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
-    Contents, DragAndDropFeedback, DragAndDropPayload, Item, MissingChunkReporter,
-    PublishedViewInfo, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewId,
-    ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
+    Contents, DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, Item,
+    MissingChunkReporter, PublishedViewInfo, SystemCommand, SystemCommandSender as _,
+    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
 use re_viewport_blueprint::{
     ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
@@ -754,8 +754,11 @@ impl TilesDelegate<'_, '_> {
                         if let Some(data_result) = data_result_tree
                             .lookup_result_by_visualizer_instruction(*instruction_id)
                         {
-                            let item =
-                                Item::DataResult(view_id, data_result.entity_path.clone().into());
+                            let item = Item::DataResult(DataResultInteractionAddress {
+                                view_id,
+                                instance_path: data_result.entity_path.clone().into(),
+                                visualizer: Some(*instruction_id),
+                            });
                             for instruction_report in report.reports_for(instruction_id) {
                                 grouped_reports
                                     .entry(item.clone())

@@ -131,6 +131,7 @@ impl Arrows3DVisualizer {
                 self.data.ui_labels.extend(process_labels_3d(
                     LabeledBatch {
                         entity_path,
+                        visualizer_instruction: ent_context.visualizer_instruction,
                         num_instances,
                         overall_position: obj_space_bounding_box.center(),
                         instance_positions,

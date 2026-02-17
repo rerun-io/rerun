@@ -11,6 +11,7 @@ pub(crate) use hash::GraphNodeHash;
 mod ids;
 pub(crate) use ids::{EdgeId, NodeId};
 use re_chunk::EntityPath;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{self, GraphType};
 
 use crate::layout::EdgeTemplate;
@@ -24,6 +25,7 @@ pub enum Node {
     /// It therefore has an instance, as well as all properties that can be added via that archetype.
     Explicit {
         instance: NodeInstance,
+        visualizer_instruction_id: VisualizerInstructionId,
         label: DrawableLabel,
     },
 
@@ -91,6 +93,7 @@ impl Graph {
                 .iter()
                 .map(|n| Node::Explicit {
                     instance: n.clone(),
+                    visualizer_instruction_id: data.visualizer_instruction_id,
                     label: DrawableLabel::from_label(ui, &n.label),
                 })
                 .collect()

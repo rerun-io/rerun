@@ -10,10 +10,11 @@ use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
-    SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
+    DataResultInteractionAddress, IdentifiedViewSystem as _, Item, SystemCommand,
+    SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
@@ -462,6 +463,10 @@ fn handle_ui_interactions(
     picked_instance: Option<InstancePathHash>,
 ) {
     if let Some(instance_path) = picked_instance.and_then(|hash| hash.resolve(ctx.recording())) {
+        // TODO(andreas): GPU picking doesn't tell us which visualizer produced the result.
+        // We need to add the ability to look up the visualizer id when using GPU-based picking.
+        let visualizer = None;
+
         map_response = map_response.on_hover_ui_at_pointer(|ui| {
             list_item::list_item_scope(ui, "map_hover", |ui| {
                 item_ui::instance_path_button(
@@ -477,19 +482,23 @@ fn handle_ui_interactions(
             });
         });
 
+        let address = DataResultInteractionAddress {
+            view_id: query.view_id,
+            instance_path: instance_path.clone(),
+            visualizer,
+        };
+
         ctx.handle_select_hover_drag_interactions(
             &map_response,
-            Item::DataResult(query.view_id, instance_path.clone()),
+            Item::DataResult(address.clone()),
             false,
         );
 
         // double click selects the entire entity
         if map_response.double_clicked() {
-            // Select the entire entity
             ctx.command_sender()
                 .send_system(SystemCommand::set_selection(Item::DataResult(
-                    query.view_id,
-                    instance_path.entity_path.clone().into(),
+                    address.as_entity_all(),
                 )));
         }
     } else if map_response.clicked() {

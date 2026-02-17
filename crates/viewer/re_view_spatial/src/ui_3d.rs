@@ -302,9 +302,9 @@ impl SpatialView3D {
 
                 Item::InstancePath(instance_path) => Some(&instance_path.entity_path),
 
-                Item::DataResult(view_id, instance_path) => {
-                    if *view_id == query.view_id {
-                        Some(&instance_path.entity_path)
+                Item::DataResult(data_result) => {
+                    if data_result.view_id == query.view_id {
+                        Some(&data_result.instance_path.entity_path)
                     } else {
                         None
                     }

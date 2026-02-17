@@ -5,7 +5,7 @@ use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_sdk_types::external::glam;
 
-use crate::{Item, ViewId, resolve_mono_instance_path_item};
+use crate::{DataResultInteractionAddress, Item, ViewId, resolve_mono_instance_path_item};
 
 /// Context information that a view might attach to an item from [`ItemCollection`] and useful
 /// for how a selection might be displayed and interacted with.
@@ -54,7 +54,7 @@ pub enum ItemContext {
 /// An ordered collection of [`Item`] and optional associated context objects.
 ///
 /// Used to store what is currently selected and/or hovered.
-#[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ItemCollection(IndexMap<Item, Option<ItemContext>>);
 
 impl From<Item> for ItemCollection {
@@ -75,12 +75,7 @@ impl ItemCollection {
     pub fn is_view_the_only_selected(&self, needle: &ViewId) -> bool {
         let mut is_selected = false;
         for item in self.iter_items() {
-            let item_is_view = match item {
-                Item::View(id) | Item::DataResult(id, _) => id == needle,
-                _ => false,
-            };
-
-            if item_is_view {
+            if item.view_id() == Some(*needle) {
                 is_selected = true;
             } else {
                 return false; // More than one view selected
@@ -251,7 +246,8 @@ impl ItemCollection {
                 // in-memory recordings, and that's what we should copy here.
                 Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, format!("{id:?}"))),
 
-                Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
+                Item::DataResult(DataResultInteractionAddress { instance_path, .. })
+                | Item::InstancePath(instance_path) => Some((
                     ClipboardTextDesc::EntityPath,
                     instance_path.entity_path.to_string(),
                 )),

@@ -2,7 +2,7 @@ use re_mutex::Mutex;
 
 use super::Item;
 use crate::command_sender::{SelectionSource, SetSelection};
-use crate::{ItemCollection, ItemContext};
+use crate::{DataResultInteractionAddress, ItemCollection, ItemContext};
 
 /// Selection highlight, sorted from weakest to strongest.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -189,8 +189,8 @@ impl ApplicationSelectionState {
                         !test_instance_path.instance.is_specific()
                             && test_instance_path.entity_path == component_path.entity_path
                     }
-                    Item::DataResult(_, test_instance_path) => {
-                        test_instance_path.entity_path == component_path.entity_path
+                    Item::DataResult(test_data_result) => {
+                        test_data_result.instance_path.entity_path == component_path.entity_path
                     }
                 },
 
@@ -205,17 +205,17 @@ impl ApplicationSelectionState {
                     | Item::RedapEntry(_)
                     | Item::RedapServer(_) => false,
 
-                    Item::InstancePath(test_instance_path)
-                    | Item::DataResult(_, test_instance_path) => {
-                        current_instance_path.entity_path == test_instance_path.entity_path
+                    Item::InstancePath(instance_path)
+                    | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
+                        current_instance_path.entity_path == instance_path.entity_path
                             && either_none_or_same(
                                 &current_instance_path.instance.specific_index(),
-                                &test_instance_path.instance.specific_index(),
+                                &instance_path.instance.specific_index(),
                             )
                     }
                 },
 
-                Item::DataResult(_current_view_id, current_instance_path) => match test {
+                Item::DataResult(current_data_result) => match test {
                     Item::AppId(_)
                     | Item::TableId(_)
                     | Item::DataSource(_)
@@ -226,12 +226,12 @@ impl ApplicationSelectionState {
                     | Item::RedapEntry(_)
                     | Item::RedapServer(_) => false,
 
-                    Item::InstancePath(test_instance_path)
-                    | Item::DataResult(_, test_instance_path) => {
-                        current_instance_path.entity_path == test_instance_path.entity_path
+                    Item::InstancePath(instance_path)
+                    | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
+                        current_data_result.instance_path.entity_path == instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_path.instance.specific_index(),
-                                &test_instance_path.instance.specific_index(),
+                                &current_data_result.instance_path.instance.specific_index(),
+                                &instance_path.instance.specific_index(),
                             )
                     }
                 },

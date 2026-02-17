@@ -5,12 +5,14 @@ pub use depth_offsets::EntityDepthOffsets;
 // -----------------------------------------------------------------------------
 use re_renderer::DepthOffset;
 use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ViewClassRegistryError};
 pub use transform_tree_context::{TransformInfo, TransformTreeContext};
 
 /// Context objects for a single visualizer instruction in a spatial scene.
 pub struct SpatialSceneVisualizerInstructionContext<'a> {
+    pub visualizer_instruction: VisualizerInstructionId,
     pub transform_info: &'a TransformInfo,
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,

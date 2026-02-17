@@ -84,7 +84,9 @@ pub use self::heuristics::suggest_view_for_each_entity;
 pub use self::image_info::{
     ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at,
 };
-pub use self::item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item};
+pub use self::item::{
+    DataResultInteractionAddress, Item, resolve_mono_instance_path, resolve_mono_instance_path_item,
+};
 pub use self::item_collection::{ItemCollection, ItemContext};
 pub use self::maybe_mut_ref::MaybeMutRef;
 pub use self::query_context::{

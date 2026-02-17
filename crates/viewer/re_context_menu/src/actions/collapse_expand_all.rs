@@ -45,11 +45,11 @@ impl ContextMenuAction for CollapseExpandAllAction {
             Item::View(_) | Item::Container(_) | Item::InstancePath(_) => true,
 
             //TODO(ab): for DataResult, walk the data result tree instead!
-            Item::DataResult(_, instance_path) => ctx
+            Item::DataResult(data_result) => ctx
                 .viewer_context
                 .recording()
                 .tree()
-                .subtree(&instance_path.entity_path)
+                .subtree(&data_result.instance_path.entity_path)
                 .is_some_and(|subtree| !subtree.is_leaf()),
         }
     }
@@ -85,8 +85,14 @@ impl ContextMenuAction for CollapseExpandAllAction {
         view_id: &ViewId,
         instance_path: &InstancePath,
     ) {
-        let scope =
-            blueprint_collapse_scope(ctx, &Item::DataResult(*view_id, instance_path.clone()));
+        let scope = blueprint_collapse_scope(
+            ctx,
+            &Item::DataResult(re_viewer_context::DataResultInteractionAddress {
+                view_id: *view_id,
+                instance_path: instance_path.clone(),
+                visualizer: None,
+            }),
+        );
 
         collapse_expand_data_result(
             ctx.viewer_context,

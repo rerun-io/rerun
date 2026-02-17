@@ -267,7 +267,8 @@ impl<'a> ContextMenuContext<'a> {
     /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
         let contents = match self.clicked_item {
-            Item::View(view_id) | Item::DataResult(view_id, _) => Contents::View(*view_id),
+            Item::View(view_id) => Contents::View(*view_id),
+            Item::DataResult(data_result) => Contents::View(data_result.view_id),
             Item::Container(container_id) => Contents::Container(*container_id),
             _ => {
                 return None;
@@ -380,8 +381,8 @@ trait ContextMenuAction {
                 }
                 Item::View(view_id) => self.process_view(ctx, view_id),
                 Item::InstancePath(instance_path) => self.process_instance_path(ctx, instance_path),
-                Item::DataResult(view_id, instance_path) => {
-                    self.process_data_result(ctx, view_id, instance_path);
+                Item::DataResult(data_result) => {
+                    self.process_data_result(ctx, &data_result.view_id, &data_result.instance_path);
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
                 Item::RedapServer(origin) => self.process_redap_server(ctx, origin),

@@ -312,7 +312,12 @@ impl ViewClass for BarChartView {
             let hovered_data_result = hovered_plot_item
                 .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
                 .map(|entity_path| {
-                    re_viewer_context::Item::DataResult(query.view_id, entity_path.clone().into())
+                    re_viewer_context::Item::DataResult(
+                        re_viewer_context::DataResultInteractionAddress::from_entity_path(
+                            query.view_id,
+                            entity_path.clone(),
+                        ),
+                    )
                 })
                 .or_else(|| {
                     if response.hovered() {

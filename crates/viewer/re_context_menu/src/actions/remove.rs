@@ -15,7 +15,7 @@ impl ContextMenuAction for RemoveAction {
         match item {
             Item::View(_) => true,
             Item::Container(container_id) => ctx.viewport_blueprint.root_container != *container_id,
-            Item::DataResult(_, instance_path) => instance_path.is_all(),
+            Item::DataResult(data_result) => data_result.instance_path.is_all(),
             _ => false,
         }
     }

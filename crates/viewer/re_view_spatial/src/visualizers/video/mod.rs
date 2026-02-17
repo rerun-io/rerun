@@ -6,6 +6,7 @@ use re_log_types::{EntityPath, EntityPathHash};
 use re_renderer::renderer;
 use re_renderer::resource_managers::ImageDataDesc;
 use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_video::VideoPlaybackIssueSeverity;
 use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
@@ -116,6 +117,7 @@ fn show_video_playback_issue(
     severity: VideoPlaybackIssueSeverity,
     video_size: glam::Vec2,
     entity_path: &EntityPath,
+    visualizer_instruction: VisualizerInstructionId,
 ) {
     // Register the full video bounds regardless for more stable default view extents for when the error
     // goes in and out of existence.
@@ -228,6 +230,7 @@ fn show_video_playback_issue(
         style,
         target: UiLabelTarget::Rect(label_target_rect),
         labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
+        visualizer_instruction,
     });
 
     let error_rect = renderer::TexturedRect {

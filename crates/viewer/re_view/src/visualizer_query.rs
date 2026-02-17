@@ -33,6 +33,11 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
         }
     }
 
+    /// The visualizer instruction ID these results are associated with.
+    pub fn instruction_id(&self) -> VisualizerInstructionId {
+        self.instruction_id
+    }
+
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
     ///
     /// Reports an error if there's no chunks for the given component.

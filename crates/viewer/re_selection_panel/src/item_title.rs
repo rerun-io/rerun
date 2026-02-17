@@ -9,7 +9,10 @@ use re_ui::syntax_highlighting::{
     InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
 };
 use re_ui::{SyntaxHighlighting as _, icons};
-use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext, contents_name_style};
+use re_viewer_context::{
+    ContainerId, Contents, DataResultInteractionAddress, Item, ViewId, ViewerContext,
+    contents_name_style,
+};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
@@ -58,7 +61,11 @@ impl ItemTitle {
 
             Item::View(view_id) => Self::from_view_id(ctx, viewport, view_id),
 
-            Item::DataResult(view_id, instance_path) => {
+            Item::DataResult(DataResultInteractionAddress {
+                view_id,
+                instance_path,
+                visualizer: _, // Can't distinguish visualizer here since we don't name them.
+            }) => {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
                     item_title.with_tooltip(

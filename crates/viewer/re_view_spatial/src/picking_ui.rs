@@ -7,8 +7,8 @@ use re_ui::UiExt as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    Item, ItemCollection, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError,
-    ViewerContext, VisualizerCollection,
+    DataResultInteractionAddress, Item, ItemCollection, ItemContext, UiLayout, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, VisualizerCollection,
 };
 
 use crate::visualizers::DepthImageProcessResult;
@@ -156,7 +156,13 @@ pub fn picking(
             })
         };
 
-        let item = Item::DataResult(query.view_id, instance_path.clone());
+        // TODO(andreas): GPU picking doesn't tell us which visualizer produced the result.
+        // We need to add the ability to look up the visualizer id when using GPU-based picking.
+        let item = Item::DataResult(DataResultInteractionAddress {
+            view_id: query.view_id,
+            instance_path: instance_path.clone(),
+            visualizer: None,
+        });
 
         if hit.hit_type == PickingHitType::TexturedRect {
             hovered_image_items.push(item);

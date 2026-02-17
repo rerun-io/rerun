@@ -132,6 +132,7 @@ impl Points2DVisualizer {
             self.data.ui_labels.extend(process_labels_2d(
                 LabeledBatch {
                     entity_path,
+                    visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
                     overall_position: obj_space_bounding_box.center().truncate(),
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),

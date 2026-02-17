@@ -3,9 +3,10 @@ use nohash_hasher::IntMap;
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_viewer_context::{
-    HoverHighlight, Item, SelectionHighlight, ViewEntityHighlight, ViewHighlights, ViewId,
-    ViewOutlineMasks,
+    DataResultInteractionAddress, HoverHighlight, Item, SelectionHighlight, ViewEntityHighlight,
+    ViewHighlights, ViewId, ViewOutlineMasks,
 };
 
 /// Computes which things in a view should received highlighting.
@@ -29,10 +30,13 @@ pub fn highlights_for_view(
     };
 
     let mut add_highlight_and_mask =
-        |entity_hash: EntityPathHash, instance: InstancePath, highlight: SelectionHighlight| {
+        |entity_hash: EntityPathHash,
+         instance: InstancePath,
+         visualizer_instruction: Option<VisualizerInstructionId>,
+         highlight: SelectionHighlight| {
             highlighted_entity_paths
                 .entry(entity_hash)
-                .or_default()
+                .or_insert_with(|| ViewEntityHighlight::new(visualizer_instruction))
                 .add_selection(&instance, highlight);
             outlines_masks
                 .entry(entity_hash)
@@ -55,23 +59,32 @@ pub fn highlights_for_view(
                 let entity_hash = component_path.entity_path.hash();
                 let instance = component_path.entity_path.clone().into();
 
-                add_highlight_and_mask(entity_hash, instance, SelectionHighlight::SiblingSelection);
+                add_highlight_and_mask(
+                    entity_hash,
+                    instance,
+                    None,
+                    SelectionHighlight::SiblingSelection,
+                );
             }
 
             Item::InstancePath(selected_instance) => {
                 let entity_hash = selected_instance.entity_path.hash();
                 let highlight = SelectionHighlight::SiblingSelection;
-                add_highlight_and_mask(entity_hash, selected_instance.clone(), highlight);
+                add_highlight_and_mask(entity_hash, selected_instance.clone(), None, highlight);
             }
 
-            Item::DataResult(selected_view_context, selected_instance) => {
-                let entity_hash = selected_instance.entity_path.hash();
-                let highlight = if *selected_view_context == view_id {
+            Item::DataResult(DataResultInteractionAddress {
+                view_id: selected_view_id,
+                instance_path,
+                visualizer,
+            }) => {
+                let entity_hash = instance_path.entity_path.hash();
+                let highlight = if view_id == *selected_view_id {
                     SelectionHighlight::Selection
                 } else {
                     SelectionHighlight::SiblingSelection
                 };
-                add_highlight_and_mask(entity_hash, selected_instance.clone(), highlight);
+                add_highlight_and_mask(entity_hash, instance_path.clone(), *visualizer, highlight);
             }
         }
     }
@@ -100,7 +113,7 @@ pub fn highlights_for_view(
 
                 highlighted_entity_paths
                     .entry(entity_hash)
-                    .or_default()
+                    .or_insert_with(|| ViewEntityHighlight::new(None))
                     .add_hover(&instance, HoverHighlight::Hovered);
                 outlines_masks
                     .entry(entity_hash)
@@ -108,11 +121,27 @@ pub fn highlights_for_view(
                     .add(&instance, next_hover_mask());
             }
 
-            Item::InstancePath(selected_instance) | Item::DataResult(_, selected_instance) => {
+            Item::InstancePath(selected_instance) => {
                 let entity_hash = selected_instance.entity_path.hash();
                 highlighted_entity_paths
                     .entry(entity_hash)
+                    .or_insert_with(|| ViewEntityHighlight::new(None))
+                    .add_hover(selected_instance, HoverHighlight::Hovered);
+                outlines_masks
+                    .entry(entity_hash)
                     .or_default()
+                    .add(selected_instance, next_hover_mask());
+            }
+
+            Item::DataResult(DataResultInteractionAddress {
+                instance_path: selected_instance,
+                view_id: _,
+                visualizer,
+            }) => {
+                let entity_hash = selected_instance.entity_path.hash();
+                highlighted_entity_paths
+                    .entry(entity_hash)
+                    .or_insert_with(|| ViewEntityHighlight::new(*visualizer))
                     .add_hover(selected_instance, HoverHighlight::Hovered);
                 outlines_masks
                     .entry(entity_hash)

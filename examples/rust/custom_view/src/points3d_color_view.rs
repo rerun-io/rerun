@@ -7,11 +7,12 @@ use rerun::external::re_log_types::EntityPath;
 use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
 use rerun::external::re_viewer_context::{
-    HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, MissingChunkReporter,
-    PerVisualizerType, PerVisualizerTypeInViewClass, RecommendedVisualizers, SelectionHighlight,
-    SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, VisualizableEntities,
+    DataResultInteractionAddress, HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities,
+    Item, MissingChunkReporter, PerVisualizerType, PerVisualizerTypeInViewClass,
+    RecommendedVisualizers, SelectionHighlight, SystemExecutionOutput, UiLayout, ViewClass,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
@@ -259,10 +260,10 @@ fn color_space_ui(
 
     // Circles for the colors in the scene.
     let mut hovering_any_point = false;
-    for (ent_path, colors) in &colors.colors {
+    for (ent_path, visualizer_instruction_id, colors) in &colors.colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
         for ColorWithInstance { instance, color } in colors {
-            let highlight = ent_highlight.index_highlight(*instance);
+            let highlight = ent_highlight.index_highlight(*instance, *visualizer_instruction_id);
 
             let (x, y) = position_at(*color);
             let center = egui::pos2(
@@ -312,7 +313,11 @@ fn color_space_ui(
             });
             ctx.handle_select_hover_drag_interactions(
                 &interact,
-                Item::DataResult(query.view_id, instance),
+                Item::DataResult(DataResultInteractionAddress {
+                    view_id: query.view_id,
+                    instance_path: instance,
+                    visualizer: Some(*visualizer_instruction_id),
+                }),
                 false,
             );
         }

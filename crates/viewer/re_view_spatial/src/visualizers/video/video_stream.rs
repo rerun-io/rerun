@@ -152,6 +152,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         severity,
                         video_resolution,
                         entity_path,
+                        instruction.id,
                     );
                     continue;
                 }
@@ -250,6 +251,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         err.severity(),
                         video_resolution,
                         entity_path,
+                        instruction.id,
                     );
                 }
             }

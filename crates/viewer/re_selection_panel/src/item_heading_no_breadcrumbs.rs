@@ -82,15 +82,15 @@ fn item_heading_no_breadcrumbs(
             };
             icon_and_title(ui, component_icon, component.syntax_highlighted(ui.style()));
         }
-        Item::DataResult(view_id, instance_path) => {
+        Item::DataResult(data_result) => {
             // Break up into view and instance path:
-            item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::View(*view_id));
+            item_heading_no_breadcrumbs(ctx, viewport, ui, &Item::View(data_result.view_id));
             separator_icon_ui(ui);
             item_heading_no_breadcrumbs(
                 ctx,
                 viewport,
                 ui,
-                &Item::InstancePath(instance_path.clone()),
+                &Item::InstancePath(data_result.instance_path.clone()),
             );
         }
     }

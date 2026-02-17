@@ -205,10 +205,10 @@ impl SelectionChangeItem {
                 },
             }),
 
-            Item::DataResult(view_id, instance_path) => Some(Self::Entity {
-                entity_path: instance_path.entity_path.clone(),
-                instance_id: instance_path.instance,
-                view_name: get_view_name(blueprint, view_id),
+            Item::DataResult(data_result) => Some(Self::Entity {
+                entity_path: data_result.instance_path.entity_path.clone(),
+                instance_id: data_result.instance_path.instance,
+                view_name: get_view_name(blueprint, &data_result.view_id),
                 position: get_position(context),
             }),
             Item::InstancePath(instance_path) => Some(Self::Entity {

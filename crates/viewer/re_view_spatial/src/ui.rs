@@ -281,7 +281,10 @@ pub fn create_labels(
 
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
-            .index_highlight(label.labeled_instance.instance);
+            .index_highlight(
+                label.labeled_instance.instance,
+                label.visualizer_instruction,
+            );
         let background_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
                 SelectionHighlight::None => {

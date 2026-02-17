@@ -1,5 +1,6 @@
 use rerun::external::egui;
 use rerun::external::re_log_types::{EntityPath, Instance};
+use rerun::external::re_sdk_types::blueprint::components::VisualizerInstructionId;
 use rerun::external::re_view::{DataResultQuery, VisualizerInstructionQueryResults};
 use rerun::external::re_viewer_context::{
     AppOptions, IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection,
@@ -10,7 +11,7 @@ use rerun::external::re_viewer_context::{
 /// Our view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
 pub struct Points3DColorVisualizer {
-    pub colors: Vec<(EntityPath, Vec<ColorWithInstance>)>,
+    pub colors: Vec<(EntityPath, VisualizerInstructionId, Vec<ColorWithInstance>)>,
 }
 
 pub struct ColorWithInstance {
@@ -86,8 +87,11 @@ impl VisualizerSystem for Points3DColorVisualizer {
             }
 
             if !colors_for_entity.is_empty() {
-                self.colors
-                    .push((data_result.entity_path.clone(), colors_for_entity));
+                self.colors.push((
+                    data_result.entity_path.clone(),
+                    instruction.id,
+                    colors_for_entity,
+                ));
             }
         }
 

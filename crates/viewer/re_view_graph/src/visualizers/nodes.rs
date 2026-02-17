@@ -3,6 +3,7 @@ use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
 use re_sdk_types::archetypes::GraphNodes;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{
     Color, {self},
 };
@@ -47,6 +48,7 @@ pub struct NodeInstance {
 }
 
 pub struct NodeData {
+    pub visualizer_instruction_id: VisualizerInstructionId,
     pub nodes: Vec<NodeInstance>,
 }
 
@@ -154,8 +156,13 @@ impl VisualizerSystem for NodeVisualizer {
                 })
                 .collect::<Vec<_>>();
 
-                self.data
-                    .insert(data_result.entity_path.clone(), NodeData { nodes });
+                self.data.insert(
+                    data_result.entity_path.clone(),
+                    NodeData {
+                        visualizer_instruction_id: instruction.id,
+                        nodes,
+                    },
+                );
             }
         }
 

@@ -174,6 +174,7 @@ impl VideoFrameReferenceVisualizer {
                     VideoPlaybackIssueSeverity::Informational,
                     video_resolution,
                     entity_path,
+                    spatial_ctx.visualizer_instruction,
                 );
             }
 
@@ -225,6 +226,7 @@ impl VideoFrameReferenceVisualizer {
                                 err.severity().loading_to_informational(),
                                 video_resolution,
                                 entity_path,
+                                spatial_ctx.visualizer_instruction,
                             );
                         }
                     }
@@ -239,6 +241,7 @@ impl VideoFrameReferenceVisualizer {
                         VideoPlaybackIssueSeverity::Error,
                         video_resolution,
                         entity_path,
+                        spatial_ctx.visualizer_instruction,
                     );
                 }
             },

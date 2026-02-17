@@ -8,10 +8,10 @@ use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
-    CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, SystemCommand, SystemCommandSender as _, ViewId, ViewStates,
-    ViewerContext, VisitorControlFlow, VisualizerReportSeverity, VisualizerViewReport,
-    contents_name_style, icon_for_container_kind,
+    CollapseScope, ContainerId, Contents, DataResultInteractionAddress, DragAndDropFeedback,
+    DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
+    SystemCommandSender as _, ViewId, ViewStates, ViewerContext, VisitorControlFlow,
+    VisualizerReportSeverity, VisualizerViewReport, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -533,10 +533,10 @@ impl BlueprintTree {
         view_visible: bool,
         visualizer_reports: Option<&VisualizerViewReport>,
     ) {
-        let item = Item::DataResult(
+        let item = Item::DataResult(DataResultInteractionAddress::from_entity_path(
             data_result_data.view_id,
-            data_result_data.entity_path.clone().into(),
-        );
+            data_result_data.entity_path.clone(),
+        ));
 
         let item_content = match data_result_data.kind {
             DataResultKind::EmptyOriginPlaceholder | DataResultKind::EntityPart => {
@@ -1138,13 +1138,17 @@ impl BlueprintTree {
                 self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
                 ctx.focused_item.clone()
             }
-            Item::DataResult(view_id, instance_path) => {
-                self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
+            Item::DataResult(data_result) => {
+                self.expand_all_contents_until(
+                    viewport,
+                    ui.ctx(),
+                    &Contents::View(data_result.view_id),
+                );
                 self.expand_all_data_results_until(
                     ctx,
                     ui.ctx(),
-                    view_id,
-                    &instance_path.entity_path,
+                    &data_result.view_id,
+                    &data_result.instance_path.entity_path,
                 );
 
                 ctx.focused_item.clone()
@@ -1154,9 +1158,13 @@ impl BlueprintTree {
                     list_views_with_entity(ctx, viewport, instance_path.entity_path.hash());
 
                 // focus on the first matching data result
-                let res = view_ids
-                    .first()
-                    .map(|id| Item::DataResult(*id, instance_path.clone()));
+                let res = view_ids.first().map(|id| {
+                    Item::DataResult(DataResultInteractionAddress {
+                        view_id: *id,
+                        instance_path: instance_path.clone(),
+                        visualizer: None,
+                    })
+                });
 
                 for view_id in view_ids {
                     self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(view_id));

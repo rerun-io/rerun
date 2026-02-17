@@ -203,6 +203,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                             labeled_instance: InstancePathHash::entity_all(
                                 &data_result.entity_path,
                             ),
+                            visualizer_instruction: instruction.id,
                         });
                     } else {
                         // It should not be possible to hit this path and frame id hashes are not something that

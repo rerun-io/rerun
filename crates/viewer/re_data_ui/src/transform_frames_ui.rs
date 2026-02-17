@@ -4,7 +4,8 @@ use re_sdk_types::components::{self, TransformFrameId};
 use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
 use re_ui::{HasDesignTokens as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
-    Item, SystemCommand, SystemCommandSender as _, TransformDatabaseStoreCache, ViewerContext,
+    DataResultInteractionAddress, Item, SystemCommand, SystemCommandSender as _,
+    TransformDatabaseStoreCache, ViewerContext,
 };
 
 /// The max amount of ancestors we show before putting a '…'.
@@ -230,7 +231,10 @@ fn transform_ui(
                     .and_then(|item| item.view_id());
 
                 let item = if let Some(selected_view) = selected_view_id {
-                    Item::DataResult(selected_view, source_entity.clone().into())
+                    Item::DataResult(DataResultInteractionAddress::from_entity_path(
+                        selected_view,
+                        source_entity.clone(),
+                    ))
                 } else {
                     Item::from(source_entity.clone())
                 };

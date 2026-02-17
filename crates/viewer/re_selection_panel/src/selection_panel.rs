@@ -12,9 +12,10 @@ use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
-    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
-    ViewerContext, VisualizerViewReport, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, DataResultInteractionAddress,
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout,
+    ViewContext, ViewId, ViewStates, ViewerContext, VisualizerViewReport, contents_name_style,
+    icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -300,7 +301,11 @@ impl SelectionPanel {
                 }
             }
 
-            Item::DataResult(view_id, instance_path) => {
+            Item::DataResult(DataResultInteractionAddress {
+                view_id,
+                instance_path,
+                visualizer: _,
+            }) => {
                 ui.list_item_flat_noninteractive(PropertyContent::new("Stream entity").value_fn(
                     |ui, _| {
                         let (query, db) =
@@ -381,14 +386,14 @@ impl SelectionPanel {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
-            Item::DataResult(view_id, instance_path) => {
-                if instance_path.is_all() {
+            Item::DataResult(data_result) => {
+                if data_result.instance_path.is_all() {
                     entity_selection_ui(
                         ctx,
                         ui,
-                        &instance_path.entity_path,
+                        &data_result.instance_path.entity_path,
                         viewport,
-                        view_id,
+                        &data_result.view_id,
                         view_states,
                     );
                 } else {
@@ -846,9 +851,8 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
         Item::DataSource(data_source) => Some(Box::new(data_source.clone())),
         Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
-        Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
-            Some(Box::new(instance_path.clone()))
-        }
+        Item::InstancePath(instance_path) => Some(Box::new(instance_path.clone())),
+        Item::DataResult(data_result) => Some(Box::new(data_result.instance_path.clone())),
         // Skip data ui since we don't know yet what to show for these.
         Item::TableId(_)
         | Item::View(_)
@@ -903,7 +907,11 @@ fn list_existing_data_blueprints(
                     }),
                 );
 
-                let item = Item::DataResult(view_id, instance_path.clone());
+                let item = Item::DataResult(DataResultInteractionAddress {
+                    view_id,
+                    instance_path: instance_path.clone(),
+                    visualizer: None,
+                });
                 let response = response.on_hover_ui(|ui| {
                     let include_subtree = false;
                     item_ui::instance_hover_card_ui(

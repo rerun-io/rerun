@@ -40,8 +40,8 @@ impl CollapseScope {
             Item::InstancePath(instance_path) => Some(self.entity(instance_path.entity_path)),
             Item::Container(container_id) => Some(self.container(container_id)),
             Item::View(view_id) => Some(self.view(view_id)),
-            Item::DataResult(view_id, instance_path) => {
-                Some(self.data_result(view_id, instance_path.entity_path))
+            Item::DataResult(data_result) => {
+                Some(self.data_result(data_result.view_id, data_result.instance_path.entity_path))
             }
 
             Item::AppId(_)

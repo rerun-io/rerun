@@ -1,6 +1,5 @@
 use ahash::HashMap;
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
@@ -309,12 +308,8 @@ impl ViewerContext<'_> {
                 && let Some(item) = interacted_items.first_item()
             {
                 // Double click always selects the whole instance and nothing else.
-                let item = if let Item::DataResult(view_id, instance) = item {
-                    interacted_items = Item::DataResult(
-                        *view_id,
-                        InstancePath::entity_all(instance.entity_path.clone()),
-                    )
-                    .into();
+                let item = if let Item::DataResult(data_result) = item {
+                    interacted_items = Item::DataResult(data_result.as_entity_all()).into();
                     interacted_items
                         .first_item()
                         .expect("That item was just added")

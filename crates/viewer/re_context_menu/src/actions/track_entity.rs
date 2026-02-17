@@ -20,14 +20,14 @@ impl ContextMenuAction for TrackEntity {
             | Item::RedapServer(_)
             | Item::ComponentPath(_)
             | Item::InstancePath(_) => false,
-            Item::DataResult(view_id, instance_path) => {
-                is_3d_view(ctx, view_id)
+            Item::DataResult(data_result) => {
+                is_3d_view(ctx, &data_result.view_id)
                     // We need to check if the focused entity is logged
                     // because entities without any data don't have bounding boxes or positions.
                     && ctx
                         .viewer_context
                         .recording()
-                        .is_logged_entity(&instance_path.entity_path)
+                        .is_logged_entity(&data_result.instance_path.entity_path)
             }
         }
     }

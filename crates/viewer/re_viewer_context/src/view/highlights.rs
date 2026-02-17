@@ -2,19 +2,31 @@ use nohash_hasher::IntMap;
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPathHash, Instance};
 use re_renderer::OutlineMaskPreference;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
 use crate::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 
 /// Highlights of a specific entity path in a specific view.
 ///
 /// Using this in bulk on many instances is faster than querying single objects.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct ViewEntityHighlight {
     overall: InteractionHighlight,
     instances: ahash::HashMap<Instance, InteractionHighlight>,
+
+    /// If present, only data from the specified visualizer instruction should be highlighted, otherwise, highlight independently of the visualizer instruction.
+    visualizer_instruction: Option<VisualizerInstructionId>,
 }
 
 impl ViewEntityHighlight {
+    pub fn new(visualizer_instruction: Option<VisualizerInstructionId>) -> Self {
+        Self {
+            overall: InteractionHighlight::default(),
+            instances: ahash::HashMap::default(),
+            visualizer_instruction,
+        }
+    }
+
     /// Adds a new highlight to the entity highlight, combining it with existing highlights.
     #[inline]
     pub fn add(&mut self, instance: &InstancePath, highlight: InteractionHighlight) {
@@ -56,14 +68,28 @@ pub struct OptionalViewEntityHighlight<'a>(Option<&'a ViewEntityHighlight>);
 
 impl OptionalViewEntityHighlight<'_> {
     #[inline]
-    pub fn index_highlight(&self, instance: Instance) -> InteractionHighlight {
+    pub fn index_highlight(
+        &self,
+        instance: Instance,
+        visualizer: VisualizerInstructionId,
+    ) -> InteractionHighlight {
         match self.0 {
-            Some(entity_highlight) => entity_highlight
-                .instances
-                .get(&instance)
-                .copied()
-                .unwrap_or_default()
-                .max(entity_highlight.overall),
+            Some(entity_highlight) => {
+                if entity_highlight
+                    .visualizer_instruction
+                    .is_some_and(|v| v != visualizer)
+                {
+                    // This highlight is for a different visualizer instruction, so ignore it.
+                    InteractionHighlight::default()
+                } else {
+                    entity_highlight
+                        .instances
+                        .get(&instance)
+                        .copied()
+                        .unwrap_or_default()
+                        .max(entity_highlight.overall)
+                }
+            }
             None => InteractionHighlight::default(),
         }
     }

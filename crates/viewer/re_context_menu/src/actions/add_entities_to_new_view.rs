@@ -20,7 +20,7 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
     }
 
     fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        matches!(item, Item::DataResult(_, _) | Item::InstancePath(_))
+        matches!(item, Item::DataResult(_) | Item::InstancePath(_))
     }
 
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut Ui) -> Response {

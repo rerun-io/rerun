@@ -116,6 +116,7 @@ impl Boxes2DVisualizer {
             self.data.ui_labels.extend(process_labels(
                 LabeledBatch {
                     entity_path,
+                    visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
                     overall_position: UiLabelTarget::Point2D(
                         <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),

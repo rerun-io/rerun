@@ -63,6 +63,7 @@ where
 
         let depth_offset_key = (system_identifier, entity_path.hash());
         let instruction_context = SpatialSceneVisualizerInstructionContext {
+            visualizer_instruction: visualizer_instruction.id,
             transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer

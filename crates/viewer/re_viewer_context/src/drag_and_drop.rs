@@ -42,7 +42,7 @@ use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_ui::UiExt as _;
 
-use crate::{Contents, Item, ItemCollection};
+use crate::{Contents, DataResultInteractionAddress, Item, ItemCollection};
 
 #[derive(Debug)]
 pub enum DragAndDropPayload {
@@ -78,7 +78,8 @@ fn try_item_collection_to_entities(items: &ItemCollection) -> Option<Vec<EntityP
         // Note: this is not a filter map, because we rely on the implicit "all" semantics of
         // `collect`: we return `Some<Vec<_>>` only if all iterated items are `Some<_>`.
         .map(|(item, _)| match item {
-            Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => instance_path
+            Item::InstancePath(instance_path)
+            | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => instance_path
                 .is_all()
                 .then(|| instance_path.entity_path.clone()),
             _ => None,
@@ -293,7 +294,8 @@ impl ItemCounter {
             Item::TableId(_) => self.table_cnt += 1,
             Item::DataSource(_) => self.data_source_cnt += 1,
             Item::StoreId(_) => self.store_cnt += 1,
-            Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
+            Item::InstancePath(instance_path)
+            | Item::DataResult(DataResultInteractionAddress { instance_path, .. }) => {
                 if instance_path.is_all() {
                     self.entity_cnt += 1;
                 } else {
