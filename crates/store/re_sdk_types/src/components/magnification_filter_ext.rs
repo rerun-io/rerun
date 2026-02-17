@@ -8,12 +8,13 @@ impl MagnificationFilter {
         // NOTE: This code will be optimized out, it's only here to make sure this method fails to
         // compile if the enum is modified.
         match Self::default() {
-            Self::Nearest | Self::Linear => {}
+            Self::Nearest | Self::Linear | Self::Bicubic => {}
         }
 
         match value {
             v if v == Self::Nearest as u8 => Some(Self::Nearest),
             v if v == Self::Linear as u8 => Some(Self::Linear),
+            v if v == Self::Bicubic as u8 => Some(Self::Bicubic),
             _ => None,
         }
     }

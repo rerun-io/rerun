@@ -49,6 +49,7 @@ pub fn textured_rect_from_image(
         let texture_filter_magnification = match magnification_filter {
             MagnificationFilter::Nearest => renderer::TextureFilterMag::Nearest,
             MagnificationFilter::Linear => renderer::TextureFilterMag::Linear,
+            MagnificationFilter::Bicubic => renderer::TextureFilterMag::Bicubic,
         };
 
         let texture_filter_minification = match magnification_filter {
@@ -62,7 +63,9 @@ pub fn textured_rect_from_image(
                     renderer::TextureFilterMin::Linear
                 }
             }
-            MagnificationFilter::Linear => renderer::TextureFilterMin::Linear,
+            MagnificationFilter::Linear | MagnificationFilter::Bicubic => {
+                renderer::TextureFilterMin::Linear
+            }
         };
 
         let world_from_entity = ent_context
