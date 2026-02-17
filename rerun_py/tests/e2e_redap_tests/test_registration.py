@@ -579,15 +579,15 @@ def test_register_intra_request_duplicates(
 
 
 @pytest.mark.objectstore
-def test_registration_inter_region(catalog_client: CatalogClient) -> None:
-    """Tests the url property on the catalog and dataset."""
+def test_registration_crossregion(catalog_client: CatalogClient) -> None:
+    """Tests whether stacks can access S3 buckets cross region when config'd to do so."""
 
     # known dataset prefixes
-    usw2 = "s3://rerun-redap-datasets-pdx/test_resources/dataset/"
-    use1 = "s3://rerun-redap-datasets/test_resources/dataset/"
+    usw2 = "s3://rerun-redap-datasets-pdx/test-resources/dataset/"
+    use1 = "s3://rerun-redap-datasets/test-resources/dataset/"
 
     ds = catalog_client.create_dataset(
-        name="test_registration_inter_region_usw2",
+        name="test_registration_crossregion_usw2",
     )
     try:
         handle = ds.register_prefix(usw2).wait()
@@ -598,7 +598,7 @@ def test_registration_inter_region(catalog_client: CatalogClient) -> None:
         ds.delete()
 
     ds = catalog_client.create_dataset(
-        name="test_registration_inter_region_use1",
+        name="test_registration_crossregion_use1",
     )
     try:
         handle = ds.register_prefix(use1).wait()
