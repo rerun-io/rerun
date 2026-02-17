@@ -422,7 +422,9 @@ impl TensorView {
         let texture_options = egui::TextureOptions {
             magnification: match mag_filter {
                 MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
-                MagnificationFilter::Linear => egui::TextureFilter::Linear,
+                MagnificationFilter::Linear | MagnificationFilter::Bicubic => {
+                    egui::TextureFilter::Linear
+                }
             },
             minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
             wrap_mode: egui::TextureWrapMode::ClampToEdge,

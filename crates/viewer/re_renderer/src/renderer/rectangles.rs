@@ -34,7 +34,7 @@ use crate::{
 pub enum TextureFilterMag {
     Linear,
     Nearest,
-    // TODO(andreas): Offer advanced (shader implemented) filters like cubic?
+    Bicubic,
 }
 
 /// Texture filter setting for minification (several texels fall to one pixel).
@@ -267,6 +267,7 @@ mod gpu_data {
 
     const FILTER_NEAREST: u32 = 1;
     const FILTER_BILINEAR: u32 = 2;
+    const FILTER_BICUBIC: u32 = 3;
 
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -373,6 +374,7 @@ mod gpu_data {
             let magnification_filter = match rectangle.options.texture_filter_magnification {
                 super::TextureFilterMag::Linear => FILTER_BILINEAR,
                 super::TextureFilterMag::Nearest => FILTER_NEAREST,
+                super::TextureFilterMag::Bicubic => FILTER_BICUBIC,
             };
             let bgra_to_rgba = shader_decoding == &Some(super::ShaderDecoding::Bgr);
 

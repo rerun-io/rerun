@@ -37,6 +37,11 @@ pub enum MagnificationFilter {
     ///
     /// Used as default for mesh rendering.
     Linear = 2,
+
+    /// Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.
+    ///
+    /// This is more expensive than linear filtering but produces sharper results with less blurring.
+    Bicubic = 3,
 }
 
 impl ::re_types_core::Component for MagnificationFilter {
@@ -110,6 +115,7 @@ impl ::re_types_core::Loggable for MagnificationFilter {
             .map(|typ| match typ {
                 Some(1) => Ok(Some(Self::Nearest)),
                 Some(2) => Ok(Some(Self::Linear)),
+                Some(3) => Ok(Some(Self::Bicubic)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -127,6 +133,7 @@ impl std::fmt::Display for MagnificationFilter {
         match self {
             Self::Nearest => write!(f, "Nearest"),
             Self::Linear => write!(f, "Linear"),
+            Self::Bicubic => write!(f, "Bicubic"),
         }
     }
 }
@@ -134,7 +141,7 @@ impl std::fmt::Display for MagnificationFilter {
 impl ::re_types_core::reflection::Enum for MagnificationFilter {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::Nearest, Self::Linear]
+        &[Self::Nearest, Self::Linear, Self::Bicubic]
     }
 
     #[inline]
@@ -145,6 +152,9 @@ impl ::re_types_core::reflection::Enum for MagnificationFilter {
             }
             Self::Linear => {
                 "Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.\n\nUsed as default for mesh rendering."
+            }
+            Self::Bicubic => {
+                "Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when zooming in.\n\nThis is more expensive than linear filtering but produces sharper results with less blurring."
             }
         }
     }

@@ -127,7 +127,7 @@ namespace rerun::archetypes {
 
         /// Optional magnification filter used when zooming in on the image.
         ///
-        /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+        /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
         std::optional<ComponentBatch> magnification_filter;
 
       public:
@@ -402,7 +402,7 @@ namespace rerun::archetypes {
 
         /// Optional magnification filter used when zooming in on the image.
         ///
-        /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+        /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
         DepthImage with_magnification_filter(
             const rerun::components::MagnificationFilter& _magnification_filter
         ) && {
