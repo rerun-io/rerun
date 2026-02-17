@@ -49,6 +49,7 @@ class MagnificationFilter(Enum):
     Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.
 
     This is more expensive than linear filtering but produces sharper results with less blurring.
+    Unlike bilinear filtering, this avoids cross-shaped artifacts at texel boundaries.
     """
 
     @classmethod

@@ -113,9 +113,11 @@ namespace rerun::archetypes {
         /// Optional 2D draw order.
         std::optional<ComponentBatch> draw_order;
 
-        /// Optional filter used when the image is scaled.
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
         ///
-        /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+        /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+        ///
+        /// Has no effect in 3D views.
         std::optional<ComponentBatch> magnification_filter;
 
       public:
@@ -321,9 +323,11 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional filter used when the image is scaled.
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
         ///
-        /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+        /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+        ///
+        /// Has no effect in 3D views.
         EncodedDepthImage with_magnification_filter(
             const rerun::components::MagnificationFilter& _magnification_filter
         ) && {

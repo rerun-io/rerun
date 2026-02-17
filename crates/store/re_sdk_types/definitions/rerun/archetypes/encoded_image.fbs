@@ -46,8 +46,6 @@ table EncodedImage (
   /// Objects with higher values are drawn on top of those with lower values.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 
-  /// Optional filter used when the image is scaled.
-  ///
-  /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+  /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
   magnification_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 3200);
 }

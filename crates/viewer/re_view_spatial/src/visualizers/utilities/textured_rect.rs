@@ -7,6 +7,14 @@ use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, ViewerCon
 
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 
+fn mag_filter(filter: MagnificationFilter) -> renderer::TextureFilterMag {
+    match filter {
+        MagnificationFilter::Nearest => renderer::TextureFilterMag::Nearest,
+        MagnificationFilter::Linear => renderer::TextureFilterMag::Linear,
+        MagnificationFilter::Bicubic => renderer::TextureFilterMag::Bicubic,
+    }
+}
+
 pub struct TexturedRectParams<'a> {
     pub image: &'a ImageInfo,
     pub colormap: Option<&'a ColormapWithRange>,
@@ -46,11 +54,7 @@ pub fn textured_rect_from_image(
         colormap,
     )
     .map(|colormapped_texture| {
-        let texture_filter_magnification = match magnification_filter {
-            MagnificationFilter::Nearest => renderer::TextureFilterMag::Nearest,
-            MagnificationFilter::Linear => renderer::TextureFilterMag::Linear,
-            MagnificationFilter::Bicubic => renderer::TextureFilterMag::Bicubic,
-        };
+        let texture_filter_magnification = mag_filter(magnification_filter);
 
         let texture_filter_minification = match magnification_filter {
             MagnificationFilter::Nearest => {

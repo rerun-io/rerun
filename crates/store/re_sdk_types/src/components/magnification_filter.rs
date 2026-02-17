@@ -44,6 +44,7 @@ pub enum MagnificationFilter {
     /// Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.
     ///
     /// This is more expensive than linear filtering but produces sharper results with less blurring.
+    /// Unlike bilinear filtering, this avoids cross-shaped artifacts at texel boundaries.
     Bicubic = 3,
 }
 
@@ -157,7 +158,7 @@ impl ::re_types_core::reflection::Enum for MagnificationFilter {
                 "Linearly interpolate the nearest neighbors, creating a smoother look when the image is scaled up.\n\nUsed as default for mesh rendering."
             }
             Self::Bicubic => {
-                "Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.\n\nThis is more expensive than linear filtering but produces sharper results with less blurring."
+                "Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.\n\nThis is more expensive than linear filtering but produces sharper results with less blurring.\nUnlike bilinear filtering, this avoids cross-shaped artifacts at texel boundaries."
             }
         }
     }

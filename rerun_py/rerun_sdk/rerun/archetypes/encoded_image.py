@@ -119,9 +119,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
         magnification_filter:
-            Optional filter used when the image is scaled.
-
-            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel).
 
         """
 
@@ -189,9 +187,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
 
             Objects with higher values are drawn on top of those with lower values.
         magnification_filter:
-            Optional filter used when the image is scaled.
-
-            Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel).
 
         """
 
@@ -297,9 +293,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
         default=None,
         converter=components.MagnificationFilterBatch._converter,  # type: ignore[misc]
     )
-    # Optional filter used when the image is scaled.
-    #
-    # Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+    # Optional filter used when a texel is magnified (displayed larger than a screen pixel).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
