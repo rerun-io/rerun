@@ -671,7 +671,17 @@ mod tests {
         // Load it physically.
         for chunk in &chunks {
             let events = store.insert_chunk(chunk).unwrap();
-            for event in events {
+            assert!(
+                events.len() > 1,
+                "removal of the ghost index + insertion(s) for the physical chunk, got {events:#?}"
+            );
+
+            {
+                let diff = events[0].to_deletion().unwrap();
+                assert_eq!(chunk.id(), diff.chunk.id(), "ghost index");
+            }
+
+            for event in events.into_iter().skip(1) {
                 let diff = event.to_addition().unwrap();
                 if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
                     assert_eq!(
