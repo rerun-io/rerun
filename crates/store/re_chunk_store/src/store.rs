@@ -975,14 +975,14 @@ impl ChunkStore {
             self.chunks_lineage.contains_key(&chunk_id),
             "A chunk was reported missing, with no known lineage: {chunk_id}"
         );
-        if !self.split_on_ingest.contains(&chunk_id) {
+        if self.split_on_ingest.contains(&chunk_id) {
             if cfg!(debug_assertions) {
                 re_log::warn_once!(
-                    "Tried to report a chunk missing that was the source of a split"
+                    "Tried to report a chunk missing that was the source of a split (manual)"
                 );
             }
             re_log::debug_once!(
-                "Tried to report a chunk missing that was the source of a split: {chunk_id}"
+                "Tried to report a chunk missing that was the source of a split: {chunk_id} (manual)"
             );
         }
 
