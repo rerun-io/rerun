@@ -98,7 +98,7 @@ pub struct EncodedDepthImage {
 
     /// Optional magnification filter used when zooming in on the image.
     ///
-    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
@@ -655,7 +655,7 @@ impl EncodedDepthImage {
 
     /// Optional magnification filter used when zooming in on the image.
     ///
-    /// Nearest will produce a pixelated look (the default), while Linear will smooth out the image.
+    /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     #[inline]
     pub fn with_magnification_filter(
         mut self,
