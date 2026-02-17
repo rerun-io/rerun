@@ -152,7 +152,7 @@ pub struct Image {
     /// Defaults to `-10.0`.
     pub draw_order: Option<SerializedComponentBatch>,
 
-    /// Optional magnification filter used when zooming in on the image.
+    /// Optional filter used when the image is scaled.
     ///
     /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     pub magnification_filter: Option<SerializedComponentBatch>,
@@ -543,7 +543,7 @@ impl Image {
         self
     }
 
-    /// Optional magnification filter used when zooming in on the image.
+    /// Optional filter used when the image is scaled.
     ///
     /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     #[inline]

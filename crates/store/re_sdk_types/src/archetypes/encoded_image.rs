@@ -77,7 +77,7 @@ pub struct EncodedImage {
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<SerializedComponentBatch>,
 
-    /// Optional magnification filter used when zooming in on the image.
+    /// Optional filter used when the image is scaled.
     ///
     /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     pub magnification_filter: Option<SerializedComponentBatch>,
@@ -473,7 +473,7 @@ impl EncodedImage {
         self
     }
 
-    /// Optional magnification filter used when zooming in on the image.
+    /// Optional filter used when the image is scaled.
     ///
     /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
     #[inline]
