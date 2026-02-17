@@ -3,7 +3,7 @@ use std::ops::Bound;
 
 use emath::lerp;
 use itertools::Itertools as _;
-use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture};
+use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkDirectLineage, ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
@@ -13,6 +13,7 @@ use crate::RrdManifestIndex;
 // ---
 
 /// Number of messages per time.
+// TODO(RR-3784): get rid of TimeHistogram completely
 #[derive(Clone)]
 pub struct TimeHistogram {
     timeline: Timeline,
@@ -435,24 +436,19 @@ fn apply_estimate(
 
 impl re_byte_size::SizeBytes for TimeHistogram {
     fn heap_size_bytes(&self) -> u64 {
-        let Self { timeline, hist } = self;
-        timeline.heap_size_bytes() + hist.heap_size_bytes()
+        let Self { timeline: _, hist } = self;
+
+        // Calculating the memory use of the time histogram can be very slow.
+        // (and not _very_ important), so we do a dumb heuristic here.
+        // TODO(RR-3784): get rid of TimeHistogram completely
+        hist.total_count() * (std::mem::size_of::<u64>() as u64)
     }
 }
 
 impl re_byte_size::SizeBytes for TimeHistogramPerTimeline {
     fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
         let Self { times, has_static } = self;
         times.heap_size_bytes() + has_static.heap_size_bytes()
-    }
-}
-
-impl MemUsageTreeCapture for TimeHistogram {
-    fn capture_mem_usage_tree(&self) -> MemUsageTree {
-        use re_byte_size::SizeBytes as _;
-        let Self { timeline: _, hist } = self;
-        MemUsageTree::Bytes(hist.total_size_bytes())
     }
 }
 
@@ -465,7 +461,7 @@ impl MemUsageTreeCapture for TimeHistogramPerTimeline {
         for (timeline_name, histogram) in times {
             node.add(
                 timeline_name.as_str().to_owned(),
-                histogram.capture_mem_usage_tree(),
+                histogram.total_size_bytes(),
             );
         }
         node.into_tree()
