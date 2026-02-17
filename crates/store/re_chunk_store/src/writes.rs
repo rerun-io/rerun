@@ -303,10 +303,11 @@ impl ChunkStore {
             //
             // The fix is simple: always unconditionally clean up the indexes when a virtual chunk
             // gets physically inserted.
-            _ = self.remove_chunks_deep(vec![chunk.clone()], None);
-            // We ignore the deletion events, since a virtual insertion doesn't fire events in the first place.
-            // Note that in order to reach here, the chunk must be virtual, otherwise this method
-            // would have returned early due to the duped chunk ID check.
+            all_diffs.extend(
+                self.remove_chunks_deep(vec![chunk.clone()], None)
+                    .into_iter()
+                    .map(Into::into),
+            );
         }
 
         // If this chunk has already been inserted before, and yielded a bunch of smaller splits, then we
