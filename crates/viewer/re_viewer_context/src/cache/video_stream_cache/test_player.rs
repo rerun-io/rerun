@@ -4,8 +4,8 @@ use crossbeam::channel::{Receiver, Sender};
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, StoreId, external::re_tuid::Tuid};
-use re_renderer::video::{VideoPlayer, VideoPlayerError, VideoSampleDecoder};
 use re_sdk_types::{archetypes::VideoStream, components::VideoCodec};
+use re_video::player::{VideoPlayer, VideoPlayerError, VideoSampleDecoder};
 use re_video::{
     AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME, AsyncDecoder, SampleIndex, SampleMetadataState, Time,
     VideoDataDescription,
@@ -60,7 +60,7 @@ impl AsyncDecoder for TestDecoder {
 }
 
 struct TestVideoPlayer {
-    video: VideoPlayer,
+    video: VideoPlayer<()>,
     sample_rx: Receiver<SampleIndex>,
     video_descr: VideoDataDescription,
     video_descr_source: Option<Box<dyn Fn() -> VideoDataDescription>>,
@@ -71,7 +71,7 @@ impl TestVideoPlayer {
     fn from_descr(video_descr: VideoDataDescription) -> Self {
         #![expect(clippy::disallowed_methods)] // it's a test
         let (sample_tx, sample_rx) = crossbeam::channel::unbounded();
-        let video = VideoPlayer::new_with_encoder(
+        let video = VideoPlayer::new_with_decoder(
             VideoSampleDecoder::new("test_decoder".to_owned(), |sender| {
                 Ok(Box::new(TestDecoder {
                     sample_tx,

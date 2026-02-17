@@ -1,15 +1,213 @@
+//! Video player for decoding video frames over time.
+
+mod sample_decoder;
+
 use std::ops::Range;
 use std::time::Duration;
 
-use re_video::{DecodeSettings, FrameInfo, KeyframeIndex, SampleIndex, Time, VideoDeliveryMethod};
 use web_time::Instant;
 
-use super::VideoFrameTexture;
-use super::chunk_decoder::VideoSampleDecoder;
-use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
-use crate::video::{
-    DecoderDelayState, InsufficientSampleDataError, UnloadedSampleDataError, VideoPlayerError,
-};
+use crate::{DecodeSettings, FrameInfo, KeyframeIndex, SampleIndex, Time, VideoDeliveryMethod};
+
+pub use sample_decoder::VideoSampleDecoder;
+
+// --- Error types ---
+
+/// Detailed error for unloaded samples.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum UnloadedSampleDataError {
+    #[error("Video doesn't have any loaded samples.")]
+    NoLoadedSamples,
+
+    #[error("Frame data required for the requested sample is not loaded yet.")]
+    ExpectedSampleNotLoaded,
+}
+
+/// Detailed error for lack of sample data.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum InsufficientSampleDataError {
+    #[error("Video doesn't have any key frames.")]
+    NoKeyFrames,
+
+    #[error("Video doesn't have any samples.")]
+    NoSamples,
+
+    #[error("No key frames prior to current time.")]
+    NoKeyFramesPriorToRequestedTimestamp,
+
+    #[error("No frames prior to current time.")]
+    NoSamplesPriorToRequestedTimestamp,
+
+    #[error("Missing samples between last decoded sample and requested sample.")]
+    MissingSamples,
+
+    #[error("Duplicate sample index encountered.")]
+    DuplicateSampleIdx,
+
+    #[error("Out of order sample index encountered.")]
+    OutOfOrderSampleIdx,
+}
+
+/// Error that can occur during playing videos.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum VideoPlayerError {
+    #[error("The decoder is lagging behind")]
+    EmptyBuffer,
+
+    #[error(transparent)]
+    InsufficientSampleData(#[from] InsufficientSampleDataError),
+
+    #[error(transparent)]
+    UnloadedSampleData(#[from] UnloadedSampleDataError),
+
+    /// e.g. unsupported codec
+    #[error("Failed to create video chunk: {0}")]
+    CreateChunk(String),
+
+    /// e.g. unsupported codec
+    #[error("Failed to decode video chunk: {0}")]
+    DecodeChunk(String),
+
+    /// Various errors that can occur during video decoding.
+    #[error("Failed to decode video: {0}")]
+    Decoding(#[from] crate::DecodeError),
+
+    #[error("The timestamp passed was negative.")]
+    NegativeTimestamp,
+
+    /// e.g. bad mp4, or bug in mp4 parse
+    #[error("Bad data.")]
+    BadData,
+
+    #[error("Failed to create gpu texture from decoded video data: {0}")]
+    TextureUploadError(String),
+
+    #[error("Decoder unexpectedly exited")]
+    DecoderUnexpectedlyExited,
+}
+
+const _: () = assert!(
+    std::mem::size_of::<VideoPlayerError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
+impl VideoPlayerError {
+    pub fn should_request_more_frames(&self) -> bool {
+        // Decoders often (not always!) recover from errors and will succeed eventually.
+        // Gotta keep trying!
+        match self {
+            Self::Decoding(err) => err.should_request_more_frames(),
+            _ => false,
+        }
+    }
+
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
+        match self {
+            Self::UnloadedSampleData(_) => VideoPlaybackIssueSeverity::Loading,
+            Self::Decoding(decode_error) => decode_error.severity(),
+            Self::InsufficientSampleData(_) => VideoPlaybackIssueSeverity::Informational,
+            _ => VideoPlaybackIssueSeverity::Error,
+        }
+    }
+}
+
+// --- Enums and supporting types ---
+
+/// Severity of a video player error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VideoPlaybackIssueSeverity {
+    /// The video can't be played back due to a proper error.
+    ///
+    /// E.g. invalid data provided, decoder problems, not supported etc.
+    Error,
+
+    /// The video can't be played back right now, but it may not actually be an error.
+    Informational,
+
+    /// We're still missing required data before we're able to play this video.
+    Loading,
+}
+
+impl VideoPlaybackIssueSeverity {
+    pub fn loading_to_informational(self) -> Self {
+        match self {
+            Self::Loading => Self::Informational,
+            other => other,
+        }
+    }
+}
+
+/// Describes whether a decoder is lagging behind or not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecoderDelayState {
+    /// The decoder is caught up with the most recent requested frame.
+    UpToDate,
+
+    /// We're not up to date, but we're close enough to the newest content of a live stream that we're ok.
+    ///
+    /// The leading edge of livestreams is treated specially since we don't want to show the waiting indicator
+    /// as readily.
+    /// Furthermore, it mitigates problems with some decoders not emitting the last few frames until
+    /// we signal the end of the video (after which we have to restart the decoder).
+    ///
+    /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
+    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading indicator.
+    ///
+    /// The tolerance value used for this is the sum of
+    /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
+    /// [`crate::AsyncDecoder::min_num_samples_to_enqueue_ahead`].
+    UpToDateToleratedEdgeOfLiveStream,
+
+    /// The decoder is caught up within a certain tolerance.
+    ///
+    /// I.e. the video texture is not the most recently requested frame, but it's quite close.
+    ///
+    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
+    UpToDateWithinTolerance,
+
+    /// The decoder is catching up after a long seek.
+    ///
+    /// The video texture is no longer updated until the decoder has caught up.
+    /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
+    ///
+    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
+    Behind,
+}
+
+impl DecoderDelayState {
+    /// Whether a user of a video player should keep requesting a more up to date video frame even
+    /// if the requested time has not changed.
+    pub fn should_request_more_frames(&self) -> bool {
+        match self {
+            Self::UpToDate => false,
+
+            // Everything that isn't up-to-date means that we have to request more frames
+            // since the frame that is displayed right now is the one that was requested.
+            Self::UpToDateWithinTolerance
+            | Self::Behind
+            | Self::UpToDateToleratedEdgeOfLiveStream => true,
+        }
+    }
+}
+
+/// Identifier for an independent video decoding stream.
+///
+/// A single video may use several decoders at a time to simultaneously decode frames at different timestamps.
+/// The id does not need to be globally unique, just unique enough to distinguish streams of the same video.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VideoPlayerStreamId(pub u64);
+
+impl re_byte_size::SizeBytes for VideoPlayerStreamId {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
+// --- Player configuration ---
 
 pub struct PlayerConfiguration {
     /// Don't report hickups lasting shorter than this.
@@ -65,22 +263,36 @@ impl TimedDecodingError {
     }
 }
 
-/// A texture of a specific video frame.
-#[derive(Clone)]
-pub struct VideoTexture {
-    /// The video texture is created lazily on the first received frame.
-    pub texture: Option<GpuTexture2D>,
+// --- Player frame result ---
+
+/// Information about the status of a frame decoding, returned by [`VideoPlayer::frame_at`].
+pub struct PlayerFrameStatus {
+    /// Whether the decoder is lagging behind or not.
+    pub decoder_delay_state: DecoderDelayState,
+
+    /// If true, the output is so out-dated that it should have a loading indicator on top of it.
+    pub show_loading_indicator: bool,
+
+    /// Meta information about the decoded frame.
     pub frame_info: Option<FrameInfo>,
-    pub source_pixel_format: SourceImageDataFormat,
 }
+
+// --- VideoPlayer ---
 
 /// Decode video to a texture, optimized for extracting successive frames over time.
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple video players.
-pub struct VideoPlayer {
+///
+/// The generic type `T` represents the output storage, for example a texture.
+///
+/// Use `()` if you don't need output storage, useful for tests.
+pub struct VideoPlayer<T: Default> {
     sample_decoder: VideoSampleDecoder,
 
-    video_texture: VideoTexture,
+    output: Option<T>,
+
+    /// Meta information about the currently displayed frame.
+    frame_info: Option<FrameInfo>,
 
     last_requested: Option<SampleIndex>,
     last_enqueued: Option<SampleIndex>,
@@ -102,13 +314,13 @@ pub struct VideoPlayer {
     config: PlayerConfiguration,
 }
 
-impl re_byte_size::SizeBytes for VideoPlayer {
+impl<T: Default> re_byte_size::SizeBytes for VideoPlayer<T> {
     fn heap_size_bytes(&self) -> u64 {
         self.sample_decoder.heap_size_bytes()
     }
 }
 
-impl Drop for VideoPlayer {
+impl<T: Default> Drop for VideoPlayer<T> {
     fn drop(&mut self) {
         re_log::trace!("Dropping VideoPlayer {:?}", self.debug_name());
     }
@@ -124,7 +336,7 @@ impl Drop for VideoPlayer {
 ///
 /// Returns the index of the keyframe if found.
 pub fn request_keyframe_before<'a>(
-    video_description: &re_video::VideoDataDescription,
+    video_description: &crate::VideoDataDescription,
     idx: SampleIndex,
     get_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
 ) -> Result<KeyframeIndex, VideoPlayerError> {
@@ -135,10 +347,10 @@ pub fn request_keyframe_before<'a>(
         .iter_index_range_clamped(&range)
         .rev()
         .find(|(_, s)| match s {
-            re_video::SampleMetadataState::Present(s) => s.is_sync,
+            crate::SampleMetadataState::Present(s) => s.is_sync,
             // We don't know if this is a keyframe or not. So we stop here and wait for it
             // to be loaded.
-            re_video::SampleMetadataState::Unloaded(_) => true,
+            crate::SampleMetadataState::Unloaded(_) => true,
         })
     {
         // Request all the sources from the unloaded/keyframe up until the current index to
@@ -151,7 +363,7 @@ pub fn request_keyframe_before<'a>(
         }
 
         match s {
-            re_video::SampleMetadataState::Present(_) => video_description
+            crate::SampleMetadataState::Present(_) => video_description
                 .keyframe_indices
                 .binary_search(&from_idx)
                 .map_err(|_idx| {
@@ -162,7 +374,7 @@ pub fn request_keyframe_before<'a>(
                     }
                     VideoPlayerError::BadData
                 }),
-            re_video::SampleMetadataState::Unloaded(_) => {
+            crate::SampleMetadataState::Unloaded(_) => {
                 Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into())
             }
         }
@@ -180,7 +392,7 @@ pub fn request_keyframe_before<'a>(
 /// valid video.
 fn try_request_missing_samples_at_presentation_timestamp<'a>(
     requested_pts: Time,
-    video_description: &re_video::VideoDataDescription,
+    video_description: &crate::VideoDataDescription,
     get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
 ) -> VideoPlayerError {
     // Find a sample we can hook onto to start looking for keyframes.
@@ -235,14 +447,14 @@ fn try_request_missing_samples_at_presentation_timestamp<'a>(
     }
 }
 
-impl VideoPlayer {
+impl<T: Default> VideoPlayer<T> {
     /// Create a new video player for a given video.
     ///
     /// The video data description may change over time by adding and removing samples and GOPs,
     /// but other properties are expected to be stable.
     pub fn new(
         debug_name: &str,
-        description: &re_video::VideoDataDescription,
+        description: &crate::VideoDataDescription,
         decode_settings: &DecodeSettings,
     ) -> Result<Self, VideoPlayerError> {
         let debug_name = format!(
@@ -263,40 +475,34 @@ impl VideoPlayer {
         }
 
         let sample_decoder = VideoSampleDecoder::new(debug_name.clone(), |output_sender| {
-            re_video::new_decoder(&debug_name, description, decode_settings, output_sender)
+            crate::new_decoder(&debug_name, description, decode_settings, output_sender)
         })?;
 
-        Ok(Self::new_with_encoder(sample_decoder))
+        Ok(Self::new_with_decoder(sample_decoder))
     }
 
-    pub fn new_with_encoder(sample_decoder: VideoSampleDecoder) -> Self {
+    pub fn new_with_decoder(sample_decoder: VideoSampleDecoder) -> Self {
         Self {
             sample_decoder,
-
-            video_texture: VideoTexture {
-                texture: None,
-                frame_info: None,
-                source_pixel_format: SourceImageDataFormat::WgpuCompatible(
-                    wgpu::TextureFormat::Rgba8Unorm,
-                ),
-            },
-
+            output: None,
+            frame_info: None,
             last_requested: None,
             last_enqueued: None,
-
             signaled_end_of_video: false,
-
             last_error: None,
-
             last_time_caught_up: None,
             decoder_delay_state: DecoderDelayState::UpToDate,
-
             config: PlayerConfiguration::default(),
         }
     }
 
     pub fn debug_name(&self) -> &str {
         self.sample_decoder.debug_name()
+    }
+
+    /// Access the output storage.
+    pub fn output(&self) -> Option<&T> {
+        self.output.as_ref()
     }
 
     /// Get the video frame at the given time stamp.
@@ -310,13 +516,10 @@ impl VideoPlayer {
     pub fn frame_at<'a>(
         &mut self,
         requested_pts: Time,
-        video_description: &re_video::VideoDataDescription,
-        update_video_texture_with_frame: &mut dyn FnMut(
-            &mut VideoTexture,
-            &re_video::Frame,
-        ) -> Result<(), VideoPlayerError>,
+        video_description: &crate::VideoDataDescription,
+        update_output: &mut dyn FnMut(&mut T, &crate::Frame) -> Result<(), VideoPlayerError>,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
-    ) -> Result<VideoFrameTexture, VideoPlayerError> {
+    ) -> Result<PlayerFrameStatus, VideoPlayerError> {
         if video_description.samples.is_empty() {
             return Err(InsufficientSampleDataError::NoSamples.into());
         }
@@ -360,23 +563,24 @@ impl VideoPlayer {
                 decoded_frame.info.presentation_timestamp,
             );
 
-            // Update the texture if it isn't already up to date and we're not waiting for the decoder to catch up.
-            let current_frame_info = self.video_texture.frame_info.as_ref();
+            // Update the output if it isn't already up to date and we're not waiting for the decoder to catch up.
+            let current_frame_info = self.frame_info.as_ref();
             if current_frame_info
                 .is_none_or(|info| info.presentation_timestamp != requested_sample_pts)
                 && self.decoder_delay_state != DecoderDelayState::Behind
             {
-                update_video_texture_with_frame(&mut self.video_texture, decoded_frame)?; // Update texture errors are very unusual, error out on those immediately.
-                self.video_texture.frame_info = Some(decoded_frame.info.clone());
+                let output = self.output.get_or_insert_with(T::default);
+                update_output(output, decoded_frame)?; // Update errors are very unusual, error out on those immediately.
+                self.frame_info = Some(decoded_frame.info.clone());
             }
 
             // We apparently recovered from any errors we had previously!
             // (otherwise we wouldn't have received a frame from the decoder)
             self.last_error = None;
         } else {
-            // If the sample decoder didn't report a frame we naturally still use the last video texture.
-            // This texture may or may not be up to date, update the delay state accordingly!
-            let current_frame_info = self.video_texture.frame_info.as_ref();
+            // If the sample decoder didn't report a frame we naturally still use the last output.
+            // This output may or may not be up to date, update the delay state accordingly!
+            let current_frame_info = self.frame_info.as_ref();
             self.decoder_delay_state = if let Some(last_decoded_pts) =
                 current_frame_info.map(|info| info.presentation_timestamp)
             {
@@ -415,7 +619,7 @@ impl VideoPlayer {
                     }
                 }
 
-                self.video_texture.texture.is_none()
+                self.output.is_none()
                     || self.last_time_caught_up.is_none_or(|last_time_caught_up| {
                         last_time_caught_up.elapsed()
                             > self.config.decoding_grace_delay_before_reporting
@@ -423,19 +627,17 @@ impl VideoPlayer {
             }
         };
 
-        Ok(VideoFrameTexture {
-            texture: self.video_texture.texture.clone(),
+        Ok(PlayerFrameStatus {
             decoder_delay_state: self.decoder_delay_state,
             show_loading_indicator,
-            frame_info: self.video_texture.frame_info.clone(),
-            source_pixel_format: self.video_texture.source_pixel_format,
+            frame_info: self.frame_info.clone(),
         })
     }
 
     /// Makes sure enough samples have been enqueued to cover the requested presentation timestamp.
     fn enqueue_samples<'a>(
         &mut self,
-        video_description: &re_video::VideoDataDescription,
+        video_description: &crate::VideoDataDescription,
         requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
@@ -529,7 +731,7 @@ impl VideoPlayer {
             }
 
             match video_description.samples.get(last_enqueued + 1) {
-                Some(re_video::SampleMetadataState::Unloaded(source)) => {
+                Some(crate::SampleMetadataState::Unloaded(source)) => {
                     // So far we have only requested backwards from the requested
                     // sample. This will request forward for when we're enqueueing
                     // infront of a sample.
@@ -607,7 +809,7 @@ impl VideoPlayer {
 
     fn enqueued_last_sample_of_video(
         &self,
-        video_description: &re_video::VideoDataDescription,
+        video_description: &crate::VideoDataDescription,
     ) -> bool {
         self.last_enqueued.is_some_and(|last_enqueued| {
             last_enqueued + 1 == video_description.samples.next_index()
@@ -616,7 +818,7 @@ impl VideoPlayer {
 
     fn handle_errors_and_reset_decoder_if_needed(
         &mut self,
-        video_description: &re_video::VideoDataDescription,
+        video_description: &crate::VideoDataDescription,
         requested: SampleIndex,
         requested_keyframe: KeyframeIndex,
     ) -> Result<(), VideoPlayerError> {
@@ -706,7 +908,7 @@ impl VideoPlayer {
 
     fn enqueue_keyframe_range<'a>(
         &mut self,
-        video_description: &re_video::VideoDataDescription,
+        video_description: &crate::VideoDataDescription,
         keyframe_idx: KeyframeIndex,
         requested_sample_idx: SampleIndex,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
@@ -734,7 +936,7 @@ impl VideoPlayer {
     /// All samples have to belong to the same keyframe.
     fn enqueue_sample_range<'a>(
         &mut self,
-        video_description: &re_video::VideoDataDescription,
+        video_description: &crate::VideoDataDescription,
         sample_range: &Range<SampleIndex>,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
     ) -> Result<(), VideoPlayerError> {
@@ -743,8 +945,8 @@ impl VideoPlayer {
             .iter_index_range_clamped(sample_range)
         {
             let sample = match sample {
-                re_video::SampleMetadataState::Present(sample) => sample,
-                re_video::SampleMetadataState::Unloaded(_) => {
+                crate::SampleMetadataState::Present(sample) => sample,
+                crate::SampleMetadataState::Unloaded(_) => {
                     return Ok(());
                 }
             };
@@ -763,9 +965,11 @@ impl VideoPlayer {
     /// Reset the video decoder and discard all frames.
     pub fn reset(
         &mut self,
-        video_descr: &re_video::VideoDataDescription,
+        video_descr: &crate::VideoDataDescription,
     ) -> Result<(), VideoPlayerError> {
         self.sample_decoder.reset(video_descr)?;
+        self.output = None;
+        self.frame_info = None;
         self.last_requested = None;
         self.last_enqueued = None;
         self.signaled_end_of_video = false;
@@ -777,8 +981,8 @@ impl VideoPlayer {
     #[must_use]
     fn determine_new_decoder_delay_state(
         &self,
-        video_description: &re_video::VideoDataDescription,
-        requested_sample: Option<&re_video::SampleMetadata>,
+        video_description: &crate::VideoDataDescription,
+        requested_sample: Option<&crate::SampleMetadata>,
         last_decoded_frame_pts: Time,
     ) -> DecoderDelayState {
         let Some(requested_sample) = requested_sample else {
@@ -845,7 +1049,7 @@ impl VideoPlayer {
 /// The result should be treated as a heuristic.
 fn treat_video_as_live_stream(
     config: &PlayerConfiguration,
-    video_description: &re_video::VideoDataDescription,
+    video_description: &crate::VideoDataDescription,
 ) -> bool {
     // If this is a potentially live stream, signal the end of the video after a certain amount of time.
     // This helps decoders to flush out any pending frames.
@@ -860,8 +1064,8 @@ fn treat_video_as_live_stream(
 
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
 fn is_significantly_behind(
-    video_description: &re_video::VideoDataDescription,
-    requested_sample: &re_video::SampleMetadata,
+    video_description: &crate::VideoDataDescription,
+    requested_sample: &crate::SampleMetadata,
     decoded_frame_pts: Time,
     tolerated_output_delay_in_num_frames: usize,
 ) -> bool {

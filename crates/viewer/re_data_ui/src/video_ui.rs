@@ -318,7 +318,7 @@ fn decoded_frame_ui<'a>(
     get_video_buffer: &dyn Fn(re_log_types::external::re_tuid::Tuid) -> &'a [u8],
 ) {
     let player_stream_id =
-        re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
+        re_video::player::VideoPlayerStreamId(ui.id().with("video_player").value());
 
     match video.frame_at(
         ctx.render_ctx(),
@@ -409,7 +409,7 @@ fn decoded_frame_ui<'a>(
             ui.error_label(err.to_string());
 
             #[cfg(not(target_arch = "wasm32"))]
-            if let re_renderer::video::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(
+            if let re_video::player::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(
                 err,
             )) = &err
             {

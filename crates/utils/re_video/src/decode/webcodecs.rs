@@ -15,7 +15,7 @@ use web_sys::{
 use super::{AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, Result};
 use crate::{
     DecodeError, FrameResult, Sender, Time, Timescale, TryRecvError, VideoCodec,
-    VideoDataDescription, VideoEncodingDetails,
+    VideoDataDescription, VideoEncodingDetails, player::VideoPlaybackIssueSeverity,
 };
 
 #[derive(Clone)]
@@ -101,10 +101,10 @@ pub enum WebError {
 }
 
 impl WebError {
-    pub fn severity(&self) -> crate::VideoPlaybackIssueSeverity {
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
         match self {
-            Self::NotEnoughCodecInformation => crate::VideoPlaybackIssueSeverity::Loading,
-            _ => crate::VideoPlaybackIssueSeverity::Error,
+            Self::NotEnoughCodecInformation => VideoPlaybackIssueSeverity::Loading,
+            _ => VideoPlaybackIssueSeverity::Error,
         }
     }
 }

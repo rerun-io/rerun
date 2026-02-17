@@ -1,167 +1,42 @@
 mod chunk_decoder;
-mod player;
 
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
-pub use chunk_decoder::VideoSampleDecoder;
-pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
 use re_mutex::Mutex;
-use re_video::{DecodeSettings, VideoDataDescription, VideoPlaybackIssueSeverity};
+use re_video::player::{DecoderDelayState, VideoPlayerError, VideoPlayerStreamId};
+use re_video::{DecodeSettings, VideoDataDescription};
 
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
 
-/// Detailed error for unloaded samples.
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum UnloadedSampleDataError {
-    #[error("Video doesn't have any loaded samples.")]
-    NoLoadedSamples,
+/// A [`re_video::player::VideoPlayer`] with GPU texture output.
+pub type VideoPlayer = re_video::player::VideoPlayer<VideoTexture>;
 
-    #[error("Frame data required for the requested sample is not loaded yet.")]
-    ExpectedSampleNotLoaded,
-}
-
-/// Detailed error for lack of sample data.
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum InsufficientSampleDataError {
-    #[error("Video doesn't have any key frames.")]
-    NoKeyFrames,
-
-    #[error("Video doesn't have any samples.")]
-    NoSamples,
-
-    #[error("No key frames prior to current time.")]
-    NoKeyFramesPriorToRequestedTimestamp,
-
-    #[error("No frames prior to current time.")]
-    NoSamplesPriorToRequestedTimestamp,
-
-    #[error("Missing samples between last decoded sample and requested sample.")]
-    MissingSamples,
-
-    #[error("Duplicate sample index encountered.")]
-    DuplicateSampleIdx,
-
-    #[error("Out of order sample index encountered.")]
-    OutOfOrderSampleIdx,
-}
-
-/// Error that can occur during playing videos.
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum VideoPlayerError {
-    #[error("The decoder is lagging behind")]
-    EmptyBuffer,
-
-    #[error(transparent)]
-    InsufficientSampleData(#[from] InsufficientSampleDataError),
-
-    #[error(transparent)]
-    UnloadedSampleData(#[from] UnloadedSampleDataError),
-
-    /// e.g. unsupported codec
-    #[error("Failed to create video chunk: {0}")]
-    CreateChunk(String),
-
-    /// e.g. unsupported codec
-    #[error("Failed to decode video chunk: {0}")]
-    DecodeChunk(String),
-
-    /// Various errors that can occur during video decoding.
-    #[error("Failed to decode video: {0}")]
-    Decoding(#[from] re_video::DecodeError),
-
-    #[error("The timestamp passed was negative.")]
-    NegativeTimestamp,
-
-    /// e.g. bad mp4, or bug in mp4 parse
-    #[error("Bad data.")]
-    BadData,
-
-    #[error("Failed to create gpu texture from decoded video data: {0}")]
-    ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
-
-    #[error("Decoder unexpectedly exited")]
-    DecoderUnexpectedlyExited,
-}
-
-const _: () = assert!(
-    std::mem::size_of::<VideoPlayerError>() <= 64,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);
-
-impl VideoPlayerError {
-    pub fn should_request_more_frames(&self) -> bool {
-        // Decoders often (not always!) recover from errors and will succeed eventually.
-        // Gotta keep trying!
-        match self {
-            Self::Decoding(err) => err.should_request_more_frames(),
-            _ => false,
-        }
-    }
-
-    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
-        match self {
-            Self::UnloadedSampleData(_) => VideoPlaybackIssueSeverity::Loading,
-            Self::Decoding(decode_error) => decode_error.severity(),
-            Self::InsufficientSampleData(_) => VideoPlaybackIssueSeverity::Informational,
-            _ => VideoPlaybackIssueSeverity::Error,
-        }
+impl From<crate::resource_managers::ImageDataToTextureError> for VideoPlayerError {
+    fn from(err: crate::resource_managers::ImageDataToTextureError) -> Self {
+        Self::TextureUploadError(err.to_string())
     }
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 
-/// Describes whether a decoder is lagging behind or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DecoderDelayState {
-    /// The decoder is caught up with the most recent requested frame.
-    UpToDate,
-
-    /// We're not up to date, but we're close enough to the newest content of a live stream that we're ok.
-    ///
-    /// The leading edge of livestreams is treated specially since we don't want to show the waiting indicator
-    /// as readily.
-    /// Furthermore, it mitigates problems with some decoders not emitting the last few frames until
-    /// we signal the end of the video (after which we have to restart the decoder).
-    ///
-    /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
-    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading indicator.
-    ///
-    /// The tolerance value used for this is the sum of
-    /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
-    /// [`re_video::AsyncDecoder::min_num_samples_to_enqueue_ahead`].
-    UpToDateToleratedEdgeOfLiveStream,
-
-    /// The decoder is caught up within a certain tolerance.
-    ///
-    /// I.e. the video texture is not the most recently requested frame, but it's quite close.
-    ///
-    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
-    UpToDateWithinTolerance,
-
-    /// The decoder is catching up after a long seek.
-    ///
-    /// The video texture is no longer updated until the decoder has caught up.
-    /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
-    ///
-    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
-    Behind,
+/// A texture of a specific video frame.
+#[derive(Clone)]
+pub struct VideoTexture {
+    /// The video texture is created lazily on the first received frame.
+    pub texture: Option<GpuTexture2D>,
+    pub source_pixel_format: SourceImageDataFormat,
 }
 
-impl DecoderDelayState {
-    /// Whether a user of a video player should keep requesting a more up to date video frame even
-    /// if the requested time has not changed.
-    pub fn should_request_more_frames(&self) -> bool {
-        match self {
-            Self::UpToDate => false,
-
-            // Everything that isn't up-to-date means that we have to request more frames
-            // since the frame that is displayed right now is the one that was requested.
-            Self::UpToDateWithinTolerance
-            | Self::Behind
-            | Self::UpToDateToleratedEdgeOfLiveStream => true,
+impl Default for VideoTexture {
+    fn default() -> Self {
+        Self {
+            texture: None,
+            source_pixel_format: SourceImageDataFormat::WgpuCompatible(
+                wgpu::TextureFormat::Rgba8Unorm,
+            ),
         }
     }
 }
@@ -186,26 +61,8 @@ pub struct VideoFrameTexture {
     pub frame_info: Option<re_video::FrameInfo>,
 }
 
-/// Identifier for an independent video decoding stream.
-///
-/// A single video may use several decoders at a time to simultaneously decode frames at different timestamps.
-/// The id does not need to be globally unique, just unique enough to distinguish streams of the same video.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-
-pub struct VideoPlayerStreamId(pub u64);
-
-impl re_byte_size::SizeBytes for VideoPlayerStreamId {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 struct PlayerEntry {
-    player: player::VideoPlayer,
+    player: VideoPlayer,
 
     /// Was this used last frame?
     /// This is reset every frame, and used to determine whether to purge the player.
@@ -343,7 +200,7 @@ impl Video {
         let decoder_entry = match players.entry(player_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_player = player::VideoPlayer::new(
+                let new_player = VideoPlayer::new(
                     &self.debug_name,
                     &self.video_description,
                     &self.decode_settings,
@@ -356,14 +213,26 @@ impl Video {
         };
 
         decoder_entry.used_last_frame = true;
-        decoder_entry.player.frame_at(
+        let status = decoder_entry.player.frame_at(
             video_time,
             &self.video_description,
             &mut |texture, frame| {
                 chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
             },
             get_video_buffer,
-        )
+        )?;
+
+        let output = decoder_entry.player.output();
+        Ok(VideoFrameTexture {
+            texture: output.and_then(|o| o.texture.clone()),
+            decoder_delay_state: status.decoder_delay_state,
+            show_loading_indicator: status.show_loading_indicator,
+            source_pixel_format: output.map_or(
+                SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::Rgba8Unorm),
+                |o| o.source_pixel_format,
+            ),
+            frame_info: status.frame_info,
+        })
     }
 
     /// Removes all decoders that have been unused in the last frame.

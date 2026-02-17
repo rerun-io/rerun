@@ -7,6 +7,7 @@ mod gop_detection;
 mod h264;
 mod h265;
 mod nalu;
+pub mod player;
 mod stable_index_deque;
 mod time;
 
@@ -38,32 +39,6 @@ pub use {
 
 #[cfg(with_ffmpeg)]
 pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
-
-// TODO(isse): When video player is moved to `re_video`, move this into the
-// player module.
-/// Severity of a video player error.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VideoPlaybackIssueSeverity {
-    /// The video can't be played back due to a proper error.
-    ///
-    /// E.g. invalid data provided, decoder problems, not supported etc.
-    Error,
-
-    /// The video can't be played back right now, but it may not actually be an error.
-    Informational,
-
-    /// We're still missing required data before we're able to play this video.
-    Loading,
-}
-
-impl VideoPlaybackIssueSeverity {
-    pub fn loading_to_informational(self) -> Self {
-        match self {
-            Self::Loading => Self::Informational,
-            other => other,
-        }
-    }
-}
 
 pub fn enabled_features() -> &'static [&'static str] {
     &[

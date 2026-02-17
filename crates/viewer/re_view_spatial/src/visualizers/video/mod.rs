@@ -7,7 +7,7 @@ use re_renderer::renderer;
 use re_renderer::resource_managers::ImageDataDesc;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_video::VideoPlaybackIssueSeverity;
+use re_video::player::VideoPlaybackIssueSeverity;
 use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
@@ -20,8 +20,8 @@ fn video_stream_id(
     entity_path: &EntityPath,
     view_id: ViewId,
     visualizer_name: ViewSystemIdentifier,
-) -> re_renderer::video::VideoPlayerStreamId {
-    re_renderer::video::VideoPlayerStreamId(
+) -> re_video::player::VideoPlayerStreamId {
+    re_video::player::VideoPlayerStreamId(
         re_log_types::hash::Hash64::hash((entity_path.hash(), view_id, visualizer_name)).hash64(),
     )
 }

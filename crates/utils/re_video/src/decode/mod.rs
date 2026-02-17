@@ -36,7 +36,7 @@
 //! * `picture.primaries()`
 //!   * now we have RGB but we kinda have no idea what that means!
 //!   * the color primaries tell us which space we're in
-//!   * ...meaning that if the primaries are anything else we'd have to do some conversion BUT
+//!   * …meaning that if the primaries are anything else we'd have to do some conversion BUT
 //!     it also means that we have no chance of displaying the picture perfectly on a screen taking in sRGB (or any other not-matching color space)
 //!   * [Wikipedia says](https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB) sRGB uses the same primaries as BT.709
 //!       * but I also found other sources (e.g. [this forum post](https://forum.doom9.org/showthread.php?p=1640342#post1640342))
@@ -95,7 +95,7 @@ pub use ffmpeg_cli::{
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
-use crate::{SampleIndex, Time, VideoDataDescription, VideoPlaybackIssueSeverity};
+use crate::{SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodeError {
