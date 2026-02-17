@@ -159,9 +159,7 @@ namespace rerun::archetypes {
         /// Defaults to `-10.0`.
         std::optional<ComponentBatch> draw_order;
 
-        /// Optional filter used when the image is scaled.
-        ///
-        /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
         std::optional<ComponentBatch> magnification_filter;
 
       public:
@@ -421,9 +419,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional filter used when the image is scaled.
-        ///
-        /// Nearest will produce a pixelated look (the default), Linear will smooth out the image, and Bicubic will produce the smoothest result with the least blurring.
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
         Image with_magnification_filter(
             const rerun::components::MagnificationFilter& _magnification_filter
         ) && {

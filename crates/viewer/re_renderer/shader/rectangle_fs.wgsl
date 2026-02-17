@@ -58,18 +58,21 @@ fn clamp_to_edge_nearest_neighbor(coord: vec2f, texture_dimension: vec2f) -> vec
     return vec2i(clamp(floor(coord), vec2f(0.0), texture_dimension - vec2f(1.0)));
 }
 
-fn decode_color_and_filter_nearest_or_bilinear(filter_nearest: bool, coord: vec2f, v00: vec4f, v01: vec4f, v10: vec4f, v11: vec4f) -> vec4f {
-    let c00 = decode_color(v00);
-    if filter_nearest {
-        return c00;
-    } else {
-        let c01 = decode_color(v01);
-        let c10 = decode_color(v10);
-        let c11 = decode_color(v11);
-        let top = mix(c00, c10, fract(coord.x - 0.5));
-        let bottom = mix(c01, c11, fract(coord.x - 0.5));
-        return mix(top, bottom, fract(coord.y - 0.5));
+/// Load a texel at the given integer coordinate, regardless of sample type.
+fn load_texel(tc: vec2i) -> vec4f {
+    if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
+        return textureLoad(texture_float, tc, 0);
+    } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
+        return vec4f(textureLoad(texture_sint, tc, 0));
+    } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+        return vec4f(textureLoad(texture_uint, tc, 0));
     }
+    return vec4f(0.0);
+}
+
+/// Load and decode a texel at the given floating-point coordinate (clamped to edge).
+fn sample_and_decode(coord: vec2f, texture_dimensions: vec2f) -> vec4f {
+    return decode_color(load_texel(clamp_to_edge_nearest_neighbor(coord, texture_dimensions)));
 }
 
 /// Apply bicubic filtering using Catmull-Rom spline interpolation on a 4x4 grid of decoded colors.
@@ -102,91 +105,47 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     let coord = in.texcoord * texture_dimensions;
     let active_filter = tex_filter(coord);
 
-    if active_filter == FILTER_BICUBIC {
-        // Bicubic (Catmull-Rom) filtering: sample a 4x4 grid of texels.
-        let center = coord - vec2f(0.5);
-        let base = floor(center);
-        let f = center - base;
-        let wx = catmull_rom_weights(f.x);
-        let wy = catmull_rom_weights(f.y);
+    switch active_filter {
+        case FILTER_NEAREST {
+            normalized_value = sample_and_decode(coord, texture_dimensions);
+        }
+        case FILTER_BILINEAR {
+            // Bilinear filtering: weighted sum of 2x2 decoded texels.
+            let center = coord - vec2f(0.5);
+            let base = floor(center);
+            let f = center - base;
 
-        var colors: array<array<vec4f, 4>, 4>;
-        for (var row = 0u; row < 4u; row++) {
-            for (var col = 0u; col < 4u; col++) {
-                let tc = clamp_to_edge_nearest_neighbor(
-                    base + vec2f(f32(col), f32(row)) - vec2f(0.5),
-                    texture_dimensions
-                );
-                var texel: vec4f;
-                if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
-                    texel = textureLoad(texture_float, tc, 0);
-                } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
-                    texel = vec4f(textureLoad(texture_sint, tc, 0));
-                } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
-                    texel = vec4f(textureLoad(texture_uint, tc, 0));
+            let c00 = sample_and_decode(base, texture_dimensions);
+            let c10 = sample_and_decode(base + vec2f(1.0, 0.0), texture_dimensions);
+            let c01 = sample_and_decode(base + vec2f(0.0, 1.0), texture_dimensions);
+            let c11 = sample_and_decode(base + vec2f(1.0, 1.0), texture_dimensions);
+
+            let top = mix(c00, c10, f.x);
+            let bottom = mix(c01, c11, f.x);
+            normalized_value = mix(top, bottom, f.y);
+        }
+        case FILTER_BICUBIC {
+            // Bicubic (Catmull-Rom) filtering: weighted sum of 4x4 decoded texels.
+            let center = coord - vec2f(0.5);
+            let base = floor(center);
+            let f = center - base;
+            let wx = catmull_rom_weights(f.x);
+            let wy = catmull_rom_weights(f.y);
+
+            var colors: array<array<vec4f, 4>, 4>;
+            for (var row = 0u; row < 4u; row++) {
+                for (var col = 0u; col < 4u; col++) {
+                    colors[row][col] = sample_and_decode(
+                        base + vec2f(f32(col), f32(row)) - vec2f(0.5),
+                        texture_dimensions
+                    );
                 }
-                colors[row][col] = decode_color(texel);
             }
+            normalized_value = filter_bicubic(colors, wx, wy);
         }
-        normalized_value = filter_bicubic(colors, wx, wy);
-    } else {
-        // Nearest or bilinear filtering path.
-        let filter_nearest = (active_filter == FILTER_NEAREST);
-
-        var v00_coord: vec2i;
-        var v01_coord: vec2i;
-        var v10_coord: vec2i;
-        var v11_coord: vec2i;
-
-        if filter_nearest {
-            v00_coord = clamp_to_edge_nearest_neighbor(coord, texture_dimensions);
-            v01_coord = v00_coord;
-            v10_coord = v00_coord;
-            v11_coord = v00_coord;
-        } else {
-            v00_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(-0.5, -0.5), texture_dimensions);
-            v01_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(-0.5, 0.5), texture_dimensions);
-            v10_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(0.5, -0.5), texture_dimensions);
-            v11_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(0.5, 0.5), texture_dimensions);
+        default {
+            normalized_value = ERROR_RGBA;
         }
-
-        // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
-        // NO MORE SAMPLE TYPES CAN BE ADDED TO THIS SHADER!
-        // The shader is already too large and adding more sample types will push us over the size limit.
-        // See: https://github.com/rerun-io/rerun/issues/3931, https://github.com/rerun-io/rerun/issues/5073
-        //
-        // Note, in all the below branches we load the texture for all coords, even if we aren't doing to
-        // use them. This avoids a branch to avoid running afoul of the size constraints in the above
-        // bug. However, all coords were set to the same value above and so we should generally be hitting
-        // the texture cache making this not quite as awful as it may appear.
-        if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
-            normalized_value = decode_color_and_filter_nearest_or_bilinear(
-                filter_nearest,
-                coord,
-                textureLoad(texture_float, v00_coord, 0),
-                textureLoad(texture_float, v01_coord, 0),
-                textureLoad(texture_float, v10_coord, 0),
-                textureLoad(texture_float, v11_coord, 0));
-        } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
-            normalized_value = decode_color_and_filter_nearest_or_bilinear(
-                filter_nearest,
-                coord,
-                vec4f(textureLoad(texture_sint, v00_coord, 0)),
-                vec4f(textureLoad(texture_sint, v01_coord, 0)),
-                vec4f(textureLoad(texture_sint, v10_coord, 0)),
-                vec4f(textureLoad(texture_sint, v11_coord, 0)));
-        } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
-            normalized_value = decode_color_and_filter_nearest_or_bilinear(
-                filter_nearest,
-                coord,
-                vec4f(textureLoad(texture_uint, v00_coord, 0)),
-                vec4f(textureLoad(texture_uint, v01_coord, 0)),
-                vec4f(textureLoad(texture_uint, v10_coord, 0)),
-                vec4f(textureLoad(texture_uint, v11_coord, 0)));
-        } else {
-            return ERROR_RGBA; // unknown sample type
-        }
-        // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
     }
 
     // Apply gamma:
