@@ -57,6 +57,11 @@ def pytest_configure(config: pytest.Config) -> None:
         "local_only: mark test as requiring local resources (e.g., uses RecordingStream to generate .rrd files on-the-fly)",
     )
 
+    config.addinivalue_line(
+        "markers",
+        "objectstore: mark tests that require accessing a remote cloud object store (e.g., an s3 bucket)",
+    )
+
     # TODO(RR-2969): these tests needs to be identified because we must currently provide an URI for the created table
     # which, in general, is not possible for arbitrary server URLs.
     config.addinivalue_line(

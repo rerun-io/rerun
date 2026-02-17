@@ -578,6 +578,37 @@ def test_register_intra_request_duplicates(
             assert uri in error_message, f"Expected URI {uri} in error message: {error_message}"
 
 
+@pytest.mark.objectstore
+def test_registration_inter_region(catalog_client: CatalogClient) -> None:
+    """Tests the url property on the catalog and dataset."""
+
+    # known dataset prefixes
+    usw2 = "s3://rerun-redap-datasets-pdx/test_resources/dataset/"
+    use1 = "s3://rerun-redap-datasets/test_resources/dataset/"
+
+    ds = catalog_client.create_dataset(
+        name="test_registration_inter_region_usw2",
+    )
+    try:
+        handle = ds.register_prefix(usw2).wait()
+        assert len(handle.segment_ids) == 20, (
+            f"Expected 20 segments to be registered from {usw2} , got {len(handle.segment_ids)}"
+        )
+    finally:
+        ds.delete()
+
+    ds = catalog_client.create_dataset(
+        name="test_registration_inter_region_use1",
+    )
+    try:
+        handle = ds.register_prefix(use1).wait()
+        assert len(handle.segment_ids) == 20, (
+            f"Expected 20 segments to be registered from {use1} , got {len(handle.segment_ids)}"
+        )
+    finally:
+        ds.delete()
+
+
 def _get_points_data(ds: DatasetEntry) -> list[list[float]]:
     """Helper to extract points data from a dataset."""
     import pyarrow as pa

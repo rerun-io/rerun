@@ -420,8 +420,10 @@ py-build-perf-debug = { cmd = "uv run maturin develop --uv --manifest-path rerun
 # Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
 py-build-perf-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 
-py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
-py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests" }
+py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests -m 'not objectstore'", depends-on = [
+  "py-build",
+] }
+py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests -m 'not objectstore'" }
 py-bench = { cmd = "uvpy -m pytest --benchmark-only", depends-on = ["py-build-release"] }
 
 snapshots = "uvpy scripts/snapshots.py"
