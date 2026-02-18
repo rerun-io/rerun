@@ -172,17 +172,18 @@ function diff(prev, current) {
 function keysChanged(prev, curr, keys) {
   for (const key of keys) {
     if (prev[key] !== curr[key]) {
-      return false;
+      return true;
     }
   }
-  return true;
+  return false;
 }
 
 /**
  * @template T
- * @param {T | T[]} a
+ * @param {T | T[] | undefined | null} a
  * @returns {T[]}
  */
 function toArray(a) {
+  if (a == null) return [];
   return Array.isArray(a) ? a : [a];
 }
