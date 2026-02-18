@@ -36,7 +36,7 @@ namespace rerun::archetypes {
     /// #include <random>
     /// #include <vector>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_points2d_random");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_points2d_ui_radius");
     ///     rec.spawn().exit_on_failure();
     ///

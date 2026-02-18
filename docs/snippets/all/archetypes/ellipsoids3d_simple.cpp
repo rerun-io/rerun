@@ -6,7 +6,7 @@
 #include <random>
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_ellipsoid_simple");
     rec.spawn().exit_on_failure();
 

@@ -9,7 +9,7 @@ rerun::Position3D mul_pos(float factor, rerun::Position3D vec) {
     return {factor * vec.x(), factor * vec.y(), factor * vec.z()};
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_mesh3d_partial_updates");
     rec.spawn().exit_on_failure();
 

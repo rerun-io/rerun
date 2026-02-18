@@ -387,7 +387,7 @@ def run_prebuilt_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
     extension = ".exe" if os.name == "nt" else ""
-    cmd = [f"./build/debug/docs/snippets/{example.name}{extension}", *example.extra_args()]
+    cmd = [f"./build/debug/docs/snippets/snippets{extension}", example.name, *example.extra_args()]
     env = None
     if str(example) not in OPT_OUT_BACKWARDS_CHECK:
         env = roundtrip_env(save_path=output_path)

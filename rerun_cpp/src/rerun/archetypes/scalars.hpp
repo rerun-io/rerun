@@ -36,7 +36,7 @@ namespace rerun::archetypes {
     ///
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_scalar_row_updates");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -57,7 +57,7 @@ namespace rerun::archetypes {
     ///
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_scalar_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///

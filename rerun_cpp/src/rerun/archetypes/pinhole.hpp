@@ -43,7 +43,7 @@ namespace rerun::archetypes {
     /// #include <cstdlib>   // std::rand
     /// #include <vector>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_pinhole");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -64,7 +64,7 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_pinhole_perspective");
     ///     rec.spawn().exit_on_failure();
     ///

@@ -5,7 +5,7 @@
 #include <numeric>
 #include <rerun.hpp>
 
-int main() {
+int main(int argc, char* argv[]) {
     auto rec = rerun::RecordingStream("rerun_example_image_column_updates");
     rec.spawn().exit_on_failure();
 

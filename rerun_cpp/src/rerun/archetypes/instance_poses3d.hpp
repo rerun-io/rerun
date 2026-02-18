@@ -49,7 +49,7 @@ namespace rerun::archetypes {
     /// #include <rerun.hpp>
     /// #include <rerun/demo_utils.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_instance_pose3d_combined");
     ///     rec.set_time_sequence("frame", 0);
     ///

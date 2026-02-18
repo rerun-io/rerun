@@ -25,7 +25,7 @@ struct rerun::Loggable<CustomPosition3D> {
     }
 };
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_descriptors_custom_component");
     rec.spawn().exit_on_failure();
 

@@ -4,7 +4,7 @@
 
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_line_strip2d_batch");
     rec.spawn().exit_on_failure();
 

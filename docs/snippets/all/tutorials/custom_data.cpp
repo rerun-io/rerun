@@ -59,7 +59,7 @@ struct rerun::AsComponents<CustomPoints3D> {
 
 // ---
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_custom_data");
     rec.spawn().exit_on_failure();
 

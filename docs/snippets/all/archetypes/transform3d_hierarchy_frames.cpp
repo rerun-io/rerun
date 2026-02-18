@@ -4,7 +4,7 @@
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_transform3d_hierarchy_frames");
     rec.spawn().exit_on_failure();
 

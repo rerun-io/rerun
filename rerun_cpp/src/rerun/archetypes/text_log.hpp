@@ -55,7 +55,7 @@ namespace rerun::archetypes {
     ///     );
     /// }
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_text_log_integration");
     ///     rec.spawn().exit_on_failure();
     ///

@@ -14,7 +14,7 @@ float truncated_radians(int deg) {
     return static_cast<float>(static_cast<int>(degf * pi / 180.0f * 1000.0f)) / 1000.0f;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_transform3d_column_updates");
     rec.spawn().exit_on_failure();
 

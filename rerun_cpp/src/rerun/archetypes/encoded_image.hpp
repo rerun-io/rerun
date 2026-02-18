@@ -39,7 +39,7 @@ namespace rerun::archetypes {
     ///
     /// namespace fs = std::filesystem;
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_encoded_image");
     ///     rec.spawn().exit_on_failure();
     ///

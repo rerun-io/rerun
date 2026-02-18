@@ -48,7 +48,7 @@ namespace rerun::archetypes {
     ///
     /// constexpr float TAU = 6.28318530717958647692528676655900577f;
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -83,7 +83,7 @@ namespace rerun::archetypes {
     ///     return static_cast<float>(static_cast<int>(degf * pi / 180.0f * 1000.0f)) / 1000.0f;
     /// }
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_row_updates");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -125,7 +125,7 @@ namespace rerun::archetypes {
     ///     return static_cast<float>(static_cast<int>(degf * pi / 180.0f * 1000.0f)) / 1000.0f;
     /// }
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -172,7 +172,7 @@ namespace rerun::archetypes {
     ///     return static_cast<float>(static_cast<int>(degf * pi / 180.0f * 1000.0f)) / 1000.0f;
     /// }
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_partial_updates");
     ///     rec.spawn().exit_on_failure();
     ///

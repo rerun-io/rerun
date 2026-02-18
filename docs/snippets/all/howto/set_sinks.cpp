@@ -3,7 +3,7 @@
 
 using namespace rerun::demo;
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_set_sinks");
     rec.set_sinks(
            // Connect to a local viewer using the default URL.

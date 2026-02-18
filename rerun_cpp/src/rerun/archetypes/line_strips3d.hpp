@@ -32,7 +32,7 @@ namespace rerun::archetypes {
     ///
     /// #include <vector>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d_batch");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -68,7 +68,7 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d_ui_radius");
     ///     rec.spawn().exit_on_failure();
     ///

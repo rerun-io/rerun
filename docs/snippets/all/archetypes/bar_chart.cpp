@@ -3,7 +3,7 @@
 #include <rerun.hpp>
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_bar_chart");
     rec.spawn().exit_on_failure();
 

@@ -9,7 +9,7 @@
 
 using namespace std::chrono_literals;
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_arrows3d_column_updates");
     rec.spawn().exit_on_failure();
 

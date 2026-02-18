@@ -22,7 +22,7 @@ arrow::Status run_main() {
     return arrow::Status::OK();
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     arrow::Status status = run_main();
     if (!status.ok()) {
         printf("%s\n", status.ToString().c_str());

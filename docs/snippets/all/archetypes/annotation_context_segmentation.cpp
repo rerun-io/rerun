@@ -5,7 +5,7 @@
 #include <algorithm> // fill_n
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_annotation_context_segmentation");
     rec.spawn().exit_on_failure();
 

@@ -3,7 +3,7 @@
 
 using namespace rerun::demo;
 
-int main() {
+int main(int argc, char* argv[]) {
     // Create a new `RecordingStream` which sends data over gRPC to the viewer process.
     const auto rec = rerun::RecordingStream("rerun_example_quick_start_connect");
     rec.connect_grpc().exit_on_failure();

@@ -28,7 +28,7 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_text_document");
     ///     rec.spawn().exit_on_failure();
     ///
