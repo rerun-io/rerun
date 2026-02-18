@@ -180,10 +180,10 @@ function keysChanged(prev, curr, keys) {
 
 /**
  * @template T
- * @param {T | T[] | undefined | null}
+ * @param {T | T[] | undefined | null} a
  * @returns {T[]}
  */
 function toArray(a) {
-    if (a == null) return [];
-    return Array.isArray(a) ? a : [a];
+  if (a == null) return [];
+  return Array.isArray(a) ? a : [a];
 }
