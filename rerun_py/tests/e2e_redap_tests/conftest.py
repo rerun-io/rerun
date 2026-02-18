@@ -26,6 +26,17 @@ if TYPE_CHECKING:
     from syrupy import SnapshotAssertion
 
 
+# Marker expressions for test profiles. Each profile defines a `-m`-style expression
+# that is AND-combined with user-supplied `-m` flag (if any). Local is the default profile
+# if nothing's specified
+PROFILES: dict[str, str] = {
+    "local": "not objectstore",
+    "dpf-docker": "not (objectstore or local_only or creates_table)",
+    "dpf-stack": "not (local_only or creates_table)",
+    "all": "",
+}
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom command-line options for configuring the test server."""
     parser.addoption(
@@ -46,6 +57,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=None,
         help="URI prefix for test resources (e.g., 's3://bucket/path/' for remote resources). "
         "If not provided, local file:// URIs to the resources directory will be used.",
+    )
+    parser.addoption(
+        "--profile",
+        action="store",
+        default="local",
+        choices=PROFILES.keys(),
+        help="Test profile controlling which marker categories are auto-skipped. "
+        "Choices: 'local' (skip objectstore), 'ci' (skip objectstore/local_only/creates_table), 'all' (skip nothing).",
     )
 
 
@@ -71,12 +90,20 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Skip local-only tests when using remote resource prefix."""
-    resource_prefix = config.getoption("--resource-prefix")
+    """Auto-skip tests based on the active profile and remote resource prefix."""
+
+    # Profile-based filtering: AND-combine the profile expression with any user-supplied `-m`.
+    profile_name = config.getoption("--profile")
+    profile_expr = PROFILES[profile_name]
+    if profile_expr:
+        user_expr = config.option.markexpr
+        if user_expr:
+            config.option.markexpr = f"({profile_expr}) and ({user_expr})"
+        else:
+            config.option.markexpr = profile_expr
 
     # Automatically skip local-only tests when resource prefix is remote (not local file://)
-    #
-    # Note: you can force skip `local_only` test using `-m "not local_only"`.
+    resource_prefix = config.getoption("--resource-prefix")
     is_local = resource_prefix is None or resource_prefix.startswith("file://")
 
     if not is_local:
