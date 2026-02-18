@@ -822,7 +822,7 @@ impl ViewClass for TimeSeriesView {
     ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
         let state = state.downcast_mut::<TimeSeriesViewState>().ok()?;
 
-        let visualizer_ui = move |ui: &mut egui::Ui| {
+        let visualizer_body = move |ui: &mut egui::Ui| {
             list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
                 let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
                 re_tracing::profile_function!();
@@ -847,7 +847,7 @@ impl ViewClass for TimeSeriesView {
             });
         };
 
-        Some(Box::new(visualizer_ui))
+        Some(Box::new(visualizer_body))
     }
 }
 

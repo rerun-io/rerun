@@ -1,5 +1,8 @@
-use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
+use std::sync::Arc;
+
+use egui::{AtomExt as _, IntoAtoms as _, NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
+use re_chunk::ComponentIdentifier;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
 use re_data_ui::item_ui::{
@@ -7,15 +10,18 @@ use re_data_ui::item_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
+use re_tracing::profile_function;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
-use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
+use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, DataResultInteractionAddress,
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout,
-    ViewContext, ViewId, ViewStates, ViewerContext, VisualizerViewReport, contents_name_style,
-    icon_for_container_kind,
+    BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
+    DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, SystemCommand,
+    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewSystemIdentifier, ViewerContext, VisualizerComponentMappings, VisualizerComponentSource,
+    VisualizerInstruction, VisualizerViewReport, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -488,7 +494,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             let view_class = view.class(ctx.view_class_registry());
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
-            if let Some(visualizers_ui) =
+            if let Some(visualizers_output) =
                 view_class.visualizers_ui(ctx, *view_id, view_state, &view.space_origin)
             {
                 let markdown = "# Visualizers
@@ -496,14 +502,26 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 This section lists all active visualizers in this view. Each visualizer is displayed with its \
 type and the entity path it visualizes.";
 
-                ui.section_collapsing_header("Visualizers")
-                    .with_help_markdown(markdown)
-                    .show(ui, |ui| {
-                        // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                let header = ui
+                    .section_collapsing_header("Visualizers")
+                    .with_button(move |ui: &mut egui::Ui| {
+                        visualizer_section_plus_button(
+                            ctx,
+                            *view_id,
+                            view_class,
+                            view.class_identifier(),
+                            &view.space_origin,
+                            ui,
+                        )
+                    })
+                    .with_help_markdown(markdown);
 
-                        visualizers_ui(ui);
-                    });
+                header.show(ui, |ui| {
+                    // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
+                    visualizers_output(ui);
+                });
             }
 
             ui.section_collapsing_header("View properties")
@@ -535,6 +553,303 @@ type and the entity path it visualizes.";
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
     }
+}
+
+fn visualizer_section_plus_button(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    view_class: &dyn re_viewer_context::ViewClass,
+    view_class_identifier: re_sdk_types::ViewClassIdentifier,
+    space_origin: &EntityPath,
+    ui: &mut egui::Ui,
+) -> egui::Response {
+    let ui_style = Arc::clone(ui.style());
+    ui.spacing_mut().menu_margin = egui::Margin::same(0);
+    ui.add(
+        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
+            .on_custom_menu(
+                move |popup| {
+                    popup.frame(
+                        egui::Frame::popup(&ui_style).inner_margin(egui::Margin::symmetric(10, 10)),
+                    )
+                },
+                move |ui| {
+                    menu_add_new_visualizer_for_view(
+                        viewer_ctx,
+                        view_id,
+                        view_class,
+                        view_class_identifier,
+                        space_origin,
+                        ui,
+                    );
+                },
+            )
+            .on_hover_text("Add a new visualizer to the current view."),
+    )
+}
+
+/// Renders the popup menu listing entity+component options for adding new visualizers.
+fn menu_add_new_visualizer_for_view(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    view_class: &dyn re_viewer_context::ViewClass,
+    view_class_identifier: re_sdk_types::ViewClassIdentifier,
+    space_origin: &EntityPath,
+    ui: &mut egui::Ui,
+) {
+    profile_function!();
+
+    let options = collect_add_visualizer_options(
+        viewer_ctx,
+        view_id,
+        view_class,
+        view_class_identifier,
+        space_origin,
+    );
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+    ui.spacing_mut().item_spacing.y = 10.0;
+
+    for option_per_entity in options {
+        let entity_path = &option_per_entity.entity_path;
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 4.0;
+
+            // Entity path header, indented to align with button text.
+            ui.horizontal(|ui| {
+                ui.add_space(ui.spacing().button_padding.x);
+                ui.label(
+                    egui::RichText::new(entity_path.to_string())
+                        .color(ui.tokens().visualizer_list_path_text_color),
+                );
+            });
+
+            for option in &option_per_entity.options {
+                let atoms = if option.is_already_visualized {
+                    (
+                        icons::CHECKED
+                            .as_image()
+                            .tint(ui.tokens().text_strong)
+                            .atom_size(ui.tokens().small_icon_size),
+                        &option.display_name,
+                        egui::Atom::grow(),
+                    )
+                        .into_atoms()
+                } else {
+                    (
+                        egui::Atom::default().atom_size(ui.tokens().small_icon_size),
+                        &option.display_name,
+                        egui::Atom::grow(),
+                    )
+                        .into_atoms()
+                };
+                let button = egui::Button::new(atoms);
+                if ui.add(button).clicked() {
+                    add_new_visualizer(viewer_ctx, view_id, entity_path, option);
+                    ui.close();
+                }
+            }
+        });
+    }
+}
+
+/// List of options for adding a new visualizer from the "+" button menu for a given entity path.
+struct AddVisualizerOption {
+    pub entity_path: EntityPath,
+    pub options: Vec<AddVisualizerOptionPerEntity>,
+}
+
+/// An option for adding a new visualizer.
+struct AddVisualizerOptionPerEntity {
+    pub view_system_id: ViewSystemIdentifier,
+    pub mappings: VisualizerComponentMappings,
+    pub display_name: String,
+    pub is_already_visualized: bool,
+}
+
+fn collect_add_visualizer_options(
+    viewer_ctx: &re_viewer_context::ViewerContext<'_>,
+    view_id: ViewId,
+    view_class: &dyn re_viewer_context::ViewClass,
+    view_class_identifier: re_sdk_types::ViewClassIdentifier,
+    space_origin: &EntityPath,
+) -> Vec<AddVisualizerOption> {
+    let recording = viewer_ctx.recording();
+    let entity_tree = recording.tree();
+
+    let Some(subtree) = entity_tree.subtree(space_origin) else {
+        return vec![];
+    };
+    let query_result = viewer_ctx.lookup_query_result(view_id);
+
+    // Traverse entities under the space origin and build menu options.
+    let mut result: Vec<AddVisualizerOption> = vec![];
+    subtree.visit_children_recursively(|entity_path| {
+        let visualizable_entities_per_visualizer =
+            viewer_ctx.collect_visualizable_entities_for_view_class(view_class_identifier);
+        let recommended_visualizers = view_class.recommended_visualizers_for_entity(
+            entity_path,
+            &visualizable_entities_per_visualizer,
+            viewer_ctx.indicated_entities_per_visualizer,
+        );
+
+        let options = collect_add_visualizer_options_for_entity(
+            entity_path,
+            recommended_visualizers,
+            query_result,
+        );
+        if !options.is_empty() {
+            result.push(AddVisualizerOption {
+                entity_path: entity_path.clone(),
+                options,
+            });
+        }
+    });
+
+    result
+}
+
+fn collect_add_visualizer_options_for_entity(
+    entity_path: &EntityPath,
+    recommended_visualizers: RecommendedVisualizers,
+    query_result: &DataQueryResult,
+) -> Vec<AddVisualizerOptionPerEntity> {
+    let visualizers = query_result
+        .result_for_entity(entity_path)
+        .map(|data_result| &data_result.visualizer_instructions);
+
+    let mut visualizer_options = vec![];
+    for (view_system_id, recommended_mappings_per_view_system) in recommended_visualizers.0 {
+        for recommended_mappings in recommended_mappings_per_view_system {
+            // Check if there is already a visualizer for this recommendedation.
+            //
+            // Only consider components explicitly required by the recommended mappings. Currently,
+            // all components listed in RecommendedMappings are mandatory for the visualizer. If an existing
+            // visualizer has additional components (eg. color overrides), they will be ignored for this check.
+            let is_already_visualized = if let Some(visualizers) = visualizers {
+                visualizers.iter().any(|visualizer| {
+                    if visualizer.visualizer_type != view_system_id {
+                        // Only consider visualizers of the recommended view system.
+                        // E.g. ignore existing SeriesPoints visualizers for SeriesLines recommendations.
+                        return false;
+                    }
+                    recommended_mappings
+                        .iter()
+                        .all(|(component, recommended_source)| {
+                            let current_source = visualizer.component_mappings.get(component);
+                            let recommendation_is_identity =
+                                recommended_source.is_identity_mapping(*component);
+                            let current_mapping_is_identity = current_source
+                                .is_none_or(|mapping| mapping.is_identity_mapping(*component));
+
+                            // Two mappings are considered equal if they are both identity mappings,
+                            // or the current source is the same as the recommended source.
+                            (recommendation_is_identity && current_mapping_is_identity)
+                                || current_source == Some(recommended_source)
+                        })
+                })
+            } else {
+                false
+            };
+
+            // Name of the recommendation comes from the first item in the recommended mappings.
+            let display_name = if let Some((component, selector)) = recommended_mappings
+                .iter()
+                .find_map(|(_target, source)| match source {
+                    VisualizerComponentSource::SourceComponent {
+                        source_component,
+                        selector,
+                    } => Some((source_component, selector)),
+                    _ => None,
+                }) {
+                format!("{}{}", component_display_name(*component), selector)
+            } else {
+                // No source component in the mappings, this is not a valid recommendation.
+                continue;
+            };
+
+            visualizer_options.push(AddVisualizerOptionPerEntity {
+                view_system_id,
+                mappings: recommended_mappings.clone(),
+                display_name,
+                is_already_visualized,
+            });
+        }
+    }
+
+    visualizer_options
+}
+
+fn component_display_name(component_id: ComponentIdentifier) -> String {
+    let name = component_id.as_str();
+
+    // Strip "rerun.components." prefix for cleaner display of Rerun-native types.
+    // For example, "rerun.components.Scalars:scalars" becomes "Scalars:scalars".
+    name.strip_prefix("rerun.components.")
+        .or_else(|| name.strip_prefix("rerun."))
+        .unwrap_or(name)
+        .to_owned()
+}
+
+/// Adds the selected option as a new visualizer
+fn add_new_visualizer(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    entity_path: &EntityPath,
+    option: &AddVisualizerOptionPerEntity,
+) {
+    use re_sdk_types::Archetype as _;
+    use re_sdk_types::blueprint::archetypes::{ActiveVisualizers, ViewContents};
+
+    // Compute override base path for this entity in the current view.
+    let override_base_path =
+        ViewContents::blueprint_base_visualizer_path_for_entity(view_id.uuid(), entity_path);
+
+    // Get existing active visualizer instructions for this entity (if any).
+    let query_result = viewer_ctx.lookup_query_result(view_id);
+    let existing_instructions: Vec<VisualizerInstruction> = query_result
+        .tree
+        .lookup_result_by_path(entity_path.hash())
+        .map(|data_result| data_result.visualizer_instructions.clone())
+        .unwrap_or_default();
+
+    // Create the new instruction.
+    let new_instruction = VisualizerInstruction::new(
+        VisualizerInstructionId::new_random(),
+        option.view_system_id,
+        &override_base_path,
+        option.mappings.clone(),
+    );
+
+    // Build the updated list of active visualizer IDs.
+    let active_visualizer_archetype = ActiveVisualizers::new(
+        existing_instructions
+            .iter()
+            .map(|v| &v.id)
+            .chain(std::iter::once(&new_instruction.id))
+            .map(|v| v.0),
+    );
+
+    // If this is the first time we persist ActiveVisualizers for this entity,
+    // we must also write out all previously-heuristic instructions.
+    let did_not_yet_persist = viewer_ctx
+        .blueprint_db()
+        .latest_at(
+            viewer_ctx.blueprint_query,
+            &override_base_path,
+            ActiveVisualizers::all_components()
+                .iter()
+                .map(|c| c.component),
+        )
+        .components
+        .is_empty();
+    if did_not_yet_persist {
+        for instruction in &existing_instructions {
+            instruction.write_instruction_to_blueprint(viewer_ctx);
+        }
+    }
+
+    viewer_ctx.save_blueprint_archetype(override_base_path, &active_visualizer_archetype);
+    new_instruction.write_instruction_to_blueprint(viewer_ctx);
 }
 
 /// Shows the active coordinate frame if it isn't the fallback frame.

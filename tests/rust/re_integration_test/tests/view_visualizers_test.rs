@@ -1,9 +1,11 @@
 //! Tests for the visualizers section in the selection panel when a view is selected.
 
 use std::f64::consts::TAU;
+use std::sync::Arc;
 
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
+use re_sdk::external::arrow::array::Float64Array;
 use re_sdk::log::RowId;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_viewer::external::re_log_types::EntityPath;
@@ -279,4 +281,259 @@ pub async fn test_view_visualizers_multi_scalar() {
 
     // Snapshot: Selection panel showing visualizers for a multi-scalar entity
     harness.snapshot_app("view_visualizers_multi_scalar_view_selected");
+}
+
+/// Test the "+" button on the Visualizers section when a view is selected.
+///
+/// This test:
+/// 1. Logs time series data
+/// 2. Creates a `TimeSeriesView` and selects it
+/// 3. Removes a visualizer so that the "+" popup has an option to offer
+/// 4. Opens the popup, adds the visualizer back, verifies it reappears
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_view_visualizers_add_button() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::Vec2::new(1200.0, 1000.0)),
+        max_steps: Some(100),
+        ..Default::default()
+    });
+    harness.init_recording();
+    harness.set_blueprint_panel_opened(true);
+    harness.set_selection_panel_opened(true);
+    harness.set_time_panel_opened(false);
+
+    let timeline = re_sdk::Timeline::new_sequence("frame");
+
+    // Log a sine wave
+    harness.log_entity("trig/sin", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &re_sdk_types::archetypes::SeriesLines::new()
+                .with_colors([[255, 0, 0]])
+                .with_names(["Sine"]),
+        )
+    });
+    for i in 0..100 {
+        harness.log_entity("trig/sin", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, i)],
+                &re_sdk_types::archetypes::Scalars::single((i as f64 / 100.0 * TAU).sin()),
+            )
+        });
+    }
+
+    // Log a cosine wave
+    harness.log_entity("trig/cos", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &re_sdk_types::archetypes::SeriesLines::new()
+                .with_colors([[0, 128, 0]])
+                .with_names(["Cosine"]),
+        )
+    });
+    for i in 0..100 {
+        harness.log_entity("trig/cos", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, i)],
+                &re_sdk_types::archetypes::Scalars::single((i as f64 / 100.0 * TAU).cos()),
+            )
+        });
+    }
+
+    // Set up a single TimeSeriesView rooted at /trig
+    harness.clear_current_blueprint();
+    let mut view = ViewBlueprint::new(
+        re_view_time_series::TimeSeriesView::identifier(),
+        RecommendedView::new_subtree("/trig"),
+    );
+    view.display_name = Some("Trig view".into());
+
+    harness.setup_viewport_blueprint(move |_ctx, blueprint| {
+        blueprint.add_views(std::iter::once(view), None, None);
+    });
+
+    // Expand the blueprint tree
+    harness
+        .blueprint_tree()
+        .right_click_label("Viewport (Grid container)");
+    harness.click_label("Expand all");
+
+    // Select the view
+    harness.blueprint_tree().click_label("Trig view");
+
+    // Snapshot 1: View selected — all entities already have visualizers, so
+    // the "+" button is disabled (nothing new to add).
+    harness.snapshot_app("view_visualizers_add_1_view_selected");
+
+    // Remove the first visualizer so the popup has something to offer.
+    harness
+        .selection_panel()
+        .click_nth_label("Remove visualizer", 0);
+
+    // Click the "+" button to open the popup
+    harness.selection_panel().click_label("Add new visualizer…");
+
+    // Snapshot 2: Popup showing the removed entity's component as an option
+    harness.snapshot_app("view_visualizers_add_2_popup_open");
+
+    // Click the option to add the visualizer back.
+    harness.click_nth_label("Scalars:scalars", 0);
+
+    // Snapshot 3: After adding, the visualizer should reappear in the list
+    harness.snapshot_app("view_visualizers_add_3_visualizer_added");
+}
+
+/// Test adding multiple new visualizers to a view via the "+" button, using custom message formats.
+///
+/// This test:
+/// 1. Logs time series data for three entities using `DynamicArchetype` with custom component names
+/// 2. Creates a `TimeSeriesView` and selects it
+/// 3. Removes two visualizers so the popup has options to offer
+/// 4. Opens the popup — custom components should appear grouped under their respective entities
+/// 5. Adds them back one at a time, verifying the list grows with each addition
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_view_visualizers_add_multiple() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::Vec2::new(1200.0, 1000.0)),
+        max_steps: Some(100),
+        ..Default::default()
+    });
+    harness.init_recording();
+    harness.set_blueprint_panel_opened(true);
+    harness.set_selection_panel_opened(true);
+    harness.set_time_panel_opened(false);
+
+    let timeline = re_sdk::Timeline::new_sequence("frame");
+
+    // Log three entities with custom (non-standard) component formats via DynamicArchetype.
+    // Each entity has multiple fields so the Add New Visualizer popup displays
+    // multiple custom components grouped under their respective entity paths.
+    // We also log static SeriesLines colors per entity for deterministic plot rendering.
+    harness.log_entity("waves/sin", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &archetypes::SeriesLines::new().with_colors([[255, 0, 0]]),
+        )
+    });
+    for i in 0..20 {
+        let t = i as f64 / 20.0;
+        harness.log_entity("waves/sin", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &re_sdk_types::DynamicArchetype::new("wave_data")
+                    .with_component_from_data(
+                        "amplitude",
+                        Arc::new(Float64Array::from(vec![(t * TAU).sin()])),
+                    )
+                    .with_component_from_data("phase", Arc::new(Float64Array::from(vec![t * TAU]))),
+            )
+        });
+    }
+
+    harness.log_entity("waves/cos", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &archetypes::SeriesLines::new().with_colors([[0, 128, 0]]),
+        )
+    });
+    for i in 0..20 {
+        let t = i as f64 / 20.0;
+        harness.log_entity("waves/cos", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &re_sdk_types::DynamicArchetype::new("wave_data")
+                    .with_component_from_data(
+                        "signal",
+                        Arc::new(Float64Array::from(vec![(t * TAU).cos()])),
+                    )
+                    .with_component_from_data(
+                        "frequency",
+                        Arc::new(Float64Array::from(vec![t * 10.0])),
+                    ),
+            )
+        });
+    }
+
+    harness.log_entity("waves/ramp", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &archetypes::SeriesLines::new().with_colors([[0, 0, 255]]),
+        )
+    });
+    for i in 0..20 {
+        let t = i as f64 / 20.0;
+        harness.log_entity("waves/ramp", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &re_sdk_types::DynamicArchetype::new("wave_data")
+                    .with_component_from_data("voltage", Arc::new(Float64Array::from(vec![t])))
+                    .with_component_from_data(
+                        "current",
+                        Arc::new(Float64Array::from(vec![t * 0.5])),
+                    ),
+            )
+        });
+    }
+
+    // Set up a single TimeSeriesView rooted at /waves
+    harness.clear_current_blueprint();
+    let mut view = ViewBlueprint::new(
+        re_view_time_series::TimeSeriesView::identifier(),
+        RecommendedView::new_subtree("/waves"),
+    );
+    view.display_name = Some("Waves view".into());
+
+    harness.setup_viewport_blueprint(move |_ctx, blueprint| {
+        blueprint.add_views(std::iter::once(view), None, None);
+    });
+
+    // Expand the blueprint tree
+    harness
+        .blueprint_tree()
+        .right_click_label("Viewport (Grid container)");
+    harness.click_label("Expand all");
+
+    // Select the view
+    harness.blueprint_tree().click_label("Waves view");
+
+    // Remove the first two visualizers so the popup has options to offer.
+    // With entities sorted alphabetically, these are both from waves/cos.
+    harness
+        .selection_panel()
+        .click_nth_label("Remove visualizer", 0);
+    harness
+        .selection_panel()
+        .click_nth_label("Remove visualizer", 0);
+
+    // Snapshot 1: View selected, two visualizers removed
+    harness.snapshot_app("view_visualizers_add_multi_1_view_selected");
+
+    // Open the add-visualizer popup
+    harness.selection_panel().click_label("Add new visualizer…");
+
+    // Snapshot 2: Popup showing custom components under their respective entity.
+    // Both removed fields ("frequency" and "signal") appear under waves/cos.
+    harness.snapshot_app("view_visualizers_add_multi_2_popup_open");
+
+    // Add back one custom component (waves/cos → frequency)
+    harness.click_label("wave_data:frequency");
+
+    // Snapshot 3: First visualizer re-added to the list
+    harness.snapshot_app("view_visualizers_add_multi_3_first_added");
+
+    // Open the popup again and add the second custom component
+    harness.selection_panel().click_label("Add new visualizer…");
+
+    // Only one option remains (waves/cos → signal)
+    harness.click_label("wave_data:signal");
+
+    // Snapshot 4: Second visualizer also re-added to the list
+    harness.snapshot_app("view_visualizers_add_multi_4_second_added");
 }
