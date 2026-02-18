@@ -124,6 +124,8 @@ class ImageExt:
             An optional floating point value that specifies the 2D drawing
             order. Objects with higher values are drawn on top of those with
             lower values.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel).
 
         """
 

@@ -72,6 +72,8 @@ class EncodedImageExt:
             An optional floating point value that specifies the 2D drawing
             order. Objects with higher values are drawn on top of those with
             lower values.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel).
 
         """
 
@@ -92,7 +94,13 @@ class EncodedImageExt:
                 if media_type is None:
                     media_type = MediaType.guess_from_path(path)
 
-            self.__attrs_init__(blob=blob, media_type=media_type, draw_order=draw_order, opacity=opacity, magnification_filter=magnification_filter)
+            self.__attrs_init__(
+                blob=blob,
+                media_type=media_type,
+                draw_order=draw_order,
+                opacity=opacity,
+                magnification_filter=magnification_filter,
+            )
             return
 
         self.__attrs_clear__()
