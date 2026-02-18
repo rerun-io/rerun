@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import numpy.typing as npt
 
-from .. import components
 from ..components import ColormapLike, ImageFormat
 from ..datatypes import ChannelDatatype, Float32Like
 
 if TYPE_CHECKING:
     from rerun.datatypes.range1d import Range1DLike
+
+    from .. import components
 
     ImageLike = (
         npt.NDArray[np.float16]
