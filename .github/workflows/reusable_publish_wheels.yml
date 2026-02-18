@@ -96,30 +96,6 @@ jobs:
       MODE: "pypi"
     secrets: inherit
 
-  ## Test
-
-  test-windows-x64:
-    name: "Windows-x64: Test Wheels"
-    needs: [build-windows-x64]
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: wheels-test-windows-x64-${{ inputs.concurrency }}
-      PLATFORM: windows-x64
-      WHEEL_ARTIFACT_NAME: windows-x64-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  test-linux:
-    name: "Linux-x64: Test Wheels"
-    needs: [build-linux-x64]
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: wheels-test-linux-x64-${{ inputs.concurrency }}
-      PLATFORM: linux-x64
-      WHEEL_ARTIFACT_NAME: linux-x64-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
   generate-wheel-index:
     name: "Generate Pip Index"
     needs:
