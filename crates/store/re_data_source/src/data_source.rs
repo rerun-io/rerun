@@ -82,6 +82,8 @@ impl LogDataSource {
                 #[expect(clippy::if_same_then_else)]
                 if uri.starts_with('/') {
                     true // Unix absolute path
+                } else if uri.starts_with("./") || uri.starts_with("../") {
+                    true // Unix relative path
                 } else if looks_like_windows_abs_path(uri) {
                     true
                 } else if uri.starts_with("http:") || uri.starts_with("https:") {
