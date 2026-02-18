@@ -656,6 +656,7 @@ impl std::fmt::Display for QueryResults {
 impl QueryResults {
     fn from_chunk_ids(
         store: &ChunkStore,
+        entity_path: &EntityPath,
         report_mode: ChunkTrackingMode,
         chunk_ids: impl Iterator<Item = ChunkId>,
     ) -> Self {
@@ -686,16 +687,16 @@ impl QueryResults {
             for chunk_id in &this.missing_virtual {
                 debug_assert!(
                     store.chunks_lineage.contains_key(chunk_id),
-                    "A chunk was reported missing, with no known lineage: {chunk_id}"
+                    "A chunk was reported missing, with no known lineage: {entity_path} {chunk_id}"
                 );
-                if !store.split_on_ingest.contains(chunk_id) {
+                if store.split_on_ingest.contains(chunk_id) {
                     if cfg!(debug_assertions) {
                         re_log::warn_once!(
-                            "Tried to report a chunk missing that was the source of a split"
+                            "Tried to report a chunk missing on {entity_path} that was the source of a split (query)"
                         );
                     }
                     re_log::debug_once!(
-                        "Tried to report a chunk missing that was the source of a split: {chunk_id}"
+                        "Tried to report a chunk missing on {entity_path} that was the source of a split: {chunk_id} (query)"
                     );
                 }
             }
@@ -824,6 +825,7 @@ impl ChunkStore {
         {
             return QueryResults::from_chunk_ids(
                 self,
+                entity_path,
                 report_mode,
                 std::iter::once(*static_chunk_id),
             );
@@ -843,7 +845,7 @@ impl ChunkStore {
             })
             .unwrap_or_default();
 
-        QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter())
+        QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids.into_iter())
     }
 
     /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
@@ -921,7 +923,7 @@ impl ChunkStore {
                 .unwrap_or_default()
         };
 
-        QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter())
+        QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids.into_iter())
     }
 
     fn latest_at(
@@ -1001,6 +1003,7 @@ impl ChunkStore {
         {
             return QueryResults::from_chunk_ids(
                 self,
+                entity_path,
                 report_mode,
                 std::iter::once(*static_chunk_id),
             );
@@ -1019,7 +1022,8 @@ impl ChunkStore {
                 .into_iter(),
         );
 
-        let mut results = QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter());
+        let mut results =
+            QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids.into_iter());
         results.chunks = results
             .chunks
             .into_iter()
@@ -1113,7 +1117,8 @@ impl ChunkStore {
             ))
         };
 
-        let mut results = QueryResults::from_chunk_ids(self, report_mode, chunk_ids.into_iter());
+        let mut results =
+            QueryResults::from_chunk_ids(self, entity_path, report_mode, chunk_ids.into_iter());
         results.chunks = results
             .chunks
             .into_iter()
