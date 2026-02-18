@@ -446,8 +446,8 @@ pub fn paint_loaded_indicator_bar(
     let is_loading = db.is_buffering();
 
     if is_loading
-        && let Some(start) = time_ranges_ui.x_from_time(full_time_range.min.into())
-        && let Some(end) = time_ranges_ui.x_from_time(full_time_range.max.into())
+        && let Some(start) = time_ranges_ui.x_from_time_f32(full_time_range.min.into())
+        && let Some(end) = time_ranges_ui.x_from_time_f32(full_time_range.max.into())
     {
         re_tracing::profile_scope!("draw loading");
         // How many points the gap is in the dashed line
@@ -457,15 +457,30 @@ pub fn paint_loaded_indicator_bar(
         // Animation speed of the loading in points per second
         let speed = 20.0;
 
-        let x_range = full_x_range.intersection(Rangef::new(start as f32, end as f32));
+        let x_range = full_x_range.intersection(Rangef::new(start, end));
 
         if x_range.span() > 0.0 {
+            let mut stroke = ui.visuals().widgets.noninteractive.fg_stroke;
+
+            // Make fainter than the color of the fully loaded sections:
+            stroke.color = stroke.color.gamma_multiply(0.5);
+
+            let time = ui.input(|i| i.time);
+
+            // Give the animation achoppy feel.
+            // More mechanical, status-like feel, rather than looking like an actual information flow:
+            let chops_per_second = 4.0;
+
+            let time = (time * chops_per_second).round() / chops_per_second;
+
+            let offset = (time * speed) % (gap as f64 + line as f64) - line as f64;
+
             let dashed_line = egui::Shape::dashed_line_with_offset(
                 &[egui::pos2(x_range.min, y), egui::pos2(x_range.max, y)],
-                ui.visuals().widgets.noninteractive.fg_stroke,
+                stroke,
                 &[line],
                 &[gap],
-                ui.input(|i| (i.time * speed) % (gap as f64 + line as f64) - line as f64) as f32,
+                offset as f32,
             );
 
             ui.painter()
