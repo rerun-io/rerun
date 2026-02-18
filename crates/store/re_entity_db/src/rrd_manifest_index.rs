@@ -422,13 +422,16 @@ impl RrdManifestIndex {
         } else {
             for chunk_id in root_chunk_ids {
                 if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
+                    let old_state = chunk_info.state;
                     chunk_info.state = new_state;
 
-                    if let Some(loaded_ranges) = &mut self.loaded_ranges {
+                    // Only update loaded ranges on actual state transitions to avoid
+                    // mismatched increments/decrements.
+                    if let Some(loaded_ranges) = &mut self.loaded_ranges
+                        && old_state != new_state
+                    {
                         match new_state {
                             LoadState::Unloaded => {
-                                // TODO(RR-3743): fix the extra decrements that can happen
-                                // when we evict _parts_ of a root chunk multiple times.
                                 loaded_ranges.ranges.on_chunk_unloaded(
                                     &chunk_id,
                                     &self.chunk_prioritizer.component_paths_from_root_id,
