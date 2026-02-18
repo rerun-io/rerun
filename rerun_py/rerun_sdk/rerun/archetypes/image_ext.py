@@ -7,7 +7,6 @@ import numpy as np
 import numpy.typing as npt
 from PIL import Image as PILImage
 
-from .. import components
 from ..components import ImageFormat
 from ..datatypes import (
     ChannelDatatype,
@@ -35,6 +34,8 @@ class SupportsDunderArray(Protocol):
 
 
 if TYPE_CHECKING:
+    from .. import components
+
     ImageLike = (
         npt.NDArray[np.float16]
         | npt.NDArray[np.float32]
