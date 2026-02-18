@@ -483,7 +483,7 @@ impl DataQueryPropertyResolver<'_> {
             return;
         };
         // Set defaults for time-range/visible/interactive.
-        node.data_result.query_range = default_query_range.clone();
+        node.data_result.query_range = *default_query_range;
         node.data_result.visible = parent_visible;
         node.data_result.interactive = parent_interactive;
 
@@ -606,8 +606,7 @@ impl DataQueryPropertyResolver<'_> {
                             range.timeline.as_str() == active_timeline.name().as_str()
                         })
                     {
-                        node.data_result.query_range =
-                            QueryRange::TimeRange(time_range.0.range.clone());
+                        node.data_result.query_range = QueryRange::TimeRange(time_range.0.range);
                     }
                 }
                 // Visible override.

@@ -96,6 +96,10 @@ pub fn allocate_plot_points(
         })
         .collect_vec();
 
+    re_tracing::profile_scope!(
+        "smallvec![]",
+        format!("{} points x {} series", points.len(), num_series)
+    );
     smallvec::smallvec![points; num_series]
 }
 
@@ -104,34 +108,34 @@ pub fn collect_scalars(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     points_per_series: &mut PlotPointsPerSeries,
 ) {
-    re_tracing::profile_function!();
+    re_tracing::profile_function!(format!("points_per_series={}", points_per_series.len()));
 
     if points_per_series.len() == 1 {
         let points = &mut *points_per_series[0];
-        all_scalar_chunks
+        for (i, values) in all_scalar_chunks
             .iter()
             .flat_map(|chunk| chunk.iter_slices::<f64>())
             .enumerate()
-            .for_each(|(i, values)| {
-                if let Some(value) = values.first() {
-                    points[i].value = *value;
-                } else {
-                    points[i].attrs.kind = PlotSeriesKind::Clear;
-                }
-            });
+        {
+            if let Some(value) = values.first() {
+                points[i].value = *value;
+            } else {
+                points[i].attrs.kind = PlotSeriesKind::Clear;
+            }
+        }
     } else {
-        all_scalar_chunks
+        for (i, values) in all_scalar_chunks
             .iter()
             .flat_map(|chunk| chunk.iter_slices::<f64>())
             .enumerate()
-            .for_each(|(i, values)| {
-                for (points, value) in points_per_series.iter_mut().zip(values) {
-                    points[i].value = *value;
-                }
-                for points in points_per_series.iter_mut().skip(values.len()) {
-                    points[i].attrs.kind = PlotSeriesKind::Clear;
-                }
-            });
+        {
+            for (points, value) in points_per_series.iter_mut().zip(values) {
+                points[i].value = *value;
+            }
+            for points in points_per_series.iter_mut().skip(values.len()) {
+                points[i].attrs.kind = PlotSeriesKind::Clear;
+            }
+        }
     }
 }
 

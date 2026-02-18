@@ -75,25 +75,37 @@ impl Default for RangeQueryOptions {
 
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            timeline,
+            range,
+            options,
+        } = self;
+
+        let RangeQueryOptions {
+            keep_extra_timelines,
+            keep_extra_components,
+            include_extended_bounds,
+        } = options;
+
         f.write_fmt(format_args!(
-            "<ranging {:?}..={:?} on {:?} ([{}]keep_timelines [{}]keep_components [{}]extended_bounds)>",
-            self.range.min(),
-            self.range.max(),
-            self.timeline,
-            if self.options.keep_extra_timelines {
-                "✓"
+            "<ranging {:?}..={:?} on {:?}{}{}{}",
+            range.min(),
+            range.max(),
+            timeline,
+            if *keep_extra_timelines {
+                " keep_extra_timelines"
             } else {
-                " "
+                ""
             },
-            if self.options.keep_extra_components {
-                "✓"
+            if *keep_extra_components {
+                " keep_extra_components"
             } else {
-                " "
+                ""
             },
-            if self.options.include_extended_bounds {
-                "✓"
+            if *include_extended_bounds {
+                " include_extended_bounds"
             } else {
-                " "
+                ""
             },
         ))
     }

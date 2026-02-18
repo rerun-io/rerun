@@ -56,7 +56,7 @@ pub fn determine_time_range(
 
     // Latest-at doesn't make sense for time series and should also never happen.
     let visible_time_range = match query_range {
-        re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
+        re_viewer_context::QueryRange::TimeRange(time_range) => *time_range,
         re_viewer_context::QueryRange::LatestAt => {
             if cfg!(debug_assertions) {
                 re_log::error_once!(
@@ -125,7 +125,7 @@ pub fn points_to_series(
     all_series: &mut Vec<PlotSeries>,
     visualizer_instruction_id: VisualizerInstructionId,
 ) -> Result<(), String> {
-    re_tracing::profile_scope!("secondary", &instance_path.to_string());
+    re_tracing::profile_function!(&instance_path.to_string());
 
     if points.is_empty() {
         // No values being present is not an error, maybe data comes in later!

@@ -410,7 +410,7 @@ impl ViewBlueprint {
                 .ok()??
                 .iter()
                 .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
-                .map(|range| range.range.clone())
+                .map(|range| range.range)
         });
 
         time_range.map_or_else(
@@ -418,7 +418,7 @@ impl ViewBlueprint {
                 let view_class = view_class_registry.get_class_or_log_error(self.class_identifier);
                 view_class.default_query_range(view_state)
             },
-            |time_range| QueryRange::TimeRange(time_range.clone()),
+            QueryRange::TimeRange,
         )
     }
 

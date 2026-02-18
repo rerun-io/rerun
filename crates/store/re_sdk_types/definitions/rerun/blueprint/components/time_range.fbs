@@ -6,7 +6,7 @@ namespace rerun.blueprint.components;
 table TimeRange (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent"
 ) {
   time_range: rerun.datatypes.TimeRange (order: 100);

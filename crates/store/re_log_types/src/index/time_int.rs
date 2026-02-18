@@ -28,14 +28,8 @@ impl std::fmt::Debug for TimeInt {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
-            Some(NonMinI64::MIN) => f
-                .debug_tuple("TimeInt::MIN")
-                .field(&NonMinI64::MIN)
-                .finish(),
-            Some(NonMinI64::MAX) => f
-                .debug_tuple("TimeInt::MAX")
-                .field(&NonMinI64::MAX)
-                .finish(),
+            Some(NonMinI64::MIN) => f.debug_tuple("TimeInt::MIN").finish(),
+            Some(NonMinI64::MAX) => f.debug_tuple("TimeInt::MAX").finish(),
             Some(t) => f.write_fmt(format_args!("TimeInt({})", re_format::format_int(t.get()))),
             None => f.debug_tuple("TimeInt::STATIC").finish(),
         }

@@ -18,7 +18,7 @@ union TimeRangeBoundary (
 /// Visible time range bounds for a specific timeline.
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table TimeRange (
-  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.override_crate": "re_types_core"
 ) {
   /// Low time boundary for sequence timeline.

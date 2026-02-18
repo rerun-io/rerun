@@ -72,7 +72,7 @@ pub fn time_range_multiline_edit_or_view_ui(
             let current_start = value.start.start_boundary_time(current_time);
             let current_end = value.end.end_boundary_time(current_time);
 
-            let old_value = value.clone();
+            let old_value: TimeRange = **value;
 
             let mut response = RelativeTimeRange {
                 time_drag_value: &time_drag_value,

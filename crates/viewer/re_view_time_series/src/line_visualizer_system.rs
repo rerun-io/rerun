@@ -66,6 +66,7 @@ impl VisualizerSystem for SeriesLinesSystem {
 
         let plot_mem =
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
+
         let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results: Vec<_> = query
@@ -101,215 +102,208 @@ impl SeriesLinesSystem {
         instruction: &re_viewer_context::VisualizerInstruction,
         output: &re_viewer_context::VisualizerExecutionOutput,
     ) -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(data_result.entity_path.to_string());
 
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, current_query.clone(), instruction.id);
 
         let time_range = util::determine_time_range(ctx, data_result)?;
 
-        {
-            re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
+        let entity_path = &data_result.entity_path;
+        let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
+            // We must fetch data with extended bounds, otherwise the query clamping would
+            // cut-off the data early at the edge of the view.
+            .include_extended_bounds(true);
 
-            let entity_path = &data_result.entity_path;
-            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
-                // We must fetch data with extended bounds, otherwise the query clamping would
-                // cut-off the data early at the edge of the view.
-                .include_extended_bounds(true);
+        let mut results = range_with_blueprint_resolved_data(
+            ctx,
+            None,
+            &query,
+            data_result,
+            archetypes::Scalars::all_component_identifiers()
+                .chain(archetypes::SeriesLines::all_component_identifiers()),
+            instruction,
+        );
 
-            let mut results = range_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &query,
-                data_result,
-                archetypes::Scalars::all_component_identifiers()
-                    .chain(archetypes::SeriesLines::all_component_identifiers()),
-                instruction,
-            );
+        // The plot view visualizes scalar data within a specific time range, without any kind
+        // of time-alignment / bootstrapping behavior:
+        // * For the scalar themselves, this is what you want: if you're trying to plot some
+        //   data between t=100 and t=200, you don't want to display a point from t=20 (and
+        //   _extended bounds_ will take care of lines crossing the limit).
+        // * For the secondary components (colors, radii, names, etc), this is a problem
+        //   though: you don't want your plot to change color depending on what the currently
+        //   visible time range is! Secondary components have to be bootstrapped.
+        //
+        // Bootstrapping is now handled automatically by the query system for the components
+        // we specified when calling range_with_blueprint_resolved_data.
+        results.merge_bootstrapped_data(re_view::latest_at_with_blueprint_resolved_data(
+            ctx,
+            None,
+            &re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min()),
+            data_result,
+            archetypes::SeriesLines::optional_components()
+                .iter()
+                .map(|c| c.component),
+            Some(instruction),
+        ));
 
-            // The plot view visualizes scalar data within a specific time range, without any kind
-            // of time-alignment / bootstrapping behavior:
-            // * For the scalar themselves, this is what you want: if you're trying to plot some
-            //   data between t=100 and t=200, you don't want to display a point from t=20 (and
-            //   _extended bounds_ will take care of lines crossing the limit).
-            // * For the secondary components (colors, radii, names, etc), this is a problem
-            //   though: you don't want your plot to change color depending on what the currently
-            //   visible time range is! Secondary components have to be bootstrapped.
-            //
-            // Bootstrapping is now handled automatically by the query system for the components
-            // we specified when calling range_with_blueprint_resolved_data.
-            results.merge_bootstrapped_data(re_view::latest_at_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min()),
-                data_result,
-                archetypes::SeriesLines::optional_components()
-                    .iter()
-                    .map(|c| c.component),
-                Some(instruction),
-            ));
+        // Wrap results for convenient error-reporting iteration
+        let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
+        let results =
+            re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, output);
 
-            // Wrap results for convenient error-reporting iteration
-            let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
-            let results =
-                re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, output);
+        // If we have no scalars, we can't do anything.
+        let scalar_iter =
+            results.iter_required(archetypes::Scalars::descriptor_scalars().component);
+        let all_scalar_chunks = scalar_iter.chunks();
 
-            // If we have no scalars, we can't do anything.
-            let scalar_iter =
-                results.iter_required(archetypes::Scalars::descriptor_scalars().component);
-            let all_scalar_chunks = scalar_iter.chunks();
+        // All the default values for a `PlotPoint`, accounting for both overrides and default values.
+        // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
+        let fallback_stroke_width: StrokeWidth = typed_fallback_for(
+            &query_ctx,
+            archetypes::SeriesLines::descriptor_widths().component,
+        );
+        let default_point = PlotPoint {
+            time: 0,
+            value: 0.0,
+            attrs: PlotPointAttrs {
+                // Filled out later.
+                color: egui::Color32::DEBUG_COLOR,
+                radius_ui: 0.5 * *fallback_stroke_width.0,
+                kind: PlotSeriesKind::Continuous,
+            },
+        };
 
-            // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
-            let fallback_stroke_width: StrokeWidth = typed_fallback_for(
-                &query_ctx,
-                archetypes::SeriesLines::descriptor_widths().component,
-            );
-            let default_point = PlotPoint {
-                time: 0,
-                value: 0.0,
-                attrs: PlotPointAttrs {
-                    // Filled out later.
-                    color: egui::Color32::DEBUG_COLOR,
-                    radius_ui: 0.5 * *fallback_stroke_width.0,
-                    kind: PlotSeriesKind::Continuous,
-                },
-            };
+        let num_series = determine_num_series(all_scalar_chunks);
+        let mut points_per_series =
+            allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
 
-            let num_series = determine_num_series(all_scalar_chunks);
-            let mut points_per_series =
-                allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
+        collect_scalars(all_scalar_chunks, &mut points_per_series);
 
-            collect_scalars(all_scalar_chunks, &mut points_per_series);
+        collect_colors(
+            &query_ctx,
+            &query,
+            &results,
+            all_scalar_chunks,
+            &mut points_per_series,
+            &archetypes::SeriesLines::descriptor_colors(),
+        );
+        collect_radius_ui(
+            &query,
+            &results,
+            all_scalar_chunks,
+            &mut points_per_series,
+            &archetypes::SeriesLines::descriptor_widths(),
+            0.5,
+        );
 
-            collect_colors(
-                &query_ctx,
-                &query,
-                &results,
-                all_scalar_chunks,
-                &mut points_per_series,
-                &archetypes::SeriesLines::descriptor_colors(),
-            );
-            collect_radius_ui(
-                &query,
-                &results,
-                all_scalar_chunks,
-                &mut points_per_series,
-                &archetypes::SeriesLines::descriptor_widths(),
-                0.5,
-            );
+        // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+        let aggregator = results
+            .iter_optional(archetypes::SeriesLines::descriptor_aggregation_policy().component)
+            .component_slow::<AggregationPolicy>()
+            .next()
+            .and_then(|(_index, policies)| policies.first().copied())
+            // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
+            //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
+            .unwrap_or_default();
 
-            // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-            let aggregator = results
-                .iter_optional(archetypes::SeriesLines::descriptor_aggregation_policy().component)
-                .component_slow::<AggregationPolicy>()
-                .next()
-                .and_then(|(_index, policies)| policies.first().copied())
-                // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
-                //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
-                .unwrap_or_default();
+        // NOTE: The chunks themselves are already sorted as best as possible (hint: overlap)
+        // by the query engine.
+        let all_chunks_sorted_and_not_overlapped =
+            all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
+                let lhs_time_max = lhs
+                    .chunk
+                    .timelines()
+                    .get(query.timeline())
+                    .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
+                let rhs_time_min = rhs
+                    .chunk
+                    .timelines()
+                    .get(query.timeline())
+                    .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
+                lhs_time_max <= rhs_time_min
+            });
 
-            // NOTE: The chunks themselves are already sorted as best as possible (hint: overlap)
-            // by the query engine.
-            let all_chunks_sorted_and_not_overlapped =
-                all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
-                    let lhs_time_max = lhs
-                        .chunk
-                        .timelines()
-                        .get(query.timeline())
-                        .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
-                    let rhs_time_min = rhs
-                        .chunk
-                        .timelines()
-                        .get(query.timeline())
-                        .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
-                    lhs_time_max <= rhs_time_min
-                });
+        let has_discontinuities = {
+            // Find all clears that may apply, in order to render discontinuities properly.
 
-            let has_discontinuities = {
-                // Find all clears that may apply, in order to render discontinuities properly.
+            re_tracing::profile_scope!("discontinuities");
 
-                re_tracing::profile_scope!("discontinuities");
+            let cleared_indices = collect_recursive_clears(ctx, &query, entity_path);
+            let has_discontinuities = !cleared_indices.is_empty();
 
-                let cleared_indices = collect_recursive_clears(ctx, &query, entity_path);
-                let has_discontinuities = !cleared_indices.is_empty();
-
-                for points in &mut points_per_series {
-                    points.extend(cleared_indices.iter().map(|(data_time, _)| PlotPoint {
-                        time: data_time.as_i64(),
-                        value: 0.0,
-                        attrs: PlotPointAttrs {
-                            color: egui::Color32::TRANSPARENT,
-                            radius_ui: 0.0,
-                            kind: PlotSeriesKind::Clear,
-                        },
-                    }));
-                }
-
-                has_discontinuities
-            };
-
-            // This is _almost_ sorted already: all the individual chunks are sorted, but we still
-            // have to deal with overlapped chunks, or discontinuities introduced by query-time clears.
-            if !all_chunks_sorted_and_not_overlapped || has_discontinuities {
-                re_tracing::profile_scope!("sort");
-                for points in &mut points_per_series {
-                    points.sort_by_key(|p| p.time);
-                }
+            for points in &mut points_per_series {
+                points.extend(cleared_indices.iter().map(|(data_time, _)| PlotPoint {
+                    time: data_time.as_i64(),
+                    value: 0.0,
+                    attrs: PlotPointAttrs {
+                        color: egui::Color32::TRANSPARENT,
+                        radius_ui: 0.0,
+                        kind: PlotSeriesKind::Clear,
+                    },
+                }));
             }
 
-            let series_visibility = collect_series_visibility(
-                &query_ctx,
-                &results,
-                num_series,
-                archetypes::SeriesLines::descriptor_visible_series().component,
-            );
-            let series_names = collect_series_name(
-                &query_ctx,
-                &results,
-                num_series,
-                &archetypes::SeriesLines::descriptor_names(),
-            );
+            has_discontinuities
+        };
 
-            let mut series = Vec::with_capacity(num_series);
-
-            re_log::debug_assert!(
-                points_per_series.len() <= series_names.len(),
-                "Number of series names {} after processing should be at least the number of series allocated {}",
-                series_names.len(),
-                points_per_series.len()
-            );
-            for (instance, (points, label, visible)) in itertools::izip!(
-                points_per_series.into_iter(),
-                series_names.into_iter(),
-                series_visibility.into_iter()
-            )
-            .enumerate()
-            {
-                let instance_path = if num_series == 1 {
-                    InstancePath::entity_all(data_result.entity_path.clone())
-                } else {
-                    InstancePath::instance(data_result.entity_path.clone(), instance as u64)
-                };
-
-                if let Err(err) = util::points_to_series(
-                    instance_path,
-                    time_per_pixel,
-                    visible,
-                    points,
-                    ctx.recording_engine().store(),
-                    view_query,
-                    label,
-                    aggregator,
-                    &mut series,
-                    instruction.id,
-                ) {
-                    results.report_error(format!("Failed to create series: {err}"));
-                }
+        // This is _almost_ sorted already: all the individual chunks are sorted, but we still
+        // have to deal with overlapped chunks, or discontinuities introduced by query-time clears.
+        if !all_chunks_sorted_and_not_overlapped || has_discontinuities {
+            re_tracing::profile_scope!("sort");
+            for points in &mut points_per_series {
+                re_tracing::profile_scope!("sort_by_key", points.len().to_string());
+                points.sort_by_key(|p| p.time);
             }
-
-            Ok(series)
         }
+
+        let series_visibility = collect_series_visibility(
+            &query_ctx,
+            &results,
+            num_series,
+            archetypes::SeriesLines::descriptor_visible_series().component,
+        );
+        let series_names = collect_series_name(
+            &query_ctx,
+            &results,
+            num_series,
+            &archetypes::SeriesLines::descriptor_names(),
+        );
+
+        let mut series = Vec::with_capacity(num_series);
+
+        re_log::debug_assert!(
+            points_per_series.len() <= series_names.len(),
+            "Number of series names {} after processing should be at least the number of series allocated {}",
+            series_names.len(),
+            points_per_series.len()
+        );
+        for (instance, (points, label, visible)) in
+            itertools::izip!(points_per_series, series_names, series_visibility).enumerate()
+        {
+            let instance_path = if num_series == 1 {
+                InstancePath::entity_all(data_result.entity_path.clone())
+            } else {
+                InstancePath::instance(data_result.entity_path.clone(), instance as u64)
+            };
+
+            if let Err(err) = util::points_to_series(
+                instance_path,
+                time_per_pixel,
+                visible,
+                points,
+                ctx.recording_engine().store(),
+                view_query,
+                label,
+                aggregator,
+                &mut series,
+                instruction.id,
+            ) {
+                results.report_error(format!("Failed to create series: {err}"));
+            }
+        }
+
+        Ok(series)
     }
 }
 

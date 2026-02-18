@@ -46,7 +46,7 @@ pub fn visible_time_range_ui_for_data_result(
     ui: &mut Ui,
     data_result: &re_viewer_context::DataResult,
 ) {
-    let query_range = data_result.query_range.clone();
+    let query_range = data_result.query_range;
     let is_view = false;
     visible_time_range_ui(
         ctx,
@@ -83,7 +83,7 @@ fn visible_time_range_ui(
         .any(|range| range.timeline.as_str() == timeline_name.as_str());
 
     let has_individual_range_before = has_individual_range;
-    let query_range_before = resolved_query_range.clone();
+    let query_range_before = resolved_query_range;
 
     ui.scope(|ui| {
         // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
@@ -301,13 +301,9 @@ fn show_visual_time_range(
     let time_type = timeline.typ();
 
     // Show the resolved visible range as labels (user can't edit them):
-    if resolved_range.start == TimeRangeBoundary::Infinite
-        && resolved_range.end == TimeRangeBoundary::Infinite
-    {
+    if resolved_range == &TimeRange::EVERYTHING {
         ui.label("Entire timeline");
-    } else if resolved_range.start == TimeRangeBoundary::AT_CURSOR
-        && resolved_range.end == TimeRangeBoundary::AT_CURSOR
-    {
+    } else if resolved_range == &TimeRange::AT_CURSOR {
         let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
         ui.label(format!("At {} = {current_time}", timeline.name())).on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.");
     } else {

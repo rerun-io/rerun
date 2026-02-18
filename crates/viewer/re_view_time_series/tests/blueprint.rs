@@ -145,8 +145,8 @@ pub fn test_custom_visible_time_range() {
             let view_id = setup_blueprint(
                 &mut test_context,
                 timeline.name(),
-                view_range.clone(),
-                Some(data_range.clone()),
+                view_range,
+                Some(*data_range),
             );
             snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
                 view_id,
