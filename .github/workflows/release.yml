@@ -12,6 +12,11 @@ on:
           - rc
           - final
         required: true
+      publish-crates:
+        description: "Publish crates (ignored for non-alpha release)"
+        type: boolean
+        required: false
+        default: true
 
 concurrency:
   group: ${{ github.ref_name }}
@@ -276,6 +281,7 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
+    if: inputs.release-type != 'alpha' || inputs.publish-crates
     needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_release_crates.yml
     with:
@@ -339,7 +345,7 @@ jobs:
   # The push to `docs-latest` also triggers a re-deploy of `rerun.io`.
   update-latest-branch:
     name: "Update Latest Branch"
-    if: inputs.release-type == 'final'
+    if: inputs.release-type == 'final' && !cancelled() && !failure()
     needs:
       [
         version,
@@ -371,6 +377,7 @@ jobs:
 
   tag-release:
     name: "Tag Release"
+    if: ${{ !cancelled() && !failure() }}
     needs:
       [
         version,
@@ -437,7 +444,7 @@ jobs:
   post-release-version-bump:
     name: "Post-Release Version Bump"
     # We don't need to bump versions for `rc` releases, because we don't merge those.
-    if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
+    if: (inputs.release-type == 'alpha' || inputs.release-type == 'final') && !cancelled() && !failure()
     needs:
       [
         version,
@@ -503,6 +510,7 @@ jobs:
 
   comment-artifact-links:
     name: "Link to artifacts"
+    if: ${{ !cancelled() && !failure() }}
     needs:
       [
         version,
