@@ -4,6 +4,7 @@ use std::sync::Arc;
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
@@ -360,6 +361,22 @@ fn build_dataframe_query_table_provider(
     let schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset_ref)?;
     let connection = dataset_ref.client().borrow(py).connection().clone();
     drop(dataset_ref);
+
+    // Error if the queried index is unknown.
+    if let Some(index) = index.as_deref() {
+        let known_index = schema.field_with_name(index).ok().is_some_and(|field| {
+            field
+                .metadata()
+                .get(re_sorbet::metadata::RERUN_KIND)
+                .is_some_and(|value| value == "index")
+        });
+
+        if !known_index {
+            return Err(PyValueError::new_err(format!(
+                "Index '{index}' does not exist in the dataset."
+            )));
+        }
+    }
 
     let view_contents = build_view_contents(&schema, content_filters);
     let segment_ids: Vec<String> = match &segment_filter {
