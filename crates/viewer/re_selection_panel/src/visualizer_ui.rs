@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use arrow::datatypes::DataType;
+use egui::Ui;
 use itertools::{Either, Itertools as _};
 use re_chunk::ComponentIdentifier;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
@@ -243,7 +246,7 @@ fn visualizer_components(
     };
 
     // TODO(andreas): Should we show required components in a special way?
-    for unmapped_component_descr in sorted_component_list_by_archetype_for_ui(
+    for target_component_descr in sorted_component_list_by_archetype_for_ui(
         ctx.viewer_ctx.reflection(),
         query_info.queried.iter().cloned(),
     )
@@ -251,16 +254,16 @@ fn visualizer_components(
     .flatten()
     {
         // TODO(andreas): What about annotation context?
-        let target_component = unmapped_component_descr.component;
+        let target_component = target_component_descr.component;
 
         // Query override & default since we need them later on.
-        let is_target_required = if let Some(archetype) = unmapped_component_descr.archetype
+        let is_target_required = if let Some(archetype) = target_component_descr.archetype
             && let Some(archetype_reflection) =
                 ctx.viewer_ctx.reflection().archetypes.get(&archetype)
         {
             archetype_reflection
                 .required_fields()
-                .any(|field| &field.component_descriptor(archetype) == unmapped_component_descr)
+                .any(|field| &field.component_descriptor(archetype) == target_component_descr)
         } else {
             false
         };
@@ -269,9 +272,9 @@ fn visualizer_components(
             if is_target_required {
                 // In this context, we're only concerned with displaying an empty array, so it can be _any_ empty array.
                 // This would have to change if we add data type information in this place to the UI as well.
-                std::sync::Arc::new(arrow::array::NullArray::new(0))
+                Arc::new(arrow::array::NullArray::new(0))
             } else {
-                raw_default_or_fallback(&query_ctx, &query_result, unmapped_component_descr)
+                raw_default_or_fallback(&query_ctx, &query_result, target_component_descr)
             }
         };
 
@@ -328,7 +331,7 @@ fn visualizer_components(
                         entity_path: instruction.override_path.clone(),
                     },
                     raw_current_value_array.as_ref(),
-                    unmapped_component_descr.clone(),
+                    target_component_descr.clone(),
                     multiline,
                 )
             {
@@ -350,7 +353,7 @@ fn visualizer_components(
                     &store_query,
                     ctx.recording(),
                     &data_result.entity_path,
-                    unmapped_component_descr,
+                    target_component_descr,
                     current_value_row_id,
                     &raw_current_value_array,
                 );
@@ -359,20 +362,25 @@ fn visualizer_components(
 
         let add_children = |ui: &mut egui::Ui| {
             let raw_default = raw_default();
+            let mapping_ctx = SourceMappingContext {
+                data_result,
+                query_ctx: query_result.query_context(),
+                target_component_descr,
+                is_required_component: is_target_required,
+                instruction,
+                raw_default: &raw_default,
+            };
             // Source component (if available).
             source_component_ui(
                 ui,
+                &mapping_ctx,
                 &query_result,
                 &entity_components_with_datatype,
-                unmapped_component_descr,
-                instruction,
                 &query_info,
-                &raw_default,
                 component_reports
                     .iter()
                     .find(|report| report.severity == VisualizerReportSeverity::Error)
                     .map(|report| report.summary.clone()),
-                is_target_required,
             );
         };
 
@@ -387,7 +395,7 @@ fn visualizer_components(
                 list_item::PropertyContent::new(
                     // We're in the context of a visualizer, so we don't have to print the archetype name
                     // since usually archetypes match 1:1 with visualizers.
-                    unmapped_component_descr.archetype_field_name(),
+                    target_component_descr.archetype_field_name(),
                 )
                 .value_fn(value_fn)
                 .show_only_when_collapsed(false)
@@ -395,7 +403,7 @@ fn visualizer_components(
                     menu_more(
                         ctx,
                         ui,
-                        unmapped_component_descr.clone(),
+                        target_component_descr.clone(),
                         &instruction.override_path,
                         raw_current_value_array.clone(),
                     );
@@ -407,7 +415,7 @@ fn visualizer_components(
             )
             .item_response;
 
-        if let Some(component_type) = unmapped_component_descr.component_type {
+        if let Some(component_type) = target_component_descr.component_type {
             response.on_hover_ui(|ui| {
                 // TODO(andreas): Add data ui for component descr?
                 component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
@@ -445,7 +453,7 @@ fn raw_default_or_fallback(
     query_ctx: &re_viewer_context::QueryContext<'_>,
     query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
     target_component_descr: &ComponentDescriptor,
-) -> std::sync::Arc<dyn re_chunk::ArrowArray> {
+) -> Arc<dyn re_chunk::ArrowArray> {
     let target_component = target_component_descr.component;
 
     let result_default = query_result.view_defaults.get(target_component);
@@ -468,12 +476,12 @@ fn raw_default_or_fallback(
 }
 
 fn collect_source_component_options(
-    ctx: &ViewContext<'_>,
+    mapping_ctx: &SourceMappingContext<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
-    component_descr: &ComponentDescriptor,
-    is_required_component: bool,
     query_info: &VisualizerQueryInfo,
 ) -> Vec<VisualizerComponentSource> {
+    let component_descr = mapping_ctx.target_component_descr;
+
     let no_mapping_mapping = VisualizerComponentSource::SourceComponent {
         source_component: component_descr.component,
         selector: String::new(),
@@ -483,12 +491,11 @@ fn collect_source_component_options(
         return vec![no_mapping_mapping];
     };
 
-    let reflection = ctx.viewer_ctx.reflection();
     // Collect suitable source components with the same datatype as the target component.
 
     // TODO(andreas): Right now we are _more_ flexible for required components, because there we also support
     // casting in some special cases. Eventually this should always be the case, leaving us always with a list of valid physical types that we filter on.
-    let allowed_physical_types = if is_required_component
+    let allowed_physical_types = if mapping_ctx.is_required_component
         && let re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
             AnyPhysicalDatatypeRequirement { physical_types, .. },
         ) = &query_info.required
@@ -496,6 +503,7 @@ fn collect_source_component_options(
         physical_types.clone()
     } else {
         // Get arrow datatype of the target component.
+        let reflection = mapping_ctx.viewer_ctx().reflection();
         let Some(target_component_reflection) = reflection.components.get(target_component_type)
         else {
             // No reflection for target component type, that should never happen.
@@ -544,19 +552,43 @@ fn collect_source_component_options(
         .collect()
 }
 
-#[expect(clippy::too_many_arguments)]
+/// Context for rendering the source component mapping combo box items.
+struct SourceMappingContext<'a> {
+    data_result: &'a DataResult,
+    query_ctx: &'a re_viewer_context::QueryContext<'a>,
+    target_component_descr: &'a ComponentDescriptor,
+    is_required_component: bool,
+    instruction: &'a VisualizerInstruction,
+    raw_default: &'a ArrayRef,
+}
+
+impl<'a> SourceMappingContext<'a> {
+    fn view_ctx(&self) -> &ViewContext<'a> {
+        self.query_ctx.view_ctx
+    }
+
+    fn viewer_ctx(&self) -> &re_viewer_context::ViewerContext<'a> {
+        self.query_ctx.view_ctx.viewer_ctx
+    }
+
+    fn target_component(&self) -> ComponentIdentifier {
+        self.target_component_descr.component
+    }
+}
+
 fn source_component_ui(
     ui: &mut egui::Ui,
+    mapping_ctx: &SourceMappingContext<'_>,
     query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
-    component_descr: &ComponentDescriptor,
-    instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
-    raw_default: &ArrayRef,
     current_selection_error: Option<String>,
-    is_required_component: bool,
 ) {
-    let current = current_component_source(query_result, instruction, component_descr.component);
+    let current = current_component_source(
+        query_result,
+        mapping_ctx.instruction,
+        mapping_ctx.target_component(),
+    );
 
     ui.push_id("source_component", |ui| {
         ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Source").value_fn(
@@ -567,15 +599,11 @@ fn source_component_ui(
                     .show_ui(ui, |ui| {
                         source_component_items_ui(
                             ui,
-                            query_result,
+                            mapping_ctx,
                             entity_components_with_datatype,
-                            component_descr,
-                            instruction,
                             query_info,
-                            raw_default,
                             &current,
                             current_selection_error,
-                            is_required_component,
                         );
                     });
                 response.response.widget_info(|| {
@@ -583,7 +611,7 @@ fn source_component_ui(
                         egui::WidgetType::ComboBox,
                         ui.is_enabled(),
                         // TODO(aedm): Weird label, but we need to find this item in the integration test somehow.
-                        format!("{}_$source", component_descr.component),
+                        format!("{}_$source", mapping_ctx.target_component()),
                     )
                 });
             },
@@ -591,46 +619,28 @@ fn source_component_ui(
     });
 }
 
-#[expect(clippy::too_many_arguments)]
 fn source_component_items_ui(
     ui: &mut egui::Ui,
-    query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
+    mapping_ctx: &SourceMappingContext<'_>,
     entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
-    component_descr: &ComponentDescriptor,
-    instruction: &VisualizerInstruction,
     query_info: &VisualizerQueryInfo,
-    raw_default: &ArrayRef,
     current: &VisualizerComponentSource,
     mut current_selection_error: Option<String>,
-    is_required_component: bool,
 ) {
-    let query_ctx = query_result.query_context();
-    let view_ctx = query_ctx.view_ctx;
-    let viewer_ctx = view_ctx.viewer_ctx;
+    let mut options =
+        collect_source_component_options(mapping_ctx, entity_components_with_datatype, query_info);
 
-    let mut options = collect_source_component_options(
-        view_ctx,
-        entity_components_with_datatype,
-        component_descr,
-        is_required_component,
-        query_info,
+    let raw_override = mapping_ctx.viewer_ctx().raw_latest_at_in_current_blueprint(
+        &mapping_ctx.instruction.override_path,
+        mapping_ctx.target_component(),
     );
 
-    let has_editor = component_descr.component_type.is_some_and(|ct| {
-        viewer_ctx
-            .component_ui_registry()
-            .registered_ui_types(ct)
-            .has_edit_ui(raw_default.len() > 1)
-    });
-
-    let raw_override = viewer_ctx
-        .raw_latest_at_in_current_blueprint(&instruction.override_path, component_descr.component);
-
-    if !is_required_component {
+    if !mapping_ctx.is_required_component {
         options.push(VisualizerComponentSource::Default);
 
-        // Show the override/adding override only if there is an editor or we already have an override set to begin with.
-        if has_editor || raw_override.is_some() {
+        // Show the override only if we have one already.
+        // (Otherwise, we'll add a special "add custom" entry later on)
+        if raw_override.is_some() {
             options.push(VisualizerComponentSource::Override);
         }
     }
@@ -641,40 +651,208 @@ fn source_component_items_ui(
         options.insert(0, current.clone());
     }
 
-    for source in &options {
-        let add_custom = *source == VisualizerComponentSource::Override && raw_override.is_none();
-        let selected = source == current;
-        let label = if add_custom {
-            "Add custom…".to_owned()
-        } else {
-            component_source_string(source)
-        };
+    // Split options into recommended and other.
+    let recommended_options = extract_recommended_source_options(mapping_ctx, &options);
+    let other_options = options
+        .into_iter()
+        .filter(|option| !recommended_options.contains(option))
+        .collect::<Vec<_>>();
 
-        let mut item = ComboItem::new(label).selected(selected);
-        if selected && let Some(error) = current_selection_error.take() {
-            item = item.error(Some(error));
+    // Don't show categorization if either group is empty (ignoring Custom-only in "Other").
+    let other_has_non_custom = other_options
+        .iter()
+        .any(|s| *s != VisualizerComponentSource::Override);
+    let show_sections = !recommended_options.is_empty() && other_has_non_custom;
+
+    if show_sections {
+        ui.add(re_ui::ComboItemHeader::new("Recommended:"));
+    }
+    for source in &recommended_options {
+        source_component_item_ui(
+            ui,
+            mapping_ctx,
+            current,
+            &mut current_selection_error,
+            source,
+        );
+    }
+
+    if show_sections {
+        ui.add(re_ui::ComboItemHeader::new("Other values:"));
+    }
+    for source in &other_options {
+        source_component_item_ui(
+            ui,
+            mapping_ctx,
+            current,
+            &mut current_selection_error,
+            source,
+        );
+    }
+
+    // Last: "Add Custom" if we don't have an override already and there's an editor for it.
+    let has_editor = mapping_ctx
+        .target_component_descr
+        .component_type
+        .is_some_and(|ct| {
+            mapping_ctx
+                .viewer_ctx()
+                .component_ui_registry()
+                .registered_ui_types(ct)
+                .has_edit_ui(mapping_ctx.raw_default.len() > 1)
+        });
+    if raw_override.is_none() && has_editor && ui.add(ComboItem::new("Add custom")).clicked() {
+        save_component_mapping(
+            mapping_ctx.view_ctx(),
+            mapping_ctx.instruction,
+            VisualizerComponentSource::Override,
+            mapping_ctx.target_component(),
+        );
+
+        // Persist the override value right away, so the `add_custom` check can rely on the override value being in the blueprint store.
+        // This also makes behavior generally more consistent - imagine what if the default flickers for some reason:
+        // this will make it so that override doesn't flicker until one edits the value.
+        mapping_ctx.view_ctx().save_blueprint_array(
+            mapping_ctx.instruction.override_path.clone(),
+            mapping_ctx.target_component_descr.clone(),
+            mapping_ctx.raw_default.clone(),
+        );
+
+        ui.close();
+    }
+}
+
+/// Determines which source component options should be in the "Recommended" group.
+fn extract_recommended_source_options(
+    mapping_ctx: &SourceMappingContext<'_>,
+    options: &[VisualizerComponentSource],
+) -> Vec<VisualizerComponentSource> {
+    // Folks with Rerun access check https://www.figma.com/design/eGATW7RubxdRrcEP9ITiVh/Any-scalars?node-id=791-7619&t=6SWixKV9yWMTFQba-0
+    // for the original design & rationale.
+
+    let target_component = mapping_ctx.target_component();
+
+    // Rule 1: Identity mapping is recommended.
+    if options
+        .iter()
+        .any(|source| source.is_identity_mapping(target_component))
+    {
+        return vec![VisualizerComponentSource::identity(target_component)];
+    }
+
+    // Rule 2: View-recommended mappings are recommended.
+    let view_ctx = mapping_ctx.view_ctx();
+    let viewer_ctx = mapping_ctx.viewer_ctx();
+    let visualizable_entities_per_visualizer =
+        viewer_ctx.collect_visualizable_entities_for_view_class(view_ctx.view_class_identifier);
+    let recommended_visualizers = view_ctx.view_class().recommended_visualizers_for_entity(
+        &mapping_ctx.data_result.entity_path,
+        &visualizable_entities_per_visualizer,
+        viewer_ctx.indicated_entities_per_visualizer,
+    );
+    if let Some(recommended_mappings) = recommended_visualizers
+        .0
+        .get(&mapping_ctx.instruction.visualizer_type)
+    {
+        let recommended: Vec<_> = recommended_mappings
+            .iter()
+            .filter_map(|mappings| mappings.get(&target_component))
+            .filter(|source| options.contains(source))
+            .cloned()
+            .collect();
+
+        if !recommended.is_empty() {
+            return recommended;
         }
+    }
 
-        if ui.add(item).clicked() {
-            save_component_mapping(
-                view_ctx,
-                instruction,
-                source.clone(),
-                component_descr.component,
-            );
+    // Rule 3: Default is recommended if present in the option list & non-empty.
+    if !mapping_ctx.raw_default.is_empty() && options.contains(&VisualizerComponentSource::Default)
+    {
+        return vec![VisualizerComponentSource::Default];
+    }
 
-            if add_custom {
-                // Persist the override value right away, so the `add_custom` check can rely on the override value being in the blueprint store.
-                // This also makes behavior generally more consistent - imagine what if the default flickers for some reason:
-                // this will make it so that override doesn't flicker until one edits the value.
-                view_ctx.save_blueprint_array(
-                    instruction.override_path.clone(),
-                    component_descr.clone(),
-                    raw_default.clone(),
+    // Otherwise: nothing is recommended.
+    Vec::new()
+}
+
+/// Renders a single source component item in the combo box.
+fn source_component_item_ui(
+    ui: &mut egui::Ui,
+    mapping_ctx: &SourceMappingContext<'_>,
+    current: &VisualizerComponentSource,
+    current_selection_error: &mut Option<String>,
+    source: &VisualizerComponentSource,
+) {
+    let selected = source == current;
+
+    let raw_value = raw_value_for_mapping(mapping_ctx, source);
+
+    let mut item = ComboItem::new(component_source_string(source)).selected(selected);
+    if selected && let Some(error) = current_selection_error.take() {
+        item = item.error(Some(error));
+    }
+
+    if let Some(raw_value) = raw_value {
+        let num_values = raw_value.len();
+        item = item.value_widget(move |ui: &mut Ui| {
+            // We intentionally don't show the value if there are multiple values since it can get cluttery. We'll likely iterate on this in the future.
+            if num_values > 1 {
+                ui.label(format!("{} values", re_format::format_uint(num_values)));
+            } else {
+                let viewer_ctx = mapping_ctx.viewer_ctx();
+                viewer_ctx.component_ui_registry().component_ui_raw(
+                    viewer_ctx,
+                    ui,
+                    UiLayout::List,
+                    &mapping_ctx.query_ctx.query,
+                    mapping_ctx.view_ctx().recording(),
+                    &mapping_ctx.data_result.entity_path,
+                    mapping_ctx.target_component_descr,
+                    None, // row id doesn't matter since we're only showing a single value here.
+                    &raw_value,
                 );
             }
-            ui.close();
-        }
+            ui.response()
+        });
+    }
+
+    if ui.add(item).clicked() {
+        save_component_mapping(
+            mapping_ctx.view_ctx(),
+            mapping_ctx.instruction,
+            source.clone(),
+            mapping_ctx.target_component(),
+        );
+        ui.close();
+    }
+}
+
+fn raw_value_for_mapping(
+    mapping_ctx: &SourceMappingContext<'_>,
+    new_source: &VisualizerComponentSource,
+) -> Option<Arc<dyn re_chunk::ArrowArray>> {
+    let target_component = mapping_ctx.target_component();
+
+    if new_source == &VisualizerComponentSource::Default {
+        // Special treat for default, since it may also go to the fallback and we've already done that work.
+        Some(mapping_ctx.raw_default.clone())
+    } else {
+        // Instead of trying to do an isolated query on this hypothetical source,
+        // let's just pretend that the visualizer already took over this source, and see what the result would be!
+        let hypothetical_instruction = VisualizerInstruction {
+            component_mappings: std::iter::once((target_component, new_source.clone())).collect(),
+            ..mapping_ctx.instruction.clone()
+        };
+        let query_result = latest_at_with_blueprint_resolved_data(
+            mapping_ctx.view_ctx(),
+            None,
+            &mapping_ctx.query_ctx.query,
+            mapping_ctx.data_result,
+            [target_component],
+            Some(&hypothetical_instruction),
+        );
+        query_result.get_raw_cell(target_component)
     }
 }
 

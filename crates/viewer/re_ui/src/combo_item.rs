@@ -1,20 +1,22 @@
 use crate::egui_ext::WidgetTextExt as _;
-use crate::{UiExt as _, icons};
+use crate::egui_ext::boxed_widget::{BoxedWidget, BoxedWidgetExt as _};
+use crate::{DesignTokens, UiExt as _, icons};
+use eframe::emath::Align;
 use eframe::epaint::FontFamily;
 use egui::{
-    Atom, AtomExt as _, AtomLayout, Atoms, Button, FontId, Frame, Id, Margin, Response, Sense, Ui,
-    Vec2, Widget, WidgetText,
+    Atom, AtomExt as _, AtomLayout, Atoms, Button, FontId, Frame, Id, Layout, Margin, Pos2, Rect,
+    Response, Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetText,
 };
 
 /// A selectable button to be used within [`egui::ComboBox`]es or [`egui::Popup`]s.
-pub struct ComboItem {
+pub struct ComboItem<'a> {
     label: WidgetText,
     selected: bool,
-    value: Option<WidgetText>,
+    value: Option<BoxedWidget<'a>>,
     error: Option<String>,
 }
 
-impl ComboItem {
+impl<'a> ComboItem<'a> {
     /// Create a new [`ComboItem`].
     pub fn new(label: impl Into<WidgetText>) -> Self {
         Self {
@@ -40,13 +42,22 @@ impl ComboItem {
     }
 
     /// Add a value. Will be shown on the right side at font size 10.
-    pub fn value(mut self, value: impl Into<WidgetText>) -> Self {
-        self.value = Some(value.into());
+    pub fn value(mut self, value: impl Into<WidgetText> + Send + Sync + 'a) -> Self {
+        let value = value
+            .into()
+            .force_size(DesignTokens::combo_item_small_font_size());
+        self.value = Some((|ui: &mut Ui| ui.label(value)).boxed());
+        self
+    }
+
+    /// Add a value as a widget. Will be shown on the right side at font size 10.
+    pub fn value_widget(mut self, value: impl Widget + Send + Sync + 'a) -> Self {
+        self.value = Some(value.boxed());
         self
     }
 }
 
-impl Widget for ComboItem {
+impl Widget for ComboItem<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         // Implementation based on
         // https://www.figma.com/design/eGATW7RubxdRrcEP9ITiVh/Any-scalars?node-id=787-7335&m=dev
@@ -58,7 +69,6 @@ impl Widget for ComboItem {
             error,
         } = self;
 
-        let small_font_size = 10.0;
         ui.spacing_mut().icon_spacing = 2.0;
         ui.spacing_mut().button_padding.x = 0.0;
 
@@ -80,14 +90,22 @@ impl Widget for ComboItem {
 
         let error_id = Id::new("error");
 
+        // Annoyingly, `UiBuilder::id` wraps the passed `Id` with an extra `Id::new`, meaning
+        // we have to do the same to read it:
+        let value_scope_id_raw = ui.next_auto_id().with("value_scope");
+        let value_scope_id = Id::new(value_scope_id_raw);
+
         if error.is_some() {
             atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
             atoms.push_right(Atom::custom(error_id, ui.tokens().small_icon_size));
-        } else if let Some(mut value) = value {
-            // Ensure the value is shown at the right font size
-            value = value.force_size(small_font_size);
+        } else if value.is_some() {
+            let value_scope_response = ui.ctx().read_response(value_scope_id);
+            let size = value_scope_response
+                .map(|r| r.rect.size())
+                .unwrap_or_default();
+
             atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
-            atoms.push_right(value.atom_max_width(124.0));
+            atoms.push_right(Atom::custom(value_scope_id, size));
         }
 
         // Since the ComboItem has uneven padding due to the checkmark, we need to manually add 4px
@@ -113,6 +131,32 @@ impl Widget for ComboItem {
                 )
                 .on_hover_text(error);
             }
+        } else if let Some(rect) = response.rect(value_scope_id)
+            && let Some(widget) = value
+        {
+            let rect = Rect::from_min_max(
+                Pos2::new(
+                    rect.max.x - DesignTokens::combo_item_max_value_width(),
+                    rect.min.y,
+                ),
+                rect.max,
+            );
+            let mut child_ui = ui.new_child(
+                UiBuilder::new()
+                    .id(value_scope_id_raw)
+                    .max_rect(rect)
+                    .layout(Layout::right_to_left(Align::Center)),
+            );
+
+            child_ui.style_mut().interaction.selectable_labels = false;
+            // Override the text size to match the design
+            for text_style in [TextStyle::Body, TextStyle::Monospace, TextStyle::Button] {
+                if let Some(font) = child_ui.style_mut().text_styles.get_mut(&text_style) {
+                    font.size = DesignTokens::combo_item_small_font_size();
+                }
+            }
+
+            child_ui.add(widget);
         }
 
         response.response

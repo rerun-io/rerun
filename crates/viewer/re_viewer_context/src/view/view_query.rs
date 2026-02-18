@@ -72,17 +72,19 @@ impl VisualizerComponentSource {
         }
     }
 
+    /// The identity mapping for the given target component.
+    pub fn identity(target: ComponentIdentifier) -> Self {
+        Self::SourceComponent {
+            source_component: target,
+            selector: String::new(),
+        }
+    }
+
     /// True if the mapping have no effect on the target.
     ///
     /// I.e. it maps directly from the target back to the target.
     pub fn is_identity_mapping(&self, target: ComponentIdentifier) -> bool {
-        match self {
-            Self::SourceComponent {
-                source_component,
-                selector,
-            } => source_component == &target && selector.is_empty(),
-            Self::Override | Self::Default => false,
-        }
+        self == &Self::identity(target)
     }
 }
 

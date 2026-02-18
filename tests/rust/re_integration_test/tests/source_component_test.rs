@@ -7,7 +7,6 @@
 
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
-use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::ViewClass as _;
 use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
@@ -25,18 +24,26 @@ fn make_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
 
     // Log 3D points with colors and radii - similar to add_visualizer_test
     harness.log_entity("points3d", |builder| {
-        builder.with_archetype(
-            RowId::new(),
-            TimePoint::STATIC,
-            &re_sdk_types::archetypes::Points3D::new([
-                (0.0, 0.0, 0.0),
-                (1.0, 0.0, 0.0),
-                (0.0, 1.0, 0.0),
-                (1.0, 1.0, 0.0),
-            ])
-            .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF])
-            .with_radii([0.1, 0.15, 0.2, 0.25]),
-        )
+        builder
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &re_sdk_types::archetypes::Points3D::new([
+                    (0.0, 0.0, 0.0),
+                    (1.0, 0.0, 0.0),
+                    (0.0, 1.0, 0.0),
+                    (1.0, 1.0, 0.0),
+                ])
+                .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF])
+                .with_radii([0.1, 0.15, 0.2, 0.25]),
+            )
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &re_sdk_types::DynamicArchetype::new("Custom")
+                    .with_component::<re_sdk_types::components::Color>(
+                        "my_colors",
+                        [re_sdk_types::components::Color::from_rgb(255, 0, 255)],
+                    ),
+            )
     });
 
     // Set up a 3D view
@@ -83,4 +90,22 @@ pub async fn test_source_component_dropdown() {
     // Select "View default" from the dropdown options to avoid confusion with the "Override" RadioButton
     harness.click_label("View default");
     harness.snapshot_app("source_component_6");
+
+    // Expand for positions as well - here we should see less items.
+    harness
+        .selection_panel()
+        .toggle_nth_hierarchical_list("positions", 1);
+    harness
+        .selection_panel()
+        .click_label("Points3D:positions_$source");
+    harness.snapshot_app("source_component_7");
+
+    // Expand for colors as well - here we should see color previews, including a custom component one.
+    harness
+        .selection_panel()
+        .toggle_nth_hierarchical_list("colors", 1);
+    harness
+        .selection_panel()
+        .click_label("Points3D:colors_$source");
+    harness.snapshot_app("source_component_8");
 }

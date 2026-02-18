@@ -733,6 +733,14 @@ impl DesignTokens {
         11.0
     }
 
+    pub fn combo_item_max_value_width() -> f32 {
+        124.0
+    }
+
+    pub fn combo_item_small_font_size() -> f32 {
+        10.0
+    }
+
     pub fn native_window_corner_radius(&self) -> u8 {
         10
     }
