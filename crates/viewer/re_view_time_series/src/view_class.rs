@@ -54,8 +54,15 @@ pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
     pub(crate) scalar_range: Range1D,
 
-    /// The size of the current range of time which covers the whole time series.
-    pub(crate) max_time_view_range: AbsoluteTimeRange,
+    /// The range of all the data in this view.
+    ///
+    /// Only time series that are currently _visible_ are considered,
+    /// but for these the entire data range in the store is calculated
+    /// (not just what we're currently zoomed in on).
+    ///
+    /// This also heeds "visible time range",
+    /// but does NOT care about where the user has currently zoomed or panned.
+    pub(crate) full_data_time_range: AbsoluteTimeRange,
 
     /// We offset the time values of the plot so that unix timestamps don't run out of precision.
     ///
@@ -78,7 +85,7 @@ impl Default for TimeSeriesViewState {
     fn default() -> Self {
         Self {
             scalar_range: [0.0, 0.0].into(),
-            max_time_view_range: AbsoluteTimeRange::EMPTY,
+            full_data_time_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
             default_series_name_formats: Default::default(),
             num_time_series_last_frame_per_instruction: Default::default(),
@@ -453,28 +460,33 @@ impl ViewClass for TimeSeriesView {
         };
         state.time_offset = time_offset;
 
-        // Get the min and max time/X value for the visible plot.
-        let min_view_time = all_plot_series
-            .iter()
-            .filter_map(|line| line.points.first().map(|(t, _)| *t))
-            .min()
-            .unwrap_or(0);
-        let max_view_time = all_plot_series
-            .iter()
-            .filter_map(|line| line.points.last().map(|(t, _)| *t))
-            .max()
-            .unwrap_or(0);
-
         let recording = ctx.recording();
 
         let timeline_range = recording
             .time_range_for(timeline.name())
             .unwrap_or(AbsoluteTimeRange::EVERYTHING);
 
-        state.max_time_view_range = AbsoluteTimeRange::new(
-            TimeInt::saturated_temporal_i64(min_view_time),
-            TimeInt::saturated_temporal_i64(max_view_time),
-        );
+        {
+            // Get the full time range of data in the store for all visible entity paths.
+            // This queries the store directly rather than looking at loaded data,
+            // so it works even before any chunks are loaded.
+            // It also ignores "visible time range" etc.
+            let engine = recording.storage_engine();
+            let store = engine.store();
+            let timeline_name = timeline.name();
+
+            state.full_data_time_range = AbsoluteTimeRange::EMPTY;
+
+            for series in &all_plot_series {
+                if let Some(entity_time_range) =
+                    store.entity_time_range(timeline_name, &series.instance_path.entity_path)
+                    && let Some(visible_data) =
+                        series.visible_time_range.intersection(entity_time_range)
+                {
+                    state.full_data_time_range = state.full_data_time_range.union(visible_data);
+                }
+            }
+        }
 
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;

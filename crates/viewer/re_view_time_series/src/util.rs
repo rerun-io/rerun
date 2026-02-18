@@ -3,7 +3,7 @@ use re_log_types::external::arrow;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::{LinkAxis, VisualizerInstructionId};
 use re_sdk_types::components::AggregationPolicy;
-use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
+use re_sdk_types::datatypes::TimeRange;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
@@ -42,37 +42,43 @@ pub fn determine_time_per_pixel(
     1.0 / pixels_per_time.max(f64::EPSILON)
 }
 
-pub fn determine_time_range(
+/// The views' visible time range
+pub fn determine_visible_time_range(
     ctx: &ViewContext<'_>,
     data_result: &re_viewer_context::DataResult,
-) -> Result<AbsoluteTimeRange, ViewPropertyQueryError> {
+) -> AbsoluteTimeRange {
     let current_time = ctx
         .viewer_ctx
         .time_ctrl
         .time_int()
         .unwrap_or(re_log_types::TimeInt::ZERO);
 
-    let query_range = data_result.query_range();
-
-    // Latest-at doesn't make sense for time series and should also never happen.
-    let visible_time_range = match query_range {
+    let visible_time_range = match data_result.query_range() {
         re_viewer_context::QueryRange::TimeRange(time_range) => *time_range,
+
         re_viewer_context::QueryRange::LatestAt => {
-            if cfg!(debug_assertions) {
-                re_log::error_once!(
-                    "[DEBUG] Unexpected LatestAt query for time series data result at path {:?}",
-                    data_result.entity_path
-                );
-            }
-            TimeRange {
-                start: TimeRangeBoundary::AT_CURSOR,
-                end: TimeRangeBoundary::AT_CURSOR,
-            }
+            // Latest-at doesn't make sense for time series and should also never happen.
+            re_log::debug_warn_once!(
+                "Unexpected LatestAt query for time series data result at path {:?}",
+                data_result.entity_path
+            );
+            TimeRange::EVERYTHING
         }
     };
 
-    let data_time_range =
-        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, current_time);
+    AbsoluteTimeRange::from_relative_time_range(&visible_time_range, current_time)
+}
+
+/// The currently visible range of data
+pub fn determine_time_range(
+    ctx: &ViewContext<'_>,
+    visible_time_range: AbsoluteTimeRange,
+) -> Result<AbsoluteTimeRange, ViewPropertyQueryError> {
+    let current_time = ctx
+        .viewer_ctx
+        .time_ctrl
+        .time_int()
+        .unwrap_or(re_log_types::TimeInt::ZERO);
 
     let time_axis = ViewProperty::from_archetype::<TimeAxis>(
         ctx.viewer_ctx.blueprint_db(),
@@ -93,19 +99,16 @@ pub fn determine_time_range(
     };
 
     let view_time_range = time_range_property
-        .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
+        .component_or_fallback::<re_sdk_types::blueprint::components::TimeRange>(
+            ctx,
             re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
-        )
-        .ok()
-        .flatten();
+        )?;
 
-    let view_time_range = view_time_range
-        .map(|range| AbsoluteTimeRange::from_relative_time_range(&range, current_time))
-        // If we don't have an overridden time range, we want to show everything.
-        .unwrap_or(AbsoluteTimeRange::EVERYTHING);
+    let view_time_range =
+        AbsoluteTimeRange::from_relative_time_range(&view_time_range, current_time);
 
     Ok(view_time_range
-        .intersection(data_time_range)
+        .intersection(visible_time_range)
         .unwrap_or(AbsoluteTimeRange::EMPTY))
 }
 
@@ -115,6 +118,7 @@ pub fn determine_time_range(
 #[expect(clippy::too_many_arguments)]
 pub fn points_to_series(
     instance_path: InstancePath,
+    visible_time_range: AbsoluteTimeRange,
     time_per_pixel: f64,
     visible: bool,
     points: Vec<PlotPoint>,
@@ -156,13 +160,14 @@ pub fn points_to_series(
         }
 
         all_series.push(PlotSeries {
+            instance_path,
+            visible_time_range,
             visible,
             label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
             kind,
             points: vec![(points[0].time, points[0].value)],
-            instance_path,
             aggregator,
             aggregation_factor,
             min_time,
@@ -170,10 +175,11 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
+            instance_path,
+            visible_time_range,
             visible,
             series_label,
             points,
-            instance_path,
             aggregator,
             aggregation_factor,
             min_time,
@@ -254,10 +260,11 @@ pub fn apply_aggregation(
 #[expect(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
+    instance_path: InstancePath,
+    visible_time_range: AbsoluteTimeRange,
     visible: bool,
     series_label: String,
     points: Vec<PlotPoint>,
-    instance_path: InstancePath,
     aggregator: AggregationPolicy,
     aggregation_factor: f64,
     min_time: i64,
@@ -269,13 +276,14 @@ fn add_series_runs(
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
+        instance_path: instance_path.clone(),
+        visible_time_range,
         visible,
         label: series_label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
         kind: attrs.kind,
-        instance_path: instance_path.clone(),
         aggregator,
         aggregation_factor,
         min_time,
@@ -296,13 +304,14 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
+                    instance_path: instance_path.clone(),
+                    visible_time_range,
                     visible,
                     label: series_label.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,
                     points: Vec::with_capacity(num_points - i),
-                    instance_path: instance_path.clone(),
                     aggregator,
                     aggregation_factor,
                     min_time,

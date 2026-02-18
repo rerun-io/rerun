@@ -107,7 +107,8 @@ impl SeriesPointsSystem {
 
         let fallback_shape = MarkerShape::default();
 
-        let time_range = util::determine_time_range(ctx, data_result)?;
+        let visible_time_range = util::determine_visible_time_range(ctx, data_result);
+        let time_range = util::determine_time_range(ctx, visible_time_range)?;
 
         {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
@@ -319,6 +320,7 @@ impl SeriesPointsSystem {
 
                 if let Err(err) = util::points_to_series(
                     instance_path,
+                    visible_time_range,
                     time_per_pixel,
                     visible,
                     points,

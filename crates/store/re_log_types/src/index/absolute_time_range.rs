@@ -84,6 +84,11 @@ impl AbsoluteTimeRange {
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.max < self.min
+    }
+
+    #[inline]
     pub fn center(&self) -> TimeInt {
         self.min.midpoint(self.max)
     }

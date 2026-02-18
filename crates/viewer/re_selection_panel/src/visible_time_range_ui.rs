@@ -302,7 +302,7 @@ fn show_visual_time_range(
 
     // Show the resolved visible range as labels (user can't edit them):
     if resolved_range == &TimeRange::EVERYTHING {
-        ui.label("Entire timeline");
+        ui.label("Entire timeline").on_hover_text("The full timeline of the recording, which may be bigger than the data range of this plot");
     } else if resolved_range == &TimeRange::AT_CURSOR {
         let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
         ui.label(format!("At {} = {current_time}", timeline.name())).on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.");

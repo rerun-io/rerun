@@ -1,6 +1,9 @@
-use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::datatypes::TimeRange;
+use re_sdk_types::{
+    archetypes::{SeriesLines, SeriesPoints},
+    datatypes::TimeRangeBoundary,
+};
 use re_viewer_context::ViewStateExt as _;
 
 use crate::view_class::{TimeSeriesViewState, make_range_sane};
@@ -173,37 +176,76 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
     system_registry.register_fallback_provider(
         TimeAxis::descriptor_view_range().component,
-        |ctx| {
-            let timeline_histograms = ctx.viewer_ctx().recording().timeline_histograms();
-            let (timeline_min, timeline_max) = timeline_histograms
-                .get(ctx.viewer_ctx().time_ctrl.timeline_name())
-                .and_then(|stats| Some((stats.min_opt()?, stats.max_opt()?)))
-                .unzip();
-            ctx.view_state()
+        |ctx| -> re_sdk_types::blueprint::components::TimeRange {
+            use re_chunk_store::TimeType;
+
+            let timeline = ctx.viewer_ctx().time_ctrl.timeline();
+
+            let recording_range = timeline
+                .and_then(|timeline| ctx.viewer_ctx().recording().time_range_for(timeline.name()));
+
+            let data_range = ctx
+                .view_state()
                 .as_any()
                 .downcast_ref::<TimeSeriesViewState>()
-                .map(|s| {
-                    re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                        start: if Some(s.max_time_view_range.min) == timeline_min {
-                            re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                        } else {
-                            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                s.max_time_view_range.min.into(),
-                            )
-                        },
-                        end: if Some(s.max_time_view_range.max) == timeline_max {
-                            re_sdk_types::datatypes::TimeRangeBoundary::Infinite
-                        } else {
-                            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                                s.max_time_view_range.max.into(),
-                            )
-                        },
-                    })
-                })
-                .unwrap_or(re_sdk_types::blueprint::components::TimeRange(TimeRange {
-                    start: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                    end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
-                }))
+                .map(|s| s.full_data_time_range)
+                .filter(|range| !range.is_empty());
+
+            // It is worth noting that the range of just the plot data (`data_range`)
+            // may be smaller full range of ALL recording data (`recording_range`).
+
+            if let Some(timeline) = timeline
+                && let Some(data_range) = data_range
+            {
+                let span = data_range.abs_length();
+
+                // When viewing large recordings (spanning hours), it is VERY important
+                // that we only show part of the data by default, for two reasons:
+                //
+                // # Performance
+                // If we show all the data, we need to collect and aggregate all the data. This can be VERY slow.
+                //
+                // # Legibility
+                // A sufficiently zoomed out plot is indistinguishable from noise
+
+                const NS_PER_SEC: i64 = 1_000_000_000;
+
+                match timeline.typ() {
+                    TimeType::Sequence => {
+                        if 2_000 < span {
+                            return TimeRange::from_cursor_plus_minus(1_000).into();
+                        }
+                    }
+                    TimeType::TimestampNs | TimeType::DurationNs => {
+                        if (60 * NS_PER_SEC as u64) < span {
+                            return TimeRange::from_cursor_plus_minus(30 * NS_PER_SEC).into();
+                        }
+                    }
+                }
+            }
+
+            // View the entire data_range:
+
+            if let Some(data_range) = data_range
+                && let Some(recording_range) = recording_range
+            {
+                TimeRange {
+                    start: if data_range.min == recording_range.min {
+                        TimeRangeBoundary::Infinite
+                    } else {
+                        TimeRangeBoundary::Absolute(data_range.min.into())
+                    },
+
+                    end: if data_range.max == recording_range.max {
+                        TimeRangeBoundary::Infinite
+                    } else {
+                        TimeRangeBoundary::Absolute(data_range.max.into())
+                    },
+                }
+            } else {
+                TimeRange::EVERYTHING
+            }
+            .into()
         },
     );
 }

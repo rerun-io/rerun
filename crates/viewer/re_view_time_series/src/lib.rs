@@ -13,6 +13,7 @@ mod series_query;
 mod util;
 mod view_class;
 
+use re_log_types::AbsoluteTimeRange;
 use re_sdk_types::{
     blueprint::components::VisualizerInstructionId,
     components::{AggregationPolicy, MarkerShape},
@@ -80,6 +81,9 @@ pub enum PlotSeriesKind {
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
     pub instance_path: InstancePath,
+
+    /// The views' visible time range.
+    pub visible_time_range: AbsoluteTimeRange,
 
     /// Id of the visualizer instruction that is responsible for this series.
     pub visualizer_instruction_id: VisualizerInstructionId,

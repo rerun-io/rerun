@@ -107,7 +107,8 @@ impl SeriesLinesSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, current_query.clone(), instruction.id);
 
-        let time_range = util::determine_time_range(ctx, data_result)?;
+        let visible_time_range = util::determine_visible_time_range(ctx, data_result);
+        let time_range = util::determine_time_range(ctx, visible_time_range)?;
 
         let entity_path = &data_result.entity_path;
         let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
@@ -289,6 +290,7 @@ impl SeriesLinesSystem {
 
             if let Err(err) = util::points_to_series(
                 instance_path,
+                visible_time_range,
                 time_per_pixel,
                 visible,
                 points,

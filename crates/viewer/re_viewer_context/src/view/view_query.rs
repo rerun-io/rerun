@@ -340,6 +340,8 @@ impl DataResult {
     }
 
     /// Returns the query range for this data result.
+    ///
+    /// This is where "visible time range" is appled, if at all.
     pub fn query_range(&self) -> &QueryRange {
         &self.query_range
     }

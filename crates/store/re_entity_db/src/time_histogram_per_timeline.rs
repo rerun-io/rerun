@@ -57,7 +57,7 @@ impl TimeHistogram {
         self.hist.decrement(time, n);
     }
 
-    pub fn min_opt(&self) -> Option<TimeInt> {
+    fn min_opt(&self) -> Option<TimeInt> {
         self.min_key().map(TimeInt::new_temporal)
     }
 
@@ -65,7 +65,7 @@ impl TimeHistogram {
         self.min_opt().unwrap_or(TimeInt::MIN)
     }
 
-    pub fn max_opt(&self) -> Option<TimeInt> {
+    fn max_opt(&self) -> Option<TimeInt> {
         self.max_key().map(TimeInt::new_temporal)
     }
 
