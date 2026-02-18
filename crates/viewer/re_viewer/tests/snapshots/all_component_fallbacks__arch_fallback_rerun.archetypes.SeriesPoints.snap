@@ -5,5 +5,5 @@ expression: arch_display
 colors: [3161148927]
 markers: [1]
 names: [<name>]
-visible_series: [false]
+visible_series: [true]
 marker_sizes: [3.0]

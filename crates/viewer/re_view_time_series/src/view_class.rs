@@ -17,7 +17,7 @@ use re_sdk_types::blueprint::archetypes::{
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
-use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, SeriesVisible, Visible};
+use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, Visible};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{
     ComponentBatch as _, ComponentIdentifier, Loggable as _, View as _, ViewClassIdentifier,
@@ -1272,7 +1272,7 @@ fn update_series_visibility_overrides_from_plot(
 
             let component_array = visibility_state
                 .into_iter()
-                .map(SeriesVisible::from)
+                .map(Visible::from)
                 .collect::<Vec<_>>();
 
             if let Some(serialized_component_batch) =

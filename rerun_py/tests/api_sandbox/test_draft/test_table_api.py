@@ -22,7 +22,7 @@ def test_table_api() -> None:
 rerun_segment_id: string
 operator: string
 -- schema metadata --
-sorbet:version: '0.1.2'\
+sorbet:version: '0.1.3'\
 """)
         reader = table.reader()
 

@@ -3,7 +3,7 @@ source: crates/store/re_redap_tests/src/tests/query_filter.rs
 expression: results.format_schema_snapshot()
 ---
 top-level metadata: [
-    sorbet:version: "0.1.2"
+    sorbet:version: "0.1.3"
 ]
 /my/entity:example.MyPoints:colors: nullable List[nullable u32] [
     rerun:archetype: "example.MyPoints"

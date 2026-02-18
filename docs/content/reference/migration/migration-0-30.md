@@ -39,3 +39,9 @@ df.with_column("url", segment_url(dataset, timestamp_col="ts", timeline_name="my
 
 Also, the previously deprecated `partition_url()`, `partition_url_udf()`, and `partition_url_with_timeref_udf()`
 function have been removed.
+
+### `SeriesVisible` component type has been removed
+
+The `SeriesVisible` component has been removed in favor of the existing `Visible` component.
+If you were using `SeriesVisible` to control visibility of `SeriesLines` or `SeriesPoints`,
+use `Visible` instead. Existing recordings are migrated automatically.

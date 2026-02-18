@@ -66,7 +66,6 @@ rotation_quat.hpp linguist-generated=true
 scalar.hpp linguist-generated=true
 scale3d.hpp linguist-generated=true
 schema_id.hpp linguist-generated=true
-series_visible.hpp linguist-generated=true
 show_labels.hpp linguist-generated=true
 stroke_width.hpp linguist-generated=true
 tensor_data.hpp linguist-generated=true

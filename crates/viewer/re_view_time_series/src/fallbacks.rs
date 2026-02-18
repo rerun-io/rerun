@@ -100,46 +100,45 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
         SeriesLines::descriptor_visible_series().component,
         SeriesPoints::descriptor_visible_series().component,
     ] {
-        system_registry
-            .register_array_fallback_provider::<re_sdk_types::components::SeriesVisible, _>(
-                component,
-                |ctx| {
-                    let show_all = itertools::Either::Left(std::iter::once(true.into()));
+        system_registry.register_array_fallback_provider::<re_sdk_types::components::Visible, _>(
+            component,
+            |ctx| {
+                let show_all = itertools::Either::Left(std::iter::once(true.into()));
 
-                    let Some(time_series_state) = ctx
-                        .view_state()
-                        .as_any()
-                        .downcast_ref::<TimeSeriesViewState>()
-                    else {
-                        return itertools::Either::Left(std::iter::once(true.into()));
-                    };
+                let Some(time_series_state) = ctx
+                    .view_state()
+                    .as_any()
+                    .downcast_ref::<TimeSeriesViewState>()
+                else {
+                    return itertools::Either::Left(std::iter::once(true.into()));
+                };
 
-                    // Get the number of series for this specific instruction
-                    let num_series = ctx
-                        .instruction_id
-                        .and_then(|id| {
-                            time_series_state
-                                .num_time_series_last_frame_per_instruction
-                                .get(&id)
-                        })
-                        .map_or(0, |set| set.len());
+                // Get the number of series for this specific instruction
+                let num_series = ctx
+                    .instruction_id
+                    .and_then(|id| {
+                        time_series_state
+                            .num_time_series_last_frame_per_instruction
+                            .get(&id)
+                    })
+                    .map_or(0, |set| set.len());
 
-                    let num_shown = num_series.min(MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT);
-                    let num_hidden = num_series.saturating_sub(num_shown);
+                let num_shown = num_series.min(MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT);
+                let num_hidden = num_series.saturating_sub(num_shown);
 
-                    if num_hidden == 0 {
-                        show_all // Prefer a single boolean if we can, it's nicer in the ui.
-                    } else {
-                        itertools::Either::Right(
-                            std::iter::repeat_n(
-                                true.into(),
-                                MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT,
-                            )
-                            .chain(std::iter::repeat_n(false.into(), num_hidden)),
+                if num_hidden == 0 {
+                    show_all // Prefer a single boolean if we can, it's nicer in the ui.
+                } else {
+                    itertools::Either::Right(
+                        std::iter::repeat_n(
+                            true.into(),
+                            MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT,
                         )
-                    }
-                },
-            );
+                        .chain(std::iter::repeat_n(false.into(), num_hidden)),
+                    )
+                }
+            },
+        );
     }
 
     system_registry.register_fallback_provider(ScalarAxis::descriptor_range().component, |ctx| {

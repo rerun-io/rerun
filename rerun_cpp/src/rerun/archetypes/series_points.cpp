@@ -16,7 +16,7 @@ namespace rerun::archetypes {
         archetype.names =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_names).value_or_throw();
         archetype.visible_series =
-            ComponentBatch::empty<rerun::components::SeriesVisible>(Descriptor_visible_series)
+            ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible_series)
                 .value_or_throw();
         archetype.marker_sizes =
             ComponentBatch::empty<rerun::components::MarkerSize>(Descriptor_marker_sizes)

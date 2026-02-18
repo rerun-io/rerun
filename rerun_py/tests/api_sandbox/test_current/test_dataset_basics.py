@@ -35,7 +35,7 @@ property:RecordingInfo:start_time: list<item: int64>
 timeline:end: timestamp[ns]
 timeline:start: timestamp[ns]
 -- schema metadata --
-sorbet:version: '0.1.2'\
+sorbet:version: '0.1.3'\
 """)
 
         assert str(

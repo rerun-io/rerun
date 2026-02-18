@@ -19,7 +19,7 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 ### Optional
 * `colors`: [`Color`](../components/color.md)
 * `names`: [`Name`](../components/name.md)
-* `visible_series`: [`SeriesVisible`](../components/series_visible.md)
+* `visible_series`: [`Visible`](../components/visible.md)
 * `marker_sizes`: [`MarkerSize`](../components/marker_size.md)
 
 

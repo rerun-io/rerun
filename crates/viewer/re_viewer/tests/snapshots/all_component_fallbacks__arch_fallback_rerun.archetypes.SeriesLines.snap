@@ -5,5 +5,5 @@ expression: arch_display
 colors: [3161148927]
 widths: [0.75]
 names: [<name>]
-visible_series: [false]
+visible_series: [true]
 aggregation_policy: [5]

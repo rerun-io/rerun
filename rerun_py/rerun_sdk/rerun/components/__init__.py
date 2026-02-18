@@ -75,7 +75,6 @@ from .rotation_quat import RotationQuat, RotationQuatBatch
 from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
 from .schema_id import SchemaId, SchemaIdBatch
-from .series_visible import SeriesVisible, SeriesVisibleBatch
 from .show_labels import ShowLabels, ShowLabelsBatch
 from .stroke_width import StrokeWidth, StrokeWidthBatch
 from .tensor_data import TensorData, TensorDataBatch
@@ -236,8 +235,6 @@ __all__ = [
     "Scale3DBatch",
     "SchemaId",
     "SchemaIdBatch",
-    "SeriesVisible",
-    "SeriesVisibleBatch",
     "ShowLabels",
     "ShowLabelsBatch",
     "StrokeWidth",

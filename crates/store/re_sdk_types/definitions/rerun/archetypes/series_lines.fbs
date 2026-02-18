@@ -50,7 +50,7 @@ table SeriesLines (
   /// via this property will still be visible in the legend.
   ///
   /// May change over time, but can cause discontinuities in the line.
-  visible_series: [rerun.components.SeriesVisible] ("attr.rerun.component_optional", nullable, order: 3100);
+  visible_series: [rerun.components.Visible] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Configures the zoom-dependent scalar aggregation.
   ///

@@ -45,7 +45,7 @@ property:RecordingInfo:start_time: list<item: int64>
 timeline:end: timestamp[ns]
 timeline:start: timestamp[ns]
 -- schema metadata --
-sorbet:version: '0.1.2'\
+sorbet:version: '0.1.3'\
 """)
 
         assert str(
@@ -102,7 +102,7 @@ def test_dataset_register(rrd_paths: list[Path]) -> None:
             """\
 ┌────────────────────────────────────────────┐
 │ METADATA:                                  │
-│ * version: 0.1.2                           │
+│ * version: 0.1.3                           │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────┬─────────────────────┐ │
 │ │ rerun_layer_name ┆ rerun_segment_id    │ │
@@ -203,7 +203,7 @@ timeline: timestamp[ns]
   rerun:index_name: 'timeline'
   rerun:kind: 'index'
 -- schema metadata --
-sorbet:version: '0.1.2'\
+sorbet:version: '0.1.3'\
 """)
 
 

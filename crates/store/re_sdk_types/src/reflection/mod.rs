@@ -1184,17 +1184,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SeriesVisible as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.\n\nTODO(#10632): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.",
-                deprecation_summary: None,
-                custom_placeholder: None,
-                datatype: SeriesVisible::arrow_datatype(),
-                is_enum: false,
-                verify_arrow_array: SeriesVisible::verify_arrow_array,
-            },
-        ),
-        (
             <ShowLabels as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
@@ -3188,7 +3177,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection {
                         name: "visible_series",
                         display_name: "Visible series",
-                        component_type: "rerun.components.SeriesVisible".into(),
+                        component_type: "rerun.components.Visible".into(),
                         docstring_md: "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time, but can cause discontinuities in the line.",
                         is_required: false,
                     },
@@ -3234,7 +3223,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection {
                         name: "visible_series",
                         display_name: "Visible series",
-                        component_type: "rerun.components.SeriesVisible".into(),
+                        component_type: "rerun.components.Visible".into(),
                         docstring_md: "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time.",
                         is_required: false,
                     },

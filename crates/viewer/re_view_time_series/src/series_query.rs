@@ -6,7 +6,7 @@ use re_chunk_store::RangeQuery;
 use re_log_types::TimeInt;
 use re_log_types::external::arrow::array::{self, BooleanArray};
 use re_log_types::external::arrow::buffer::BooleanBuffer;
-use re_sdk_types::components::SeriesVisible;
+use re_sdk_types::components::Visible;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{
     Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
@@ -49,7 +49,7 @@ pub fn collect_series_visibility(
                 query_ctx
                     .viewer_ctx()
                     .component_fallback_registry
-                    .fallback_for(visibility_component, Some(SeriesVisible::name()), query_ctx)
+                    .fallback_for(visibility_component, Some(Visible::name()), query_ctx)
                     .as_any()
                     .downcast_ref::<BooleanArray>()
                     .map(|arr| arr.values().clone())

@@ -353,10 +353,10 @@ class SeriesLines(Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible_series: components.SeriesVisibleBatch | None = field(
+    visible_series: components.VisibleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.SeriesVisibleBatch._converter,  # type: ignore[misc]
+        converter=components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Which lines are visible.
     #

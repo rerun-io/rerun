@@ -55,7 +55,6 @@ rotation_quat.py linguist-generated=true
 scalar.py linguist-generated=true
 scale3d.py linguist-generated=true
 schema_id.py linguist-generated=true
-series_visible.py linguist-generated=true
 show_labels.py linguist-generated=true
 stroke_width.py linguist-generated=true
 tensor_data.py linguist-generated=true

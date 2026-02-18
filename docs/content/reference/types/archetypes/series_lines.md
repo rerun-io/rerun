@@ -17,7 +17,7 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 * `colors`: [`Color`](../components/color.md)
 * `widths`: [`StrokeWidth`](../components/stroke_width.md)
 * `names`: [`Name`](../components/name.md)
-* `visible_series`: [`SeriesVisible`](../components/series_visible.md)
+* `visible_series`: [`Visible`](../components/visible.md)
 * `aggregation_policy`: [`AggregationPolicy`](../components/aggregation_policy.md)
 
 
