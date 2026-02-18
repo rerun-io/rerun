@@ -748,7 +748,7 @@ fn load_video_data_from_chunks(
         &BTreeMap::new()
     };
 
-    let sorted_samples = sample_chunks
+    let sorted_chunks = sample_chunks
         .iter()
         .map(|c| c.sorted_by_timeline_if_unsorted(&timeline))
         .collect::<Vec<_>>();
@@ -758,11 +758,13 @@ fn load_video_data_from_chunks(
         store.storage_engine().store(),
         &mut known_chunk_ranges,
         known_chunks,
-        &sorted_samples,
+        &sorted_chunks,
         timeline,
     );
 
-    for chunk in &sorted_samples {
+    re_tracing::profile_scope!("read", format!("{} chunks", sorted_chunks.len()));
+
+    for chunk in &sorted_chunks {
         let Some(known_range) = known_chunk_ranges.get(&chunk.id()) else {
             // If a chunk didn't actually contain any non-null samples we
             // won't have any pre-allocated samples for it.
@@ -881,7 +883,7 @@ fn read_samples_from_known_chunk(
     load_range: &ChunkSampleRange,
     video_descr: &mut re_video::VideoDataDescription,
 ) -> Result<(), VideoStreamProcessingError> {
-    re_tracing::profile_function!();
+    re_tracing::profile_function!(format!("{} rows", chunk.num_rows()));
 
     let re_video::VideoDataDescription {
         codec,
@@ -1251,16 +1253,8 @@ fn read_samples_from_new_chunk(
 
 impl Cache for VideoStreamCache {
     fn begin_frame(&mut self) {
-        // TODO(andreas): This removal strategy is likely aggressive.
-        // Scanning an entire video stream again is probably very costly. Have to evaluate.
-        // Arguably it would be even better to keep this purging but not do full scans all the time.
-        // (have some handwavy limit of number of samples around the current frame?)
-
-        // Clean up unused video data.
-        self.0
-            .retain(|_, entry| entry.used_this_frame.load(Ordering::Acquire));
-
-        // Of the remaining video data, remove all unused decoders.
+        // Scanning an entire video stream again is very costly,
+        // so we keep the cache around. But we remove all unused decoders.
         #[expect(clippy::iter_over_hash_type)]
         for entry in self.0.values_mut() {
             entry.used_this_frame.store(false, Ordering::Release);
@@ -1274,13 +1268,9 @@ impl Cache for VideoStreamCache {
     }
 
     fn purge_memory(&mut self) {
-        // We aggressively purge all unused video data every frame.
-        // The expectation here is that parsing video data is fairly fast,
-        // since decoding happens separately.
-        //
-        // As of writing, in a debug wasm build with Chrome loading a 600MiB 1h video
-        // this assumption holds up fine: There is a (sufferable) delay,
-        // but it's almost entirely due to the decoder trying to retrieve a frame.
+        // Clean up unused video data.
+        self.0
+            .retain(|_, entry| entry.used_this_frame.load(Ordering::Acquire));
     }
 
     fn on_rrd_manifest(&mut self, _entity_db: &EntityDb) {
