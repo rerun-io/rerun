@@ -9992,6 +9992,7 @@ version = "0.30.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "bitflags 2.9.4",
  "bytemuck",
  "criterion",
  "document-features",

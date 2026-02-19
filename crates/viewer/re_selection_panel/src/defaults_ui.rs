@@ -313,11 +313,18 @@ fn add_popup_ui(
     };
 
     // Present the option to add new components for each component that doesn't
-    // already have an active override.
+    // already have an active override and is marked as editable field.
     for (archetype_name, components) in components_to_show_in_add_menu {
         ui.menu_button(archetype_name.syntax_highlighted(ui.style()), |ui| {
             for entry in components {
                 let descriptor = entry.descriptor(archetype_name);
+                if let Some(field_reflection) =
+                    ctx.viewer_ctx.reflection().field_reflection(&descriptor)
+                    && !field_reflection.is_ui_editable()
+                {
+                    continue;
+                }
+
                 if ui
                     .button(descriptor.archetype_field_name())
                     .on_hover_ui(|ui| {

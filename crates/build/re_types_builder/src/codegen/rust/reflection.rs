@@ -8,8 +8,8 @@ use quote::{format_ident, quote};
 use super::util::{append_tokens, doc_as_lines};
 use crate::codegen::{Target, autogen_warning};
 use crate::{
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects,
-    Reporter,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_COMPONENT_UI_EDITABLE, ATTR_RUST_DERIVE,
+    ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects, Reporter,
 };
 
 /// Generate reflection about components and archetypes.
@@ -53,6 +53,7 @@ pub fn generate_reflection(
             ComponentBatch as _,
             reflection::{
                 generate_component_identifier_reflection,
+                ArchetypeFieldFlags,
                 ArchetypeFieldReflection,
                 ArchetypeReflection,
                 ArchetypeReflectionMap,
@@ -217,6 +218,40 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             )
             .join("\n");
             let required = field.attrs.has(ATTR_RERUN_COMPONENT_REQUIRED);
+            let ui_editable = match field
+                .try_get_attr::<String>(ATTR_RERUN_COMPONENT_UI_EDITABLE)
+                .as_deref()
+            {
+                Some("true") => true,
+                Some("false") => false,
+                Some(value) => {
+                    reporter.error(
+                        &field.virtpath,
+                        &field.fqname,
+                        format!(
+                            "Invalid value for {ATTR_RERUN_COMPONENT_UI_EDITABLE}: {value:?}. Expected \"true\" or \"false\"."
+                        ),
+                    );
+                    !required
+                }
+                None => !required,
+            };
+
+            let mut flag_tokens: Vec<TokenStream> = Vec::new();
+            if required {
+                flag_tokens.push(quote! { ArchetypeFieldFlags::REQUIRED });
+            }
+            if ui_editable {
+                flag_tokens.push(quote! { ArchetypeFieldFlags::UI_EDITABLE });
+            }
+            let flags = if flag_tokens.is_empty() {
+                quote! { ArchetypeFieldFlags::empty() }
+            } else {
+                flag_tokens
+                    .into_iter()
+                    .reduce(|a, b| quote! { #a | #b })
+                    .unwrap()
+            };
 
             quote! {
                 ArchetypeFieldReflection {
@@ -224,7 +259,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                     display_name: #display_name,
                     component_type: #component_type.into(),
                     docstring_md: #docstring_md,
-                    is_required: #required,
+                    flags: #flags,
                 }
             }
         });

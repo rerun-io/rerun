@@ -14,7 +14,7 @@ table TransformAxes3D (
   ///
   /// The length is interpreted in the local coordinate system of the transform.
   /// If the transform is scaled, the axes will be scaled accordingly.
-  axis_length: rerun.components.AxisLength ("attr.rerun.component_required", order: 1000);
+  axis_length: rerun.components.AxisLength ("attr.rerun.component_required", "attr.rerun.component_ui_editable": "true", order: 1000);
 
   /// Whether to show a text label with the corresponding frame.
   show_frame: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 2000);

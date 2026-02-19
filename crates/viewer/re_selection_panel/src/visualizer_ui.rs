@@ -212,6 +212,7 @@ fn visualizer_components(
     let query_info = visualizer.visualizer_query_info(ctx.viewer_ctx.app_options());
 
     let store_query = ctx.current_query();
+    let viewer_ctx = ctx.viewer_ctx;
     let query_ctx = ctx.query_context(data_result, store_query.clone(), instruction.id);
 
     // Query fully resolved data.
@@ -226,8 +227,7 @@ fn visualizer_components(
 
     // Query all components of the entity so we can show them in the source component mapping UI.
     let entity_components_with_datatype = {
-        let components = ctx
-            .viewer_ctx
+        let components = viewer_ctx
             .recording_engine()
             .store()
             .all_components_for_entity_sorted(&data_result.entity_path)
@@ -235,8 +235,7 @@ fn visualizer_components(
         components
             .into_iter()
             .filter_map(|component_id| {
-                let component_type = ctx
-                    .viewer_ctx
+                let component_type = viewer_ctx
                     .recording_engine()
                     .store()
                     .lookup_component_type(&data_result.entity_path, component_id);
@@ -247,7 +246,7 @@ fn visualizer_components(
 
     // TODO(andreas): Should we show required components in a special way?
     for target_component_descr in sorted_component_list_by_archetype_for_ui(
-        ctx.viewer_ctx.reflection(),
+        viewer_ctx.reflection(),
         query_info.queried.iter().cloned(),
     )
     .values()
@@ -257,24 +256,24 @@ fn visualizer_components(
         let target_component = target_component_descr.component;
 
         // Query override & default since we need them later on.
-        let is_target_required = if let Some(archetype) = target_component_descr.archetype
-            && let Some(archetype_reflection) =
-                ctx.viewer_ctx.reflection().archetypes.get(&archetype)
+        let (is_ui_editable, is_required_component) = if let Some(field) = viewer_ctx
+            .reflection()
+            .field_reflection(target_component_descr)
         {
-            archetype_reflection
-                .required_fields()
-                .any(|field| &field.component_descriptor(archetype) == target_component_descr)
+            (field.is_ui_editable(), field.is_required())
         } else {
-            false
+            (false, false)
         };
 
         let raw_default = || -> ArrayRef {
-            if is_target_required {
+            if is_ui_editable {
+                raw_default_or_fallback(&query_ctx, &query_result, target_component_descr)
+            } else {
                 // In this context, we're only concerned with displaying an empty array, so it can be _any_ empty array.
                 // This would have to change if we add data type information in this place to the UI as well.
-                Arc::new(arrow::array::NullArray::new(0))
-            } else {
-                raw_default_or_fallback(&query_ctx, &query_result, target_component_descr)
+                // Since our unified blueprint resolved query will still check the view defaults, we do so here too.
+                raw_default_without_fallback(&query_result, target_component_descr)
+                    .unwrap_or_else(|| Arc::new(arrow::array::NullArray::new(0)))
             }
         };
 
@@ -366,7 +365,8 @@ fn visualizer_components(
                 data_result,
                 query_ctx: query_result.query_context(),
                 target_component_descr,
-                is_required_component: is_target_required,
+                is_ui_editable,
+                is_required_component,
                 instruction,
                 raw_default: &raw_default,
             };
@@ -385,21 +385,24 @@ fn visualizer_components(
         };
 
         let default_open = false;
-        let response = ui
-            .list_item()
-            .interactive(false)
-            .show_hierarchical_with_children(
-                ui,
-                ui.make_persistent_id(target_component),
-                default_open,
-                list_item::PropertyContent::new(
-                    // We're in the context of a visualizer, so we don't have to print the archetype name
-                    // since usually archetypes match 1:1 with visualizers.
-                    target_component_descr.archetype_field_name(),
-                )
-                .value_fn(value_fn)
-                .show_only_when_collapsed(false)
-                .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+
+        let mut property_content = list_item::PropertyContent::new(
+            // We're in the context of a visualizer, so we don't have to print the archetype name
+            // since usually archetypes match 1:1 with visualizers.
+            target_component_descr.archetype_field_name(),
+        )
+        .value_fn(value_fn)
+        .show_only_when_collapsed(false)
+        // TODO(emilk/egui#7531): Ideally we would hide the button unless hovered, but this
+        // currently breaks the menu.
+        .with_always_show_buttons(true);
+
+        // Show the more options button only if we're ui editable. None of these options make sense otherwise.
+        if is_ui_editable {
+            property_content = property_content.with_menu_button(
+                &re_ui::icons::MORE,
+                "More options",
+                |ui: &mut egui::Ui| {
                     menu_more(
                         ctx,
                         ui,
@@ -407,10 +410,18 @@ fn visualizer_components(
                         &instruction.override_path,
                         raw_current_value_array.clone(),
                     );
-                })
-                // TODO(emilk/egui#7531): Ideally we would hide the button unless hovered, but this
-                // currently breaks the menu.
-                .with_always_show_buttons(true),
+                },
+            );
+        }
+
+        let response = ui
+            .list_item()
+            .interactive(false)
+            .show_hierarchical_with_children(
+                ui,
+                ui.make_persistent_id(target_component),
+                default_open,
+                property_content,
                 add_children,
             )
             .item_response;
@@ -449,30 +460,33 @@ fn show_visualizer_report(
     }
 }
 
+fn raw_default_without_fallback(
+    query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
+    target_component_descr: &ComponentDescriptor,
+) -> Option<Arc<dyn re_chunk::ArrowArray>> {
+    let target_component = target_component_descr.component;
+
+    let result_default = query_result.view_defaults.get(target_component)?;
+    result_default
+        .non_empty_component_batch_raw(target_component)
+        .map(|(_, arr)| arr)
+}
+
 fn raw_default_or_fallback(
     query_ctx: &re_viewer_context::QueryContext<'_>,
     query_result: &re_view::BlueprintResolvedLatestAtResults<'_>,
     target_component_descr: &ComponentDescriptor,
 ) -> Arc<dyn re_chunk::ArrowArray> {
-    let target_component = target_component_descr.component;
-
-    let result_default = query_result.view_defaults.get(target_component);
-
-    result_default
-        .and_then(|c| {
-            c.non_empty_component_batch_raw(target_component)
-                .map(|(_, arr)| arr)
-        })
-        .unwrap_or_else(|| {
-            query_ctx
-                .viewer_ctx()
-                .component_fallback_registry
-                .fallback_for(
-                    target_component,
-                    target_component_descr.component_type,
-                    query_ctx,
-                )
-        })
+    raw_default_without_fallback(query_result, target_component_descr).unwrap_or_else(|| {
+        query_ctx
+            .viewer_ctx()
+            .component_fallback_registry
+            .fallback_for(
+                target_component_descr.component,
+                target_component_descr.component_type,
+                query_ctx,
+            )
+    })
 }
 
 fn collect_source_component_options(
@@ -557,6 +571,7 @@ struct SourceMappingContext<'a> {
     data_result: &'a DataResult,
     query_ctx: &'a re_viewer_context::QueryContext<'a>,
     target_component_descr: &'a ComponentDescriptor,
+    is_ui_editable: bool,
     is_required_component: bool,
     instruction: &'a VisualizerInstruction,
     raw_default: &'a ArrayRef,
@@ -635,7 +650,7 @@ fn source_component_items_ui(
         mapping_ctx.target_component(),
     );
 
-    if !mapping_ctx.is_required_component {
+    if mapping_ctx.is_ui_editable {
         options.push(VisualizerComponentSource::Default);
 
         // Show the override only if we have one already.

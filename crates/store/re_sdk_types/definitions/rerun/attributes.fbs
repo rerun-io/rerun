@@ -18,6 +18,16 @@ attribute "attr.rerun.component_recommended";
 /// Only applies to the fields of an archetype.
 attribute "attr.rerun.component_optional";
 
+/// Marks a component as editable through the UI.
+/// By default all required components are non-editable and all other components are editable.
+///
+/// Must be set to true or false. Valid usage examples:"
+/// - `axis_length: rerun.components.AxisLength ("attr.rerun.component_required", "attr.rerun.component_ui_editable": "true", order: 1000);`
+/// - `translation: rerun.components.Translation3D ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 1100);`
+///
+/// Note this is only a hint to the Viewer. Blueprint code may always set overrides for any component!
+attribute "attr.rerun.component_ui_editable";
+
 /// Override the type of a field.
 ///
 /// The only permitted values are:

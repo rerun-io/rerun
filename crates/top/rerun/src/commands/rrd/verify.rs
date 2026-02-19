@@ -169,7 +169,7 @@ impl Verifier {
                 // Verify archetype field.
                 // We may want to have a flag to allow some of this?
                 let archetype_field_reflection = archetype_reflection
-                        .get_field(column_descriptor.component_descriptor().archetype_field_name())
+                        .field_by_name(column_descriptor.component_descriptor().archetype_field_name())
                         .ok_or_else(|| {
                             anyhow::anyhow!(
                                 "Input column referred to the component {component:?} of {archetype_name:?}, which only has the fields: {}",

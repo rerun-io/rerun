@@ -45,6 +45,7 @@ re_tuid = { workspace = true, features = ["bytemuck"] }
 
 # External
 anyhow.workspace = true
+bitflags.workspace = true
 arrow.workspace = true
 bytemuck = { workspace = true, features = ["derive"] }
 document-features.workspace = true

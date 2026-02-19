@@ -38,6 +38,16 @@ impl Reflection {
             .and_then(|ct| self.components.get(&ct))
             .map(|r| &r.datatype)
     }
+
+    /// Looks up the [`ArchetypeFieldReflection`] for a given [`ComponentDescriptor`] using reflection.
+    pub fn field_reflection(
+        &self,
+        descriptor: &ComponentDescriptor,
+    ) -> Option<&ArchetypeFieldReflection> {
+        let archetype = descriptor.archetype?;
+        let archetype_reflection = self.archetypes.get(&archetype)?;
+        archetype_reflection.field_by_identifier(archetype, descriptor.component)
+    }
 }
 
 /// Computes a placeholder for a given arrow datatype.
@@ -346,11 +356,35 @@ impl ArchetypeReflection {
     /// Iterate over this archetype's required fields.
     #[inline]
     pub fn required_fields(&self) -> impl Iterator<Item = &ArchetypeFieldReflection> {
-        self.fields.iter().filter(|field| field.is_required)
+        self.fields.iter().filter(|field| field.is_required())
     }
 
-    pub fn get_field(&self, field_name: &str) -> Option<&ArchetypeFieldReflection> {
+    pub fn field_by_name(&self, field_name: &str) -> Option<&ArchetypeFieldReflection> {
         self.fields.iter().find(|field| field.name == field_name)
+    }
+
+    pub fn field_by_identifier(
+        &self,
+        self_name: ArchetypeName,
+        component_identifier: ComponentIdentifier,
+    ) -> Option<&ArchetypeFieldReflection> {
+        self.fields
+            .iter()
+            .find(|field| field.component(self_name) == component_identifier)
+    }
+}
+
+bitflags::bitflags! {
+    /// Flags describing properties of an archetype field.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct ArchetypeFieldFlags: u8 {
+        /// The field is a required component.
+        const REQUIRED = 1 << 0;
+
+        /// The field should be editable through the UI.
+        ///
+        /// By default, required components are non-editable and all other components are editable.
+        const UI_EDITABLE = 1 << 1;
     }
 }
 
@@ -369,11 +403,23 @@ pub struct ArchetypeFieldReflection {
     /// Markdown docstring for the field (not for the component type).
     pub docstring_md: &'static str,
 
-    /// Is this a required component?
-    pub is_required: bool,
+    /// Property flags for this field.
+    pub flags: ArchetypeFieldFlags,
 }
 
 impl ArchetypeFieldReflection {
+    /// Is this a required component?
+    #[inline]
+    pub fn is_required(&self) -> bool {
+        self.flags.contains(ArchetypeFieldFlags::REQUIRED)
+    }
+
+    /// Whether this component should be editable through the UI.
+    #[inline]
+    pub fn is_ui_editable(&self) -> bool {
+        self.flags.contains(ArchetypeFieldFlags::UI_EDITABLE)
+    }
+
     /// Returns the component descriptor for this field.
     #[inline]
     pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
