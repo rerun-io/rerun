@@ -889,6 +889,9 @@ fn extract_chunks_for_single_split(
             return vec![];
         }
 
+        // TODO: I'm pretty sure we need to slice_deep here, even if it's just a single row, it
+        // won't stay like that once it reaches IPC.
+
         vec![(
             chunk.id(),
             // This chunk might be re-used in other places in this split, and because we're slicing it
