@@ -567,6 +567,13 @@ impl SplitCommand {
         let pinhole_child_frame_identifier =
             re_sdk_types::archetypes::Pinhole::descriptor_child_frame().component;
 
+        let special_components: HashSet<_> = itertools::chain!(
+            [video_sample_identifier],
+            re_sdk_types::archetypes::Transform3D::all_component_identifiers(),
+            re_sdk_types::archetypes::Pinhole::all_component_identifiers(),
+        )
+        .collect();
+
         let all_entities_and_their_components = store
             .all_entities()
             .into_iter()
@@ -601,7 +608,32 @@ impl SplitCommand {
 
                 // Base case: everything
                 {
-                    let components = components.iter().copied().collect();
+                    // We must not try to bootstrap special components, as they will undergo some
+                    // custom bootstrap logic below anyway.
+                    // Normally this would be fine, but again we cannot afford the presence of any
+                    // dupicate data when it comes to video decoding.
+                    let components_special = components
+                        .iter()
+                        .copied()
+                        .filter(|component| special_components.contains(component))
+                        .collect();
+                    let bootstrap = false;
+                    let chunks = extract_chunks_for_single_split(
+                        store,
+                        entity,
+                        &components_special,
+                        cutoff_timeline,
+                        start_inclusive,
+                        end_exclusive,
+                        bootstrap,
+                    );
+                    all_chunks_in_split.extend(chunks);
+
+                    let components = components
+                        .iter()
+                        .copied()
+                        .filter(|component| !special_components.contains(component))
+                        .collect();
                     let bootstrap = true;
                     let chunks = extract_chunks_for_single_split(
                         store,
