@@ -155,8 +155,8 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     ])
 
     # Copy files to target directory.
-    copytree("mesa", CARGO_TARGET_DIR / "debug")
-    copytree("mesa", CARGO_TARGET_DIR / "debug" / "deps")
+    copytree("mesa", CARGO_TARGET_DIR / "debug", dirs_exist_ok=True)
+    copytree("mesa", CARGO_TARGET_DIR / "debug" / "deps", dirs_exist_ok=True)
 
     # Print icd file that should be used.
     icd_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve()
