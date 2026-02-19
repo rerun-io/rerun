@@ -25,6 +25,8 @@ use crate::commands::read_rrd_streams_from_file_or_stdin;
 // chunk stores, and only goes physical for chunks that require it (anything that could benefit
 // from slicing, meaning it sits across 2 or more splits, as well as keyframes & transforms special cases).
 
+// TODO(RR-3819): Support auto-splitting by size instead of time.
+
 #[derive(Debug, Clone, clap::Parser)]
 pub struct SplitCommand {
     /// Path to read from.
@@ -76,7 +78,6 @@ pub struct SplitCommand {
     /// If true, timelines other than the one specified with `--timeline` will be discarded.
     #[clap(long = "drop-unused-timelines")]
     discard_unused_timelines: bool,
-    // TODO: issue for splitting by size
 }
 
 impl SplitCommand {
@@ -871,7 +872,9 @@ fn extract_chunks_for_single_split(
             .map(|chunk| chunk.latest_at(&query_bootstrap, *component))
             .filter(|chunk| !chunk.is_empty());
 
-        // TODO: explain this -- this is due to overlap heuristics
+        // Due to the overlap heuristics, the bootstrap query might return an arbitrary amount of
+        // chunks: we need to find the most relevant in those, which in this case is whichever has
+        // the highest (time, row_id) index.
         let Some(chunk) = chunks.max_by_key(|chunk| {
             chunk
                 .iter_indices(timeline.name())
