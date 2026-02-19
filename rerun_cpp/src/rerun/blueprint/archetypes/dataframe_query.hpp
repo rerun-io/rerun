@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/apply_latest_at.hpp"
+#include "../../blueprint/components/column_order.hpp"
 #include "../../blueprint/components/filter_by_range.hpp"
 #include "../../blueprint/components/filter_is_not_null.hpp"
 #include "../../blueprint/components/selected_columns.hpp"
@@ -43,6 +44,14 @@ namespace rerun::blueprint::archetypes {
         /// Selected columns. If unset, all columns are selected.
         std::optional<ComponentBatch> select;
 
+        /// The order of entity path column groups. If unset, the default order is used.
+        ///
+        /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+        /// come first. Entities not listed here are appended at the end in default order.
+        ///
+        /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+        std::optional<ComponentBatch> entity_order;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.DataframeQuery";
@@ -71,6 +80,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_select = ComponentDescriptor(
             ArchetypeName, "DataframeQuery:select",
             Loggable<rerun::blueprint::components::SelectedColumns>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `entity_order` field.
+        static constexpr auto Descriptor_entity_order = ComponentDescriptor(
+            ArchetypeName, "DataframeQuery:entity_order",
+            Loggable<rerun::blueprint::components::ColumnOrder>::ComponentType
         );
 
       public:
@@ -134,6 +148,20 @@ namespace rerun::blueprint::archetypes {
         DataframeQuery with_select(const rerun::blueprint::components::SelectedColumns& _select
         ) && {
             select = ComponentBatch::from_loggable(_select, Descriptor_select).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The order of entity path column groups. If unset, the default order is used.
+        ///
+        /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+        /// come first. Entities not listed here are appended at the end in default order.
+        ///
+        /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+        DataframeQuery with_entity_order(
+            const rerun::blueprint::components::ColumnOrder& _entity_order
+        ) && {
+            entity_order = ComponentBatch::from_loggable(_entity_order, Descriptor_entity_order)
+                               .value_or_throw();
             return std::move(*this);
         }
 

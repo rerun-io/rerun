@@ -25,5 +25,13 @@ table DataframeQuery (
 
     /// Selected columns. If unset, all columns are selected.
     select: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
+
+    /// The order of entity path column groups. If unset, the default order is used.
+    ///
+    /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+    /// come first. Entities not listed here are appended at the end in default order.
+    ///
+    /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+    entity_order: rerun.blueprint.components.ColumnOrder ("attr.rerun.component_optional", nullable, order: 600);
 }
 

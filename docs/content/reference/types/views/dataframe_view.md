@@ -20,6 +20,7 @@ Query of the dataframe.
 * `filter_is_not_null`: If provided, only show rows which contains a logged event for the specified component.
 * `apply_latest_at`: Should empty cells be filled with latest-at queries?
 * `select`: Selected columns. If unset, all columns are selected.
+* `entity_order`: The order of entity path column groups. If unset, the default order is used.
 
 ## API reference links
  * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.DataframeView)

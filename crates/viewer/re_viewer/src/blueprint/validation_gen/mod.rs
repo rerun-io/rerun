@@ -11,6 +11,7 @@ pub use re_sdk_types::blueprint::components::ApplyLatestAt;
 pub use re_sdk_types::blueprint::components::AutoLayout;
 pub use re_sdk_types::blueprint::components::AutoViews;
 pub use re_sdk_types::blueprint::components::BackgroundKind;
+pub use re_sdk_types::blueprint::components::ColumnOrder;
 pub use re_sdk_types::blueprint::components::ColumnShare;
 pub use re_sdk_types::blueprint::components::ComponentColumnSelector;
 pub use re_sdk_types::blueprint::components::ContainerKind;
@@ -67,6 +68,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoViews>(blueprint)
         && validate_component::<BackgroundKind>(blueprint)
+        && validate_component::<ColumnOrder>(blueprint)
         && validate_component::<ColumnShare>(blueprint)
         && validate_component::<ComponentColumnSelector>(blueprint)
         && validate_component::<ContainerKind>(blueprint)

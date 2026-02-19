@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+/// The order of component columns (which remain always grouped by entity path) in the dataframe view.
+///
+/// Entities not in this list are appended at the end in their default order.
+/// Entities in this list that are not present in the view are ignored.
+table ColumnOrder (
+  "attr.python.aliases": "Sequence[datatypes.EntityPathLike]",
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rerun.scope": "blueprint"
+) {
+  entity_paths: [rerun.datatypes.EntityPath] (order: 100);
+}

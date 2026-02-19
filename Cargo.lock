@@ -10164,6 +10164,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "egui",
+ "egui_dnd",
  "egui_table",
  "itertools 0.14.0",
  "re_chunk_store",

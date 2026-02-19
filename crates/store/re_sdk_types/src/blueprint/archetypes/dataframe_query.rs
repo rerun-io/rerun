@@ -44,6 +44,14 @@ pub struct DataframeQuery {
 
     /// Selected columns. If unset, all columns are selected.
     pub select: Option<SerializedComponentBatch>,
+
+    /// The order of entity path column groups. If unset, the default order is used.
+    ///
+    /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+    /// come first. Entities not listed here are appended at the end in default order.
+    ///
+    /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+    pub entity_order: Option<SerializedComponentBatch>,
 }
 
 impl DataframeQuery {
@@ -106,6 +114,18 @@ impl DataframeQuery {
             component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::entity_order`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ColumnOrder`].
+    #[inline]
+    pub fn descriptor_entity_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component: "DataframeQuery:entity_order".into(),
+            component_type: Some("rerun.blueprint.components.ColumnOrder".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -114,7 +134,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             DataframeQuery::descriptor_timeline(),
@@ -122,10 +142,11 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             DataframeQuery::descriptor_filter_is_not_null(),
             DataframeQuery::descriptor_apply_latest_at(),
             DataframeQuery::descriptor_select(),
+            DataframeQuery::descriptor_entity_order(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             DataframeQuery::descriptor_timeline(),
@@ -133,12 +154,13 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             DataframeQuery::descriptor_filter_is_not_null(),
             DataframeQuery::descriptor_apply_latest_at(),
             DataframeQuery::descriptor_select(),
+            DataframeQuery::descriptor_entity_order(),
         ]
     });
 
 impl DataframeQuery {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 impl ::re_types_core::Archetype for DataframeQuery {
@@ -200,12 +222,18 @@ impl ::re_types_core::Archetype for DataframeQuery {
         let select = arrays_by_descr
             .get(&Self::descriptor_select())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_select()));
+        let entity_order = arrays_by_descr
+            .get(&Self::descriptor_entity_order())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_entity_order())
+            });
         Ok(Self {
             timeline,
             filter_by_range,
             filter_is_not_null,
             apply_latest_at,
             select,
+            entity_order,
         })
     }
 }
@@ -220,6 +248,7 @@ impl ::re_types_core::AsComponents for DataframeQuery {
             self.filter_is_not_null.clone(),
             self.apply_latest_at.clone(),
             self.select.clone(),
+            self.entity_order.clone(),
         ]
         .into_iter()
         .flatten()
@@ -239,6 +268,7 @@ impl DataframeQuery {
             filter_is_not_null: None,
             apply_latest_at: None,
             select: None,
+            entity_order: None,
         }
     }
 
@@ -272,6 +302,10 @@ impl DataframeQuery {
             select: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::SelectedColumns::arrow_empty(),
                 Self::descriptor_select(),
+            )),
+            entity_order: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ColumnOrder::arrow_empty(),
+                Self::descriptor_entity_order(),
             )),
         }
     }
@@ -332,6 +366,21 @@ impl DataframeQuery {
         self.select = try_serialize_field(Self::descriptor_select(), [select]);
         self
     }
+
+    /// The order of entity path column groups. If unset, the default order is used.
+    ///
+    /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+    /// come first. Entities not listed here are appended at the end in default order.
+    ///
+    /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+    #[inline]
+    pub fn with_entity_order(
+        mut self,
+        entity_order: impl Into<crate::blueprint::components::ColumnOrder>,
+    ) -> Self {
+        self.entity_order = try_serialize_field(Self::descriptor_entity_order(), [entity_order]);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for DataframeQuery {
@@ -342,5 +391,6 @@ impl ::re_byte_size::SizeBytes for DataframeQuery {
             + self.filter_is_not_null.heap_size_bytes()
             + self.apply_latest_at.heap_size_bytes()
             + self.select.heap_size_bytes()
+            + self.entity_order.heap_size_bytes()
     }
 }

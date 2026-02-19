@@ -40,6 +40,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
             filter_is_not_null=None,
             apply_latest_at=None,
             select=None,
+            entity_order=None,
         )
 
     @classmethod
@@ -59,6 +60,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         filter_is_not_null: blueprint_datatypes.FilterIsNotNullLike | None = None,
         apply_latest_at: datatypes.BoolLike | None = None,
         select: blueprint_datatypes.SelectedColumnsLike | None = None,
+        entity_order: blueprint_components.ColumnOrderLike | None = None,
     ) -> DataframeQuery:
         """
         Update only some specific fields of a `DataframeQuery`.
@@ -81,6 +83,13 @@ class DataframeQuery(DataframeQueryExt, Archetype):
             Should empty cells be filled with latest-at queries?
         select:
             Selected columns. If unset, all columns are selected.
+        entity_order:
+            The order of entity path column groups. If unset, the default order is used.
+
+            This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+            come first. Entities not listed here are appended at the end in default order.
+
+            If `entity_order` contains any entity path that is not included in the view, they are ignored.
 
         """
 
@@ -92,6 +101,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
                 "filter_is_not_null": filter_is_not_null,
                 "apply_latest_at": apply_latest_at,
                 "select": select,
+                "entity_order": entity_order,
             }
 
             if clear_unset:
@@ -154,6 +164,20 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         converter=blueprint_components.SelectedColumnsBatch._converter,  # type: ignore[misc]
     )
     # Selected columns. If unset, all columns are selected.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    entity_order: blueprint_components.ColumnOrderBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.ColumnOrderBatch._converter,  # type: ignore[misc]
+    )
+    # The order of entity path column groups. If unset, the default order is used.
+    #
+    # This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+    # come first. Entities not listed here are appended at the end in default order.
+    #
+    # If `entity_order` contains any entity path that is not included in the view, they are ignored.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

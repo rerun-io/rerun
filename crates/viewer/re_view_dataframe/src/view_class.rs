@@ -169,8 +169,8 @@ Configure in the selection panel:
         let view_columns = query_engine
             .schema_for_query(&dataframe_query)
             .indices_and_components();
-        dataframe_query.selection =
-            view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
+        let (view_columns, selection) = view_query.apply_column_selection(ctx, &view_columns)?;
+        dataframe_query.selection = Some(selection);
 
         let query_handle = query_engine.query(dataframe_query);
 

@@ -9,6 +9,7 @@
 #include "blueprint/components/auto_layout.hpp"
 #include "blueprint/components/auto_views.hpp"
 #include "blueprint/components/background_kind.hpp"
+#include "blueprint/components/column_order.hpp"
 #include "blueprint/components/column_share.hpp"
 #include "blueprint/components/component_column_selector.hpp"
 #include "blueprint/components/container_kind.hpp"

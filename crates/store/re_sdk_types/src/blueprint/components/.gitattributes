@@ -8,6 +8,7 @@ apply_latest_at.rs linguist-generated=true
 auto_layout.rs linguist-generated=true
 auto_views.rs linguist-generated=true
 background_kind.rs linguist-generated=true
+column_order.rs linguist-generated=true
 column_share.rs linguist-generated=true
 component_column_selector.rs linguist-generated=true
 container_kind.rs linguist-generated=true

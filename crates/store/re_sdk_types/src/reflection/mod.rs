@@ -118,6 +118,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ColumnOrder as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The order of component columns (which remain always grouped by entity path) in the dataframe view.\n\nEntities not in this list are appended at the end in their default order.\nEntities in this list that are not present in the view are ignored.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ColumnOrder::default().to_arrow()?),
+                datatype: ColumnOrder::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: ColumnOrder::verify_arrow_array,
+            },
+        ),
+        (
             <ColumnShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3655,6 +3666,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Select",
                         component_type: "rerun.blueprint.components.SelectedColumns".into(),
                         docstring_md: "Selected columns. If unset, all columns are selected.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "entity_order",
+                        display_name: "Entity order",
+                        component_type: "rerun.blueprint.components.ColumnOrder".into(),
+                        docstring_md: "The order of entity path column groups. If unset, the default order is used.\n\nThis affects the order of component columns, which are always grouped by entity path. Timeline columns always\ncome first. Entities not listed here are appended at the end in default order.\n\nIf `entity_order` contains any entity path that is not included in the view, they are ignored.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],
