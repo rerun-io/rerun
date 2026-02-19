@@ -55,7 +55,7 @@ pub struct SplitCommand {
     #[arg(short = 't', long = "time", conflicts_with = "num_parts")]
     times: Vec<String>,
 
-    /// The number of parts to split the recording into. Incompatible with `--times`/`-t`.
+    /// The number of parts to split the recording into. Incompatible with `--time`/`-t`.
     ///
     /// There will be exactly that number of resulting splits. Each split will cover an equal time
     /// span in the timeline.
@@ -95,7 +95,7 @@ impl SplitCommand {
         let input_rrd_stem = PathBuf::from(&path_to_input_rrd)
             .file_stem()
             .with_context(|| {
-                format!("coudln't grab file stem from input RRD file {path_to_input_rrd:?}")
+                format!("couldn't grab file stem from input RRD file {path_to_input_rrd:?}")
             })?
             .to_string_lossy()
             .to_string();
@@ -937,20 +937,19 @@ fn extract_chunks_for_single_split(
             // when using this tool.
 
             let start_idx = times.partition_point(|t| *t < start_inclusive.as_i64());
-            let end_idx = times
-                .partition_point(|t| *t < end_exclusive.as_i64())
-                .saturating_sub(1);
-            // `end_idx` points at the last in-range value, so the length would be off by -1.
-            let slice_len = (end_idx.saturating_add(1)).saturating_sub(start_idx);
+            let end_idx_excl = times.partition_point(|t| *t < end_exclusive.as_i64());
+            let slice_len = end_idx_excl.saturating_sub(start_idx);
 
             if slice_len == 0 {
                 return None;
             }
 
+            let end_idx = end_idx_excl.saturating_sub(1);
+
             re_log::debug_assert!(
                 start_inclusive.as_i64() <= times[start_idx]
                     && times[start_idx] < end_exclusive.as_i64(),
-                "{} < {} < {}",
+                "{} <= {} < {}",
                 time_to_human_string(timeline, start_inclusive),
                 time_to_human_string(timeline, TimeInt::new_temporal(times[start_idx])),
                 time_to_human_string(timeline, end_exclusive),
@@ -958,7 +957,7 @@ fn extract_chunks_for_single_split(
             re_log::debug_assert!(
                 start_inclusive.as_i64() <= times[end_idx]
                     && times[end_idx] < end_exclusive.as_i64(),
-                "{} < {} < {}",
+                "{} <= {} < {}",
                 time_to_human_string(timeline, start_inclusive),
                 time_to_human_string(timeline, TimeInt::new_temporal(times[end_idx])),
                 time_to_human_string(timeline, end_exclusive),

@@ -531,7 +531,7 @@ Example: `rerun rrd split --output-dir ./splits --timeline log_tick --time 33 --
 > For example, given `-t 10 -t 20 -t 30`, this command will output 4 splits: [-inf:10), [10:20), [20:30), [30:+inf).
 
 * `-n, --num-parts <NUM_PARTS>`
-> The number of parts to split the recording into. Incompatible with `--times`/`-t`.
+> The number of parts to split the recording into. Incompatible with `--time`/`-t`.
 >
 > There will be exactly that number of resulting splits. Each split will cover an equal time span in the timeline.
 
