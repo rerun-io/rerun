@@ -443,7 +443,7 @@ impl Query {
                 if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
                     current_entity = Some(component_column_descriptor.entity_path.clone());
                     ui.add_space(6.0);
-                    ui.label(component_column_descriptor.entity_path.to_string());
+                    ui.label(component_column_descriptor.entity_path.ui_string());
                 }
 
                 let column_selector: ColumnSelector = column.clone().into();

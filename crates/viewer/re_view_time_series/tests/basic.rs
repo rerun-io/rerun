@@ -384,6 +384,39 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
+/// Entity paths with special characters (like colons) should display unescaped in the UI.
+#[test]
+fn test_special_characters_in_entity_path() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    for i in 0..32 {
+        let timepoint = TimePoint::from([(timeline, i)]);
+        test_context.log_entity("test::data", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::Scalars::single((i as f64 / 5.0).sin()),
+            )
+        });
+    }
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+
+    let view_id = setup_blueprint(&mut test_context);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "special_characters_in_entity_path",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
 #[test]
 fn test_bootstrapped_secondaries() {
     let mut snapshot_results = SnapshotResults::new();

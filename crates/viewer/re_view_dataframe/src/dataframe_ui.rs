@@ -252,7 +252,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             header_ui(ui, table_style, false, |ui| {
                 if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
                     //TODO(ab): factor this into a helper as soon as we use it elsewhere
-                    let text = entity_path.to_string();
+                    let text = entity_path.ui_string();
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
                     let text_color = ui.visuals().text_color();
                     let galley = ui

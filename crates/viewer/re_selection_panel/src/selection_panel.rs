@@ -617,7 +617,7 @@ fn menu_add_new_visualizer_for_view(
             ui.horizontal(|ui| {
                 ui.add_space(ui.spacing().button_padding.x);
                 ui.label(
-                    egui::RichText::new(entity_path.to_string())
+                    egui::RichText::new(entity_path.ui_string())
                         .color(ui.tokens().visualizer_list_path_text_color),
                 );
             });

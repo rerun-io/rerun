@@ -311,7 +311,7 @@ pub fn draw_entity_rect(
     ui.painter().text(
         padded.left_top(),
         Align2::LEFT_BOTTOM,
-        entity_path.to_string(),
+        entity_path.ui_string(),
         FontId {
             size: 12.0,
             family: Default::default(),

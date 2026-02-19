@@ -161,6 +161,24 @@ impl EntityPath {
         )
     }
 
+    /// The full, unescaped path string for display purposes in the UI.
+    ///
+    /// Like [`std::fmt::Display`] but uses [`EntityPathPart::ui_string`] for each part,
+    /// producing a human-friendly representation without backslash escaping
+    /// (e.g. `/foo::bar` instead of `/foo\:\:bar`).
+    pub fn ui_string(&self) -> String {
+        if self.is_root() {
+            "/".to_owned()
+        } else {
+            let mut s = String::new();
+            for part in self.iter() {
+                s.push('/');
+                s.push_str(&part.ui_string());
+            }
+            s
+        }
+    }
+
     /// Treat the string as one opaque string, NOT splitting on any slashes.
     ///
     /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.

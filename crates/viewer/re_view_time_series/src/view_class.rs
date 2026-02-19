@@ -865,11 +865,7 @@ fn visualizer_ui_element(
 ) {
     let entity_path = &node.data_result.entity_path;
 
-    let full_path = entity_path
-        .to_string()
-        .strip_prefix('/')
-        .map(|s| s.to_owned())
-        .unwrap_or_else(|| entity_path.to_string());
+    let full_path = entity_path.ui_string().trim_start_matches('/').to_owned();
 
     let series_color = get_time_series_color(ctx, &node.data_result, instruction);
     let display_name = get_time_series_name(ctx, &node.data_result, instruction);

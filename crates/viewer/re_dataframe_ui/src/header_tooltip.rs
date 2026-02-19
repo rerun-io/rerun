@@ -56,7 +56,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, col
             } = desc;
 
             header_property_ui(ui, "Column type", "Component");
-            header_property_ui(ui, "Entity path", entity_path.to_string());
+            header_property_ui(ui, "Entity path", entity_path.ui_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
             header_property_ui(
                 ui,
