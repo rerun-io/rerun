@@ -592,10 +592,6 @@ impl SplitCommand {
         {
             let mut all_chunks_in_split = Vec::new();
 
-            // NOTE: Keep in mind, the way we do deduplication here only works because we enforce a single timeline.
-            // It is much, much harder to deduplicate appropriately across multiple timelines at once.
-            let mut all_chunk_ids_in_split: HashSet<ChunkId> = HashSet::default();
-
             re_log::debug!(
                 cutoff_timeline = %cutoff_timeline.name(),
                 cutoff_time = %time_to_human_string(cutoff_timeline, cutoff_time),
@@ -776,11 +772,6 @@ impl SplitCommand {
                             },
                         )
                     })
-                    // Many of the components will share the same chunks, so make sure to deduplicate before
-                    // forwarding to the output.
-                    // This works because we make sure to generate new IDs when the slices we compute require
-                    // it, which is itself manageable because we enforce a single timeline throughout.
-                    .filter(|(_original_chunk_id, chunk)| all_chunk_ids_in_split.insert(chunk.id()))
                     .inspect(|(_original_chunk_id, chunk)| {
                         if cfg!(debug_assertions) {
                             for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
@@ -986,6 +977,10 @@ fn extract_chunks_for_single_split(
         );
 
         for chunk in results.chunks {
+            if chunks.contains_key(&chunk.id()) {
+                continue;
+            }
+
             let chunk = chunk.sorted_by_timeline_if_unsorted(timeline.name()); // binsearch incoming
             let Some(time_col) = chunk.timelines().get(timeline.name()) else {
                 continue;
@@ -1003,6 +998,7 @@ fn extract_chunks_for_single_split(
             //
             // Finally, keep in mind that this only works because we enforce a single timeline
             // when using this tool.
+            // It is much, much harder to deduplicate appropriately across multiple timelines at once.
 
             let start_idx = times.partition_point(|t| *t < start_inclusive.as_i64());
             let end_idx_excl = times.partition_point(|t| *t < end_exclusive.as_i64());
@@ -1031,16 +1027,10 @@ fn extract_chunks_for_single_split(
                 time_to_human_string(timeline, end_exclusive),
             );
 
-            match chunks.entry(chunk.id()) {
-                std::collections::hash_map::Entry::Occupied(mut e) => {
-                    let (_, _, len) = e.get_mut();
-                    *len = usize::max(*len, slice_len);
-                }
-
-                std::collections::hash_map::Entry::Vacant(e) => {
-                    e.insert((chunk, start_idx, slice_len));
-                }
-            }
+            let already_exists = chunks
+                .insert(chunk.id(), (chunk, start_idx, slice_len))
+                .is_some();
+            re_log::debug_assert!(!already_exists);
         }
     }
 
