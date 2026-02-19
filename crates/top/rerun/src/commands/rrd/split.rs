@@ -905,13 +905,16 @@ fn extract_chunks_for_single_split(
             // (and we really, really need to slice it), we must make sure that it doesn't share
             // a chunk ID nor a row ID with anything else.
             chunk
+                // We're bootstrapping at the component batch level, so might as well discard everything else.
+                .component_sliced(*component)
                 // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
                 .row_sliced_deep(0, 1)
                 .clone_as(ChunkId::new(), RowId::new()),
         )]
     });
 
-    let chunks = components.iter().flat_map(move |component| {
+    let mut chunks: HashMap<ChunkId, (Chunk, usize, usize)> = Default::default();
+    for component in components {
         let results = store.range_relevant_chunks(
             ChunkTrackingMode::PanicOnMissing,
             &query,
@@ -919,9 +922,11 @@ fn extract_chunks_for_single_split(
             *component,
         );
 
-        results.chunks.into_iter().filter_map(move |chunk| {
+        for chunk in results.chunks {
             let chunk = chunk.sorted_by_timeline_if_unsorted(timeline.name()); // binsearch incoming
-            let time_col = chunk.timelines().get(timeline.name())?;
+            let Some(time_col) = chunk.timelines().get(timeline.name()) else {
+                continue;
+            };
             let times = time_col.times_raw();
             assert!(times.is_sorted());
 
@@ -941,7 +946,7 @@ fn extract_chunks_for_single_split(
             let slice_len = end_idx_excl.saturating_sub(start_idx);
 
             if slice_len == 0 {
-                return None;
+                continue;
             }
 
             let end_idx = end_idx_excl.saturating_sub(1);
@@ -963,30 +968,45 @@ fn extract_chunks_for_single_split(
                 time_to_human_string(timeline, end_exclusive),
             );
 
-            // TODO(RR-3810): If we were to implement this with a virtual store instead, this would b
-            // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
-            // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
-            if slice_len == chunk.num_rows() {
-                // If we're re-using the original chunk as-is, then make sure to not update its ID.
-                return Some((chunk.id(), chunk));
-            }
+            match chunks.entry(chunk.id()) {
+                std::collections::hash_map::Entry::Occupied(mut e) => {
+                    let (_, _, len) = e.get_mut();
+                    *len = usize::max(*len, slice_len);
+                }
 
-            Some((
-                chunk.id(),
-                chunk
-                    // Reminder: always perform deep copies if the intent is to write back to disk.
-                    .row_sliced_deep(start_idx, slice_len)
-                    // We must generate a new chunk ID due to the persistent slicing.
-                    // The row IDs are safe from duplicates, since we slice the same way for all components.
-                    // The special cases have non-overlapping time spans, and thus are safe too.
-                    //
-                    // This might lead to duplicated data if all the splits are loaded into the same viewer,
-                    // but that's certainly better than missing data.
-                    // TODO(cmc): shared recording IDs have been forbidden for now because they caused too many
-                    // problems with the video decoder, so that last statement doesn't apply anymore, for now.
-                    .with_id(ChunkId::new()),
-            ))
-        })
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    e.insert((chunk, start_idx, slice_len));
+                }
+            }
+        }
+    }
+
+    let chunks = chunks.into_values().map(|(chunk, start_idx, slice_len)| {
+        // TODO(RR-3810): If we were to implement this with a virtual store instead, this would b
+        // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
+        // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
+        if slice_len == chunk.num_rows() {
+            // If we're re-using the original chunk as-is, then make sure to not update its ID.
+            return (chunk.id(), chunk);
+        }
+
+        // TODO(cmc): It could be worthwhile to implement and used a `Chunk::components_sliced`
+        // here (note: plural).
+        (
+            chunk.id(),
+            chunk
+                // Reminder: always perform deep copies if the intent is to write back to disk.
+                .row_sliced_deep(start_idx, slice_len)
+                // We must generate a new chunk ID due to the persistent slicing.
+                // The row IDs are safe from duplicates, since we slice the same way for all components.
+                // The special cases have non-overlapping time spans, and thus are safe too.
+                //
+                // This might lead to duplicated data if all the splits are loaded into the same viewer,
+                // but that's certainly better than missing data.
+                // TODO(cmc): shared recording IDs have been forbidden for now because they caused too many
+                // problems with the video decoder, so that last statement doesn't apply anymore, for now.
+                .with_id(ChunkId::new()),
+        )
     });
 
     chunks_bootstrap.chain(chunks)
