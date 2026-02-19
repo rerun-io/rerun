@@ -720,6 +720,9 @@ impl SplitCommand {
             // given that we've just queried the data per-entity per-component.
             all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
 
+            #[cfg(debug_assertions)]
+            let mut all_unique_indexes_in_split = HashSet::default();
+
             txs_encoding[i].send((
                 store.id(),
                 all_chunks_in_split
@@ -739,6 +742,18 @@ impl SplitCommand {
                     // This works because we make sure to generate new IDs when the slices we compute require
                     // it, which is itself manageable because we enforce a single timeline throughout.
                     .filter(|(_original_chunk_id, chunk)| all_chunk_ids_in_split.insert(chunk.id()))
+                    .inspect(|(_original_chunk_id, chunk)| {
+                        #[cfg(debug_assertions)]
+                        for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
+                            if !all_unique_indexes_in_split.insert((time, row_id)) {
+                                eprintln!(
+                                    "ERROR: duplicate index detected on {}: {} / {row_id}",
+                                    chunk.entity_path(),
+                                    time_to_human_string(cutoff_timeline, time),
+                                );
+                            }
+                        }
+                    })
                     .map(move |(original_chunk_id, chunk)| {
                         (
                             original_chunk_id,
