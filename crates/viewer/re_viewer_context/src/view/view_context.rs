@@ -60,12 +60,12 @@ impl<'a> ViewContext<'a> {
 
     #[inline]
     pub fn render_ctx(&self) -> &re_renderer::RenderContext {
-        self.viewer_ctx.global_context.render_ctx
+        self.viewer_ctx.app_ctx.render_ctx
     }
 
     #[inline]
     pub fn egui_ctx(&self) -> &egui::Context {
-        self.viewer_ctx.global_context.egui_ctx
+        self.viewer_ctx.app_ctx.egui_ctx
     }
 
     pub fn tokens(&self) -> &'static re_ui::DesignTokens {

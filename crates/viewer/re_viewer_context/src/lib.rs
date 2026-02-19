@@ -5,6 +5,7 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod annotations;
+mod app_context;
 mod app_options;
 mod async_runtime_handle;
 mod blueprint_helpers;
@@ -18,7 +19,6 @@ mod contents;
 mod display_mode;
 mod drag_and_drop;
 mod file_dialog;
-mod global_context;
 mod heuristics;
 mod image_info;
 mod item;
@@ -51,6 +51,7 @@ pub use self::annotations::{
     AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
     ResolvedAnnotationInfos,
 };
+pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
 pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
 pub use self::blueprint_helpers::{
@@ -79,7 +80,6 @@ pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::display_mode::DisplayMode;
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
 pub use self::file_dialog::sanitize_file_name;
-pub use self::global_context::{AuthContext, GlobalContext};
 pub use self::heuristics::suggest_view_for_each_entity;
 pub use self::image_info::{
     ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at,

@@ -16,12 +16,12 @@ use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext, BlueprintContext,
-    BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
-    FallbackProviderRegistry, GlobalContext, Item, PerVisualizerTypeInViewClass, SelectionChange,
-    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline,
+    AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext,
+    BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode,
+    DragAndDropManager, FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass,
+    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -401,7 +401,7 @@ impl AppState {
                 let egui_ctx = ui.ctx().clone();
                 let display_mode = self.navigation.current();
                 let ctx = ViewerContext {
-                    global_context: GlobalContext {
+                    app_ctx: AppContext {
                         is_test: app_env.is_test(),
 
                         memory_limit: startup_options.memory_limit,
@@ -692,7 +692,7 @@ impl AppState {
                                     };
                                     welcome_screen.ui(
                                         ui,
-                                        &ctx.global_context,
+                                        &ctx.app_ctx,
                                         welcome_screen_state,
                                         &rx_log.sources(),
                                         &login_state,
@@ -724,7 +724,7 @@ impl AppState {
                 // Process deferred layout operations and apply updates back to blueprint:
                 viewport_ui.save_to_blueprint_store(&ctx);
 
-                self.redap_servers.modals_ui(&ctx.global_context, ui);
+                self.redap_servers.modals_ui(&ctx.app_ctx, ui);
                 self.open_url_modal.ui(ui);
                 self.share_modal
                     .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());

@@ -14,7 +14,7 @@ use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{
-    AsyncRuntimeHandle, EditRedapServerModalCommand, GlobalContext, ViewerContext,
+    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, ViewerContext,
 };
 
 use crate::context::Context;
@@ -311,7 +311,7 @@ fn error_ui(
                         });
                     } else {
                         ui.horizontal(|ui| {
-                            if let Some(auth) = viewer_ctx.global_context.auth_context {
+                            if let Some(auth) = viewer_ctx.app_ctx.auth_context {
                                 // User is already logged in — offer to use stored credentials
                                 if ui
                                     .add(
@@ -749,13 +749,13 @@ impl RedapServers {
         }
     }
 
-    pub fn modals_ui(&mut self, global_ctx: &GlobalContext<'_>, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, app_ctx: &AppContext<'_>, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
         };
 
-        self.server_modal_ui.ui(global_ctx, &ctx, ui);
+        self.server_modal_ui.ui(app_ctx, &ctx, ui);
     }
 
     pub fn send_command(&self, command: Command) {

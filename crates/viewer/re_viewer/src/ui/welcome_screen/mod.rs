@@ -12,7 +12,7 @@ use re_log_channel::LogSource;
 use crate::app_state::WelcomeScreenState;
 
 pub use intro_section::{CloudState, LoginState};
-use re_viewer_context::GlobalContext;
+use re_viewer_context::AppContext;
 
 #[derive(Default)]
 pub struct WelcomeScreen {
@@ -28,7 +28,7 @@ impl WelcomeScreen {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        ctx: &GlobalContext<'_>,
+        ctx: &AppContext<'_>,
         welcome_screen_state: &WelcomeScreenState,
         log_sources: &[Arc<LogSource>],
         login_state: &CloudState,

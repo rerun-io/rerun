@@ -4,7 +4,7 @@ use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::{ReButtonExt as _, UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
 use re_uri::Origin;
 use re_viewer_context::{
-    EditRedapServerModalCommand, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
+    AppContext, EditRedapServerModalCommand, Item, SystemCommand, SystemCommandSender as _,
 };
 
 pub enum LoginState {
@@ -85,7 +85,7 @@ impl IntroItem {
         CardLayoutItem { frame, min_width }
     }
 
-    fn show(&self, ui: &mut Ui, ctx: &GlobalContext<'_>, cloud_state: &CloudState) {
+    fn show(&self, ui: &mut Ui, ctx: &AppContext<'_>, cloud_state: &CloudState) {
         let label_size = 13.0;
         ui.vertical(|ui| match self {
             Self::DocItem { title, url, body } => {
@@ -198,7 +198,7 @@ impl IntroItem {
     }
 }
 
-pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, cloud_state: &CloudState) {
+pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &CloudState) {
     let items = IntroItem::items();
 
     ui.add_space(32.0);

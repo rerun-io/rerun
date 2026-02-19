@@ -18,8 +18,8 @@ use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
+    AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry,
     Item, ItemCollection, NeedsRepaint, StoreHub, SystemCommand, SystemCommandSender as _,
     TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
     ViewerContext, blueprint_timeline, command_channel,
@@ -633,7 +633,7 @@ impl TestContext {
         let mut focused_item = self.focused_item.lock();
 
         let ctx = ViewerContext {
-            global_context: GlobalContext {
+            app_ctx: AppContext {
                 is_test: true,
 
                 memory_limit: re_memory::MemoryLimit::UNLIMITED,

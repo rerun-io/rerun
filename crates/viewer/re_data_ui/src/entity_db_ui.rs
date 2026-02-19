@@ -109,7 +109,7 @@ impl crate::DataUi for EntityDb {
             });
         }
 
-        if cfg!(debug_assertions) && !ctx.global_context.is_test {
+        if cfg!(debug_assertions) && !ctx.app_ctx.is_test {
             ui.collapsing_header("Debug info", true, |ui| {
                 debug_ui(ui, self);
             });
@@ -171,7 +171,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
         ui.end_row();
     }
 
-    let show_last_modified_time = !ctx.global_context.is_test;
+    let show_last_modified_time = !ctx.app_ctx.is_test;
     // Hide in tests because it is non-deterministic (it's based on `RowId`).
     if show_last_modified_time
         && let Some(latest_row_id) = db.latest_row_id()
@@ -227,7 +227,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
         if db.rrd_manifest_index().has_manifest() {
             ui.grid_left_hand_label("Downloaded");
 
-            let memory_limit = ctx.global_context.memory_limit;
+            let memory_limit = ctx.app_ctx.memory_limit;
             let max_downloaded_bytes = if db.rrd_manifest_index().is_fully_loaded() {
                 full_size_bytes
             } else {

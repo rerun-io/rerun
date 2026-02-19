@@ -349,7 +349,7 @@ pub struct LogDataSourceAnalytics {
 // - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
 //   where).
 // - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
-//   (maybe it should be in `GlobalContext`?).
+//   (maybe it should be in `AppContext`?).
 #[cfg(target_arch = "wasm32")]
 fn spawn_future<F>(future: F)
 where

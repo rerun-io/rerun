@@ -13,16 +13,16 @@ use crate::drag_and_drop::DragAndDropPayload;
 use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
-    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DisplayMode,
-    DragAndDropManager, GlobalContext, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
+    AppContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
+    DisplayMode, DragAndDropManager, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
     PerVisualizerTypeInViewClass, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
 
-/// Common things needed by many parts of the viewer.
+/// Common things needed to view a specific recording with a specific blueprint.
 pub struct ViewerContext<'a> {
-    /// Global context shared across all parts of the viewer.
-    pub global_context: GlobalContext<'a>,
+    /// App context shared across all parts of the viewer.
+    pub app_ctx: AppContext<'a>,
 
     pub storage_context: &'a StorageContext<'a>,
 
@@ -75,12 +75,12 @@ pub struct ViewerContext<'a> {
     pub store_context: &'a StoreContext<'a>,
 }
 
-// Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a
+// Forwarding of `AppContext` methods to `ViewerContext`. Leaving this as a
 // separate block for easier refactoring (i.e. macros) in the future.
 impl ViewerContext<'_> {
     /// Global options for the whole viewer.
     pub fn app_options(&self) -> &AppOptions {
-        self.global_context.app_options
+        self.app_ctx.app_options
     }
 
     pub fn tokens(&self) -> &'static re_ui::DesignTokens {
@@ -89,7 +89,7 @@ impl ViewerContext<'_> {
 
     /// Runtime info about components and archetypes.
     pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
-        self.global_context.reflection
+        self.app_ctx.reflection
     }
 
     /// How to display components.
@@ -104,18 +104,18 @@ impl ViewerContext<'_> {
 
     /// The [`egui::Context`].
     pub fn egui_ctx(&self) -> &egui::Context {
-        self.global_context.egui_ctx
+        self.app_ctx.egui_ctx
     }
 
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub fn render_ctx(&self) -> &re_renderer::RenderContext {
-        self.global_context.render_ctx
+        self.app_ctx.render_ctx
     }
 
     /// How to configure the renderer
     #[inline]
     pub fn render_mode(&self) -> re_renderer::RenderMode {
-        if self.global_context.is_test {
+        if self.app_ctx.is_test {
             re_renderer::RenderMode::Deterministic
         } else {
             re_renderer::RenderMode::Beautiful
@@ -124,12 +124,12 @@ impl ViewerContext<'_> {
 
     /// Interface for sending commands back to the app
     pub fn command_sender(&self) -> &CommandSender {
-        self.global_context.command_sender
+        self.app_ctx.command_sender
     }
 
     /// The active display mode
     pub fn display_mode(&self) -> &crate::DisplayMode {
-        self.global_context.display_mode
+        self.app_ctx.display_mode
     }
 }
 
@@ -317,7 +317,7 @@ impl ViewerContext<'_> {
                     item
                 };
 
-                self.global_context
+                self.app_ctx
                     .command_sender
                     .send_system(crate::SystemCommand::SetFocus(item.clone()));
             }

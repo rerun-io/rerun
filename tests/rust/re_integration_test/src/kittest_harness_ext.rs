@@ -353,10 +353,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             for id in blueprint.view_ids() {
                 println!("View id: {id}");
             }
-            println!(
-                "Display mode: {:?}",
-                _viewer_context.global_context.display_mode
-            );
+            println!("Display mode: {:?}", _viewer_context.app_ctx.display_mode);
         });
     }
 

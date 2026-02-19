@@ -8,8 +8,7 @@ use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{ReButton, UiExt as _};
 use re_uri::Scheme;
 use re_viewer_context::{
-    DisplayMode, EditRedapServerModalCommand, GlobalContext, SystemCommand,
-    SystemCommandSender as _,
+    AppContext, DisplayMode, EditRedapServerModalCommand, SystemCommand, SystemCommandSender as _,
 };
 
 use crate::context::Context;
@@ -150,7 +149,7 @@ impl ServerModal {
         self.auth.reset_login_flow();
     }
 
-    pub fn ui(&mut self, global_ctx: &GlobalContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
+    pub fn ui(&mut self, app_ctx: &AppContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
         let was_open = self.modal.is_open();
 
         self.modal.ui(
@@ -299,7 +298,7 @@ impl ServerModal {
                         });
                 });
 
-                auth_ui(ui, global_ctx, &mut self.auth);
+                auth_ui(ui, app_ctx, &mut self.auth);
 
                 ui.add_space(24.0);
 
@@ -320,7 +319,7 @@ impl ServerModal {
                         .map(Some)
                         .map_err(|_err| ()),
                     AuthKind::RerunAccount(_) => {
-                        if global_ctx.logged_in() {
+                        if app_ctx.logged_in() {
                             Ok(Some(re_redap_client::Credentials::Stored))
                         } else {
                             Err(())
@@ -360,7 +359,7 @@ impl ServerModal {
                                     egui_ctx.open_url(OpenUrl::same_tab(url));
                                 })
                             } else {
-                                let command_sender = global_ctx.command_sender.clone();
+                                let command_sender = app_ctx.command_sender.clone();
                                 let origin = origin.clone();
                                 Box::new(move || {
                                     command_sender.send_system(SystemCommand::ChangeDisplayMode(
@@ -396,7 +395,7 @@ impl ServerModal {
     }
 }
 
-fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication) {
+fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
     match &mut auth.kind {
         AuthKind::RerunAccount(login_flow) => {
             ui.label("Account login:");
