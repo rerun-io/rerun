@@ -876,6 +876,8 @@ fn extract_chunks_for_single_split(
             return vec![];
         };
 
+        re_log::debug_assert!(chunk.num_rows() == 1);
+
         let (time, _row_id) = chunk
             .iter_indices(timeline.name())
             .next()
@@ -889,15 +891,15 @@ fn extract_chunks_for_single_split(
             return vec![];
         }
 
-        // TODO: I'm pretty sure we need to slice_deep here, even if it's just a single row, it
-        // won't stay like that once it reaches IPC.
-
         vec![(
             chunk.id(),
             // This chunk might be re-used in other places in this split, and because we're slicing it
             // (and we really, really need to slice it), we must make sure that it doesn't share
             // a chunk ID nor a row ID with anything else.
-            chunk.clone().clone_as(ChunkId::new(), RowId::new()),
+            chunk
+                // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
+                .row_sliced_deep(0, 1)
+                .clone_as(ChunkId::new(), RowId::new()),
         )]
     });
 
@@ -966,7 +968,7 @@ fn extract_chunks_for_single_split(
                 chunk.id(),
                 chunk
                     // Reminder: always perform deep copies if the intent is to write back to disk.
-                    .row_sliced_deep(start_idx, end_idx.saturating_sub(start_idx))
+                    .row_sliced_deep(start_idx, slice_len)
                     // We must generate a new chunk ID due to the persistent slicing.
                     // The row IDs are safe from duplicates, since we slice the same way for all components.
                     // The special cases have non-overlapping time spans, and thus are safe too.
