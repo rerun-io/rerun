@@ -76,6 +76,7 @@ pub struct SplitCommand {
     /// If true, timelines other than the one specified with `--timeline` will be discarded.
     #[clap(long = "drop-unused-timelines")]
     discard_unused_timelines: bool,
+    // TODO: issue for splitting by size
 }
 
 impl SplitCommand {
@@ -870,6 +871,7 @@ fn extract_chunks_for_single_split(
             .map(|chunk| chunk.latest_at(&query_bootstrap, *component))
             .filter(|chunk| !chunk.is_empty());
 
+        // TODO: explain this -- this is due to overlap heuristics
         let Some(chunk) = chunks.max_by_key(|chunk| {
             chunk
                 .iter_indices(timeline.name())
@@ -915,9 +917,8 @@ fn extract_chunks_for_single_split(
         );
 
         results.chunks.into_iter().filter_map(move |chunk| {
-            let time_col = chunk.timelines().get(timeline.name())?;
-
             let chunk = chunk.sorted_by_timeline_if_unsorted(timeline.name()); // binsearch incoming
+            let time_col = chunk.timelines().get(timeline.name())?;
             let times = time_col.times_raw();
             assert!(times.is_sorted());
 
