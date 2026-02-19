@@ -70,7 +70,7 @@ jobs:
 
       - name: "Upload web-viewer (commit)"
         if: ${{ !inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}"
@@ -79,7 +79,7 @@ jobs:
 
       - name: "Upload web-viewer (tagged)"
         if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
@@ -88,7 +88,7 @@ jobs:
 
       - name: "Upload web-viewer (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
@@ -97,7 +97,7 @@ jobs:
 
       - name: "Upload web-viewer (prerelease)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/prerelease"
@@ -108,7 +108,7 @@ jobs:
 
       - name: "Upload web-viewer (main)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/main"
@@ -119,7 +119,7 @@ jobs:
 
       - name: "Upload web-viewer (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
@@ -130,7 +130,7 @@ jobs:
 
       - name: "Upload web-viewer (nightly)"
         if: ${{ inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/nightly"

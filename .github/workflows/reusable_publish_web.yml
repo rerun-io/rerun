@@ -123,7 +123,7 @@ jobs:
             crates/viewer/re_web_viewer_server/web_viewer/examples_manifest.json
 
       - name: Upload app.rerun.io (versioned)
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
@@ -131,7 +131,7 @@ jobs:
           process_gcloudignore: false
 
       - name: Upload app.rerun.io (commit)
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"

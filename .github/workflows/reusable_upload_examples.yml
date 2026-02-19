@@ -68,7 +68,7 @@ jobs:
 
       - name: "Upload examples (commit)"
         if: ${{ !inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "example_data"
           destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}/examples"
@@ -77,7 +77,7 @@ jobs:
 
       - name: "Upload examples (tagged)"
         if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "example_data"
           destination: "rerun-web-viewer/version/${{ inputs.RELEASE_VERSION }}/examples"
@@ -86,7 +86,7 @@ jobs:
 
       - name: "Upload examples (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "example_data"
           destination: "rerun-web-viewer/adhoc/${{ inputs.ADHOC_NAME }}/examples"
@@ -95,7 +95,7 @@ jobs:
 
       - name: "Upload examples (prerelease)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "example_data"
           destination: "rerun-web-viewer/prerelease/examples"
@@ -106,7 +106,7 @@ jobs:
 
       - name: "Upload examples (main)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "example_data"
           destination: "rerun-web-viewer/version/main/examples"
@@ -117,7 +117,7 @@ jobs:
 
       - name: "Upload examples (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "example_data"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}/examples"
@@ -128,7 +128,7 @@ jobs:
 
       - name: "Upload examples (nightly)"
         if: ${{ inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "example_data"
           destination: "rerun-web-viewer/version/nightly/examples"
