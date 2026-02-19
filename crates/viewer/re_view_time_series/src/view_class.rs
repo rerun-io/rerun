@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use arrayvec::ArrayVec;
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
@@ -29,11 +27,11 @@ use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
     IndicatedEntities, Item, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedView, RecommendedVisualizers, SystemCommandSender as _, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
-    VisualizerComponentMappings, VisualizerComponentSource,
+    RecommendedMappings, RecommendedView, RecommendedVisualizers, SystemCommandSender as _,
+    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -308,12 +306,9 @@ impl ViewClass for TimeSeriesView {
                         .get(visualizer)?
                         .contains(entity_path)
                     {
-                        // Each scalar source becomes a separate VisualizerComponentMappings
-                        // so that each nested scalar field gets its own time series.
-                        let all_mappings: Vec<VisualizerComponentMappings> =
-                            all_scalar_mappings(reason)
-                                .map(|(component, source)| BTreeMap::from([(component, source)]))
-                                .collect();
+                        let all_mappings: Vec<RecommendedMappings> = all_scalar_mappings(reason)
+                            .map(|(component, source)| RecommendedMappings::new(component, source))
+                            .collect();
                         Vec1::try_from_vec(all_mappings)
                             .ok()
                             .map(|mappings| (*visualizer, mappings))
@@ -329,11 +324,9 @@ impl ViewClass for TimeSeriesView {
             && let Some(series_line_visualizable_reason) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
         {
-            // Each scalar source becomes a separate VisualizerComponentMappings
-            // so that each nested scalar field gets its own time series.
-            let all_mappings: Vec<VisualizerComponentMappings> =
+            let all_mappings: Vec<RecommendedMappings> =
                 all_scalar_mappings(series_line_visualizable_reason)
-                    .map(|(component, source)| BTreeMap::from([(component, source)]))
+                    .map(|(component, source)| RecommendedMappings::new(component, source))
                     .collect();
             if let Ok(mappings) = Vec1::try_from_vec(all_mappings) {
                 recommended
@@ -1702,7 +1695,9 @@ mod tests {
         assert!(result.0.contains_key(&SeriesLinesSystem::identifier()));
         let mappings = &result.0[&SeriesLinesSystem::identifier()];
         assert_eq!(mappings.len(), 1);
-        assert!(mappings[0].contains_key(&Scalars::descriptor_scalars().component));
+        assert!(
+            mappings[0].contains_mapping_for_component(&Scalars::descriptor_scalars().component)
+        );
     }
 }
 

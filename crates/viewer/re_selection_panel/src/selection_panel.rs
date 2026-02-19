@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use egui::{AtomExt as _, IntoAtoms as _, NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
-use re_chunk::ComponentIdentifier;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
 use re_data_ui::item_ui::{
@@ -20,8 +19,8 @@ use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
     DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, SystemCommand,
     SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
-    ViewSystemIdentifier, ViewerContext, VisualizerComponentMappings, VisualizerComponentSource,
-    VisualizerInstruction, VisualizerViewReport, contents_name_style, icon_for_container_kind,
+    ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
+    contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -623,7 +622,7 @@ fn menu_add_new_visualizer_for_view(
                 );
             });
 
-            for option in &option_per_entity.options {
+            for option in option_per_entity.options {
                 let atoms = if option.is_already_visualized {
                     (
                         icons::CHECKED
@@ -661,7 +660,7 @@ struct AddVisualizerOption {
 /// An option for adding a new visualizer.
 struct AddVisualizerOptionPerEntity {
     pub view_system_id: ViewSystemIdentifier,
-    pub mappings: VisualizerComponentMappings,
+    pub recommended_mappings: re_viewer_context::RecommendedMappings,
     pub display_name: String,
     pub is_already_visualized: bool,
 }
@@ -713,63 +712,28 @@ fn collect_add_visualizer_options_for_entity(
     recommended_visualizers: RecommendedVisualizers,
     query_result: &DataQueryResult,
 ) -> Vec<AddVisualizerOptionPerEntity> {
-    let visualizers = query_result
+    let existing_visualizers = query_result
         .result_for_entity(entity_path)
         .map(|data_result| &data_result.visualizer_instructions);
 
     let mut visualizer_options = vec![];
     for (view_system_id, recommended_mappings_per_view_system) in recommended_visualizers.0 {
         for recommended_mappings in recommended_mappings_per_view_system {
-            // Check if there is already a visualizer for this recommendedation.
-            //
-            // Only consider components explicitly required by the recommended mappings. Currently,
-            // all components listed in RecommendedMappings are mandatory for the visualizer. If an existing
-            // visualizer has additional components (eg. color overrides), they will be ignored for this check.
-            let is_already_visualized = if let Some(visualizers) = visualizers {
-                visualizers.iter().any(|visualizer| {
-                    if visualizer.visualizer_type != view_system_id {
-                        // Only consider visualizers of the recommended view system.
-                        // E.g. ignore existing SeriesPoints visualizers for SeriesLines recommendations.
-                        return false;
-                    }
-                    recommended_mappings
-                        .iter()
-                        .all(|(component, recommended_source)| {
-                            let current_source = visualizer.component_mappings.get(component);
-                            let recommendation_is_identity =
-                                recommended_source.is_identity_mapping(*component);
-                            let current_mapping_is_identity = current_source
-                                .is_none_or(|mapping| mapping.is_identity_mapping(*component));
-
-                            // Two mappings are considered equal if they are both identity mappings,
-                            // or the current source is the same as the recommended source.
-                            (recommendation_is_identity && current_mapping_is_identity)
-                                || current_source == Some(recommended_source)
-                        })
-                })
-            } else {
-                false
-            };
-
-            // Name of the recommendation comes from the first item in the recommended mappings.
-            let display_name = if let Some((component, selector)) = recommended_mappings
-                .iter()
-                .find_map(|(_target, source)| match source {
-                    VisualizerComponentSource::SourceComponent {
-                        source_component,
-                        selector,
-                    } => Some((source_component, selector)),
-                    _ => None,
-                }) {
-                format!("{}{}", component_display_name(*component), selector)
-            } else {
-                // No source component in the mappings, this is not a valid recommendation.
+            let Some(display_name) = recommended_mappings.display_name() else {
                 continue;
             };
 
+            // Check if there is already a visualizer that covers this recommendation.
+            let is_already_visualized = existing_visualizers.is_some_and(|visualizers| {
+                visualizers.iter().any(|visualizer| {
+                    visualizer.visualizer_type == view_system_id
+                        && recommended_mappings.is_covered_by(&visualizer.component_mappings)
+                })
+            });
+
             visualizer_options.push(AddVisualizerOptionPerEntity {
                 view_system_id,
-                mappings: recommended_mappings.clone(),
+                recommended_mappings,
                 display_name,
                 is_already_visualized,
             });
@@ -779,23 +743,12 @@ fn collect_add_visualizer_options_for_entity(
     visualizer_options
 }
 
-fn component_display_name(component_id: ComponentIdentifier) -> String {
-    let name = component_id.as_str();
-
-    // Strip "rerun.components." prefix for cleaner display of Rerun-native types.
-    // For example, "rerun.components.Scalars:scalars" becomes "Scalars:scalars".
-    name.strip_prefix("rerun.components.")
-        .or_else(|| name.strip_prefix("rerun."))
-        .unwrap_or(name)
-        .to_owned()
-}
-
 /// Adds the selected option as a new visualizer
 fn add_new_visualizer(
     viewer_ctx: &ViewerContext<'_>,
     view_id: ViewId,
     entity_path: &EntityPath,
-    option: &AddVisualizerOptionPerEntity,
+    option: AddVisualizerOptionPerEntity,
 ) {
     use re_sdk_types::Archetype as _;
     use re_sdk_types::blueprint::archetypes::{ActiveVisualizers, ViewContents};
@@ -813,11 +766,10 @@ fn add_new_visualizer(
         .unwrap_or_default();
 
     // Create the new instruction.
-    let new_instruction = VisualizerInstruction::new(
+    let new_instruction = option.recommended_mappings.into_visualizer_instruction(
         VisualizerInstructionId::new_random(),
         option.view_system_id,
         &override_base_path,
-        option.mappings.clone(),
     );
 
     // Build the updated list of active visualizer IDs.

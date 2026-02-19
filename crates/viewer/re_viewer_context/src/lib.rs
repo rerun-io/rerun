@@ -118,16 +118,17 @@ pub use self::utils::{
 };
 pub use self::view::{
     AnyPhysicalDatatypeRequirement, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
-    PerSystemEntities, RecommendedView, RecommendedVisualizers, RequiredComponents,
-    SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder,
-    ViewClassRegistry, ViewClassRegistryError, ViewContext, ViewContextCollection,
-    ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
-    ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewStates,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewSystemState,
-    VisualizerCollection, VisualizerComponentMappings, VisualizerComponentSource,
-    VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionReport,
-    VisualizerInstructionsPerType, VisualizerQueryInfo, VisualizerReportContext,
-    VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport, VisualizerViewReport,
+    PerSystemEntities, RecommendedMappings, RecommendedView, RecommendedVisualizers,
+    RequiredComponents, SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority,
+    ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError, ViewContext,
+    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
+    ViewSystemRegistrator, ViewSystemState, VisualizerCollection, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
+    VisualizerInstructionReport, VisualizerInstructionsPerType, VisualizerQueryInfo,
+    VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport,
+    VisualizerViewReport,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

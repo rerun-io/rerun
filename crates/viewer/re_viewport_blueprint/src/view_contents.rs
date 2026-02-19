@@ -544,8 +544,8 @@ impl DataQueryPropertyResolver<'_> {
                 node.data_result.visualizer_instructions = recommended_visualizers
                     .0
                     .into_iter()
-                    .flat_map(|(visualizer_type, many_component_mappings)| {
-                        many_component_mappings
+                    .flat_map(|(visualizer_type, mappings_per_visualizer_type)| {
+                        mappings_per_visualizer_type
                             .into_iter()
                             .map(move |component_mappings| (visualizer_type, component_mappings))
                     })
@@ -555,11 +555,10 @@ impl DataQueryPropertyResolver<'_> {
                             node.data_result.entity_path.hash64(),
                             index,
                         );
-                        VisualizerInstruction::new(
+                        component_mappings.into_visualizer_instruction(
                             id,
                             visualizer_type,
                             &node.data_result.override_base_path,
-                            component_mappings,
                         )
                     })
                     .collect();

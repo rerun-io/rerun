@@ -1077,6 +1077,7 @@ fn component_mappings_for_new_visualizer(
     let all_mapping_candidates = component_mapping_recommendations
         .into_iter()
         .flatten()
+        .map(re_viewer_context::RecommendedMappings::into_mappings)
         .chain(
             component_mappings_for_required_components_from_visualizability(
                 *visualizer_type,

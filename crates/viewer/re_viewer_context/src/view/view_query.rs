@@ -93,6 +93,87 @@ impl VisualizerComponentSource {
 /// Maps from target component to source component (selector).
 pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, VisualizerComponentSource>;
 
+/// A set of mandatory component mappings that form a single recommendation.
+///
+/// The invariant is that the identity mapping is always a valid state (i.e. `Default` produces
+/// an empty/identity mapping that any visualizer satisfies).
+#[derive(Clone, Debug, Default)]
+pub struct RecommendedMappings {
+    mandatory_mappings: VisualizerComponentMappings,
+}
+
+impl RecommendedMappings {
+    /// Creates a recommendation with a single mandatory mapping.
+    pub fn new(target: ComponentIdentifier, source: VisualizerComponentSource) -> Self {
+        Self {
+            mandatory_mappings: BTreeMap::from([(target, source)]),
+        }
+    }
+
+    /// Returns `true` if all mandatory mappings in this recommendation are already
+    /// satisfied by the given existing component mappings.
+    pub fn is_covered_by(&self, existing_mappings: &VisualizerComponentMappings) -> bool {
+        self.mandatory_mappings
+            .iter()
+            .all(|(component, recommended_source)| {
+                let current_source = existing_mappings.get(component);
+                let recommendation_is_identity = recommended_source.is_identity_mapping(*component);
+                let current_mapping_is_identity =
+                    current_source.is_none_or(|m| m.is_identity_mapping(*component));
+
+                // Two mappings are considered equivalent when both are identity mappings for the
+                // same target, or when they are exactly equal.
+                (recommendation_is_identity && current_mapping_is_identity)
+                    || current_source == Some(recommended_source)
+            })
+    }
+
+    /// Returns a [`VisualizerInstruction`] with the recommended mappings.
+    pub fn into_visualizer_instruction(
+        self,
+        id: VisualizerInstructionId,
+        visualizer_type: ViewSystemIdentifier,
+        override_base_path: &EntityPath,
+    ) -> VisualizerInstruction {
+        VisualizerInstruction::new(
+            id,
+            visualizer_type,
+            override_base_path,
+            self.mandatory_mappings,
+        )
+    }
+
+    /// True if there is a mapping targeting the given component.
+    pub fn contains_mapping_for_component(&self, component: &ComponentIdentifier) -> bool {
+        self.mandatory_mappings.contains_key(component)
+    }
+
+    /// Returns the underlying component mappings.
+    pub fn into_mappings(self) -> VisualizerComponentMappings {
+        self.mandatory_mappings
+    }
+
+    /// Human-readable display name derived from the first component source.
+    pub fn display_name(&self) -> Option<String> {
+        self.mandatory_mappings
+            .iter()
+            .find_map(|(_target, source)| match source {
+                VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector,
+                } => {
+                    let name = source_component.as_str();
+                    let short_name = name
+                        .strip_prefix("rerun.components.")
+                        .or_else(|| name.strip_prefix("rerun."))
+                        .unwrap_or(name);
+                    Some(format!("{short_name}{selector}"))
+                }
+                _ => None,
+            })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
     pub id: VisualizerInstructionId,

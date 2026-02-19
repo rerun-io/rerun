@@ -6,12 +6,12 @@ use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use vec1::Vec1;
 
-use super::{ViewContext, VisualizerComponentMappings};
+use super::ViewContext;
 use crate::{
     IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
-    VisualizableEntities,
+    RecommendedMappings, SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
+    ViewerContext, VisualizableEntities,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -31,7 +31,7 @@ pub enum ViewClassLayoutPriority {
 
 pub struct RecommendedVisualizers(
     /// A _stable_ mapping for which visualizers can visualize which components (with optional selectors).
-    pub BTreeMap<ViewSystemIdentifier, Vec1<VisualizerComponentMappings>>,
+    pub BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
 );
 
 impl RecommendedVisualizers {
