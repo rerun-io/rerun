@@ -423,7 +423,14 @@ fn try_request_missing_samples_at_presentation_timestamp<'a>(
     let Some(found_loaded_sample_idx) =
         sample_idx_after_timestamp.or_else(|| best_sample_idx_before_timestamp.map(|(_, idx)| idx))
     else {
-        return UnloadedSampleDataError::NoLoadedSamples.into();
+        return if let Some(sample) = video_description.samples.front() {
+            // If we're missing samples, request the first one so we at least get something.
+            get_video_buffer(sample.source_id());
+
+            UnloadedSampleDataError::NoLoadedSamples.into()
+        } else {
+            InsufficientSampleDataError::NoSamples.into()
+        };
     };
 
     match request_keyframe_before(
