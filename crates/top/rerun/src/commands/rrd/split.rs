@@ -936,7 +936,8 @@ fn extract_chunks_for_single_split(
             let end_idx = times
                 .partition_point(|t| *t < end_exclusive.as_i64())
                 .saturating_sub(1);
-            let slice_len = end_idx.saturating_sub(start_idx);
+            // `end_idx` points at the last in-range value, so the length would be off by -1.
+            let slice_len = (end_idx.saturating_add(1)).saturating_sub(start_idx);
 
             if slice_len == 0 {
                 return None;
