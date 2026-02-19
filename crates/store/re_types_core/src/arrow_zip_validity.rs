@@ -187,27 +187,3 @@ where
     V: ExactSizeIterator<Item = bool>,
 {
 }
-
-impl<T, I, V> ZipValidity<T, I, V>
-where
-    I: Iterator<Item = T>,
-    V: Iterator<Item = bool>,
-{
-    /// Unwrap into an iterator that has no null values.
-    pub fn unwrap_required(self) -> I {
-        if let Self::Required(i) = self {
-            i
-        } else {
-            panic!("Could not 'unwrap_required'. 'ZipValidity' iterator has nulls.");
-        }
-    }
-
-    /// Unwrap into an iterator that has null values.
-    pub fn unwrap_optional(self) -> ZipValidityIter<T, I, V> {
-        if let Self::Optional(i) = self {
-            i
-        } else {
-            panic!("Could not 'unwrap_optional'. 'ZipValidity' iterator has no nulls.");
-        }
-    }
-}

@@ -75,7 +75,10 @@ pub fn is_tracked_env_var_set(env_var_name: &str) -> bool {
             "1" | "yes" | "true" => true,
             "0" | "no" | "false" => false,
             _ => {
-                panic!("Failed to understand boolean env-var {env_var_name}={value}");
+                println!(
+                    "cargo::error=Failed to understand boolean env-var {env_var_name}={value}"
+                );
+                false
             }
         },
     }
@@ -171,10 +174,11 @@ impl<'a> Packages<'a> {
     /// dependencies are properly tracked whether they are remote, in-workspace,
     /// or locally patched.
     pub fn track_implicit_dep(&self, pkg_name: &str, files_to_watch: &mut HashSet<PathBuf>) {
-        let pkg = self.pkgs.get(pkg_name).unwrap_or_else(|| {
+        let Some(pkg) = self.pkgs.get(pkg_name) else {
             let found_names: Vec<&str> = self.pkgs.values().map(|pkg| pkg.name.as_str()).collect();
-            panic!("Failed to find package {pkg_name:?} among {found_names:?}")
-        });
+            println!("cargo::error=Failed to find package {pkg_name:?} among {found_names:?}");
+            return;
+        };
 
         // Track the root package itself
         track_crate_files(&pkg.manifest_path, files_to_watch);

@@ -940,12 +940,14 @@ fn try_get_scalar(json: &ron::Value, path: &str) -> anyhow::Result<f32> {
         .ok_or_else(|| anyhow::anyhow!("'{path}' not a number"))
 }
 
+#[expect(clippy::panic)]
 fn get_aliased_color(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Color32 {
     try_get_alias_color(color_table, json, alias_path).unwrap_or_else(|err| {
         panic!("Failed to get aliased color at {alias_path:?}: {err}");
     })
 }
 
+#[expect(clippy::panic)]
 fn get_aliased_stroke(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Stroke {
     try_get_aliased_stroke(color_table, json, alias_path).unwrap_or_else(|err| {
         panic!("Failed to get aliased stroke at {alias_path:?}: {err}");
@@ -974,6 +976,7 @@ fn global_path_value<'json>(value: &'json ron::Value, global_path: &str) -> &'js
         .unwrap()
 }
 
+#[expect(clippy::panic)]
 fn parse_path<T: serde::de::DeserializeOwned>(json: &ron::Value, global_path: &str) -> T {
     let global_value = global_path_value(json, global_path);
     global_value.clone().into_rust().unwrap_or_else(|err| {
@@ -984,6 +987,7 @@ fn parse_path<T: serde::de::DeserializeOwned>(json: &ron::Value, global_path: &s
     })
 }
 
+#[expect(clippy::panic)]
 fn follow_path_or_panic<'json>(json: &'json ron::Value, json_path: &str) -> &'json ron::Value {
     follow_path(json, json_path).unwrap_or_else(|| panic!("Failed to find {json_path:?}"))
 }

@@ -232,7 +232,10 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
             // work just fine otherwise.
             Err(_err) if environment == Environment::UsedAsDependency => "<error>".to_owned(),
 
-            Err(err) => panic!("{err}"),
+            Err(err) => {
+                println!("cargo::error={err}");
+                return;
+            }
         };
 
         set_env("RE_BUILD_FEATURES", &features);

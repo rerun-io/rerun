@@ -18,6 +18,7 @@ impl Mat3x3 {
     ///
     /// Panics if `index` is greater than 2.
     #[inline]
+    #[expect(clippy::panic)]
     pub fn col(&self, index: usize) -> Vec3D {
         match index {
             0 => [self.0[0], self.0[1], self.0[2]].into(),
