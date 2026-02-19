@@ -491,6 +491,9 @@ impl SplitCommand {
             anyhow::bail!("timeline '{timeline}' does not contain any data");
         };
 
+        // Because user-facing ranges are exclusive on the upper bound.
+        let max_time = max_time.saturating_add(1);
+
         let cutoff_times = if let Some(num_parts) = num_parts {
             let num_parts = *num_parts as u64;
 
