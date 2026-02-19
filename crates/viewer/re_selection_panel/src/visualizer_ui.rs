@@ -699,7 +699,7 @@ fn source_component_items_ui(
         );
     }
 
-    // Last: "Add Custom" if we don't have an override already and there's an editor for it.
+    // Last: "Add Custom" if we don't have an override already, we're allowed to edit it and there's an editor ui available.
     let has_editor = mapping_ctx
         .target_component_descr
         .component_type
@@ -710,7 +710,11 @@ fn source_component_items_ui(
                 .registered_ui_types(ct)
                 .has_edit_ui(mapping_ctx.raw_default.len() > 1)
         });
-    if raw_override.is_none() && has_editor && ui.add(ComboItem::new("Add custom")).clicked() {
+    if raw_override.is_none()
+        && mapping_ctx.is_ui_editable
+        && has_editor
+        && ui.add(ComboItem::new("Add custom")).clicked()
+    {
         save_component_mapping(
             mapping_ctx.view_ctx(),
             mapping_ctx.instruction,
