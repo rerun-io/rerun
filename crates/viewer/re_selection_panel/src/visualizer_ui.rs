@@ -771,7 +771,7 @@ fn extract_recommended_source_options(
     {
         let recommended: Vec<_> = recommended_mappings
             .iter()
-            .filter_map(|mappings| mappings.get(&target_component))
+            .filter_map(|mappings| mappings.get_source_for_component(&target_component))
             .filter(|source| options.contains(source))
             .cloned()
             .collect();

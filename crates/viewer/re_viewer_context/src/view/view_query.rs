@@ -172,6 +172,14 @@ impl RecommendedMappings {
                 _ => None,
             })
     }
+
+    /// Returns the source for the given component mapping.
+    pub fn get_source_for_component(
+        &self,
+        target: &ComponentIdentifier,
+    ) -> Option<&VisualizerComponentSource> {
+        self.mandatory_mappings.get(target)
+    }
 }
 
 #[derive(Clone, Debug)]
