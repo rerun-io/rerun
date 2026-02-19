@@ -879,11 +879,11 @@ fn extract_chunks_for_single_split(
             *component,
         );
 
-        results.chunks.into_iter().map(move |chunk| {
+        results.chunks.into_iter().filter_map(move |chunk| {
             let chunk = chunk.sorted_by_timeline_if_unsorted(timeline.name()); // binsearch incoming
 
             let Some(timeline) = chunk.timelines().get(timeline.name()) else {
-                return (chunk.id(), chunk);
+                return Some((chunk.id(), chunk));
             };
 
             let times = timeline.times_raw();
@@ -902,16 +902,21 @@ fn extract_chunks_for_single_split(
 
             let start_idx = times.partition_point(|t| *t < start_inclusive.as_i64());
             let end_idx = times.partition_point(|t| *t < end_exclusive.as_i64());
+            let slice_len = end_idx.saturating_sub(start_idx);
+
+            if slice_len == 0 {
+                return None;
+            }
 
             // TODO(RR-3810): If we were to implement this with a virtual store instead, this would b
             // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
             // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
-            if end_idx.saturating_sub(start_idx) == chunk.num_rows() {
+            if slice_len == chunk.num_rows() {
                 // If we're re-using the original chunk as-is, then make sure to not update its ID.
-                return (chunk.id(), chunk);
+                return Some((chunk.id(), chunk));
             }
 
-            (
+            Some((
                 chunk.id(),
                 chunk
                     // Reminder: always perform deep copies if the intent is to write back to disk.
@@ -922,8 +927,10 @@ fn extract_chunks_for_single_split(
                     //
                     // This might lead to duplicated data if all the splits are loaded into the same viewer,
                     // but that's certainly better than missing data.
+                    // TODO(cmc): shared recording IDs have been forbidden for now because they caused too many
+                    // problems with the video decoder, so that last statement doesn't apply anymore, for now.
                     .with_id(ChunkId::new()),
-            )
+            ))
         })
     });
 
