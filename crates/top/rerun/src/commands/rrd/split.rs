@@ -599,8 +599,6 @@ impl SplitCommand {
                     let components = components.iter().copied().collect();
                     let chunks = extract_chunks_for_single_split(
                         store,
-                        self.discard_unused_timelines,
-                        &mut all_chunk_ids_in_split,
                         entity,
                         &components,
                         cutoff_timeline,
@@ -612,7 +610,7 @@ impl SplitCommand {
 
                 // Special case: video keyframes
                 {
-                    let cutoff_time_revised = keyframes_per_entity.get(entity).map(|keyframes| {
+                    let cutoff_time_revised = keyframes_per_entity.get(entity).and_then(|keyframes| {
                         let p = keyframes
                             .partition_point(|t| *t <= cutoff_time)
                             .saturating_sub(1);
@@ -626,17 +624,16 @@ impl SplitCommand {
                                 cutoff_time_revised = %time_to_human_string(cutoff_timeline, cutoff_time_revised),
                                 "revising cutoff time to match video keyframe…"
                             );
+                            Some(cutoff_time_revised)
+                        } else {
+                            None
                         }
-
-                        TimeInt::min(cutoff_time, cutoff_time_revised)
                     });
 
                     if let Some(cutoff_time_revised) = cutoff_time_revised {
                         let components = std::iter::once(video_sample_identifier).collect();
                         let chunks = extract_chunks_for_single_split(
                             store,
-                            self.discard_unused_timelines,
-                            &mut all_chunk_ids_in_split,
                             entity,
                             &components,
                             cutoff_timeline,
@@ -671,8 +668,6 @@ impl SplitCommand {
                             .collect();
                     let chunks = extract_chunks_for_single_split(
                         store,
-                        self.discard_unused_timelines,
-                        &mut all_chunk_ids_in_split,
                         entity,
                         &components,
                         cutoff_timeline,
@@ -705,8 +700,6 @@ impl SplitCommand {
                         re_sdk_types::archetypes::Pinhole::all_component_identifiers().collect();
                     let chunks = extract_chunks_for_single_split(
                         store,
-                        self.discard_unused_timelines,
-                        &mut all_chunk_ids_in_split,
                         entity,
                         &components,
                         cutoff_timeline,
@@ -726,6 +719,36 @@ impl SplitCommand {
                 store.id(),
                 all_chunks_in_split
                     .into_iter()
+                    .map(move |(original_chunk_id, chunk)| {
+                        (
+                            original_chunk_id,
+                            if self.discard_unused_timelines {
+                                chunk.timeline_sliced(*cutoff_timeline.name())
+                            } else {
+                                chunk
+                            },
+                        )
+                    })
+                    // Many of the components will share the same chunks, so make sure to deduplicate before
+                    // forwarding to the output.
+                    // This works because we make sure to generate new IDs when the slices we compute require
+                    // it, which is itself manageable because we enforce a single timeline throughout.
+                    .filter(|(_original_chunk_id, chunk)| all_chunk_ids_in_split.insert(chunk.id()))
+                    .map(move |(original_chunk_id, chunk)| {
+                        (
+                            original_chunk_id,
+                            re_log_types::LogMsg::ArrowMsg(
+                                store.id(),
+                                re_log_types::ArrowMsg {
+                                    chunk_id: *chunk.id(),
+                                    batch: chunk
+                                        .to_record_batch()
+                                        .expect("we got it in, surely we can get it out"),
+                                    on_release: None,
+                                },
+                            ),
+                        )
+                    })
                     .map(|(_, chunk)| chunk)
                     .collect(),
             ))?;
@@ -810,17 +833,21 @@ fn extract_keyframes(
     keyframes
 }
 
-#[expect(clippy::too_many_arguments)]
 fn extract_chunks_for_single_split(
     store: &ChunkStore,
-    discard_unused_timelines: bool,
-    all_chunk_ids_in_split: &mut HashSet<ChunkId>,
     entity: &EntityPath,
     components: &HashSet<ComponentIdentifier>,
     timeline: Timeline,
     start_inclusive: TimeInt,
     end_exclusive: TimeInt,
-) -> impl Iterator<Item = (ChunkId, re_log_types::LogMsg)> {
+) -> impl Iterator<Item = (ChunkId, Chunk)> {
+    re_log::debug_assert!(
+        start_inclusive < end_exclusive,
+        "start_inclusive={}, end_exclusive={}",
+        time_to_human_string(timeline, start_inclusive),
+        time_to_human_string(timeline, end_exclusive),
+    );
+
     let query_bootstrap = re_chunk_store::LatestAtQuery::new(*timeline.name(), start_inclusive);
     let query = re_chunk_store::RangeQuery::new(
         *timeline.name(),
@@ -854,7 +881,7 @@ fn extract_chunks_for_single_split(
             .next()
             .expect("non-empty latest-at chunk must have a single row");
 
-        if time == start_inclusive {
+        if start_inclusive <= time && time < end_exclusive {
             // If this chunk overlaps with the range results that will follow, then we will create
             // duplicate data with different chunk and row IDs.
             // This is wasteful and useless in general, but the video decoder in particular really
@@ -880,9 +907,10 @@ fn extract_chunks_for_single_split(
         );
 
         results.chunks.into_iter().filter_map(move |chunk| {
+            let time_col = chunk.timelines().get(timeline.name())?;
+
             let chunk = chunk.sorted_by_timeline_if_unsorted(timeline.name()); // binsearch incoming
-            let timeline = chunk.timelines().get(timeline.name())?;
-            let times = timeline.times_raw();
+            let times = time_col.times_raw();
             assert!(times.is_sorted());
 
             // NOTE: Do not perform range queries here!
@@ -897,12 +925,31 @@ fn extract_chunks_for_single_split(
             // when using this tool.
 
             let start_idx = times.partition_point(|t| *t < start_inclusive.as_i64());
-            let end_idx = times.partition_point(|t| *t < end_exclusive.as_i64());
+            let end_idx = times
+                .partition_point(|t| *t < end_exclusive.as_i64())
+                .saturating_sub(1);
             let slice_len = end_idx.saturating_sub(start_idx);
 
             if slice_len == 0 {
                 return None;
             }
+
+            re_log::debug_assert!(
+                start_inclusive.as_i64() <= times[start_idx]
+                    && times[start_idx] < end_exclusive.as_i64(),
+                "{} < {} < {}",
+                time_to_human_string(timeline, start_inclusive),
+                time_to_human_string(timeline, TimeInt::new_temporal(times[start_idx])),
+                time_to_human_string(timeline, end_exclusive),
+            );
+            re_log::debug_assert!(
+                start_inclusive.as_i64() <= times[end_idx]
+                    && times[end_idx] < end_exclusive.as_i64(),
+                "{} < {} < {}",
+                time_to_human_string(timeline, start_inclusive),
+                time_to_human_string(timeline, TimeInt::new_temporal(times[end_idx])),
+                time_to_human_string(timeline, end_exclusive),
+            );
 
             // TODO(RR-3810): If we were to implement this with a virtual store instead, this would b
             // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
@@ -930,38 +977,7 @@ fn extract_chunks_for_single_split(
         })
     });
 
-    chunks_bootstrap
-        .chain(chunks)
-        .map(move |(original_chunk_id, chunk)| {
-            (
-                original_chunk_id,
-                if discard_unused_timelines {
-                    chunk.timeline_sliced(*timeline.name())
-                } else {
-                    chunk
-                },
-            )
-        })
-        // Many of the components will share the same chunks, so make sure to deduplicate before
-        // forwarding to the output.
-        // This works because we make sure to generate new IDs when the slices we compute require
-        // it, which is itself manageable because we enforce a single timeline throughout.
-        .filter(|(_original_chunk_id, chunk)| all_chunk_ids_in_split.insert(chunk.id()))
-        .map(move |(original_chunk_id, chunk)| {
-            (
-                original_chunk_id,
-                re_log_types::LogMsg::ArrowMsg(
-                    store.id(),
-                    re_log_types::ArrowMsg {
-                        chunk_id: *chunk.id(),
-                        batch: chunk
-                            .to_record_batch()
-                            .expect("we got it in, surely we can get it out"),
-                        on_release: None,
-                    },
-                ),
-            )
-        })
+    chunks_bootstrap.chain(chunks)
 }
 
 // ---
@@ -1010,7 +1026,7 @@ fn time_to_human_string(timeline: Timeline, time: TimeInt) -> String {
             if let Ok(ts) = jiff::Timestamp::from_nanosecond(time.as_i64() as _) {
                 ts.to_string()
             } else {
-                re_format::format_int(time.as_i64())
+                time.as_i64().to_string()
             }
         }
     };

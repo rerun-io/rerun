@@ -24,7 +24,7 @@ impl std::fmt::Display for TimePoint {
                 .iter()
                 .map(|(timeline, time)| {
                     let time_str = match time.typ() {
-                        crate::TimeType::Sequence => re_format::format_int(time.as_i64()),
+                        crate::TimeType::Sequence => time.as_i64().to_string(),
                         crate::TimeType::DurationNs => {
                             format!("{:?}", std::time::Duration::from_nanos(time.as_i64() as _))
                         }
@@ -32,7 +32,7 @@ impl std::fmt::Display for TimePoint {
                             if let Ok(ts) = jiff::Timestamp::from_nanosecond(time.as_i64() as _) {
                                 ts.to_string()
                             } else {
-                                re_format::format_int(time.as_i64())
+                                time.as_i64().to_string()
                             }
                         }
                     };
