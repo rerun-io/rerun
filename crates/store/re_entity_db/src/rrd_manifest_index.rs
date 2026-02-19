@@ -613,6 +613,7 @@ impl RrdManifestIndex {
             .is_none_or(|c| !c.state.is_fully_loaded())
     }
 
+    /// Expected RAM use of all _chunks_.
     pub fn full_uncompressed_size(&self) -> u64 {
         self.full_uncompressed_size
     }

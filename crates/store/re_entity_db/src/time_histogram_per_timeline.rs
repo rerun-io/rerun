@@ -436,19 +436,29 @@ fn apply_estimate(
 
 impl re_byte_size::SizeBytes for TimeHistogram {
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(RR-3800): better size estimation
-        let Self { timeline: _, hist } = self;
-
         // Calculating the memory use of the time histogram can be slow
         // (tens of ms for 1h-recording).
-        // So we do a dumb heuristic here:
+        // But it can also use a lot of memory
         // TODO(RR-3784): get rid of TimeHistogram completely
-        hist.total_count() * (std::mem::size_of::<u64>() as u64)
+
+        re_tracing::profile_function!();
+
+        let Self { timeline: _, hist } = self;
+
+        let accurate_but_slow = true;
+
+        if accurate_but_slow {
+            hist.heap_size_bytes()
+        } else {
+            // VERY rouch estimate. Can easily be wrong by a factor of 4 in either direction.
+            hist.total_count() * (std::mem::size_of::<u64>() as u64)
+        }
     }
 }
 
 impl re_byte_size::SizeBytes for TimeHistogramPerTimeline {
     fn heap_size_bytes(&self) -> u64 {
+        re_tracing::profile_function!();
         let Self { times, has_static } = self;
         times.heap_size_bytes() + has_static.heap_size_bytes()
     }
@@ -456,6 +466,8 @@ impl re_byte_size::SizeBytes for TimeHistogramPerTimeline {
 
 impl MemUsageTreeCapture for TimeHistogramPerTimeline {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        re_tracing::profile_function!();
+
         let Self { times, has_static } = self;
         _ = has_static;
 

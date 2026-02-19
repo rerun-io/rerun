@@ -686,7 +686,6 @@ pub fn entity_db_button_ui(
 ) -> egui::Response {
     re_tracing::profile_function!();
 
-    use re_byte_size::SizeBytes as _;
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     let app_id_prefix = if include_app_id {
@@ -718,7 +717,7 @@ pub fn entity_db_button_ui(
     }
     .unwrap_or_else(|| "<unknown>".to_owned());
 
-    let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
+    let size = re_format::format_bytes(entity_db.byte_size_of_physical_chunks() as _);
     let title = format!("{app_id_prefix}{recording_name} - {size}");
 
     let store_id = entity_db.store_id().clone();

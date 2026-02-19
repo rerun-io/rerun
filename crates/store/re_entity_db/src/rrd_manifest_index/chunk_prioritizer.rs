@@ -65,7 +65,7 @@ pub struct ChunkPrefetchOptions {
     /// Batch together requests until we reach this size.
     pub max_on_wire_bytes_per_batch: u64,
 
-    /// Total budget for all loaded chunks.
+    /// Total budget for all physical chunks.
     pub total_uncompressed_byte_budget: u64,
 
     /// Maximum number of bytes in transit at once.
@@ -287,16 +287,17 @@ impl RemainingByteBudget {
             if required {
                 if cfg!(target_arch = "wasm32") {
                     re_log::warn_once!(
-                        "Viewing the required data would take more memory than the current budget. Use the native viewer for a higher budget."
+                        "This recording is very memory intense, and the Wasm32 build only has 4GiB of memory. Consider using the native viewer to use all of your RAM."
                     );
                 } else {
                     re_log::warn_once!(
-                        "Viewing the required data would take more memory than the current budget. Increase the memory budget to view this recording."
+                        "The current recording may use more data than your current memory budget."
                     );
                 }
+                true // Risk it! We are conservative in our budgeting
+            } else {
+                false
             }
-
-            false
         } else {
             true
         }

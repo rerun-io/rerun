@@ -285,14 +285,14 @@ impl VideoStreamCache {
                 }
             }
             Err(VideoStreamProcessingError::OutOfOrderSamples) => {
-                re_log::debug!("Found out of order samples");
+                re_log::debug_once!("Found out of order samples");
                 drop(video_stream);
                 // We found out of order samples, discard this video stream cache entry
                 // to reconstruct it with all data in mind.
                 self.0.remove(key);
             }
             Err(VideoStreamProcessingError::UnexpectedChunkChanges) => {
-                re_log::debug!("Unexpected chunk changes");
+                re_log::debug_once!("Unexpected chunk changes");
                 drop(video_stream);
                 // Discard this video stream cache entry to reconstruct it with all data in mind.
                 self.0.remove(key);

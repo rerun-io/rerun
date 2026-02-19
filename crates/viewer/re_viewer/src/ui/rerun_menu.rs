@@ -102,7 +102,7 @@ impl App {
 
         UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
 
-        let has_recording = _store_context.is_some_and(|ctx| !ctx.recording.is_empty());
+        let has_recording = _store_context.is_some();
         ui.add_enabled_ui(has_recording, |ui| {
             UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
         });
@@ -256,7 +256,8 @@ impl App {
                 });
             });
         } else {
-            let entity_db_is_nonempty = store_ctx.is_some_and(|ctx| !ctx.recording.is_empty());
+            let entity_db_is_nonempty =
+                store_ctx.is_some_and(|ctx| 0 < ctx.recording.num_physical_chunks());
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
                     .add(save_recording_button)

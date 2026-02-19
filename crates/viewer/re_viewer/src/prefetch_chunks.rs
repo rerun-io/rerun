@@ -8,7 +8,7 @@ use re_viewer_context::TimeControl;
 
 pub fn prefetch_chunks_for_active_recording(
     egui_ctx: &egui::Context,
-    memory_budget: re_memory::MemoryLimit,
+    chunk_budget: re_memory::MemoryLimit,
     recording: &mut EntityDb,
     time_ctrl: &TimeControl,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
@@ -29,7 +29,7 @@ pub fn prefetch_chunks_for_active_recording(
     }
 
     let options = re_entity_db::ChunkPrefetchOptions {
-        total_uncompressed_byte_budget: memory_budget.as_bytes(),
+        total_uncompressed_byte_budget: chunk_budget.as_bytes(),
         ..Default::default()
     };
 

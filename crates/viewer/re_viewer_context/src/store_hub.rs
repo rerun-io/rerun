@@ -805,21 +805,7 @@ impl StoreHub {
         });
     }
 
-    /// Remove any empty [`EntityDb`]s from the hub
-    pub fn purge_empty(&mut self) {
-        self.retain_recordings(|entity_db| !entity_db.is_empty());
-    }
-
-    pub fn total_memory_used_by_recordings(&self) -> u64 {
-        re_tracing::profile_function!();
-
-        self.store_bundle
-            .recordings()
-            .map(|db| db.total_size_bytes())
-            .sum()
-    }
-
-    /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
+    /// Call [`EntityDb::gc`] on every recording
     ///
     /// `time_cursor_for` can be used for more intelligent targeting of what is to be removed.
     ///
@@ -849,10 +835,11 @@ impl StoreHub {
 
         let mut num_bytes_freed = 0;
 
-        for store_id in background_recording_ids {
-            let time_cursor = time_cursor_for(&store_id);
-            num_bytes_freed +=
-                self.purge_fraction_of_ram_for(fraction_to_purge, &store_id, time_cursor);
+        let target = GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _);
+
+        for store_id in &background_recording_ids {
+            let time_cursor = time_cursor_for(store_id);
+            num_bytes_freed += self.gc_store(target, store_id, time_cursor);
         }
 
         if num_bytes_freed == 0
@@ -861,22 +848,21 @@ impl StoreHub {
             // We didn't free any memory from the background recordings,
             // so try the active one:
             let time_cursor = time_cursor_for(&active_store_id);
-            num_bytes_freed +=
-                self.purge_fraction_of_ram_for(fraction_to_purge, &active_store_id, time_cursor);
+            num_bytes_freed += self.gc_store(target, &active_store_id, time_cursor);
         }
 
         num_bytes_freed
     }
 
-    /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
+    /// Call [`EntityDb::gc`] on every recording
     ///
-    /// `time_cursor_for` can be used for more intelligent targeting of what is to be removed.
+    /// `time_cursor` can be used for more intelligent targeting of what is to be removed.
     //
     // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
     // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
-    fn purge_fraction_of_ram_for(
+    fn gc_store(
         &mut self,
-        fraction_to_purge: f32,
+        target: GarbageCollectionTarget,
         store_id: &StoreId,
         time_cursor: Option<TimelinePoint>,
     ) -> u64 {
@@ -894,19 +880,9 @@ impl StoreHub {
             return 0; // unreachable
         };
 
-        let store_size_before = entity_db
-            .storage_engine()
-            .store()
-            .stats()
-            .total()
-            .total_size_bytes;
-        let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge, time_cursor);
-        let store_size_after = entity_db
-            .storage_engine()
-            .store()
-            .stats()
-            .total()
-            .total_size_bytes;
+        let store_size_before = entity_db.total_size_bytes();
+        let store_events = entity_db.gc_with_target(target, time_cursor);
+        let store_size_after = entity_db.total_size_bytes();
 
         if let Some(caches) = self.caches_per_recording.get_mut(store_id) {
             caches.on_store_events(&store_events, entity_db);
@@ -915,7 +891,7 @@ impl StoreHub {
         let num_bytes_freed = store_size_before.saturating_sub(store_size_after);
 
         // No point keeping an empty recording around… but don't close the active one.
-        if entity_db.is_empty() && !is_active_recording {
+        if entity_db.num_physical_chunks() == 0 && !is_active_recording {
             self.remove_store(store_id);
             return store_size_before;
         }

@@ -864,6 +864,11 @@ impl ChunkStore {
         self.chunks_per_chunk_id.len()
     }
 
+    /// All the currently loaded chunks
+    pub fn physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
+        self.chunks_per_chunk_id.values()
+    }
+
     /// Lookup the _latest_ [`TimeType`] used by a specific [`TimelineName`].
     #[inline]
     pub fn time_column_type(&self, timeline_name: &TimelineName) -> Option<TimeType> {

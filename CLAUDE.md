@@ -27,7 +27,7 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
 - `pixi run codegen` - Generate Rust/Python/C++ code from .fbs type definitions
 
 **Formatting:**
-- `pixi run rs-fmt` - Format Rust files
+- `pixi run rs-fmt` - Format all Rust files. Always run this after making changes.
 - `pixi run py-fmt` - Format Python files
 - `pixi run cpp-fmt` - Format C++ files
 - `pixi run toml-fmt` - Format TOML files

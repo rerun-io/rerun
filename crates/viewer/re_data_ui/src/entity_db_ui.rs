@@ -4,6 +4,7 @@ use egui::NumExt as _;
 use jiff::SignedDuration;
 use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
 use re_byte_size::SizeBytes as _;
+use re_chunk_store::Chunk;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::{EntityDb, RrdManifestIndex};
 use re_format::{format_bytes, format_uint};
@@ -110,12 +111,7 @@ impl crate::DataUi for EntityDb {
 
         if cfg!(debug_assertions) && !ctx.global_context.is_test {
             ui.collapsing_header("Debug info", true, |ui| {
-                ui.weak("(only visible in debug builds)");
-                egui::Grid::new("debug-info").show(ui, |ui| {
-                    ui.label("is_buffering");
-                    ui.label(self.is_buffering().to_string());
-                    ui.end_row();
-                });
+                debug_ui(ui, self);
             });
         }
     }
@@ -212,7 +208,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
     {
         ui.grid_left_hand_label("Size");
 
-        let current_size_bytes = db.total_size_bytes();
+        let current_size_bytes = db.byte_size_of_physical_chunks();
         let full_size_bytes = if db.rrd_manifest_index().has_manifest() {
             db.rrd_manifest_index()
                 .full_uncompressed_size()
@@ -412,4 +408,79 @@ fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
     for entity in &entities {
         ui.label(format!("  - {entity}"));
     }
+}
+
+fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
+    ui.weak("(only visible in debug builds)");
+    egui::Grid::new("debug-info").show(ui, |ui| {
+        ui.label("is_buffering");
+        ui.label(db.is_buffering().to_string());
+        ui.end_row();
+
+        ui.label("Physical chunks");
+        ui.label(format_bytes(db.byte_size_of_physical_chunks() as _));
+        ui.end_row();
+
+        ui.label("App overhead");
+        if let Some(overhead) = db.estimated_application_overhead_bytes {
+            ui.label(format_bytes(overhead as _));
+        }
+        ui.end_row();
+    });
+
+    protected_chunks_ui(ui, db);
+}
+
+fn protected_chunks_ui(ui: &mut egui::Ui, db: &EntityDb) {
+    #![expect(clippy::iter_over_hash_type)] // just summing sizes, order doesn't matter
+
+    let rrd_manifest_index = db.rrd_manifest_index();
+    let protected = rrd_manifest_index.chunk_prioritizer().protected_chunks();
+
+    if protected.roots.is_empty() && protected.physical.is_empty() {
+        return;
+    }
+
+    let manifest = rrd_manifest_index.manifest();
+    let store = db.storage_engine();
+    let store = store.store();
+
+    // Compute root (virtual) chunk sizes from the manifest
+    let mut roots_total_bytes: u64 = 0;
+    if let Some(manifest) = &manifest {
+        let col_sizes = manifest.col_chunk_byte_size_uncompressed();
+        for root_id in &protected.roots {
+            if let Some(info) = rrd_manifest_index.root_chunk_info(root_id) {
+                roots_total_bytes += col_sizes[info.row_id];
+            }
+        }
+    }
+
+    // Compute physical chunk sizes from the store
+    let mut physical_total_bytes: u64 = 0;
+    for chunk_id in &protected.physical {
+        if let Some(chunk) = store.physical_chunk(chunk_id) {
+            physical_total_bytes += Chunk::total_size_bytes(chunk.as_ref());
+        }
+    }
+
+    ui.add_space(4.0);
+    ui.label("Protected chunks");
+    egui::Grid::new("protected-chunks").show(ui, |ui| {
+        ui.label("Roots");
+        ui.label(format!(
+            "{} chunks, {}",
+            format_uint(protected.roots.len()),
+            format_bytes(roots_total_bytes as _),
+        ));
+        ui.end_row();
+
+        ui.label("Physical");
+        ui.label(format!(
+            "{} chunks, {}",
+            format_uint(protected.physical.len()),
+            format_bytes(physical_total_bytes as _),
+        ));
+        ui.end_row();
+    });
 }

@@ -142,6 +142,12 @@ pub struct EntityDb {
     /// Lazily calculated
     store_size_bytes: StoreSizeBytes,
 
+    /// How much RAM the whole application uses beyond the raw physical chunks in this recording.
+    ///
+    /// This is estimated by the viewer after a GC pass, when there is only one recording loaded.
+    /// Includes primary and secondary indices, (purged) caches, fonts, icons, and other overhead.
+    pub estimated_application_overhead_bytes: Option<u64>,
+
     stats: IngestionStatistics,
 }
 
@@ -199,6 +205,7 @@ impl EntityDb {
             time_histogram_per_timeline: Default::default(),
             storage_engine,
             store_size_bytes: StoreSizeBytes(Mutex::new(None)),
+            estimated_application_overhead_bytes: None,
             stats: IngestionStatistics::default(),
         }
     }
@@ -249,6 +256,24 @@ impl EntityDb {
     #[inline]
     pub fn storage_engine(&self) -> StorageEngineReadGuard<'_> {
         self.storage_engine.read()
+    }
+
+    /// Number of physical chunks currently loaded.
+    pub fn num_physical_chunks(&self) -> usize {
+        re_tracing::profile_function!();
+        self.storage_engine().store().num_physical_chunks()
+    }
+
+    /// The total size of the physical chunks currently loaded in memory.
+    ///
+    /// This is the evictable data — the raw arrow chunk data that can be GC'd.
+    pub fn byte_size_of_physical_chunks(&self) -> u64 {
+        re_tracing::profile_function!();
+        self.storage_engine()
+            .store()
+            .physical_chunks()
+            .map(|chunk| Chunk::total_size_bytes(chunk.as_ref()))
+            .sum()
     }
 
     pub fn rrd_manifest_index_mut_and_storage_engine(
@@ -306,9 +331,9 @@ impl EntityDb {
 
     /// Are we currently in the process of downloading the RRD Manifest?
     pub fn is_currently_downloading_manifest(&self) -> bool {
-        // The `num_rows == 0` check handles the case where we tried and failed to download the manifest,
+        // The `num_physical_chunks == 0` check handles the case where we tried and failed to download the manifest,
         // but managed to download the data anyhow.
-        self.num_rows() == 0
+        self.num_physical_chunks() == 0
             && !self.rrd_manifest_index.has_manifest()
             && self.can_fetch_chunks_from_redap()
     }
@@ -324,7 +349,7 @@ impl EntityDb {
             return false;
         }
 
-        if self.num_rows() == 0 {
+        if self.num_physical_chunks() == 0 {
             return true; // waiting for initial data
         }
 
@@ -587,11 +612,6 @@ impl EntityDb {
         self.time_histogram_per_timeline.get(timeline)
     }
 
-    #[inline]
-    pub fn num_rows(&self) -> u64 {
-        self.storage_engine.read().store().stats().total().num_rows
-    }
-
     /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
     #[inline]
@@ -610,11 +630,6 @@ impl EntityDb {
     #[inline]
     pub fn latest_row_id(&self) -> Option<RowId> {
         self.latest_row_id
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.set_store_info.is_none() && self.num_rows() == 0
     }
 
     /// A sorted list of all the entity paths in this database.
@@ -799,14 +814,12 @@ impl EntityDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(
+    pub fn gc_with_target(
         &mut self,
-        fraction_to_purge: f32,
+        target: GarbageCollectionTarget,
         time_cursor: Option<TimelinePoint>,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
-
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let protected_chunks = self
             .rrd_manifest_index
@@ -816,7 +829,7 @@ impl EntityDb {
             .clone();
 
         let store_events = self.gc(&GarbageCollectionOptions {
-            target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
+            target,
             time_budget: DEFAULT_GC_TIME_BUDGET,
 
             #[expect(clippy::bool_to_int_with_if)]
@@ -855,10 +868,7 @@ impl EntityDb {
             // to regain some space.
             // See <https://github.com/rerun-io/rerun/issues/7369#issuecomment-2335164098> for the
             // complete rationale.
-            self.storage_engine
-                .write()
-                .cache()
-                .purge_fraction_of_ram(fraction_to_purge);
+            self.storage_engine.write().cache().gc(target);
         } else {
             self.on_store_events(&store_events);
         }
@@ -1189,6 +1199,7 @@ impl re_byte_size::SizeBytes for EntityDb {
             time_histogram_per_timeline,
             storage_engine,
             store_size_bytes,
+            estimated_application_overhead_bytes: _,
             stats: _,
         } = self;
 
@@ -1233,6 +1244,7 @@ impl MemUsageTreeCapture for EntityDb {
             last_modified_at: _,
             latest_row_id: _,
             store_size_bytes: _,
+            estimated_application_overhead_bytes: _,
             stats: _,
         } = self;
 

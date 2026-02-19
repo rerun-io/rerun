@@ -24,6 +24,9 @@ use crate::RowId;
 
 #[derive(Debug, Clone, Copy)]
 pub enum GarbageCollectionTarget {
+    /// Try to drop _at least_ the given number of bytes.
+    DropAtLeastBytes(u64),
+
     /// Try to drop _at least_ the given fraction.
     ///
     /// The fraction must be a float in the range [0.0 : 1.0].
@@ -31,6 +34,35 @@ pub enum GarbageCollectionTarget {
 
     /// GC Everything that isn't [protected](GarbageCollectionOptions::protect_latest).
     Everything,
+}
+
+impl GarbageCollectionTarget {
+    /// How many bytes should be dropped, given the total number of bytes.
+    pub fn target_bytes_from_size(self, total_size_before: u64) -> u64 {
+        match self {
+            Self::DropAtLeastBytes(n) => n,
+            Self::DropAtLeastFraction(p) => {
+                re_log::debug_assert!((0.0..=1.0).contains(&p));
+                (total_size_before as f64 * p).round() as u64
+            }
+            Self::Everything => u64::MAX,
+        }
+    }
+
+    /// What fraction of the total bytes should be dropped.
+    pub fn target_fraction_from_size(self, total_size_before: u64) -> f32 {
+        match self {
+            Self::DropAtLeastFraction(f) => f as f32,
+            Self::DropAtLeastBytes(n) => {
+                if total_size_before == 0 {
+                    0.0
+                } else {
+                    n as f32 / total_size_before as f32
+                }
+            }
+            Self::Everything => 1.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -113,6 +145,9 @@ impl GarbageCollectionOptions {
 impl std::fmt::Display for GarbageCollectionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::DropAtLeastBytes(bytes) => {
+                write!(f, "DropAtLeast({})", re_format::format_bytes(*bytes as _))
+            }
             Self::DropAtLeastFraction(p) => {
                 write!(f, "DropAtLeast({:.3}%)", *p * 100.0)
             }
@@ -164,41 +199,24 @@ impl ChunkStore {
         let total_num_chunks_before = stats_before.total().num_chunks;
         let total_num_rows_before = stats_before.total().num_rows;
 
-        let diffs = match options.target {
-            GarbageCollectionTarget::DropAtLeastFraction(p) => {
-                assert!((0.0..=1.0).contains(&p));
+        let target_bytes_to_drop = options
+            .target
+            .target_bytes_from_size(total_size_bytes_before);
+        let target_size_bytes = total_size_bytes_before.saturating_sub(target_bytes_to_drop);
 
-                let target_bytes_to_drop = (total_size_bytes_before as f64 * p).round() as u64;
-                let target_size_bytes = total_size_bytes_before - target_bytes_to_drop;
+        re_log::trace!(
+            kind = "gc",
+            id = self.gc_id,
+            %options.target,
+            total_num_chunks_before = re_format::format_uint(total_num_chunks_before),
+            total_num_rows_before = re_format::format_uint(total_num_rows_before),
+            total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
+            target_size_bytes = re_format::format_bytes(target_size_bytes as _),
+            drop_at_least_num_bytes = re_format::format_bytes(target_bytes_to_drop as _),
+            "starting GC"
+        );
 
-                re_log::trace!(
-                    kind = "gc",
-                    id = self.gc_id,
-                    %options.target,
-                    total_num_chunks_before = re_format::format_uint(total_num_chunks_before),
-                    total_num_rows_before = re_format::format_uint(total_num_rows_before),
-                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
-                    target_size_bytes = re_format::format_bytes(target_size_bytes as _),
-                    drop_at_least_num_bytes = re_format::format_bytes(target_bytes_to_drop as _),
-                    "starting GC"
-                );
-
-                self.gc_drop_at_least_num_bytes(options, target_bytes_to_drop)
-            }
-
-            GarbageCollectionTarget::Everything => {
-                re_log::trace!(
-                    kind = "gc",
-                    id = self.gc_id,
-                    %options.target,
-                    total_num_rows_before = re_format::format_uint(total_num_rows_before),
-                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
-                    "starting GC"
-                );
-
-                self.gc_drop_at_least_num_bytes(options, u64::MAX)
-            }
-        };
+        let diffs = self.gc_drop_at_least_num_bytes(options, target_bytes_to_drop);
 
         let stats_after = self.stats();
         let total_size_bytes_after = stats_after.total().total_size_bytes;

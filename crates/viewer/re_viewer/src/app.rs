@@ -2516,7 +2516,7 @@ impl App {
             entity_db.data_source = Some((*channel_source).clone());
         }
 
-        let was_empty = entity_db.is_empty();
+        let was_empty = entity_db.num_physical_chunks() == 0;
         let entity_db_add_result = entity_db.add_log_msg(msg);
 
         match entity_db_add_result {
@@ -2537,7 +2537,8 @@ impl App {
         // Note: some of the logic above is duplicated in `fn prefetch_chunks`.
         // Make sure they are kept in sync!
 
-        if was_empty && !entity_db.is_empty() {
+        let is_empty = entity_db.num_physical_chunks() == 0;
+        if was_empty && !is_empty {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
             // Now we _hopefully_ do.
             if let LogSource::RedapGrpcStream { uri, .. } = channel_source {
@@ -2883,6 +2884,19 @@ impl App {
                     format_bytes(counted_diff as _),
                     100.0 * counted_diff as f32 / counted_before as f32
                 );
+            }
+
+            if store_hub.store_bundle().recordings().count() == 1 {
+                // We're in a unique spot to accurately estimate how much
+                // EXTRA memory we use, beyond the raw chunks of memory.
+                // This is the true overhead of all book-keeping and unaccounted memory.
+                // This is the (currently) unevictable memory!
+                if let Some(current_mem_use) = mem_use_after.counted.or(mem_use_after.resident)
+                    && let Some(entity_db) = store_hub.store_bundle_mut().recordings_mut().next()
+                {
+                    entity_db.estimated_application_overhead_bytes =
+                        Some(current_mem_use - entity_db.byte_size_of_physical_chunks());
+                }
             }
 
             self.memory_panel.note_memory_purge();
@@ -3311,17 +3325,21 @@ impl App {
             // There is some fixed overhead in the process that we cannot purge.
             // This includes things like fonts, icons, etc.
             // We also want some headroom for spikes.
-            let fixed_memory_overhead = 300_000_000;
+            let overhead = recording
+                .estimated_application_overhead_bytes
+                .unwrap_or(300_000_000 + unpurgable_cache_size);
 
             // Leave some extra headroom (beyond the fixed overhead) for
             // * secondary indices
             // * failures in our accounting
-            let fixed_fraction_overhead = 0.20;
+            let fixed_fraction_overhead =
+                if recording.estimated_application_overhead_bytes.is_some() {
+                    0.10 // We have a good estimate, so we need less headroom
+                } else {
+                    0.20
+                };
 
-            let memory_budget = self
-                .startup_options
-                .memory_limit
-                .saturating_sub(fixed_memory_overhead + unpurgable_cache_size);
+            let memory_budget = self.startup_options.memory_limit.saturating_sub(overhead);
 
             let memory_budget = memory_budget.split(fixed_fraction_overhead).1;
 
@@ -3329,7 +3347,7 @@ impl App {
                 re_log::warn_once!("Very little memory budget left for active recording.");
             }
 
-            // If we can't afford at least this much for the active recording, then what is even the point?
+            // If we can't afford at least this much for data, then what is even the point?
             let memory_budget = memory_budget.at_least(100_000_000);
 
             // eprintln!("Memory budget for active recording: {memory_budget}");
@@ -3582,7 +3600,6 @@ impl eframe::App for App {
             store_hub.gc_blueprints(&self.state.blueprint_undo_state);
         }
 
-        store_hub.purge_empty();
         self.state.cleanup(&store_hub);
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
