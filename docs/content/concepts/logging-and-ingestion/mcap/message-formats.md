@@ -3,30 +3,55 @@ title: Supported Message Formats
 order: 200
 ---
 
-Rerun provides automatic visualization for common message types in MCAP files through different processing layers.
+Rerun provides automatic visualization for common message types in MCAP files:
 
-## ROS2 message types
+* ROS 2 messages
+* Foxglove schemas (Protobuf)
 
-The `ros2msg` layer provides automatic conversion of common ROS2 messages to Rerun archetypes that can be visualized, e.g.:
+## Overview
 
-- **`sensor_msgs`**
-- **`std_msgs`**
-- **`geometry_msgs`**
-- **`builtin_interfaces`**
-- **`tf2_msgs`**
+This table shows an overview of the ROS 2 and Foxglove message schemas that are automatically converted to Rerun archetypes.
 
-We are continually adding support for more standard ROS2 message types. For the complete list of currently supported messages, see the [ROS2 message parsers in our codebase](https://github.com/rerun-io/rerun/blob/main/crates/store/re_mcap/src/layers/ros2.rs).
+We are continually adding support for more standard message types.
+
+| Modality | ROS 2 | Foxglove Protobuf | Rerun Archetypes |
+| --- | --- | --- | --- |
+| Raw image | `sensor_msgs/Image` | `RawImage` | [Image](../../../reference/types/archetypes/image.md), [DepthImage](../../../reference/types/archetypes/depth_image.md) |
+| Encoded image | `sensor_msgs/CompressedImage` | `CompressedImage` | [EncodedImage](../../../reference/types/archetypes/encoded_image.md), [EncodedDepthImage](../../../reference/types/archetypes/encoded_depth_image.md) |
+| Video | `sensor_msgs/CompressedImage` (h264) | `CompressedVideo` | [VideoStream](../../../reference/types/archetypes/video_stream.md) |
+| Camera calibration | `sensor_msgs/CameraInfo` | `CameraCalibration` | [Pinhole](../../../reference/types/archetypes/pinhole.md) |
+| Point cloud | `sensor_msgs/PointCloud2` | `PointCloud` | [Points3D](../../../reference/types/archetypes/points3d.md) |
+| Geo points | `sensor_msgs/NavSatFix` | `LocationFix`, `LocationFixes`* | [GeoPoints](../../../reference/types/archetypes/geo_points.md) |
+| Transforms | `tf2_msgs/TFMessage` | `FrameTransform`, `FrameTransforms` | [Transform3D](../../../reference/types/archetypes/transform3d.md) |
+| Poses | `geometry_msgs/PoseStamped` | `PoseInFrame`, `PosesInFrame` | [InstancePoses3D](../../../reference/types/archetypes/instance_poses3d.md) |
+| Coordinate frame | `.frame_id` field in `std_msgs/Header` | `.frame_id` field | [CoordinateFrame](../../../reference/types/archetypes/coordinate_frame.md)
+| Magnetic field | `sensor_msgs/MagneticField` | - | [Arrows3D](../../../reference/types/archetypes/arrows3d.md) |
+| Misc. scalar sensor data | `sensor_msgs/Imu`, `sensor_msgs/JointState`, `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`, `sensor_msgs/Range`, `sensor_msgs/BatteryState` | - | [Scalars](../../../reference/types/archetypes/scalars.md) |
+| Text | `std_msgs/String` | - | [TextDocument](../../../reference/types/archetypes/text_document.md) |
+| Log messages | `rcl_interfaces/Log` | `Log` | [TextLog](../../../reference/types/archetypes/text_log.md) |
+
+> *Support for `LocationFix` is coming soon.
 
 ### Timelines
 
-In addition to the `message_log_time` and `message_publish_time` timestamps that are part of an MCAP message, some ROS message payloads can have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto specific `ros2_*` timelines.
+The MCAP data loader adds [timelines](../../../concepts/logging-and-ingestion/timelines.md) based on the message timestamps.
+
+In addition to the `message_log_time` and `message_publish_time` timestamps that are part of every MCAP message, we also add timelines with the application-specific timestamps from ROS and Foxglove schemas.
+
+#### ROS
+
+Most ROS message payloads have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto specific `ros2_*` timelines.
 
 Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline. Values outside this range create a `ros2_duration` timeline representing relative time from custom epochs.
 
-### ROS 2 transforms (TF)
+#### Foxglove
 
-[`tf2_msgs/TFMessage`](https://docs.ros2.org/foxy/api/tf2_msgs/msg/TFMessage.html) is converted to [`Transform3D`](../../../reference/types/archetypes/transform3d.md), with `parent_frame` and `child_frame` set according to the `frame_id` and `child_frame_id` of each `geometry_msgs/TransformStamped` contained in the message's `transforms` list.
-The timestamps of the individual transforms are put onto the `ros2_*` timelines, allowing the viewer to resolve the spatial relationships between frames over time similar to a TF buffer in ROS.
+Data from schemas containing a `.timestamp` field is put onto a `timestamp` timeline.
+
+### Transforms (TF)
+
+Transform messages are converted to [`Transform3D`](../../../reference/types/archetypes/transform3d.md), with `parent_frame` and `child_frame` set according to the `frame_id` and `child_frame_id` of each `geometry_msgs/TransformStamped` contained in the message's `transforms` list.
+The timestamps of the individual transforms are put onto the respective timelines, allowing the viewer to resolve the spatial relationships between frames over time similar to a TF buffer in ROS.
 
 > You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
 
@@ -37,9 +62,9 @@ If you have transforms that correspond to joints in a robot model, you can also 
     <source src="https://static.rerun.io/83f26961023d5f554175ebc48d1292e218db1212_add_axes_visualizer.mp4" type="video/mp4" />
 </video>
 
-### ROS 2 poses and frame IDs
+### Poses and frame IDs
 
-[`geometry_msgs/PoseStamped`](https://docs.ros2.org/foxy/api/geometry_msgs/msg/PoseStamped.html) is converted to [`InstancePoses3D`](../../../reference/types/archetypes/instance_poses3d.md) with a [`CoordinateFrame`](../../../reference/types/archetypes/coordinate_frame.md) on the same entity path.
+Pose messages are converted to [`InstancePoses3D`](../../../reference/types/archetypes/instance_poses3d.md) with a [`CoordinateFrame`](../../../reference/types/archetypes/coordinate_frame.md) on the same entity path.
 Just like `Transform3D`, you can visualize these poses in the viewer by selecting the entity and adding a `TransformAxes3D` visualizer in the selection panel.
 Note that the visualization requires the parent coordinate frame of the pose to be known, i.e. part of the transform hierarchy of your data.
 
@@ -52,12 +77,15 @@ The `ros2_reflection` layer automatically decodes ROS2 messages using runtime re
 
 ## ROS1 message types
 
-ROS1 messages are not currently supported for semantic interpretation through any layer.
+ROS1 messages are currently not supported for semantic interpretation through any layer.
 The `raw` and `schema` layers are able to preserve the original bytes and structure of the messages.
 
 ## Protobuf messages
 
-The `protobuf` layer automatically decodes protobuf-encoded messages using schema reflection. Fields become queryable components, but no automatic visualizations are created.
+Not all Foxglove Protobuf messages are currently supported. Additionally, MCAP files allow for custom Protobuf definitions and are not restricted to the Foxglove Protobuf schemas.
+
+The `protobuf` layer automatically decodes these unknown protobuf-encoded messages using schema reflection. Fields become queryable components (e.g. for training data curation), but no automatic visualizations are created.
+Depending on the contents of your data, you can still manually add visualizers like time-series or dataframe views to your blueprint.
 
 ## Adding support for new types
 
