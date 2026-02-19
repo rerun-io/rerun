@@ -207,6 +207,7 @@ impl ItemCollection {
             AppId,
             StoreId,
             EntityPath,
+            ComponentPath,
         }
 
         #[expect(clippy::match_same_arms)]
@@ -214,8 +215,9 @@ impl ItemCollection {
             .iter()
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
-                // TODO(gijsd): These are copyable, but we're currently unable to display a meaningful toast.
-                Item::ComponentPath(_) => None,
+                Item::ComponentPath(component_path) => {
+                    Some((ClipboardTextDesc::ComponentPath, component_path.to_string()))
+                }
                 Item::View(_) => None,
                 // TODO(lucasmerlin): Should these be copyable as URLs?
                 Item::RedapServer(_) => None,
@@ -266,6 +268,7 @@ impl ItemCollection {
                 ClipboardTextDesc::AppId => "app id",
                 ClipboardTextDesc::StoreId => "store id",
                 ClipboardTextDesc::EntityPath => "entity path",
+                ClipboardTextDesc::ComponentPath => "component path",
             };
             if !content_description.is_empty() {
                 content_description.push_str(", ");
