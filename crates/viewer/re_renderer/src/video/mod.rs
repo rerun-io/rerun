@@ -235,6 +235,56 @@ impl Video {
         })
     }
 
+    /// Notify players that samples were inserted/removed at `splice_start`,
+    /// changing the deque size by `size_delta`.
+    ///
+    /// Players whose active decoder pipeline overlaps the insertion region
+    /// are fully reset. All others just have their indices shifted.
+    pub fn handle_sample_insertion(
+        &self,
+        change_start: re_video::SampleIndex,
+        change_end: re_video::SampleIndex,
+        size_delta: isize,
+    ) {
+        let mut players = self.players.lock();
+        for entry in players.values_mut() {
+            let player = &mut entry.player;
+
+            // If the insertion falls within the player's active GOP range
+            // the decoder has a hole of missing samples and needs reset.
+            let needs_reset = {
+                let indices = player
+                    .last_enqueued()
+                    .into_iter()
+                    .chain(player.last_requested());
+
+                indices
+                    .map(|idx| {
+                        let keyframe_idx = self.video_description.sample_keyframe_idx(idx)?;
+
+                        self.video_description
+                            .gop_sample_range_for_keyframe(keyframe_idx)
+                    })
+                    .reduce(|a, b| {
+                        a.zip(b)
+                            .map(|(a, b)| a.start.min(b.start)..a.end.max(b.end))
+                    })
+                    .flatten()
+                    .is_some_and(|gop| {
+                        // Check if the gop range overlaps with the changed samples range.
+                        gop.start <= change_end && change_start < gop.end
+                    })
+            };
+
+            if needs_reset {
+                player.reset(&self.video_description).ok_or_log_error_once();
+            } else {
+                // Shift player indices to the new index space.
+                player.shift_indices(change_end, size_delta);
+            }
+        }
+    }
+
     /// Removes all decoders that have been unused in the last frame.
     ///
     /// Decoders are very memory intensive, so they should be cleaned up as soon they're no longer needed.

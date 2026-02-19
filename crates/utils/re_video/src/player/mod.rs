@@ -350,7 +350,7 @@ pub fn request_keyframe_before<'a>(
             crate::SampleMetadataState::Present(s) => s.is_sync,
             // We don't know if this is a keyframe or not. So we stop here and wait for it
             // to be loaded.
-            crate::SampleMetadataState::Unloaded(_) => true,
+            crate::SampleMetadataState::Unloaded { .. } => true,
         })
     {
         // Request all the sources from the unloaded/keyframe up until the current index to
@@ -374,7 +374,7 @@ pub fn request_keyframe_before<'a>(
                     }
                     VideoPlayerError::BadData
                 }),
-            crate::SampleMetadataState::Unloaded(_) => {
+            crate::SampleMetadataState::Unloaded { .. } => {
                 Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into())
             }
         }
@@ -738,11 +738,15 @@ impl<T: Default> VideoPlayer<T> {
             }
 
             match video_description.samples.get(last_enqueued + 1) {
-                Some(crate::SampleMetadataState::Unloaded(source)) => {
+                Some(crate::SampleMetadataState::Unloaded {
+                    source_id,
+                    min_dts: _,
+                }) => {
                     // So far we have only requested backwards from the requested
                     // sample. This will request forward for when we're enqueueing
                     // infront of a sample.
-                    get_video_buffer(*source);
+                    get_video_buffer(*source_id);
+
                     // We require all samples and one additional we're enqueuing before the requested
                     // sample to be present.
                     //
@@ -953,7 +957,8 @@ impl<T: Default> VideoPlayer<T> {
         {
             let sample = match sample {
                 crate::SampleMetadataState::Present(sample) => sample,
-                crate::SampleMetadataState::Unloaded(_) => {
+                crate::SampleMetadataState::Unloaded { .. } => {
+                    // We handle unloaded samples in `Self::enqueue_samples`
                     return Ok(());
                 }
             };
@@ -982,6 +987,33 @@ impl<T: Default> VideoPlayer<T> {
         self.signaled_end_of_video = false;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
+    }
+
+    /// The index of the last sample that was enqueued to the decoder, if any.
+    pub fn last_enqueued(&self) -> Option<SampleIndex> {
+        self.last_enqueued
+    }
+
+    pub fn last_requested(&self) -> Option<SampleIndex> {
+        self.last_requested
+    }
+
+    /// Shift index tracking after a splice at `splice_start` that changed the
+    /// sample deque size by `delta` (positive = grew, negative = shrank).
+    ///
+    /// This does NOT reset the decoder -- the caller should decide whether a
+    /// reset is needed based on the player's active GOP range.
+    pub fn shift_indices(&mut self, change_end: SampleIndex, delta: isize) {
+        for i in [&mut self.last_enqueued, &mut self.last_requested]
+            .into_iter()
+            .flatten()
+        {
+            if *i >= change_end {
+                *i = i.saturating_add_signed(delta);
+            }
+        }
+        // We can't be sure the end-of-video state is still valid.
+        self.signaled_end_of_video = false;
     }
 
     /// Given the current decoder delay state, update it based on the new requested frame and the last decoded frame.

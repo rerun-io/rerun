@@ -304,7 +304,7 @@ impl VideoDataDescription {
                         return Err(format!("Keyframe {keyframe} is not marked with `is_sync`."));
                     }
                 }
-                SampleMetadataState::Unloaded(_) => {
+                SampleMetadataState::Unloaded { .. } => {
                     return Err(format!("Keyframe {keyframe} refers to an unloaded sample"));
                 }
             }
@@ -326,13 +326,13 @@ impl VideoDataDescription {
 
     fn sanity_check_samples(&self) -> Result<(), String> {
         // Decode timestamps are monotonically increasing.
-        for (a, b) in self.samples.iter().tuple_windows() {
+        for ((a_idx, a), (b_idx, b)) in self.samples.iter_indexed().tuple_windows() {
             if let SampleMetadataState::Present(a) = a
                 && let SampleMetadataState::Present(b) = b
                 && a.decode_timestamp > b.decode_timestamp
             {
                 return Err(format!(
-                    "Decode timestamps are not monotonically increasing: {:?} {:?}",
+                    "Decode timestamps for {a_idx}..{b_idx} are not monotonically increasing: {:?} {:?}",
                     a.decode_timestamp, b.decode_timestamp
                 ));
             }
@@ -876,36 +876,86 @@ pub enum SampleMetadataState {
     Present(SampleMetadata),
 
     /// The source for this sample hasn't arrived yet.
-    Unloaded(Tuid),
+    ///
+    /// `min_dts` is the minimum decode time of this unloaded sample.
+    Unloaded { source_id: Tuid, min_dts: Time },
 }
 
 impl SampleMetadataState {
     pub fn sample(&self) -> Option<&SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
-            Self::Unloaded(_) => None,
+            Self::Unloaded { .. } => None,
         }
     }
 
     pub fn sample_mut(&mut self) -> Option<&mut SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
-            Self::Unloaded(_) => None,
+            Self::Unloaded { .. } => None,
         }
     }
 
     pub fn source_id(&self) -> Tuid {
         match self {
             Self::Present(sample) => sample.source_id,
-            Self::Unloaded(id) => *id,
+            Self::Unloaded { source_id, .. } => *source_id,
         }
     }
 
     pub fn source_id_mut(&mut self) -> &mut Tuid {
         match self {
             Self::Present(sample) => &mut sample.source_id,
-            Self::Unloaded(id) => id,
+            Self::Unloaded { source_id, .. } => source_id,
         }
+    }
+
+    /// Get the samples decode timestamp.
+    ///
+    /// In the case of this being an unloaded sample, the timestamp
+    /// is a conservative guess. If the sample has never been loaded
+    /// all samples from a data source are located at the start of
+    /// said data source. If it has been loaded we retain the dts from
+    /// the actual loaded sample and assume next time this sample is
+    /// loaded it will have the same dts.
+    pub fn decode_timestamp(&self) -> Time {
+        match self {
+            Self::Present(sample) => sample.decode_timestamp,
+            Self::Unloaded { min_dts, .. } => *min_dts,
+        }
+    }
+
+    pub fn unload(&mut self, new_source_id: Option<Tuid>) {
+        match self {
+            Self::Present(sample) => {
+                let dts = sample.decode_timestamp;
+                let source_id = new_source_id.unwrap_or(sample.source_id);
+
+                *self = Self::Unloaded {
+                    source_id,
+                    min_dts: dts,
+                }
+            }
+            Self::Unloaded {
+                source_id,
+                min_dts: _,
+            } => {
+                if let Some(new_source_id) = new_source_id {
+                    *source_id = new_source_id;
+                }
+            }
+        }
+    }
+
+    pub fn is_loaded(&self) -> bool {
+        match self {
+            Self::Present(_) => true,
+            Self::Unloaded { .. } => false,
+        }
+    }
+
+    pub fn is_unloaded(&self) -> bool {
+        !self.is_loaded()
     }
 }
 
@@ -913,7 +963,10 @@ impl re_byte_size::SizeBytes for SampleMetadataState {
     fn heap_size_bytes(&self) -> u64 {
         match self {
             Self::Present(sample_metadata) => sample_metadata.heap_size_bytes(),
-            Self::Unloaded(c) => c.heap_size_bytes(),
+            Self::Unloaded {
+                source_id: _,
+                min_dts: _,
+            } => 0,
         }
     }
 }
