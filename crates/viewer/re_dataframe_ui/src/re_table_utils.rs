@@ -1,7 +1,7 @@
 use ahash::HashSet;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::emath::GuiRounding as _;
-use egui::{Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
+use egui::{Color32, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
 pub const CELL_SEPARATOR_STROKE_OFFSET: f32 = 0.5;
@@ -171,8 +171,8 @@ impl TableConfig {
     }
 
     /// Remove the table config from the cache.
-    pub fn clear_state(ctx: &Context, persisted_id: Id) {
-        ctx.data_mut(|data| {
+    pub fn clear_state(egui_ctx: &egui::Context, persisted_id: Id) {
+        egui_ctx.data_mut(|data| {
             data.remove::<Self>(persisted_id);
         });
     }
@@ -185,11 +185,11 @@ impl TableConfig {
     ///
     /// Don't forget to call [`Self::store`] to persist the changes.
     pub fn get_with_columns(
-        ctx: &Context,
+        egui_ctx: &egui::Context,
         persisted_id: Id,
         columns: impl Iterator<Item = ColumnConfig>,
     ) -> Self {
-        ctx.data_mut(|data| {
+        egui_ctx.data_mut(|data| {
             let config: &mut Self =
                 data.get_persisted_mut_or_insert_with(persisted_id, || Self::new(persisted_id));
 
@@ -221,8 +221,8 @@ impl TableConfig {
         })
     }
 
-    pub fn store(self, ctx: &Context) {
-        ctx.data_mut(|data| {
+    pub fn store(self, egui_ctx: &egui::Context) {
+        egui_ctx.data_mut(|data| {
             data.insert_persisted(self.id, self);
         });
     }

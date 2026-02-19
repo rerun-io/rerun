@@ -50,11 +50,11 @@ impl FilterState {
     ///
     /// Call this at the beginning of the frame.
     pub fn load_or_init_from_blueprint(
-        ctx: &egui::Context,
+        egui_ctx: &egui::Context,
         persisted_id: egui::Id,
         table_blueprint: &TableBlueprint,
     ) -> Self {
-        ctx.data_mut(|data| {
+        egui_ctx.data_mut(|data| {
             data.get_temp_mut_or_insert_with(persisted_id, || Self {
                 column_filters: table_blueprint.column_filters.clone(),
                 active_filter: None,
@@ -66,8 +66,8 @@ impl FilterState {
     /// Store the state to the temporary memory.
     ///
     /// Call this at the end of the frame.
-    pub fn store(self, ctx: &egui::Context, persisted_id: egui::Id) {
-        ctx.data_mut(|data| {
+    pub fn store(self, egui_ctx: &egui::Context, persisted_id: egui::Id) {
+        egui_ctx.data_mut(|data| {
             data.insert_temp(persisted_id, self);
         });
     }

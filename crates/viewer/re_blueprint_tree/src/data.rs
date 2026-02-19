@@ -646,10 +646,10 @@ impl BlueprintTreeItem<'_> {
         }
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+    pub fn is_open(&self, egui_ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
         collapse_scope.item(self.item()).is_some_and(|collapse_id| {
             collapse_id
-                .is_open(ctx)
+                .is_open(egui_ctx)
                 .unwrap_or_else(|| self.default_open())
         })
     }

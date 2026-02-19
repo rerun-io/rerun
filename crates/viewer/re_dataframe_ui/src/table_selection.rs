@@ -14,18 +14,18 @@ pub struct TableSelectionState {
 }
 
 impl TableSelectionState {
-    pub fn load(ctx: &egui::Context, id: Id) -> Self {
-        ctx.data(|data| data.get_temp(id).unwrap_or_default())
+    pub fn load(egui_ctx: &egui::Context, id: Id) -> Self {
+        egui_ctx.data(|data| data.get_temp(id).unwrap_or_default())
     }
 
-    pub fn store(self, ctx: &egui::Context, id: Id) {
-        ctx.data_mut(|data| {
+    pub fn store(self, egui_ctx: &egui::Context, id: Id) {
+        egui_ctx.data_mut(|data| {
             data.insert_temp(id, self);
         });
     }
 
-    pub fn clear(ctx: &egui::Context, id: Id) {
-        ctx.data_mut(|data| {
+    pub fn clear(egui_ctx: &egui::Context, id: Id) {
+        egui_ctx.data_mut(|data| {
             data.remove::<Self>(id);
         });
     }

@@ -1,4 +1,4 @@
-use egui::{Context, Modifiers, NumExt as _, Rect, Response};
+use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
@@ -529,7 +529,7 @@ fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
 fn get_tile_manager(
     ctx: &ViewerContext<'_>,
     provider: MapProvider,
-    egui_ctx: &Context,
+    egui_ctx: &egui::Context,
 ) -> HttpTiles {
     let mapbox_access_token = ctx.app_options().mapbox_access_token().unwrap_or_default();
 

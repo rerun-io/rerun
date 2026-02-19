@@ -560,7 +560,7 @@ struct TextureReadbackUserdata {
 }
 
 fn pixel_value_string_from_gpu_texture(
-    ui_ctx: &egui::Context,
+    egui_ctx: &egui::Context,
     render_ctx: &re_renderer::RenderContext,
     texture: &GpuTexture2D,
     interaction_id: &TextureInteractionId<'_>,
@@ -613,7 +613,7 @@ fn pixel_value_string_from_gpu_texture(
     // Unfortunately, it can happen that GPU readbacks come in bursts one frame and we get thing in the next.
     // Therefore, we have to keep around the previous result and use that until we get a new one.
     let readback_result_rgb = {
-        let frame_nr = ui_ctx.cumulative_frame_nr();
+        let frame_nr = egui_ctx.cumulative_frame_nr();
 
         #[derive(Clone)]
         struct PreviousReadbackResult {
@@ -628,7 +628,7 @@ fn pixel_value_string_from_gpu_texture(
         let interaction_id = interaction_id.gpu_readback_id();
 
         if let Some(readback_result_rgb) = readback_result_rgb {
-            ui_ctx.memory_mut(|m| {
+            egui_ctx.memory_mut(|m| {
                 m.data.insert_temp(
                     memory_id,
                     PreviousReadbackResult {
@@ -643,7 +643,7 @@ fn pixel_value_string_from_gpu_texture(
         } else {
             const MAX_FRAMES_WITHOUT_GPU_READBACK: u64 = 3;
 
-            let cached: PreviousReadbackResult = ui_ctx.memory(|m| m.data.get_temp(memory_id))?;
+            let cached: PreviousReadbackResult = egui_ctx.memory(|m| m.data.get_temp(memory_id))?;
 
             if cached.interaction_id == interaction_id
                 && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
@@ -663,7 +663,7 @@ fn pixel_value_string_from_gpu_texture(
     // * the result we received is still about the exact same texture _content_
     //      * if it is a video the exact same texture may show a different frame by now
     // So instead we err on the safe side and keep requesting readbacks & frames.
-    ui_ctx.request_repaint();
+    egui_ctx.request_repaint();
 
     // Read back a region of a few pixels. Criteria:
     // * moving the mouse doesn't typically immediately end up in a different region, important since readback has a delay

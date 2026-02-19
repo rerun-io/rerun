@@ -243,10 +243,10 @@ impl EntityData {
         Item::InstancePath(InstancePath::entity_all(self.entity_path.clone()))
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+    pub fn is_open(&self, egui_ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
         collapse_scope
             .item(self.item())
-            .is_some_and(|collapse_id| collapse_id.is_open(ctx).unwrap_or(self.default_open))
+            .is_some_and(|collapse_id| collapse_id.is_open(egui_ctx).unwrap_or(self.default_open))
     }
 }
 
@@ -293,9 +293,9 @@ impl EntityOrComponentData<'_> {
         }
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+    pub fn is_open(&self, egui_ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
         match self {
-            Self::Entity(entity_data) => entity_data.is_open(ctx, collapse_scope),
+            Self::Entity(entity_data) => entity_data.is_open(egui_ctx, collapse_scope),
             Self::Component { .. } => true,
         }
     }

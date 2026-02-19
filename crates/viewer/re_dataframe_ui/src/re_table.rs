@@ -4,8 +4,8 @@ use std::sync::Arc;
 use egui::emath::GuiRounding as _;
 use egui::text_selection::LabelSelectionState;
 use egui::{
-    Align, Context, Direction, FontSelection, Id, Layout, NumExt as _, Rangef, RichText,
-    TextWrapMode, Ui, UiBuilder, WidgetText,
+    Align, Direction, FontSelection, Id, Layout, NumExt as _, Rangef, RichText, TextWrapMode, Ui,
+    UiBuilder, WidgetText,
 };
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use re_format::format_uint;
@@ -33,13 +33,13 @@ pub struct ReTable<'a> {
 
 impl<'a> ReTable<'a> {
     pub fn new(
-        ctx: &Context,
+        egui_ctx: &egui::Context,
         session_id: Id,
         inner: &'a mut dyn egui_table::TableDelegate,
         config: &'a TableConfig,
         num_rows: u64,
     ) -> Self {
-        let mut selection = TableSelectionState::load(ctx, session_id);
+        let mut selection = TableSelectionState::load(egui_ctx, session_id);
         let previous_selection = selection.clone();
         selection.all_hovered = false;
         selection.hovered_row = None;
@@ -274,8 +274,8 @@ impl egui_table::TableDelegate for ReTable<'_> {
         self.inner.row_ui(ui, row_nr);
     }
 
-    fn row_top_offset(&self, ctx: &Context, table_id: Id, row_nr: u64) -> f32 {
-        self.inner.row_top_offset(ctx, table_id, row_nr)
+    fn row_top_offset(&self, egui_ctx: &egui::Context, table_id: Id, row_nr: u64) -> f32 {
+        self.inner.row_top_offset(egui_ctx, table_id, row_nr)
     }
 
     fn default_row_height(&self) -> f32 {
