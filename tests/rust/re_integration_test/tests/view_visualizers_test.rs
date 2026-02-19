@@ -41,7 +41,7 @@ pub async fn test_view_visualizers_section() {
             TimePoint::STATIC,
             &re_sdk_types::archetypes::SeriesLines::new()
                 .with_colors([[255, 0, 0]])
-                .with_names(["Sine Line"])
+                .with_names(["Lorem ipsum dolor sit amet, consectetur adipiscing elit."])
                 .with_widths([2.0]),
         )
     });
