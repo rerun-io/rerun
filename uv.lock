@@ -4676,6 +4676,11 @@ all = [
 ]
 datafusion = [
     { name = "datafusion" },
+    { name = "pandas" },
+]
+dataplatform = [
+    { name = "datafusion" },
+    { name = "pandas" },
 ]
 notebook = [
     { name = "rerun-notebook" },
@@ -4684,6 +4689,7 @@ tests = [
     { name = "datafusion" },
     { name = "inline-snapshot" },
     { name = "opencv-python" },
+    { name = "pandas" },
     { name = "polars" },
     { name = "pytest" },
     { name = "semver" },
@@ -4697,10 +4703,14 @@ requires-dist = [
     { name = "attrs", specifier = ">=23.1.0" },
     { name = "datafusion", marker = "extra == 'all'", specifier = "==50.1.0" },
     { name = "datafusion", marker = "extra == 'datafusion'", specifier = "==50.1.0" },
+    { name = "datafusion", marker = "extra == 'dataplatform'", specifier = "==50.1.0" },
     { name = "datafusion", marker = "extra == 'tests'", specifier = "==50.1.0" },
     { name = "inline-snapshot", marker = "extra == 'tests'", specifier = "==0.31.1" },
     { name = "numpy", specifier = ">=2" },
     { name = "opencv-python", marker = "extra == 'tests'", specifier = ">4.6" },
+    { name = "pandas", marker = "extra == 'datafusion'", specifier = ">=2" },
+    { name = "pandas", marker = "extra == 'dataplatform'", specifier = ">=2" },
+    { name = "pandas", marker = "extra == 'tests'", specifier = ">=2" },
     { name = "pillow", specifier = ">=8.0.0" },
     { name = "polars", marker = "extra == 'tests'", specifier = "==1.36.1" },
     { name = "pyarrow", specifier = ">=18.0.0" },
@@ -4713,7 +4723,7 @@ requires-dist = [
     { name = "torch", marker = "extra == 'tests'", specifier = ">=2.5" },
     { name = "typing-extensions", specifier = ">=4.5" },
 ]
-provides-extras = ["all", "datafusion", "notebook", "tests"]
+provides-extras = ["all", "datafusion", "dataplatform", "notebook", "tests"]
 
 [[package]]
 name = "rerun-workspace"

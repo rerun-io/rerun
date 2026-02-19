@@ -38,6 +38,7 @@ text = "MIT OR Apache-2.0"
 tests = [
   "inline-snapshot==0.31.1",
   "opencv-python>4.6",
+  "pandas>=2",
   "polars==1.36.1",
   "pytest==8.4.2",
   "semver>=3.0,<3.1",
@@ -47,7 +48,12 @@ tests = [
   "datafusion==50.1.0",
 ]
 notebook = ["rerun-notebook==0.30.0-alpha.1+dev"]
-datafusion = ["datafusion==50.1.0"]
+# TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
+datafusion = ["datafusion==50.1.0", "pandas>=2"] # deprecated, replaced by `dataplatform` (NOLINT)
+dataplatform = [ # NOLINT
+  "datafusion==50.1.0",
+  "pandas>=2",
+] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
 all = ["rerun-notebook==0.28.0-alpha.1+dev", "datafusion==50.1.0"]
