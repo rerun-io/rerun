@@ -611,7 +611,7 @@ impl SplitCommand {
                     // We must not try to bootstrap special components, as they will undergo some
                     // custom bootstrap logic below anyway.
                     // Normally this would be fine, but again we cannot afford the presence of any
-                    // dupicate data when it comes to video decoding.
+                    // duplicate data when it comes to video decoding.
                     let components_special = components
                         .iter()
                         .copied()
