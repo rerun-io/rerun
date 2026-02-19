@@ -602,6 +602,7 @@ impl SplitCommand {
                 // Base case: everything
                 {
                     let components = components.iter().copied().collect();
+                    let bootstrap = true;
                     let chunks = extract_chunks_for_single_split(
                         store,
                         entity,
@@ -609,6 +610,7 @@ impl SplitCommand {
                         cutoff_timeline,
                         start_inclusive,
                         end_exclusive,
+                        bootstrap,
                     );
                     all_chunks_in_split.extend(chunks);
                 }
@@ -637,6 +639,7 @@ impl SplitCommand {
 
                     if let Some(cutoff_time_revised) = cutoff_time_revised {
                         let components = std::iter::once(video_sample_identifier).collect();
+                        let bootstrap = false;
                         let chunks = extract_chunks_for_single_split(
                             store,
                             entity,
@@ -644,6 +647,7 @@ impl SplitCommand {
                             cutoff_timeline,
                             cutoff_time_revised,
                             start_inclusive,
+                            bootstrap,
                         );
                         all_chunks_in_split.extend(chunks);
                     }
@@ -671,6 +675,7 @@ impl SplitCommand {
                     let components =
                         re_sdk_types::archetypes::Transform3D::all_component_identifiers()
                             .collect();
+                    let bootstrap = false;
                     let chunks = extract_chunks_for_single_split(
                         store,
                         entity,
@@ -678,6 +683,7 @@ impl SplitCommand {
                         cutoff_timeline,
                         TimeInt::MIN,
                         start_inclusive,
+                        bootstrap,
                     );
                     all_chunks_in_split.extend(chunks);
                 }
@@ -703,6 +709,7 @@ impl SplitCommand {
 
                     let components =
                         re_sdk_types::archetypes::Pinhole::all_component_identifiers().collect();
+                    let bootstrap = false;
                     let chunks = extract_chunks_for_single_split(
                         store,
                         entity,
@@ -710,6 +717,7 @@ impl SplitCommand {
                         cutoff_timeline,
                         TimeInt::MIN,
                         start_inclusive,
+                        bootstrap,
                     );
                     all_chunks_in_split.extend(chunks);
                 }
@@ -720,7 +728,6 @@ impl SplitCommand {
             // given that we've just queried the data per-entity per-component.
             all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
 
-            #[cfg(debug_assertions)]
             let mut all_unique_indexes_in_split = HashSet::default();
 
             txs_encoding[i].send((
@@ -743,14 +750,15 @@ impl SplitCommand {
                     // it, which is itself manageable because we enforce a single timeline throughout.
                     .filter(|(_original_chunk_id, chunk)| all_chunk_ids_in_split.insert(chunk.id()))
                     .inspect(|(_original_chunk_id, chunk)| {
-                        #[cfg(debug_assertions)]
-                        for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
-                            if !all_unique_indexes_in_split.insert((time, row_id)) {
-                                eprintln!(
-                                    "ERROR: duplicate index detected on {}: {} / {row_id}",
-                                    chunk.entity_path(),
-                                    time_to_human_string(cutoff_timeline, time),
-                                );
+                        if cfg!(debug_assertions) {
+                            for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
+                                if !all_unique_indexes_in_split.insert((time, row_id)) {
+                                    eprintln!(
+                                        "ERROR: duplicate index detected on {}: {} / {row_id}",
+                                        chunk.entity_path(),
+                                        time_to_human_string(cutoff_timeline, time),
+                                    );
+                                }
                             }
                         }
                     })
@@ -860,6 +868,7 @@ fn extract_chunks_for_single_split(
     timeline: Timeline,
     start_inclusive: TimeInt,
     end_exclusive: TimeInt,
+    bootstrap: bool,
 ) -> impl Iterator<Item = (ChunkId, Chunk)> {
     re_log::debug_assert!(
         start_inclusive < end_exclusive,
@@ -874,59 +883,66 @@ fn extract_chunks_for_single_split(
         re_log_types::AbsoluteTimeRange::new(start_inclusive, end_exclusive.saturating_sub(1)),
     );
 
-    let chunks_bootstrap = components.iter().flat_map(move |component| {
-        let chunks = store
-            .latest_at_relevant_chunks(
-                ChunkTrackingMode::PanicOnMissing,
-                &query_bootstrap,
-                entity,
-                *component,
-            )
-            .chunks
-            .into_iter()
-            .map(|chunk| chunk.latest_at(&query_bootstrap, *component))
-            .filter(|chunk| !chunk.is_empty());
+    // TODO(cmc): There are certainly opportunities to do better on the bootstrap path, especially
+    // when it comes to sharing chunks across components, using e.g. an approach somewhat similar
+    // to what we do below for ranges.
+    let chunks_bootstrap =
+        components
+            .iter()
+            .filter(move |_| bootstrap)
+            .flat_map(move |component| {
+                let chunks = store
+                    .latest_at_relevant_chunks(
+                        ChunkTrackingMode::PanicOnMissing,
+                        &query_bootstrap,
+                        entity,
+                        *component,
+                    )
+                    .chunks
+                    .into_iter()
+                    .map(|chunk| chunk.latest_at(&query_bootstrap, *component))
+                    .filter(|chunk| !chunk.is_empty());
 
-        // Due to the overlap heuristics, the bootstrap query might return an arbitrary amount of
-        // chunks: we need to find the most relevant in those, which in this case is whichever has
-        // the highest (time, row_id) index.
-        let Some(chunk) = chunks.max_by_key(|chunk| {
-            chunk
-                .iter_indices(timeline.name())
-                .next()
-                .expect("non-empty latest-at chunk must have a single row")
-        }) else {
-            return vec![];
-        };
+                // Due to the overlap heuristics, the bootstrap query might return an arbitrary amount of
+                // chunks: we need to find the most relevant in those, which in this case is whichever has
+                // the highest (time, row_id) index.
+                let Some(chunk) = chunks.max_by_key(|chunk| {
+                    chunk
+                        .iter_indices(timeline.name())
+                        .next()
+                        .expect("non-empty latest-at chunk must have a single row")
+                }) else {
+                    return vec![];
+                };
 
-        re_log::debug_assert!(chunk.num_rows() == 1);
+                re_log::debug_assert!(chunk.num_rows() == 1);
 
-        let (time, _row_id) = chunk
-            .iter_indices(timeline.name())
-            .next()
-            .expect("non-empty latest-at chunk must have a single row");
+                let (time, _row_id) = chunk
+                    .iter_indices(timeline.name())
+                    .next()
+                    .expect("non-empty latest-at chunk must have a single row");
 
-        if start_inclusive <= time && time < end_exclusive {
-            // If this chunk overlaps with the range results that will follow, then we will create
-            // duplicate data with different chunk and row IDs.
-            // This is wasteful and useless in general, but the video decoder in particular really
-            // hates it, so make sure to filter it out.
-            return vec![];
-        }
+                if start_inclusive <= time && time < end_exclusive {
+                    // If this chunk overlaps with the range results that will follow, then we will create
+                    // duplicate data with different chunk and row IDs.
+                    // This is wasteful and useless in general, but the video decoder in particular really
+                    // hates it, so make sure to filter it out.
+                    return vec![];
+                }
 
-        vec![(
-            chunk.id(),
-            // This chunk might be re-used in other places in this split, and because we're slicing it
-            // (and we really, really need to slice it), we must make sure that it doesn't share
-            // a chunk ID nor a row ID with anything else.
-            chunk
-                // We're bootstrapping at the component batch level, so might as well discard everything else.
-                .component_sliced(*component)
-                // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
-                .row_sliced_deep(0, 1)
-                .clone_as(ChunkId::new(), RowId::new()),
-        )]
-    });
+                vec![(
+                    chunk.id(),
+                    // This chunk might be re-used in other places in this split, and because we're slicing it
+                    // (and we really, really need to slice it), we must make sure that it doesn't share
+                    // a chunk ID nor a row ID with anything else.
+                    chunk
+                        // We're bootstrapping at the component batch level, so might as well discard everything else.
+                        .component_sliced(*component)
+                        // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
+                        .row_sliced_deep(0, 1)
+                        .clone_as(ChunkId::new(), RowId::new()),
+                )]
+            });
 
     let mut chunks: HashMap<ChunkId, (Chunk, usize, usize)> = Default::default();
     for component in components {
@@ -997,7 +1013,7 @@ fn extract_chunks_for_single_split(
     }
 
     let chunks = chunks.into_values().map(|(chunk, start_idx, slice_len)| {
-        // TODO(RR-3810): If we were to implement this with a virtual store instead, this would b
+        // TODO(RR-3810): If we were to implement this with a virtual store instead, this would be
         // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
         // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
         if slice_len == chunk.num_rows() {
@@ -1005,8 +1021,8 @@ fn extract_chunks_for_single_split(
             return (chunk.id(), chunk);
         }
 
-        // TODO(cmc): It could be worthwhile to implement and used a `Chunk::components_sliced`
-        // here (note: plural).
+        // TODO(cmc): It could be worthwhile to implement and use a `Chunk::components_sliced` here (plural).
+        // (We've already decided to generate a new chunk ID anyhow, so column slicing is fine at this point.)
         (
             chunk.id(),
             chunk
