@@ -445,6 +445,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     egui::Align2::RIGHT_TOP,
                     view_rect,
                     loading_indicator_opacity,
+                    None,
                 );
             }
         }

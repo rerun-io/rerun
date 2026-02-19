@@ -400,6 +400,7 @@ fn decoded_frame_ui<'a>(
                         egui::Align2::CENTER_CENTER,
                         response.rect,
                         loading_indicator_opacity,
+                        None,
                     );
                 }
             }

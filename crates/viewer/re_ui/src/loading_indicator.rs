@@ -9,7 +9,7 @@
 //! ⚫️ ⚫️ ⚪️  ↓
 //! ⚫️ ⚫️ ⚫️  ↓
 
-use egui::{Align2, NumExt as _, Rect, Vec2};
+use egui::{Align2, Color32, NumExt as _, Rect, Vec2};
 
 const NUM_DOTS: i32 = 3;
 
@@ -33,7 +33,7 @@ pub fn loading_indicator_ui(ui: &mut egui::Ui) -> egui::Response {
     let size = r * Vec2::new(WIDTH_IN_R, HEIGHT_IN_R);
     let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
     let opacity = 1.0;
-    paint_loading_indicator_inside(ui, Align2::CENTER_CENTER, rect, opacity);
+    paint_loading_indicator_inside(ui, Align2::CENTER_CENTER, rect, opacity, None);
     response
 }
 
@@ -52,12 +52,15 @@ pub fn calc_radius(available_space: Vec2) -> f32 {
 }
 
 /// Paint a reasonably sized loading indicator in the given rectangle, anchored at the given pivot point.
+///
+/// If `color` is `None`, the spinner uses `visuals.strong_text_color()`.
 #[doc(alias = "spinner")]
 pub fn paint_loading_indicator_inside(
     ui: &egui::Ui,
     anchor: Align2,
     container_rect: Rect,
     opacity: f32,
+    color: Option<Color32>,
 ) {
     if opacity <= 0.0 {
         return;
@@ -76,9 +79,7 @@ pub fn paint_loading_indicator_inside(
     let outside_padding_pts = r_pts * OUTSIDE_PADDING_IN_R;
     let between_padding_pts = r_pts * BETWEEN_PADDING_IN_R;
 
-    let visuals = ui.visuals();
-
-    let on_color = visuals.strong_text_color();
+    let on_color = color.unwrap_or_else(|| ui.visuals().strong_text_color());
 
     let time = ui.input(|i| i.time);
     let animation_speed = 0.5;

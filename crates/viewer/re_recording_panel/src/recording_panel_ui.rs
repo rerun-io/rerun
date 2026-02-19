@@ -682,12 +682,13 @@ fn receiver_ui(
     let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
 
     let label_content = re_ui::list_item::LabelContent::new(&name)
-        .with_icon_fn(|ui, rect, _| {
+        .with_icon_fn(|ui, rect, visuals| {
             re_ui::loading_indicator::paint_loading_indicator_inside(
                 ui,
                 egui::Align2::CENTER_CENTER,
                 rect,
                 1.0,
+                Some(visuals.text_color()),
             );
         })
         .with_buttons(|ui| {

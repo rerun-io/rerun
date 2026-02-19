@@ -386,6 +386,7 @@ pub fn paint_loading_indicators(
                 egui::Align2::CENTER_CENTER,
                 rect,
                 1.0,
+                None,
             );
         }
     }
