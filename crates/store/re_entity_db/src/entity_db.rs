@@ -649,13 +649,19 @@ impl EntityDb {
         re_tracing::profile_function!();
         re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
-        if let Err(err) = self
+        let event = self
             .storage_engine
             .write()
             .store()
-            .insert_rrd_manifest(rrd_manifest.clone())
-        {
-            re_log::error!("Failed to load RRD Manifest into store: {err}");
+            .insert_rrd_manifest(rrd_manifest.clone());
+
+        match event {
+            Ok(event) => {
+                self.on_store_events(&[event]);
+            }
+            Err(err) => {
+                re_log::error!("Failed to load RRD Manifest into store: {err}");
+            }
         }
 
         self.rrd_manifest_index.append(rrd_manifest);

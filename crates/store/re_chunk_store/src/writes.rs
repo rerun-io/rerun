@@ -22,8 +22,8 @@ use crate::{
 impl ChunkStore {
     /// This insert a batch of virtual chunks into the store, according to the given [`RrdManifest`].
     ///
-    /// Since no physical data is involved, no events are fired.
     /// All queries will return partial results until the missing physical data gets loaded in.
+    #[must_use = "The chunk store events should be handled"]
     pub fn insert_rrd_manifest(
         &mut self,
         rrd_manifest: Arc<RrdManifest>,
@@ -177,14 +177,20 @@ impl ChunkStore {
             }
         }
 
-        Ok(ChunkStoreEvent {
+        let event = ChunkStoreEvent {
             store_id: self.id.clone(),
             store_generation: self.generation(),
             event_id: self
                 .event_id
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             diff: ChunkStoreDiff::virtual_addition(rrd_manifest),
-        })
+        };
+
+        if self.config.enable_changelog {
+            Self::on_events(std::slice::from_ref(&event));
+        }
+
+        Ok(event)
     }
 
     /// Inserts a [`Chunk`] in the store.
