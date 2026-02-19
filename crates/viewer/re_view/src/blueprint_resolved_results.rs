@@ -269,15 +269,11 @@ impl BlueprintResolvedLatestAtResults<'_> {
     ///
     /// This first tries the registered fallback provider and then falls back to
     /// the placeholder value registered in the viewer context.
-    pub fn get_fallback_for(
-        &self,
-        component: ComponentIdentifier,
-        component_type: Option<re_chunk::ComponentType>,
-    ) -> ArrayRef {
+    pub fn get_fallback_for(&self, descr: &re_types_core::ComponentDescriptor) -> ArrayRef {
         self.query_context
             .viewer_ctx()
             .component_fallback_registry
-            .fallback_for(component, component_type, self.query_context())
+            .fallback_for(descr, self.query_context())
     }
 
     /// Returns the source of the given component, i.e. whether it came from an override, the store results, or defaults.

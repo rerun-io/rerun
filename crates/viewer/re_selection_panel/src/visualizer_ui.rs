@@ -476,11 +476,7 @@ fn raw_default_or_fallback(
         query_ctx
             .viewer_ctx()
             .component_fallback_registry
-            .fallback_for(
-                target_component_descr.component,
-                target_component_descr.component_type,
-                query_ctx,
-            )
+            .fallback_for(target_component_descr, query_ctx)
     })
 }
 

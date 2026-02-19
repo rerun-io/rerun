@@ -357,11 +357,7 @@ fn add_new_default(
     let initial_data = query_context
         .viewer_ctx()
         .component_fallback_registry
-        .fallback_for(
-            component_descr.component,
-            component_descr.component_type,
-            query_context,
-        );
+        .fallback_for(&component_descr, query_context);
 
     match Chunk::builder(defaults_path.clone())
         .with_row(

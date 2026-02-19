@@ -1567,10 +1567,10 @@ fn get_time_series_color(
     data_result: &re_viewer_context::DataResult,
     instruction: &re_viewer_context::VisualizerInstruction,
 ) -> TimeSeriesColors {
-    let color_component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
-        SeriesLines::descriptor_colors().component
+    let color_descr = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
+        SeriesLines::descriptor_colors()
     } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
-        SeriesPoints::descriptor_colors().component
+        SeriesPoints::descriptor_colors()
     } else {
         // Unkownn visualizer type, don't show any colors
         return TimeSeriesColors::default();
@@ -1583,18 +1583,18 @@ fn get_time_series_color(
         None,
         &query,
         data_result,
-        [color_component],
+        [color_descr.component],
         Some(instruction),
     );
 
-    let raw_color_cell = if let Some(color_cells) = color_result.get_raw_cell(color_component) {
+    let raw_color_cell = if let Some(color_cells) = color_result.get_raw_cell(color_descr.component)
+    {
         // We have color data either in the store or as overrides
         color_cells
     } else {
         // No color data in the store or overrides, use the fallback
         ctx.viewer_ctx.component_fallback_registry.fallback_for(
-            color_component,
-            Some(<Color as re_sdk_types::Component>::name()),
+            &color_descr,
             &ctx.query_context(data_result, query, instruction.id),
         )
     };

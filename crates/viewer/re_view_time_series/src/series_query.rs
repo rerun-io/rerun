@@ -6,11 +6,8 @@ use re_chunk_store::RangeQuery;
 use re_log_types::TimeInt;
 use re_log_types::external::arrow::array::{self, BooleanArray};
 use re_log_types::external::arrow::buffer::BooleanBuffer;
-use re_sdk_types::components::Visible;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_sdk_types::{
-    Component as _, ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components,
-};
+use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::QueryContext;
 
@@ -38,10 +35,10 @@ pub fn collect_series_visibility(
     query_ctx: &QueryContext<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
     num_series: usize,
-    visibility_component: ComponentIdentifier,
+    visibility_descriptor: &ComponentDescriptor,
 ) -> Vec<bool> {
     let boolean_buffer = results
-        .iter_optional(visibility_component)
+        .iter_optional(visibility_descriptor.component)
         .slice::<bool>()
         .next()
         .map_or_else(
@@ -49,7 +46,7 @@ pub fn collect_series_visibility(
                 query_ctx
                     .viewer_ctx()
                     .component_fallback_registry
-                    .fallback_for(visibility_component, Some(Visible::name()), query_ctx)
+                    .fallback_for(visibility_descriptor, query_ctx)
                     .as_any()
                     .downcast_ref::<BooleanArray>()
                     .map(|arr| arr.values().clone())
@@ -183,11 +180,7 @@ pub fn collect_colors(
         let fallback_array = query_ctx
             .viewer_ctx()
             .component_fallback_registry
-            .fallback_for(
-                color_descriptor.component,
-                Some(components::Color::name()),
-                query_ctx,
-            );
+            .fallback_for(color_descriptor, query_ctx);
 
         if let Some(color_array) = fallback_array.as_any().downcast_ref::<array::UInt32Array>() {
             let fallback_colors = color_array.values();
@@ -284,11 +277,7 @@ pub fn collect_series_name(
         let fallback_array = query_ctx
             .viewer_ctx()
             .component_fallback_registry
-            .fallback_for(
-                name_descriptor.component,
-                name_descriptor.component_type,
-                query_ctx,
-            );
+            .fallback_for(name_descriptor, query_ctx);
 
         if let Some(string_array) = fallback_array.as_any().downcast_ref::<array::StringArray>() {
             let fallback_names: Vec<_> = string_array

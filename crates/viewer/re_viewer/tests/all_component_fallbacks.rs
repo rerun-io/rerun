@@ -33,11 +33,9 @@ fn test_all_component_fallbacks() {
             for field in &arch.fields {
                 let descr = field.component_descriptor(*arch_name);
 
-                let res = test_context.component_fallback_registry.fallback_for(
-                    descr.component,
-                    descr.component_type,
-                    &ctx,
-                );
+                let res = test_context
+                    .component_fallback_registry
+                    .fallback_for(&descr, &ctx);
 
                 let formatter =
                     ArrayFormatter::try_new(&res, &FormatOptions::default().with_null("null"))

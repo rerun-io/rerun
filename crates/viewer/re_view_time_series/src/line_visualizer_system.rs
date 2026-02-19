@@ -262,7 +262,7 @@ impl SeriesLinesSystem {
             &query_ctx,
             &results,
             num_series,
-            archetypes::SeriesLines::descriptor_visible_series().component,
+            &archetypes::SeriesLines::descriptor_visible_series(),
         );
         let series_names = collect_series_name(
             &query_ctx,

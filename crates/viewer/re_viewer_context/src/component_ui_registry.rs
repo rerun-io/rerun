@@ -802,11 +802,10 @@ impl ComponentUiRegistry {
         if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
             run_with(component_array);
         } else {
-            let fallback = ctx.viewer_ctx().component_fallback_registry.fallback_for(
-                component_descr.component,
-                component_descr.component_type,
-                ctx,
-            );
+            let fallback = ctx
+                .viewer_ctx()
+                .component_fallback_registry
+                .fallback_for(component_descr, ctx);
             run_with(fallback.as_ref());
         }
     }

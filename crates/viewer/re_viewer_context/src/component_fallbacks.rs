@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use ahash::HashMap;
 use arrow::array::{ArrayRef, NullArray};
 use nohash_hasher::IntMap;
-use re_chunk::ComponentIdentifier;
 use re_sdk_types::{Component, ComponentType, SerializationError, ViewClassIdentifier};
+use re_types_core::ComponentIdentifier;
 
 use crate::QueryContext;
 
@@ -22,7 +22,10 @@ pub fn typed_fallback_for<C: Component>(
     let array = query_context
         .viewer_ctx()
         .component_fallback_registry
-        .fallback_for(component, Some(C::name()), query_context);
+        .fallback_for(
+            &re_types_core::ComponentDescriptor::partial(component).with_component_type(C::name()),
+            query_context,
+        );
 
     let Some(v) = C::from_arrow(&array)
         .ok()
@@ -234,10 +237,12 @@ impl FallbackProviderRegistry {
     /// then falling back to the placeholder value registered in the viewer context.
     pub fn fallback_for(
         &self,
-        component: ComponentIdentifier,
-        component_type: Option<ComponentType>,
+        descr: &re_types_core::ComponentDescriptor,
         ctx: &QueryContext<'_>,
     ) -> ArrayRef {
+        let component = descr.component;
+        let component_type = descr.component_type;
+
         re_tracing::profile_function!(component);
 
         let res = self

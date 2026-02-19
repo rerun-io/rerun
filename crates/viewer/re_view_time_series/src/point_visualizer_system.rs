@@ -236,11 +236,7 @@ impl SeriesPointsSystem {
                         let fallback_array = query_ctx
                             .viewer_ctx()
                             .component_fallback_registry
-                            .fallback_for(
-                                SeriesPoints::descriptor_markers().component,
-                                SeriesPoints::descriptor_markers().component_type,
-                                &query_ctx,
-                            );
+                            .fallback_for(&SeriesPoints::descriptor_markers(), &query_ctx);
                         if let Ok(marker_array) = MarkerShape::from_arrow(&fallback_array) {
                             for (points, marker) in points_per_series
                                 .iter_mut()
@@ -309,7 +305,7 @@ impl SeriesPointsSystem {
                 &query_ctx,
                 &results,
                 num_series,
-                archetypes::SeriesPoints::descriptor_visible_series().component,
+                &archetypes::SeriesPoints::descriptor_visible_series(),
             );
             let series_names = collect_series_name(
                 &query_ctx,

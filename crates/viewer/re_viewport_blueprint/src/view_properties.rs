@@ -1,5 +1,5 @@
 use arrow::array::ArrayRef;
-use re_chunk::{ComponentIdentifier, ComponentType};
+use re_chunk::ComponentIdentifier;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_query::LatestAtResults;
@@ -115,8 +115,15 @@ impl ViewProperty {
         component: ComponentIdentifier,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         C::from_arrow(
-            self.component_or_fallback_raw(ctx, component, Some(C::name()))
-                .as_ref(),
+            self.component_or_fallback_raw(
+                ctx,
+                &re_types_core::ComponentDescriptor {
+                    component,
+                    archetype: Some(self.archetype_name),
+                    component_type: Some(C::name()),
+                },
+            )
+            .as_ref(),
         )
         .map_err(|err| err.into())
     }
@@ -163,20 +170,17 @@ impl ViewProperty {
     fn component_or_fallback_raw(
         &self,
         ctx: &ViewContext<'_>,
-        component_identifier: ComponentIdentifier,
-        component_type: Option<ComponentType>,
+        descr: &re_types_core::ComponentDescriptor,
     ) -> ArrayRef {
-        if let Some(value) = self.component_raw(component_identifier)
+        if let Some(value) = self.component_raw(descr.component)
             && !value.is_empty()
         {
             return value;
         }
 
-        ctx.viewer_ctx.component_fallback_registry.fallback_for(
-            component_identifier,
-            component_type,
-            &self.query_context(ctx),
-        )
+        ctx.viewer_ctx
+            .component_fallback_registry
+            .fallback_for(descr, &self.query_context(ctx))
     }
 
     /// Save change to a blueprint component.
