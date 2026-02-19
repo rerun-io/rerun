@@ -681,7 +681,7 @@ impl SplitCommand {
                     }
                 }
 
-                // Special case: transforms with multiplexed coordinate frames
+                // Special cases: transforms and/or pinholes with multiplexed coordinate frames
                 let entity_has_multiplexed_transforms_on_timeline =
                     store.entity_has_component_on_timeline(
                         cutoff_timeline.name(),
@@ -692,31 +692,6 @@ impl SplitCommand {
                         entity,
                         transform_child_frame_identifier,
                     );
-                if entity_has_multiplexed_transforms_on_timeline {
-                    re_log::info!(
-                        %entity,
-                        cutoff_timeline = %cutoff_timeline.name(),
-                        cutoff_time = %time_to_human_string(cutoff_timeline, cutoff_time),
-                        "gathering all transforms up to cutoff point due to multiplexed coordinate frames…"
-                    );
-
-                    let components =
-                        re_sdk_types::archetypes::Transform3D::all_component_identifiers()
-                            .collect();
-                    let bootstrap = false;
-                    let chunks = extract_chunks_for_single_split(
-                        store,
-                        entity,
-                        &components,
-                        cutoff_timeline,
-                        TimeInt::MIN,
-                        start_inclusive,
-                        bootstrap,
-                    );
-                    all_chunks_in_split.extend(chunks);
-                }
-
-                // Special case: pinholes with multiplexed coordinate frames
                 let entity_has_multiplexed_pinholes_on_timeline =
                     store.entity_has_component_on_timeline(
                         cutoff_timeline.name(),
@@ -727,16 +702,21 @@ impl SplitCommand {
                         entity,
                         pinhole_child_frame_identifier,
                     );
-                if entity_has_multiplexed_pinholes_on_timeline {
+                if entity_has_multiplexed_transforms_on_timeline
+                    || entity_has_multiplexed_pinholes_on_timeline
+                {
                     re_log::info!(
                         %entity,
                         cutoff_timeline = %cutoff_timeline.name(),
                         cutoff_time = %time_to_human_string(cutoff_timeline, cutoff_time),
-                        "gathering all pinholes up to cutoff point due to multiplexed coordinate frames…"
+                        "gathering all transforms/pinholes up to cutoff point due to multiplexed coordinate frames…"
                     );
 
-                    let components =
-                        re_sdk_types::archetypes::Pinhole::all_component_identifiers().collect();
+                    let components = itertools::chain!(
+                        re_sdk_types::archetypes::Transform3D::all_component_identifiers(),
+                        re_sdk_types::archetypes::Pinhole::all_component_identifiers(),
+                    )
+                    .collect();
                     let bootstrap = false;
                     let chunks = extract_chunks_for_single_split(
                         store,
