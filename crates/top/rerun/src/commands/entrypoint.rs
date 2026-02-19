@@ -1656,6 +1656,7 @@ fn record_cli_command_analytics(args: &Args) {
                 RrdCommands::Compact(_) => "compact",
                 RrdCommands::Compare(_) => "compare",
                 RrdCommands::Filter(_) => "filter",
+                RrdCommands::Split(_) => "split",
                 RrdCommands::Merge(_) => "merge",
                 RrdCommands::Migrate(_) => "migrate",
                 RrdCommands::Print(_) => "print",

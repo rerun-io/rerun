@@ -14,6 +14,38 @@ use crate::TimelineName;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(BTreeMap<TimelineName, TimeCell>);
 
+impl std::fmt::Display for TimePoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use itertools::Itertools as _;
+
+        f.write_str("[")?;
+        f.write_str(
+            &self
+                .iter()
+                .map(|(timeline, time)| {
+                    let time_str = match time.typ() {
+                        crate::TimeType::Sequence => re_format::format_int(time.as_i64()),
+                        crate::TimeType::DurationNs => {
+                            format!("{:?}", std::time::Duration::from_nanos(time.as_i64() as _))
+                        }
+                        crate::TimeType::TimestampNs => {
+                            if let Ok(ts) = jiff::Timestamp::from_nanosecond(time.as_i64() as _) {
+                                ts.to_string()
+                            } else {
+                                re_format::format_int(time.as_i64())
+                            }
+                        }
+                    };
+                    format!("({timeline}, {time_str})")
+                })
+                .join(", "),
+        )?;
+        f.write_str("]")?;
+
+        Ok(())
+    }
+}
+
 impl From<BTreeMap<TimelineName, TimeCell>> for TimePoint {
     fn from(map: BTreeMap<TimelineName, TimeCell>) -> Self {
         Self(map)
