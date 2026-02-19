@@ -1,7 +1,7 @@
 #![expect(clippy::let_underscore_untyped)]
 #![expect(clippy::let_underscore_must_use)]
 
-use std::net::{SocketAddr, ToSocketAddrs as _};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs as _};
 
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::Sender;
@@ -96,13 +96,25 @@ impl Server {
         tokio::spawn(async move {
             let listener = if let Ok(listener) = TcpListener::bind(addr).await {
                 #[expect(clippy::unwrap_used)]
-                let local_addr = listener.local_addr().unwrap();
+                let bind_addr = listener.local_addr().unwrap();
+
+                let mut connect_addr = bind_addr;
+
+                if connect_addr.ip().is_unspecified() {
+                    // We usually cannot connect to "0.0.0.0" so we swap it for 127.0.0.1:
+                    if connect_addr.is_ipv4() {
+                        connect_addr.set_ip(Ipv4Addr::LOCALHOST.into());
+                    } else {
+                        connect_addr.set_ip(Ipv6Addr::LOCALHOST.into());
+                    }
+                }
+
                 info!(
-                    "Listening on {local_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{local_addr}"
+                    "Listening on {bind_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{connect_addr}"
                 );
 
                 #[expect(clippy::unwrap_used)]
-                ready_tx.send(local_addr).await.unwrap();
+                ready_tx.send(connect_addr).await.unwrap();
                 listener
             } else {
                 error!("Failed to bind to address {addr}");

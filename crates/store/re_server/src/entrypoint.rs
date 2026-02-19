@@ -95,6 +95,8 @@ impl FromStr for NamedPath {
 
 impl Args {
     /// Waits for the server to start, and return a handle to it together with its address.
+    ///
+    /// The returned address is one you can connect to, e.g. 127.0.0.1 instead of 0.0.0.0.
     pub async fn create_server_handle(self) -> anyhow::Result<(ServerHandle, SocketAddr)> {
         let Self {
             host: ip,
