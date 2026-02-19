@@ -1,10 +1,10 @@
 //! Common helper functions for transforming Arrow data in lenses.
 
-use arrow::array::{Float32Array, Float64Array, ListArray, UInt32Array};
+use arrow::array::{Array, Float32Array, Float64Array, ListArray, StructArray, UInt32Array};
 use re_arrow_combinators::Transform as _;
 use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
 use re_arrow_combinators::map::{MapFixedSizeList, MapList};
-use re_arrow_combinators::reshape::{RowMajorToColumnMajor, StructToFixedList};
+use re_arrow_combinators::reshape::{GetField, RowMajorToColumnMajor, StructToFixedList};
 use re_lenses::OpError;
 
 /// Converts a list of structs with `x`, `y`, `z` fields to a list of fixed-size lists with 3 f32 values.
@@ -42,4 +42,21 @@ pub fn width_height_to_resolution(list_array: &ListArray) -> Result<ListArray, O
         MapFixedSizeList::new(PrimitiveCast::<UInt32Array, Float32Array>::new()),
     ));
     Ok(pipeline.transform(list_array)?)
+}
+
+/// Extracts a struct field by name and downcasts it to the expected array type.
+pub fn get_field_as<T: Array + Clone + 'static>(
+    source: &StructArray,
+    name: &str,
+) -> Result<T, re_arrow_combinators::Error> {
+    let array_ref = GetField::new(name).transform(source)?;
+    array_ref
+        .as_any()
+        .downcast_ref::<T>()
+        .cloned()
+        .ok_or_else(|| re_arrow_combinators::Error::TypeMismatch {
+            expected: std::any::type_name::<T>().to_owned(),
+            actual: array_ref.data_type().clone(),
+            context: name.to_owned(),
+        })
 }

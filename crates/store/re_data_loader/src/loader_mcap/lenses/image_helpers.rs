@@ -3,16 +3,17 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, BinaryArray, ListArray, StringArray, StructArray, UInt8Array, UInt32Array,
+    Array as _, BinaryArray, ListArray, StringArray, StructArray, UInt8Array, UInt32Array,
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field};
 use re_arrow_combinators::Transform;
 use re_arrow_combinators::map::MapList;
-use re_arrow_combinators::reshape::GetField;
 use re_lenses::OpError;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::datatypes::ImageFormat;
+
+use super::helpers::get_field_as;
 
 /// Converts a struct with `width`, `height`, and `encoding` fields into a Rerun
 /// [`ImageFormat`] struct array, using [`re_mcap::ImageEncoding`].
@@ -164,22 +165,5 @@ fn parse_encoding(s: &str) -> Result<re_mcap::ImageEncoding, re_arrow_combinator
         .map_err(|_err| re_arrow_combinators::Error::UnexpectedValue {
             expected: re_mcap::ImageEncoding::NAMES,
             actual: s.to_owned(),
-        })
-}
-
-/// Extracts a struct field by name and downcasts it to the expected array type.
-fn get_field_as<T: Array + Clone + 'static>(
-    source: &StructArray,
-    name: &str,
-) -> Result<T, re_arrow_combinators::Error> {
-    let array_ref = GetField::new(name).transform(source)?;
-    array_ref
-        .as_any()
-        .downcast_ref::<T>()
-        .cloned()
-        .ok_or_else(|| re_arrow_combinators::Error::TypeMismatch {
-            expected: std::any::type_name::<T>().to_owned(),
-            actual: array_ref.data_type().clone(),
-            context: name.to_owned(),
         })
 }
