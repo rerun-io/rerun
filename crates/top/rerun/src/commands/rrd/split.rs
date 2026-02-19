@@ -881,11 +881,7 @@ fn extract_chunks_for_single_split(
 
         results.chunks.into_iter().filter_map(move |chunk| {
             let chunk = chunk.sorted_by_timeline_if_unsorted(timeline.name()); // binsearch incoming
-
-            let Some(timeline) = chunk.timelines().get(timeline.name()) else {
-                return Some((chunk.id(), chunk));
-            };
-
+            let timeline = chunk.timelines().get(timeline.name())?;
             let times = timeline.times_raw();
             assert!(times.is_sorted());
 
