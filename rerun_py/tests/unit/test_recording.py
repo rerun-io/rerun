@@ -172,6 +172,98 @@ def test_schema_component_types(tmp_path: pathlib.Path) -> None:
     ]
 
 
+def test_schema_columns_for(tmp_path: pathlib.Path) -> None:
+    """Test Schema.columns_for() filters component columns by entity_path, archetype, and component_type."""
+
+    rrd = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+        rec.send_property("my_prop", rr.Points2D([[0, 2]]))
+
+    recording = rr.recording.load_recording(rrd)
+    schema = recording.schema()
+
+    def names(cols: list) -> list[str]:  # type: ignore[type-arg]
+        return sorted(col.name for col in cols)
+
+    # Filter by entity_path
+    assert names(schema.columns_for(entity_path="/points")) == ["/points:Points3D:positions"]
+    assert names(schema.columns_for(entity_path="/static_text")) == ["/static_text:TextLog:text"]
+
+    # Filter by archetype (fully-qualified)
+    assert names(schema.columns_for(archetype="rerun.archetypes.Points3D")) == ["/points:Points3D:positions"]
+    assert names(schema.columns_for(archetype="rerun.archetypes.TextLog")) == ["/static_text:TextLog:text"]
+
+    # Filter by archetype (short form)
+    assert names(schema.columns_for(archetype="Points3D")) == ["/points:Points3D:positions"]
+    assert names(schema.columns_for(archetype="TextLog")) == ["/static_text:TextLog:text"]
+
+    # Filter by archetype (class)
+    assert names(schema.columns_for(archetype=rr.Points3D)) == ["/points:Points3D:positions"]
+    assert names(schema.columns_for(archetype=rr.TextLog)) == ["/static_text:TextLog:text"]
+
+    # Filter by component_type
+    assert names(schema.columns_for(component_type="rerun.components.Text")) == ["/static_text:TextLog:text"]
+    assert names(schema.columns_for(component_type="rerun.components.Position3D")) == ["/points:Points3D:positions"]
+
+    # Combined filter
+    assert names(schema.columns_for(entity_path="/points", archetype="rerun.archetypes.Points3D")) == [
+        "/points:Points3D:positions",
+    ]
+
+    # Properties excluded by default
+    assert names(schema.columns_for()) == ["/points:Points3D:positions", "/static_text:TextLog:text"]
+    assert names(schema.columns_for(include_properties=True)) == [
+        "/points:Points3D:positions",
+        "/static_text:TextLog:text",
+        "property:RecordingInfo:start_time",
+        "property:my_prop:Points2D:positions",
+    ]
+
+    # Properties included
+    assert names(schema.columns_for(include_properties=True, archetype="rerun.archetypes.RecordingInfo")) == [
+        "property:RecordingInfo:start_time",
+    ]
+
+    # No matches
+    assert schema.columns_for(entity_path="/nonexistent") == []
+
+
+def test_schema_column_names_for(tmp_path: pathlib.Path) -> None:
+    """Test Schema.column_names_for() returns filtered column name strings."""
+
+    rrd = tmp_path / "tmp.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+
+    recording = rr.recording.load_recording(rrd)
+    schema = recording.schema()
+
+    # Filter by archetype (fully-qualified)
+    assert schema.column_names_for(archetype="rerun.archetypes.Points3D") == ["/points:Points3D:positions"]
+
+    # Filter by archetype (short form)
+    assert schema.column_names_for(archetype="Points3D") == ["/points:Points3D:positions"]
+
+    # Filter by archetype (class)
+    assert schema.column_names_for(archetype=rr.Points3D) == ["/points:Points3D:positions"]
+
+    # Filter by component_type
+    assert schema.column_names_for(component_type="rerun.components.Position3D") == ["/points:Points3D:positions"]
+    assert schema.column_names_for(component_type="rerun.components.Text") == ["/static_text:TextLog:text"]
+
+    # No matches
+    assert schema.column_names_for(entity_path="/nonexistent") == []
+
+
 def test_load_recording_path_types(tmp_path: pathlib.Path) -> None:
     """Test that load_recording accepts both str and Path."""
 
