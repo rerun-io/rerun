@@ -32,7 +32,7 @@ fn fake_local_and_example_recordings_test() {
         "rerun_example_dna",
         "dna_rec_id",
     ));
-    example_entity_db.data_source = Some(re_log_channel::LogSource::RrdHttpStream {
+    example_entity_db.data_source = Some(re_log_channel::LogSource::HttpStream {
         url: "https://app.rerun.io/version/nightly/examples/dna.rrd".to_owned(),
         follow: false,
     });

@@ -867,14 +867,14 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let play_state = if let Some(data_source) = &entity_db.data_source {
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
-                // We assume the `RrdHttpStream` is a done recording.
+                // We assume the `HttpStream` is a done recording.
                 re_log_channel::LogSource::File(_)
-                | re_log_channel::LogSource::RrdHttpStream { follow: false, .. }
+                | re_log_channel::LogSource::HttpStream { follow: false, .. }
                 | re_log_channel::LogSource::RedapGrpcStream { .. }
                 | re_log_channel::LogSource::RrdWebEvent => PlayState::Playing,
 
                 // Live data - follow it!
-                re_log_channel::LogSource::RrdHttpStream { follow: true, .. }
+                re_log_channel::LogSource::HttpStream { follow: true, .. }
                 | re_log_channel::LogSource::Sdk
                 | re_log_channel::LogSource::MessageProxy { .. }
                 | re_log_channel::LogSource::Stdin

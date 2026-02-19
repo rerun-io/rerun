@@ -946,7 +946,7 @@ impl App {
                         LogSource::File(_) => true,
 
                         // Specific HTTP streams should stop streaming when closing them.
-                        LogSource::RrdHttpStream { .. } => true,
+                        LogSource::HttpStream { .. } => true,
 
                         // Specific GRPC streams should stop streaming when closing them.
                         // TODO(#10967): We still stream in some data after that.
@@ -975,10 +975,10 @@ impl App {
                 // Stop receiving into the old recordings.
                 // This is most important when going back to the example screen by using the "Back"
                 // button in the browser, and there is still a connection downloading an .rrd.
-                // That's the case of `LogSource::RrdHttpStream`.
+                // That's the case of `LogSource::HttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx_log.retain(|r| match r.source() {
-                    LogSource::File(_) | LogSource::RrdHttpStream { .. } => false,
+                    LogSource::File(_) | LogSource::HttpStream { .. } => false,
 
                     LogSource::JsChannel { .. }
                     | LogSource::RrdWebEvent
@@ -1386,8 +1386,8 @@ impl App {
         let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
 
         match data_source {
-            LogDataSource::RrdHttpUrl { url, follow } => {
-                let new_source = LogSource::RrdHttpStream {
+            LogDataSource::HttpUrl { url, follow } => {
+                let new_source = LogSource::HttpStream {
                     url: url.to_string(),
                     follow: *follow,
                 };
@@ -3017,7 +3017,7 @@ impl App {
         for source in self.rx_log.sources() {
             match &*source {
                 LogSource::File(_)
-                | LogSource::RrdHttpStream { .. }
+                | LogSource::HttpStream { .. }
                 | LogSource::RedapGrpcStream { .. }
                 | LogSource::Stdin
                 | LogSource::RrdWebEvent

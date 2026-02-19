@@ -25,6 +25,7 @@ default = []
 [dependencies]
 re_data_loader.workspace = true
 re_error.workspace = true
+re_format.workspace = true
 re_grpc_client.workspace = true
 re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "stream_from_http"] }
@@ -35,6 +36,7 @@ re_tracing.workspace = true
 re_uri.workspace = true
 
 anyhow.workspace = true
+ehttp.workspace = true
 itertools.workspace = true
 rayon.workspace = true
 url.workspace = true

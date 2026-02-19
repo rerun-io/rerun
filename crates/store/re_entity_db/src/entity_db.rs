@@ -409,7 +409,7 @@ impl EntityDb {
             StoreKind::Blueprint => EntityDbClass::Blueprint,
 
             StoreKind::Recording => match &self.data_source {
-                Some(LogSource::RrdHttpStream { url, .. })
+                Some(LogSource::HttpStream { url, .. })
                     if url.starts_with("https://app.rerun.io") =>
                 {
                     EntityDbClass::ExampleRecording

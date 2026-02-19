@@ -1512,7 +1512,7 @@ impl ReceiversFromUrlParams {
             if let Some(data_source) = LogDataSource::from_uri(re_log_types::FileSource::Cli, &url)
             {
                 match &data_source {
-                    LogDataSource::RrdHttpUrl { .. } => {
+                    LogDataSource::HttpUrl { .. } => {
                         if config.data_sources_from_http_urls {
                             data_sources.push(data_source);
                         } else {

@@ -8678,6 +8678,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
+ "cfg-if",
  "crossbeam",
  "image",
  "indexmap 2.11.4",
@@ -8717,10 +8718,12 @@ name = "re_data_source"
 version = "0.30.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "ehttp",
  "itertools 0.14.0",
  "rayon",
  "re_data_loader",
  "re_error",
+ "re_format",
  "re_grpc_client",
  "re_log",
  "re_log_channel",

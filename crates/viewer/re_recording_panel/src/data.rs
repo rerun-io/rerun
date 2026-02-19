@@ -65,7 +65,7 @@ impl<'a> RecordingPanelData<'a> {
             }
 
             match source.as_ref() {
-                LogSource::File(_) | LogSource::RrdHttpStream { .. } => {
+                LogSource::File(_) | LogSource::HttpStream { .. } => {
                     loading_receivers.push(source);
                 }
 

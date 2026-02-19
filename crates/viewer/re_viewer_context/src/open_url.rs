@@ -42,11 +42,11 @@ pub enum ViewerOpenUrl {
     // that we can re-use in any fragment.
     IntraRecordingSelection(Item),
 
-    /// A remote RRD file, served over http.
+    /// A remote file, served over http.
     ///
-    /// Could be either an `.rrd` recording or a `.rbl` blueprint.
-    /// See also [`LogDataSource::RrdHttpUrl`].
-    RrdHttpUrl(Url),
+    /// Could be an `.rrd` recording, `.rbl` blueprint, `.mcap`, `.png`, `.glb`, etc.
+    /// See also [`LogDataSource::HttpUrl`].
+    HttpUrl(Url),
 
     /// A path to a local file.
     ///
@@ -97,8 +97,8 @@ pub enum ViewerOpenUrl {
 impl std::fmt::Debug for ViewerOpenUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::IntraRecordingSelection(item) => write!(f, "IntraRecordingSelection{item:?}"),
-            Self::RrdHttpUrl(url) => write!(f, "RrdHttpUrl{url}"),
+            Self::IntraRecordingSelection(item) => write!(f, "IntraRecordingSelection({item:?})"),
+            Self::HttpUrl(url) => write!(f, "HttpUrl({url})"),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => write!(f, "FilePath({path:?})"),
             Self::RedapDatasetSegment(uri) => write!(f, "RedapDatasetSegment({uri})"),
@@ -165,7 +165,7 @@ impl std::str::FromStr for ViewerOpenUrl {
             LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
         {
             match data_source {
-                LogDataSource::RrdHttpUrl { url, follow: _ } => Ok(Self::RrdHttpUrl(url)),
+                LogDataSource::HttpUrl { url, follow: _ } => Ok(Self::HttpUrl(url)),
 
                 #[cfg(not(target_arch = "wasm32"))]
                 LogDataSource::FilePath(_file_source, path_buf) => Ok(Self::FilePath(path_buf)),
@@ -279,9 +279,7 @@ impl ViewerOpenUrl {
         // But since we have to handles this for `open_url` and `sharable_url` anyways,
         // we just preserve as much as possible here.
         match data_source {
-            LogSource::RrdHttpStream { url, follow: _ } => {
-                Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
-            }
+            LogSource::HttpStream { url, follow: _ } => Ok(Self::HttpUrl(url.parse::<Url>()?)),
 
             LogSource::File(path_buf) => {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -391,7 +389,7 @@ impl ViewerOpenUrl {
                 )]
             }
 
-            Self::RrdHttpUrl(url) => vec1![url.to_string()],
+            Self::HttpUrl(url) => vec1![url.to_string()],
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path_buf) => vec1![(*path_buf.to_string_lossy()).to_owned()],
@@ -469,7 +467,7 @@ impl ViewerOpenUrl {
             | Self::Settings
             | Self::ChunkStoreBrowser => None,
 
-            Self::RrdHttpUrl(url) => Some(LogSource::RrdHttpStream {
+            Self::HttpUrl(url) => Some(LogSource::HttpStream {
                 url: url.to_string(),
                 follow: false,
             }),
@@ -521,14 +519,12 @@ impl ViewerOpenUrl {
             Self::IntraRecordingSelection(item) => {
                 command_sender.send_system(SystemCommand::set_selection(item));
             }
-            Self::RrdHttpUrl(url) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::RrdHttpUrl {
-                        url,
-                        // `follow` is not encoded in the url itself right now.
-                        follow: options.follow_if_http,
-                    },
-                ));
+            Self::HttpUrl(url) => {
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::HttpUrl {
+                    url,
+                    // `follow` is not encoded in the url itself right now.
+                    follow: options.follow_if_http,
+                }));
             }
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path_buf) => {
@@ -616,7 +612,7 @@ impl ViewerOpenUrl {
             Self::Settings
             | Self::ChunkStoreBrowser
             | Self::IntraRecordingSelection(..)
-            | Self::RrdHttpUrl(..)
+            | Self::HttpUrl(..)
             | Self::RedapProxy(..)
             | Self::RedapCatalog(..)
             | Self::RedapEntry(..)
@@ -646,7 +642,7 @@ impl ViewerOpenUrl {
     pub fn fragment_mut(&mut self) -> Option<&mut re_uri::Fragment> {
         match self {
             Self::IntraRecordingSelection(..) => None,
-            Self::RrdHttpUrl(..) => None,
+            Self::HttpUrl(..) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => None,
             Self::RedapDatasetSegment(uri) => Some(&mut uri.fragment),
@@ -808,7 +804,7 @@ mod tests {
             let url = "https://example.com/data.rrd";
             assert_eq!(
                 ViewerOpenUrl::from_str(url).unwrap(),
-                ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+                ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
             );
 
             // Test file path (native only)
@@ -829,7 +825,7 @@ mod tests {
             let url = "https://foo.com/test?url=https://example.com/data.rrd";
             let expected = ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("https://foo.com/test").unwrap(),
-                url_parameters: vec1::vec1![ViewerOpenUrl::RrdHttpUrl(
+                url_parameters: vec1::vec1![ViewerOpenUrl::HttpUrl(
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             };
@@ -846,7 +842,7 @@ mod tests {
                     ViewerOpenUrl::IntraRecordingSelection(Item::InstancePath(
                         InstancePath::entity_all(EntityPath::from("camera"))
                     )),
-                    ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+                    ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
                 ],
             };
             assert_eq!(ViewerOpenUrl::from_str(url).unwrap(), expected);
@@ -958,7 +954,7 @@ mod tests {
         // originating from HTTP stream.
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::RrdHttpStream {
+            Some(LogSource::HttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
                 follow: false,
             }),
@@ -966,7 +962,7 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .unwrap(),
-            ViewerOpenUrl::RrdHttpUrl("https://example.com/recording.rrd".parse().unwrap())
+            ViewerOpenUrl::HttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
 
         // originating from SDK (not possible).
@@ -1078,7 +1074,7 @@ mod tests {
         );
 
         assert_eq!(
-            ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+            ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
                 .sharable_url(None)
                 .unwrap(),
             "https://example.com/data.rrd"
@@ -1130,7 +1126,7 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("https://foo.com/test").unwrap(),
-                url_parameters: vec1::vec1![ViewerOpenUrl::RrdHttpUrl(
+                url_parameters: vec1::vec1![ViewerOpenUrl::HttpUrl(
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             }
@@ -1142,7 +1138,7 @@ mod tests {
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("https://foo.com/test").unwrap(),
                 url_parameters: vec1::vec1![
-                    ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
+                    ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
                     ViewerOpenUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
                 ],
             }
@@ -1164,7 +1160,7 @@ mod tests {
         );
 
         assert_eq!(
-            ViewerOpenUrl::RrdHttpUrl("https://example.com/data.rrd".parse().unwrap())
+            ViewerOpenUrl::HttpUrl("https://example.com/data.rrd".parse().unwrap())
                 .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=https%3A%2F%2Fexample.com%2Fdata.rrd"
@@ -1217,7 +1213,7 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("http://foo.com/doesn't-matter").unwrap(),
-                url_parameters: vec1::vec1![ViewerOpenUrl::RrdHttpUrl(
+                url_parameters: vec1::vec1![ViewerOpenUrl::HttpUrl(
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             }
@@ -1229,7 +1225,7 @@ mod tests {
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("http://foo.com/doesn't-matter").unwrap(),
                 url_parameters: vec1::vec1![
-                    ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
+                    ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
                     ViewerOpenUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
                 ],
             }

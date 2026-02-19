@@ -30,12 +30,12 @@ impl ViewerOpenUrlDescription {
                 target_short: item.entity_path().map(|p| p.to_string()),
             },
 
-            ViewerOpenUrl::RrdHttpUrl(url) => {
+            ViewerOpenUrl::HttpUrl(url) => {
                 let path = url.path();
                 let rrd_file_name = path.split('/').next_back().map(|s| s.to_owned());
 
                 Self {
-                    category: "RRD from link",
+                    category: "From http link",
                     target_short: rrd_file_name,
                 }
             }

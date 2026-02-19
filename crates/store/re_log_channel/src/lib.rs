@@ -39,7 +39,8 @@ pub enum LogSource {
     File(std::path::PathBuf),
 
     /// The sender is a background thread fetching data from an HTTP file server.
-    RrdHttpStream {
+    #[serde(alias = "RrdHttpStream")]
+    HttpStream {
         /// Should include `http(s)://` prefix.
         url: String,
 
@@ -84,7 +85,7 @@ impl std::fmt::Display for LogSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => write!(f, "file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
+            Self::HttpStream { url, follow: _ } => url.fmt(f),
             Self::MessageProxy(uri) => uri.fmt(f),
             Self::RedapGrpcStream { uri, .. } => uri.fmt(f),
             Self::RrdWebEvent => "Web event listener".fmt(f),
@@ -103,7 +104,7 @@ impl LogSource {
     pub fn is_network(&self) -> bool {
         match self {
             Self::File(_) | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
-            Self::RrdHttpStream { .. }
+            Self::HttpStream { .. }
             | Self::JsChannel { .. }
             | Self::RedapGrpcStream { .. }
             | Self::MessageProxy { .. } => true,
@@ -116,7 +117,7 @@ impl LogSource {
             | Self::Sdk
             | Self::RrdWebEvent
             | Self::Stdin
-            | Self::RrdHttpStream { .. }
+            | Self::HttpStream { .. }
             | Self::JsChannel { .. }
             | Self::MessageProxy { .. } => true,
 
@@ -135,7 +136,7 @@ impl LogSource {
             | Self::Sdk
             | Self::RrdWebEvent
             | Self::Stdin
-            | Self::RrdHttpStream { .. }
+            | Self::HttpStream { .. }
             | Self::JsChannel { .. } => None,
         }
     }
@@ -156,7 +157,7 @@ impl LogSource {
         match self {
             // We only show things we know are very-soon-to-be recordings:
             Self::File(path) => Some(path.to_string_lossy().into_owned()),
-            Self::RrdHttpStream { url, .. } => Some(url.clone()),
+            Self::HttpStream { url, .. } => Some(url.clone()),
             Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.clone()),
 
             Self::RrdWebEvent
@@ -178,7 +179,7 @@ impl LogSource {
                 format!("Loading {}…", path.display())
             }
             Self::Stdin => "Loading stdin…".to_owned(),
-            Self::RrdHttpStream { url, .. } => {
+            Self::HttpStream { url, .. } => {
                 format!("Waiting for data on {url}…")
             }
             Self::MessageProxy(uri) => {
@@ -202,7 +203,7 @@ impl LogSource {
             (Self::RedapGrpcStream { uri: uri1, .. }, Self::RedapGrpcStream { uri: uri2, .. }) => {
                 uri1.clone().without_fragment() == uri2.clone().without_fragment()
             }
-            (Self::RrdHttpStream { url: url1, .. }, Self::RrdHttpStream { url: url2, .. }) => {
+            (Self::HttpStream { url: url1, .. }, Self::HttpStream { url: url2, .. }) => {
                 url1 == url2
             }
             _ => self == other,

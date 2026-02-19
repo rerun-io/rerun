@@ -926,7 +926,7 @@ impl StoreHub {
             // - aren't network sources
             // - don't point at the given `uri`
             match data_source {
-                re_log_channel::LogSource::RrdHttpStream { url, .. } => url != uri,
+                re_log_channel::LogSource::HttpStream { url, .. } => url != uri,
 
                 re_log_channel::LogSource::RedapGrpcStream { uri: redap_uri, .. } => {
                     redap_uri.to_string() != uri

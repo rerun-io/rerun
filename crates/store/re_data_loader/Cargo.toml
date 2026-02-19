@@ -43,6 +43,7 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 memmap2.workspace = true
+cfg-if.workspace = true
 crossbeam.workspace = true
 image.workspace = true
 indexmap.workspace = true

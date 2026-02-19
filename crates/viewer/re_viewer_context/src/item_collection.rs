@@ -228,7 +228,7 @@ impl ItemCollection {
                     LogSource::File(path) => {
                         Some((ClipboardTextDesc::FilePath, path.to_string_lossy().into()))
                     }
-                    LogSource::RrdHttpStream { url, follow: _ } => {
+                    LogSource::HttpStream { url, follow: _ } => {
                         Some((ClipboardTextDesc::Url, url.clone()))
                     }
                     LogSource::RrdWebEvent => None,

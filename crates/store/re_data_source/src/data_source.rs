@@ -15,10 +15,10 @@ pub type AuthErrorHandler =
 /// Somewhere we can get Rerun logging data from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LogDataSource {
-    /// A remote RRD file, served over http.
+    /// A remote file, served over http.
     ///
-    /// Could be either an `.rrd` recording or a `.rbl` blueprint.
-    RrdHttpUrl {
+    /// Could be an `.rrd` recording, `.rbl` blueprint, `.mcap`, `.png`, `.glb`, etc.
+    HttpUrl {
         /// This is a canonicalized URL path without any parameters or fragments.
         url: url::Url,
 
@@ -136,9 +136,13 @@ impl LogDataSource {
                 .or_else(|_| url::Url::parse(&format!("http://{url}")))
                 .ok()?;
             let path = url.path();
+            let extension = std::path::Path::new(path)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
 
-            (path.ends_with(".rrd") || path.ends_with(".rbl"))
-                .then_some(Self::RrdHttpUrl { url, follow: false })
+            re_data_loader::is_supported_file_extension(extension)
+                .then_some(Self::HttpUrl { url, follow: false })
         }
     }
 
@@ -156,8 +160,14 @@ impl LogDataSource {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { url, follow } => {
-                Ok(stream_from_http_to_channel(url.to_string(), follow))
+            Self::HttpUrl { url, follow } => {
+                let path = url.path();
+                let is_rrd = path.ends_with(".rrd") || path.ends_with(".rbl");
+                if is_rrd {
+                    Ok(stream_from_http_to_channel(url.to_string(), follow))
+                } else {
+                    Ok(crate::fetch_file_from_http::fetch_and_load(&url))
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -250,13 +260,13 @@ impl LogDataSource {
     /// Returns analytics data for this data source.
     pub fn analytics(&self) -> LogDataSourceAnalytics {
         match self {
-            Self::RrdHttpUrl { url, .. } => {
+            Self::HttpUrl { url, .. } => {
                 let file_extension = std::path::Path::new(url.path())
                     .extension()
                     .and_then(|e| e.to_str())
                     .map(|s| s.to_lowercase());
                 LogDataSourceAnalytics {
-                    source_type: "rrd_http_url",
+                    source_type: "http_url",
                     file_extension,
                     file_source: None,
                 }
@@ -381,6 +391,10 @@ mod tests {
             "example.zip/foo.rrd",
             "www.foo.zip/foo.rrd",
             "www.foo.zip/blueprint.rbl",
+            "https://example.com/recording.mcap",
+            "https://example.com/scene.glb",
+            "https://example.com/photo.png",
+            "https://example.com/video.mp4",
         ];
         let grpc = [
             // segment_id (new)
@@ -414,9 +428,9 @@ mod tests {
 
         for uri in http {
             let data_source = LogDataSource::from_uri(file_source.clone(), uri);
-            if !matches!(data_source, Some(LogDataSource::RrdHttpUrl { .. })) {
+            if !matches!(data_source, Some(LogDataSource::HttpUrl { .. })) {
                 eprintln!(
-                    "Expected {uri:?} to be categorized as RrdHttpUrl. Instead it got parsed as {data_source:?}"
+                    "Expected {uri:?} to be categorized as HttpUrl. Instead it got parsed as {data_source:?}"
                 );
                 failed = true;
             }

@@ -118,12 +118,11 @@ impl DataLoader for McapLoader {
         Ok(())
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn load_from_file_contents(
         &self,
         settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
-        _contents: std::borrow::Cow<'_, [u8]>,
+        contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         if !has_mcap_extension(&filepath) {
@@ -132,57 +131,46 @@ impl DataLoader for McapLoader {
 
         re_tracing::profile_function!();
 
+        let contents = contents.into_owned();
         let settings = settings.clone();
         let selected_layers = self.selected_layers.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
         let lenses = self.lenses.clone();
 
-        // NOTE(1): `spawn` is fine, this whole function is native-only.
-        // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
+        // NOTE: this must be spawned on a dedicated thread to avoid a deadlock!
         // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
-        std::thread::Builder::new()
-            .name(format!("load_mcap({filepath:?}"))
-            .spawn(move || {
-                if let Err(err) = load_mcap_mmap(
-                    &filepath,
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                load_mcap(
+                    &contents,
                     &settings,
                     &tx,
                     &selected_layers,
                     raw_fallback_enabled,
                     lenses.as_deref(),
-                ) {
-                    re_log::error!("Failed to load MCAP file: {err}");
-                }
-            })
-            .map_err(|err| DataLoaderError::Other(err.into()))?;
-
-        Ok(())
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn load_from_file_contents(
-        &self,
-        settings: &crate::DataLoaderSettings,
-        filepath: std::path::PathBuf,
-        contents: std::borrow::Cow<'_, [u8]>,
-        tx: Sender<crate::LoadedData>,
-    ) -> Result<(), DataLoaderError> {
-        if !has_mcap_extension(&filepath) {
-            return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
+                )?;
+            } else {
+                std::thread::Builder::new()
+                    .name(format!("load_mcap({filepath:?})"))
+                    .spawn(move || {
+                        if let Err(err) = load_mcap(
+                            &contents,
+                            &settings,
+                            &tx,
+                            &selected_layers,
+                            raw_fallback_enabled,
+                            lenses.as_deref(),
+                        ) {
+                            re_log::error!("Failed to load MCAP file: {err}");
+                        }
+                    })
+                    .map_err(|err| DataLoaderError::Other(err.into()))?;
+            }
         }
 
-        let contents = contents.into_owned();
-
-        load_mcap(
-            &contents,
-            settings,
-            &tx,
-            &self.selected_layers,
-            self.raw_fallback_enabled,
-            self.lenses.as_deref(),
-        )
+        Ok(())
     }
 }
 

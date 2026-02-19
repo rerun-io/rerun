@@ -62,7 +62,7 @@ impl LogReceiverSet {
             // retain only sources which:
             // - aren't network sources
             // - don't point at the given `needle`
-            LogSource::RrdHttpStream { url, .. } => url != needle,
+            LogSource::HttpStream { url, .. } => url != needle,
             LogSource::MessageProxy(url) => url.to_string() != needle,
             LogSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
 
