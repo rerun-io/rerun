@@ -3212,7 +3212,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Markers",
                         component_type: "rerun.components.MarkerShape".into(),
                         docstring_md: "What shape to use to represent the point\n\nMay change over time.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "names",

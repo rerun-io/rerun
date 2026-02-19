@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
 use rayon::prelude::*;
+use re_sdk_types::archetypes::SeriesPoints;
 use re_sdk_types::components::{self, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, Component as _, archetypes};
+use re_sdk_types::{Archetype as _, Component as _, Loggable as _, archetypes};
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
@@ -105,8 +106,6 @@ impl SeriesPointsSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, current_query.clone(), instruction.id);
 
-        let fallback_shape = MarkerShape::default();
-
         let visible_time_range = util::determine_visible_time_range(ctx, data_result);
         let time_range = util::determine_time_range(ctx, visible_time_range)?;
 
@@ -174,7 +173,7 @@ impl SeriesPointsSystem {
                     // because markers need a decent radius value to be at all legible.
                     radius_ui: **fallback_size,
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
-                        marker: fallback_shape,
+                        marker: MarkerShape::default(),
                     }),
                 },
             };
@@ -228,6 +227,28 @@ impl SeriesPointsSystem {
                                     point.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
                                         marker: *marker_shape,
                                     });
+                                }
+                            }
+                        }
+                    } else if all_marker_shapes_chunks.is_empty() {
+                        re_tracing::profile_scope!("fallback markers");
+
+                        let fallback_array = query_ctx
+                            .viewer_ctx()
+                            .component_fallback_registry
+                            .fallback_for(
+                                SeriesPoints::descriptor_markers().component,
+                                SeriesPoints::descriptor_markers().component_type,
+                                &query_ctx,
+                            );
+                        if let Ok(marker_array) = MarkerShape::from_arrow(&fallback_array) {
+                            for (points, marker) in points_per_series
+                                .iter_mut()
+                                .zip(clamped_or_nothing(&marker_array, num_series))
+                            {
+                                for p in points {
+                                    p.attrs.kind =
+                                        PlotSeriesKind::Scatter(ScatterAttrs { marker: *marker });
                                 }
                             }
                         }

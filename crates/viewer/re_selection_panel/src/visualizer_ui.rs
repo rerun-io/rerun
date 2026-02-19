@@ -256,14 +256,10 @@ fn visualizer_components(
         let target_component = target_component_descr.component;
 
         // Query override & default since we need them later on.
-        let (is_ui_editable, is_required_component) = if let Some(field) = viewer_ctx
+        let is_ui_editable = viewer_ctx
             .reflection()
             .field_reflection(target_component_descr)
-        {
-            (field.is_ui_editable(), field.is_required())
-        } else {
-            (false, false)
-        };
+            .is_some_and(|field| field.is_ui_editable());
 
         let raw_default = || -> ArrayRef {
             if is_ui_editable {
@@ -366,7 +362,6 @@ fn visualizer_components(
                 query_ctx: query_result.query_context(),
                 target_component_descr,
                 is_ui_editable,
-                is_required_component,
                 instruction,
                 raw_default: &raw_default,
             };
@@ -509,10 +504,14 @@ fn collect_source_component_options(
 
     // TODO(andreas): Right now we are _more_ flexible for required components, because there we also support
     // casting in some special cases. Eventually this should always be the case, leaving us always with a list of valid physical types that we filter on.
-    let allowed_physical_types = if mapping_ctx.is_required_component
-        && let re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-            AnyPhysicalDatatypeRequirement { physical_types, .. },
-        ) = &query_info.required
+    let allowed_physical_types = if let re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+        AnyPhysicalDatatypeRequirement {
+            target_component,
+            physical_types,
+            ..
+        },
+    ) = &query_info.required
+        && target_component == &mapping_ctx.target_component()
     {
         physical_types.clone()
     } else {
@@ -572,7 +571,6 @@ struct SourceMappingContext<'a> {
     query_ctx: &'a re_viewer_context::QueryContext<'a>,
     target_component_descr: &'a ComponentDescriptor,
     is_ui_editable: bool,
-    is_required_component: bool,
     instruction: &'a VisualizerInstruction,
     raw_default: &'a ArrayRef,
 }

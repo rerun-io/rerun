@@ -21,7 +21,7 @@ table SeriesPoints (
   /// What shape to use to represent the point
   ///
   /// May change over time.
-  markers: [rerun.components.MarkerShape] ("attr.rerun.component_required", nullable, order: 2000);
+  markers: [rerun.components.MarkerShape] ("attr.rerun.component_required", "attr.rerun.component_ui_editable": "true", nullable, order: 2000);
 
   // --- Optional ---
 
