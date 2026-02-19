@@ -33,6 +33,7 @@ all-features = true
 [dependencies]
 re_arrow_util.workspace = true
 re_auth = { workspace = true, features = ["oauth"] }
+re_backoff.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
 re_format.workspace = true

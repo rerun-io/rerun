@@ -130,7 +130,10 @@ pub(crate) async fn client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
 ) -> ApiResult<RedapClient> {
-    let channel = channel(origin).await?;
+    let channel = crate::with_retry("redap_connection", || async {
+        channel(origin.clone()).await
+    })
+    .await?;
 
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
@@ -182,7 +185,10 @@ pub(crate) async fn client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
 ) -> ApiResult<RedapClient> {
-    let channel = channel(origin).await?;
+    let channel = crate::with_retry("redap_connection", || async {
+        channel(origin.clone()).await
+    })
+    .await?;
 
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))

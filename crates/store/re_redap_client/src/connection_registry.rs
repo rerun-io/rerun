@@ -373,21 +373,24 @@ impl ConnectionRegistryHandle {
         // so if what we're trying to connect to is not a valid Rerun server, then cut out
         // a layer of noise:
         {
-            let res = match ehttp::fetch_async(ehttp::Request::get(format!(
-                "{}/version",
-                origin.as_url()
-            )))
-            .await
-            {
-                Ok(res) => res,
-                Err(err) => {
-                    let mut msg = format!("failed to connect to server '{origin}': {err}");
-                    if let Some(suggested) = suggest_api_prefix(&origin) {
-                        msg.push_str(&format!(". Did you mean '{suggested}'?"));
+            let res = crate::with_retry("http_version_fetch", || async {
+                match ehttp::fetch_async(ehttp::Request::get(format!(
+                    "{}/version",
+                    origin.as_url()
+                )))
+                .await
+                {
+                    Ok(res) => Ok(res),
+                    Err(err) => {
+                        let mut msg = format!("failed to connect to server '{origin}': {err}");
+                        if let Some(suggested) = suggest_api_prefix(&origin) {
+                            msg.push_str(&format!(". Did you mean '{suggested}'?"));
+                        }
+                        Err(ApiError::connection(msg))
                     }
-                    return Err(ApiError::connection(msg));
                 }
-            };
+            })
+            .await?;
 
             if !res.ok {
                 let hint = suggest_api_prefix(&origin).map(|suggested| {

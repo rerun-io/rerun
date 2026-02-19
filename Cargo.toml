@@ -100,6 +100,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.30.0-alpha.1", defaul
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.30.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.30.0-alpha.1", default-features = false }
 re_auth = { path = "crates/utils/re_auth", version = "=0.30.0-alpha.1", default-features = false }
+re_backoff = { path = "crates/utils/re_backoff", version = "=0.30.0-alpha.1", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.30.0-alpha.1", default-features = false }
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.30.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.30.0-alpha.1", default-features = false }

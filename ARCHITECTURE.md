@@ -225,6 +225,7 @@ Update instructions:
 | re_arrow_combinators | Type-safe, composable transformations for Arrow arrays                               |
 | re_arrow_util        | Helpers for working with arrow                                                       |
 | re_auth              | Authentication and authorization helpers                                             |
+| re_backoff           | Simple backoff logic used for retries.                                               |
 | re_byte_size         | Calculate the heap-allocated size of values at runtime                               |
 | re_capabilities      | Capability tokens                                                                    |
 | re_case              | Case conversions, the way Rerun likes them                                           |

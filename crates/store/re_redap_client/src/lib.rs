@@ -104,6 +104,7 @@ pub enum ApiErrorKind {
     Timeout,
     Internal,
     InvalidArguments,
+    ResourcesExhausted,
     Serialization,
     InvalidServer,
 }
@@ -114,6 +115,7 @@ impl From<tonic::Code> for ApiErrorKind {
             tonic::Code::NotFound => Self::NotFound,
             tonic::Code::AlreadyExists => Self::AlreadyExists,
             tonic::Code::PermissionDenied => Self::PermissionDenied,
+            tonic::Code::ResourceExhausted => Self::ResourcesExhausted,
             tonic::Code::Unauthenticated => Self::Unauthenticated,
             tonic::Code::Unimplemented => Self::Unimplemented,
             tonic::Code::Unavailable => Self::Connection,
@@ -135,6 +137,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::Connection => write!(f, "Connection"),
             Self::Internal => write!(f, "Internal"),
             Self::InvalidArguments => write!(f, "InvalidArguments"),
+            Self::ResourcesExhausted => write!(f, "ResourcesExhausted"),
             Self::Serialization => write!(f, "Serialization"),
             Self::Timeout => write!(f, "Timeout"),
             Self::InvalidServer => write!(f, "InvalidServer"),
@@ -281,4 +284,75 @@ impl std::error::Error for ApiError {
             .as_deref()
             .map(|e| e as &(dyn std::error::Error + 'static))
     }
+}
+
+/// Helper function for executing requests or connection attempts with retries.
+#[tracing::instrument(skip(f), level = "debug")]
+pub async fn with_retry<T, F, Fut>(req_name: &str, f: F) -> ApiResult<T>
+where
+    F: Fn() -> Fut,
+    Fut: Future<Output = ApiResult<T>>,
+{
+    // targeting to have all retries finish under ~5 seconds
+    const MAX_ATTEMPTS: usize = 5;
+
+    // 100 200 400 800 1600
+    let mut backoff_gen = re_backoff::BackoffGenerator::new(
+        std::time::Duration::from_millis(100),
+        std::time::Duration::from_secs(3),
+    )
+    .expect("base is less than max");
+
+    let mut attempts = 1;
+    let mut last_retryable_err = None;
+
+    while attempts <= MAX_ATTEMPTS {
+        let res = f().await;
+
+        match res {
+            Err(err)
+                if matches!(
+                    err.kind,
+                    ApiErrorKind::Connection
+                        | ApiErrorKind::Timeout
+                        | ApiErrorKind::Internal
+                        | ApiErrorKind::ResourcesExhausted
+                ) =>
+            {
+                last_retryable_err = Some(err);
+                let backoff = backoff_gen.gen_next();
+
+                tracing::debug!(
+                    attempts,
+                    max_attempts = MAX_ATTEMPTS,
+                    ?backoff,
+                    "{req_name} failed with retryable gRPC error, retrying after backoff"
+                );
+
+                backoff.sleep().await;
+            }
+            Err(err) => {
+                tracing::error!(
+                    attempts,
+                    "{req_name} failed with non-retryable error: {err}"
+                );
+                return Err(err);
+            }
+
+            Ok(value) => {
+                tracing::debug!(attempts, "{req_name} succeeded");
+                return Ok(value);
+            }
+        }
+
+        attempts += 1;
+    }
+
+    tracing::error!(
+        attempts,
+        max_attempts = MAX_ATTEMPTS,
+        "{req_name} failed after max retries, giving up"
+    );
+
+    Err(last_retryable_err.expect("bug: this should not be None if we reach here"))
 }

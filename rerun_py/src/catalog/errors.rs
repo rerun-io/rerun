@@ -147,9 +147,9 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::ApiError(err) => match err.kind {
-                ApiErrorKind::Connection | ApiErrorKind::InvalidServer => {
-                    PyConnectionError::new_err(err.to_string())
-                }
+                ApiErrorKind::Connection
+                | ApiErrorKind::InvalidServer
+                | ApiErrorKind::ResourcesExhausted => PyConnectionError::new_err(err.to_string()),
                 ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
                     PyPermissionError::new_err(err.to_string())
                 }

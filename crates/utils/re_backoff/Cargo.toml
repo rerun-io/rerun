@@ -1,0 +1,28 @@
+[package]
+name = "re_backoff"
+authors.workspace = true
+description = "Utilities for retrying operations with backoff."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+# External
+rand.workspace = true
+tokio = { workspace = true, features = ["time"] }
+
+
+[dev-dependencies]
