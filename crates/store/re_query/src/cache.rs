@@ -169,6 +169,7 @@ impl re_byte_size::SizeBytes for QueryCache {
             store_id: _,
             might_require_clearing,
 
+            // TODO(RR-3800): better size estimation
             // TODO(RR-3366): this seems to be over-estimating a lot?
             // Maybe double-counting chunks or other arrow data?
             latest_at_per_cache_key: _,

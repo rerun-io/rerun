@@ -1166,6 +1166,8 @@ impl EntityDb {
 impl re_byte_size::SizeBytes for EntityDb {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
+        // TODO(RR-3800): verify size estimation
+
         re_tracing::profile_function!();
 
         let Self {

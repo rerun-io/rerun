@@ -686,8 +686,8 @@ impl SizeBytes for LatestAtCache {
             pending_invalidations,
         } = self;
 
-        let per_query_time = per_query_time.total_size_bytes();
-        let pending_invalidations = pending_invalidations.total_size_bytes();
+        let per_query_time = per_query_time.heap_size_bytes();
+        let pending_invalidations = pending_invalidations.heap_size_bytes();
 
         per_query_time + pending_invalidations
     }

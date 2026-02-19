@@ -436,10 +436,12 @@ fn apply_estimate(
 
 impl re_byte_size::SizeBytes for TimeHistogram {
     fn heap_size_bytes(&self) -> u64 {
+        // TODO(RR-3800): better size estimation
         let Self { timeline: _, hist } = self;
 
-        // Calculating the memory use of the time histogram can be very slow.
-        // (and not _very_ important), so we do a dumb heuristic here.
+        // Calculating the memory use of the time histogram can be slow
+        // (tens of ms for 1h-recording).
+        // So we do a dumb heuristic here:
         // TODO(RR-3784): get rid of TimeHistogram completely
         hist.total_count() * (std::mem::size_of::<u64>() as u64)
     }
