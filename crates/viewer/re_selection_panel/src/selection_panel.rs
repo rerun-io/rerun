@@ -498,8 +498,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             {
                 let markdown = "# Visualizers
 
-This section lists all active visualizers in this view. Each visualizer is displayed with its \
-type and the entity path it visualizes.";
+This section lists all active visualizers in this view.";
 
                 let header = ui
                     .section_collapsing_header("Visualizers")
@@ -562,42 +561,6 @@ fn visualizer_section_plus_button(
     space_origin: &EntityPath,
     ui: &mut egui::Ui,
 ) -> egui::Response {
-    let ui_style = Arc::clone(ui.style());
-    ui.spacing_mut().menu_margin = egui::Margin::same(0);
-    ui.add(
-        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
-            .on_custom_menu(
-                move |popup| {
-                    popup.frame(
-                        egui::Frame::popup(&ui_style).inner_margin(egui::Margin::symmetric(10, 10)),
-                    )
-                },
-                move |ui| {
-                    menu_add_new_visualizer_for_view(
-                        viewer_ctx,
-                        view_id,
-                        view_class,
-                        view_class_identifier,
-                        space_origin,
-                        ui,
-                    );
-                },
-            )
-            .on_hover_text("Add a new visualizer to the current view."),
-    )
-}
-
-/// Renders the popup menu listing entity+component options for adding new visualizers.
-fn menu_add_new_visualizer_for_view(
-    viewer_ctx: &ViewerContext<'_>,
-    view_id: ViewId,
-    view_class: &dyn re_viewer_context::ViewClass,
-    view_class_identifier: re_sdk_types::ViewClassIdentifier,
-    space_origin: &EntityPath,
-    ui: &mut egui::Ui,
-) {
-    profile_function!();
-
     let options = collect_add_visualizer_options(
         viewer_ctx,
         view_id,
@@ -605,6 +568,36 @@ fn menu_add_new_visualizer_for_view(
         view_class_identifier,
         space_origin,
     );
+
+    let ui_style = Arc::clone(ui.style());
+    ui.spacing_mut().menu_margin = egui::Margin::same(0);
+    ui.add(
+        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
+            .enabled(!options.is_empty())
+            .on_custom_menu(
+                move |popup| {
+                    popup.frame(
+                        egui::Frame::popup(&ui_style).inner_margin(egui::Margin::symmetric(10, 10)),
+                    )
+                },
+                move |ui| {
+                    menu_add_new_visualizer_for_view(viewer_ctx, view_id, options, ui);
+                },
+            )
+            .on_hover_text("Add a new visualizer to the current view.")
+            .on_disabled_hover_text("There are no recommended visualizers for this view."),
+    )
+}
+
+/// Renders the popup menu listing entity+component options for adding new visualizers.
+fn menu_add_new_visualizer_for_view(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    options: Vec<AddVisualizerOption>,
+    ui: &mut egui::Ui,
+) {
+    profile_function!();
+
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
     ui.spacing_mut().item_spacing.y = 10.0;
 
@@ -672,6 +665,8 @@ fn collect_add_visualizer_options(
     view_class_identifier: re_sdk_types::ViewClassIdentifier,
     space_origin: &EntityPath,
 ) -> Vec<AddVisualizerOption> {
+    profile_function!();
+
     let recording = viewer_ctx.recording();
     let entity_tree = recording.tree();
 
