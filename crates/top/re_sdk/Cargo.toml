@@ -43,7 +43,6 @@ web_viewer = ["dep:re_log_channel", "dep:re_web_viewer_server", "dep:tokio", "de
 
 server = ["dep:re_log_channel", "dep:tokio"]
 
-
 [dependencies]
 re_arrow_combinators.workspace = true
 re_build_info.workspace = true

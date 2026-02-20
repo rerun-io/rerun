@@ -79,6 +79,7 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window", "MessageEvent"] }
 
 [dev-dependencies]
+re_arrow_util = { workspace = true, features = ["test"] }
 re_sdk_types.workspace = true
 
 criterion.workspace = true

@@ -6,6 +6,7 @@ mod compare;
 mod format;
 mod format_data_type;
 mod string_view;
+#[cfg(feature = "test")]
 mod test_extensions;
 
 // ----------------------------------------------------------------
@@ -23,6 +24,7 @@ pub use self::format::{
 };
 pub use self::format_data_type::*;
 pub use self::string_view::*;
+#[cfg(feature = "test")]
 pub use self::test_extensions::*;
 
 /// Convert any `BinaryArray` to `LargeBinaryArray`, because we treat them logically the same
