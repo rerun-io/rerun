@@ -136,9 +136,11 @@ pub mod external {
     pub use re_chunk::external::*;
     #[cfg(feature = "data_loaders")]
     pub use re_data_loader::{self, external::*};
+    #[cfg(feature = "server")]
+    pub use re_grpc_server;
     pub use re_log::external::*;
     pub use re_log_types::external::*;
-    pub use {re_grpc_client, re_grpc_server, re_log, re_log_encoding, re_log_types, re_uri};
+    pub use {re_grpc_client, re_log, re_log_encoding, re_log_types, re_uri};
 }
 
 #[cfg(feature = "web_viewer")]

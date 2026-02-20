@@ -407,7 +407,7 @@ impl RecordingStreamBuilder {
     pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
         self.connect_grpc_opts(format!(
             "rerun+http://127.0.0.1:{}/proxy",
-            re_grpc_server::DEFAULT_SERVER_PORT
+            crate::DEFAULT_SERVER_PORT
         ))
     }
 
@@ -1996,7 +1996,7 @@ impl RecordingStream {
     pub fn connect_grpc(&self) -> RecordingStreamResult<()> {
         self.connect_grpc_opts(format!(
             "rerun+http://127.0.0.1:{}/proxy",
-            re_grpc_server::DEFAULT_SERVER_PORT
+            crate::DEFAULT_SERVER_PORT
         ))
     }
 
