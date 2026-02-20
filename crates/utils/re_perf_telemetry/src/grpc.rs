@@ -362,7 +362,6 @@ impl GrpcOnResponse {
                         client_version: None,
                         server_version: None,
                         email: None,
-                        dataset_id: None,
                     }
                     .otel_kvs(),
                 );
@@ -381,7 +380,6 @@ struct GrpcEosMetadata {
     client_version: Option<String>,
     server_version: Option<String>,
     email: Option<String>,
-    dataset_id: Option<String>,
 }
 
 impl GrpcEosMetadata {
@@ -406,10 +404,6 @@ impl GrpcEosMetadata {
             opentelemetry::KeyValue::new(
                 "email",
                 self.email.as_deref().unwrap_or("undefined").to_owned(),
-            ),
-            opentelemetry::KeyValue::new(
-                "dataset_id",
-                self.dataset_id.as_deref().unwrap_or("undefined").to_owned(),
             ),
         ]
     }
@@ -462,7 +456,6 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                     opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
                     opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                     opentelemetry::KeyValue::new("email", email.to_owned()),
-                    opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
                 ],
             );
         };
@@ -493,7 +486,6 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                         client_version,
                         server_version,
                         email,
-                        dataset_id,
                     }
                     .otel_kvs(),
                 );
@@ -577,7 +569,6 @@ impl<B> tower_http::trace::OnBodyChunk<B> for GrpcOnFirstBodyChunk {
                     opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
                     opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                     opentelemetry::KeyValue::new("email", email.to_owned()),
-                    opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
                 ],
             );
 
@@ -683,7 +674,6 @@ impl tower_http::trace::OnEos for GrpcOnEos {
                 opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
                 opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
                 opentelemetry::KeyValue::new("email", email.to_owned()),
-                opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
             ],
         );
     }
