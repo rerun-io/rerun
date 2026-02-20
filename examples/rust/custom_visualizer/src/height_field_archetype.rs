@@ -92,6 +92,7 @@ impl HeightField {
     }
 
     #[inline]
+    #[expect(dead_code)] // Not used in this example, but could be useful for users of the archetype.
     pub fn with_colormap(mut self, colormap: impl Into<rerun::components::Colormap>) -> Self {
         self.colormap = try_serialize_field::<rerun::components::Colormap>(
             Self::descriptor_colormap(),
