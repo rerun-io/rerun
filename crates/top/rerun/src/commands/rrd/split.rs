@@ -489,12 +489,10 @@ impl SplitCommand {
         let max_time = max_time.saturating_add(1);
 
         let cutoff_times = if let Some(num_parts) = num_parts {
-            let num_parts = *num_parts as u64;
-
-            let time_span = max_time.saturating_sub(min_time) / num_parts as i64;
+            let time_span = max_time.saturating_sub(min_time) / *num_parts as i64;
             let mut cur_time = min_time;
 
-            (0..num_parts)
+            (0..*num_parts as u64)
                 .map(|_| {
                     let t = cur_time;
                     cur_time += time_span;
