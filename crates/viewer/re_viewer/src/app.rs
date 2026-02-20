@@ -159,7 +159,6 @@ impl App {
         connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
     ) -> Self {
-        let is_test = app_env == crate::AppEnvironment::Test;
         Self::with_commands(
             main_thread_token,
             build_info,
@@ -169,7 +168,7 @@ impl App {
             connection_registry,
             tokio_runtime,
             crate::register_text_log_receiver(),
-            command_channel(is_test),
+            command_channel(),
         )
     }
 
