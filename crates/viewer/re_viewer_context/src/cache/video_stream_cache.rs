@@ -1122,6 +1122,8 @@ fn update_sample_durations(
         if let Some(last_sample_meta) = last_present_sample
             && let Some(last_sample) = samples[last_sample_meta.idx].sample_mut()
         {
+            // TODO(#10090): This doesn't work if we have b-frames since they
+            // won't be monotonically rising by PTS.
             let duration = current - last_sample_meta.pts;
             if duration.0 < 0 {
                 return Err(VideoStreamProcessingError::OutOfOrderSamples);
@@ -1635,10 +1637,11 @@ fn find_affected_sample_range(
         .keyframe_indices
         .iter()
         .position(|idx| {
-            video_descr
-                .samples
-                .get(*idx)
-                .is_some_and(|s| s.decode_timestamp() > affected_range_min)
+            video_descr.samples.get(*idx).is_some_and(|s| {
+                // Don't trust timepoints of the conflicting chunk.
+                s.source_id() == conflicting_chunk.id().as_tuid()
+                    || s.decode_timestamp() > affected_range_min
+            })
         })
         .and_then(|idx| idx.checked_sub(1));
 

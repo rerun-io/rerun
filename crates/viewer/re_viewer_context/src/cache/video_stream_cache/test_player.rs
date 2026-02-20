@@ -1390,3 +1390,79 @@ fn cache_with_manifest_load_resulting_in_incomplete_gop() {
     player.play_store(0.0..2.0, dt, &store).unwrap();
     player.expect_decoded_samples(0..11);
 }
+
+/// When a conflicting chunk (chunk 1) is loaded last, its manifest-placed
+/// keyframe may sit right before the affected range. The reorder logic must
+/// walk back past that keyframe to include earlier samples (from chunk 0)
+/// whose real timestamps interleave with the conflicting chunk.
+///
+/// Without skipping the conflicting chunk's keyframe, chunk 0's sample at
+/// time 3 would be outside the reorder range, leaving the final sequence
+/// as [1, 3, 2, 4, 5, 6] instead of the correct [1, 2, 3, 4, 5, 6].
+///
+/// Timeline picture (each chunk is one GOP):
+///   chunk 0:  1 . 3 . .
+///   chunk 1:  . 2 . 4 .
+///   chunk 2:  . . . . 5 6
+///
+/// Load order: 0, 2, 1
+#[test]
+fn cache_with_manifest_skips_conflicting_chunk_keyframe() {
+    let mut cache = VideoStreamCache::default();
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    // Chunk 0: 1 GOP of 2 samples, times [1, 3].
+    let chunk_0 = video_chunk(1.0, 2.0, 1, 2);
+
+    // Chunk 1: 1 GOP of 2 samples, times [2, 4].
+    // Interleaves with chunk 0, causing out-of-order when loaded last.
+    let chunk_1 = video_chunk(2.0, 2.0, 1, 2);
+
+    // Chunk 2: 1 GOP of 2 samples, times [5, 6].
+    let chunk_2 = video_chunk(5.0, 1.0, 1, 2);
+
+    let chunks: Vec<_> = [chunk_0, chunk_1, chunk_2, codec_chunk()]
+        .into_iter()
+        .map(Arc::new)
+        .collect();
+
+    load_into_rrd_manifest(&mut store, &chunks);
+
+    // Load codec.
+    load_chunks(&mut store, &mut cache, &chunks[3..4]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    // Load chunk 0, then chunk 2.
+    load_chunks(&mut store, &mut cache, &chunks[0..1]);
+    load_chunks(&mut store, &mut cache, &chunks[2..3]);
+
+    player.play_store(5.0..7.0, 1.0, &store).unwrap();
+    player.expect_decoded_samples(4..6);
+
+    // Loading chunk 1 triggers out-of-order: chunk 0's sample at time 3
+    // (index 1) is followed by chunk 1's sample at time 2 (index 2).
+    //
+    // In find_affected_sample_range, chunk 1's keyframe (at index 2, time 2)
+    // is found right before chunk 2's keyframe (at index 4, time 5).
+    // Since it belongs to the conflicting chunk, the while loop walks back
+    // past it to chunk 0's keyframe at index 0, ensuring chunk 0's sample
+    // at time 3 is included in the reorder range.
+    load_chunks(&mut store, &mut cache, &chunks[1..2]);
+
+    // The cache entry should survive the delta re-merge.
+    assert!(
+        cache
+            .0
+            .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
+                entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
+                timeline: re_chunk::TimelineName::new(TIMELINE_NAME)
+            }),
+        "Cache entry should survive delta re-merge"
+    );
+
+    // After re-merge, all 6 samples should be in the correct time order.
+    player.play_store(1.0..7.0, 1.0, &store).unwrap();
+    player.expect_decoded_samples(0..6);
+}
