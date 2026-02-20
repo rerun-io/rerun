@@ -5,7 +5,15 @@ order: 700
 
 The Rerun Viewer has built-in support for opening [MCAP](https://mcap.dev/) files, an open container format for storing timestamped messages.
 
-⚠️ **This is an early version of MCAP support** that will continue to evolve and expand over time. We are actively seeking [feedback](https://rerun.io/feedback) from the community to guide development priorities. Reinterpretation of custom messages and enhanced query capabilities are planned for following releases.
+## Supported message formats
+
+Here's a quick summary of Rerun's MCAP data loader:
+
+* Automatic conversion to Rerun archetypes is supported for common ROS 2 & Foxglove messages.
+* Other ROS 2 & Foxglove messages are decoded into queryable components via [reflection](../../concepts/logging-and-ingestion/mcap/message-formats.md#schema-reflection).
+
+For a detailed overview of Rerun's built-in MCAP support, please refer to our [Supported Message Formats](../../concepts/logging-and-ingestion/mcap/message-formats.md) page.
+We are continually expanding the supported MCAP message types and are [interested in your feedback](../../concepts/logging-and-ingestion/mcap/message-formats.md#adding-support-for-new-types).
 
 ## Quick start
 
@@ -72,23 +80,6 @@ rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 ```
 
 For a detailed explanation of how each layer works and when to use them, see [Layers Explained](../../concepts/logging-and-ingestion/mcap/layers-explained.md).
-
-## Supported message formats
-
-Rerun provides automatic visualization for common ROS2 message types. Protobuf messages are automatically decoded into Arrow structs, but for now will only show up in the selection panel and in the dataframe view. The contents of these MCAP files can also be queried using the Dataframe API.
-
-Unsupported message types (such as ROS1 messages) remain available as raw bytes in Arrow format.
-
-The following is a screenshot of the selection panel and shows a Protobuf-encoded MCAP message. The top-level fields of the Protobuf message are imported as components in the corresponding point cloud archetype. The raw MCAP schema and message information show up as separate archetypes as well.
-
-<picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/full.png" alt="Screenshot of MCAP messages converted to raw Arrow data in the selection panel">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/1024w.png">
-</picture>
-
-For more details about all supported message types, see [Message Formats](../../concepts/logging-and-ingestion/mcap/message-formats.md).
 
 ## Advanced usage
 

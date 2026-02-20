@@ -65,8 +65,8 @@ rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 
 Each layer creates different types of components on entity paths (derived from MCAP channel topics) that can be accessed through Rerun's SDK:
 
-- Data from the `protobuf` layer appears as structured components that can be queried by field name
-- Data from the `ros2msg` layer appears as native Rerun visualization components ([Image](../../../reference/types/archetypes/image.md), [Points3D](../../../reference/types/archetypes/points3d.md), etc.)
+- Data from the `ros2msg` layer and supported Foxglove messages appears as native Rerun visualization archetypes (see [here](message-formats.md#overview) for an overview)
+- Other data from the `protobuf` or `ros2_reflection` layers appears as structured components that can be queried by field name or manually added to certain views ([example](message-formats.md#example-time-series-plot-for-custom-message-scalars))
 - Data from the `raw` layer appears as blob components containing the original message bytes
 - Metadata from `schema`, `stats`, and `recording_info` layers appears as dedicated metadata entities
 

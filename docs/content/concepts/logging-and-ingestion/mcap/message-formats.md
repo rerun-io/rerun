@@ -76,7 +76,7 @@ For data that can be visualized in 3D views (e.g. point clouds), this means that
 MCAP files allow for arbitrary custom message payloads, so you might have other message types in your files than the set of ROS 2 or Foxglove messages that Rerun automatically converts to archetypes.
 
 Rerun's MCAP data loader automatically decodes unknown Protobuf or ROS 2 messages using schema reflection.
-This means that you won't get Rerun archetypes out of the box, but the message fields become queryable components (e.g. for training data curation).
+This means that you won't get Rerun archetypes out of the box, but the message fields become queryable components (e.g. for training data curation via the Rerun SDK, see [here](layers-explained.md#accessing-layer-data)).
 Depending on the contents of your data, you can still manually add visualizers for certain fields to your blueprint, e.g. a time-series view for scalars or a dataframe view.
 
 ### Example: time-series plot for custom message scalars
