@@ -1,6 +1,7 @@
 use std::str::FromStr as _;
 use std::sync::Arc;
 
+use anyhow::Context as _;
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
 use re_auth::credentials::CredentialsProvider as _;
@@ -3989,12 +3990,23 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
         .store_id()
         .clone()
         .with_recording_id(RecordingId::random());
-    let messages = store_context.blueprint.to_messages(None).map(|mut msg| {
-        if let Ok(msg) = &mut msg {
-            msg.set_store_id(new_store_id.clone());
-        }
-        msg
-    });
+
+    let mut saved_blueprint = store_context
+        .blueprint
+        .clone_with_new_id(new_store_id)
+        .context("Cloning current blueprint")?;
+
+    if let Some(undo_state) = app
+        .state
+        .blueprint_undo_state
+        .get(store_context.blueprint.store_id())
+    {
+        // We don't actually want to edit the undo state when saving,
+        // just clear the redo-buffer section of what we save.
+        undo_state.clone().clear_redo_buffer(&mut saved_blueprint);
+    }
+
+    let messages = saved_blueprint.to_messages(None);
 
     let file_name = format!(
         "{}.rbl",
