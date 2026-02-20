@@ -41,7 +41,7 @@ pub struct ViewSystemRegistrator<'a> {
     identifier: ViewClassIdentifier,
     context_systems: HashSet<ViewSystemIdentifier>,
     visualizers: HashSet<ViewSystemIdentifier>,
-    pub app_options: &'a crate::AppOptions,
+    app_options: &'a crate::AppOptions,
     known_builtin_enum_components: Arc<IntSet<ComponentType>>,
 }
 
@@ -227,7 +227,51 @@ impl ViewClassRegistry {
         app_options: &crate::AppOptions,
         fallback_registry: &mut FallbackProviderRegistry,
     ) -> Result<(), ViewClassRegistryError> {
-        let class = Box::<T>::default();
+        let identifier = T::identifier();
+        if self.view_classes.contains_key(&identifier) {
+            return Err(ViewClassRegistryError::DuplicateClassIdentifier(identifier));
+        }
+
+        self.view_classes.insert(
+            identifier,
+            ViewClassRegistryEntry {
+                class: Box::<T>::default(),
+                identifier,
+                context_system_ids: Default::default(),
+                visualizer_system_ids: Default::default(),
+            },
+        );
+
+        self.extend_class(
+            identifier,
+            reflection,
+            app_options,
+            fallback_registry,
+            // Create a new class temporary class instance to execute the registration function on it.
+            // Classes are generally stateless, so this won't miss any changes since the initial registration.
+            // However, even if there was state, there would have been no opportunity for it to change since the registration earlier.
+            |reg| T::default().on_register(reg),
+        )?;
+
+        Ok(())
+    }
+
+    /// Extends an already registered view class with additional systems.
+    ///
+    /// The provided closure receives a [`ViewSystemRegistrator`] that can be used to register
+    /// additional visualizers, context systems, and fallback providers for the given view class.
+    pub fn extend_class(
+        &mut self,
+        view_class: ViewClassIdentifier,
+        reflection: &re_sdk_types::reflection::Reflection,
+        app_options: &crate::AppOptions,
+        fallback_registry: &mut FallbackProviderRegistry,
+        register_fn: impl FnOnce(&mut ViewSystemRegistrator<'_>) -> Result<(), ViewClassRegistryError>,
+    ) -> Result<(), ViewClassRegistryError> {
+        // For this edit operation, we take out the class entry and put it back in later.
+        let Some(mut class_entry) = self.view_classes.remove(&view_class) else {
+            return Err(ViewClassRegistryError::UnknownClassIdentifier(view_class));
+        };
 
         let known_builtin_enum_components: Arc<IntSet<ComponentType>> = Arc::new(
             reflection
@@ -240,19 +284,20 @@ impl ViewClassRegistry {
 
         let mut registrator = ViewSystemRegistrator {
             registry: self,
-            identifier: T::identifier(),
-            context_systems: Default::default(),
-            visualizers: Default::default(),
+            identifier: view_class,
+            context_systems: class_entry.context_system_ids,
+            visualizers: class_entry.visualizer_system_ids,
             fallback_registry,
             app_options,
             known_builtin_enum_components,
         };
 
-        class.on_register(&mut registrator)?;
+        register_fn(&mut registrator)?;
 
+        // Put class entry back in.
         let ViewSystemRegistrator {
             registry: _,
-            identifier,
+            identifier: _,
             context_systems,
             visualizers,
             fallback_registry: _,
@@ -260,21 +305,10 @@ impl ViewClassRegistry {
             known_builtin_enum_components: _,
         } = registrator;
 
-        if self
-            .view_classes
-            .insert(
-                identifier,
-                ViewClassRegistryEntry {
-                    class,
-                    identifier,
-                    context_system_ids: context_systems,
-                    visualizer_system_ids: visualizers,
-                },
-            )
-            .is_some()
-        {
-            return Err(ViewClassRegistryError::DuplicateClassIdentifier(identifier));
-        }
+        class_entry.context_system_ids = context_systems;
+        class_entry.visualizer_system_ids = visualizers;
+        self.view_classes
+            .insert(class_entry.identifier, class_entry);
 
         Ok(())
     }
@@ -297,6 +331,50 @@ impl ViewClassRegistry {
         });
 
         Ok(())
+    }
+
+    /// Registers an additional [`ViewContextSystem`] for a view class.
+    ///
+    /// Usually, context systems are registered in [`ViewClass::on_register`] which is called when
+    /// the class is first registered.
+    /// This method allows extending an existing class with new context systems.
+    pub fn register_context_system<
+        T: ViewContextSystem + IdentifiedViewSystem + Default + 'static,
+    >(
+        &mut self,
+        view_class: ViewClassIdentifier,
+    ) -> Result<(), ViewClassRegistryError> {
+        // Check no overlap with visualizers.
+        if self.visualizers.contains_key(&T::identifier()) {
+            return Err(ViewClassRegistryError::IdentifierAlreadyInUseForVisualizer(
+                T::identifier().as_str(),
+            ));
+        }
+
+        let class_entry = self
+            .view_classes
+            .get_mut(&view_class)
+            .ok_or(ViewClassRegistryError::UnknownClassIdentifier(view_class))?;
+
+        if class_entry.context_system_ids.insert(T::identifier()) {
+            self.context_systems
+                .entry(T::identifier())
+                .or_insert_with(|| ContextSystemTypeRegistryEntry {
+                    factory_method: Box::new(|| Box::<T>::default()),
+                    once_per_frame_execution_method: T::execute_once_per_frame,
+                    used_by: Default::default(),
+                })
+                .used_by
+                .insert(view_class);
+
+            Ok(())
+        } else {
+            Err(
+                ViewClassRegistryError::IdentifierAlreadyInUseForContextSystem(
+                    T::identifier().as_str(),
+                ),
+            )
+        }
     }
 
     /// Queries a View registry entry by class name, returning `None` if it is not registered.
