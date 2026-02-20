@@ -4,6 +4,7 @@ use std::sync::{Arc, LazyLock};
 
 use re_chunk::{Chunk, ChunkResult};
 use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
+use re_mcap::SelectedLayers;
 
 // ----------------------------------------------------------------------------
 
@@ -421,21 +422,11 @@ impl LoadedData {
 ///
 /// Lazy initialized the first time a file is opened.
 static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
-    let mcap_loader = match crate::loader_mcap::lenses::foxglove_lenses() {
-        Ok(lenses) => McapLoader::default().with_lenses(lenses),
-        Err(err) => {
-            re_log::error_once!(
-                "Failed to build Foxglove lenses: {err}. MCAP loader will run without them."
-            );
-            McapLoader::default()
-        }
-    };
-
     vec![
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        Arc::new(mcap_loader),
+        Arc::new(McapLoader::new(SelectedLayers::All)),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]

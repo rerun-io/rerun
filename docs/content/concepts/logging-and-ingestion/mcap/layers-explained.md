@@ -25,11 +25,9 @@ The `stats` layer computes file-level metrics and statistics, creating entities 
 
 ## Message interpretation layers
 
-### ROS2 semantic interpretation
+### Semantic interpretation
 
-The `ros2msg` layer provides semantic interpretation and visualization of standard ROS2 message types, creating meaningful Rerun visualization components from data. Unlike the `protobuf` layer, this layer understands the semantics of ROS2 messages and creates appropriate visualizations: images become [Image](../../../reference/types/archetypes/image.md), point clouds become [Points3D](../../../reference/types/archetypes/points3d.md), IMU messages become [SeriesLines](../../../reference/types/archetypes/series_lines.md) with the data plotted over time, and so on.
-
-This layer supports standard ROS2 packages including `sensor_msgs`, `geometry_msgs`, `std_msgs`, and `builtin_interfaces`. This layer provides visualization of sensor data like cameras and LiDAR with minimal setup required.
+The `ros2msg` and `foxglove` layers provide semantic interpretation and visualization of standard ROS 2 and Foxglove message types, creating meaningful Rerun visualization archetypes from data. Unlike the `protobuf` layer, this layer understands the semantics of the messages and creates appropriate visualizations: images become [Image](../../../reference/types/archetypes/image.md), point clouds become [Points3D](../../../reference/types/archetypes/points3d.md), IMU messages become [SeriesLines](../../../reference/types/archetypes/series_lines.md) with the data plotted over time, and so on.
 
 See [Message Formats](message-formats.md) for the complete list of supported message types.
 

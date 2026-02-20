@@ -56,12 +56,16 @@ rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 
 ### Available layer options
 
+Decoding:
 - **`raw`**: Preserve original message bytes
 - **`schema`**: Extract metadata and schema information
 - **`stats`**: Compute file and channel statistics
 - **`protobuf`**: Decode protobuf messages using into generic Arrow data without Rerun visualization components
-- **`ros2msg`**: Semantic interpretation of ROS2 messages
 - **`recording_info`**: Extract recording session metadata
+
+Semantic:
+- **`foxglove`**: Semantic interpretation of Foxglove Protobuf messages
+- **`ros2msg`**: Semantic interpretation of ROS2 messages
 
 ### Default behavior
 
@@ -78,6 +82,7 @@ rerun mcap convert input.mcap \
     -l stats \
     -l protobuf \
     -l ros2msg \
+    -l foxglove \
     -l recording_info \
     -o output.rrd
 ```

@@ -77,7 +77,7 @@ impl ConvertCommand {
         };
 
         let loader: &dyn DataLoader =
-            &McapLoader::with_raw_fallback(selected_layers, !*disable_raw_fallback);
+            &McapLoader::new(selected_layers).with_raw_fallback(!*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = crossbeam::channel::bounded::<LoadedData>(1024);

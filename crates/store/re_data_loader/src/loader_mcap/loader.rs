@@ -8,7 +8,7 @@ use crossbeam::channel::Sender;
 use re_chunk::RowId;
 use re_lenses::Lenses;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
-use re_mcap::{LayerRegistry, SelectedLayers};
+use re_mcap::{LayerIdentifier, LayerRegistry, SelectedLayers};
 
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
@@ -38,37 +38,49 @@ pub struct McapLoader {
 
 impl Default for McapLoader {
     fn default() -> Self {
-        Self {
-            selected_layers: SelectedLayers::All,
-            raw_fallback_enabled: true,
-            lenses: None,
-        }
+        Self::new(SelectedLayers::All)
     }
 }
 
 impl McapLoader {
-    /// Creates a new [`McapLoader`] that only extracts the specified `layers`.
+    /// Creates a new [`McapLoader`] that extracts the specified `layers`.
     pub fn new(selected_layers: SelectedLayers) -> Self {
+        let lenses = Self::build_lenses(&selected_layers);
         Self {
             selected_layers,
             raw_fallback_enabled: true,
-            lenses: None,
+            lenses,
         }
     }
 
-    /// Creates a new [`McapLoader`] with configurable raw fallback.
-    pub fn with_raw_fallback(selected_layers: SelectedLayers, raw_fallback_enabled: bool) -> Self {
-        Self {
-            selected_layers,
-            raw_fallback_enabled,
-            lenses: None,
-        }
+    /// Configures whether the raw layer is used as a fallback for unsupported channels.
+    pub fn with_raw_fallback(mut self, raw_fallback_enabled: bool) -> Self {
+        self.raw_fallback_enabled = raw_fallback_enabled;
+        self
     }
 
     /// Configures lenses to apply to chunks as they are loaded.
     pub fn with_lenses(mut self, lenses: Lenses) -> Self {
         self.lenses = Some(Arc::new(lenses));
         self
+    }
+
+    fn build_lenses(selected_layers: &SelectedLayers) -> Option<Arc<Lenses>> {
+        if !selected_layers.contains(&LayerIdentifier::from(
+            super::lenses::FOXGLOVE_LENSES_IDENTIFIER,
+        )) {
+            return None;
+        }
+
+        match super::lenses::foxglove_lenses() {
+            Ok(lenses) => Some(Arc::new(lenses)),
+            Err(err) => {
+                re_log::error_once!(
+                    "Failed to build Foxglove lenses: {err}. MCAP loader will run without them."
+                );
+                None
+            }
+        }
     }
 }
 

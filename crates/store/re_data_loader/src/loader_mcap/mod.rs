@@ -8,4 +8,5 @@ pub mod lenses;
 #[cfg(test)]
 pub mod tests;
 
+pub use lenses::FOXGLOVE_LENSES_IDENTIFIER;
 pub use loader::{McapLoader, load_mcap};

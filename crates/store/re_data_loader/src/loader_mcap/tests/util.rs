@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use re_chunk::{Chunk, EntityPath};
 
 use crate::loader_mcap::McapLoader;
-use crate::loader_mcap::lenses::foxglove_lenses;
 use crate::{DataLoader as _, DataLoaderSettings, LoadedData};
 
 // Helper function to get the path to a test asset file.
@@ -19,7 +18,7 @@ pub fn test_asset(name: &str) -> PathBuf {
 pub fn load_mcap(path: impl AsRef<Path>) -> LoadedMcap {
     let path = path.as_ref();
 
-    let loader = McapLoader::default().with_lenses(foxglove_lenses().unwrap());
+    let loader = McapLoader::default();
 
     let (tx, rx) = crossbeam::channel::bounded(1024);
     let settings = DataLoaderSettings::recommended("test");
