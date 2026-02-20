@@ -15,29 +15,18 @@ fn mag_filter(filter: MagnificationFilter) -> renderer::TextureFilterMag {
     }
 }
 
-pub struct TexturedRectParams<'a> {
-    pub image: &'a ImageInfo,
-    pub colormap: Option<&'a ColormapWithRange>,
-    pub multiplicative_tint: egui::Rgba,
-    pub magnification_filter: MagnificationFilter,
-    pub archetype_name: ArchetypeName,
-}
-
+#[expect(clippy::too_many_arguments)]
 pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
-    params: &TexturedRectParams<'_>,
+    image: &ImageInfo,
+    colormap: Option<&ColormapWithRange>,
+    multiplicative_tint: egui::Rgba,
+    magnification_filter: MagnificationFilter,
+    archetype_name: ArchetypeName,
 ) -> anyhow::Result<renderer::TexturedRect> {
     re_tracing::profile_function!();
-
-    let TexturedRectParams {
-        image,
-        colormap,
-        multiplicative_tint,
-        magnification_filter,
-        archetype_name,
-    } = *params;
 
     let debug_name = ent_path.to_string();
     let image_stats = ctx

@@ -10,7 +10,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{TexturedRectParams, textured_rect_from_image};
+use crate::visualizers::textured_rect_from_image;
 use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct SegmentationImageVisualizer {
@@ -109,13 +109,11 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         ctx.viewer_ctx(),
                         entity_path,
                         spatial_ctx,
-                        &TexturedRectParams {
-                            image: &image,
-                            colormap,
-                            multiplicative_tint,
-                            magnification_filter: MagnificationFilter::default(),
-                            archetype_name: SegmentationImage::name(),
-                        },
+                        &image,
+                        colormap,
+                        multiplicative_tint,
+                        MagnificationFilter::default(),
+                        SegmentationImage::name(),
                     ) {
                         Ok(textured_rect) => {
                             self.data.add_pickable_rect(
