@@ -35,7 +35,7 @@ pub fn redap_uri_button(
 
     let uri = RedapUri::from_str(url_str)?;
 
-    let loaded_recording_info = ctx.storage_context.bundle.recordings().find_map(|db| {
+    let loaded_recording_info = ctx.store_bundle().recordings().find_map(|db| {
         if db
             .data_source
             .as_ref()

@@ -15,8 +15,8 @@ use crate::time_control::TimeControlCommand;
 use crate::{
     AppContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
     DisplayMode, DragAndDropManager, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
-    PerVisualizerTypeInViewClass, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
+    PerVisualizerTypeInViewClass, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _,
+    TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
 
 /// Common things needed to view a specific recording with a specific blueprint.
@@ -24,13 +24,8 @@ pub struct ViewerContext<'a> {
     /// App context shared across all parts of the viewer.
     pub app_ctx: AppContext<'a>,
 
-    pub storage_context: &'a StorageContext<'a>,
-
     /// Registry of all known classes of views.
     pub view_class_registry: &'a ViewClassRegistry,
-
-    /// How to display components.
-    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// Defaults for components in various contexts.
     pub component_fallback_registry: &'a FallbackProviderRegistry,
@@ -72,6 +67,7 @@ pub struct ViewerContext<'a> {
     /// Where we are getting our data from.
     pub connected_receivers: &'a re_log_channel::LogReceiverSet,
 
+    /// The active recording and blueprint.
     pub store_context: &'a StoreContext<'a>,
 }
 
@@ -94,7 +90,7 @@ impl ViewerContext<'_> {
 
     /// How to display components.
     pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
-        self.component_ui_registry
+        self.app_ctx.component_ui_registry
     }
 
     /// Registry of all known classes of views.
@@ -130,6 +126,21 @@ impl ViewerContext<'_> {
     /// The active display mode
     pub fn display_mode(&self) -> &crate::DisplayMode {
         self.app_ctx.display_mode
+    }
+
+    /// The [`StoreHub`].
+    pub fn store_hub(&self) -> &StoreHub {
+        self.app_ctx.storage_context.hub
+    }
+
+    /// All loaded recordings, blueprints, etc.
+    pub fn store_bundle(&self) -> &re_entity_db::StoreBundle {
+        self.app_ctx.storage_context.bundle
+    }
+
+    /// All loaded tables.
+    pub fn table_stores(&self) -> &crate::TableStores {
+        self.app_ctx.storage_context.tables
     }
 }
 

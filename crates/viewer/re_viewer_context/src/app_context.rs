@@ -1,4 +1,4 @@
-use crate::{AppOptions, CommandSender, DisplayMode};
+use crate::{AppOptions, CommandSender, ComponentUiRegistry, DisplayMode, StorageContext};
 
 /// Application context that is shared across all parts of the viewer.
 ///
@@ -30,6 +30,12 @@ pub struct AppContext<'a> {
 
     /// Registry of authenticated redap connections
     pub connection_registry: &'a re_redap_client::ConnectionRegistryHandle,
+
+    /// All loaded recordings, blueprints, tables, etc.
+    pub storage_context: &'a StorageContext<'a>,
+
+    /// How to display components.
+    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// The current display mode of the viewer.
     pub display_mode: &'a DisplayMode,

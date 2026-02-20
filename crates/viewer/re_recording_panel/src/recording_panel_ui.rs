@@ -131,8 +131,7 @@ fn add_button_ui(
 
                     if ui.button("Print recording entity DBs").clicked() {
                         let recording_entity_dbs = ctx
-                            .storage_context
-                            .bundle
+                            .store_bundle()
                             .entity_dbs()
                             .filter(|entity_db| entity_db.store_id().is_recording())
                             .collect::<Vec<_>>();
@@ -473,7 +472,7 @@ fn dataset_entry_ui(
         DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
 
     item_response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_display_mode)
+        let url = ViewerOpenUrl::from_display_mode(ctx.store_hub(), &new_display_mode)
             .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))

@@ -44,7 +44,7 @@ impl crate::DataUi for EntityDb {
             grid_content_ui(self, ctx, ui, ui_layout);
         });
 
-        let hub = ctx.storage_context.hub;
+        let hub = ctx.store_hub();
         let store_id = Some(self.store_id());
 
         match self.store_kind() {

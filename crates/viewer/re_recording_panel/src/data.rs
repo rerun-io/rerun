@@ -53,8 +53,7 @@ impl<'a> RecordingPanelData<'a> {
             HashMap::default();
 
         let sources_with_stores: ahash::HashSet<LogSource> = ctx
-            .storage_context
-            .bundle
+            .store_bundle()
             .recordings()
             .filter_map(|store| store.data_source.clone())
             .collect();
@@ -99,7 +98,7 @@ impl<'a> RecordingPanelData<'a> {
         let mut local_apps: BTreeMap<ApplicationId, Vec<&EntityDb>> = Default::default();
         let mut examples_apps: BTreeMap<ApplicationId, Vec<&EntityDb>> = Default::default();
 
-        for entity_db in ctx.storage_context.bundle.entity_dbs() {
+        for entity_db in ctx.store_bundle().entity_dbs() {
             let app_id = entity_db.application_id();
             match entity_db.store_class() {
                 EntityDbClass::LocalRecording => local_apps
@@ -137,13 +136,7 @@ impl<'a> RecordingPanelData<'a> {
             && !hide_examples
             || !example_apps.is_empty();
 
-        let local_tables = ctx
-            .storage_context
-            .tables
-            .keys()
-            .sorted()
-            .cloned()
-            .collect();
+        let local_tables = ctx.table_stores().keys().sorted().cloned().collect();
 
         Self {
             servers,
@@ -354,8 +347,7 @@ impl<'a> ServerEntriesData<'a> {
                     match entry.inner() {
                         Ok(EntryInner::Dataset(_dataset)) => {
                             let mut displayed_segments: Vec<SegmentData<'_>> = ctx
-                                .storage_context
-                                .bundle
+                                .store_bundle()
                                 .entity_dbs()
                                 .filter_map(|entity_db| {
                                     if let EntityDbClass::DatasetSegment(uri) =
@@ -386,11 +378,11 @@ impl<'a> ServerEntriesData<'a> {
 
                             displayed_segments.sort_by_key(|segment| match segment {
                                 SegmentData::Loading { receiver } => {
-                                    ctx.storage_context.hub.data_source_order(receiver)
+                                    ctx.store_hub().data_source_order(receiver)
                                 }
                                 SegmentData::Loaded { entity_db } => {
                                     if let Some(data_source) = &entity_db.data_source {
-                                        ctx.storage_context.hub.data_source_order(data_source)
+                                        ctx.store_hub().data_source_order(data_source)
                                     } else {
                                         u64::MAX
                                     }

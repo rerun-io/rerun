@@ -93,7 +93,7 @@ impl ItemTitle {
     }
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
-        let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
+        let title = if let Some(entity_db) = ctx.store_bundle().get(store_id) {
             if let Some(started) = entity_db.recording_info_property::<Timestamp>(
                 RecordingInfo::descriptor_start_time().component,
             ) {

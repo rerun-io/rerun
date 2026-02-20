@@ -28,8 +28,7 @@ impl crate::DataUi for re_log_channel::LogSource {
         let mut blueprints = vec![];
 
         for other in ctx
-            .storage_context
-            .bundle
+            .store_bundle()
             .entity_dbs()
             .filter(|db| db.data_source.as_ref() == Some(self))
         {

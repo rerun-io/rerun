@@ -662,7 +662,7 @@ pub fn store_id_button_ui(
     store_id: &re_log_types::StoreId,
     ui_layout: UiLayout,
 ) {
-    if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
+    if let Some(entity_db) = ctx.store_bundle().get(store_id) {
         entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
     } else {
         ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
@@ -783,9 +783,8 @@ pub fn entity_db_button_ui(
     let new_entry: re_viewer_context::RecordingOrTable = store_id.clone().into();
 
     response.context_menu(|ui| {
-        let url =
-            ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_entry.display_mode())
-                .and_then(|url| url.sharable_url(None));
+        let url = ViewerOpenUrl::from_display_mode(ctx.store_hub(), &new_entry.display_mode())
+            .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {

@@ -413,15 +413,15 @@ impl AppState {
                         command_sender,
 
                         connection_registry,
+                        storage_context,
+                        component_ui_registry,
                         display_mode,
                         auth_context: auth_state.as_ref(),
                     },
-                    component_ui_registry,
                     component_fallback_registry,
                     view_class_registry,
                     connected_receivers: rx_log,
                     store_context,
-                    storage_context,
                     visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
@@ -637,7 +637,7 @@ impl AppState {
                     .show_inside(ui, |ui| {
                         match display_mode {
                             DisplayMode::LocalTable(table_id) => {
-                                if let Some(store) = ctx.storage_context.tables.get(table_id) {
+                                if let Some(store) = ctx.table_stores().get(table_id) {
                                     table_ui(&ctx, runtime, ui, table_id, store);
                                 } else {
                                     re_log::error_once!(

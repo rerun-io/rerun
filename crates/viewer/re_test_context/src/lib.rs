@@ -646,18 +646,18 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
+                storage_context: &storage_context,
+                component_ui_registry: &self.component_ui_registry,
                 display_mode: &DisplayMode::LocalRecordings(
                     store_context.recording_store_id().clone(),
                 ),
 
                 auth_context: None,
             },
-            component_ui_registry: &self.component_ui_registry,
             component_fallback_registry: &self.component_fallback_registry,
             view_class_registry: &self.view_class_registry,
             connected_receivers: &Default::default(),
             store_context: &store_context,
-            storage_context: &storage_context,
             visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
