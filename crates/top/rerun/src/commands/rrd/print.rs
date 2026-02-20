@@ -51,6 +51,16 @@ pub struct PrintCommand {
     #[clap(long, default_missing_value="true", num_args=0..=1)]
     footers: Option<bool>,
 
+    /// The level of detail to use when printing footers. Higher is more detailed.
+    ///
+    /// * `0`: only chunk metadata columns
+    ///
+    /// * `1`: `0` + global timeline columns
+    ///
+    /// * `2`: `1` + everything else
+    #[clap(long, default_value_t = 0)]
+    footers_lod: u8,
+
     /// Transpose record batches before printing them?
     #[clap(long, default_missing_value="true", num_args=0..=1)]
     transposed: Option<bool>,
@@ -66,6 +76,7 @@ impl PrintCommand {
             full_metadata,
             entity,
             footers,
+            footers_lod,
             transposed,
         } = self;
         let continue_on_error = continue_on_error.unwrap_or(true);
@@ -138,12 +149,18 @@ impl PrintCommand {
                             .collect::<String>(),
                     );
 
+                    let filter_lod_0 = |f: &arrow::datatypes::Field| f.name().starts_with("chunk_");
+                    let filter_lod_1 = |f: &arrow::datatypes::Field| {
+                        footers_lod >= 1
+                            && ((f.name().ends_with(":start") || f.name().ends_with(":end"))
+                                && !f.metadata().contains_key("rerun:component"))
+                    };
+                    let filter_lod_2 = |_: &arrow::datatypes::Field| footers_lod >= 2;
+
                     // Drop all per-entity and/or per-component columns to keep things readable.
-                    //
-                    // TODO(cmc): more config flags for columns to show etc.
-                    let filtered = rrd_manifest
-                        .data
-                        .filter_columns_by(|f| f.name().starts_with("chunk_"))?;
+                    let filtered = rrd_manifest.data.filter_columns_by(|f| {
+                        filter_lod_0(f) || filter_lod_1(f) || filter_lod_2(f)
+                    })?;
 
                     let formatted = re_arrow_util::format_record_batch_opts(
                         &filtered,

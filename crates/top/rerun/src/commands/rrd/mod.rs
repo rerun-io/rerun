@@ -4,6 +4,7 @@ mod merge_compact;
 mod migrate;
 mod print;
 mod route;
+mod split;
 mod stats;
 mod verify;
 
@@ -17,6 +18,7 @@ use self::merge_compact::{CompactCommand, MergeCommand};
 use self::migrate::MigrateCommand;
 use self::print::PrintCommand;
 use self::route::RouteCommand;
+use self::split::SplitCommand;
 use self::stats::StatsCommand;
 use self::verify::VerifyCommand;
 
@@ -57,6 +59,13 @@ pub enum RrdCommands {
     ///
     /// Example: `rerun rrd filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
     Filter(FilterCommand),
+
+    /// Optimally splits a recording on a specified timeline.
+    ///
+    /// The sum of the generated splits will always exactly match the original recording.
+    ///
+    /// Example: `rerun rrd split --output-dir ./splits --timeline log_tick --time 33 --time 66 ./my_video.rrd`
+    Split(SplitCommand),
 
     /// Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
     ///
@@ -111,6 +120,7 @@ impl RrdCommands {
             }
             Self::Compact(cmd) => cmd.run(),
             Self::Filter(cmd) => cmd.run(),
+            Self::Split(cmd) => cmd.run(),
             Self::Merge(cmd) => cmd.run(),
             Self::Migrate(cmd) => cmd.run(),
             Self::Print(cmd) => cmd.run(),

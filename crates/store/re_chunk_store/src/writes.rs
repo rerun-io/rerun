@@ -760,7 +760,7 @@ impl ChunkStore {
                 .is_some()
         {
             re_log::warn_once!(
-                "Detected duplicated RowId in the data, this will lead to undefined behavior"
+                "Detected duplicated RowId in the data, this might lead to undefined behavior"
             );
         }
 

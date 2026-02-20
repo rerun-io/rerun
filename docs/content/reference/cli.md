@@ -361,6 +361,7 @@ Manipulate the contents of .rrd and .rbl files.
 * `compact`: Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
 * `compare`: Compares the data between 2 .rrd files, returning a successful shell exit code if they match.
 * `filter`: Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
+* `split`: Optimally splits a recording on a specified timeline.
 * `merge`: Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
 * `migrate`: Migrate one or more .rrd files to the newest Rerun version.
 * `print`: Print the contents of one or more .rrd/.rbl files/streams.
@@ -497,6 +498,55 @@ Example: `rerun rrd filter --drop-timeline log_tick /my/recordings/*.rrd > outpu
 >
 > [Default: `false`]
 
+## rerun rrd split
+
+Optimally splits a recording on a specified timeline.
+
+The sum of the generated splits will always exactly match the original recording.
+
+Example: `rerun rrd split --output-dir ./splits --timeline log_tick --time 33 --time 66 ./my_video.rrd`
+
+**Usage**: `rerun rrd split [OPTIONS] --output-dir <output directory> --timeline <TIMELINE> <PATH_TO_INPUT_RRD>`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_RRD>`
+> Path to read from.
+
+**Options**
+
+* `-o, --output-dir <output directory>`
+> Path to the output directory. All generated RRD files will end up there.
+
+* `--timeline <TIMELINE>`
+> The timeline used to compute the splits.
+>
+> The other timelines will be kept in the output, which might or might not make sense depending on the density of the dataset. Use `--drop-unused-timelines` to discard them.
+
+* `-t, --time <TIMES>`
+> The timestamps at which to perform the splits. Incompatible with `--num-parts`/`-n`.
+>
+> There are always `number_of_times + 1` resulting splits.
+>
+> For example, given `-t 10 -t 20 -t 30`, this command will output 4 splits: [-inf:10), [10:20), [20:30), [30:+inf).
+
+* `-n, --num-parts <NUM_PARTS>`
+> The number of parts to split the recording into. Incompatible with `--time`/`-t`.
+>
+> There will be exactly that number of resulting splits. Each split will cover an equal time span in the timeline.
+
+* `--recording-id <recording ID prefix>`
+> The recording ID prefix to be used for the output recordings.
+>
+> If left unspecified, the ID of the original recording, suffixed with a `-`, will be used as a prefix.
+>
+> Each split will use `<recording_id_prefix><i>` as their respective recording ID, where `i` is the index of the split.
+
+* `--drop-unused-timelines <DISCARD_UNUSED_TIMELINES>`
+> If true, timelines other than the one specified with `--timeline` will be discarded.
+>
+> [Default: `false`]
+
 ## rerun rrd merge
 
 Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
@@ -583,6 +633,17 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 
 * `--footers <FOOTERS>`
 > If true, displays all the parsed footers at the end.
+
+* `--footers-lod <FOOTERS_LOD>`
+> The level of detail to use when printing footers. Higher is more detailed.
+>
+> * `0`: only chunk metadata columns
+>
+> * `1`: `0` + global timeline columns
+>
+> * `2`: `1` + everything else
+>
+> [Default: `0`]
 
 * `--transposed <TRANSPOSED>`
 > Transpose record batches before printing them?
