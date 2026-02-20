@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 PROFILES: dict[str, str] = {
     "local": "not objectstore",
     "dpf-docker": "not (objectstore or local_only or creates_table)",
-    "dpf-stack": "not (local_only or creates_table)",
+    "dpf-stack": "not (local_only or creates_table) or cloud_only",
     "all": "",
 }
 

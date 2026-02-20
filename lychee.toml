@@ -166,6 +166,8 @@ exclude = [
   'https://github.com/rerun-io/dataplatform',
 
   # Needs authentication
+  'https://.*\.eks\.amazonaws\.com/', # EKS API server endpoints in CI workflows.
+  'https://.*\.blob\.core\.windows\.net/', # Azure blob storage, requires auth.
   'https://edge.meilisearch.com',
   'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
   'https://github.com/rerun-io/internal-test-assets/\.*',
