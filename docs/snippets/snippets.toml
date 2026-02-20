@@ -565,8 +565,8 @@ quick_start = [ # These examples don't have exactly the same implementation.
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
 "concepts/send_recording" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
-"archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
-"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
+"archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
+"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
 "archetypes/encoded_depth_image" = ["$config_dir/../../tests/assets/encoded_depth_image.rvl"]
 "archetypes/video_auto_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",

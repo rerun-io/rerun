@@ -15,7 +15,7 @@ use std::sync::OnceLock;
 
 use ahash::HashMap;
 use regex_lite::{Captures, Regex};
-use smallvec::smallvec;
+use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::{
@@ -117,15 +117,21 @@ fn load_dae_from_buffer_inner(
             continue;
         };
 
-        // Skip geometries that *do not* contain a <triangles> primitive.
-        let Some(triangles) = mesh_element.elements.iter().find_map(|p| p.as_triangles()) else {
+        // Collect all <triangles> primitives in this geometry.
+        let all_triangles: Vec<_> = mesh_element
+            .elements
+            .iter()
+            .filter_map(|p| p.as_triangles())
+            .collect();
+
+        if all_triangles.is_empty() {
             re_log::debug_once!(
                 "Skipping geometry without <triangles> primitive (only <triangles> are supported)"
             );
             continue;
-        };
+        }
 
-        let cpu_mesh = import_geometry(geometry, mesh_element, triangles, &maps, ctx)?;
+        let cpu_mesh = import_geometry(geometry, mesh_element, &all_triangles, &maps, ctx)?;
         let key = model.meshes.insert(cpu_mesh);
         let geom_id = geometry
             .id
@@ -157,41 +163,12 @@ fn load_dae_from_buffer_inner(
 fn import_geometry(
     geo: &Geometry,
     mesh: &dae_parser::Mesh,
-    triangles: &dae_parser::Triangles,
+    all_triangles: &[&dae_parser::Triangles],
     maps: &dae_parser::LocalMaps<'_>,
     ctx: &RenderContext,
 ) -> Result<CpuMesh, DaeImportError> {
     let vertices = mesh.vertices.as_ref().ok_or(DaeImportError::NoTriangles)?;
-    let vertex_importer: VertexImporter<'_> = vertices
-        .importer(maps)
-        .map_err(|_err| DaeImportError::NoTriangles)?;
-    let dae_importer: DaeImporter<'_> = triangles
-        .importer(maps, vertex_importer)
-        .map_err(|_err| DaeImportError::NoTriangles)?;
 
-    let prim_data = triangles
-        .data
-        .as_deref()
-        .ok_or(DaeImportError::NoTriangles)?;
-
-    let mut pos_raw = Vec::new();
-    let mut normals = Vec::new();
-    let mut texcoords = Vec::new();
-    let mut tri_indices = Vec::<glam::UVec3>::new();
-
-    for (i, v) in dae_importer.read::<(), Vertex>(&(), prim_data).enumerate() {
-        pos_raw.push(v.position);
-        normals.push(v.normal);
-        texcoords.push(v.texcoord);
-
-        // Triangles are grouped in triplets
-        if i % 3 == 2 {
-            let base = i as u32 - 2;
-            tri_indices.push(glam::UVec3::new(base, base + 1, base + 2));
-        }
-    }
-
-    let num_vertices = pos_raw.len();
     let label = DebugLabel::from(
         geo.name
             .clone()
@@ -199,20 +176,59 @@ fn import_geometry(
             .unwrap_or_default(),
     );
 
-    // Extract material color from the triangles' material reference
-    let albedo_factor = triangles
-        .material
-        .as_ref()
-        .and_then(|mat_symbol| extract_material_color(mat_symbol, maps))
-        .unwrap_or(crate::Rgba::WHITE);
+    let mut pos_raw = Vec::new();
+    let mut normals = Vec::new();
+    let mut texcoords = Vec::new();
+    let mut tri_indices = Vec::<glam::UVec3>::new();
+    let mut materials = SmallVec::<[mesh::Material; 1]>::new();
 
-    let material = mesh::Material {
-        label: label.clone(),
-        index_range: 0..num_vertices as u32,
-        albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
-        albedo_factor,
-    };
+    for triangles in all_triangles {
+        let vertex_importer: VertexImporter<'_> = vertices
+            .importer(maps)
+            .map_err(|_err| DaeImportError::NoTriangles)?;
+        let dae_importer: DaeImporter<'_> = triangles
+            .importer(maps, vertex_importer)
+            .map_err(|_err| DaeImportError::NoTriangles)?;
 
+        let prim_data = triangles
+            .data
+            .as_deref()
+            .ok_or(DaeImportError::NoTriangles)?;
+
+        let vertex_offset = pos_raw.len() as u32;
+
+        for (i, v) in dae_importer.read::<(), Vertex>(&(), prim_data).enumerate() {
+            pos_raw.push(v.position);
+            normals.push(v.normal);
+            texcoords.push(v.texcoord);
+
+            // Triangles are grouped in triplets
+            if i % 3 == 2 {
+                let base = vertex_offset + i as u32 - 2;
+                tri_indices.push(glam::UVec3::new(base, base + 1, base + 2));
+            }
+        }
+
+        let group_vertex_count = pos_raw.len() as u32 - vertex_offset;
+        if group_vertex_count == 0 {
+            continue;
+        }
+
+        let albedo_factor = triangles
+            .material
+            .as_ref()
+            .and_then(|mat_symbol| extract_material_color(mat_symbol, maps))
+            .unwrap_or(crate::Rgba::WHITE);
+
+        materials.push(mesh::Material {
+            label: label.clone(),
+            index_range: vertex_offset..vertex_offset + group_vertex_count,
+            albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
+            albedo_factor,
+        });
+    }
+
+    let num_vertices = pos_raw.len();
     let vertex_positions = bytemuck::cast_vec(pos_raw);
     let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
 
@@ -223,7 +239,7 @@ fn import_geometry(
         vertex_normals: bytemuck::cast_vec(normals),
         vertex_colors: vec![Rgba32Unmul::WHITE; num_vertices],
         vertex_texcoords: bytemuck::cast_vec(texcoords),
-        materials: smallvec![material],
+        materials,
         bbox,
     };
 
