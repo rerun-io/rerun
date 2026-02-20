@@ -41,7 +41,7 @@ data_loaders = ["dep:re_data_loader", "dep:re_log_channel"]
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
 web_viewer = ["dep:re_log_channel", "dep:re_web_viewer_server", "dep:tokio", "dep:webbrowser"]
 
-server = ["dep:re_grpc_server", "dep:re_log_channel", "dep:tokio"]
+server = ["dep:re_grpc_server", "dep:re_memory", "dep:re_log_channel", "dep:tokio"]
 
 [dependencies]
 re_arrow_combinators.workspace = true
@@ -53,7 +53,6 @@ re_lenses.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
-re_memory.workspace = true
 re_quota_channel.workspace = true
 re_sdk_types.workspace = true
 re_sorbet.workspace = true
@@ -77,6 +76,7 @@ uuid = { workspace = true, features = ["v4"] }
 re_data_loader = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }
 re_log_channel = { workspace = true, optional = true }
+re_memory = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 tokio = { workspace = true, optional = true }
