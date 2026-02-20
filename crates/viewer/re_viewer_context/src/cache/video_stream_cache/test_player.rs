@@ -1319,3 +1319,74 @@ fn cache_out_of_order_arrival_with_compaction() {
 
     player.expect_decoded_samples(0..7);
 }
+
+/// Test that `ChunkSamples::from_root` placement of samples at the start
+/// is handled as expected resulting in an incomplete gop. But then
+/// recovered via delta re-merge.
+///
+/// `from_root` places all unloaded samples at the start of the chunk's time
+/// range. When a manifest chunk spans multiple GOPs and another chunk's
+/// samples fall between those GOPs, loading the multi-GOP chunk causes an
+/// out-of-order situation that triggers the re-merge path.
+#[test]
+fn cache_with_manifest_load_resulting_in_incomplete_gop() {
+    let mut cache = VideoStreamCache::default();
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let dt = 0.25;
+
+    // Chunk A: 2 GOPs of 4 samples each, times [0, 1.75].
+    // In the manifest, from_root places all 8 samples at time 0.
+    let chunk_a = video_chunk(0.0, dt, 2, 4);
+
+    // Chunk B: 1 GOP of 3 samples, times [0.875, 1.375].
+    // Falls between A's two GOPs (GOP 0: 0-0.75, GOP 1: 1.0-1.75).
+    // B's min time (0.875) is within A's range so after loading A,
+    // some of A's actual samples (1.0-1.75) end up after B's
+    // causing an out-of-order situation.
+    let chunk_b = video_chunk(0.875, dt, 1, 3);
+
+    let chunks: Vec<_> = [chunk_a, chunk_b, codec_chunk()]
+        .into_iter()
+        .map(Arc::new)
+        .collect();
+
+    load_into_rrd_manifest(&mut store, &chunks);
+
+    // Load codec.
+    load_chunks(&mut store, &mut cache, &chunks[2..3]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    // Load chunk B first.
+    load_chunks(&mut store, &mut cache, &chunks[1..2]);
+
+    player.play_store(0.875..1.375, dt, &store).unwrap();
+    player.expect_decoded_samples(8..11);
+
+    // Playing in A's unloaded range should fail with loading.
+    assert_loading(player.play_store(0.0..0.75, dt, &store));
+    player.expect_decoded_samples(None);
+
+    // Load chunk A. from_root placed A's 8 samples at time 0 (indices 0-7).
+    // A's actual second GOP (times 1.0-1.75) falls after B's samples
+    // (times 0.875-1.375), triggering out-of-order detection and re-merge.
+    load_chunks(&mut store, &mut cache, &chunks[0..1]);
+
+    // The cache entry should survive the delta re-merge.
+    assert!(
+        cache
+            .0
+            .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
+                entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
+                timeline: re_chunk::TimelineName::new(TIMELINE_NAME)
+            }),
+        "Cache entry should survive delta re-merge"
+    );
+
+    // After re-merge, all 11 samples should be in the correct time order
+    // and playable.
+    player.play_store(0.0..2.0, dt, &store).unwrap();
+    player.expect_decoded_samples(0..11);
+}
