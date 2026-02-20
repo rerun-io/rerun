@@ -274,7 +274,7 @@ impl CommandReceiver {
 pub fn command_channel() -> (CommandSender, CommandReceiver) {
     // We need an unbounded channel here, because we often send messages on the same
     // thread as we receive them on (the main GUI thread).
-    #![expect(clippy::disallowed_methods)]
+    #![cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))]
     let (system_sender, system_receiver) = crossbeam::channel::unbounded();
     let (ui_sender, ui_receiver) = crossbeam::channel::unbounded();
     (
