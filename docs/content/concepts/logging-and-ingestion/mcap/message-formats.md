@@ -26,7 +26,7 @@ We are continually adding support for more standard message types.
 | Poses | `geometry_msgs/PoseStamped` | `PoseInFrame`, `PosesInFrame` | [InstancePoses3D](../../../reference/types/archetypes/instance_poses3d.md) |
 | Coordinate frame | `.frame_id` field in `std_msgs/Header` | `.frame_id` field | [CoordinateFrame](../../../reference/types/archetypes/coordinate_frame.md)
 | Magnetic field | `sensor_msgs/MagneticField` | - | [Arrows3D](../../../reference/types/archetypes/arrows3d.md) |
-| Misc. scalar sensor data | `sensor_msgs/Imu`, `sensor_msgs/JointState`, `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`, `sensor_msgs/Range`, `sensor_msgs/BatteryState` | - | [Scalars](../../../reference/types/archetypes/scalars.md) |
+| Misc. scalar sensor data | `sensor_msgs/Imu`, `sensor_msgs/JointState`, `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`, `sensor_msgs/Range`, `sensor_msgs/BatteryState`, `sensor_msgs/Joy` | - *(usually covered via custom schemas, see [Protobuf reflection](#protobuf-reflection) below on this page)* | [Scalars](../../../reference/types/archetypes/scalars.md) |
 | Text | `std_msgs/String` | - | [TextDocument](../../../reference/types/archetypes/text_document.md) |
 | Log messages | `rcl_interfaces/Log` | `Log` | [TextLog](../../../reference/types/archetypes/text_log.md) |
 
@@ -80,12 +80,12 @@ The `ros2_reflection` layer automatically decodes ROS2 messages using runtime re
 ROS1 messages are currently not supported for semantic interpretation through any layer.
 The `raw` and `schema` layers are able to preserve the original bytes and structure of the messages.
 
-## Protobuf messages
+## Protobuf reflection
 
-Not all Foxglove Protobuf messages are currently supported. Additionally, MCAP files allow for custom Protobuf definitions and are not restricted to the Foxglove Protobuf schemas.
+MCAP files allow for arbitrary custom Protobuf definitions, so you might have other message types in your files than the set of Foxglove messages that Rerun automatically converts to archetypes.
 
-The `protobuf` layer automatically decodes these unknown protobuf-encoded messages using schema reflection. Fields become queryable components (e.g. for training data curation), but no automatic visualizations are created.
-Depending on the contents of your data, you can still manually add visualizers like time-series or dataframe views to your blueprint.
+The `protobuf` layer automatically decodes also these unknown protobuf-encoded messages using schema reflection. Fields become queryable components (e.g. for training data curation), but no automatic visualizations are created.
+Depending on the contents of your data, you can still manually add visualizers for certain fields to your blueprint, e.g. a time-series view for scalars or a dataframe view.
 
 ## Adding support for new types
 
