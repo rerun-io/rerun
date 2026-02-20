@@ -332,7 +332,8 @@ where
                 backoff.sleep().await;
             }
             Err(err) => {
-                tracing::error!(
+                // logging at the debug level to avoid having these spam in the viewer
+                tracing::debug!(
                     attempts,
                     "{req_name} failed with non-retryable error: {err}"
                 );
@@ -348,7 +349,7 @@ where
         attempts += 1;
     }
 
-    tracing::error!(
+    tracing::debug!(
         attempts,
         max_attempts = MAX_ATTEMPTS,
         "{req_name} failed after max retries, giving up"
