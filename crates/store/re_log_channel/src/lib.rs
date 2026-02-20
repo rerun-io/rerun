@@ -36,7 +36,12 @@ pub enum FlushError {
 pub enum LogSource {
     /// The sender is a background thread reading data from a file on disk
     /// (could be `.rrd` files, or `.glb`, `.png`, …).
-    File(std::path::PathBuf),
+    File {
+        path: std::path::PathBuf,
+
+        /// If `true`, the viewer should start in `Following` mode.
+        follow: bool,
+    },
 
     /// The sender is a background thread fetching data from an HTTP file server.
     #[serde(alias = "RrdHttpStream")]
@@ -84,7 +89,7 @@ pub enum LogSource {
 impl std::fmt::Display for LogSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::File(path) => write!(f, "file://{}", path.to_string_lossy()),
+            Self::File { path, .. } => write!(f, "file://{}", path.to_string_lossy()),
             Self::HttpStream { url, follow: _ } => url.fmt(f),
             Self::MessageProxy(uri) => uri.fmt(f),
             Self::RedapGrpcStream { uri, .. } => uri.fmt(f),
@@ -103,7 +108,7 @@ impl LogSource {
 
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File(_) | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
+            Self::File { .. } | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
             Self::HttpStream { .. }
             | Self::JsChannel { .. }
             | Self::RedapGrpcStream { .. }
@@ -113,7 +118,7 @@ impl LogSource {
 
     pub fn select_when_loaded(&self) -> bool {
         match self {
-            Self::File(_)
+            Self::File { .. }
             | Self::Sdk
             | Self::RrdWebEvent
             | Self::Stdin
@@ -132,7 +137,7 @@ impl LogSource {
             Self::RedapGrpcStream { uri, .. } => Some(RedapUri::DatasetData(uri.clone())),
             Self::MessageProxy(uri) => Some(RedapUri::Proxy(uri.clone())),
 
-            Self::File(_)
+            Self::File { .. }
             | Self::Sdk
             | Self::RrdWebEvent
             | Self::Stdin
@@ -156,7 +161,7 @@ impl LogSource {
     pub fn loading_name(&self) -> Option<String> {
         match self {
             // We only show things we know are very-soon-to-be recordings:
-            Self::File(path) => Some(path.to_string_lossy().into_owned()),
+            Self::File { path, .. } => Some(path.to_string_lossy().into_owned()),
             Self::HttpStream { url, .. } => Some(url.clone()),
             Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.clone()),
 
@@ -175,7 +180,7 @@ impl LogSource {
     /// Status string describing waiting or loading status for a source.
     pub fn status_string(&self) -> String {
         match self {
-            Self::File(path) => {
+            Self::File { path, .. } => {
                 format!("Loading {}…", path.display())
             }
             Self::Stdin => "Loading stdin…".to_owned(),

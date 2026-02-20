@@ -225,7 +225,7 @@ impl ItemCollection {
                 Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
-                    LogSource::File(path) => {
+                    LogSource::File { path, .. } => {
                         Some((ClipboardTextDesc::FilePath, path.to_string_lossy().into()))
                     }
                     LogSource::HttpStream { url, follow: _ } => {

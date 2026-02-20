@@ -162,7 +162,7 @@ fn handle_popstate(
             url.open(
                 egui_ctx,
                 &open_url::OpenUrlOptions {
-                    follow_if_http: false,
+                    follow: false,
                     select_redap_source_when_loaded: true,
                     show_loader: true,
                 },

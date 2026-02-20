@@ -501,7 +501,7 @@ impl App {
                 url.open(
                     &self.egui_ctx,
                     &OpenUrlOptions {
-                        follow_if_http: false,
+                        follow: false,
                         select_redap_source_when_loaded: true,
                         show_loader: true,
                     },
@@ -943,7 +943,7 @@ impl App {
                     #[expect(clippy::match_same_arms)]
                     let should_close = match &data_source {
                         // Specific files should stop streaming when closing them.
-                        LogSource::File(_) => true,
+                        LogSource::File { .. } => true,
 
                         // Specific HTTP streams should stop streaming when closing them.
                         LogSource::HttpStream { .. } => true,
@@ -978,7 +978,7 @@ impl App {
                 // That's the case of `LogSource::HttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx_log.retain(|r| match r.source() {
-                    LogSource::File(_) | LogSource::HttpStream { .. } => false,
+                    LogSource::File { .. } | LogSource::HttpStream { .. } => false,
 
                     LogSource::JsChannel { .. }
                     | LogSource::RrdWebEvent
@@ -1414,8 +1414,11 @@ impl App {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            LogDataSource::FilePath(_file_source, path) => {
-                let new_source = LogSource::File(path.clone());
+            LogDataSource::FilePath { path, follow, .. } => {
+                let new_source = LogSource::File {
+                    path: path.clone(),
+                    follow: *follow,
+                };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
                     self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
@@ -1657,13 +1660,14 @@ impl App {
             UICommand::Open => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
-                            FileSource::FileDialog {
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath {
+                            file_source: FileSource::FileDialog {
                                 recommended_store_id: None,
                                 force_store_info,
                             },
-                            file_path,
-                        )));
+                            path: file_path,
+                            follow: false,
+                        }));
                 }
             }
             #[cfg(target_arch = "wasm32")]
@@ -1687,13 +1691,14 @@ impl App {
             UICommand::Import => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
-                            FileSource::FileDialog {
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath {
+                            file_source: FileSource::FileDialog {
                                 recommended_store_id: Some(active_store_id.clone()),
                                 force_store_info,
                             },
-                            file_path,
-                        )));
+                            path: file_path,
+                            follow: false,
+                        }));
                 }
             }
             #[cfg(target_arch = "wasm32")]
@@ -1745,7 +1750,7 @@ impl App {
                     url.clone().open(
                         egui_ctx,
                         &OpenUrlOptions {
-                            follow_if_http: true,
+                            follow: true,
                             select_redap_source_when_loaded: true,
                             show_loader: true,
                         },
@@ -1758,7 +1763,7 @@ impl App {
                     url.clone().open(
                         egui_ctx,
                         &OpenUrlOptions {
-                            follow_if_http: true,
+                            follow: true,
                             select_redap_source_when_loaded: true,
                             show_loader: true,
                         },
@@ -2994,13 +2999,16 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
-                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
-                    FileSource::DragAndDrop {
-                        recommended_store_id: Some(active_store_id.clone()),
-                        force_store_info,
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    LogDataSource::FilePath {
+                        file_source: FileSource::DragAndDrop {
+                            recommended_store_id: Some(active_store_id.clone()),
+                            force_store_info,
+                        },
+                        path,
+                        follow: false,
                     },
-                    path,
-                )));
+                ));
             }
         }
     }
@@ -3016,7 +3024,7 @@ impl App {
 
         for source in self.rx_log.sources() {
             match &*source {
-                LogSource::File(_)
+                LogSource::File { .. }
                 | LogSource::HttpStream { .. }
                 | LogSource::RedapGrpcStream { .. }
                 | LogSource::Stdin
@@ -3693,7 +3701,7 @@ impl eframe::App for App {
                                 url.open(
                                     egui_ctx,
                                     &OpenUrlOptions {
-                                        follow_if_http: false,
+                                        follow: false,
                                         select_redap_source_when_loaded: true,
                                         show_loader: true,
                                     },

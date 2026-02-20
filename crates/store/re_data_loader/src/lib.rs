@@ -88,18 +88,24 @@ pub struct DataLoaderSettings {
 
     /// At what time(s) should the data be logged to?
     pub timepoint: Option<TimePoint>,
+
+    /// If `true`, keep reading `.rrd` files past EOF, tailing new data as it arrives.
+    ///
+    /// Defaults to `false`.
+    pub follow: bool,
 }
 
 impl DataLoaderSettings {
     #[inline]
     pub fn recommended(recording_id: impl Into<RecordingId>) -> Self {
         Self {
-            application_id: Default::default(),
             recording_id: recording_id.into(),
-            opened_store_id: Default::default(),
+            application_id: None,
+            opened_store_id: None,
             force_store_info: false,
-            entity_path_prefix: Default::default(),
-            timepoint: Default::default(),
+            entity_path_prefix: None,
+            timepoint: None,
+            follow: false,
         }
     }
 
@@ -130,6 +136,7 @@ impl DataLoaderSettings {
             force_store_info: _,
             entity_path_prefix,
             timepoint,
+            follow: _,
         } = self;
 
         let mut args = Vec::new();

@@ -84,11 +84,7 @@ impl ConvertCommand {
         loader.load_from_path(
             &DataLoaderSettings {
                 application_id: Some(application_id),
-                recording_id,
-                opened_store_id: None,
-                force_store_info: false,
-                entity_path_prefix: None,
-                timepoint: None,
+                ..DataLoaderSettings::recommended(recording_id)
             },
             path_to_input_mcap.into(),
             tx,

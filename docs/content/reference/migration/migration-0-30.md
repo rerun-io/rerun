@@ -40,6 +40,20 @@ df.with_column("url", segment_url(dataset, timestamp_col="ts", timeline_name="my
 Also, the previously deprecated `partition_url()`, `partition_url_udf()`, and `partition_url_with_timeref_udf()`
 function have been removed.
 
+## CLI
+
+### `.rrd` files are no longer tailed by default
+
+Previously, when opening an `.rrd` file from the command line, the viewer would keep watching the file
+for new data past EOF (tailing), which is useful when a writer process is still appending to the file.
+
+Starting with 0.30, `.rrd` files are read once and loading stops at EOF.
+To restore the old tailing behavior, pass the `--follow` flag:
+
+```sh
+rerun --follow recording.rrd
+```
+
 ### `SeriesVisible` component type has been removed
 
 The `SeriesVisible` component has been removed in favor of the existing `Visible` component.

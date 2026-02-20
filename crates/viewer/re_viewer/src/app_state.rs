@@ -8,7 +8,7 @@ use egui::text_selection::LabelSelectionState;
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_channel::LogReceiverSet;
+use re_log_channel::{LogReceiverSet, LogSource};
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
@@ -864,24 +864,29 @@ pub(crate) fn create_time_control_for<'cfgs>(
         entity_db: &'_ EntityDb,
         blueprint_ctx: &'_ impl BlueprintContext,
     ) -> TimeControl {
-        let play_state = if let Some(data_source) = &entity_db.data_source {
+        let follow = if let Some(data_source) = &entity_db.data_source {
             match data_source {
-                // Play files from the start by default - it feels nice and alive.
-                // We assume the `HttpStream` is a done recording.
-                re_log_channel::LogSource::File(_)
-                | re_log_channel::LogSource::HttpStream { follow: false, .. }
-                | re_log_channel::LogSource::RedapGrpcStream { .. }
-                | re_log_channel::LogSource::RrdWebEvent => PlayState::Playing,
+                // Potentially live data:
+                LogSource::File { follow, .. } | LogSource::HttpStream { follow, .. } => *follow,
 
-                // Live data - follow it!
-                re_log_channel::LogSource::HttpStream { follow: true, .. }
-                | re_log_channel::LogSource::Sdk
-                | re_log_channel::LogSource::MessageProxy { .. }
-                | re_log_channel::LogSource::Stdin
-                | re_log_channel::LogSource::JsChannel { .. } => PlayState::Following,
+                // Not live data:
+                LogSource::RedapGrpcStream { .. } | LogSource::RrdWebEvent => false,
+
+                // Live data:
+                LogSource::Sdk
+                | LogSource::MessageProxy { .. }
+                | LogSource::Stdin
+                | LogSource::JsChannel { .. } => true,
             }
         } else {
-            PlayState::Following // No known source 🤷‍♂️
+            true // No known source 🤷‍♂️
+        };
+
+        let play_state = if follow {
+            PlayState::Following
+        } else {
+            // Play files from the start by default - it feels nice and alive.
+            PlayState::Playing
         };
 
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
@@ -913,7 +918,7 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
                     url.open(
                         egui_ctx,
                         &open_url::OpenUrlOptions {
-                            follow_if_http: false,
+                            follow: false,
                             select_redap_source_when_loaded: !open_url.new_tab,
                             show_loader: !open_url.new_tab,
                         },

@@ -28,7 +28,16 @@ pub enum LogDataSource {
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
-    FilePath(re_log_types::FileSource, std::path::PathBuf),
+    FilePath {
+        /// How we got to know about the file
+        file_source: re_log_types::FileSource,
+
+        /// Where the file is
+        path: std::path::PathBuf,
+
+        /// If `true`, keep reading `.rrd` files past EOF, tailing new data as it arrives.
+        follow: bool,
+    },
 
     /// The contents of a file.
     ///
@@ -52,14 +61,18 @@ pub enum LogDataSource {
 }
 
 impl LogDataSource {
-    /// Tried to classify a URI into a [`LogDataSource`].
+    /// Tries to classify a URI into a [`LogDataSource`].
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, a grpc url, a http url, etc.
     ///
     /// Note that not all URLs are log data sources!
     /// For instance a pure server or entry url is not a source of log data.
-    pub fn from_uri(_file_source: re_log_types::FileSource, url: &str) -> Option<Self> {
+    pub fn from_uri(
+        _file_source: re_log_types::FileSource,
+        url: &str,
+        follow: bool,
+    ) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
@@ -116,11 +129,19 @@ impl LogDataSource {
             let path = std::path::Path::new(url).to_path_buf();
 
             if url.starts_with("file://") || path.exists() {
-                return Some(Self::FilePath(_file_source, path));
+                return Some(Self::FilePath {
+                    file_source: _file_source,
+                    path,
+                    follow,
+                });
             }
 
             if looks_like_a_file_path(url) {
-                return Some(Self::FilePath(_file_source, path));
+                return Some(Self::FilePath {
+                    file_source: _file_source,
+                    path,
+                    follow,
+                });
             }
         }
 
@@ -142,7 +163,7 @@ impl LogDataSource {
                 .unwrap_or("");
 
             re_data_loader::is_supported_file_extension(extension)
-                .then_some(Self::HttpUrl { url, follow: false })
+                .then_some(Self::HttpUrl { url, follow })
         }
     }
 
@@ -171,8 +192,15 @@ impl LogDataSource {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(file_source, path) => {
-                let (tx, rx) = re_log_channel::log_channel(LogSource::File(path.clone()));
+            Self::FilePath {
+                file_source,
+                path,
+                follow,
+            } => {
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File {
+                    path: path.clone(),
+                    follow,
+                });
 
                 // This recording will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -181,6 +209,7 @@ impl LogDataSource {
                 let settings = re_data_loader::DataLoaderSettings {
                     opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
+                    follow,
                     ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
                 };
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
@@ -192,7 +221,10 @@ impl LogDataSource {
             // When loading a file on Web, or when using drag-n-drop.
             Self::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
-                let (tx, rx) = re_log_channel::log_channel(LogSource::File(name.clone().into()));
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File {
+                    path: name.clone().into(),
+                    follow: false,
+                });
 
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -273,7 +305,9 @@ impl LogDataSource {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(file_src, path) => {
+            Self::FilePath {
+                file_source, path, ..
+            } => {
                 let file_extension = path
                     .extension()
                     .and_then(|e| e.to_str())
@@ -281,7 +315,7 @@ impl LogDataSource {
                 LogDataSourceAnalytics {
                     source_type: "file_path",
                     file_extension,
-                    file_source: Some(Self::file_source_to_analytics_str(file_src)),
+                    file_source: Some(Self::file_source_to_analytics_str(file_source)),
                 }
             }
 
@@ -417,7 +451,7 @@ mod tests {
         };
 
         for uri in file {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
             if !matches!(data_source, Some(LogDataSource::FilePath { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as FilePath. Instead it got parsed as {data_source:?}"
@@ -427,7 +461,7 @@ mod tests {
         }
 
         for uri in http {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
             if !matches!(data_source, Some(LogDataSource::HttpUrl { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as HttpUrl. Instead it got parsed as {data_source:?}"
@@ -437,7 +471,7 @@ mod tests {
         }
 
         for uri in grpc {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
             if !matches!(data_source, Some(LogDataSource::RedapDatasetSegment { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as redap dataset segment. Instead it got parsed as {data_source:?}"
@@ -447,7 +481,7 @@ mod tests {
         }
 
         for uri in proxy {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
             if !matches!(data_source, Some(LogDataSource::RedapProxy { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"

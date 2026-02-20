@@ -84,14 +84,38 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to spawn IO thread for {filepath:?}"))?;
             }
 
-            "rrd" => {
-                // For .rrd files we retry reading despite reaching EOF to support live (writer) streaming.
-                // Decoder will give up when it sees end of file marker (i.e. end-of-stream message header)
+            "rrd" if settings.follow => {
+                // In follow/tail mode we retry reading despite reaching EOF to support live streaming.
+                // Decoder will give up when it sees end-of-stream marker.
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
                 let wait_for_eos = true;
                 let messages = Decoder::decode_eager_with_opts(retryable_reader, wait_for_eos)?;
+
+                // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
+                std::thread::Builder::new()
+                    .name(format!("decode_and_stream({filepath:?})"))
+                    .spawn({
+                        let filepath = filepath.clone();
+                        move || {
+                            decode_and_stream(
+                                &filepath, &tx, messages,
+                                // Never use import semantics for .rrd files
+                                None, None,
+                            );
+                        }
+                    })
+                    .with_context(|| format!("Failed to spawn IO thread for {filepath:?}"))?;
+            }
+
+            "rrd" => {
+                // Non-follow mode: read the file once and stop at EOF.
+                let file = std::fs::File::open(&filepath)
+                    .with_context(|| format!("Failed to open file {filepath:?}"))?;
+                let file = std::io::BufReader::new(file);
+
+                let messages = Decoder::decode_eager(file)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()

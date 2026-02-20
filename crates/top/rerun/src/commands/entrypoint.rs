@@ -188,6 +188,14 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     expect_data_soon: bool,
 
+    /// Tail .rrd files, waiting for new data to be appended after reaching EOF.
+    ///
+    /// Without this flag, .rrd files are read once and the viewer stops loading when EOF is reached.
+    /// With this flag, the viewer will keep watching for new data, which is useful for live streaming
+    /// from a writer process.
+    #[clap(long)]
+    follow: bool,
+
     /// The number of compute threads to use.
     ///
     /// If zero, the same number of threads as the number of cores will be used.
@@ -763,10 +771,16 @@ fn run_impl(
 
     // Now what do we do with the data?
     if args.test_receive || args.save.is_some() {
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+            &connection_registry,
+            None,
+            args.follow,
+        )?;
         save_or_test_receive(
             args.save,
-            url_or_paths,
-            &connection_registry,
+            receivers,
             #[cfg(feature = "server")]
             server_addr,
             #[cfg(feature = "server")]
@@ -775,10 +789,16 @@ fn run_impl(
     } else if args.serve_grpc {
         cfg_if::cfg_if! {
             if #[cfg(feature = "server")] {
-                serve_grpc(
+                let receivers = ReceiversFromUrlParams::new(
                     url_or_paths,
-                    tokio_runtime_handle,
+                    &UrlParamProcessingConfig::convert_everything_to_data_sources(),
                     &connection_registry,
+                    None,
+                    args.follow,
+                )?;
+                serve_grpc(
+                    receivers,
+                    tokio_runtime_handle,
                     server_addr,
                     server_options,
                 )
@@ -803,10 +823,16 @@ fn run_impl(
                 // but we only open a browser automatically with the `--web-viewer` flag.
                 let open_browser = args.web_viewer;
 
+                let receivers = ReceiversFromUrlParams::new(
+                    url_or_paths,
+                    &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
+                    &connection_registry,
+                    None,
+                    args.follow,
+                )?;
                 #[cfg(all(feature = "server", feature = "web_viewer"))]
                 serve_web(
-                    url_or_paths,
-                    &connection_registry,
+                    receivers,
                     args.web_viewer_port,
                     args.renderer,
                     args.video_decoder,
@@ -817,7 +843,14 @@ fn run_impl(
             }
         }
     } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
-        connect_to_existing_server(url_or_paths, &connection_registry, server_addr)
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+            &connection_registry,
+            None,
+            args.follow,
+        )?;
+        connect_to_existing_server(receivers, server_addr)
     } else {
         cfg_if::cfg_if! {
             if #[cfg(feature = "native_viewer")] {
@@ -866,6 +899,7 @@ fn start_native_viewer(
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
+    let follow = args.follow;
     let renderer = args.renderer.as_deref();
 
     let (command_tx, command_rx) = re_viewer_context::command_channel();
@@ -922,6 +956,7 @@ fn start_native_viewer(
                 &UrlParamProcessingConfig::native_viewer(),
                 &connection_registry,
                 Some(auth_error_handler),
+                follow,
             )?;
 
             // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
@@ -998,8 +1033,7 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
 }
 
 fn connect_to_existing_server(
-    url_or_paths: Vec<String>,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    receivers: ReceiversFromUrlParams,
     server_addr: std::net::SocketAddr,
 ) -> anyhow::Result<()> {
     use re_sdk::sink::LogSink as _;
@@ -1007,12 +1041,6 @@ fn connect_to_existing_server(
     let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
     re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
     let sink = re_sdk::sink::GrpcSink::new(uri);
-    let receivers = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-        connection_registry,
-        None,
-    )?;
     if !receivers.urls_to_pass_on_to_viewer.is_empty() {
         re_log::warn!(
             "The following URLs can't be passed to already open viewers yet: {:?}",
@@ -1043,11 +1071,9 @@ fn connect_to_existing_server(
     Ok(())
 }
 
-#[expect(clippy::too_many_arguments)]
 #[cfg(all(feature = "server", feature = "web_viewer"))]
 fn serve_web(
-    url_or_paths: Vec<String>,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    receivers: ReceiversFromUrlParams,
     web_viewer_port: u16,
     force_wgpu_backend: Option<String>,
     video_decoder: Option<String>,
@@ -1058,12 +1084,7 @@ fn serve_web(
     let ReceiversFromUrlParams {
         log_receivers,
         mut urls_to_pass_on_to_viewer,
-    } = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
-        connection_registry,
-        None,
-    )?;
+    } = receivers;
 
     // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
     let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
@@ -1117,9 +1138,8 @@ fn serve_web(
 
 #[cfg(feature = "server")]
 fn serve_grpc(
-    url_or_paths: Vec<String>,
+    receivers: ReceiversFromUrlParams,
     tokio_runtime_handle: &tokio::runtime::Handle,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
     server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
@@ -1127,12 +1147,6 @@ fn serve_grpc(
         anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
     }
 
-    let receivers = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-        connection_registry,
-        None,
-    )?;
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
     let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
@@ -1154,17 +1168,10 @@ fn serve_grpc(
 
 fn save_or_test_receive(
     save: Option<String>,
-    url_or_paths: Vec<String>,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    receivers: ReceiversFromUrlParams,
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
-    let receivers = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-        connection_registry,
-        None,
-    )?;
     receivers.error_on_unhandled_urls(if save.is_none() {
         "--test-receive"
     } else {
@@ -1504,12 +1511,14 @@ impl ReceiversFromUrlParams {
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
         auth_error_handler: Option<AuthErrorHandler>,
+        follow: bool,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
 
         for url in input_urls {
-            if let Some(data_source) = LogDataSource::from_uri(re_log_types::FileSource::Cli, &url)
+            if let Some(data_source) =
+                LogDataSource::from_uri(re_log_types::FileSource::Cli, &url, follow)
             {
                 match &data_source {
                     LogDataSource::HttpUrl { .. } => {
@@ -1528,7 +1537,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::FilePath(..) => {
+                    LogDataSource::FilePath { .. } => {
                         if config.data_source_from_filepaths {
                             data_sources.push(data_source);
                         } else {
@@ -1599,6 +1608,7 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process,
 
         // Not logged
+        follow: _,
         threads: _,
         url_or_paths: _,
         version: _,

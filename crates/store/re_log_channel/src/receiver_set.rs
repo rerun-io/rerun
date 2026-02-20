@@ -66,7 +66,7 @@ impl LogReceiverSet {
             LogSource::MessageProxy(url) => url.to_string() != needle,
             LogSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
 
-            LogSource::File(_)
+            LogSource::File { .. }
             | LogSource::Stdin
             | LogSource::Sdk
             | LogSource::RrdWebEvent
@@ -223,7 +223,10 @@ fn test_receive_set() {
 
     let timeout = std::time::Duration::from_millis(100);
 
-    let (tx_file, rx_file) = log_channel(LogSource::File("path".into()));
+    let (tx_file, rx_file) = log_channel(LogSource::File {
+        path: "path".into(),
+        follow: false,
+    });
     let (tx_sdk, rx_sdk) = log_channel(LogSource::Sdk);
 
     let set = LogReceiverSet::default();
@@ -238,7 +241,10 @@ fn test_receive_set() {
     assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(
         set.sources(),
-        vec![Arc::new(LogSource::File("path".into()))]
+        vec![Arc::new(LogSource::File {
+            path: "path".into(),
+            follow: false
+        })]
     );
 
     set.add(rx_sdk);
@@ -248,7 +254,10 @@ fn test_receive_set() {
     assert_eq!(
         set.sources(),
         vec![
-            Arc::new(LogSource::File("path".into())),
+            Arc::new(LogSource::File {
+                path: "path".into(),
+                follow: false
+            }),
             Arc::new(LogSource::Sdk)
         ]
     );
@@ -273,7 +282,10 @@ fn test_receive_set() {
     assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(
         set.sources(),
-        vec![Arc::new(LogSource::File("path".into()))]
+        vec![Arc::new(LogSource::File {
+            path: "path".into(),
+            follow: false
+        })]
     );
 
     drop(tx_file);

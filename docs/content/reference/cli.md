@@ -122,6 +122,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--follow <FOLLOW>`
+> Tail .rrd files, waiting for new data to be appended after reaching EOF.
+>
+> Without this flag, .rrd files are read once and the viewer stops loading when EOF is reached. With this flag, the viewer will keep watching for new data, which is useful for live streaming from a writer process.
+>
+> [Default: `false`]
+
 * `-j, --threads <THREADS>`
 > The number of compute threads to use.
 >
