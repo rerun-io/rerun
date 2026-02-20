@@ -51,15 +51,15 @@ impl MessageParser for ImageMessageParser {
         self.frame_ids.push(header.frame_id);
 
         let dimensions = [width, height];
-        let img_format = decode_image_format(&encoding, dimensions)
+        let img_encoding = decode_image_encoding(&encoding)
             .with_context(|| format!("Failed to decode image format for encoding '{encoding}' with dimensions {width}x{height}"))?;
 
-        // TODO(#10726): big assumption here: image format can technically be different for each image on the topic.
-        // `color_model` is `None` for formats created with `ImageFormat::depth`
-        self.is_depth_image = img_format.color_model.is_none();
+        // We assume that images with a single channel encoding (e.g. `16UC1`) are depth images, and all others are regular color images.
+        self.is_depth_image = img_encoding.is_single_channel();
 
         self.blobs.push(data.into_owned());
-        self.image_formats.push(img_format);
+        self.image_formats
+            .push(img_encoding.to_image_format(dimensions));
 
         Ok(())
     }
@@ -76,6 +76,7 @@ impl MessageParser for ImageMessageParser {
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
+        // TODO(#10726): big assumption here: image format can technically be different for each image on the topic, e.g. depth and color archetypes could be mixed here!
         let mut chunk_components: Vec<_> = if is_depth_image {
             DepthImage::update_fields()
                 .with_many_buffer(blobs)
@@ -158,6 +159,19 @@ impl ImageEncoding {
     /// All encoding name strings accepted by [`std::str::FromStr`].
     pub const NAMES: &[&str] = <Self as strum::VariantNames>::VARIANTS;
 
+    /// Returns `true` for OpenCV-style single-channel encodings (e.g. `8UC1`, `16UC1`, `32FC1`).
+    pub fn is_single_channel(self) -> bool {
+        matches!(
+            self,
+            Self::Cv8UC1
+                | Self::Cv8SC1
+                | Self::Cv16UC1
+                | Self::Cv16SC1
+                | Self::Cv32SC1
+                | Self::Cv32FC1
+        )
+    }
+
     /// Converts this encoding into a Rerun [`ImageFormat`] for the given dimensions.
     pub fn to_image_format(self, dimensions: [u32; 2]) -> ImageFormat {
         match self {
@@ -199,16 +213,22 @@ impl ImageEncoding {
     }
 }
 
+/// Parses a raw image encoding string (shared by ROS and Foxglove) into an [`ImageEncoding`].
+///
+/// Supports common encoding strings such as `rgb8`, `mono16`, `16UC1`, `yuyv`, `nv12`, etc.
+pub fn decode_image_encoding(encoding: &str) -> anyhow::Result<ImageEncoding> {
+    encoding.parse().map_err(|_err| {
+        anyhow::anyhow!(
+            "Unsupported image encoding '{encoding}'. Supported encodings: {:?}",
+            ImageEncoding::NAMES
+        )
+    })
+}
+
 /// Decodes a raw image encoding string (shared by ROS and Foxglove) into a Rerun [`ImageFormat`].
 ///
 /// Supports common encoding strings such as `rgb8`, `mono16`, `16UC1`, `yuyv`, `nv12`, etc.
 /// OpenCV-style single-channel encodings (`8UC1`, `16UC1`, etc.) are treated as depth formats.
 pub fn decode_image_format(encoding: &str, dimensions: [u32; 2]) -> anyhow::Result<ImageFormat> {
-    let enc: ImageEncoding = encoding.parse().map_err(|_err| {
-        anyhow::anyhow!(
-            "Unsupported image encoding '{encoding}'. Supported encodings: {:?}",
-            ImageEncoding::NAMES
-        )
-    })?;
-    Ok(enc.to_image_format(dimensions))
+    Ok(decode_image_encoding(encoding)?.to_image_format(dimensions))
 }
