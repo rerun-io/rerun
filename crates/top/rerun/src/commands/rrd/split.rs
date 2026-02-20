@@ -491,9 +491,7 @@ impl SplitCommand {
         let cutoff_times = if let Some(num_parts) = num_parts {
             let num_parts = *num_parts as u64;
 
-            let time_span: i64 = ((max_time.saturating_sub(min_time)) / num_parts)
-                .try_into()
-                .expect("cannot be OOB");
+            let time_span = max_time.saturating_sub(min_time) / num_parts as i64;
             let mut cur_time = min_time;
 
             (0..num_parts)
