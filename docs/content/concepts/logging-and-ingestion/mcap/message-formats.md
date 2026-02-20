@@ -26,7 +26,7 @@ We are continually adding support for more standard message types.
 | Poses | `geometry_msgs/PoseStamped` | `PoseInFrame`, `PosesInFrame` | [InstancePoses3D](../../../reference/types/archetypes/instance_poses3d.md) |
 | Coordinate frame | `.frame_id` field in `std_msgs/Header` | `.frame_id` field | [CoordinateFrame](../../../reference/types/archetypes/coordinate_frame.md)
 | Magnetic field | `sensor_msgs/MagneticField` | - | [Arrows3D](../../../reference/types/archetypes/arrows3d.md) |
-| Misc. scalar sensor data | `sensor_msgs/Imu`, `sensor_msgs/JointState`, `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`, `sensor_msgs/Range`, `sensor_msgs/BatteryState`, `sensor_msgs/Joy` | - *(usually covered via custom schemas, see [Protobuf reflection](#protobuf-reflection) below on this page)* | [Scalars](../../../reference/types/archetypes/scalars.md) |
+| Misc. scalar sensor data | `sensor_msgs/Imu`, `sensor_msgs/JointState`, `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`, `sensor_msgs/Range`, `sensor_msgs/BatteryState`, `sensor_msgs/Joy` | - *(usually covered via custom schemas, see [Schema reflection](#schema-reflection) below on this page)* | [Scalars](../../../reference/types/archetypes/scalars.md) |
 | Text | `std_msgs/String` | - | [TextDocument](../../../reference/types/archetypes/text_document.md) |
 | Log messages | `rcl_interfaces/Log` | `Log` | [TextLog](../../../reference/types/archetypes/text_log.md) |
 
@@ -71,7 +71,7 @@ Note that the visualization requires the parent coordinate frame of the pose to 
 [`CoordinateFrame`](../../../reference/types/archetypes/coordinate_frame.md)s are also used for other message types that are supported by the `ros2msg` layer, if they have an [`std_msgs/Header`](https://docs.ros2.org/foxy/api/std_msgs/msg/Header.html) with a `frame_id`.
 For data that can be visualized in 3D views (e.g. point clouds), this means that the viewer takes the respective coordinate frame's transform into account and renders the data relative to it.
 
-## Protobuf & ROS 2 reflection
+## Schema reflection
 
 MCAP files allow for arbitrary custom message payloads, so you might have other message types in your files than the set of ROS 2 or Foxglove messages that Rerun automatically converts to archetypes.
 
