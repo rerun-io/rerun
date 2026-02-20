@@ -259,7 +259,7 @@ impl TestContext {
             .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
 
-        let (command_sender, command_receiver) = command_channel(true);
+        let (command_sender, command_receiver) = command_channel();
 
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
 

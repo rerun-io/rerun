@@ -271,9 +271,12 @@ impl CommandReceiver {
 }
 
 /// Creates a new command channel.
-pub fn command_channel(is_test: bool) -> (CommandSender, CommandReceiver) {
-    let (system_sender, system_receiver) = create_channel(is_test, 256);
-    let (ui_sender, ui_receiver) = create_channel(is_test, 256);
+pub fn command_channel() -> (CommandSender, CommandReceiver) {
+    // We need an unbounded channel here, because we often send messages on the same
+    // thread as we receive them on (the main GUI thread).
+    #![cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))]
+    let (system_sender, system_receiver) = crossbeam::channel::unbounded();
+    let (ui_sender, ui_receiver) = crossbeam::channel::unbounded();
     (
         CommandSender {
             system_sender,
@@ -363,32 +366,6 @@ fn send_crossbeam<T>(
                     );
                     sender.send(msg)
                 }
-            }
-        }
-    }
-}
-
-/// Create a blocking channel on native, and an unbounded channel on web.
-// TODO(emilk): move somewhere so we can reuse it.
-fn create_channel<T>(
-    is_test: bool,
-    size: usize,
-) -> (
-    crossbeam::channel::Sender<T>,
-    crossbeam::channel::Receiver<T>,
-) {
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            _ = (is_test, size);
-            crossbeam::channel::unbounded() // we're not allowed to block on web
-        } else {
-            if is_test {
-                // In tests we queue up a bunch of stuff while there is no process loop running,
-                // so we use a larger buffer to avoid deadlocks.
-                #[expect(clippy::disallowed_methods)]
-                crossbeam::channel::unbounded()
-            } else {
-                crossbeam::channel::bounded(size)
             }
         }
     }
