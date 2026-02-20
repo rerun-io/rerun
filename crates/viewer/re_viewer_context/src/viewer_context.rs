@@ -486,6 +486,8 @@ impl ViewerContext<'_> {
         &self,
         view_class_identifier: ViewClassIdentifier,
     ) -> PerVisualizerTypeInViewClass<VisualizableEntities> {
+        re_tracing::profile_function!();
+
         PerVisualizerTypeInViewClass {
             view_class_identifier,
             per_visualizer: self

@@ -508,7 +508,6 @@ This section lists all active visualizers in this view.";
                             *view_id,
                             view_class,
                             view.class_identifier(),
-                            &view.space_origin,
                             ui,
                         )
                     })
@@ -558,16 +557,10 @@ fn visualizer_section_plus_button(
     view_id: ViewId,
     view_class: &dyn re_viewer_context::ViewClass,
     view_class_identifier: re_sdk_types::ViewClassIdentifier,
-    space_origin: &EntityPath,
     ui: &mut egui::Ui,
 ) -> egui::Response {
-    let options = collect_add_visualizer_options(
-        viewer_ctx,
-        view_id,
-        view_class,
-        view_class_identifier,
-        space_origin,
-    );
+    let options =
+        collect_add_visualizer_options(viewer_ctx, view_id, view_class, view_class_identifier);
 
     let ui_style = Arc::clone(ui.style());
     ui.spacing_mut().menu_margin = egui::Margin::same(0);
@@ -597,7 +590,6 @@ fn menu_add_new_visualizer_for_view(
     ui: &mut egui::Ui,
 ) {
     profile_function!();
-
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
     ui.spacing_mut().item_spacing.y = 10.0;
 
@@ -663,53 +655,45 @@ fn collect_add_visualizer_options(
     view_id: ViewId,
     view_class: &dyn re_viewer_context::ViewClass,
     view_class_identifier: re_sdk_types::ViewClassIdentifier,
-    space_origin: &EntityPath,
 ) -> Vec<AddVisualizerOption> {
     profile_function!();
 
-    let recording = viewer_ctx.recording();
-    let entity_tree = recording.tree();
-
-    let Some(subtree) = entity_tree.subtree(space_origin) else {
-        return vec![];
-    };
     let query_result = viewer_ctx.lookup_query_result(view_id);
+    let visualizable_entities_per_visualizer =
+        viewer_ctx.collect_visualizable_entities_for_view_class(view_class_identifier);
 
-    // Traverse entities under the space origin and build menu options.
+    // Traverse data results and build menu options.
     let mut result: Vec<AddVisualizerOption> = vec![];
-    subtree.visit_children_recursively(|entity_path| {
-        let visualizable_entities_per_visualizer =
-            viewer_ctx.collect_visualizable_entities_for_view_class(view_class_identifier);
+    for data_result in query_result.tree.iter_data_results() {
+        if data_result.tree_prefix_only {
+            continue;
+        }
+
+        let entity_path = &data_result.entity_path;
         let recommended_visualizers = view_class.recommended_visualizers_for_entity(
             entity_path,
             &visualizable_entities_per_visualizer,
             viewer_ctx.indicated_entities_per_visualizer,
         );
 
-        let options = collect_add_visualizer_options_for_entity(
-            entity_path,
-            recommended_visualizers,
-            query_result,
-        );
+        let options =
+            collect_add_visualizer_options_for_entity(data_result, recommended_visualizers);
         if !options.is_empty() {
             result.push(AddVisualizerOption {
                 entity_path: entity_path.clone(),
                 options,
             });
         }
-    });
+    }
 
     result
 }
 
 fn collect_add_visualizer_options_for_entity(
-    entity_path: &EntityPath,
+    data_result: &DataResult,
     recommended_visualizers: RecommendedVisualizers,
-    query_result: &DataQueryResult,
 ) -> Vec<AddVisualizerOptionPerEntity> {
-    let existing_visualizers = query_result
-        .result_for_entity(entity_path)
-        .map(|data_result| &data_result.visualizer_instructions);
+    let existing_visualizers = &data_result.visualizer_instructions;
 
     let mut visualizer_options = vec![];
     for (view_system_id, recommended_mappings_per_view_system) in recommended_visualizers.0 {
@@ -719,11 +703,9 @@ fn collect_add_visualizer_options_for_entity(
             };
 
             // Check if there is already a visualizer that covers this recommendation.
-            let is_already_visualized = existing_visualizers.is_some_and(|visualizers| {
-                visualizers.iter().any(|visualizer| {
-                    visualizer.visualizer_type == view_system_id
-                        && recommended_mappings.is_covered_by(&visualizer.component_mappings)
-                })
+            let is_already_visualized = existing_visualizers.iter().any(|visualizer| {
+                visualizer.visualizer_type == view_system_id
+                    && recommended_mappings.is_covered_by(&visualizer.component_mappings)
             });
 
             visualizer_options.push(AddVisualizerOptionPerEntity {
