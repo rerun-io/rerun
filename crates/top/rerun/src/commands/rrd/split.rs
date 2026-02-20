@@ -463,7 +463,6 @@ impl SplitCommand {
 
         let mut min_time: Option<i64> = None;
         let mut max_time: Option<i64> = None;
-        let mut max_len: Option<u64> = None;
 
         // We merge the results across all stores because we want the different recordings in
         // the file to still temporarily align in the output.
@@ -476,10 +475,6 @@ impl SplitCommand {
                 let cur_max_time = time_range.max().as_i64();
                 let max_time = max_time.get_or_insert(cur_max_time);
                 *max_time = i64::max(*max_time, cur_max_time);
-
-                let cur_max_len = time_range.abs_length();
-                let max_len = max_len.get_or_insert(cur_max_len);
-                *max_len = u64::max(*max_len, cur_max_len);
             }
         }
 
@@ -489,9 +484,6 @@ impl SplitCommand {
         let Some(max_time) = max_time else {
             anyhow::bail!("timeline '{timeline}' does not contain any data");
         };
-        let Some(max_len) = max_len else {
-            anyhow::bail!("timeline '{timeline}' does not contain any data");
-        };
 
         // Because user-facing ranges are exclusive on the upper bound.
         let max_time = max_time.saturating_add(1);
@@ -499,7 +491,9 @@ impl SplitCommand {
         let cutoff_times = if let Some(num_parts) = num_parts {
             let num_parts = *num_parts as u64;
 
-            let time_span: i64 = (max_len / num_parts).try_into().expect("cannot be OOB");
+            let time_span: i64 = ((max_time.saturating_sub(min_time)) / num_parts)
+                .try_into()
+                .expect("cannot be OOB");
             let mut cur_time = min_time;
 
             (0..num_parts)
@@ -1091,5 +1085,5 @@ fn time_to_human_string(timeline: Timeline, time: TimeInt) -> String {
         }
     };
 
-    s.replace(['.', ' '], "_") // just in case
+    s.replace(['.', ':', ' '], "_") // just in case
 }
