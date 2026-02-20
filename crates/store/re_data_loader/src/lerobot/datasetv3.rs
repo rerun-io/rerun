@@ -15,6 +15,7 @@ use arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
 use arrow::compute::concat_batches;
 use crossbeam::channel::Sender;
+use parking_lot::RwLock;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
 use re_video::VideoDataDescription;
@@ -74,8 +75,22 @@ use crate::{DataLoaderError, LoadedData};
 pub struct LeRobotDatasetV3 {
     pub path: PathBuf,
     pub metadata: LeRobotDatasetMetadataV3,
-    video_cache: parking_lot::RwLock<HashMap<PathBuf, Arc<[u8]>>>,
-    episode_data_cache: parking_lot::RwLock<HashMap<EpisodeIndex, Arc<RecordBatch>>>,
+    video_cache: RwLock<VideoBlobCache>,
+    episode_data_cache: RwLock<HashMap<EpisodeIndex, Arc<RecordBatch>>>,
+}
+
+/// Video blob cache with reference counting for automatic eviction.
+///
+/// Video blobs are lazily loaded from disk when first requested and automatically
+/// evicted when all episodes that reference them have been processed.
+#[derive(Default)]
+struct VideoBlobCache {
+    /// Cached video file contents, keyed by full file path.
+    blobs: HashMap<PathBuf, Arc<[u8]>>,
+
+    /// Number of episodes that still need each video file.
+    /// When a count reaches 0, the corresponding blob is evicted.
+    remaining_refs: HashMap<PathBuf, usize>,
 }
 
 /// Episode location within a Parquet file
@@ -97,11 +112,12 @@ impl LeRobotDatasetV3 {
         let dataset = Self {
             path: path.to_path_buf(),
             metadata,
-            video_cache: parking_lot::RwLock::new(HashMap::default()),
-            episode_data_cache: parking_lot::RwLock::new(HashMap::default()),
+            video_cache: RwLock::new(VideoBlobCache::default()),
+            episode_data_cache: RwLock::new(HashMap::default()),
         };
 
         dataset.load_all_episode_data_files()?;
+        dataset.init_video_ref_counts();
 
         Ok(dataset)
     }
@@ -129,6 +145,64 @@ impl LeRobotDatasetV3 {
         }
 
         Ok(())
+    }
+
+    /// Precompute reference counts for all video files across episodes.
+    fn init_video_ref_counts(&self) {
+        let video_features: Vec<&str> = self
+            .metadata
+            .info
+            .features
+            .iter()
+            .filter(|(_, feature)| feature.dtype == DType::Video)
+            .map(|(key, _)| key.as_str())
+            .collect();
+
+        if video_features.is_empty() {
+            return;
+        }
+
+        let mut cache = self.video_cache.write();
+        for episode_data in self.metadata.episodes.values() {
+            for feature_key in &video_features {
+                if let Ok(video_file) = self.metadata.info.video_path(feature_key, episode_data) {
+                    let video_path = self.path.join(video_file);
+                    *cache.remaining_refs.entry(video_path).or_insert(0) += 1;
+                }
+            }
+        }
+
+        re_log::debug!(
+            "Initialized video cache with {} unique video files across {} episodes",
+            cache.remaining_refs.len(),
+            self.metadata.episodes.len()
+        );
+    }
+
+    /// Release video blob references for a completed episode.
+    fn release_episode_videos(&self, episode: EpisodeIndex) {
+        let episode_data = match self.metadata.get_episode_data(episode) {
+            Some(data) => data,
+            None => return,
+        };
+
+        let mut cache = self.video_cache.write();
+        for (feature_key, feature) in &self.metadata.info.features {
+            if feature.dtype != DType::Video {
+                continue;
+            }
+
+            if let Ok(video_file) = self.metadata.info.video_path(feature_key, episode_data) {
+                let video_path = self.path.join(video_file);
+                if let Some(count) = cache.remaining_refs.get_mut(&video_path) {
+                    *count = count.saturating_sub(1);
+                    if *count == 0 {
+                        cache.blobs.remove(&video_path);
+                        cache.remaining_refs.remove(&video_path);
+                    }
+                }
+            }
+        }
     }
 
     fn cache_episode_file(
@@ -272,7 +346,7 @@ impl LeRobotDatasetV3 {
         // fast path, check whether we already have this video cached
         {
             let cache = self.video_cache.read();
-            if let Some(cached_contents) = cache.get(&videopath) {
+            if let Some(cached_contents) = cache.blobs.get(&videopath) {
                 return Ok(Arc::clone(cached_contents));
             }
         }
@@ -282,14 +356,14 @@ impl LeRobotDatasetV3 {
             std::fs::read(&videopath).map_err(|err| LeRobotError::io(err, videopath.clone()))?
         };
 
-        // cache contents of big video blobs
+        // cache contents of big video blobs, it will be evicted when all episodes that reference it have been processed
         let mut cache = self.video_cache.write();
-        if let Some(cached_contents) = cache.get(&videopath) {
+        if let Some(cached_contents) = cache.blobs.get(&videopath) {
             return Ok(Arc::clone(cached_contents));
         }
 
         let contents: Arc<[u8]> = Arc::from(contents.into_boxed_slice());
-        cache.insert(videopath, contents.clone());
+        cache.blobs.insert(videopath, contents.clone());
 
         Ok(contents)
     }
@@ -584,7 +658,12 @@ impl LeRobotDataset for LeRobotDatasetV3 {
     }
 
     fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError> {
-        self.load_episode(episode)
+        let result = self.load_episode(episode);
+
+        // Release video blob references for this episode regardless of success or failure to avoid leaking memory if we fail to load an episode after caching its video blobs.
+        self.release_episode_videos(episode);
+
+        result
     }
 }
 
