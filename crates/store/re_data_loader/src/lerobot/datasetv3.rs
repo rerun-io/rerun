@@ -181,9 +181,8 @@ impl LeRobotDatasetV3 {
 
     /// Release video blob references for a completed episode.
     fn release_episode_videos(&self, episode: EpisodeIndex) {
-        let episode_data = match self.metadata.get_episode_data(episode) {
-            Some(data) => data,
-            None => return,
+        let Some(episode_data) = self.metadata.get_episode_data(episode) else {
+            return;
         };
 
         let mut cache = self.video_cache.write();
