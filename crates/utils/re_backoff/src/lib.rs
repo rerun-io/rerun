@@ -34,11 +34,35 @@ pub struct Backoff {
     jittered: Duration,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+async fn sleep(duration: Duration) {
+    tokio::time::sleep(duration).await;
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn sleep(duration: Duration) {
+    // Hack to get async sleep on wasm
+    async fn sleep_ms(millis: i32) {
+        let mut cb = |resolve: js_sys::Function, _reject: js_sys::Function| {
+            web_sys::window()
+                .expect("Failed to get window")
+                .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
+                .expect("Failed to call set_timeout");
+        };
+        let p = js_sys::Promise::new(&mut cb);
+        wasm_bindgen_futures::JsFuture::from(p)
+            .await
+            .expect("Failed to await sleep promise");
+    }
+
+    sleep_ms(duration.as_millis() as i32).await;
+}
+
 impl Backoff {
     /// Sleep for the amount of time specified by this backoff instance.
     #[inline]
     pub async fn sleep(&self) {
-        tokio::time::sleep(self.jittered).await;
+        sleep(self.jittered).await;
     }
 
     /// The base duration for the backoff.

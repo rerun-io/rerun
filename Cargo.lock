@@ -8433,8 +8433,12 @@ dependencies = [
 name = "re_backoff"
 version = "0.30.0-alpha.1+dev"
 dependencies = [
+ "getrandom 0.3.3",
+ "js-sys",
  "rand 0.9.2",
  "tokio",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
