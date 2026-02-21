@@ -19,7 +19,7 @@ use crate::ChunkStore;
 /// This makes it usable in virtual contexts where lineage information alone should never force the
 /// underlying data to remain in local memory, such as the store's virtual indexes.
 /// Use [`ChunkDirectLineage::to_report`] to generate a [`ChunkDirectLineageReport`] instead.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum ChunkDirectLineage {
     /// This chunk resulted from the splitting of that other chunk. It must have siblings, somewhere.
     ///
@@ -81,7 +81,7 @@ impl re_byte_size::SizeBytes for ChunkDirectLineage {
     }
 }
 
-impl std::fmt::Display for ChunkDirectLineage {
+impl std::fmt::Debug for ChunkDirectLineage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::SplitFrom(chunk_id, sibling_ids) => f.write_fmt(format_args!(
@@ -95,13 +95,8 @@ impl std::fmt::Display for ChunkDirectLineage {
             )),
 
             Self::ReferencedFrom(rrd_manifest) => {
-                // TODO(cmc): recomputing the sha256 is wasteful, but then again this is a display
-                // impl for debugging purposes so… eh.
-                if let Ok(sha256) = rrd_manifest.compute_sha256() {
-                    f.write_fmt(format_args!("origin:{sha256}"))
-                } else {
-                    f.write_str("origin:<ERROR>")
-                }
+                // We don't compute the sha256 here, because it is too expensive
+                write!(f, "origin:{rrd_manifest:?}")
             }
 
             Self::Volatile => f.write_str("origin:<volatile> (cannot be re-fetched)"),
@@ -323,7 +318,7 @@ impl ChunkStore {
                     })
                     .join("\n"),
 
-                Some(lineage) => format!("{:width$}{lineage}", "", width = width),
+                Some(lineage) => format!("{:width$}{lineage:?}", "", width = width),
 
                 None => format!("{:width$}<invalid>", "", width = width),
             }
