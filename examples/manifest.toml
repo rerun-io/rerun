@@ -182,6 +182,7 @@ examples = [
   "custom_data_loader",
   "custom_store_subscriber",
   "custom_view",
+  "custom_visualizer",
   "dataframe_query",
   "drone_lidar",
   "extend_viewer_ui",

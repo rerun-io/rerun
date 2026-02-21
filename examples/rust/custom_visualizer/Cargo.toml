@@ -1,0 +1,26 @@
+[package]
+name = "custom_visualizer"
+version = "0.30.0-alpha.1+dev"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[features]
+default = []
+
+# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
+analytics = ["rerun/analytics"]
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
+  "native_viewer",
+  "run",
+  "server",
+] }
+
+# Need a direct dependency for `#[derive(bytemuck::Pod, bytemuck::Zeroable)]`.
+bytemuck.workspace = true
+
+# mimalloc is a much faster allocator:
+mimalloc.workspace = true
