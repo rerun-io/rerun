@@ -1,4 +1,4 @@
-# Hypothesis 2: Reduce catch_and_log_exceptions overhead
+# Hypothesis 2: reduce catch_and_log_exceptions overhead
 
 ## Hypothesis
 `catch_and_log_exceptions` is called 4x per log call. Each `__enter__`/`__exit__` does multiple `getattr()` on `threading.local()`, which goes through the threading.local descriptor protocol. Replacing these with direct `__dict__` access on the thread-local should be faster.
@@ -6,7 +6,7 @@
 ## Rationale
 `getattr(_rerun_exception_ctx, "attr", default)` goes through `threading.local.__getattribute__` which does thread ID lookup + dict lookup + default handling. `_rerun_exception_ctx.__dict__` returns the thread-local dict directly; subsequent `.get()` calls are plain dict operations.
 
-## Code Changes
+## Code changes
 In `error_utils.py`:
 1. Replaced all `getattr(_rerun_exception_ctx, "attr", default)` with `ctx = _rerun_exception_ctx.__dict__; ctx.get("attr", default)`
 2. Replaced all `_rerun_exception_ctx.attr = value` with `ctx["attr"] = value`

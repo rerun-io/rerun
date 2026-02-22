@@ -28,7 +28,7 @@ use crate::python_bridge::PyComponentDescriptor;
 /// Data stays as `Arc<dyn Array>` on the Rust side. When the Python logging
 /// pipeline hands this back to Rust via `array_to_rust`, we just clone the Arc
 /// instead of round-tripping through PyArrow's FFI export/import.
-#[pyclass(frozen, name = "NativeArrowArray")]
+#[pyclass(frozen, name = "NativeArrowArray", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
 pub struct NativeArrowArray {
     pub(crate) inner: ArrowArrayRef,
 }
@@ -38,6 +38,10 @@ impl NativeArrowArray {
     /// Number of top-level elements (needed by `BaseBatch.__len__`).
     fn __len__(&self) -> usize {
         self.inner.len()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("NativeArrowArray(len={})", self.inner.len())
     }
 
     /// Escape hatch: export to a real `pyarrow.Array` for cold-path consumers.
@@ -223,7 +227,7 @@ pub fn build_fixed_size_list_array(
 ) -> PyResult<NativeArrowArray> {
     let slice = flat_array
         .as_slice()
-        .map_err(|e| PyValueError::new_err(format!("numpy array must be contiguous: {e}")))?;
+        .map_err(|err| PyValueError::new_err(format!("numpy array must be contiguous: {err}")))?;
 
     let num_elements = slice.len();
     let list_size_usize = list_size as usize;

@@ -1,8 +1,8 @@
-# Detailed Profiling Analysis
+# Detailed profiling analysis
 
 ## Full pipeline: `rr.log("path", rr.Transform3D(translation=list, mat3x3=np))` = 17.47 us
 
-### Time Budget Breakdown
+### Time budget breakdown
 
 ```
 Full rr.log() call:                                17.47 us  (100%)
@@ -41,7 +41,7 @@ Full rr.log() call:                                17.47 us  (100%)
     └── 2x rr.set_time():                           0.26 us each
 ```
 
-### Key Findings
+### Key findings
 
 1. **pa.FixedSizeListArray.from_arrays() costs ~1.0 us per call** — 2 calls = 2.0 us (11.4% of total).
    For 3 floats (Vec3D) and 9 floats (Mat3x3), this is enormous overhead per datum.
@@ -60,7 +60,7 @@ Full rr.log() call:                                17.47 us  (100%)
    But most of this is the 2 actual batch constructions (4.22 us).
    The attrs machinery overhead (calling converters, setting fields) adds ~0.74 us.
 
-### Largest Remaining Opportunities (ordered by expected impact)
+### Largest remaining opportunities (ordered by expected impact)
 
 1. **Bypass PyArrow for small arrays** (~2.0 us = 11.4%):
    `pa.FixedSizeListArray.from_arrays()` has ~1 us overhead per call regardless of array size.

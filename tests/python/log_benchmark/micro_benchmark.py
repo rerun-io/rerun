@@ -38,7 +38,7 @@ def bench(label: str, fn: Callable[[], Any], *, warmup: int = 1000, iters: int =
 
 
 def main() -> None:
-    rr.init("micro_benchmark", spawn=False)
+    rr.init("rerun_example_micro_benchmark", spawn=False)
     rr.memory_recording()
 
     # Prepare test data
@@ -170,7 +170,7 @@ def main() -> None:
     bench("rr.log(path, pre-built transform)", lambda: rr.log("test_entity", transform))
 
     bench(
-        "rr.log(path, Transform3D(...))",
+        "rr.log(path, Transform3D(…)",
         lambda: rr.log("test_entity", rr.Transform3D(translation=translation_list, mat3x3=mat3x3_np)),
     )
 
@@ -187,7 +187,7 @@ def main() -> None:
     print("\n--- Stage 7: Miscellaneous ---")
 
     bench(
-        "ComponentDescriptor('Transform3D:translation', ...)",
+        "ComponentDescriptor('Transform3D:translation', …)",
         lambda: ComponentDescriptor(
             "Transform3D:translation",
             component_type="rerun.components.Translation3D",

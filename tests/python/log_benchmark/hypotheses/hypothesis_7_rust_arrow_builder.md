@@ -1,9 +1,9 @@
-# Hypothesis 7: Bypass PyArrow — build Arrow FixedSizeListArrays in Rust
+# Hypothesis 7: bypass PyArrow — build Arrow FixedSizeListArrays in Rust
 
 ## Hypothesis
 `pa.FixedSizeListArray.from_arrays()` costs ~1.0 us per call regardless of array size. For Vec3D (3 floats) and Mat3x3 (9 floats), this is pure overhead — the actual data is already a flat numpy array. Building the Arrow array in Rust directly from the numpy buffer eliminates this per-call PyArrow overhead.
 
-## Code Changes
+## Code changes
 
 ### Rust (`rerun_py/src/arrow.rs`)
 Added `build_fixed_size_list_array(flat_array, list_size)` function:

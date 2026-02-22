@@ -107,7 +107,7 @@ def log(
                     entity,
                     *extra,
                     static=static,
-                    recording=recording,
+                    recording=recording.to_native(),
                     strict=strict,
                 )
 
@@ -146,7 +146,7 @@ def log(
             entity,
             *extra,
             static=static,
-            recording=recording,
+            recording=recording.to_native(),
             strict=strict,
         )
 

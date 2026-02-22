@@ -1,9 +1,9 @@
-# Hypothesis 8: Eliminate catch_and_log_exceptions overhead on hot path
+# Hypothesis 8: eliminate catch_and_log_exceptions overhead on hot path
 
 ## Hypothesis
 The `catch_and_log_exceptions` context manager costs ~0.29 us per enter/exit cycle due to thread-local bookkeeping (depth tracking, strict_mode save/restore). On the Transform3D hot path there are 4 such cycles: 1 in `Transform3D.__init__`, 1 in `BaseBatch.__init__` for Translation3DBatch, 1 in `BaseBatch.__init__` for TransformMat3x3Batch, and 1 in `log()`. Replacing the inner 3 with inline `try/except` saves ~0.87 us/call.
 
-## Code Changes
+## Code changes
 
 ### `_baseclasses.py` — `BaseBatch.__init__`
 Replaced `with catch_and_log_exceptions(self.__class__.__name__, strict=strict):` with an inline `try/except` that:

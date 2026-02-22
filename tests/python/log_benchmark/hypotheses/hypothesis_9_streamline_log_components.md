@@ -1,9 +1,9 @@
-# Hypothesis 9: Streamline _log_components — skip intermediate data structures
+# Hypothesis 9: streamline _log_components — skip intermediate data structures
 
 ## Hypothesis
 `_log_components()` builds the dict for Rust in 3 passes: (1) list comprehension for descriptors, (2) list comprehension for arrow arrays, (3) zip + set tracking + dict building. This can be collapsed to a single dict comprehension, eliminating 2 list allocations, the `added` set, and the zip/None/duplicate checks.
 
-## Code Changes
+## Code changes
 
 ### `_log.py` — `_log_components()`
 Replaced the multi-pass construction:

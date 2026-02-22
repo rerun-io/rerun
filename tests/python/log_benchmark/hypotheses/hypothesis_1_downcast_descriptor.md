@@ -1,4 +1,4 @@
-# Hypothesis 1: Downcast PyComponentDescriptor in descriptor_to_rust()
+# Hypothesis 1: downcast PyComponentDescriptor in descriptor_to_rust()
 
 ## Hypothesis
 `descriptor_to_rust()` in `arrow.rs` receives `Bound<'_, PyAny>` that is always a `PyComponentDescriptor` (already wrapping a Rust `ComponentDescriptor`). Currently does 3 `getattr()` calls with string extraction and re-interning. Downcast directly instead.
@@ -6,7 +6,7 @@
 ## Rationale
 Eliminates 6 heap allocations + 6 string interning ops + 3 Python attribute lookups per log call.
 
-## Code Changes
+## Code changes
 In `rerun_py/src/arrow.rs`, added fast-path downcast before the existing getattr-based extraction:
 ```rust
 if let Ok(py_descr) = component_descr.downcast::<PyComponentDescriptor>() {

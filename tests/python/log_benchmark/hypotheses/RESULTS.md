@@ -1,4 +1,4 @@
-# Python Logging Performance Investigation Results
+# Python logging performance investigation results
 
 ## Benchmark: `log_transform3d_translation_mat3x3` (100 entities x 1000 time steps)
 
@@ -11,7 +11,7 @@ All measurements on release builds (`pixi run py-build-release`).
 | Full log (construct + log) | 36.8k transforms/s |
 | Create only (construct) | 112k transforms/s |
 
-## Individual Hypothesis Results
+## Individual hypothesis results
 
 | # | Hypothesis | Change | Impact | Decision |
 |---|-----------|--------|--------|----------|
@@ -24,7 +24,7 @@ All measurements on release builds (`pixi run py-build-release`).
 | H9 | Streamline _log_components dict building | ~5% (of remaining) | Moderate | KEEP |
 | H10 | NativeArrowArray — bypass PyArrow on logging hot path | ~85% (of remaining) | **Major** | KEEP |
 
-## Cumulative Results
+## Cumulative results
 
 ### After H1-H4 (Round 1)
 
@@ -40,21 +40,21 @@ All measurements on release builds (`pixi run py-build-release`).
 | Full log | 45.2k xforms/s | 73.0k xforms/s | **+62%** |
 | Micro-benchmark (full pipeline) | ~17.5 us/call | ~12.0 us/call | **-31%** |
 
-### After H10 (Round 3)
+### After h10 (Round 3)
 
 | Metric | After H7-H9 | After H10 | Improvement |
 |--------|-------------|-----------|-------------|
 | Full log | 73.0k xforms/s | 135k xforms/s | **+85%** |
 | Micro-benchmark (full pipeline) | ~12.0 us/call | ~5.98 us/call | **-50%** |
 
-### Overall (Baseline to Final)
+### Overall (Baseline to final)
 
 | Metric | Baseline | Final | Improvement |
 |--------|----------|-------|-------------|
 | Full log | 36.8k xforms/s | **135k xforms/s** | **+267%** (~3.7x) |
 | Micro-benchmark (full pipeline) | ~27 us/call | ~5.98 us/call | **-78%** |
 
-## Summary of Changes
+## Summary of changes
 
 ### Rust (requires rebuild)
 - `rerun_py/src/arrow.rs`: Fast-path downcast of `PyComponentDescriptor` (H1); `build_fixed_size_list_array()` function that builds Arrow FixedSizeListArrays directly from numpy (H7); `NativeArrowArray` pyclass that keeps Arrow data on the Rust side as `Arc<dyn Array>` (H10); fast-path `array_to_rust()` that clones the Arc instead of PyArrow FFI round-trip (H10)
@@ -68,7 +68,7 @@ All measurements on release builds (`pixi run py-build-release`).
 - `rerun_py/rerun_sdk/rerun/archetypes/transform3d_ext.py`: Inline `try/except` replacing `catch_and_log_exceptions` context manager (H8)
 - `rerun_py/rerun_sdk/rerun/_log.py`: Single dict comprehension in `_log_components` (H9); inline `catch_and_log_exceptions` on `log()` (H10); hot-path `_native_array` access bypassing PyArrow (H10)
 
-## Time Budget: ~5.98 us/call (after H10)
+## Time budget: ~5.98 us/call (after h10)
 
 ```
 Full rr.log("path", rr.Transform3D(translation=list, mat3x3=np)):  ~5.98 us
@@ -101,7 +101,7 @@ Full rr.log("path", rr.Transform3D(translation=list, mat3x3=np)):  ~5.98 us
     └── rr.set_time('frame', sequence=42):                  0.25 us each
 ```
 
-## Key Optimization Insights
+## Key optimization insights
 
 1. **NativeArrowArray (H10)** was the single biggest win: keeping data as `Arc<dyn Array>` on the Rust side eliminates ~2 us of PyArrow FFI round-trip per component (export `.to_data()` + import `make_array()`). For Transform3D with 2 components, this saves ~4 us.
 
@@ -111,7 +111,7 @@ Full rr.log("path", rr.Transform3D(translation=list, mat3x3=np)):  ~5.98 us
 
 4. **Lazy conversion** (`__getattr__` for `.pa_array`) gives us the best of both worlds: hot path keeps NativeArrowArray opaque, cold paths (compound types, `__str__`, tests) get a real `pa.Array` on first access with automatic caching.
 
-## Further Optimization Opportunities
+## Further optimization opportunities
 
 At ~6 us per log call, remaining gains would likely require:
 1. **Move batch construction to Rust** — the attrs converters + numpy prep account for ~2.5 us

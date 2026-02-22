@@ -3,7 +3,7 @@
 ## Hypothesis
 After H1-H9, the logging hot path round-trips Arrow data through PyArrow needlessly: `build_fixed_size_list_array` exports to `PyArrowType<ArrowArrayData>` (~1 us), then `array_to_rust` re-imports via `make_array()` (~1 us). By returning an opaque `NativeArrowArray` handle (wrapping `Arc<dyn Array>`) that stays on the Rust side, we eliminate both the export and import. Additionally, `catch_and_log_exceptions` on `log()` adds ~0.3 us per call that can be avoided on the hot path.
 
-## Code Changes
+## Code changes
 
 ### Rust (`rerun_py/src/arrow.rs`)
 - **`NativeArrowArray` pyclass**: frozen struct wrapping `Arc<dyn Array>` with `__len__()` and `to_pyarrow()` methods

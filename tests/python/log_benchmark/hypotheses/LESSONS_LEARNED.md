@@ -1,6 +1,6 @@
-# Lessons Learned: Python Logging Performance Investigation
+# Lessons learned: Python logging performance investigation
 
-## Investigation Overview
+## Investigation overview
 
 **Goal**: Make `rr.log("path", rr.Transform3D(translation=list, mat3x3=np))` as fast as possible.
 
@@ -8,7 +8,7 @@
 
 **Approach**: Bottom-up micro-benchmarking. Isolated each stage of the pipeline, measured independently, identified the top time sinks, and attacked them in order of expected impact.
 
-## Methodology That Worked
+## Methodology that worked
 
 ### 1. The micro-benchmark harness was essential
 
@@ -27,7 +27,7 @@ The initial PROFILING_ANALYSIS.md time budget identified the actual bottlenecks.
 
 Every hypothesis was measured before and after on the same machine with the same build. The cumulative tracking in RESULTS.md caught cases where individual improvements overlapped or didn't compound as expected.
 
-## Key Technical Insights
+## Key technical insights
 
 ### Insight 1: PyArrow is expensive for small arrays
 
@@ -35,7 +35,7 @@ Every hypothesis was measured before and after on the same machine with the same
 
 **Lesson**: PyArrow is designed for analytical workloads with large arrays. Per-row logging of small fixed-size types pays an outsized tax.
 
-### Insight 2: The PyArrow FFI round-trip is the biggest single cost
+### Insight 2: the PyArrow FFI round-trip is the biggest single cost
 
 The Arrow C Data Interface export (`.to_data()`) + import (`make_array()`) costs ~1 us per array. With 2 components per Transform3D, that's ~2 us just for data that's already in the right format on the Rust side.
 
@@ -57,11 +57,11 @@ The original code used `getattr(threading_local, "field", default)` which goes t
 
 Individual `_converter(None)` calls cost only 0.05 us, but `__attrs_init__` with 8 fields (including converter dispatch, field validation, and slot assignment) adds ~0.7 us. For the hot path, this is a significant fraction of the remaining budget.
 
-### Insight 6: Caching works because archetypes are repetitive
+### Insight 6: caching works because archetypes are repetitive
 
 `ComponentDescriptor` objects and archetype field name lists are identical across every call to the same archetype. Caching them (H3+H5) on the class eliminates repeated string concatenation and `fields()` introspection.
 
-## Architecture of the Current Hot Path
+## Architecture of the current hot path
 
 ```
 User calls: rr.log("path", rr.Transform3D(translation=[1,2,3], mat3x3=np.eye(3)))
@@ -100,7 +100,7 @@ COLD PATH (only when .pa_array is accessed, e.g. __str__, compound types):
    → Caches result in self.pa_array (subsequent access is free)
 ```
 
-## Where the Remaining ~6 us Goes
+## Where the remaining ~6 us goes
 
 ```
 Transform3D construction:     2.46 us  (41%)  ← Main bottleneck
@@ -119,9 +119,9 @@ Unaccounted:                  1.77 us  (30%)  -- Python interpreter overhead, fu
                                                  in benchmark vs real overhead
 ```
 
-## Concrete Next Steps for Another 50% Improvement
+## Concrete next steps for another 50% improvement
 
-### H11: Move batch construction to Rust (~1.5 us savings, ~25% improvement)
+### H11: move batch construction to Rust (~1.5 us savings, ~25% improvement)
 
 The biggest remaining target. Currently each batch does:
 1. Python: `flat_np_float32_array_from_array_like(data, dim)` — validates/converts input to flat f32 numpy
@@ -137,7 +137,7 @@ For Mat3x3, the numpy reshape/transpose/ravel (0.45 us) could also move to Rust.
 
 **Estimated savings**: ~0.8 us (Translation3D) + ~0.7 us (Mat3x3) = ~1.5 us
 
-### H12: Bypass attrs for hot-path archetypes (~0.7 us savings, ~12% improvement)
+### H12: bypass attrs for hot-path archetypes (~0.7 us savings, ~12% improvement)
 
 `__attrs_init__` with 8 fields costs ~0.7 us in overhead beyond the actual converter work. For the common case of `Transform3D(translation=X, mat3x3=Y)` where only 2 of 8 fields are set, we're paying for 6 unnecessary converter dispatch + field assignment cycles.
 
@@ -147,17 +147,17 @@ Options:
 
 Option B is more radical but could eliminate the entire construction step (~2.46 us → ~0.5 us).
 
-### H13: Fuse as_component_batches + _log_components (~0.5 us savings, ~8% improvement)
+### H13: fuse as_component_batches + _log_components (~0.5 us savings, ~8% improvement)
 
 Currently `as_component_batches()` builds a `list[DescribedComponentBatch]` that `_log_components` immediately iterates to build a dict. This intermediate list allocation + iteration could be eliminated by having `_log_components` directly iterate the archetype's fields.
 
 A Rust `#[pyfunction]` could accept the archetype object directly, call `getattr` for each known field, and build the row without any Python intermediate structures.
 
-### H14: Pool/reuse RowId generation (~0.1-0.2 us savings)
+### H14: pool/reuse RowId generation (~0.1-0.2 us savings)
 
 `RowId::new()` involves timestamp + counter. If the recording stream could pre-allocate or batch RowIds, this small per-call cost could be amortized.
 
-### H15: Specialize log() for common cases (~0.3 us savings)
+### H15: specialize log() for common cases (~0.3 us savings)
 
 The current `log()` function handles `*extra` args, `Iterable` inputs, and list entity paths. For the common case of `log(str, AsComponents)`, a specialized fast path could skip all the type checking and go straight to `_log_components`.
 
@@ -173,7 +173,7 @@ The current `log()` function handles `*extra` args, `Iterable` inputs, and list 
 
 This would put us at **~3.0 us/call → ~330k transforms/s**, another ~2.5x from current.
 
-## Files and Tools
+## Files and tools
 
 ### Key files
 - `tests/python/log_benchmark/micro_benchmark.py` — the micro-benchmark harness
@@ -202,7 +202,7 @@ cargo clippy -p rerun_py --no-default-features  # Rust linting
 - **Class-level caching**: `cls.__dict__.get()` + write-back for per-archetype metadata.
 - **getattr fast path in _log_components**: `getattr(batch, '_native_array', None)` to bypass as_arrow_array().
 
-## What NOT to Optimize
+## What NOT to optimize
 
 - **_converter(None)** — 0.05 us each, 6 calls = 0.30 us. Not worth the complexity of conditional dispatch.
 - **isinstance checks** — 0.03 us. Negligible.

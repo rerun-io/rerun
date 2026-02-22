@@ -1,11 +1,11 @@
-# Hypothesis 3+5: Cache ComponentDescriptors and Pre-compute Component Fields
+# Hypothesis 3+5: cache ComponentDescriptors and pre-compute component fields
 
 ## Hypothesis
 H3: `as_component_batches()` creates new `ComponentDescriptor` Rust objects every call. These can be cached per (archetype_class, field_name, component_type) tuple.
 
 H5: `as_component_batches()` iterates all 8 fields checking `"component" in fld.metadata` for each. Pre-computing the list of component field names avoids iterating non-component fields and checking metadata dicts.
 
-## Code Changes
+## Code changes
 In `_baseclasses.py`:
 1. Added `_get_component_field_names()` classmethod that caches the list of component field names per archetype class
 2. Added `_get_descriptor_cache()` classmethod that returns a per-class dict mapping `(field_name, component_type)` to `ComponentDescriptor`
