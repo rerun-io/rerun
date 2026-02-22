@@ -1394,7 +1394,11 @@ fn to_stepped_points(points: &[[f64; 2]], mode: crate::StepMode) -> Vec<[f64; 2]
     if points.len() < 2 {
         return points.to_vec();
     }
-    let mut stepped = Vec::with_capacity(points.len() * 2 - 1);
+    let capacity = match mode {
+        crate::StepMode::After | crate::StepMode::Before => points.len() * 2 - 1,
+        crate::StepMode::Mid => points.len() * 3 - 2,
+    };
+    let mut stepped = Vec::with_capacity(capacity);
     match mode {
         crate::StepMode::After => {
             for pair in points.windows(2) {
