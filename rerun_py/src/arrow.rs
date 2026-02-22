@@ -28,7 +28,11 @@ use crate::python_bridge::PyComponentDescriptor;
 /// Data stays as `Arc<dyn Array>` on the Rust side. When the Python logging
 /// pipeline hands this back to Rust via `array_to_rust`, we just clone the Arc
 /// instead of round-tripping through PyArrow's FFI export/import.
-#[pyclass(frozen, name = "NativeArrowArray", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
+#[pyclass( // NOLINT: ignore[py-cls-eq], non-trivial implementation
+    frozen,
+    name = "NativeArrowArray",
+    module = "rerun_bindings.rerun_bindings"
+)]
 pub struct NativeArrowArray {
     pub(crate) inner: ArrowArrayRef,
 }
