@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pyarrow as pa
+import rerun_bindings
 
 from .._validators import flat_np_float32_array_from_array_like
 
@@ -21,4 +22,4 @@ class Vec3DExt:
     def native_to_pa_array_override(data: Vec3DArrayLike, data_type: pa.DataType) -> pa.Array:
         points = flat_np_float32_array_from_array_like(data, 3)
         points = np.ascontiguousarray(points)
-        return pa.FixedSizeListArray.from_arrays(points, type=data_type)
+        return rerun_bindings.build_fixed_size_list_array(points, 3)

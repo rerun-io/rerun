@@ -7,12 +7,10 @@ from typing import TYPE_CHECKING, Any
 import rerun_bindings as bindings
 
 from ._baseclasses import AsComponents  # noqa: TC001
-from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
+from .error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    import pyarrow as pa
-
-    from ._baseclasses import ComponentDescriptor, DescribedComponentBatch
+    from ._baseclasses import DescribedComponentBatch
     from .recording_stream import RecordingStream
 
 
@@ -180,34 +178,10 @@ def _log_components(
 
     """
 
-    instanced: dict[ComponentDescriptor, pa.Array] = {}
-
-    descriptors = [comp.component_descriptor() for comp in components]
-    arrow_arrays = [comp.as_arrow_array() for comp in components]
-
     if isinstance(entity_path, list):
         entity_path = bindings.new_entity_path([str(part) for part in entity_path])
 
-    added = set()
-
-    for descr, array in zip(descriptors, arrow_arrays, strict=False):
-        # Array could be None if there was an error producing the empty array
-        # Nothing we can do at this point other than ignore it. Some form of error
-        # should have been logged.
-        if array is None:
-            continue
-
-        # Skip components which were logged multiple times.
-        if descr in added:
-            _send_warning_or_raise(
-                f"Component {descr} was included multiple times. Only the first instance will be used.",
-                depth_to_user_code=1,
-            )
-            continue
-        else:
-            added.add(descr)
-
-        instanced[descr] = array
+    instanced = {comp.component_descriptor(): comp.as_arrow_array() for comp in components}
 
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,

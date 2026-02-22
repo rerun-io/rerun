@@ -11,7 +11,7 @@ from attrs import define, fields
 
 from rerun_bindings import ComponentDescriptor
 
-from .error_utils import catch_and_log_exceptions
+from .error_utils import catch_and_log_exceptions, strict_mode
 
 T = TypeVar("T")
 
@@ -218,13 +218,25 @@ class BaseBatch(Generic[T]):
 
         """
         if data is not None:
-            with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
+            try:
                 # If data is already an arrow array, use it
                 if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
                     self.pa_array = data
                 else:
                     self.pa_array = self._native_to_pa_array(data, self._ARROW_DATATYPE)
                 return
+            except Exception as exc:
+                if strict is True or (strict is None and strict_mode()):
+                    raise
+                from .error_utils import RerunWarning
+
+                import warnings
+
+                warnings.warn(
+                    f"{self.__class__.__name__}: {type(exc).__name__}({exc})",
+                    category=RerunWarning,
+                    stacklevel=2,
+                )
 
         # If we didn't return above, default to the empty array
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)

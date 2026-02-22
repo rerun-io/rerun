@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pyarrow as pa
+import rerun_bindings
 
 from rerun.error_utils import _send_warning_or_raise
 
@@ -68,4 +69,4 @@ class Mat3x3Ext:
                 result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[arg-type, union-attr, call-overload]
                 float_arrays = np.hstack(result).ravel()
 
-        return pa.FixedSizeListArray.from_arrays(np.ascontiguousarray(float_arrays), type=data_type)
+        return rerun_bindings.build_fixed_size_list_array(np.ascontiguousarray(float_arrays), 9)

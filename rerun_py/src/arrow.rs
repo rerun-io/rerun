@@ -1,16 +1,20 @@
 //! Methods for handling Arrow datamodel log ingest
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use arrow::array::{
-    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, make_array,
+    Array as _, ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef,
+    FixedSizeListArray as ArrowFixedSizeListArray, Float32Array as ArrowFloat32Array,
+    ListArray as ArrowListArray, make_array,
 };
 use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
-use arrow::datatypes::Field as ArrowField;
+use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyRuntimeError;
+use numpy::PyReadonlyArray1;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString};
-use pyo3::{Bound, PyAny, PyResult};
+use pyo3::{Bound, PyAny, PyResult, pyfunction};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
@@ -173,4 +177,33 @@ pub fn build_chunk_from_components(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     Ok(chunk)
+}
+
+/// Build an Arrow `FixedSizeListArray` of `f32` values directly from a flat numpy array.
+///
+/// This bypasses PyArrow's `pa.FixedSizeListArray.from_arrays()` which has ~1.0 us overhead
+/// per call regardless of array size. For small fixed-size types like Vec3D (3 floats) and
+/// Mat3x3 (9 floats), this overhead dominates.
+#[pyfunction]
+pub fn build_fixed_size_list_array(
+    flat_array: PyReadonlyArray1<'_, f32>,
+    list_size: i32,
+) -> PyResult<PyArrowType<ArrowArrayData>> {
+    let slice = flat_array.as_slice().map_err(|e| {
+        PyValueError::new_err(format!("numpy array must be contiguous: {e}"))
+    })?;
+
+    let num_elements = slice.len();
+    let list_size_usize = list_size as usize;
+    if num_elements % list_size_usize != 0 {
+        return Err(PyValueError::new_err(format!(
+            "flat array length {num_elements} is not a multiple of list_size {list_size}"
+        )));
+    }
+
+    let values = ArrowFloat32Array::from(slice.to_vec());
+    let field = Arc::new(ArrowField::new("item", ArrowDataType::Float32, false));
+    let array = ArrowFixedSizeListArray::new(field, list_size, Arc::new(values), None);
+
+    Ok(PyArrowType(array.to_data()))
 }
