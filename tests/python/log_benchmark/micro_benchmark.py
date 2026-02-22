@@ -8,6 +8,8 @@ Run from the rerun/ directory:
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import pyarrow as pa
@@ -22,7 +24,7 @@ from rerun_bindings import ComponentDescriptor
 N = 100_000
 
 
-def bench(label: str, fn, *, warmup: int = 1000, iters: int = N):
+def bench(label: str, fn: Callable[[], Any], *, warmup: int = 1000, iters: int = N) -> None:
     """Run fn() `iters` times and print throughput."""
     for _ in range(warmup):
         fn()
@@ -35,7 +37,7 @@ def bench(label: str, fn, *, warmup: int = 1000, iters: int = N):
     print(f"  {label:55s} {rate:>10.0f}/s  ({us_per:>6.2f} us/call)")
 
 
-def main():
+def main() -> None:
     rr.init("micro_benchmark", spawn=False)
     rr.memory_recording()
 
@@ -326,7 +328,7 @@ def main():
     print()
 
 
-def _build_instanced_dict(batches):
+def _build_instanced_dict(batches: list[DescribedComponentBatch]) -> dict[ComponentDescriptor, pa.Array]:
     instanced = {}
     for comp in batches:
         descr = comp.component_descriptor()
@@ -335,19 +337,19 @@ def _build_instanced_dict(batches):
     return instanced
 
 
-def _noop_with_catch():
+def _noop_with_catch() -> None:
     with catch_and_log_exceptions("test"):
         pass
 
 
-def _noop_try_finally():
+def _noop_try_finally() -> None:
     try:
         pass
     finally:
         pass
 
 
-def _trivial_fn():
+def _trivial_fn() -> None:
     return None
 
 

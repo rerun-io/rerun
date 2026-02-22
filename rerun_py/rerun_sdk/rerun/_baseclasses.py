@@ -141,7 +141,7 @@ class Archetype(AsComponents):
         """
         cache = cls.__dict__.get("_component_field_names_cache")
         if cache is not None:
-            return cache  # type: ignore[return-value]
+            return cache  # type: ignore[no-any-return, return-value]
 
         result = [fld.name for fld in fields(cls) if "component" in fld.metadata]
         cls._component_field_names_cache = result  # type: ignore[attr-defined]
@@ -152,7 +152,7 @@ class Archetype(AsComponents):
         """Return cached descriptor dict for this archetype class."""
         cache = cls.__dict__.get("_descriptor_cache")
         if cache is not None:
-            return cache  # type: ignore[return-value]
+            return cache  # type: ignore[no-any-return, return-value]
         cache = {}
         cls._descriptor_cache = cache  # type: ignore[attr-defined]
         return cache
