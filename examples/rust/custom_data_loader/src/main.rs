@@ -83,7 +83,7 @@ fn hash_and_log(
 
     let store_id = settings.opened_store_id_or_recommended();
     let data = LoadedData::Chunk(HashLoader::name(&HashLoader), store_id, chunk);
-    tx.send(data).ok();
+    re_quota_channel::send_crossbeam(tx, data).ok();
 
     Ok(())
 }

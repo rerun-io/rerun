@@ -7,6 +7,7 @@ use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
+use re_quota_channel::send_crossbeam;
 use re_redap_client::{
     ClientCredentialsError, ConnectionRegistryHandle, CredentialSource, Credentials,
 };
@@ -114,9 +115,11 @@ impl Server {
                     .small_icon_button(&icons::RESET, "Refresh collection")
                     .clicked()
                 {
-                    ctx.command_sender
-                        .send(Command::RefreshCollection(self.origin.clone()))
-                        .ok();
+                    send_crossbeam(
+                        ctx.command_sender,
+                        Command::RefreshCollection(self.origin.clone()),
+                    )
+                    .ok();
                 }
             });
 
@@ -321,9 +324,11 @@ fn error_ui(
                                     )
                                     .clicked()
                                 {
-                                    ctx.command_sender
-                                        .send(Command::UseStoredCredentials(origin.clone()))
-                                        .ok();
+                                    send_crossbeam(
+                                        ctx.command_sender,
+                                        Command::UseStoredCredentials(origin.clone()),
+                                    )
+                                    .ok();
                                 }
                             } else {
                                 // User is not logged in — start login flow
@@ -331,24 +336,26 @@ fn error_ui(
                                     .add(re_ui::ReButton::new("Log in").primary().small())
                                     .clicked()
                                 {
-                                    ctx.command_sender
-                                        .send(Command::StartLoginFlow(origin.clone()))
-                                        .ok();
+                                    send_crossbeam(
+                                        ctx.command_sender,
+                                        Command::StartLoginFlow(origin.clone()),
+                                    )
+                                    .ok();
                                 }
                             }
                             if ui
                                 .add(re_ui::ReButton::new("Edit connection").small())
                                 .clicked()
                             {
-                                ctx.command_sender
-                                    .send(Command::OpenEditServerModal(
-                                        EditRedapServerModalCommand {
-                                            origin: origin.clone(),
-                                            open_on_success: None,
-                                            title: None,
-                                        },
-                                    ))
-                                    .ok();
+                                send_crossbeam(
+                                    ctx.command_sender,
+                                    Command::OpenEditServerModal(EditRedapServerModalCommand {
+                                        origin: origin.clone(),
+                                        open_on_success: None,
+                                        title: None,
+                                    }),
+                                )
+                                .ok();
                             }
                         });
                     }
@@ -381,13 +388,15 @@ fn warning_with_edit_button(
                 .add(re_ui::ReButton::new("Edit connection").small())
                 .clicked()
             {
-                ctx.command_sender
-                    .send(Command::OpenEditServerModal(EditRedapServerModalCommand {
+                send_crossbeam(
+                    ctx.command_sender,
+                    Command::OpenEditServerModal(EditRedapServerModalCommand {
                         origin: origin.clone(),
                         open_on_success: None,
                         title: None,
-                    }))
-                    .ok();
+                    }),
+                )
+                .ok();
             }
         });
     });
@@ -507,6 +516,35 @@ pub enum Command {
     UseStoredCredentials(re_uri::Origin),
 }
 
+impl std::fmt::Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::OpenAddServerModal => write!(f, "OpenAddServerModal"),
+            Self::OpenEditServerModal(cmd) => {
+                f.debug_tuple("OpenEditServerModal").field(cmd).finish()
+            }
+            Self::AddServer {
+                origin,
+                credentials,
+                on_add,
+            } => f
+                .debug_struct("AddServer")
+                .field("origin", origin)
+                .field("credentials", credentials)
+                .field("on_add", &on_add.as_ref().map(|_| "…"))
+                .finish(),
+            Self::RemoveServer(origin) => f.debug_tuple("RemoveServer").field(origin).finish(),
+            Self::RefreshCollection(origin) => {
+                f.debug_tuple("RefreshCollection").field(origin).finish()
+            }
+            Self::StartLoginFlow(origin) => f.debug_tuple("StartLoginFlow").field(origin).finish(),
+            Self::UseStoredCredentials(origin) => {
+                f.debug_tuple("UseStoredCredentials").field(origin).finish()
+            }
+        }
+    }
+}
+
 impl RedapServers {
     pub fn is_empty(&self) -> bool {
         self.servers.is_empty() && self.pending_servers.is_empty()
@@ -519,13 +557,15 @@ impl RedapServers {
 
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
-        self.command_sender
-            .send(Command::AddServer {
+        send_crossbeam(
+            &self.command_sender,
+            Command::AddServer {
                 origin,
                 credentials: None,
                 on_add: None,
-            })
-            .ok();
+            },
+        )
+        .ok();
     }
 
     pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
@@ -551,9 +591,11 @@ impl RedapServers {
                 server
                     .connection_registry
                     .remove_credentials(&server.origin);
-                self.command_sender
-                    .send(Command::RefreshCollection(server.origin.clone()))
-                    .ok();
+                send_crossbeam(
+                    &self.command_sender,
+                    Command::RefreshCollection(server.origin.clone()),
+                )
+                .ok();
             }
         }
     }
@@ -569,13 +611,15 @@ impl RedapServers {
         egui_ctx: &egui::Context,
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
-            self.command_sender
-                .send(Command::AddServer {
+            send_crossbeam(
+                &self.command_sender,
+                Command::AddServer {
                     origin,
                     credentials: None,
                     on_add: None,
-                })
-                .ok();
+                },
+            )
+            .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(connection_registry, runtime, egui_ctx, command);
@@ -588,8 +632,7 @@ impl RedapServers {
             let origin = origin.clone();
             match result {
                 LoginFlowResult::Success => {
-                    self.command_sender
-                        .send(Command::UseStoredCredentials(origin))
+                    send_crossbeam(&self.command_sender, Command::UseStoredCredentials(origin))
                         .ok();
                 }
                 LoginFlowResult::Failure(err) => {
@@ -679,9 +722,7 @@ impl RedapServers {
 
             Command::UseStoredCredentials(origin) => {
                 connection_registry.set_credentials(&origin, re_redap_client::Credentials::Stored);
-                self.command_sender
-                    .send(Command::RefreshCollection(origin))
-                    .ok();
+                send_crossbeam(&self.command_sender, Command::RefreshCollection(origin)).ok();
             }
         }
     }
@@ -703,13 +744,11 @@ impl RedapServers {
     }
 
     pub fn open_add_server_modal(&self) {
-        self.command_sender.send(Command::OpenAddServerModal).ok();
+        send_crossbeam(&self.command_sender, Command::OpenAddServerModal).ok();
     }
 
     pub fn open_edit_server_modal(&self, command: EditRedapServerModalCommand) {
-        self.command_sender
-            .send(Command::OpenEditServerModal(command))
-            .ok();
+        send_crossbeam(&self.command_sender, Command::OpenEditServerModal(command)).ok();
     }
 
     pub fn entry_ui(
@@ -759,7 +798,7 @@ impl RedapServers {
     }
 
     pub fn send_command(&self, command: Command) {
-        let result = self.command_sender.send(command);
+        let result = send_crossbeam(&self.command_sender, command);
 
         if let Err(err) = result {
             re_log::warn_once!("Failed to send command: {err}");

@@ -23,7 +23,7 @@ struct TestDecoder {
 
 impl AsyncDecoder for TestDecoder {
     fn submit_chunk(&mut self, chunk: re_video::Chunk) -> re_video::DecodeResult<()> {
-        self.sample_tx.send(chunk.sample_idx).unwrap();
+        re_quota_channel::send_crossbeam(&self.sample_tx, chunk.sample_idx).unwrap();
 
         self.sender
             .send(Ok(re_video::Frame {

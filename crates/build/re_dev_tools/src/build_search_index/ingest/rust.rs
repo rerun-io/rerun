@@ -10,6 +10,7 @@ use cargo_metadata::semver::Version;
 use crossbeam::channel::Sender;
 use indicatif::ProgressBar;
 use rayon::prelude::{IntoParallelIterator as _, ParallelIterator as _};
+use re_quota_channel::send_crossbeam;
 use rustdoc_types::{Crate, Id as ItemId, Impl, Item, ItemEnum, Type, Use};
 
 use super::{Context, DocumentData, DocumentKind};
@@ -173,13 +174,15 @@ impl<'a> Visitor<'a> {
             }
         };
 
-        self.documents
-            .send(document(
+        send_crossbeam(
+            self.documents,
+            document(
                 path.join("::"),
                 format!("{}/{}/{}", self.base_url, module_path.join("/"), item_path),
                 self.krate.index[id].docs.clone().unwrap_or_default(),
-            ))
-            .ok();
+            ),
+        )
+        .ok();
     }
 
     fn visit_root(&mut self) {
@@ -191,13 +194,15 @@ impl<'a> Visitor<'a> {
 
         let name = root_module_item.name.as_ref().unwrap().clone();
         let url = format!("{}/{name}/index.html", self.base_url);
-        self.documents
-            .send(document(
+        send_crossbeam(
+            self.documents,
+            document(
                 name.clone(),
                 url,
                 root_module_item.docs.clone().unwrap_or_default(),
-            ))
-            .ok();
+            ),
+        )
+        .ok();
 
         for item_id in &root_module.items {
             self.visit_item(false, item_id);

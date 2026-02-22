@@ -151,7 +151,7 @@ impl FilterCommand {
                     };
 
                     if let Some(msg) = msg {
-                        tx_encoder.send(msg).ok();
+                        re_quota_channel::send_crossbeam(&tx_encoder, msg).ok();
                     }
                 }
 

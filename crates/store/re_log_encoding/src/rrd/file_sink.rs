@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use crossbeam::channel::{Receiver, RecvTimeoutError, SendError, Sender};
 use parking_lot::Mutex;
 use re_log_types::LogMsg;
+use re_quota_channel::send_crossbeam;
 
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
@@ -42,6 +43,7 @@ pub enum FileSinkError {
     LogMsgEncode(#[from] crate::rrd::EncodeError),
 }
 
+#[derive(Debug)]
 enum Command {
     Send(LogMsg),
     Flush { on_done: Sender<Result<(), String>> },
@@ -68,7 +70,7 @@ pub struct FileSink {
 
 impl Drop for FileSink {
     fn drop(&mut self) {
-        self.tx.lock().send(None).ok();
+        send_crossbeam(&self.tx.lock(), None).ok();
         if let Some(join_handle) = self.join_handle.take() {
             join_handle.join().ok();
         }
@@ -131,7 +133,7 @@ impl FileSink {
     #[inline]
     pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FileFlushError> {
         let (cmd, oneshot) = Command::flush();
-        self.tx.lock().send(Some(cmd)).map_err(|_ignored| {
+        send_crossbeam(&self.tx.lock(), Some(cmd)).map_err(|_ignored| {
             FileFlushError::failed("File-writer thread shut down prematurely")
         })?;
 
@@ -148,7 +150,7 @@ impl FileSink {
 
     #[inline]
     pub fn send(&self, log_msg: LogMsg) {
-        self.tx.lock().send(Some(Command::Send(log_msg))).ok();
+        send_crossbeam(&self.tx.lock(), Some(Command::Send(log_msg))).ok();
     }
 }
 
@@ -183,7 +185,7 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
                             });
 
                             // Send back the result:
-                            if let Err(SendError(result)) = on_done.send(result)
+                            if let Err(SendError(result)) = send_crossbeam(&on_done, result)
                                 && let Err(err) = result
                             {
                                 // There was an error, and nobody received it:

@@ -5,6 +5,7 @@ use crossbeam::channel;
 use itertools::Itertools as _;
 use re_chunk::external::crossbeam;
 use re_log_encoding::RawRrdManifest;
+use re_quota_channel::send_crossbeam;
 
 // ---
 
@@ -86,7 +87,7 @@ pub fn read_raw_rrd_streams_from_file_or_stdin(
 
 #[expect(clippy::type_complexity)] // internal private API for the CLI impl
 fn read_any_rrd_streams_from_file_or_stdin<
-    T: re_log_encoding::DecoderEntrypoint + Send + 'static,
+    T: re_log_encoding::DecoderEntrypoint + Send + std::fmt::Debug + 'static,
 >(
     paths: &[String],
 ) -> (
@@ -118,7 +119,7 @@ fn read_any_rrd_streams_from_file_or_stdin<
 
                 for res in &mut decoder {
                     let res = res.context("couldn't decode message from stdin -- skipping");
-                    tx_msgs.send((source.clone(), res)).ok();
+                    send_crossbeam(&tx_msgs, (source.clone(), res)).ok();
                 }
 
                 size_bytes += decoder.num_bytes_processed();
@@ -135,9 +136,11 @@ fn read_any_rrd_streams_from_file_or_stdin<
                     {
                         Ok(file) => file,
                         Err(err) => {
-                            tx_msgs
-                                .send((InputSource::File(rrd_path.clone()), Err(err)))
-                                .ok();
+                            send_crossbeam(
+                                &tx_msgs,
+                                (InputSource::File(rrd_path.clone()), Err(err)),
+                            )
+                            .ok();
                             continue;
                         }
                     };
@@ -149,7 +152,7 @@ fn read_any_rrd_streams_from_file_or_stdin<
                         let res = res.context("decode rrd message").with_context(|| {
                             format!("couldn't decode message {rrd_path:?} -- skipping")
                         });
-                        tx_msgs.send((source.clone(), res)).ok();
+                        send_crossbeam(&tx_msgs, (source.clone(), res)).ok();
                     }
 
                     size_bytes += decoder.num_bytes_processed();
@@ -162,7 +165,7 @@ fn read_any_rrd_streams_from_file_or_stdin<
                 }
             }
 
-            tx_metadata.send((size_bytes, rrd_manifests)).ok();
+            send_crossbeam(&tx_metadata, (size_bytes, rrd_manifests)).ok();
         });
 
     (rx_msgs, rx_metadata)

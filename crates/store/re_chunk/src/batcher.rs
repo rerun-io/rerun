@@ -709,7 +709,7 @@ fn batching_thread(
                         for acc in accs.values_mut() {
                             do_flush_all(acc, &tx_chunk, "manual", config.chunk_max_rows_if_unsorted);
                         }
-                        on_done.send(()).ok();
+                        re_quota_channel::send_crossbeam(&on_done, ()).ok();
                     },
 
                     Command::UpdateConfig(new_config) => {

@@ -25,6 +25,12 @@ pub struct Dataset {
     pub origin: re_uri::Origin,
 }
 
+impl std::fmt::Debug for Dataset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Dataset({:?} @ {})", self.name(), self.origin)
+    }
+}
+
 impl Dataset {
     pub fn id(&self) -> EntryId {
         self.dataset_entry.details.id
@@ -41,6 +47,12 @@ pub struct Table {
     pub origin: re_uri::Origin,
 }
 
+impl std::fmt::Debug for Table {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Table({:?} @ {})", self.name(), self.origin)
+    }
+}
+
 impl Table {
     pub fn id(&self) -> EntryId {
         self.table_entry.details.id
@@ -51,6 +63,7 @@ impl Table {
     }
 }
 
+#[derive(Debug)]
 pub enum EntryInner {
     Dataset(Dataset),
     Table(Table),
@@ -59,6 +72,12 @@ pub enum EntryInner {
 pub struct Entry {
     details: EntryDetails,
     inner: EntryResult<EntryInner>,
+}
+
+impl std::fmt::Debug for Entry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Entry({:?})", self.name())
+    }
 }
 
 impl Entry {

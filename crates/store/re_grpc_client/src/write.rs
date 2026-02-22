@@ -415,7 +415,7 @@ async fn message_proxy_client(
                             // Messages are received in order, so once we receive a `flush`
                             // we know we've sent all messages before that flush through already.
                             re_log::trace!("Flush requested");
-                            if on_done.send(()).is_err() {
+                            if re_quota_channel::send_crossbeam(&on_done, ()).is_err() {
                                 // Flush channel may already be closed for non-blocking flush, so this isn't an error.
                                 re_log::debug!("Failed to respond to flush: flush report channel was closed");
                                 break;

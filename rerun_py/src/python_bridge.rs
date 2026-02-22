@@ -555,7 +555,7 @@ fn new_recording(
 
     let mut hooks = re_chunk::BatcherHooks::NONE;
     let on_release = |chunk| {
-        GARBAGE_QUEUE.0.send(chunk).ok();
+        re_quota_channel::send_crossbeam(&GARBAGE_QUEUE.0, chunk).ok();
     };
     hooks.on_release = Some(on_release.into());
 
@@ -611,7 +611,7 @@ fn new_blueprint(
 ) -> PyResult<PyRecordingStream> {
     let mut hooks = re_chunk::BatcherHooks::NONE;
     let on_release = |chunk| {
-        GARBAGE_QUEUE.0.send(chunk).ok();
+        re_quota_channel::send_crossbeam(&GARBAGE_QUEUE.0, chunk).ok();
     };
     hooks.on_release = Some(on_release.into());
 

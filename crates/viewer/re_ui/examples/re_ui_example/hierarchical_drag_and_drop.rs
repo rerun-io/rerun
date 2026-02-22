@@ -226,7 +226,7 @@ impl HierarchicalDragAndDrop {
 
     fn send_command(&self, command: Command) {
         // The only way this can fail is if the receiver has been dropped.
-        self.command_sender.send(command).ok();
+        re_quota_channel::send_crossbeam(&self.command_sender, command).ok();
     }
 }
 

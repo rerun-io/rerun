@@ -18,6 +18,7 @@ use re_log_types::{
     RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
     Timeline, TimelineName,
 };
+use re_quota_channel::send_crossbeam;
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::Timestamp;
 use re_sdk_types::{AsComponents, SerializationError, SerializedComponentColumn};
@@ -967,6 +968,19 @@ enum Command {
     Shutdown,
 }
 
+impl std::fmt::Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RecordMsg(msg) => f.debug_tuple("RecordMsg").field(msg).finish(),
+            Self::SwapSink { .. } => f.debug_struct("SwapSink").finish_non_exhaustive(),
+            Self::InspectSink(_) => f.debug_tuple("InspectSink").finish_non_exhaustive(),
+            Self::Flush { .. } => f.debug_struct("Flush").finish_non_exhaustive(),
+            Self::PopPendingChunks => write!(f, "PopPendingChunks"),
+            Self::Shutdown => write!(f, "Shutdown"),
+        }
+    }
+}
+
 impl re_byte_size::SizeBytes for Command {
     fn heap_size_bytes(&self) -> u64 {
         match self {
@@ -1522,7 +1536,7 @@ fn forwarding_thread(
                 let result = sink.flush_blocking(timeout);
 
                 // Send back the result:
-                if let Err(crossbeam::channel::SendError(result)) = on_done.send(result)
+                if let Err(crossbeam::channel::SendError(result)) = send_crossbeam(&on_done, result)
                     && let Err(err) = result
                 {
                     // There was an error, and nobody received it:
@@ -3127,7 +3141,7 @@ mod tests {
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
             .batcher_hooks(BatcherHooks {
                 on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
-                    tx.send(*config).unwrap();
+                    re_quota_channel::send_crossbeam(&tx, *config).unwrap();
                 })),
                 ..BatcherHooks::NONE
             })
@@ -3195,7 +3209,7 @@ mod tests {
             .batcher_config(explicit_config)
             .batcher_hooks(BatcherHooks {
                 on_config_change: Some(Arc::new(move |config: &ChunkBatcherConfig| {
-                    tx.send(*config).unwrap();
+                    re_quota_channel::send_crossbeam(&tx, *config).unwrap();
                 })),
                 ..BatcherHooks::NONE
             })

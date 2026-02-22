@@ -386,6 +386,7 @@ impl DataLoaderError {
 /// This makes it trivial for [`DataLoader`]s to build the data in whatever form is
 /// most convenient for them, whether it is raw components, arrow chunks or even
 /// full-on [`LogMsg`]s.
+#[derive(Debug)]
 pub enum LoadedData {
     Chunk(DataLoaderName, re_log_types::StoreId, Chunk),
     ArrowMsg(DataLoaderName, re_log_types::StoreId, ArrowMsg),

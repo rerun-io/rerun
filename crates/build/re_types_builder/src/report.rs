@@ -1,5 +1,6 @@
 use camino::Utf8Path;
 use crossbeam::channel::{Receiver, Sender};
+use re_quota_channel::send_crossbeam;
 
 /// Creates a new context.
 ///
@@ -32,41 +33,43 @@ impl Reporter {
     /// Use sparingly for things like failing to write a file or failing to format it.
     #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_file(&self, path: &Utf8Path, text: impl ToString) {
-        self.errors
-            .send(format!("{path}: {}", text.to_string()))
-            .ok();
+        send_crossbeam(&self.errors, format!("{path}: {}", text.to_string())).ok();
     }
 
     #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error(&self, virtpath: &str, fqname: &str, text: impl ToString) {
-        self.errors
-            .send(format!(
+        send_crossbeam(
+            &self.errors,
+            format!(
                 "{} {fqname}: {}",
                 Self::format_virtpath(virtpath),
                 text.to_string()
-            ))
-            .ok();
+            ),
+        )
+        .ok();
     }
 
     #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn warn_no_context(&self, text: impl ToString) {
-        self.warnings.send(text.to_string()).ok();
+        send_crossbeam(&self.warnings, text.to_string()).ok();
     }
 
     #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn warn(&self, virtpath: &str, fqname: &str, text: impl ToString) {
-        self.warnings
-            .send(format!(
+        send_crossbeam(
+            &self.warnings,
+            format!(
                 "{} {fqname}: {}",
                 Self::format_virtpath(virtpath),
                 text.to_string()
-            ))
-            .ok();
+            ),
+        )
+        .ok();
     }
 
     #[expect(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_any(&self, text: impl ToString) {
-        self.errors.send(text.to_string()).ok();
+        send_crossbeam(&self.errors, text.to_string()).ok();
     }
 
     // Tries to format a virtual fbs path such that it can be clicked in the CLI.
