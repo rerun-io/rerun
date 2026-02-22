@@ -45,6 +45,12 @@ from .image_buffer import ImageBuffer, ImageBufferBatch
 from .image_format import ImageFormat, ImageFormatBatch
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch
 from .interactive import Interactive, InteractiveBatch
+from .interpolation_mode import (
+    InterpolationMode,
+    InterpolationModeArrayLike,
+    InterpolationModeBatch,
+    InterpolationModeLike,
+)
 from .key_value_pairs import KeyValuePairs, KeyValuePairsArrayLike, KeyValuePairsBatch, KeyValuePairsLike
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
@@ -175,6 +181,10 @@ __all__ = [
     "ImagePlaneDistanceBatch",
     "Interactive",
     "InteractiveBatch",
+    "InterpolationMode",
+    "InterpolationModeArrayLike",
+    "InterpolationModeBatch",
+    "InterpolationModeLike",
     "KeyValuePairs",
     "KeyValuePairsArrayLike",
     "KeyValuePairsBatch",

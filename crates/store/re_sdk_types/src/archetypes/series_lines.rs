@@ -115,6 +115,13 @@ pub struct SeriesLines {
     ///
     /// Expected to be unchanging over time.
     pub aggregation_policy: Option<SerializedComponentBatch>,
+
+    /// Specifies how values between data points are interpolated.
+    ///
+    /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+    ///
+    /// Expected to be unchanging over time.
+    pub interpolation_mode: Option<SerializedComponentBatch>,
 }
 
 impl SeriesLines {
@@ -177,6 +184,18 @@ impl SeriesLines {
             component_type: Some("rerun.components.AggregationPolicy".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::interpolation_mode`].
+    ///
+    /// The corresponding component is [`crate::components::InterpolationMode`].
+    #[inline]
+    pub fn descriptor_interpolation_mode() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.SeriesLines".into()),
+            component: "SeriesLines:interpolation_mode".into(),
+            component_type: Some("rerun.components.InterpolationMode".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -185,7 +204,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             SeriesLines::descriptor_colors(),
@@ -193,10 +212,11 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             SeriesLines::descriptor_names(),
             SeriesLines::descriptor_visible_series(),
             SeriesLines::descriptor_aggregation_policy(),
+            SeriesLines::descriptor_interpolation_mode(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             SeriesLines::descriptor_colors(),
@@ -204,12 +224,13 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             SeriesLines::descriptor_names(),
             SeriesLines::descriptor_visible_series(),
             SeriesLines::descriptor_aggregation_policy(),
+            SeriesLines::descriptor_interpolation_mode(),
         ]
     });
 
 impl SeriesLines {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 impl ::re_types_core::Archetype for SeriesLines {
@@ -269,12 +290,18 @@ impl ::re_types_core::Archetype for SeriesLines {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_aggregation_policy())
             });
+        let interpolation_mode = arrays_by_descr
+            .get(&Self::descriptor_interpolation_mode())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_interpolation_mode())
+            });
         Ok(Self {
             colors,
             widths,
             names,
             visible_series,
             aggregation_policy,
+            interpolation_mode,
         })
     }
 }
@@ -289,6 +316,7 @@ impl ::re_types_core::AsComponents for SeriesLines {
             self.names.clone(),
             self.visible_series.clone(),
             self.aggregation_policy.clone(),
+            self.interpolation_mode.clone(),
         ]
         .into_iter()
         .flatten()
@@ -315,6 +343,7 @@ impl SeriesLines {
             names: None,
             visible_series: None,
             aggregation_policy: None,
+            interpolation_mode: None,
         }
     }
 
@@ -348,6 +377,10 @@ impl SeriesLines {
             aggregation_policy: Some(SerializedComponentBatch::new(
                 crate::components::AggregationPolicy::arrow_empty(),
                 Self::descriptor_aggregation_policy(),
+            )),
+            interpolation_mode: Some(SerializedComponentBatch::new(
+                crate::components::InterpolationMode::arrow_empty(),
+                Self::descriptor_interpolation_mode(),
             )),
         }
     }
@@ -386,6 +419,9 @@ impl SeriesLines {
             self.aggregation_policy
                 .map(|aggregation_policy| aggregation_policy.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.interpolation_mode
+                .map(|interpolation_mode| interpolation_mode.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -403,12 +439,14 @@ impl SeriesLines {
         let len_names = self.names.as_ref().map(|b| b.array.len());
         let len_visible_series = self.visible_series.as_ref().map(|b| b.array.len());
         let len_aggregation_policy = self.aggregation_policy.as_ref().map(|b| b.array.len());
+        let len_interpolation_mode = self.interpolation_mode.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_colors)
             .or(len_widths)
             .or(len_names)
             .or(len_visible_series)
             .or(len_aggregation_policy)
+            .or(len_interpolation_mode)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -496,6 +534,35 @@ impl SeriesLines {
             try_serialize_field(Self::descriptor_aggregation_policy(), aggregation_policy);
         self
     }
+
+    /// Specifies how values between data points are interpolated.
+    ///
+    /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+    ///
+    /// Expected to be unchanging over time.
+    #[inline]
+    pub fn with_interpolation_mode(
+        mut self,
+        interpolation_mode: impl Into<crate::components::InterpolationMode>,
+    ) -> Self {
+        self.interpolation_mode =
+            try_serialize_field(Self::descriptor_interpolation_mode(), [interpolation_mode]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::InterpolationMode`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_interpolation_mode`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_interpolation_mode(
+        mut self,
+        interpolation_mode: impl IntoIterator<Item = impl Into<crate::components::InterpolationMode>>,
+    ) -> Self {
+        self.interpolation_mode =
+            try_serialize_field(Self::descriptor_interpolation_mode(), interpolation_mode);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for SeriesLines {
@@ -506,5 +573,6 @@ impl ::re_byte_size::SizeBytes for SeriesLines {
             + self.names.heap_size_bytes()
             + self.visible_series.heap_size_bytes()
             + self.aggregation_policy.heap_size_bytes()
+            + self.interpolation_mode.heap_size_bytes()
     }
 }
