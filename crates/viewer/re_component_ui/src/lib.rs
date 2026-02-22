@@ -45,9 +45,10 @@ use re_sdk_types::blueprint::components::{
 };
 use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
-    GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed, MagnificationFilter, MarkerSize,
-    Name, Opacity, Position2D, Position3D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
-    Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D, VideoCodec, Visible,
+    GammaCorrection, GraphType, ImagePlaneDistance, InterpolationMode, LinearSpeed,
+    MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Position3D, Range1D, Scale3D,
+    ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange,
+    Vector3D, VideoCodec, Visible,
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
@@ -128,6 +129,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Eye3DKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<InterpolationMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<LinkAxis>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<

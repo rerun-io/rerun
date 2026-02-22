@@ -155,7 +155,10 @@ pub fn points_to_series(
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter
         let mut kind = points[0].attrs.kind;
-        if matches!(kind, PlotSeriesKind::Continuous | PlotSeriesKind::Stepped) {
+        if matches!(
+            kind,
+            PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_)
+        ) {
             kind = PlotSeriesKind::Scatter(ScatterAttrs::default());
         }
 
@@ -321,11 +324,11 @@ fn add_series_runs(
 
             let cur_continuous = matches!(
                 attrs.kind,
-                PlotSeriesKind::Continuous | PlotSeriesKind::Stepped
+                PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_)
             );
             let prev_continuous = matches!(
                 prev_series.kind,
-                PlotSeriesKind::Continuous | PlotSeriesKind::Stepped
+                PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_)
             );
 
             #[expect(clippy::unwrap_used)] // prev_series.points can't be empty here

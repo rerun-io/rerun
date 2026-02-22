@@ -71,10 +71,18 @@ struct PlotPoint {
     attrs: PlotPointAttrs,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum StepMode {
+    #[default]
+    After,
+    Before,
+    Mid,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlotSeriesKind {
     Continuous,
-    Stepped,
+    Stepped(StepMode),
     Scatter(ScatterAttrs),
     Clear,
 }

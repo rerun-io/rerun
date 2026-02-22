@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_sdk_types::components::{AggregationPolicy, StrokeWidth};
+use re_sdk_types::components::{AggregationPolicy, InterpolationMode, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_sdk_types::{Component as _, components};
 use re_view::range_with_blueprint_resolved_data;
@@ -164,6 +164,21 @@ impl SeriesLinesSystem {
             &query_ctx,
             archetypes::SeriesLines::descriptor_widths().component,
         );
+
+        let interpolation_mode = results
+            .iter_optional(archetypes::SeriesLines::descriptor_interpolation_mode().component)
+            .component_slow::<InterpolationMode>()
+            .next()
+            .and_then(|(_index, modes)| modes.first().copied())
+            .unwrap_or_default();
+
+        let plot_kind = match interpolation_mode {
+            InterpolationMode::Linear => PlotSeriesKind::Continuous,
+            InterpolationMode::StepAfter => PlotSeriesKind::Stepped(crate::StepMode::After),
+            InterpolationMode::StepBefore => PlotSeriesKind::Stepped(crate::StepMode::Before),
+            InterpolationMode::StepMid => PlotSeriesKind::Stepped(crate::StepMode::Mid),
+        };
+
         let default_point = PlotPoint {
             time: 0,
             value: 0.0,
@@ -171,7 +186,7 @@ impl SeriesLinesSystem {
                 // Filled out later.
                 color: egui::Color32::DEBUG_COLOR,
                 radius_ui: 0.5 * *fallback_stroke_width.0,
-                kind: PlotSeriesKind::Continuous,
+                kind: plot_kind,
             },
         };
 
