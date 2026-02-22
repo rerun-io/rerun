@@ -1263,7 +1263,9 @@ fn update_series_visibility_overrides_from_plot(
         };
 
         let descriptor = match series.kind {
-            PlotSeriesKind::Continuous => Some(SeriesLines::descriptor_visible_series()),
+            PlotSeriesKind::Continuous | PlotSeriesKind::Stepped => {
+                Some(SeriesLines::descriptor_visible_series())
+            }
             PlotSeriesKind::Scatter(_) => Some(SeriesPoints::descriptor_visible_series()),
             PlotSeriesKind::Clear => {
                 if cfg!(debug_assertions) {
@@ -1364,6 +1366,16 @@ fn add_series_to_plot(
                     .highlight(highlight)
                     .id(series.id()),
             ),
+            PlotSeriesKind::Stepped => {
+                let stepped_points = to_stepped_points(&points);
+                plot_ui.line(
+                    Line::new(&series.label, stepped_points)
+                        .color(color)
+                        .width(2.0 * series.radius_ui)
+                        .highlight(highlight)
+                        .id(series.id()),
+                );
+            }
             PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                 Points::new(&series.label, points)
                     .color(color)
@@ -1376,6 +1388,21 @@ fn add_series_to_plot(
             PlotSeriesKind::Clear => {}
         }
     }
+}
+
+fn to_stepped_points(points: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    if points.len() < 2 {
+        return points.to_vec();
+    }
+    let mut stepped = Vec::with_capacity(points.len() * 2 - 1);
+    for pair in points.windows(2) {
+        stepped.push(pair[0]);
+        stepped.push([pair[1][0], pair[0][1]]);
+    }
+    if let Some(last) = points.last() {
+        stepped.push(*last);
+    }
+    stepped
 }
 
 fn format_y_axis(mark: egui_plot::GridMark) -> String {
