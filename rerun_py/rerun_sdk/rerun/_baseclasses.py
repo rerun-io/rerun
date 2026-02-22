@@ -132,24 +132,55 @@ class Archetype(AsComponents):
     def archetype_short_name(cls) -> str:
         return cls.archetype().rsplit(".", 1)[-1]
 
+    @classmethod
+    def _get_component_field_names(cls) -> list[str]:
+        """
+        Return cached list of field names that are component fields.
+
+        Computed once per archetype class and cached.
+        """
+        cache = cls.__dict__.get("_component_field_names_cache")
+        if cache is not None:
+            return cache  # type: ignore[return-value]
+
+        result = [fld.name for fld in fields(cls) if "component" in fld.metadata]
+        cls._component_field_names_cache = result  # type: ignore[attr-defined]
+        return result
+
+    @classmethod
+    def _get_descriptor_cache(cls) -> dict[tuple[str, str], ComponentDescriptor]:
+        """Return cached descriptor dict for this archetype class."""
+        cache = cls.__dict__.get("_descriptor_cache")
+        if cache is not None:
+            return cache  # type: ignore[return-value]
+        cache = {}
+        cls._descriptor_cache = cache  # type: ignore[attr-defined]
+        return cache
+
     def as_component_batches(self) -> list[DescribedComponentBatch]:
         """
         Return all the component batches that make up the archetype.
 
         Part of the `AsComponents` logging interface.
         """
+        cls = type(self)
+        descriptor_cache = cls._get_descriptor_cache()
+        component_field_names = cls._get_component_field_names()
         batches = []
 
-        for fld in fields(type(self)):
-            if "component" in fld.metadata:
-                comp = getattr(self, fld.name)
-                if comp is not None:
+        for name in component_field_names:
+            comp = getattr(self, name)
+            if comp is not None:
+                cache_key = (name, comp._COMPONENT_TYPE)
+                descr = descriptor_cache.get(cache_key)
+                if descr is None:
                     descr = ComponentDescriptor(
-                        self.archetype_short_name() + ":" + fld.name,
+                        cls.archetype_short_name() + ":" + name,
                         component_type=comp._COMPONENT_TYPE,
-                        archetype=self.archetype(),
+                        archetype=cls.archetype(),
                     )
-                    batches.append(DescribedComponentBatch(comp, descr))
+                    descriptor_cache[cache_key] = descr
+                batches.append(DescribedComponentBatch(comp, descr))
 
         return batches
 

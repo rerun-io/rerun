@@ -45,6 +45,12 @@ class Mat3x3Ext:
 
         if isinstance(data, Mat3x3):
             float_arrays = data.flat_columns
+        elif isinstance(data, np.ndarray):
+            # Fast path for numpy arrays: skip creating Mat3x3 objects.
+            # Interpret as row-major (rows parameter) and convert to column-major flat layout.
+            arr = np.asarray(data, dtype=np.float32).reshape(-1, 3, 3)
+            # Transpose each matrix from row-major to column-major order, then flatten
+            float_arrays = np.ascontiguousarray(arr.transpose(0, 2, 1).reshape(-1))
         elif len(data) == 0:  # type: ignore[arg-type]
             float_arrays = np.empty((0,), dtype=np.float32)
         else:
@@ -62,5 +68,4 @@ class Mat3x3Ext:
                 result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[arg-type, union-attr, call-overload]
                 float_arrays = np.hstack(result).ravel()
 
-        float_arrays = np.ascontiguousarray(float_arrays)
-        return pa.FixedSizeListArray.from_arrays(float_arrays, type=data_type)
+        return pa.FixedSizeListArray.from_arrays(np.ascontiguousarray(float_arrays), type=data_type)

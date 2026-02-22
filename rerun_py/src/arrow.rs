@@ -17,8 +17,16 @@ use re_log_types::TimePoint;
 use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::{ComponentDescriptor, EntityPath, Timeline};
 
+use crate::python_bridge::PyComponentDescriptor;
+
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
+    // Fast path: if we already have a PyComponentDescriptor, just clone its inner descriptor.
+    if let Ok(py_descr) = component_descr.downcast::<PyComponentDescriptor>() {
+        return Ok(py_descr.borrow().0.clone());
+    }
+
+    // Fallback: extract fields via getattr (for duck-typed descriptors).
     let py = component_descr.py();
 
     let archetype = component_descr.getattr(pyo3::intern!(py, "archetype"))?;
