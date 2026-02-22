@@ -60,4 +60,11 @@ table SeriesLines (
   ///
   /// Expected to be unchanging over time.
   aggregation_policy: rerun.components.AggregationPolicy ("attr.rerun.component_optional", nullable, order: 4000);
+
+  /// Specifies how values between data points are interpolated.
+  ///
+  /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+  ///
+  /// Expected to be unchanging over time.
+  interpolation_mode: rerun.components.InterpolationMode ("attr.rerun.component_optional", nullable, order: 5000);
 }

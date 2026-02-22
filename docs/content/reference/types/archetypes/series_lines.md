@@ -19,6 +19,7 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 * `names`: [`Name`](../components/name.md)
 * `visible_series`: [`Visible`](../components/visible.md)
 * `aggregation_policy`: [`AggregationPolicy`](../components/aggregation_policy.md)
+* `interpolation_mode`: [`InterpolationMode`](../components/interpolation_mode.md)
 
 
 ## Can be shown in

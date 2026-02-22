@@ -932,6 +932,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <InterpolationMode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Specifies how values between data points are interpolated in a time series line chart.",
+                deprecation_summary: None,
+                custom_placeholder: Some(InterpolationMode::default().to_arrow()?),
+                datatype: InterpolationMode::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: InterpolationMode::verify_arrow_array,
+            },
+        ),
+        (
             <KeyValuePairs as Component>::name(),
             ComponentReflection {
                 docstring_md: "A map of string keys to string values.\n\nThis component can be used to attach arbitrary metadata or annotations to entities.\nEach key-value pair is stored as a UTF-8 string mapping.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3209,6 +3220,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Aggregation policy",
                         component_type: "rerun.components.AggregationPolicy".into(),
                         docstring_md: "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.\n\nExpected to be unchanging over time.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "interpolation_mode",
+                        display_name: "Interpolation mode",
+                        component_type: "rerun.components.InterpolationMode".into(),
+                        docstring_md: "Specifies how values between data points are interpolated.\n\nDefaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.\n\nExpected to be unchanging over time.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

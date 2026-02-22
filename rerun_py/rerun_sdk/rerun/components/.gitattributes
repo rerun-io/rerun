@@ -30,6 +30,7 @@ image_buffer.py linguist-generated=true
 image_format.py linguist-generated=true
 image_plane_distance.py linguist-generated=true
 interactive.py linguist-generated=true
+interpolation_mode.py linguist-generated=true
 key_value_pairs.py linguist-generated=true
 keypoint_id.py linguist-generated=true
 lat_lon.py linguist-generated=true

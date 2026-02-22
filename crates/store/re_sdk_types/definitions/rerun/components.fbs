@@ -28,6 +28,7 @@ include "./components/image_buffer.fbs";
 include "./components/image_format.fbs";
 include "./components/image_plane_distance.fbs";
 include "./components/interactive.fbs";
+include "./components/interpolation_mode.fbs";
 include "./components/key_value_pairs.fbs";
 include "./components/keypoint_id.fbs";
 include "./components/latlon.fbs";

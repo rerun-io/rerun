@@ -80,6 +80,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
         names: datatypes.Utf8ArrayLike | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
+        interpolation_mode: components.InterpolationModeLike | None = None,
     ) -> None:
         """
         Create a new instance of the SeriesLines archetype.
@@ -114,6 +115,12 @@ class SeriesLines(Archetype, VisualizableArchetype):
             (and readability) in such situations as it prevents overdraw.
 
             Expected to be unchanging over time.
+        interpolation_mode:
+            Specifies how values between data points are interpolated.
+
+            Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+
+            Expected to be unchanging over time.
 
         """
 
@@ -125,6 +132,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
                 names=names,
                 visible_series=visible_series,
                 aggregation_policy=aggregation_policy,
+                interpolation_mode=interpolation_mode,
             )
             return
         self.__attrs_clear__()
@@ -137,6 +145,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
             names=None,
             visible_series=None,
             aggregation_policy=None,
+            interpolation_mode=None,
         )
 
     @classmethod
@@ -156,6 +165,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
         names: datatypes.Utf8ArrayLike | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
+        interpolation_mode: components.InterpolationModeLike | None = None,
     ) -> SeriesLines:
         """
         Update only some specific fields of a `SeriesLines`.
@@ -192,6 +202,12 @@ class SeriesLines(Archetype, VisualizableArchetype):
             (and readability) in such situations as it prevents overdraw.
 
             Expected to be unchanging over time.
+        interpolation_mode:
+            Specifies how values between data points are interpolated.
+
+            Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+
+            Expected to be unchanging over time.
 
         """
 
@@ -203,6 +219,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
                 "names": names,
                 "visible_series": visible_series,
                 "aggregation_policy": aggregation_policy,
+                "interpolation_mode": interpolation_mode,
             }
 
             if clear_unset:
@@ -228,6 +245,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
         names: datatypes.Utf8ArrayLike | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyArrayLike | None = None,
+        interpolation_mode: components.InterpolationModeArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -267,6 +285,12 @@ class SeriesLines(Archetype, VisualizableArchetype):
             (and readability) in such situations as it prevents overdraw.
 
             Expected to be unchanging over time.
+        interpolation_mode:
+            Specifies how values between data points are interpolated.
+
+            Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+
+            Expected to be unchanging over time.
 
         """
 
@@ -278,6 +302,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
                 names=names,
                 visible_series=visible_series,
                 aggregation_policy=aggregation_policy,
+                interpolation_mode=interpolation_mode,
             )
 
         batches = inst.as_component_batches()
@@ -290,6 +315,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
             "SeriesLines:names": names,
             "SeriesLines:visible_series": visible_series,
             "SeriesLines:aggregation_policy": aggregation_policy,
+            "SeriesLines:interpolation_mode": interpolation_mode,
         }
         columns = []
 
@@ -378,6 +404,19 @@ class SeriesLines(Archetype, VisualizableArchetype):
     # This is done only if steps on the X axis go below a single pixel,
     # i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
     # (and readability) in such situations as it prevents overdraw.
+    #
+    # Expected to be unchanging over time.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    interpolation_mode: components.InterpolationModeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.InterpolationModeBatch._converter,  # type: ignore[misc]
+    )
+    # Specifies how values between data points are interpolated.
+    #
+    # Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
     #
     # Expected to be unchanging over time.
     #

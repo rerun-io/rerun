@@ -1,0 +1,25 @@
+namespace rerun.components;
+
+/// Specifies how values between data points are interpolated in a time series line chart.
+enum InterpolationMode: ubyte {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Connect data points with straight line segments.
+    Linear (default),
+
+    /// Hold the previous value until the next data point, then jump.
+    ///
+    /// The step occurs at the end of the interval.
+    StepAfter,
+
+    /// Jump to the new value immediately, then hold until the next data point.
+    ///
+    /// The step occurs at the beginning of the interval.
+    StepBefore,
+
+    /// Hold the previous value until the midpoint between data points, then jump to the new value.
+    ///
+    /// The step occurs at the midpoint of the interval.
+    StepMid,
+}
