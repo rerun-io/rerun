@@ -74,6 +74,7 @@ struct PlotPoint {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlotSeriesKind {
     Continuous,
+    Stepped,
     Scatter(ScatterAttrs),
     Clear,
 }
