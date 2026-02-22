@@ -107,7 +107,7 @@ def log(
                     entity,
                     *extra,
                     static=static,
-                    recording=recording.to_native(),
+                    recording=recording,  # NOLINT this is a pass through
                     strict=strict,
                 )
 
@@ -146,7 +146,7 @@ def log(
             entity,
             *extra,
             static=static,
-            recording=recording.to_native(),
+            recording=recording,  # NOLINT this is a pass through
             strict=strict,
         )
 
@@ -186,7 +186,7 @@ def _log_with_catch(
         entity_path=entity_path,
         components=components,
         static=static,
-        recording=recording,  # NOLINT
+        recording=recording,  # NOLINT pass through
     )
 
 
