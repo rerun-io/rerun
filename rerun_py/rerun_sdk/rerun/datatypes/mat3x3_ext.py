@@ -4,12 +4,13 @@ import numbers
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pyarrow as pa
-import rerun_bindings
 
+import rerun_bindings
 from rerun.error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import Mat3x3ArrayLike, Mat3x3Like
 
 
@@ -41,7 +42,7 @@ class Mat3x3Ext:
         )
 
     @staticmethod
-    def native_to_pa_array_override(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
+    def native_to_pa_array_override(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:  # noqa: ARG004
         from . import Mat3x3
 
         if isinstance(data, Mat3x3):

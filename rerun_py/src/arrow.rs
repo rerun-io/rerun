@@ -14,7 +14,7 @@ use arrow::pyarrow::PyArrowType;
 use numpy::PyReadonlyArray1;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString};
-use pyo3::{Bound, PyAny, PyResult, pyfunction};
+use pyo3::{Bound, PyAny, PyResult, pyclass, pyfunction, pymethods};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
@@ -22,6 +22,29 @@ use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::{ComponentDescriptor, EntityPath, Timeline};
 
 use crate::python_bridge::PyComponentDescriptor;
+
+/// An opaque handle to a Rust Arrow array, bypassing PyArrow on the hot path.
+///
+/// Data stays as `Arc<dyn Array>` on the Rust side. When the Python logging
+/// pipeline hands this back to Rust via `array_to_rust`, we just clone the Arc
+/// instead of round-tripping through PyArrow's FFI export/import.
+#[pyclass(frozen, name = "NativeArrowArray")]
+pub struct NativeArrowArray {
+    pub(crate) inner: ArrowArrayRef,
+}
+
+#[pymethods]
+impl NativeArrowArray {
+    /// Number of top-level elements (needed by `BaseBatch.__len__`).
+    fn __len__(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Escape hatch: export to a real `pyarrow.Array` for cold-path consumers.
+    fn to_pyarrow(&self) -> PyArrowType<ArrowArrayData> {
+        PyArrowType(self.inner.to_data())
+    }
+}
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
@@ -59,10 +82,16 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     Ok(descr)
 }
 
-/// Perform conversion between a pyarrow array to arrow types.
+/// Perform conversion between a pyarrow array (or NativeArrowArray) to arrow types.
 ///
-/// `name` is the name of the Rerun component, and the name of the pyarrow `Field` (column name).
+/// Fast path: if the object is a `NativeArrowArray`, just clone the inner `Arc`.
+/// Fallback: extract via PyArrow FFI.
 pub fn array_to_rust(arrow_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> {
+    // Fast path: NativeArrowArray — just clone the Arc, no FFI round-trip.
+    if let Ok(native) = arrow_array.downcast::<NativeArrowArray>() {
+        return Ok(native.borrow().inner.clone());
+    }
+    // Fallback: PyArrow FFI
     let py_array: PyArrowType<ArrowArrayData> = arrow_array.extract()?;
     Ok(make_array(py_array.0))
 }
@@ -181,6 +210,9 @@ pub fn build_chunk_from_components(
 
 /// Build an Arrow `FixedSizeListArray` of `f32` values directly from a flat numpy array.
 ///
+/// Returns a `NativeArrowArray` handle — the data stays on the Rust side as
+/// `Arc<dyn Array>`, completely bypassing PyArrow export/import overhead.
+///
 /// This bypasses PyArrow's `pa.FixedSizeListArray.from_arrays()` which has ~1.0 us overhead
 /// per call regardless of array size. For small fixed-size types like Vec3D (3 floats) and
 /// Mat3x3 (9 floats), this overhead dominates.
@@ -188,10 +220,10 @@ pub fn build_chunk_from_components(
 pub fn build_fixed_size_list_array(
     flat_array: PyReadonlyArray1<'_, f32>,
     list_size: i32,
-) -> PyResult<PyArrowType<ArrowArrayData>> {
-    let slice = flat_array.as_slice().map_err(|e| {
-        PyValueError::new_err(format!("numpy array must be contiguous: {e}"))
-    })?;
+) -> PyResult<NativeArrowArray> {
+    let slice = flat_array
+        .as_slice()
+        .map_err(|e| PyValueError::new_err(format!("numpy array must be contiguous: {e}")))?;
 
     let num_elements = slice.len();
     let list_size_usize = list_size as usize;
@@ -205,5 +237,7 @@ pub fn build_fixed_size_list_array(
     let field = Arc::new(ArrowField::new("item", ArrowDataType::Float32, false));
     let array = ArrowFixedSizeListArray::new(field, list_size, Arc::new(values), None);
 
-    Ok(PyArrowType(array.to_data()))
+    Ok(NativeArrowArray {
+        inner: Arc::new(array),
+    })
 }

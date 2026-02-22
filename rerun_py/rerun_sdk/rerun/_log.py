@@ -14,14 +14,13 @@ if TYPE_CHECKING:
     from .recording_stream import RecordingStream
 
 
-@catch_and_log_exceptions()
 def log(
     entity_path: str | list[object],
     entity: AsComponents | Iterable[DescribedComponentBatch],
     *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
     recording: RecordingStream | None = None,
-    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
+    strict: bool | None = None,
 ) -> None:
     r"""
     Log data to Rerun.
@@ -97,14 +96,71 @@ def log(
         if None, use the global default from `rerun.strict_mode()`
 
     """
+    try:
+        if strict is not None:
+            from .error_utils import strict_mode as _strict_mode_fn
 
-    # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
-    # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
-    #
-    # An isinstance() check against a runtime-checkable protocol can be
-    # surprisingly slow compared to an isinstance() check against a non-protocol
-    # class. Consider using alternative idioms such as hasattr() calls for
-    # structural checks in performance-sensitive code. hasattr is
+            if strict != _strict_mode_fn():
+                # Rare path: caller overrode strict mode — fall back to full decorator
+                return _log_with_catch(
+                    entity_path,
+                    entity,
+                    *extra,
+                    static=static,
+                    recording=recording,
+                    strict=strict,
+                )
+
+        # Hot path: no strict override, skip catch_and_log_exceptions entirely
+        if hasattr(entity, "as_component_batches"):
+            components = list(entity.as_component_batches())
+        elif isinstance(entity, Iterable):
+            components = list(entity)
+        else:
+            raise TypeError(
+                f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
+                f"but got {type(entity)} instead.",
+            )
+
+        for ext in extra:
+            if hasattr(ext, "as_component_batches"):
+                components.extend(ext.as_component_batches())
+            elif isinstance(ext, Iterable):
+                components.extend(ext)
+            else:
+                raise TypeError(
+                    f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
+                    f"but got {type(entity)} instead.",
+                )
+
+        _log_components(
+            entity_path=entity_path,
+            components=components,
+            static=static,
+            recording=recording,  # NOLINT
+        )
+    except Exception:
+        # On error, re-run through the full catch_and_log_exceptions path
+        _log_with_catch(
+            entity_path,
+            entity,
+            *extra,
+            static=static,
+            recording=recording,
+            strict=strict,
+        )
+
+
+@catch_and_log_exceptions()
+def _log_with_catch(
+    entity_path: str | list[object],
+    entity: AsComponents | Iterable[DescribedComponentBatch],
+    *extra: AsComponents | Iterable[DescribedComponentBatch],
+    static: bool = False,
+    recording: RecordingStream | None = None,
+    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
+) -> None:
+    """Slow path: log with full catch_and_log_exceptions handling."""
     if hasattr(entity, "as_component_batches"):
         components = list(entity.as_component_batches())
     elif isinstance(entity, Iterable):
@@ -181,7 +237,13 @@ def _log_components(
     if isinstance(entity_path, list):
         entity_path = bindings.new_entity_path([str(part) for part in entity_path])
 
-    instanced = {comp.component_descriptor(): comp.as_arrow_array() for comp in components}
+    # Hot path: prefer _native_array (NativeArrowArray, opaque Rust handle) when available.
+    # array_to_rust() has a fast path that clones the Arc instead of FFI round-tripping.
+    instanced = {}
+    for comp in components:
+        batch = comp._batch
+        native = getattr(batch, "_native_array", None)
+        instanced[comp.component_descriptor()] = native if native is not None else batch.as_arrow_array()
 
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,

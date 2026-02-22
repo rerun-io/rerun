@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Iterator
-from typing import Generic, Protocol, TypeVar, overload, runtime_checkable
+from typing import Any, Generic, Protocol, TypeVar, overload, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -217,20 +217,31 @@ class BaseBatch(Generic[T]):
         The Arrow array encapsulating the data.
 
         """
+        # _native_array: when set, holds a NativeArrowArray (opaque Rust handle).
+        # The hot path (_log_components) reads this directly. Cold-path access
+        # to .pa_array triggers __getattr__ which lazily converts via .to_pyarrow().
+        self._native_array = None
+
         if data is not None:
             try:
                 # If data is already an arrow array, use it
                 if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
                     self.pa_array = data
                 else:
-                    self.pa_array = self._native_to_pa_array(data, self._ARROW_DATATYPE)
+                    result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
+                    if hasattr(result, "to_pyarrow"):
+                        # NativeArrowArray from build_fixed_size_list_array — keep opaque.
+                        # Don't set self.pa_array so __getattr__ can lazily convert.
+                        self._native_array = result
+                    else:
+                        self.pa_array = result
                 return
             except Exception as exc:
                 if strict is True or (strict is None and strict_mode()):
                     raise
-                from .error_utils import RerunWarning
-
                 import warnings
+
+                from .error_utils import RerunWarning
 
                 warnings.warn(
                     f"{self.__class__.__name__}: {type(exc).__name__}({exc})",
@@ -264,13 +275,25 @@ class BaseBatch(Generic[T]):
         else:
             return cls(data)
 
+    def __getattr__(self, name: str) -> Any:
+        # Lazily convert NativeArrowArray → pa.Array on first .pa_array access.
+        # __getattr__ is only called when normal lookup fails (i.e. pa_array not in __dict__).
+        if name == "pa_array":
+            native = self.__dict__.get("_native_array")
+            if native is not None:
+                arr = native.to_pyarrow()
+                self.pa_array = arr  # Cache so __getattr__ won't be called again
+                return arr
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BaseBatch):
             return NotImplemented
-        return self.pa_array == other.pa_array  # type: ignore[no-any-return]
+        return self.as_arrow_array() == other.as_arrow_array()  # type: ignore[no-any-return]
 
     def __len__(self) -> int:
-        return len(self.pa_array)
+        native = self._native_array
+        return len(native) if native is not None else len(self.pa_array)
 
     @staticmethod
     def _native_to_pa_array(data: T, data_type: pa.DataType) -> pa.Array:
@@ -310,7 +333,7 @@ class BaseBatch(Generic[T]):
 
         Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
-        return self.pa_array
+        return self.pa_array  # __getattr__ handles lazy NativeArrowArray conversion
 
 
 class ComponentColumn:
