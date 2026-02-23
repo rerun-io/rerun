@@ -24,6 +24,7 @@ analytics = ["rerun/analytics"]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",
   "run",
+  "server",
 ] }
 
 bincode.workspace = true
