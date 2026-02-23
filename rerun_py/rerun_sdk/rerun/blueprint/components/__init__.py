@@ -7,6 +7,7 @@ from .active_tab import ActiveTab, ActiveTabBatch
 from .angular_speed import AngularSpeed, AngularSpeedBatch
 from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
+from .auto_scroll import AutoScroll, AutoScrollBatch
 from .auto_views import AutoViews, AutoViewsBatch
 from .background_kind import BackgroundKind, BackgroundKindArrayLike, BackgroundKindBatch, BackgroundKindLike
 from .column_order import ColumnOrder, ColumnOrderArrayLike, ColumnOrderBatch, ColumnOrderLike
@@ -66,6 +67,8 @@ __all__ = [
     "ApplyLatestAtBatch",
     "AutoLayout",
     "AutoLayoutBatch",
+    "AutoScroll",
+    "AutoScrollBatch",
     "AutoViews",
     "AutoViewsBatch",
     "BackgroundKind",

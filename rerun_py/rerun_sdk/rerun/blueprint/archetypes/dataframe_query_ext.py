@@ -23,6 +23,7 @@ class DataframeQueryExt:
         apply_latest_at: bool = False,
         select: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str] | None = None,
         entity_order: list[str] | None = None,
+        auto_scroll: bool = False,
     ) -> None:
         """
         Create a new instance of the DataframeQuery archetype.
@@ -48,6 +49,9 @@ class DataframeQueryExt:
         entity_order:
             The order of component columns, which are always grouped by entity path.
 
+        auto_scroll:
+            Whether to auto-scroll to track the time cursor.
+
         """
 
         if isinstance(filter_by_range, tuple):
@@ -72,6 +76,7 @@ class DataframeQueryExt:
                 apply_latest_at=apply_latest_at,
                 select=select,
                 entity_order=entity_order,
+                auto_scroll=auto_scroll,
             )
             return
         self.__attrs_clear__()
