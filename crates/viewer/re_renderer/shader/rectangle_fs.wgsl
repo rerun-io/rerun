@@ -76,12 +76,14 @@ fn sample_and_decode(coord: vec2f, texture_dimensions: vec2f) -> vec4f {
 }
 
 /// Apply bicubic filtering using Catmull-Rom spline interpolation on a 4x4 grid of decoded colors.
-fn filter_bicubic(colors: array<array<vec4f, 4>, 4>, wx: vec4f, wy: vec4f) -> vec4f {
+/// The grid is stored as a flat array of 16 elements in row-major order (index = row * 4 + col)
+/// to avoid array-of-arrays, which is not supported in WebGL/GLSL ES.
+fn filter_bicubic(colors: array<vec4f, 16>, wx: vec4f, wy: vec4f) -> vec4f {
     var result = vec4f(0.0);
     for (var row = 0u; row < 4u; row++) {
         var row_color = vec4f(0.0);
         for (var col = 0u; col < 4u; col++) {
-            row_color += colors[row][col] * wx[col];
+            row_color += colors[row * 4u + col] * wx[col];
         }
         result += row_color * wy[row];
     }
@@ -132,10 +134,10 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
             let wx = catmull_rom_weights(f.x);
             let wy = catmull_rom_weights(f.y);
 
-            var colors: array<array<vec4f, 4>, 4>;
+            var colors: array<vec4f, 16>;
             for (var row = 0u; row < 4u; row++) {
                 for (var col = 0u; col < 4u; col++) {
-                    colors[row][col] = sample_and_decode(
+                    colors[row * 4u + col] = sample_and_decode(
                         base + vec2f(f32(col), f32(row)) - vec2f(0.5),
                         texture_dimensions
                     );
