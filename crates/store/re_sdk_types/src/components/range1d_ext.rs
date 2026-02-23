@@ -5,6 +5,9 @@ use super::Range1D;
 use crate::datatypes;
 
 impl Range1D {
+    /// An empty range where min > max (inverted infinities).
+    pub const EMPTY: Self = Self(datatypes::Range1D([f64::INFINITY, f64::NEG_INFINITY]));
+
     /// Create a new range.
     #[inline]
     pub fn new(start: f64, end: f64) -> Self {

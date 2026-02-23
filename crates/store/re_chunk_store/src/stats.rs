@@ -244,7 +244,7 @@ impl ChunkStore {
 
                     chunk_ids
                         .into_iter()
-                        .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id))
+                        .filter_map(|chunk_id| self.physical_chunks_per_chunk_id.get(&chunk_id))
                         .map(ChunkStoreChunkStats::from_chunk)
                         .sum()
                 },
@@ -275,7 +275,7 @@ impl ChunkStore {
                         .per_start_time
                         .values()
                         .flat_map(|chunk_ids| chunk_ids.iter())
-                        .filter_map(|id| self.chunks_per_chunk_id.get(id))
+                        .filter_map(|id| self.physical_chunks_per_chunk_id.get(id))
                         .map(ChunkStoreChunkStats::from_chunk)
                         .sum()
                 },
@@ -285,12 +285,12 @@ impl ChunkStore {
 
 /// ## Component path stats
 impl ChunkStore {
-    /// Returns the number of static events logged for an entity for a specific component.
+    /// Returns the number of physical static events logged for an entity for a specific component.
     ///
     /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// This ignores temporal events.
-    pub fn num_static_events_for_component(
+    pub fn num_physical_static_events_for_component(
         &self,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
@@ -300,17 +300,17 @@ impl ChunkStore {
         self.static_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|static_chunks_per_component| static_chunks_per_component.get(&component))
-            .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+            .and_then(|chunk_id| self.physical_chunks_per_chunk_id.get(chunk_id))
             .and_then(|chunk| chunk.num_events_for_component(component))
             .unwrap_or(0)
     }
 
-    /// Returns the number of temporal events logged for an entity for a specific component on a given timeline.
+    /// Returns the number of physical temporal events logged for an entity for a specific component on a given timeline.
     ///
     /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// This ignores static events.
-    pub fn num_temporal_events_for_component_on_timeline(
+    pub fn num_physical_temporal_events_for_component_on_timeline(
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
@@ -331,18 +331,18 @@ impl ChunkStore {
                     .per_start_time
                     .values()
                     .flat_map(|chunk_ids| chunk_ids.iter())
-                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                    .filter_map(|chunk_id| self.physical_chunks_per_chunk_id.get(chunk_id))
                     .filter_map(|chunk| chunk.num_events_for_component(component))
                     .sum()
             })
     }
 
-    /// Returns the number of temporal events logged for an entity for a specific component on all timelines.
+    /// Returns the number of physical temporal events logged for an entity for a specific component on all timelines.
     ///
     /// I.e. this only accounts for chunks that are physically loaded in memory.
     ///
     /// This ignores static events.
-    pub fn num_temporal_events_for_component_on_all_timelines(
+    pub fn num_physical_temporal_events_for_component_on_all_timelines(
         &self,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
@@ -350,7 +350,11 @@ impl ChunkStore {
         self.timelines()
             .keys()
             .map(|timeline| {
-                self.num_temporal_events_for_component_on_timeline(timeline, entity_path, component)
+                self.num_physical_temporal_events_for_component_on_timeline(
+                    timeline,
+                    entity_path,
+                    component,
+                )
             })
             .sum()
     }
@@ -361,7 +365,7 @@ impl SizeBytes for ChunkStore {
         re_tracing::profile_function!();
 
         let Self {
-            chunks_per_chunk_id,
+            physical_chunks_per_chunk_id,
             static_chunk_ids_per_entity,
             temporal_chunk_ids_per_entity,
             temporal_chunk_ids_per_entity_per_component,
@@ -369,7 +373,7 @@ impl SizeBytes for ChunkStore {
             config,
             time_type_registry,
             per_column_metadata,
-            chunk_ids_per_min_row_id,
+            physical_chunk_ids_per_min_row_id,
             chunks_lineage,
             dangling_splits,
             split_on_ingest,
@@ -385,7 +389,7 @@ impl SizeBytes for ChunkStore {
         // Avoid the amortizing effects of Arc::total_size_bytes:
         let chunks_size = {
             re_tracing::profile_scope!("chunks");
-            chunks_per_chunk_id
+            physical_chunks_per_chunk_id
                 .iter()
                 .map(|(chunk_id, chunk)| {
                     chunk_id.total_size_bytes() + <Chunk as SizeBytes>::total_size_bytes(&**chunk)
@@ -429,8 +433,8 @@ impl SizeBytes for ChunkStore {
                 per_column_metadata.heap_size_bytes()
             }
             + {
-                profile_scope!("chunk_ids_per_min_row_id");
-                chunk_ids_per_min_row_id.heap_size_bytes()
+                profile_scope!("physical_chunk_ids_per_min_row_id");
+                physical_chunk_ids_per_min_row_id.heap_size_bytes()
             }
             + {
                 profile_scope!("chunks_lineage");
@@ -472,8 +476,8 @@ impl MemUsageTreeCapture for ChunkStore {
         let mut memory_per_entity: BTreeMap<EntityPath, u64> = Default::default();
 
         {
-            re_tracing::profile_scope!("per-entity-stats");
-            for chunk in self.chunks_per_chunk_id.values() {
+            re_tracing::profile_scope!("per-entity-physical-chunks-stats");
+            for chunk in self.physical_chunks_per_chunk_id.values() {
                 let entity_path = chunk.entity_path();
                 let entry = memory_per_entity.entry(entity_path.clone()).or_default();
                 *entry += <Chunk as SizeBytes>::total_size_bytes(&**chunk); // avoid amortization of Arc

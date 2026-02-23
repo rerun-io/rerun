@@ -148,7 +148,12 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
         ctx.view_state()
             .as_any()
             .downcast_ref::<TimeSeriesViewState>()
-            .map(|s| make_range_sane(s.scalar_range))
+            .map(|s| {
+                make_range_sane(
+                    s.scalar_range
+                        .unwrap_or(re_sdk_types::components::Range1D::EMPTY),
+                )
+            })
             .unwrap_or_default()
     });
 

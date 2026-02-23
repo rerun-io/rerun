@@ -41,6 +41,7 @@ use crate::PlotSeriesKind;
 use crate::line_visualizer_system::SeriesLinesSystem;
 use crate::naming::{SeriesInfo, SeriesNamesContext};
 use crate::point_visualizer_system::SeriesPointsSystem;
+use crate::util::data_result_time_range;
 
 // ---
 
@@ -50,16 +51,15 @@ const NUM_SHOWN_VISUALIZER_COLORS: usize = 2;
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
     /// The range of the scalar values currently on screen.
-    pub(crate) scalar_range: Range1D,
-
-    /// The range of all the data in this view.
     ///
-    /// Only time series that are currently _visible_ are considered,
+    /// None if no values are on screen right now.
+    pub(crate) scalar_range: Option<Range1D>,
+
+    /// The combined query range of all entities in this view.
+    ///
+    /// Only entities that are currently _visible_ are considered,
     /// but for these the entire data range in the store is calculated
     /// (not just what we're currently zoomed in on).
-    ///
-    /// This also heeds "visible time range",
-    /// but does NOT care about where the user has currently zoomed or panned.
     pub(crate) full_data_time_range: AbsoluteTimeRange,
 
     /// We offset the time values of the plot so that unix timestamps don't run out of precision.
@@ -82,7 +82,7 @@ pub struct TimeSeriesViewState {
 impl Default for TimeSeriesViewState {
     fn default() -> Self {
         Self {
-            scalar_range: [0.0, 0.0].into(),
+            scalar_range: None,
             full_data_time_range: AbsoluteTimeRange::EMPTY,
             time_offset: 0,
             default_series_name_formats: Default::default(),
@@ -463,21 +463,15 @@ impl ViewClass for TimeSeriesView {
             // Get the full time range of data in the store for all visible entity paths.
             // This queries the store directly rather than looking at loaded data,
             // so it works even before any chunks are loaded.
-            // It also ignores "visible time range" etc.
-            let engine = recording.storage_engine();
-            let store = engine.store();
-            let timeline_name = timeline.name();
-
             state.full_data_time_range = AbsoluteTimeRange::EMPTY;
 
-            for series in &all_plot_series {
-                if let Some(entity_time_range) =
-                    store.entity_time_range(timeline_name, &series.instance_path.entity_path)
-                    && let Some(visible_data) =
-                        series.visible_time_range.intersection(entity_time_range)
-                {
-                    state.full_data_time_range = state.full_data_time_range.union(visible_data);
+            for data_result in view_query_result.tree.iter_data_results() {
+                if data_result.tree_prefix_only || !data_result.is_visible() {
+                    continue;
                 }
+                state.full_data_time_range = state
+                    .full_data_time_range
+                    .union(data_result_time_range(ctx, data_result, query.timeline));
             }
         }
 
@@ -1315,12 +1309,11 @@ fn add_series_to_plot(
     highlights: &ViewHighlights,
     all_plot_series: &[&crate::PlotSeries],
     time_offset: i64,
-    scalar_range: &mut Range1D,
+    scalar_range: &mut Option<Range1D>,
 ) {
     re_tracing::profile_function!();
 
-    *scalar_range.start_mut() = f64::INFINITY;
-    *scalar_range.end_mut() = f64::NEG_INFINITY;
+    *scalar_range = None;
 
     for series in all_plot_series {
         let points = if series.visible {
@@ -1328,11 +1321,15 @@ fn add_series_to_plot(
                 .points
                 .iter()
                 .map(|p| {
-                    if p.1 < scalar_range.start() {
-                        *scalar_range.start_mut() = p.1;
-                    }
-                    if p.1 > scalar_range.end() {
-                        *scalar_range.end_mut() = p.1;
+                    if let Some(scalar_range) = scalar_range.as_mut() {
+                        if p.1 < scalar_range.start() {
+                            *scalar_range.start_mut() = p.1;
+                        }
+                        if p.1 > scalar_range.end() {
+                            *scalar_range.end_mut() = p.1;
+                        }
+                    } else {
+                        *scalar_range = Some(Range1D::new(p.1, p.1));
                     }
 
                     [(p.0.saturating_sub(time_offset)) as _, p.1]

@@ -35,8 +35,8 @@ impl ChunkStore {
             config: _,
             time_type_registry,
             per_column_metadata,
-            chunks_per_chunk_id: _,      // physical data only
-            chunk_ids_per_min_row_id: _, // physical data only
+            physical_chunks_per_chunk_id: _, // physical data only
+            physical_chunk_ids_per_min_row_id: _, // physical data only
             chunks_lineage,
             dangling_splits: _, // cannot split during virtual insert
             split_on_ingest: _,
@@ -253,7 +253,7 @@ impl ChunkStore {
             return Ok(all_diffs);
         }
 
-        if let Some(prev_chunk) = self.chunks_per_chunk_id.get(&chunk.id()) {
+        if let Some(prev_chunk) = self.physical_chunks_per_chunk_id.get(&chunk.id()) {
             if cfg!(debug_assertions) {
                 if let Err(difference) = Chunk::ensure_similar(prev_chunk, chunk) {
                     re_log::error_once!(
@@ -285,7 +285,7 @@ impl ChunkStore {
 
             let mut source_id = chunk.id();
             while let Some(chunk_id) = self.leaky_compactions.get(&source_id) {
-                if self.chunks_per_chunk_id.contains_key(chunk_id) {
+                if self.physical_chunks_per_chunk_id.contains_key(chunk_id) {
                     return Ok(vec![]);
                 }
                 source_id = *chunk_id;
@@ -326,7 +326,9 @@ impl ChunkStore {
                 self.remove_chunks_deep(
                     split_chunk_ids
                         .into_iter()
-                        .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id).cloned())
+                        .filter_map(|chunk_id| {
+                            self.physical_chunks_per_chunk_id.get(&chunk_id).cloned()
+                        })
                         .collect(),
                     None,
                 )
@@ -470,7 +472,7 @@ impl ChunkStore {
                         // recent data within -- according to RowId -- wins.
 
                         let cur_row_id_max_for_component = self
-                            .chunks_per_chunk_id
+                            .physical_chunks_per_chunk_id
                             .get(cur_chunk_id)
                             .map_or(RowId::ZERO, |chunk| {
                                 chunk
@@ -489,7 +491,7 @@ impl ChunkStore {
                             // the chunk _as a whole_, as opposed to the smallest RowId of one
                             // specific component in that chunk.
                             let cur_row_id_min_for_chunk = self
-                                .chunks_per_chunk_id
+                                .physical_chunks_per_chunk_id
                                 .get(cur_chunk_id)
                                 .and_then(|chunk| {
                                     chunk.row_id_range().map(|(row_id_min, _)| row_id_min)
@@ -545,11 +547,12 @@ impl ChunkStore {
                         // The chunk is now dangling: remove it from all relevant indices, update
                         // the stats, and fire deletion events.
 
-                        let chunk_id_removed =
-                            self.chunk_ids_per_min_row_id.remove(&chunk_row_id_min);
+                        let chunk_id_removed = self
+                            .physical_chunk_ids_per_min_row_id
+                            .remove(&chunk_row_id_min);
                         debug_assert!(chunk_id_removed.is_some());
 
-                        let chunk_removed = self.chunks_per_chunk_id.remove(&chunk_id);
+                        let chunk_removed = self.physical_chunks_per_chunk_id.remove(&chunk_id);
                         debug_assert!(chunk_removed.is_some());
 
                         if let Some(chunk_removed) = chunk_removed {
@@ -721,7 +724,7 @@ impl ChunkStore {
                     if cfg!(debug_assertions) && found {
                         let mut source_id = source_id;
                         while let Some(chunk_id) = self.leaky_compactions.get(&source_id) {
-                            if self.chunks_per_chunk_id.contains_key(chunk_id) {
+                            if self.physical_chunks_per_chunk_id.contains_key(chunk_id) {
                                 panic!(
                                     "leaky compaction tracker should never get overwritten as long as one \
                                     or more direct or indirect compacted chunks still exist"
@@ -738,7 +741,7 @@ impl ChunkStore {
             (chunk_or_compacted, vec![add.into()])
         };
 
-        self.chunks_per_chunk_id
+        self.physical_chunks_per_chunk_id
             .insert(chunk_after_processing.id(), chunk_after_processing.clone());
 
         for diff in &diffs {
@@ -755,7 +758,7 @@ impl ChunkStore {
         // with another one, which might or might not have modified the range.
         if let Some(min_row_id) = chunk_after_processing.row_id_range().map(|(min, _)| min)
             && self
-                .chunk_ids_per_min_row_id
+                .physical_chunk_ids_per_min_row_id
                 .insert(min_row_id, chunk_after_processing.id())
                 .is_some()
         {
@@ -878,7 +881,7 @@ impl ChunkStore {
                     .entry(candidate_chunk_id)
                     .or_insert_with(|| {
                         store
-                            .chunks_per_chunk_id
+                            .physical_chunks_per_chunk_id
                             .get(&candidate_chunk_id)
                             .map_or(0, |candidate| {
                                 if chunk.id() == candidate_chunk_id {
@@ -985,7 +988,11 @@ impl ChunkStore {
         candidates
             .into_iter()
             .filter(|(_chunk_id, points)| *points > 0)
-            .find_map(|(chunk_id, _points)| self.chunks_per_chunk_id.get(&chunk_id).map(Arc::clone))
+            .find_map(|(chunk_id, _points)| {
+                self.physical_chunks_per_chunk_id
+                    .get(&chunk_id)
+                    .map(Arc::clone)
+            })
     }
 
     /// Unconditionally drops all the data for a given `entity_path`.
@@ -1005,12 +1012,12 @@ impl ChunkStore {
             config: _,
             time_type_registry: _,
             per_column_metadata,
-            chunks_per_chunk_id,
+            physical_chunks_per_chunk_id: chunks_per_chunk_id,
             chunks_lineage: _, // lineage metadata must never be dropped, regardless
             dangling_splits: _, // this counts as lineage metadata too
             split_on_ingest: _, // we only ever add to this
             leaky_compactions: _, // this counts as lineage metadata too
-            chunk_ids_per_min_row_id,
+            physical_chunk_ids_per_min_row_id: chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
             temporal_physical_chunks_stats,
@@ -1243,7 +1250,7 @@ mod tests {
         eprintln!("---\n{store}");
 
         let got = store
-            .chunks_per_chunk_id
+            .physical_chunks_per_chunk_id
             .first_key_value()
             .map(|(_id, chunk)| chunk)
             .unwrap();
@@ -1301,7 +1308,7 @@ mod tests {
             )
             .build()?;
 
-        assert_eq!(1, store.chunks_per_chunk_id.len());
+        assert_eq!(1, store.physical_chunks_per_chunk_id.len());
         assert_eq!(
             expected,
             **got,
@@ -1556,7 +1563,7 @@ mod tests {
         ) {
             assert_eq!(
                 chunks.into_iter().collect::<BTreeMap<_, _>>(),
-                store.chunk_ids_per_min_row_id
+                store.physical_chunk_ids_per_min_row_id
             );
         }
 
@@ -1584,8 +1591,13 @@ mod tests {
             // * there shouldn't be any warning of any kind
             // * the only chunk left in the store is the new, compacted chunk
             let _ = store.insert_chunk(&chunk2)?;
-            assert_eq!(1, store.chunks_per_chunk_id.len());
-            let compacted_chunk_id = store.chunks_per_chunk_id.values().next().unwrap().id();
+            assert_eq!(1, store.physical_chunks_per_chunk_id.len());
+            let compacted_chunk_id = store
+                .physical_chunks_per_chunk_id
+                .values()
+                .next()
+                .unwrap()
+                .id();
             assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, compacted_chunk_id)]);
         }
 
@@ -1616,8 +1628,13 @@ mod tests {
             // * there shouldn't be any warning of any kind
             // * the only chunk left in the store is the new, compacted chunk
             let _ = store.insert_chunk(&chunk1)?;
-            assert_eq!(1, store.chunks_per_chunk_id.len());
-            let compacted_chunk_id = store.chunks_per_chunk_id.values().next().unwrap().id();
+            assert_eq!(1, store.physical_chunks_per_chunk_id.len());
+            let compacted_chunk_id = store
+                .physical_chunks_per_chunk_id
+                .values()
+                .next()
+                .unwrap()
+                .id();
             assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, compacted_chunk_id)]);
         }
 
@@ -1732,21 +1749,30 @@ mod tests {
             <Chunk as SizeBytes>::total_size_bytes(&chunk1),
         );
         store.insert_chunk(&chunk1)?;
-        eprintln!("Store has {} chunks", store.chunks_per_chunk_id.len());
+        eprintln!(
+            "Store has {} chunks",
+            store.physical_chunks_per_chunk_id.len()
+        );
 
         eprintln!(
             "Inserting chunk2 (3 blobs 1/2 limit each: {} bytes)",
             <Chunk as SizeBytes>::total_size_bytes(&chunk2),
         );
         store.insert_chunk(&chunk2)?;
-        eprintln!("Store has {} chunks", store.chunks_per_chunk_id.len());
+        eprintln!(
+            "Store has {} chunks",
+            store.physical_chunks_per_chunk_id.len()
+        );
 
         eprintln!(
             "Inserting chunk3 (blob 1/3 limit: {} bytes)",
             <Chunk as SizeBytes>::total_size_bytes(&chunk3),
         );
         store.insert_chunk(&chunk3)?;
-        eprintln!("Store has {} chunks", store.chunks_per_chunk_id.len());
+        eprintln!(
+            "Store has {} chunks",
+            store.physical_chunks_per_chunk_id.len()
+        );
 
         // Verify the expected compaction results:
         // Expected:
@@ -1761,13 +1787,13 @@ mod tests {
         // Check that we have the expected number of chunks after compaction
         assert_eq!(
             5,
-            store.chunks_per_chunk_id.len(),
+            store.physical_chunks_per_chunk_id.len(),
             "Expected 4 chunks after compaction: [blob1], [blob2], [blob3], [blob4], [blob5]"
         );
 
         // Verify the chunks contain the expected data by checking their sizes
         let mut chunk_sizes: Vec<_> = store
-            .chunks_per_chunk_id
+            .physical_chunks_per_chunk_id
             .values()
             .map(|chunk| <Chunk as SizeBytes>::total_size_bytes(chunk))
             .collect();

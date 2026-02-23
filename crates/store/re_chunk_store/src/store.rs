@@ -504,7 +504,7 @@ pub struct ChunkStore {
     ///
     /// Virtual chunks are still indexed by the store, but querying for them will not yield any data,
     /// just hints that some data is missing and must first be re-inserted by the caller.
-    pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
+    pub(crate) physical_chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
     /// All *physical* [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in
     /// each of them.
@@ -514,7 +514,7 @@ pub struct ChunkStore {
     /// During garbage collection, physical chunks are offloaded from memory and become virtual
     /// chunks instead. At the same time, their IDs are removed from this set, which is how we
     /// distinguish virtual from physical chunks.
-    pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
+    pub(crate) physical_chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
     /// Keeps track of where each individual chunks, both virtual & physical, came from.
     ///
@@ -586,7 +586,7 @@ pub struct ChunkStore {
     /// This implies that the chunk IDs present in this set might be either physical/loaded or
     /// virtual/offloaded.
     /// When leveraging this index, make sure you understand whether you expect loaded chunks,
-    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
+    /// unloaded chunks, or both. Leverage [`Self::physical_chunks_per_chunk_id`] to know which is which.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity`].
@@ -601,7 +601,7 @@ pub struct ChunkStore {
     /// This implies that the chunk IDs present in this set might be either physical/loaded or
     /// virtual/offloaded.
     /// When leveraging this index, make sure you understand whether you expect loaded chunks,
-    /// unloaded chunks, or both. Leverage [`Self::chunks_per_chunk_id`] to know which is which.
+    /// unloaded chunks, or both. Leverage [`Self::physical_chunks_per_chunk_id`] to know which is which.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
@@ -665,12 +665,12 @@ impl Clone for ChunkStore {
             config: self.config.clone(),
             time_type_registry: self.time_type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
-            chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
+            physical_chunks_per_chunk_id: self.physical_chunks_per_chunk_id.clone(),
             chunks_lineage: self.chunks_lineage.clone(),
             dangling_splits: self.dangling_splits.clone(),
             split_on_ingest: self.split_on_ingest.clone(),
             leaky_compactions: self.leaky_compactions.clone(),
-            chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
+            physical_chunk_ids_per_min_row_id: self.physical_chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
                 .temporal_chunk_ids_per_entity_per_component
                 .clone(),
@@ -693,8 +693,8 @@ impl std::fmt::Display for ChunkStore {
             config,
             time_type_registry: _,
             per_column_metadata: _,
-            chunks_per_chunk_id,
-            chunk_ids_per_min_row_id,
+            physical_chunks_per_chunk_id: chunks_per_chunk_id,
+            physical_chunk_ids_per_min_row_id: chunk_ids_per_min_row_id,
             chunks_lineage,
             dangling_splits: _,
             split_on_ingest: _,
@@ -776,12 +776,12 @@ impl ChunkStore {
             config,
             time_type_registry: Default::default(),
             per_column_metadata: Default::default(),
-            chunk_ids_per_min_row_id: Default::default(),
+            physical_chunk_ids_per_min_row_id: Default::default(),
             chunks_lineage: Default::default(),
             dangling_splits: Default::default(),
             split_on_ingest: Default::default(),
             leaky_compactions: Default::default(),
-            chunks_per_chunk_id: Default::default(),
+            physical_chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
             temporal_physical_chunks_stats: Default::default(),
@@ -829,13 +829,13 @@ impl ChunkStore {
     /// Iterate over all *physical* chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
     pub fn iter_physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
-        self.chunks_per_chunk_id.values()
+        self.physical_chunks_per_chunk_id.values()
     }
 
     /// Get a *physical* chunk based on its ID.
     #[inline]
     pub fn physical_chunk(&self, physical_chunk_id: &ChunkId) -> Option<&Arc<Chunk>> {
-        self.chunks_per_chunk_id.get(physical_chunk_id)
+        self.physical_chunks_per_chunk_id.get(physical_chunk_id)
     }
 
     /// Get a *physical* chunk based on its ID and track the chunk as either
@@ -861,12 +861,12 @@ impl ChunkStore {
     /// Get the number of *physical* chunks in the store.
     #[inline]
     pub fn num_physical_chunks(&self) -> usize {
-        self.chunks_per_chunk_id.len()
+        self.physical_chunks_per_chunk_id.len()
     }
 
     /// All the currently loaded chunks
     pub fn physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {
-        self.chunks_per_chunk_id.values()
+        self.physical_chunks_per_chunk_id.values()
     }
 
     /// Lookup the _latest_ [`TimeType`] used by a specific [`TimelineName`].

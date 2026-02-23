@@ -42,18 +42,18 @@ pub fn determine_time_per_pixel(
     1.0 / pixels_per_time.max(f64::EPSILON)
 }
 
-/// The views' visible time range
-pub fn determine_visible_time_range(
-    ctx: &ViewContext<'_>,
+/// The overlap of an entity's query range with the range we have data on the entity for in the store.
+pub fn data_result_time_range(
+    ctx: &ViewerContext<'_>,
     data_result: &re_viewer_context::DataResult,
+    timeline: re_log_types::TimelineName,
 ) -> AbsoluteTimeRange {
     let current_time = ctx
-        .viewer_ctx
         .time_ctrl
         .time_int()
         .unwrap_or(re_log_types::TimeInt::ZERO);
 
-    let visible_time_range = match data_result.query_range() {
+    let query_range = match data_result.query_range() {
         re_viewer_context::QueryRange::TimeRange(time_range) => *time_range,
 
         re_viewer_context::QueryRange::LatestAt => {
@@ -66,13 +66,23 @@ pub fn determine_visible_time_range(
         }
     };
 
-    AbsoluteTimeRange::from_relative_time_range(&visible_time_range, current_time)
+    let data_range = ctx
+        .recording()
+        .storage_engine()
+        .store()
+        .entity_time_range(&timeline, &data_result.entity_path);
+
+    AbsoluteTimeRange::from_relative_time_range(&query_range, current_time)
+        .intersection(data_range.unwrap_or(AbsoluteTimeRange::EMPTY))
+        .unwrap_or(AbsoluteTimeRange::EMPTY)
 }
 
-/// The currently visible range of data
-pub fn determine_time_range(
+/// The range we should be using for queries in time series visualizers.
+///
+/// This cuts the configured time range with what the view is looking at right now.
+pub fn determine_query_range(
     ctx: &ViewContext<'_>,
-    visible_time_range: AbsoluteTimeRange,
+    configured_time_range: AbsoluteTimeRange,
 ) -> Result<AbsoluteTimeRange, ViewPropertyQueryError> {
     let current_time = ctx
         .viewer_ctx
@@ -108,7 +118,7 @@ pub fn determine_time_range(
         AbsoluteTimeRange::from_relative_time_range(&view_time_range, current_time);
 
     Ok(view_time_range
-        .intersection(visible_time_range)
+        .intersection(configured_time_range)
         .unwrap_or(AbsoluteTimeRange::EMPTY))
 }
 
@@ -118,7 +128,6 @@ pub fn determine_time_range(
 #[expect(clippy::too_many_arguments)]
 pub fn points_to_series(
     instance_path: InstancePath,
-    visible_time_range: AbsoluteTimeRange,
     time_per_pixel: f64,
     visible: bool,
     points: Vec<PlotPoint>,
@@ -161,7 +170,6 @@ pub fn points_to_series(
 
         all_series.push(PlotSeries {
             instance_path,
-            visible_time_range,
             visible,
             label: series_label,
             color: points[0].attrs.color,
@@ -176,7 +184,6 @@ pub fn points_to_series(
     } else {
         add_series_runs(
             instance_path,
-            visible_time_range,
             visible,
             series_label,
             points,
@@ -261,7 +268,6 @@ pub fn apply_aggregation(
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
     instance_path: InstancePath,
-    visible_time_range: AbsoluteTimeRange,
     visible: bool,
     series_label: String,
     points: Vec<PlotPoint>,
@@ -277,7 +283,6 @@ fn add_series_runs(
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
         instance_path: instance_path.clone(),
-        visible_time_range,
         visible,
         label: series_label.clone(),
         color: attrs.color,
@@ -305,7 +310,6 @@ fn add_series_runs(
                 &mut series,
                 PlotSeries {
                     instance_path: instance_path.clone(),
-                    visible_time_range,
                     visible,
                     label: series_label.clone(),
                     color: attrs.color,

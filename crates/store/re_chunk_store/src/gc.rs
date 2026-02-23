@@ -295,7 +295,7 @@ impl ChunkStore {
                                         .copied(),
                                 )
                                 .filter(|chunk_id| {
-                                    self.chunks_per_chunk_id.contains_key(chunk_id) // make sure it's physical
+                                    self.physical_chunks_per_chunk_id.contains_key(chunk_id) // make sure it's physical
                                 })
                                 // We might get unlucky and not hit the target count because `per_end_time`
                                 // ended up yielding the same chunks as `per_start_time`, which will get
@@ -449,10 +449,10 @@ impl ChunkStore {
             let start_time = Instant::now();
 
             let chunks_in_priority_order = self
-                .chunk_ids_per_min_row_id
+                .physical_chunk_ids_per_min_row_id
                 .values()
                 .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
-                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
+                .filter_map(|chunk_id| self.physical_chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
                 .filter(|chunk| !chunk.is_static()) // cannot gc static data
                 .filter(|chunk| !options.is_chunk_protected(chunk));
 
@@ -515,14 +515,14 @@ impl ChunkStore {
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,       // purely additive
-            per_column_metadata: _,      // purely additive
-            chunks_per_chunk_id: _,      // handled by shallow impl
-            chunk_ids_per_min_row_id: _, // handled by shallow impl
-            chunks_lineage,              // purely additive
-            dangling_splits: _,          // not GCed
-            split_on_ingest: _,          // purely additive
-            leaky_compactions: _,        // purely additive
+            time_type_registry: _,                // purely additive
+            per_column_metadata: _,               // purely additive
+            physical_chunks_per_chunk_id: _,      // handled by shallow impl
+            physical_chunk_ids_per_min_row_id: _, // handled by shallow impl
+            chunks_lineage,                       // purely additive
+            dangling_splits: _,                   // not GCed
+            split_on_ingest: _,                   // purely additive
+            leaky_compactions: _,                 // purely additive
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
             temporal_physical_chunks_stats: _, // handled by shallow impl
@@ -681,8 +681,8 @@ impl ChunkStore {
             config: _,
             time_type_registry: _,  // purely additive
             per_column_metadata: _, // purely additive
-            chunks_per_chunk_id,
-            chunk_ids_per_min_row_id,
+            physical_chunks_per_chunk_id,
+            physical_chunk_ids_per_min_row_id,
             chunks_lineage: _,                              // virtual
             dangling_splits: _,                             // virtual
             split_on_ingest: _,                             // only additive, used for debug-asserts
@@ -704,9 +704,9 @@ impl ChunkStore {
         let mut deletions = Vec::with_capacity(chunks_to_be_removed.len());
         for chunk in chunks_to_be_removed {
             if let Some(row_id_min) = chunk.row_id_range().map(|(min, _)| min) {
-                chunk_ids_per_min_row_id.remove(&row_id_min);
+                physical_chunk_ids_per_min_row_id.remove(&row_id_min);
             }
-            let Some(chunk) = chunks_per_chunk_id.remove(&chunk.id()) else {
+            let Some(chunk) = physical_chunks_per_chunk_id.remove(&chunk.id()) else {
                 continue;
             };
 

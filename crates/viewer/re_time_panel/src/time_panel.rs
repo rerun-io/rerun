@@ -997,9 +997,9 @@ impl TimePanel {
 
                 response.on_hover_ui(|ui| {
                     let num_static_messages =
-                        store.num_static_events_for_component(entity_path, component);
+                        store.num_physical_static_events_for_component(entity_path, component);
                     let num_temporal_messages = store
-                        .num_temporal_events_for_component_on_timeline(
+                        .num_physical_temporal_events_for_component_on_timeline(
                             time_ctrl.timeline_name(),
                             entity_path,
                             component,

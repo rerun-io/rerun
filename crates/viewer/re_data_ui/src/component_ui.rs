@@ -76,7 +76,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             if time.is_static() {
                 let static_message_count = engine
                     .store()
-                    .num_static_events_for_component(entity_path, component);
+                    .num_physical_static_events_for_component(entity_path, component);
                 if static_message_count > 1 {
                     ui.warning_label(format!(
                         "Static component value was overridden {} times.",
@@ -91,7 +91,10 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
                 let temporal_message_count = engine
                     .store()
-                    .num_temporal_events_for_component_on_all_timelines(entity_path, component);
+                    .num_physical_temporal_events_for_component_on_all_timelines(
+                        entity_path,
+                        component,
+                    );
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
                         "Static component has {} logged on timelines.",
