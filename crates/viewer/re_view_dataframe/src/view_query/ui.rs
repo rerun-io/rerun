@@ -542,6 +542,33 @@ impl Query {
         ));
     }
 
+    pub(super) fn auto_scroll_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        timeline: Option<&Timeline>,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let mut auto_scroll = self.auto_scroll_enabled()?;
+        if ui
+            .re_checkbox(&mut auto_scroll, "Auto-scroll with time cursor")
+            .changed()
+        {
+            self.save_auto_scroll_enabled(ctx, auto_scroll);
+        }
+
+        if auto_scroll {
+            let timelines_match =
+                timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name());
+            if !timelines_match {
+                ui.warning_label(
+                    "Auto-scroll is only active when the view's timeline matches the time panel's active timeline.",
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     pub(super) fn latest_at_ui(
         &self,
         ctx: &ViewerContext<'_>,

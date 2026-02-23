@@ -776,6 +776,18 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         self.init().unique_index_values.len() as _
     }
 
+    /// Returns the row index of the last row whose index value is <= the given time,
+    /// or `None` if no such row exists.
+    pub fn row_index_at_or_before_time(&self, time: TimeInt) -> Option<u64> {
+        let state = self.init();
+        let idx = state.unique_index_values.partition_point(|t| *t <= time);
+        if idx == 0 {
+            None
+        } else {
+            Some((idx - 1) as u64)
+        }
+    }
+
     /// Returns the next row's worth of data.
     ///
     /// The returned vector of Arrow arrays strictly follows the schema specified by [`Self::schema`].

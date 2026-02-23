@@ -96,6 +96,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AutoScroll as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether the view should auto-scroll to follow the time cursor.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(AutoScroll::default().to_arrow()?),
+                datatype: AutoScroll::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: AutoScroll::verify_arrow_array,
+            },
+        ),
+        (
             <AutoViews as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether or not views should be created automatically.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3691,6 +3702,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Entity order",
                         component_type: "rerun.blueprint.components.ColumnOrder".into(),
                         docstring_md: "The order of entity path column groups. If unset, the default order is used.\n\nThis affects the order of component columns, which are always grouped by entity path. Timeline columns always\ncome first. Entities not listed here are appended at the end in default order.\n\nIf `entity_order` contains any entity path that is not included in the view, they are ignored.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "auto_scroll",
+                        display_name: "Auto scroll",
+                        component_type: "rerun.blueprint.components.AutoScroll".into(),
+                        docstring_md: "Whether to auto-scroll to track the time cursor.\n\nWhen enabled and the view's timeline matches the time panel's active timeline,\nthe view will scroll to keep the row at or before the current time cursor visible.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

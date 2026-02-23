@@ -74,7 +74,7 @@ impl EntityTree {
     /// Don't blindly call this on every existing entity every frame: use [`ChunkStoreEvent`]s to make
     /// sure anything changed at all first.
     pub fn check_is_empty(&self, engine: &StorageEngineReadGuard<'_>) -> bool {
-        self.children.is_empty() && !engine.store().entity_has_data(&self.path)
+        self.children.is_empty() && !engine.store().entity_has_physical_data(&self.path)
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreDiffAddition`]s, adding any
@@ -135,7 +135,7 @@ impl EntityTree {
                     .iter()
                     .any(|removed_entity_path| removed_entity_path.starts_with(&entity.path))
             };
-            let has_data = || engine.store().entity_has_data(&entity.path);
+            let has_data = || engine.store().entity_has_physical_data(&entity.path);
 
             let should_be_removed =
                 !has_children() && (has_recursive_deletion_events() && !has_data());

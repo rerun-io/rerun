@@ -35,6 +35,7 @@ re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_mcap.workspace = true
 re_log_channel.workspace = true
+re_quota_channel.workspace = true
 re_tracing.workspace = true
 re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 re_video.workspace = true

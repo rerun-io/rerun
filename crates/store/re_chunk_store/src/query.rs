@@ -53,7 +53,7 @@ impl ChunkStore {
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!();
 
-        self.chunks_per_chunk_id
+        self.physical_chunks_per_chunk_id
             .values()
             .filter_map(|chunk| {
                 let times = chunk.timelines().get(timeline)?;
@@ -97,7 +97,7 @@ impl ChunkStore {
     ) -> Vec<Arc<Chunk>> {
         re_tracing::profile_function!();
 
-        self.chunks_per_chunk_id
+        self.physical_chunks_per_chunk_id
             .values()
             .filter_map(|chunk| {
                 let times = chunk.timelines().get(timeline)?;
@@ -448,31 +448,32 @@ impl ChunkStore {
             })
     }
 
-    /// Check whether an entity has any data on a specific timeline, or any static data.
+    /// Check whether an entity has any physical data on a specific timeline, or any static data.
     ///
     /// This is different from checking if the entity has any component, it also ensures
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
-    pub fn entity_has_data_on_timeline(
+    pub fn entity_has_physical_data_on_timeline(
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
-        self.entity_has_static_data(entity_path)
-            || self.entity_has_temporal_data_on_timeline(timeline, entity_path)
+        self.entity_has_physical_static_data(entity_path)
+            || self.entity_has_physical_temporal_data_on_timeline(entity_path, timeline)
     }
 
-    /// Check whether an entity has any static data or any temporal data on any timeline.
+    /// Check whether an entity has any physical static data or any temporal data on any timeline.
     ///
     /// This is different from checking if the entity has any component, it also ensures
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
-    pub fn entity_has_data(&self, entity_path: &EntityPath) -> bool {
+    pub fn entity_has_physical_data(&self, entity_path: &EntityPath) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
-        self.entity_has_static_data(entity_path) || self.entity_has_temporal_data(entity_path)
+        self.entity_has_physical_static_data(entity_path)
+            || self.entity_has_physical_temporal_data(entity_path)
     }
 
     /// Check whether an entity has any static data.
@@ -480,7 +481,7 @@ impl ChunkStore {
     /// This is different from checking if the entity has any component, it also ensures
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
-    pub fn entity_has_static_data(&self, entity_path: &EntityPath) -> bool {
+    pub fn entity_has_physical_static_data(&self, entity_path: &EntityPath) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.static_chunk_ids_per_entity
@@ -488,7 +489,7 @@ impl ChunkStore {
             .is_some_and(|static_chunk_ids_per_component| {
                 static_chunk_ids_per_component
                     .values()
-                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+                    .any(|chunk_id| self.physical_chunks_per_chunk_id.contains_key(chunk_id))
             })
     }
 
@@ -497,7 +498,7 @@ impl ChunkStore {
     /// This is different from checking if the entity has any component, it also ensures
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
-    pub fn entity_has_temporal_data(&self, entity_path: &EntityPath) -> bool {
+    pub fn entity_has_physical_temporal_data(&self, entity_path: &EntityPath) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.temporal_chunk_ids_per_entity_per_component
@@ -510,19 +511,19 @@ impl ChunkStore {
                     })
                     .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
                     .flat_map(|chunk_id_set| chunk_id_set.iter())
-                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+                    .any(|chunk_id| self.physical_chunks_per_chunk_id.contains_key(chunk_id))
             })
     }
 
-    /// Check whether an entity has any temporal data.
+    /// Check whether an entity has any physical temporal data on any timeline.
     ///
     /// This is different from checking if the entity has any component, it also ensures
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
-    pub fn entity_has_temporal_data_on_timeline(
+    pub fn entity_has_physical_temporal_data_on_timeline(
         &self,
-        timeline: &TimelineName,
         entity_path: &EntityPath,
+        timeline: &TimelineName,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
@@ -534,13 +535,43 @@ impl ChunkStore {
                     .values()
                     .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
                     .flat_map(|chunk_id_set| chunk_id_set.iter())
-                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+                    .any(|chunk_id| self.physical_chunks_per_chunk_id.contains_key(chunk_id))
+            })
+    }
+
+    /// Check whether an entity has any physical temporal data for a given component.
+    ///
+    /// This is different from checking if the entity has any component, it also ensures
+    /// that some _data_ currently exists in the store for this entity.
+    ///
+    /// See [`Self::entity_has_physical_temporal_data_on_timeline`] if you don't care about any particular component.
+    pub fn entity_has_physical_temporal_data_on_timeline_for_component(
+        &self,
+        entity_path: &re_chunk::EntityPath,
+        timeline: &TimelineName,
+        component: &re_chunk::ComponentIdentifier,
+    ) -> bool {
+        self.temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .and_then(|temporal_chunks_per_timeline| temporal_chunks_per_timeline.get(timeline))
+            .is_some_and(|temporal_chunks_per_component| {
+                temporal_chunks_per_component
+                    .get(component)
+                    .is_some_and(|chunk_id_sets| {
+                        let chunk_id_sets = chunk_id_sets.per_start_time.values();
+                        chunk_id_sets
+                            .flat_map(|chunk_id_set| chunk_id_set.iter())
+                            .any(|chunk_id| {
+                                self.physical_chunks_per_chunk_id.contains_key(chunk_id)
+                            })
+                    })
             })
     }
 
     /// Find the earliest time at which something was logged for a given entity on the specified
     /// timeline.
     ///
+    /// This includes both physical & virtual chunks.
     /// Ignores static data.
     #[inline]
     pub fn entity_min_time(
@@ -570,6 +601,7 @@ impl ChunkStore {
 
     /// Returns the min and max times at which data was logged for an entity on a specific timeline.
     ///
+    /// This includes both physical & virtual chunks.
     /// This ignores static data.
     pub fn entity_time_range(
         &self,
@@ -591,6 +623,7 @@ impl ChunkStore {
     /// Returns the min and max times at which data was logged on a specific timeline, considering
     /// all entities.
     ///
+    /// This includes both physical & virtual chunks.
     /// This ignores static data.
     pub fn time_range(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
         re_tracing::profile_function!();
@@ -666,7 +699,7 @@ impl QueryResults {
         };
 
         for chunk_id in chunk_ids {
-            if let Some(chunk) = store.chunks_per_chunk_id.get(&chunk_id) {
+            if let Some(chunk) = store.physical_chunks_per_chunk_id.get(&chunk_id) {
                 this.chunks.push(chunk.clone());
             } else {
                 match report_mode {

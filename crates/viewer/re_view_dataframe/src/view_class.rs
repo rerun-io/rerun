@@ -2,7 +2,7 @@ use std::any::Any;
 
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeInt};
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
@@ -23,6 +23,9 @@ struct DataframeViewState {
 
     /// List of view columns for the current query, cached here for the column visibility UI.
     view_columns: Option<Vec<ColumnDescriptor>>,
+
+    /// Last time cursor value, used to detect time cursor movement for auto-scroll.
+    latest_time: Option<i64>,
 }
 
 impl ViewState for DataframeViewState {
@@ -174,12 +177,38 @@ Configure in the selection panel:
 
         let query_handle = query_engine.query(dataframe_query);
 
+        // Time cursor row — always computed when timelines match (for the visual indicator)
+        let timelines_match = timeline.name() == ctx.time_ctrl.timeline_name();
+        let time_cursor_row = if timelines_match {
+            ctx.time_ctrl.time_i64().and_then(|time| {
+                query_handle.row_index_at_or_before_time(TimeInt::new_temporal(time))
+            })
+        } else {
+            None
+        };
+
+        let scroll_to_time_cursor_row = if view_query.auto_scroll_enabled()? && timelines_match {
+            if let Some(time) = ctx.time_ctrl.time_i64() {
+                // We only scroll when the time cursor moves. Otherwise, the user won't have a
+                // chance to manually scroll.
+                state.latest_time != Some(time)
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        state.latest_time = timelines_match.then(|| ctx.time_ctrl.time_i64()).flatten();
+
         let hide_column_actions = dataframe_ui(
             ctx,
             ui,
             &query_handle,
             &mut state.expanded_rows_cache,
             &query.view_id,
+            time_cursor_row,
+            scroll_to_time_cursor_row,
         );
 
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;

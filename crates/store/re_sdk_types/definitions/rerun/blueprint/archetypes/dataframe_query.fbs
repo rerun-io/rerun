@@ -33,5 +33,10 @@ table DataframeQuery (
     ///
     /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
     entity_order: rerun.blueprint.components.ColumnOrder ("attr.rerun.component_optional", nullable, order: 600);
-}
 
+    /// Whether to auto-scroll to track the time cursor.
+    ///
+    /// When enabled and the view's timeline matches the time panel's active timeline,
+    /// the view will scroll to keep the row at or before the current time cursor visible.
+    auto_scroll: rerun.blueprint.components.AutoScroll ("attr.rerun.component_optional", nullable, order: 700);
+}

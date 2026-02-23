@@ -730,12 +730,19 @@ Verify the that the .rrd file can be loaded and correctly interpreted.
 
 Can be used to ensure that the current Rerun version can load the data.
 
-**Usage**: `rerun rrd verify [PATH_TO_INPUT_RRDS]…`
+**Usage**: `rerun rrd verify [OPTIONS] [PATH_TO_INPUT_RRDS]…`
 
 **Arguments**
 
 * `<PATH_TO_INPUT_RRDS>`
 > Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `--check-footers <CHECK_FOOTERS>`
+> If true, ensures that RRD footers are present and well formed.
+>
+> [Default: `true`]
 
 ## rerun server
 

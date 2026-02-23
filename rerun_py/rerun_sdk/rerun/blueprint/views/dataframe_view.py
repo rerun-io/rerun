@@ -63,6 +63,7 @@ class DataframeView(View):
                 filter_is_not_null="/trig/tan_sparse:Scalar",
                 select=["t", "log_tick", "/trig/sin:Scalar", "/trig/cos:Scalar", "/trig/tan_sparse:Scalar"],
                 entity_order=["/trig/cos", "/trig/sin", "/trig/tan_sparse"],
+                auto_scroll=True,
             ),
         ),
     )

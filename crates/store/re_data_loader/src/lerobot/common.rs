@@ -13,6 +13,7 @@ use re_chunk::{
     external::nohash_hasher::IntMap,
 };
 use re_log_types::{ApplicationId, StoreId};
+use re_quota_channel::send_crossbeam;
 use re_sdk_types::archetypes;
 use re_sdk_types::archetypes::EncodedImage;
 
@@ -48,7 +49,7 @@ pub fn prepare_episode_chunks(
             prepare_store_info(&store_id, re_log_types::FileSource::Sdk),
         );
 
-        if tx.send(set_store_info).is_err() {
+        if send_crossbeam(tx, set_store_info).is_err() {
             break;
         }
 
@@ -87,7 +88,7 @@ pub fn load_and_stream_common<Dataset>(
                 for chunk in std::iter::once(initial).chain(chunks.into_iter()) {
                     let data = LoadedData::Chunk(loader_name.to_owned(), store_id.clone(), chunk);
 
-                    if tx.send(data).is_err() {
+                    if send_crossbeam(tx, data).is_err() {
                         break; // The other end has decided to hang up, not our problem.
                     }
                 }

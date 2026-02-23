@@ -39,6 +39,8 @@ pub(crate) fn dataframe_ui(
     query_handle: &re_dataframe::QueryHandle<StorageEngineArcReadGuard>,
     expanded_rows_cache: &mut ExpandedRowsCache,
     view_id: &ViewId,
+    time_cursor_row: Option<u64>,
+    scroll_to_time_cursor_row: bool,
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
@@ -85,6 +87,7 @@ pub(crate) fn dataframe_ui(
             tokens.table_row_height(table_style),
         ),
         hide_column_actions: vec![],
+        time_cursor_row,
     };
 
     let num_sticky_cols = selected_columns
@@ -94,7 +97,7 @@ pub(crate) fn dataframe_ui(
 
     ui.scope(|ui| {
         apply_table_style_fixes(ui.style_mut());
-        egui_table::Table::new()
+        let mut table = egui_table::Table::new()
             .id_salt(table_id_salt)
             .columns(
                 selected_columns
@@ -115,8 +118,15 @@ pub(crate) fn dataframe_ui(
                 // This one has extra space for the archetype name
                 egui_table::HeaderRow::new(tokens.table_header_height() + 8.0),
             ])
-            .num_rows(num_rows)
-            .show(ui, &mut table_delegate);
+            .num_rows(num_rows);
+
+        if let Some(row) = time_cursor_row
+            && scroll_to_time_cursor_row
+        {
+            table = table.scroll_to_row(row, None);
+        }
+
+        table.show(ui, &mut table_delegate);
     });
 
     table_delegate.hide_column_actions
@@ -211,6 +221,10 @@ struct DataframeTableDelegate<'a> {
 
     num_rows: u64,
     hide_column_actions: Vec<HideColumnAction>,
+
+    /// Row index of the time cursor position (last row with timestamp <= current time).
+    /// Used to draw a highlighted horizontal line indicator.
+    time_cursor_row: Option<u64>,
 }
 
 impl DataframeTableDelegate<'_> {
@@ -521,6 +535,17 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 table_style,
                 instance_indices,
                 row_content,
+            );
+        }
+
+        // Draw a highlighted horizontal line at the bottom of the time cursor row.
+        if Some(cell.row_nr) == self.time_cursor_row {
+            let rect = ui.max_rect();
+            let stroke = ui.visuals().widgets.inactive.fg_stroke;
+            ui.painter().hline(
+                rect.x_range(),
+                rect.max.y - re_dataframe_ui::re_table_utils::CELL_SEPARATOR_STROKE_OFFSET,
+                egui::Stroke::new(2.0, stroke.color),
             );
         }
     }

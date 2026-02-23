@@ -2,6 +2,8 @@
 //!
 //! This feature is experimental and may change in future releases.
 
+#![expect(clippy::disallowed_methods)] // We forbid naked `send` calls in core Rerun, but they are fine in snippets
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_check_connection_status")
         .connect_grpc()?;

@@ -61,7 +61,7 @@ impl ChunkStore {
         let mut chunks_to_drop = vec![];
         let mut new_chunks = vec![];
 
-        for chunk in self.chunks_per_chunk_id.values() {
+        for chunk in self.physical_chunks_per_chunk_id.values() {
             let Some(time_column) = chunk.timelines().get(timeline) else {
                 // static chunk, or chunk that doesn't overlap this timeline
                 continue; // keep it

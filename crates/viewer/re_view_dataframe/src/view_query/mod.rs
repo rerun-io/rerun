@@ -42,6 +42,7 @@ impl Query {
 
         let timeline = self.timeline(ctx)?;
 
+        self.auto_scroll_ui(ctx, ui, timeline.as_ref())?;
         ui.separator();
         self.filter_range_ui(ctx, ui, timeline.as_ref())?;
         ui.separator();

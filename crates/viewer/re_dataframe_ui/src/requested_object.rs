@@ -15,6 +15,7 @@ impl<T: Send + 'static> RequestedObject<T> {
     /// Create a new [`Self`] with the given future.
     pub fn new<F>(runtime: &AsyncRuntimeHandle, func: F) -> Self
     where
+        T: std::fmt::Debug,
         F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
         let (tx, rx) = crate::create_channel(1);
@@ -23,7 +24,7 @@ impl<T: Send + 'static> RequestedObject<T> {
         runtime.spawn_future(async move {
             //TODO(#9836): implement cancellation using another channel (see `make_future_send`)
             let result = func.await;
-            tx.send(result).ok();
+            re_quota_channel::send_crossbeam(&tx, result).ok();
         });
 
         handle
@@ -37,6 +38,7 @@ impl<T: Send + 'static> RequestedObject<T> {
         func: F,
     ) -> Self
     where
+        T: std::fmt::Debug,
         F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
         Self::new(runtime, async move {

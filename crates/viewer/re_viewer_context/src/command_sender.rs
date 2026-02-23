@@ -296,7 +296,7 @@ impl SystemCommandSender for CommandSender {
     #[track_caller]
     fn send_system(&self, command: SystemCommand) {
         // The only way this can fail is if the receiver has been dropped.
-        send_crossbeam(&self.system_sender, (Location::caller(), command)).ok();
+        re_quota_channel::send_crossbeam(&self.system_sender, (Location::caller(), command)).ok();
     }
 }
 
@@ -304,7 +304,7 @@ impl UICommandSender for CommandSender {
     /// Send a command to be executed.
     fn send_ui(&self, command: UICommand) {
         // The only way this can fail is if the receiver has been dropped.
-        send_crossbeam(&self.ui_sender, command).ok();
+        re_quota_channel::send_crossbeam(&self.ui_sender, command).ok();
     }
 }
 
@@ -312,6 +312,7 @@ impl UICommandSender for CommandSender {
 ///
 /// This exists as a separate struct to make it convenient to funnel it through the redap browser
 /// command system.
+#[derive(Debug)]
 pub struct EditRedapServerModalCommand {
     /// Which server should be edited?
     pub origin: re_uri::Origin,
@@ -331,42 +332,6 @@ impl EditRedapServerModalCommand {
             origin,
             open_on_success: None,
             title: None,
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------------------------
-
-/// Send a message, and warn if it is taking too long.
-// TODO(emilk): move somewhere so we can reuse it.
-#[track_caller]
-fn send_crossbeam<T>(
-    sender: &crossbeam::channel::Sender<T>,
-    msg: T,
-) -> Result<(), crossbeam::channel::SendError<T>> {
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            // On web we cannot block, so we just do a normal send.
-            sender.send(msg)
-        } else {
-            use std::time::Duration;
-            use crossbeam::channel::SendTimeoutError;
-
-            let timeout_sec = 5;
-
-            match sender.send_timeout(msg, Duration::from_secs(timeout_sec)) {
-                Ok(()) => Ok(()),
-                Err(SendTimeoutError::Disconnected(msg)) => Err(crossbeam::channel::SendError(msg)),
-                Err(SendTimeoutError::Timeout(msg)) => {
-                    let caller = std::panic::Location::caller();
-                    re_log::debug_once!(
-                        "{}:{}: failed to send message within {timeout_sec}s. Will keep blocking…",
-                        caller.file(),
-                        caller.line(),
-                    );
-                    sender.send(msg)
-                }
-            }
         }
     }
 }

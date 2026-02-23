@@ -151,8 +151,12 @@ impl BlueprintResolvedRangeResults<'_> {
                             // Don't override the source, let the range result take precedence.
                         }
 
-                        Err(ComponentMappingError::ComponentNotFound(_)) => {
-                            // Component wasn't found in the bootstrap data.
+                        Err(
+                            ComponentMappingError::ComponentNotPresentOnEntity(_)
+                            | ComponentMappingError::NoComponentDataForQuery(_)
+                            | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_),
+                        ) => {
+                            // No component data was found in the bootstrap data.
                             // Data may only exist within the range actual range, if not it has the error already!
                         }
 

@@ -48,6 +48,7 @@ re_chunk.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_protos.workspace = true
+re_quota_channel.workspace = true
 re_sorbet.workspace = true
 re_span.workspace = true
 re_tracing.workspace = true

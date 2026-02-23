@@ -141,10 +141,15 @@ impl ChunkDirectLineage {
             Self::SplitFrom(chunk_id, sibling_ids) => {
                 let mut siblings = Vec::new();
                 for sibling_id in sibling_ids {
-                    siblings.push(store.chunks_per_chunk_id.get(sibling_id).cloned()?);
+                    siblings.push(
+                        store
+                            .physical_chunks_per_chunk_id
+                            .get(sibling_id)
+                            .cloned()?,
+                    );
                 }
                 Some(ChunkDirectLineageReport::SplitFrom(
-                    store.chunks_per_chunk_id.get(chunk_id).cloned()?,
+                    store.physical_chunks_per_chunk_id.get(chunk_id).cloned()?,
                     siblings,
                 ))
             }
@@ -152,7 +157,10 @@ impl ChunkDirectLineage {
             Self::CompactedFrom(chunk_ids) => {
                 let mut chunks = BTreeMap::new();
                 for chunk_id in chunk_ids {
-                    chunks.insert(*chunk_id, store.chunks_per_chunk_id.get(chunk_id).cloned()?);
+                    chunks.insert(
+                        *chunk_id,
+                        store.physical_chunks_per_chunk_id.get(chunk_id).cloned()?,
+                    );
                 }
                 Some(ChunkDirectLineageReport::CompactedFrom(chunks))
             }
@@ -250,7 +258,7 @@ impl ChunkStore {
     pub fn format_lineage(&self, chunk_id: &ChunkId) -> String {
         fn compute_staticness(store: &ChunkStore, chunk_id: &ChunkId) -> &'static str {
             // If the chunk is physically loaded, then this is trivial to answer.
-            if let Some(chunk) = store.chunks_per_chunk_id.get(chunk_id) {
+            if let Some(chunk) = store.physical_chunks_per_chunk_id.get(chunk_id) {
                 return if chunk.is_static() { "yes" } else { "no" };
             }
 
@@ -273,7 +281,7 @@ impl ChunkStore {
 
         #[expect(clippy::string_add)] // clearer, in this instance
         fn recurse(store: &ChunkStore, chunk_id: &ChunkId, depth: usize) -> String {
-            let chunk = store.chunks_per_chunk_id.get(chunk_id);
+            let chunk = store.physical_chunks_per_chunk_id.get(chunk_id);
 
             let lineage = store.chunks_lineage.get(chunk_id);
             let status = if chunk.is_some() {
@@ -427,7 +435,7 @@ impl ChunkStore {
         chunk_id: &ChunkId,
         descendents: &mut Vec<ChunkId>,
     ) {
-        let is_physical = |c: &&ChunkId| self.chunks_per_chunk_id.contains_key(c);
+        let is_physical = |c: &&ChunkId| self.physical_chunks_per_chunk_id.contains_key(c);
 
         if is_physical(&chunk_id) {
             // A physical chunk cannot have descendents. If it did, it would have
@@ -599,7 +607,7 @@ mod tests {
 
         insta::assert_snapshot!("lineage_volatile", generate_redacted_lineage_report(&store));
 
-        for chunk in store.chunks_per_chunk_id.values() {
+        for chunk in store.physical_chunks_per_chunk_id.values() {
             assert!(
                 store
                     .find_root_chunks(&chunk.id())
@@ -693,7 +701,7 @@ mod tests {
             generate_redacted_lineage_report(&store)
         );
 
-        for chunk in store.chunks_per_chunk_id.values() {
+        for chunk in store.physical_chunks_per_chunk_id.values() {
             assert!(
                 store
                     .find_root_chunks(&chunk.id())
@@ -868,7 +876,10 @@ mod tests {
 
         assert_eq!(3, store.num_physical_chunks());
         {
-            let chunk_ids = store.chunk_ids_per_min_row_id.values().collect_vec();
+            let chunk_ids = store
+                .physical_chunk_ids_per_min_row_id
+                .values()
+                .collect_vec();
 
             assert_eq!(true, store.descends_from_a_split(chunk_ids[0]));
             assert_eq!(false, store.descends_from_a_compaction(chunk_ids[0]));
@@ -896,7 +907,10 @@ mod tests {
 
         assert_eq!(3, store.num_physical_chunks());
         {
-            let chunk_ids = store.chunk_ids_per_min_row_id.values().collect_vec();
+            let chunk_ids = store
+                .physical_chunk_ids_per_min_row_id
+                .values()
+                .collect_vec();
 
             assert_eq!(true, store.descends_from_a_split(chunk_ids[0]));
             assert_eq!(false, store.descends_from_a_compaction(chunk_ids[0]));
@@ -961,7 +975,11 @@ mod tests {
         assert_eq!(2, store.num_physical_chunks());
         assert_eq!(
             vec![chunk1.id(), chunk2.id()],
-            store.chunks_per_chunk_id.keys().copied().collect_vec()
+            store
+                .physical_chunks_per_chunk_id
+                .keys()
+                .copied()
+                .collect_vec()
         );
         for chunk in store.iter_physical_chunks() {
             assert_eq!(false, store.descends_from_a_split(&chunk.id()));
@@ -1123,7 +1141,7 @@ mod tests {
             .collect();
 
         let mut lineage_report = Vec::new();
-        for chunk_id in store.chunks_per_chunk_id.keys().sorted() {
+        for chunk_id in store.physical_chunks_per_chunk_id.keys().sorted() {
             lineage_report.push(store.format_lineage(chunk_id));
         }
 

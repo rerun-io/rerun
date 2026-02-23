@@ -9,6 +9,7 @@ pub use re_sdk_types::blueprint::components::ActiveTab;
 pub use re_sdk_types::blueprint::components::AngularSpeed;
 pub use re_sdk_types::blueprint::components::ApplyLatestAt;
 pub use re_sdk_types::blueprint::components::AutoLayout;
+pub use re_sdk_types::blueprint::components::AutoScroll;
 pub use re_sdk_types::blueprint::components::AutoViews;
 pub use re_sdk_types::blueprint::components::BackgroundKind;
 pub use re_sdk_types::blueprint::components::ColumnOrder;
@@ -66,6 +67,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<AngularSpeed>(blueprint)
         && validate_component::<ApplyLatestAt>(blueprint)
         && validate_component::<AutoLayout>(blueprint)
+        && validate_component::<AutoScroll>(blueprint)
         && validate_component::<AutoViews>(blueprint)
         && validate_component::<BackgroundKind>(blueprint)
         && validate_component::<ColumnOrder>(blueprint)

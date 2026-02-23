@@ -30,6 +30,7 @@ re_build_tools.workspace = true
 re_case.workspace = true
 re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
+re_quota_channel.workspace = true
 re_tracing.workspace = true
 
 # External

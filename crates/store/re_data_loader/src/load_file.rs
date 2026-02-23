@@ -139,7 +139,7 @@ pub(crate) fn load(
         let (tx_loader, rx_loader) = crossbeam::channel::bounded(1024);
 
         let any_compatible_loader = {
-            #[derive(PartialEq, Eq)]
+            #[derive(Debug, PartialEq, Eq)]
             struct CompatibleLoaderFound;
             let (tx_feedback, rx_feedback) =
                 crossbeam::channel::bounded::<CompatibleLoaderFound>(128);
@@ -201,7 +201,7 @@ pub(crate) fn load(
                     }
 
                     re_log::debug!(loader = loader.name(), ?path, "compatible loader found");
-                    tx_feedback.send(CompatibleLoaderFound).ok();
+                    re_quota_channel::send_crossbeam(&tx_feedback, CompatibleLoaderFound).ok();
                 });
             }
 

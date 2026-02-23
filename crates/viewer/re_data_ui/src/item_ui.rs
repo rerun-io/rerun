@@ -193,7 +193,7 @@ pub fn instance_path_icon(
         if db
             .storage_engine()
             .store()
-            .entity_has_data_on_timeline(timeline, &instance_path.entity_path)
+            .entity_has_physical_data_on_timeline(timeline, &instance_path.entity_path)
         {
             if instance_path.entity_path.is_reserved() {
                 &icons::ENTITY_RESERVED

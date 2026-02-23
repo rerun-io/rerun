@@ -5,6 +5,7 @@ include "./components/active_tab.fbs";
 include "./components/angular_speed.fbs";
 include "./components/apply_latest_at.fbs";
 include "./components/auto_layout.fbs";
+include "./components/auto_scroll.fbs";
 include "./components/auto_views.fbs";
 include "./components/background_kind.fbs";
 include "./components/column_order.fbs";

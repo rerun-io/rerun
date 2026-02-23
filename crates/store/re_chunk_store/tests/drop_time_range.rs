@@ -27,7 +27,7 @@ fn drop_time_range() -> anyhow::Result<()> {
         );
 
         let num_events = |store: &ChunkStore| {
-            store.num_temporal_events_for_component_on_timeline(
+            store.num_physical_temporal_events_for_component_on_timeline(
                 timeline.name(),
                 &entity_path,
                 MyPoints::descriptor_colors().component,

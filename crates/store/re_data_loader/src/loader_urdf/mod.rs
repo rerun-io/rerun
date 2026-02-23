@@ -29,11 +29,10 @@ fn send_chunk_builder(
     store_id: &StoreId,
     chunk: ChunkBuilder,
 ) -> anyhow::Result<()> {
-    tx.send(LoadedData::Chunk(
-        UrdfDataLoader.name(),
-        store_id.clone(),
-        chunk.build()?,
-    ))?;
+    re_quota_channel::send_crossbeam(
+        tx,
+        LoadedData::Chunk(UrdfDataLoader.name(), store_id.clone(), chunk.build()?),
+    )?;
     Ok(())
 }
 

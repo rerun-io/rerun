@@ -7,6 +7,7 @@
 #include "blueprint/components/angular_speed.hpp"
 #include "blueprint/components/apply_latest_at.hpp"
 #include "blueprint/components/auto_layout.hpp"
+#include "blueprint/components/auto_scroll.hpp"
 #include "blueprint/components/auto_views.hpp"
 #include "blueprint/components/background_kind.hpp"
 #include "blueprint/components/column_order.hpp"

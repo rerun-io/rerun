@@ -258,7 +258,7 @@ fn decode_and_stream(
         };
 
         let data = LoadedData::LogMsg(RrdLoader::name(&RrdLoader), msg);
-        if tx.send(data).is_err() {
+        if re_quota_channel::send_crossbeam(tx, data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
     }

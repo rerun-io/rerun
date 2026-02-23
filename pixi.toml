@@ -75,6 +75,9 @@ EXECUTABLE_EXTENSION = ".exe"
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "%PIXI_PROJECT_ROOT%\\scripts\\pixi;%PATH%"
 
+[target.osx-arm64.activation.env]
+AR = "llvm-ar" # Various Wasm targets fail on mac without llvm-ar
+
 ################################################################################
 # ENVIRONMENTS
 ################################################################################
@@ -206,7 +209,8 @@ rs-check = "python scripts/ci/rust_checks.py"
 
 # Check that old .rrd files can still be read and understood.
 # See tests/assets/rrd/README.md for more.
-check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify" }
+# Note that we run with `--check-footers=false`: it is expected that these RRDs do not have proper footers (they predate them).
+check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify --check-footers=false" }
 
 rs-fmt = "cargo fmt --all"
 
