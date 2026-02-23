@@ -486,6 +486,10 @@ impl App {
         self.state.app_options()
     }
 
+    pub fn reflection(&self) -> &re_types_core::reflection::Reflection {
+        &self.reflection
+    }
+
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
         self.state.app_options_mut()
     }
@@ -659,16 +663,24 @@ impl App {
         )
     }
 
-    /// Accesses the view class registry which can be used to extend the Viewer.
+    /// Extends an already registered view class with additional systems (visualizers, context systems, fallbacks, etc.).
     ///
-    /// **WARNING:** Many parts or the viewer assume that all views & visualizers are registered before the first frame is rendered.
+    /// **WARNING:** Many parts of the viewer assume that all views & visualizers are registered before the first frame is rendered.
     /// Doing so later in the application life cycle may cause unexpected behavior.
-    pub fn view_class_registry(&mut self) -> &mut ViewClassRegistry {
-        &mut self.view_class_registry
-    }
-
-    pub fn component_fallback_registry(&mut self) -> &mut FallbackProviderRegistry {
-        &mut self.component_fallback_registry
+    pub fn extend_view_class(
+        &mut self,
+        view_class: re_sdk_types::ViewClassIdentifier,
+        register_fn: impl FnOnce(
+            &mut re_viewer_context::ViewSystemRegistrator<'_>,
+        ) -> Result<(), ViewClassRegistryError>,
+    ) -> Result<(), ViewClassRegistryError> {
+        self.view_class_registry.extend_class(
+            view_class,
+            &self.reflection,
+            &self.state.app_options,
+            &mut self.component_fallback_registry,
+            register_fn,
+        )
     }
 
     fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {

@@ -2268,6 +2268,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_visualizer"
+version = "0.30.0-alpha.1+dev"
+dependencies = [
+ "bytemuck",
+ "mimalloc",
+ "rerun",
+]
+
+[[package]]
 name = "dae-parser"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

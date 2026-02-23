@@ -69,10 +69,10 @@ mod workspace_shaders;
 // ---------------------------------------------------------------------------
 // Exports
 
-use allocator::GpuReadbackBuffer;
 pub use allocator::{
-    CpuWriteGpuReadError, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
-    create_and_fill_uniform_buffer_batch,
+    CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer, CpuWriteGpuReadError, DataTextureSource,
+    DataTextureSourceWriteError, GpuReadbackBuffer, GpuReadbackIdentifier,
+    create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch,
 };
 pub use color::{Rgba32Unmul, UnalignedColor32};
 pub use colormap::{
@@ -106,8 +106,9 @@ pub use view_builder::{RenderMode, ViewBuilder, ViewPickingConfiguration};
 pub use wgpu_resources::{
     BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
     GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
-    GpuRenderPipelinePoolAccessor, GpuShaderModuleHandle, GpuShaderModulePool, PipelineLayoutDesc,
-    RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout, WgpuResourcePoolStatistics,
+    GpuRenderPipelinePoolAccessor, GpuShaderModuleHandle, GpuShaderModulePool, GpuTexture,
+    GpuTextureHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout,
+    WgpuResourcePoolStatistics,
 };
 
 pub use self::file_resolver::{
