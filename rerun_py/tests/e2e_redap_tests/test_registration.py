@@ -609,6 +609,26 @@ def test_registration_crossregion(catalog_client: CatalogClient) -> None:
         ds.delete()
 
 
+@pytest.mark.aws_only
+def test_registration_footerless(catalog_client: CatalogClient) -> None:
+    """Tests whether registration of footerless datasets fails as expected on Rerun Cloud."""
+
+    dataset_url = "s3://rerun-redap-datasets-pdx/test-resources/dataset-footerless/"
+    expected_msg = "try running `rerun rrd migrate`"
+
+    ds = catalog_client.create_dataset(
+        name="test_registration_footerless",
+    )
+
+    try:
+        import re
+
+        with pytest.raises(ValueError, match=re.escape(expected_msg)):
+            ds.register_prefix(dataset_url).wait()
+    finally:
+        ds.delete()
+
+
 def _get_points_data(ds: DatasetEntry) -> list[list[float]]:
     """Helper to extract points data from a dataset."""
     import pyarrow as pa
