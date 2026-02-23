@@ -824,11 +824,7 @@ pub struct DensityGraphBuilder<'a> {
 
 impl<'a> DensityGraphBuilder<'a> {
     fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
-        // We can't use `ui.contains_pointer()` here, since the density graph expands past this Uis rect.
-        let pointer_pos = ui.input(|i| i.pointer.hover_pos()).filter(|pos| {
-            // Ensure no popup is covering the time panel
-            ui.ctx().layer_id_at(*pos) == Some(ui.layer_id())
-        });
+        let pointer_pos = ui.input(|i| i.pointer.hover_pos());
         let interact_radius = ui.style().interaction.interact_radius;
 
         Self {

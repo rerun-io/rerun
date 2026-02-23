@@ -22,7 +22,7 @@ from enum import Enum
 
 
 class InterpolationMode(Enum):
-    """**Component**: Specifies how values between data points are interpolated in a time series line chart."""
+    """**Component**: Specifies how values between data points are interpolated in time series."""
 
     Linear = 1
     """Connect data points with straight line segments."""

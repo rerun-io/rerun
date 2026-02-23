@@ -1,7 +1,9 @@
 namespace rerun.components;
 
-/// Specifies how values between data points are interpolated in a time series line chart.
-enum InterpolationMode: ubyte {
+/// Specifies how values between data points are interpolated in time series.
+enum InterpolationMode: ubyte (
+  "attr.docs.unreleased"
+) {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 

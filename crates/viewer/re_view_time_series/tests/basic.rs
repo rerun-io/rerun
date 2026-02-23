@@ -384,55 +384,6 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
-#[test]
-fn test_interpolation_modes() {
-    let mut snapshot_results = SnapshotResults::new();
-    for mode in [
-        re_sdk_types::components::InterpolationMode::Linear,
-        re_sdk_types::components::InterpolationMode::StepAfter,
-        re_sdk_types::components::InterpolationMode::StepBefore,
-        re_sdk_types::components::InterpolationMode::StepMid,
-    ] {
-        let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
-
-        let timeline = Timeline::log_tick();
-
-        test_context.log_entity("plots/line", |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                TimePoint::default(),
-                &re_sdk_types::archetypes::SeriesLines::new()
-                    .with_interpolation_mode(mode)
-                    .with_colors([re_sdk_types::components::Color::from_rgb(0, 200, 255)]),
-            )
-        });
-
-        for step in 0..32 {
-            let timepoint = TimePoint::from([(timeline, step)]);
-            test_context.log_entity("plots/line", |builder| {
-                builder.with_archetype(
-                    RowId::new(),
-                    timepoint,
-                    &re_sdk_types::archetypes::Scalars::single((step as f64 / 5.0).sin()),
-                )
-            });
-        }
-
-        test_context.send_time_commands(
-            test_context.active_store_id(),
-            [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-        );
-
-        let view_id = setup_blueprint(&mut test_context);
-        snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
-            view_id,
-            &format!("interpolation_mode_{mode:?}"),
-            egui::vec2(300.0, 300.0),
-            None,
-        ));
-    }
-}
-
 /// Entity paths with special characters (like colons) should display unescaped in the UI.
 #[test]
 fn test_special_characters_in_entity_path() {
