@@ -440,7 +440,7 @@ impl CpuWriteGpuReadBelt {
     ///
     /// Note that this does NOT mean that the CPU memory has *any* alignment.
     /// See this issue about [lack of CPU memory alignment](https://github.com/gfx-rs/wgpu/issues/3508) in wgpu/WebGPU.
-    const MIN_OFFSET_ALIGNMENT: u64 = 16;
+    pub const MIN_OFFSET_ALIGNMENT: u64 = 16;
 
     /// Create a cpu-write & gpu-read staging belt.
     ///
