@@ -934,7 +934,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <InterpolationMode as Component>::name(),
             ComponentReflection {
-                docstring_md: "Specifies how values between data points are interpolated in a time series line chart.",
+                docstring_md: "Specifies how values between data points are interpolated in time series.",
                 deprecation_summary: None,
                 custom_placeholder: Some(InterpolationMode::default().to_arrow()?),
                 datatype: InterpolationMode::arrow_datatype(),

@@ -20,7 +20,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: Specifies how values between data points are interpolated in a time series line chart.
+    /// **Component**: Specifies how values between data points are interpolated in time series.
     enum class InterpolationMode : uint8_t {
 
         /// Connect data points with straight line segments.
