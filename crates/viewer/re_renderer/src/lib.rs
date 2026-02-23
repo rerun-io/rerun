@@ -69,10 +69,10 @@ mod workspace_shaders;
 // ---------------------------------------------------------------------------
 // Exports
 
-use allocator::GpuReadbackBuffer;
 pub use allocator::{
-    CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError, GpuReadbackIdentifier,
-    create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch,
+    CpuWriteGpuReadBelt, CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError,
+    GpuReadbackBuffer, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
+    create_and_fill_uniform_buffer_batch,
 };
 pub use color::{Rgba32Unmul, UnalignedColor32};
 pub use colormap::{

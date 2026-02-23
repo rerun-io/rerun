@@ -247,7 +247,7 @@ impl ViewClassRegistry {
             reflection,
             app_options,
             fallback_registry,
-            // Create a new class temporary class instance to execute the registration function on it.
+            // Create a temporary class instance to execute the registration function on it.
             // Classes are generally stateless, so this won't miss any changes since the initial registration.
             // However, even if there was state, there would have been no opportunity for it to change since the registration earlier.
             |reg| T::default().on_register(reg),
