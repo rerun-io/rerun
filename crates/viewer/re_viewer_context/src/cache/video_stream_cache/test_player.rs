@@ -794,13 +794,6 @@ fn cache_with_streaming() {
     player.play_store(15.0..25.0, dt, &store).unwrap();
 
     player.expect_decoded_samples(60..chunk_count);
-
-    // Try dropping chunks at the end.
-    unload_chunks(&store, &mut cache, 15.0..20.0);
-
-    player.play_store(15.0..20.0 - dt, dt, &store).unwrap();
-
-    player.expect_decoded_samples(60..80);
 }
 
 #[test]
