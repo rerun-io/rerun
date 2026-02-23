@@ -80,7 +80,7 @@ def test_segment_url_with_timestamp(readonly_test_dataset: DatasetEntry) -> None
             "url",
             segment_url(
                 readonly_test_dataset,
-                timestamp_col="my_timestamp",
+                timestamp="my_timestamp",
                 timeline_name="my_timeline",
             ),
         )
@@ -122,8 +122,8 @@ def test_segment_url_with_literal_segment_id(readonly_test_dataset: DatasetEntry
             "url",
             segment_url(
                 readonly_test_dataset,
-                segment_id_col=lit(segment_id),
-                timestamp_col="my_timestamp",
+                segment_id=lit(segment_id),
+                timestamp="my_timestamp",
                 timeline_name="my_timeline",
             ),
         )
@@ -158,7 +158,7 @@ def test_segment_url_with_sequence(readonly_test_dataset: DatasetEntry) -> None:
             "url",
             segment_url(
                 readonly_test_dataset,
-                timestamp_col="my_seq",
+                timestamp="my_seq",
                 timeline_name="my_seq",
             ),
         )
@@ -174,4 +174,240 @@ def test_segment_url_with_sequence(readonly_test_dataset: DatasetEntry) -> None:
         "<ORIGIN>/dataset/<DATASET_ID>?segment_id=45e562f3abc24cfbbcf49ad30fa04b47#when=my_seq@40",
         "<ORIGIN>/dataset/<DATASET_ID>?segment_id=526f111faae1465d865d80e9a5c9eb6d#when=my_seq@50",
         "<ORIGIN>/dataset/<DATASET_ID>?segment_id=68224eead5ed40838b3f3bdb0edfd2b2",
+    ])
+
+
+def test_segment_url_with_time_range(readonly_test_dataset: DatasetEntry) -> None:
+    """Test segment_url UDF with time_range only (no when), nanosecond timestamps."""
+
+    segment_ids = sorted(readonly_test_dataset.segment_ids())[:4]
+
+    ctx = SessionContext()
+    meta_batch = pa.RecordBatch.from_pydict({
+        "rerun_segment_id": segment_ids,
+        "range_start": pa.array(
+            [
+                1_705_312_245_000_000_000,  # 2024-01-15T10:30:45Z
+                1_705_312_365_000_000_000,  # 2024-01-15T10:32:45Z
+                1_705_312_485_000_000_000,  # 2024-01-15T10:34:45Z
+                None,
+            ],
+            type=pa.timestamp("ns"),
+        ),
+        "range_end": pa.array(
+            [
+                1_705_312_345_000_000_000,  # 2024-01-15T10:32:25Z  (100s later)
+                1_705_312_465_000_000_000,  # 2024-01-15T10:34:25Z
+                1_705_312_585_000_000_000,  # 2024-01-15T10:36:25Z  (100s later)
+                None,
+            ],
+            type=pa.timestamp("ns"),
+        ),
+    })
+    meta_df = ctx.from_arrow(meta_batch)
+
+    view = readonly_test_dataset.filter_segments(segment_ids)
+    segment_table = view.segment_table(join_meta=meta_df)
+
+    result = (
+        segment_table.with_column(
+            "url",
+            segment_url(
+                readonly_test_dataset,
+                time_range_start="range_start",
+                time_range_end="range_end",
+                timeline_name="my_timeline",
+            ),
+        )
+        .sort(col("rerun_segment_id"))
+        .select("url")
+        .collect()
+    )
+
+    assert collect_urls(result, readonly_test_dataset) == inline_snapshot([
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=141a866deb2d49f69eb3215e8a404ffc#time_selection=my_timeline@2024-01-15T09:50:45Z..2024-01-15T09:52:25Z",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=24598969c97a4154a1ad0a262ee31b97#time_selection=my_timeline@2024-01-15T09:52:45Z..2024-01-15T09:54:25Z",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=3ee345b2e801448cace33a1097b9b49b#time_selection=my_timeline@2024-01-15T09:54:45Z..2024-01-15T09:56:25Z",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=45e562f3abc24cfbbcf49ad30fa04b47",
+    ])
+
+
+def test_segment_url_with_timestamp_and_time_range(readonly_test_dataset: DatasetEntry) -> None:
+    """Test segment_url UDF with both when and time_selection."""
+
+    segment_ids = sorted(readonly_test_dataset.segment_ids())[:3]
+
+    ctx = SessionContext()
+    meta_batch = pa.RecordBatch.from_pydict({
+        "rerun_segment_id": segment_ids,
+        "my_timestamp": pa.array(
+            [
+                1_705_312_245_123_456_789,  # 2024-01-15T10:30:45.123456789Z
+                1_705_312_365_000_000_000,  # 2024-01-15T10:32:45Z
+                1_705_312_485_000_000_000,  # 2024-01-15T10:34:45Z
+            ],
+            type=pa.timestamp("ns"),
+        ),
+        "range_start": pa.array(
+            [
+                1_705_312_200_000_000_000,  # 2024-01-15T10:30:00Z
+                1_705_312_320_000_000_000,  # 2024-01-15T10:32:00Z
+                1_705_312_440_000_000_000,  # 2024-01-15T10:34:00Z
+            ],
+            type=pa.timestamp("ns"),
+        ),
+        "range_end": pa.array(
+            [
+                1_705_312_300_000_000_000,  # 2024-01-15T10:31:40Z  (100s after start)
+                1_705_312_420_000_000_000,  # 2024-01-15T10:33:40Z
+                1_705_312_540_000_000_000,  # 2024-01-15T10:35:40Z
+            ],
+            type=pa.timestamp("ns"),
+        ),
+    })
+    meta_df = ctx.from_arrow(meta_batch)
+
+    view = readonly_test_dataset.filter_segments(segment_ids)
+    segment_table = view.segment_table(join_meta=meta_df)
+
+    result = (
+        segment_table.with_column(
+            "url",
+            segment_url(
+                readonly_test_dataset,
+                timestamp="my_timestamp",
+                time_range_start="range_start",
+                time_range_end="range_end",
+                timeline_name="my_timeline",
+            ),
+        )
+        .sort(col("rerun_segment_id"))
+        .select("url")
+        .collect()
+    )
+
+    assert collect_urls(result, readonly_test_dataset) == inline_snapshot([
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=141a866deb2d49f69eb3215e8a404ffc#when=my_timeline@2024-01-15T09:50:45.123456789Z&time_selection=my_timeline@2024-01-15T09:50:00Z..2024-01-15T09:51:40Z",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=24598969c97a4154a1ad0a262ee31b97#when=my_timeline@2024-01-15T09:52:45Z&time_selection=my_timeline@2024-01-15T09:52:00Z..2024-01-15T09:53:40Z",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=3ee345b2e801448cace33a1097b9b49b#when=my_timeline@2024-01-15T09:54:45Z&time_selection=my_timeline@2024-01-15T09:54:00Z..2024-01-15T09:55:40Z",
+    ])
+
+
+def test_segment_url_with_sequence_time_range(readonly_test_dataset: DatasetEntry) -> None:
+    """Test segment_url UDF with Int64 (sequence) time range columns."""
+
+    segment_ids = sorted(readonly_test_dataset.segment_ids())[:4]
+
+    ctx = SessionContext()
+    meta_batch = pa.RecordBatch.from_pydict({
+        "rerun_segment_id": segment_ids,
+        "seq_start": pa.array([10, 20, 30, None], type=pa.int64()),
+        "seq_end": pa.array([50, 60, 70, None], type=pa.int64()),
+    })
+    meta_df = ctx.from_arrow(meta_batch)
+
+    view = readonly_test_dataset.filter_segments(segment_ids)
+    segment_table = view.segment_table(join_meta=meta_df)
+
+    result = (
+        segment_table.with_column(
+            "url",
+            segment_url(
+                readonly_test_dataset,
+                time_range_start="seq_start",
+                time_range_end="seq_end",
+                timeline_name="my_seq",
+            ),
+        )
+        .sort(col("rerun_segment_id"))
+        .select("url")
+        .collect()
+    )
+
+    assert collect_urls(result, readonly_test_dataset) == inline_snapshot([
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=141a866deb2d49f69eb3215e8a404ffc#time_selection=my_seq@10..50",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=24598969c97a4154a1ad0a262ee31b97#time_selection=my_seq@20..60",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=3ee345b2e801448cace33a1097b9b49b#time_selection=my_seq@30..70",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=45e562f3abc24cfbbcf49ad30fa04b47",
+    ])
+
+
+def test_segment_url_with_selection(readonly_test_dataset: DatasetEntry) -> None:
+    """Test segment_url UDF with a selection column (entity paths)."""
+
+    segment_ids = sorted(readonly_test_dataset.segment_ids())[:4]
+
+    ctx = SessionContext()
+    meta_batch = pa.RecordBatch.from_pydict({
+        "rerun_segment_id": segment_ids,
+        "entity_path": pa.array(["/world/points", "/world/camera", "/world/mesh", None], type=pa.utf8()),
+    })
+    meta_df = ctx.from_arrow(meta_batch)
+
+    view = readonly_test_dataset.filter_segments(segment_ids)
+    segment_table = view.segment_table(join_meta=meta_df)
+
+    result = (
+        segment_table.with_column(
+            "url",
+            segment_url(
+                readonly_test_dataset,
+                selection="entity_path",
+            ),
+        )
+        .sort(col("rerun_segment_id"))
+        .select("url")
+        .collect()
+    )
+
+    assert collect_urls(result, readonly_test_dataset) == inline_snapshot([
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=141a866deb2d49f69eb3215e8a404ffc#selection=/world/points",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=24598969c97a4154a1ad0a262ee31b97#selection=/world/camera",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=3ee345b2e801448cace33a1097b9b49b#selection=/world/mesh",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=45e562f3abc24cfbbcf49ad30fa04b47",
+    ])
+
+
+def test_segment_url_with_selection_and_timestamp(readonly_test_dataset: DatasetEntry) -> None:
+    """Test segment_url UDF with both selection and when."""
+
+    segment_ids = sorted(readonly_test_dataset.segment_ids())[:3]
+
+    ctx = SessionContext()
+    meta_batch = pa.RecordBatch.from_pydict({
+        "rerun_segment_id": segment_ids,
+        "entity_path": pa.array(["/world/points", "/world/camera", "/world/mesh"], type=pa.utf8()),
+        "my_timestamp": pa.array(
+            [
+                1_705_312_245_123_456_789,  # 2024-01-15T10:30:45.123456789Z
+                1_705_312_365_000_000_000,  # 2024-01-15T10:32:45Z
+                1_705_312_485_000_000_000,  # 2024-01-15T10:34:45Z
+            ],
+            type=pa.timestamp("ns"),
+        ),
+    })
+    meta_df = ctx.from_arrow(meta_batch)
+
+    view = readonly_test_dataset.filter_segments(segment_ids)
+    segment_table = view.segment_table(join_meta=meta_df)
+
+    result = (
+        segment_table.with_column(
+            "url",
+            segment_url(
+                readonly_test_dataset,
+                timestamp="my_timestamp",
+                timeline_name="my_timeline",
+                selection="entity_path",
+            ),
+        )
+        .sort(col("rerun_segment_id"))
+        .select("url")
+        .collect()
+    )
+
+    assert collect_urls(result, readonly_test_dataset) == inline_snapshot([
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=141a866deb2d49f69eb3215e8a404ffc#selection=/world/points&when=my_timeline@2024-01-15T09:50:45.123456789Z",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=24598969c97a4154a1ad0a262ee31b97#selection=/world/camera&when=my_timeline@2024-01-15T09:52:45Z",
+        "<ORIGIN>/dataset/<DATASET_ID>?segment_id=3ee345b2e801448cace33a1097b9b49b#selection=/world/mesh&when=my_timeline@2024-01-15T09:54:45Z",
     ])

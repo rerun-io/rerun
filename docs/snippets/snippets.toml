@@ -139,6 +139,7 @@ backwards_check = [
   "howto/query_videos",
   "howto/query_video_keyframes",
   "howto/time_alignment",
+  "howto/query-and-transform/segment_url",
   "howto/view_operations",
 ]
 
@@ -302,6 +303,10 @@ backwards_check = [
   "py", # Requires a server to connect to
   "cpp", # Doesn't exist
   "rust", # Doesn't exist
+]
+"howto/query-and-transform/segment_url" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
 ]
 "howto/time_alignment" = [
   "cpp", # Not implemented
@@ -545,6 +550,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "howto/query_video_keyframes" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query-and-transform/segment_url" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
