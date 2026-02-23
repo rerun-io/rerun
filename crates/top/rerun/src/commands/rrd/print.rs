@@ -132,7 +132,9 @@ impl PrintCommand {
 
         if footers {
             for (_, rrd_manifests) in rx_done {
-                for (source, mut rrd_manifest) in rrd_manifests? {
+                for (source, rrd_manifest) in rrd_manifests {
+                    let mut rrd_manifest = rrd_manifest?;
+
                     // Just to be nice: this will display the origin of the data in the header.
                     rrd_manifest
                         .data
