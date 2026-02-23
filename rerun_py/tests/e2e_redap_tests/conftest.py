@@ -30,10 +30,9 @@ if TYPE_CHECKING:
 # that is AND-combined with user-supplied `-m` flag (if any). Local is the default profile
 # if nothing's specified
 PROFILES: dict[str, str] = {
-    "local": "not objectstore",
-    "dpf-docker": "not (objectstore or local_only or creates_table)",
+    "local": "",
+    "dpf-docker": "not (local_only or creates_table)",
     "dpf-stack": "not (local_only or creates_table) or cloud_only",
-    "all": "",
 }
 
 
@@ -64,7 +63,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default="local",
         choices=PROFILES.keys(),
         help="Test profile controlling which marker categories are auto-skipped. "
-        "Choices: 'local' (skip objectstore), 'ci' (skip objectstore/local_only/creates_table), 'all' (skip nothing).",
+        "Choices: 'local' (default), 'dpf-docker' (skip local_only/creates_table), "
+        "'dpf-stack' (skip local_only/creates_table), 'all' (skip nothing).",
+    )
+    parser.addoption(
+        "--cloud",
+        action="store",
+        default=None,
+        help="Cloud provider the tests are running against (e.g., 'aws', 'azure'). "
+        "Used to skip cloud-specific tests like aws_only.",
     )
 
 
@@ -76,16 +83,16 @@ def pytest_configure(config: pytest.Config) -> None:
         "local_only: mark test as requiring local resources (e.g., uses RecordingStream to generate .rrd files on-the-fly)",
     )
 
-    config.addinivalue_line(
-        "markers",
-        "objectstore: mark tests that require accessing a remote cloud object store (e.g., an s3 bucket)",
-    )
-
     # TODO(RR-2969): these tests needs to be identified because we must currently provide an URI for the created table
     # which, in general, is not possible for arbitrary server URLs.
     config.addinivalue_line(
         "markers",
         "creates_table: mark test as creating a table (which requires providing a server-accessible path)",
+    )
+
+    config.addinivalue_line(
+        "markers",
+        "aws_only: mark test as requiring AWS (e.g., uses S3 buckets directly)",
     )
 
 
@@ -111,6 +118,15 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         for item in items:
             if "local_only" in item.keywords:
                 item.add_marker(skip_marker)
+
+    # Skip aws_only tests when not running on AWS
+    cloud = config.getoption("--cloud")
+    if cloud != "aws":
+        reason = f"AWS-only test skipped on {cloud}" if cloud else "AWS-only test skipped (no --cloud specified)"
+        skip_aws = pytest.mark.skip(reason=reason)
+        for item in items:
+            if "aws_only" in item.keywords:
+                item.add_marker(skip_aws)
 
 
 DATASET_NAME = "dataset"

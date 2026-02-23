@@ -578,7 +578,7 @@ def test_register_intra_request_duplicates(
             assert uri in error_message, f"Expected URI {uri} in error message: {error_message}"
 
 
-@pytest.mark.objectstore
+@pytest.mark.aws_only
 def test_registration_crossregion(catalog_client: CatalogClient) -> None:
     """Tests whether stacks can access S3 buckets cross region when config'd to do so."""
 
