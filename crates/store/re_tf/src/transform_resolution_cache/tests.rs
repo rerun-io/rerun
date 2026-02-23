@@ -1685,6 +1685,76 @@ fn test_error_on_changing_associated_path(time: TimeInt) -> Result<(), Box<dyn s
     Ok(())
 }
 
+/// Empty frame id strings (as commonly found in technically wrong, but painfully common ROS data)
+/// should be treated as entity-derived frames, not as a shared "" frame.
+///
+/// Multiple entities with empty frame ids must each get their own independent transform.
+#[test]
+fn test_empty_frame_id_falls_back_to_entity_path_derived() -> Result<(), Box<dyn std::error::Error>>
+{
+    let mut entity_db = new_entity_db_with_subscriber_registered();
+    let mut cache = TransformResolutionCache::default();
+
+    let timeline = Timeline::new_sequence("t");
+    let timeline_name = *timeline.name();
+
+    // Two different entities, both with empty frame id strings.
+    let chunk_a = Chunk::builder(EntityPath::from("entity_a"))
+        .with_archetype_auto_row(
+            [(timeline, 1)],
+            &Transform3D::from_translation([1.0, 0.0, 0.0]).with_child_frame(""),
+        )
+        .build()?;
+    let chunk_b = Chunk::builder(EntityPath::from("entity_b"))
+        .with_archetype_auto_row(
+            [(timeline, 1)],
+            &Transform3D::from_translation([2.0, 0.0, 0.0]).with_child_frame(""),
+        )
+        .build()?;
+    entity_db.add_chunk(&Arc::new(chunk_a))?;
+    entity_db.add_chunk(&Arc::new(chunk_b))?;
+
+    apply_store_subscriber_events(&mut cache, &entity_db);
+
+    let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+
+    // Each entity should have its own entity-path-derived frame with the correct transform.
+    let frame_a = TransformFrameIdHash::from_entity_path(&EntityPath::from("entity_a"));
+    let frame_b = TransformFrameIdHash::from_entity_path(&EntityPath::from("entity_b"));
+
+    let transforms_a = transforms_per_timeline
+        .frame_transforms(frame_a)
+        .expect("entity_a should have a transform");
+    assert_eq!(
+        latest_at_transform_test(
+            transforms_a,
+            &entity_db,
+            &LatestAtQuery::new(timeline_name, 1)
+        ),
+        Some(ParentFromChildTransform {
+            parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+            transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
+        }),
+    );
+
+    let transforms_b = transforms_per_timeline
+        .frame_transforms(frame_b)
+        .expect("entity_b should have a transform");
+    assert_eq!(
+        latest_at_transform_test(
+            transforms_b,
+            &entity_db,
+            &LatestAtQuery::new(timeline_name, 1)
+        ),
+        Some(ParentFromChildTransform {
+            parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+            transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
+        }),
+    );
+
+    Ok(())
+}
+
 #[test]
 fn test_error_on_changing_associated_path_static() -> Result<(), Box<dyn std::error::Error>> {
     test_error_on_changing_associated_path(TimeInt::STATIC)
