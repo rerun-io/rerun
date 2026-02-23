@@ -29,6 +29,7 @@ image_buffer.md linguist-generated=true
 image_format.md linguist-generated=true
 image_plane_distance.md linguist-generated=true
 interactive.md linguist-generated=true
+interpolation_mode.md linguist-generated=true
 key_value_pairs.md linguist-generated=true
 keypoint_id.md linguist-generated=true
 lat_lon.md linguist-generated=true
