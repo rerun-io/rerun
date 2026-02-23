@@ -69,6 +69,7 @@ fn visualize_video_frame_texture(
             center: top_left_corner_position + 0.5 * (extent_u + extent_v),
             half_extent_u: 0.5 * extent_u,
             half_extent_v: 0.5 * extent_v,
+            reason: format!("Decoder: {decoder_delay_state:?}"),
         });
     }
 
@@ -143,6 +144,7 @@ fn show_video_playback_issue(
                 center: top_left_corner_position + 0.5 * (extent_u + extent_v),
                 half_extent_u: 0.5 * extent_u,
                 half_extent_v: 0.5 * extent_v,
+                reason: error_string,
             });
             return;
         }

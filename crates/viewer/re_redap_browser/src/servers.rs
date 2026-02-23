@@ -309,7 +309,7 @@ fn error_ui(
                     ui.add_space(8.0);
                     if has_active_login_flow {
                         ui.horizontal(|ui| {
-                            ui.loading_indicator();
+                            ui.loading_indicator("Waiting for login");
                             ui.label("Waiting for login…");
                         });
                     } else {

@@ -107,7 +107,7 @@ pub fn redap_uri_button(
                     ));
             }
         } else if is_loading {
-            ui.loading_indicator();
+            ui.loading_indicator("Loading redap recording");
 
             if ui
                 .small_icon_button(&re_ui::icons::CLOSE_SMALL, "Cancel loading the recording")

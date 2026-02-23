@@ -351,7 +351,7 @@ fn server_entries_ui(
             ui.list_item_flat_noninteractive(list_item::CustomContent::new(|ui, _| {
                 // TODO(emilk): ideally we should show this loading indicator left of the server name,
                 // instead of the expand-chevron.
-                ui.loading_indicator();
+                ui.loading_indicator("Loading server entries");
             }));
         }
 
@@ -688,6 +688,7 @@ fn receiver_ui(
                 rect,
                 1.0,
                 Some(visuals.text_color()),
+                "Loading data source",
             );
         })
         .with_buttons(|ui| {

@@ -401,6 +401,7 @@ fn decoded_frame_ui<'a>(
                         response.rect,
                         loading_indicator_opacity,
                         None,
+                        "Decoding video frame",
                     );
                 }
             }

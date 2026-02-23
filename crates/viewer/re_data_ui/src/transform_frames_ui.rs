@@ -162,7 +162,7 @@ impl TransformFramesUi {
 
         if missing_chunk_reporter.any_missing() {
             if ctx.recording().can_fetch_chunks_from_redap() {
-                ui.loading_indicator();
+                ui.loading_indicator("Fetching chunks from redap");
             } else {
                 // TODO(RR-3670): figure out how to handle missing chunks
             }

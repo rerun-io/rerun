@@ -140,7 +140,7 @@ fn some_panel_ui(ctx: &ViewerContext, ui: &mut Ui) {
     let object = do_some_query(&reporter, …)?;
     object.ui(ui);
     if reporter.is_missing_chunks() {
-        ui.loading_indicator();
+        ui.loading_indicator("Doing query");
     }
     if !reporter.warnings().is_empty() {
         warnings_ui(reporter.warnings());

@@ -248,11 +248,11 @@ impl App {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
                     ui.add(save_recording_button);
-                    ui.loading_indicator();
+                    ui.loading_indicator("Saving recording");
                 });
                 ui.horizontal(|ui| {
                     ui.add(save_selection_button);
-                    ui.loading_indicator();
+                    ui.loading_indicator("Saving selection");
                 });
             });
         } else {

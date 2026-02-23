@@ -3882,7 +3882,7 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
                 .auto_sized()
                 .show(egui_ctx, |ui| {
                     ui.horizontal(|ui| {
-                        ui.loading_indicator();
+                        ui.loading_indicator("Writing file to disk");
                         ui.label("Writing file to disk…");
                     })
                 });

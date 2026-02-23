@@ -446,6 +446,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     view_rect,
                     loading_indicator_opacity,
                     None,
+                    "Fetching chunks from redap",
                 );
             }
         }

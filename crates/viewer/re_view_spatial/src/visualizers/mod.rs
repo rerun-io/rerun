@@ -36,7 +36,7 @@ pub use utilities::{
 /// Shows a loading animation in a spatial view.
 ///
 /// Represents a 2D rectangle, oriented somewhere in scene coordinates.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct LoadingIndicator {
     pub center: glam::Vec3,
 
@@ -45,6 +45,9 @@ pub struct LoadingIndicator {
 
     /// The "radius" along the other local axis.
     pub half_extent_v: glam::Vec3,
+
+    /// Why we are loading. Shown on hover in debug builds.
+    pub reason: String,
 }
 
 // ---

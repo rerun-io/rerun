@@ -277,7 +277,7 @@ impl ExampleSection {
                     // Still waiting for example to load
                     ui.separator();
 
-                    ui.loading_indicator(); // Placeholder for the examples
+                    ui.loading_indicator("Fetching example list"); // Placeholder for the examples
                     return;
                 };
 

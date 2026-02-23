@@ -199,7 +199,7 @@ impl eframe::App for ExampleApp {
                     );
                 }
 
-                ui.loading_indicator();
+                ui.loading_indicator("Example loading indicator");
             });
         };
 

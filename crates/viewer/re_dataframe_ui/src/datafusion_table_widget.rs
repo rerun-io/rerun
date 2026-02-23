@@ -603,7 +603,7 @@ fn title_ui(
                     }
 
                     if should_show_loading_indicator {
-                        ui.loading_indicator();
+                        ui.loading_indicator("Fetching table data");
                     }
                 },
                 |ui| {

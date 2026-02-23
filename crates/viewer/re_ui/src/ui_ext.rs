@@ -60,11 +60,13 @@ pub trait UiExt {
 
     /// Show an animated loading indicator.
     ///
+    /// `reason` describes why we are loading. In debug builds, it is shown on hover.
+    ///
     /// This will also cause the UI to re-render every frame,
     /// so only use this when you actually have something loading and expect it to finish!
     #[doc(alias = "spinner")]
-    fn loading_indicator(&mut self) -> egui::Response {
-        crate::loading_indicator::loading_indicator_ui(self.ui_mut())
+    fn loading_indicator(&mut self, reason: &str) -> egui::Response {
+        crate::loading_indicator::loading_indicator_ui(self.ui_mut(), reason)
     }
 
     /// Shows a success label with a large border.
@@ -911,12 +913,17 @@ pub trait UiExt {
         response
     }
 
-    fn loading_screen_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
+    fn loading_screen_ui<R>(
+        &mut self,
+        reason: &str,
+        add_contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
         let ui = self.ui_mut();
         ui.set_min_height(ui.available_height());
+        let reason = reason.to_owned();
         ui.center("loading indicator", |ui| {
             ui.vertical_centered(|ui| {
-                ui.loading_indicator();
+                ui.loading_indicator(&reason);
                 add_contents(ui)
             })
             .inner
@@ -928,13 +935,11 @@ pub trait UiExt {
         header: impl Into<egui::RichText>,
         source: impl Into<egui::RichText>,
     ) {
-        self.loading_screen_ui(|ui| {
-            ui.label(
-                header
-                    .into()
-                    .heading()
-                    .color(ui.style().visuals.weak_text_color()),
-            );
+        let header = header.into();
+        // Reuse the header text as the loading reason shown on hover in debug builds.
+        let reason = header.text().to_owned();
+        self.loading_screen_ui(&reason, |ui| {
+            ui.label(header.heading().color(ui.style().visuals.weak_text_color()));
             ui.strong(source);
         });
     }

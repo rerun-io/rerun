@@ -32,7 +32,7 @@ impl DataUi for ComponentPath {
 
             // TODO(RR-3670): figure out how to handle missing chunks
             if any_missing_chunks && db.can_fetch_chunks_from_redap() {
-                ui.loading_indicator();
+                ui.loading_indicator("Fetching chunks from redap");
             } else if engine.store().entity_has_component_on_timeline(
                 &query.timeline(),
                 entity_path,

@@ -7,7 +7,7 @@ use re_ui::{DesignTokens, UiExt as _};
 pub fn loading_data_ui(ui: &mut egui::Ui, loading_text: &str) {
     ui.center("loading_data_ui_contents", |ui| {
         ui.vertical_centered(|ui| {
-            ui.loading_indicator();
+            ui.loading_indicator("Connecting to data source");
 
             ui.add_space(50.0);
 

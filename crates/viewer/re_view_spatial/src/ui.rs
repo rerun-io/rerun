@@ -337,7 +337,7 @@ pub fn create_labels(
 }
 
 pub fn paint_loading_indicators(
-    ui: &egui::Ui,
+    ui: &mut egui::Ui,
     ui_from_scene: egui::emath::RectTransform,
     eye3d: &Eye,
     visualizers: &re_viewer_context::VisualizerCollection,
@@ -347,10 +347,11 @@ pub fn paint_loading_indicators(
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
     for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
-        for &crate::visualizers::LoadingIndicator {
+        for crate::visualizers::LoadingIndicator {
             center,
             half_extent_u,
             half_extent_v,
+            reason,
         } in &data.loading_indicators
         {
             // Transform to ui coordinates:
@@ -363,9 +364,14 @@ pub fn paint_loading_indicators(
             let mut radius_in_scene = f32::INFINITY;
 
             // Estimate the radius so we are unlikely to exceed the projected box:
-            for radius_vec in [half_extent_u, -half_extent_u, half_extent_v, -half_extent_v] {
+            for radius_vec in [
+                *half_extent_u,
+                -*half_extent_u,
+                *half_extent_v,
+                -*half_extent_v,
+            ] {
                 let axis_radius = center_in_scene
-                    .distance(ui_from_world_3d.project_point3(center + radius_vec).xy());
+                    .distance(ui_from_world_3d.project_point3(*center + radius_vec).xy());
                 radius_in_scene = radius_in_scene.min(axis_radius);
             }
 
@@ -387,6 +393,7 @@ pub fn paint_loading_indicators(
                 rect,
                 1.0,
                 None,
+                reason,
             );
         }
     }

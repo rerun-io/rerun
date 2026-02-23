@@ -25,7 +25,7 @@ impl State {
         // The native login flow uses oauth 2.0 code authorization flow with PKCE
 
         if self.pending_authentication {
-            ui.loading_indicator();
+            ui.loading_indicator("Waiting for native login");
         } else {
             ui.horizontal(|ui| {
                 if ActionButton::new(&icons::EXTERNAL_LINK, "Log in", "Link opened!")

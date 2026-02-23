@@ -363,7 +363,8 @@ impl TimePanel {
         if let Some(loading_text) = loading_text {
             ui.horizontal(|ui| {
                 ui.centered_and_justified(|ui| {
-                    ui.loading_indicator().on_hover_text(loading_text);
+                    ui.loading_indicator(loading_text)
+                        .on_hover_text(loading_text);
                 });
             });
             return;
@@ -444,7 +445,7 @@ impl TimePanel {
         re_tracing::profile_function!();
 
         if entity_db.is_currently_downloading_manifest() {
-            ui.loading_screen_ui(|ui| {
+            ui.loading_screen_ui("Downloading meta-data", |ui| {
                 let text = "Downloading meta-data";
                 ui.label(egui::RichText::from(text).heading().strong());
             });
@@ -453,7 +454,7 @@ impl TimePanel {
         }
 
         if time_ctrl.is_pending() {
-            ui.loading_screen_ui(|ui| {
+            ui.loading_screen_ui("Waiting for timeline", |ui| {
                 let text = format!("Waiting for timeline: {}", time_ctrl.timeline_name());
                 ui.label(egui::RichText::from(text).heading().strong());
 

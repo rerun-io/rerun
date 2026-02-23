@@ -107,7 +107,7 @@ impl State {
     #[expect(clippy::unused_self)] // compat with native api
     pub fn ui(&self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.loading_indicator();
+            ui.loading_indicator("Waiting for web login");
             ui.label("Waiting for login…");
         });
     }

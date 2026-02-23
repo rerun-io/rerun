@@ -111,7 +111,7 @@ impl DataUi for InstancePath {
 
         if any_missing_chunks && db.can_fetch_chunks_from_redap() {
             // TODO(RR-3670): figure out how to handle missing chunks
-            ui.loading_indicator();
+            ui.loading_indicator("Fetching chunks from redap");
         }
     }
 }
@@ -365,7 +365,7 @@ fn component_list_ui(
                     // Maybe there _will be_ data, once we have loaded it.
                     let any_missing_chunks = !query_results.missing_virtual.is_empty();
                     if any_missing_chunks && db.can_fetch_chunks_from_redap() {
-                        ui.loading_indicator();
+                        ui.loading_indicator("Fetching chunks from redap");
                     } else {
                         ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
                     }
