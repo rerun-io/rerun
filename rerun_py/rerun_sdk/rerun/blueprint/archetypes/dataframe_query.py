@@ -41,6 +41,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
             apply_latest_at=None,
             select=None,
             entity_order=None,
+            auto_scroll=None,
         )
 
     @classmethod
@@ -61,6 +62,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         apply_latest_at: datatypes.BoolLike | None = None,
         select: blueprint_datatypes.SelectedColumnsLike | None = None,
         entity_order: blueprint_components.ColumnOrderLike | None = None,
+        auto_scroll: datatypes.BoolLike | None = None,
     ) -> DataframeQuery:
         """
         Update only some specific fields of a `DataframeQuery`.
@@ -90,6 +92,11 @@ class DataframeQuery(DataframeQueryExt, Archetype):
             come first. Entities not listed here are appended at the end in default order.
 
             If `entity_order` contains any entity path that is not included in the view, they are ignored.
+        auto_scroll:
+            Whether to auto-scroll to track the time cursor.
+
+            When enabled and the view's timeline matches the time panel's active timeline,
+            the view will scroll to keep the row at or before the current time cursor visible.
 
         """
 
@@ -102,6 +109,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
                 "apply_latest_at": apply_latest_at,
                 "select": select,
                 "entity_order": entity_order,
+                "auto_scroll": auto_scroll,
             }
 
             if clear_unset:
@@ -178,6 +186,18 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     # come first. Entities not listed here are appended at the end in default order.
     #
     # If `entity_order` contains any entity path that is not included in the view, they are ignored.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    auto_scroll: blueprint_components.AutoScrollBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.AutoScrollBatch._converter,  # type: ignore[misc]
+    )
+    # Whether to auto-scroll to track the time cursor.
+    #
+    # When enabled and the view's timeline matches the time panel's active timeline,
+    # the view will scroll to keep the row at or before the current time cursor visible.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

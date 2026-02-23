@@ -9,6 +9,7 @@ use re_chunk::RowId;
 use re_lenses::Lenses;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{LayerIdentifier, LayerRegistry, SelectedLayers};
+use re_quota_channel::send_crossbeam;
 
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
@@ -223,12 +224,14 @@ pub fn load_mcap(
     re_tracing::profile_function!();
     let store_id = settings.recommended_store_id();
 
-    if tx
-        .send(LoadedData::LogMsg(
+    if send_crossbeam(
+        tx,
+        LoadedData::LogMsg(
             MCAP_LOADER_NAME.to_owned(),
             re_log_types::LogMsg::SetStoreInfo(store_info(store_id.clone())),
-        ))
-        .is_err()
+        ),
+    )
+    .is_err()
     {
         re_log::debug_once!(
             "Failed to send `SetStoreInfo` because smart channel closed unexpectedly."
@@ -275,13 +278,11 @@ pub fn load_mcap(
 }
 
 fn send_chunk_to_channel(tx: &Sender<LoadedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
-    if tx
-        .send(LoadedData::Chunk(
-            MCAP_LOADER_NAME.to_owned(),
-            store_id.clone(),
-            chunk,
-        ))
-        .is_err()
+    if send_crossbeam(
+        tx,
+        LoadedData::Chunk(MCAP_LOADER_NAME.to_owned(), store_id.clone(), chunk),
+    )
+    .is_err()
     {
         // If the other side decided to hang up this is not our problem.
         re_log::debug_once!(

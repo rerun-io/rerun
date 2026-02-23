@@ -68,7 +68,7 @@ impl crate::DataLoader for DirectoryLoader {
                         };
 
                         for datum in data {
-                            if tx.send(datum).is_err() {
+                            if re_quota_channel::send_crossbeam(&tx, datum).is_err() {
                                 break;
                             }
                         }

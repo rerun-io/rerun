@@ -315,7 +315,7 @@ fn realtime_pipeline(
                     PipelineEvent::Analytics(event) => on_event(&mut session_file, event),
                     PipelineEvent::Flush => {
                         on_flush(&mut session_file);
-                        flush_done_tx.send(()).ok();
+                        re_quota_channel::send_crossbeam(flush_done_tx, ()).ok();
                     },
                 }
 

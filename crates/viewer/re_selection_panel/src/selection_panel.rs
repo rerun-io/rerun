@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use egui::{AtomExt as _, IntoAtoms as _, NumExt as _, TextBuffer, WidgetInfo, WidgetType};
+use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
@@ -14,7 +12,9 @@ use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
 use re_tracing::profile_function;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
-use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, icons};
+use re_ui::{
+    ComboItem, ComboItemHeader, OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, icons,
+};
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
     DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, SystemCommand,
@@ -562,17 +562,12 @@ fn visualizer_section_plus_button(
     let options =
         collect_add_visualizer_options(viewer_ctx, view_id, view_class, view_class_identifier);
 
-    let ui_style = Arc::clone(ui.style());
     ui.spacing_mut().menu_margin = egui::Margin::same(0);
     ui.add(
         ui.small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
             .enabled(!options.is_empty())
             .on_custom_menu(
-                move |popup| {
-                    popup.frame(
-                        egui::Frame::popup(&ui_style).inner_margin(egui::Margin::symmetric(10, 10)),
-                    )
-                },
+                move |popup| popup.style(re_ui::menu::menu_style()),
                 move |ui| {
                     menu_add_new_visualizer_for_view(viewer_ctx, view_id, options, ui);
                 },
@@ -591,49 +586,34 @@ fn menu_add_new_visualizer_for_view(
 ) {
     profile_function!();
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-    ui.spacing_mut().item_spacing.y = 10.0;
+    ui.spacing_mut().item_spacing.y = 0.0;
 
-    for option_per_entity in options {
-        let entity_path = &option_per_entity.entity_path;
-        ui.vertical(|ui| {
-            ui.spacing_mut().item_spacing.y = 4.0;
+    let max_height = 0.85 * ui.ctx().content_rect().height();
+    egui::ScrollArea::vertical()
+        .max_height(max_height)
+        .show(ui, |ui| {
+            for option_per_entity in options {
+                let entity_path = &option_per_entity.entity_path;
 
-            // Entity path header, indented to align with button text.
-            ui.horizontal(|ui| {
-                ui.add_space(ui.spacing().button_padding.x);
-                ui.label(
+                ui.add(ComboItemHeader::new(
                     egui::RichText::new(entity_path.ui_string())
                         .color(ui.tokens().visualizer_list_path_text_color),
-                );
-            });
+                ));
 
-            for option in option_per_entity.options {
-                let atoms = if option.is_already_visualized {
-                    (
-                        icons::CHECKED
-                            .as_image()
-                            .tint(ui.tokens().text_strong)
-                            .atom_size(ui.tokens().small_icon_size),
-                        &option.display_name,
-                        egui::Atom::grow(),
-                    )
-                        .into_atoms()
-                } else {
-                    (
-                        egui::Atom::default().atom_size(ui.tokens().small_icon_size),
-                        &option.display_name,
-                        egui::Atom::grow(),
-                    )
-                        .into_atoms()
-                };
-                let button = egui::Button::new(atoms);
-                if ui.add(button).clicked() {
-                    add_new_visualizer(viewer_ctx, view_id, entity_path, option);
-                    ui.close();
+                for option in option_per_entity.options {
+                    if ui
+                        .add(
+                            ComboItem::new(&option.display_name)
+                                .selected(option.is_already_visualized),
+                        )
+                        .clicked()
+                    {
+                        add_new_visualizer(viewer_ctx, view_id, entity_path, option);
+                        ui.close();
+                    }
                 }
             }
         });
-    }
 }
 
 /// List of options for adding a new visualizer from the "+" button menu for a given entity path.

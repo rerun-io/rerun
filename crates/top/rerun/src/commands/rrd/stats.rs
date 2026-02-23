@@ -2,6 +2,7 @@ use ahash::{HashMap, HashMapExt as _};
 use itertools::Itertools as _;
 use re_log_encoding::ToApplication as _;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
+use re_quota_channel::send_crossbeam;
 
 use crate::commands::read_raw_rrd_streams_from_file_or_stdin;
 
@@ -53,7 +54,7 @@ impl StatsCommand {
             .spawn(move || {
                 for (_source, res) in rx_raw {
                     let Ok(Msg::ArrowMsg(mut msg)) = res else {
-                        tx_uncompressed.send(res)?;
+                        send_crossbeam(&tx_uncompressed, res)?;
                         continue;
                     };
 
@@ -79,9 +80,10 @@ impl StatsCommand {
                         huh => anyhow::bail!("unknown Compression: {huh}"),
                     }
 
-                    tx_uncompressed.send(Ok(
-                        re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg),
-                    ))?;
+                    send_crossbeam(
+                        &tx_uncompressed,
+                        Ok(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg)),
+                    )?;
                 }
 
                 Ok(())

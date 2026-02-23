@@ -5,6 +5,8 @@
 //!
 //! On `wasm32`, blocking is not allowed, so we only log a warning when the budget is exceeded.
 
+#![cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // This is the safe wrapper around disallowed .send() methods
+
 use std::sync::Arc;
 
 use parking_lot::{FairMutex, Mutex};

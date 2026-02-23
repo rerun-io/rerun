@@ -166,19 +166,23 @@ impl Widget for ComboItem<'_> {
 /// A header to group multiple [`ComboItem`]s.
 ///
 /// It will ensure the correct gap above and below the header.
-pub struct ComboItemHeader(WidgetText);
+pub struct ComboItemHeader {
+    label: WidgetText,
+}
 
 impl ComboItemHeader {
     /// Create a new [`ComboItemHeader`].
     pub fn new(label: impl Into<WidgetText>) -> Self {
-        Self(label.into())
+        Self {
+            label: label.into(),
+        }
     }
 }
 
 impl Widget for ComboItemHeader {
     fn ui(self, ui: &mut Ui) -> Response {
         ui.add(
-            AtomLayout::new(self.0)
+            AtomLayout::new(self.label)
                 .frame(Frame::new().inner_margin(Margin {
                     bottom: 0,
                     left: 14, // 12 for check icon + 2 gap

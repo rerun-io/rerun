@@ -132,7 +132,7 @@ impl crate::DataLoader for ExternalLoader {
             EXTERNAL_LOADER_PATHS.iter()
         };
 
-        #[derive(PartialEq, Eq)]
+        #[derive(Debug, PartialEq, Eq)]
         struct CompatibleLoaderFound;
         let (tx_feedback, rx_feedback) = crossbeam::channel::bounded::<CompatibleLoaderFound>(64);
 
@@ -230,7 +230,7 @@ impl crate::DataLoader for ExternalLoader {
                                 // The child process has started streaming data, it is therefore compatible.
                                 // Let's get out ASAP.
                                 re_log::debug!(loader = ?exe, ?filepath, "compatible external loader found");
-                                tx_feedback.send(CompatibleLoaderFound).ok();
+                                re_quota_channel::send_crossbeam(&tx_feedback, CompatibleLoaderFound).ok();
                                 break; // we still want to check for errors once it finally exits!
                             }
 
@@ -269,7 +269,7 @@ impl crate::DataLoader for ExternalLoader {
                         let stderr_indented = stderr_str.lines().map(|line| format!("  {line}")).collect::<Vec<_>>().join("\n");
                         re_log::debug!("Dataloader stderr:\n{stderr_indented}");
 
-                        tx_feedback.send(CompatibleLoaderFound).ok();
+                        re_quota_channel::send_crossbeam(&tx_feedback, CompatibleLoaderFound).ok();
                     } else {
                         re_log::error!(?filepath, loader = ?exe, %stderr_str, "Failed to execute external loader");
                     }
@@ -326,7 +326,7 @@ fn decode_and_stream(
         };
 
         let data = LoadedData::LogMsg(ExternalLoader::name(&ExternalLoader), msg);
-        if tx.send(data).is_err() {
+        if re_quota_channel::send_crossbeam(tx, data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
     }

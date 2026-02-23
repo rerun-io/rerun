@@ -6,6 +6,7 @@ active_tab.hpp linguist-generated=true
 angular_speed.hpp linguist-generated=true
 apply_latest_at.hpp linguist-generated=true
 auto_layout.hpp linguist-generated=true
+auto_scroll.hpp linguist-generated=true
 auto_views.hpp linguist-generated=true
 background_kind.cpp linguist-generated=true
 background_kind.hpp linguist-generated=true

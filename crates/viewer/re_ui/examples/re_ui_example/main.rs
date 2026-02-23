@@ -24,7 +24,7 @@ impl UICommandSender for CommandSender {
     /// Send a command to be executed.
     fn send_ui(&self, command: UICommand) {
         // The only way this can fail is if the receiver has been dropped.
-        self.0.send(command).ok();
+        re_quota_channel::send_crossbeam(&self.0, command).ok();
     }
 }
 

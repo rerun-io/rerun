@@ -137,6 +137,23 @@ impl Query {
         );
     }
 
+    pub fn auto_scroll_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
+        Ok(self
+            .query_property
+            .component_or_empty::<components::AutoScroll>(
+                DataframeQuery::descriptor_auto_scroll().component,
+            )?
+            .is_some_and(|comp| *comp.0))
+    }
+
+    pub fn save_auto_scroll_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_auto_scroll(),
+            &components::AutoScroll(enabled.into()),
+        );
+    }
+
     pub fn save_selected_columns(
         &self,
         ctx: &ViewerContext<'_>,

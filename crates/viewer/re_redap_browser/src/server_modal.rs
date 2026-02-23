@@ -342,9 +342,11 @@ impl ServerModal {
                         ui.close();
 
                         if let ServerModalMode::Edit(edit) = &self.mode {
-                            ctx.command_sender
-                                .send(Command::RemoveServer(edit.origin.clone()))
-                                .ok();
+                            re_quota_channel::send_crossbeam(
+                                ctx.command_sender,
+                                Command::RemoveServer(edit.origin.clone()),
+                            )
+                            .ok();
                         }
 
                         let on_add: Box<dyn FnOnce() + Send> =
@@ -368,13 +370,15 @@ impl ServerModal {
                                 })
                             };
 
-                        ctx.command_sender
-                            .send(Command::AddServer {
+                        re_quota_channel::send_crossbeam(
+                            ctx.command_sender,
+                            Command::AddServer {
                                 origin: origin.clone(),
                                 credentials,
                                 on_add: Some(on_add),
-                            })
-                            .ok();
+                            },
+                        )
+                        .ok();
                     }
 
                     let cancel_button_response = ui.add(ReButton::new("Cancel").small());

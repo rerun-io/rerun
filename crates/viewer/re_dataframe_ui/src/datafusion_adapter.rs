@@ -12,6 +12,7 @@ use futures::{StreamExt as _, TryStreamExt as _};
 use re_log::{error, warn};
 use re_log_types::Timestamp;
 use re_mutex::Mutex;
+use re_quota_channel::send_crossbeam;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 use re_viewer_context::AsyncRuntimeHandle;
 
@@ -225,24 +226,26 @@ impl DataFusionQuery {
                             if !sent_schemas {
                                 let sorbet_schema = batch.sorbet_schema().clone();
                                 let original_schema = Arc::clone(&schema);
-                                if tx
-                                    .send(QueryEvent::Schema {
+                                if send_crossbeam(
+                                    &tx,
+                                    QueryEvent::Schema {
                                         original_schema,
                                         sorbet_schema,
-                                    })
-                                    .is_err()
+                                    },
+                                )
+                                .is_err()
                                 {
                                     return; // Receiver dropped, stop streaming
                                 }
                                 sent_schemas = true;
                             }
-                            if tx.send(QueryEvent::Batch(batch)).is_err() {
+                            if send_crossbeam(&tx, QueryEvent::Batch(batch)).is_err() {
                                 return; // Receiver dropped, stop streaming
                             }
                         }
                         Err(err) => {
                             sent_error = true;
-                            tx.send(QueryEvent::Error(err)).ok();
+                            send_crossbeam(&tx, QueryEvent::Error(err)).ok();
                         }
                     }
                 }
@@ -252,15 +255,21 @@ impl DataFusionQuery {
                     let sorbet_schema = SorbetSchema::try_from_raw_arrow_schema(schema.clone());
                     match sorbet_schema {
                         Ok(sorbet_schema) => {
-                            tx.send(QueryEvent::Schema {
-                                original_schema: schema,
-                                sorbet_schema,
-                            })
+                            send_crossbeam(
+                                &tx,
+                                QueryEvent::Schema {
+                                    original_schema: schema,
+                                    sorbet_schema,
+                                },
+                            )
                             .ok();
                         }
                         Err(err) => {
-                            tx.send(QueryEvent::Error(DataFusionError::External(err.into())))
-                                .ok();
+                            send_crossbeam(
+                                &tx,
+                                QueryEvent::Error(DataFusionError::External(err.into())),
+                            )
+                            .ok();
                         }
                     }
                 }

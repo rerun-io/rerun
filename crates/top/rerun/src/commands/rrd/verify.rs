@@ -1,11 +1,13 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use arrow::array::AsArray as _;
 use itertools::Itertools as _;
+
+use re_log_encoding::RawRrdManifest;
 use re_log_types::LogMsg;
 use re_sdk_types::reflection::{ComponentDescriptorExt as _, Reflection};
 
-use crate::commands::read_rrd_streams_from_file_or_stdin;
+use crate::commands::{read_rrd_streams_from_file_or_stdin, stdio::InputSource};
 
 // ---
 
@@ -13,21 +15,62 @@ use crate::commands::read_rrd_streams_from_file_or_stdin;
 pub struct VerifyCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
+
+    /// If true, ensures that RRD footers are present and well formed.
+    #[clap(long, default_value_t=true, num_args=0..=1)]
+    check_footers: bool,
 }
 
 impl VerifyCommand {
     pub fn run(&self) -> anyhow::Result<()> {
         let mut verifier = Verifier::new()?;
 
-        let Self { path_to_input_rrds } = self;
+        let Self {
+            path_to_input_rrds,
+            check_footers,
+        } = self;
 
-        let (rx, _) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
+        let (rx, rx_done) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
-        let mut seen_files = std::collections::HashSet::new();
+        let mut seen_files: HashMap<InputSource, Option<RawRrdManifest>> = HashMap::new();
 
         for (source, res) in rx {
             verifier.verify_log_msg(&source.to_string(), res?);
-            seen_files.insert(source);
+            seen_files.insert(source, None);
+        }
+
+        if *check_footers {
+            for (_, rrd_manifests) in rx_done {
+                for (source, rrd_manifest) in rrd_manifests {
+                    let rrd_manifest = match rrd_manifest {
+                        Ok(m) => Some(m),
+
+                        Err(err) => {
+                            verifier
+                                .errors
+                                .insert(format!("{source}: Corrupt RRD manifest: {err:#}"));
+                            None
+                        }
+                    };
+
+                    if seen_files
+                        .insert(source.clone(), rrd_manifest)
+                        .is_some_and(|v| v.is_some())
+                    {
+                        verifier
+                            .errors
+                            .insert(format!("{source}: More than one RRD manifest"));
+                    }
+                }
+            }
+
+            for (source, rrd_manifest) in &seen_files {
+                if rrd_manifest.is_none() {
+                    verifier
+                        .errors
+                        .insert(format!("{source}: Missing RRD manifest"));
+                }
+            }
         }
 
         if verifier.errors.is_empty() {
@@ -38,7 +81,7 @@ impl VerifyCommand {
             }
             Ok(())
         } else {
-            for err in &verifier.errors {
+            for err in verifier.errors.iter().sorted() {
                 eprintln!("{err}");
             }
             Err(anyhow::anyhow!(

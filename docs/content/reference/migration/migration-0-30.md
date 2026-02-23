@@ -34,11 +34,24 @@ from rerun.utilities.datafusion.functions.url_generation import segment_url
 df.with_column("url", segment_url(dataset))
 
 # With timestamp
-df.with_column("url", segment_url(dataset, timestamp_col="ts", timeline_name="my_timeline"))
+df.with_column("url", segment_url(dataset, timestamp="ts", timeline_name="my_timeline"))
 ```
 
 Also, the previously deprecated `partition_url()`, `partition_url_udf()`, and `partition_url_with_timeref_udf()`
 function have been removed.
+
+### `segment_url` parameter names have been updated
+
+The `_col` suffix has been removed from all parameters of `segment_url()` since they accept any DataFusion
+expression, not just column references:
+
+| Old name         | New name     |
+|------------------|--------------|
+| `segment_id_col` | `segment_id` |
+| `timestamp_col`  | `timestamp`  |
+
+The newly introduced arguments `time_range_start`, `time_range_end`, and `selection` follow the same pattern.
+
 
 ## CLI
 

@@ -2247,6 +2247,7 @@ version = "0.30.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "re_build_tools",
+ "re_quota_channel",
  "rerun",
 ]
 
@@ -2262,6 +2263,15 @@ dependencies = [
 name = "custom_view"
 version = "0.30.0-alpha.1+dev"
 dependencies = [
+ "mimalloc",
+ "rerun",
+]
+
+[[package]]
+name = "custom_visualizer"
+version = "0.30.0-alpha.1+dev"
+dependencies = [
+ "bytemuck",
  "mimalloc",
  "rerun",
 ]
@@ -3448,9 +3458,9 @@ dependencies = [
 
 [[package]]
 name = "egui_table"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dda59864826b32b4ea1dc8f5f1035cea63bbe650beeb6263be1c72d3a6d6e36"
+checksum = "6f2cf21af68301c187bfd9c89a35f13bf2cbbcc78587f6d7ba3c5b36259337ba"
 dependencies = [
  "egui",
  "serde",
@@ -8338,6 +8348,7 @@ dependencies = [
  "jiff",
  "re_build_info",
  "re_log",
+ "re_quota_channel",
  "regex-lite",
  "serde",
  "serde_json",
@@ -8433,8 +8444,12 @@ dependencies = [
 name = "re_backoff"
 version = "0.30.0-alpha.1+dev"
 dependencies = [
+ "getrandom 0.3.3",
+ "js-sys",
  "rand 0.9.2",
  "tokio",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -8703,6 +8718,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_mcap",
+ "re_quota_channel",
  "re_sdk_types",
  "re_tracing",
  "re_video",
@@ -8825,6 +8841,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_mutex",
+ "re_quota_channel",
  "re_sdk_types",
  "re_sorbet",
  "re_test_context",
@@ -8886,6 +8903,7 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_format",
+ "re_quota_channel",
  "roxmltree",
  "rustdoc-json",
  "rustdoc-types",
@@ -8965,6 +8983,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_quota_channel",
  "re_sorbet",
  "re_tracing",
  "re_uri",
@@ -9121,6 +9140,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_protos",
+ "re_quota_channel",
  "re_sdk_types",
  "re_sorbet",
  "re_span",
@@ -9216,6 +9236,7 @@ dependencies = [
  "parking_lot",
  "re_format",
  "re_log",
+ "re_quota_channel",
  "re_tracing",
  "saturating_cast",
  "smallvec",
@@ -9439,6 +9460,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_protos",
+ "re_quota_channel",
  "re_redap_client",
  "re_sorbet",
  "re_ui",
@@ -9553,6 +9575,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_mutex",
+ "re_quota_channel",
  "re_tracing",
  "re_tuid",
  "re_video",
@@ -9988,6 +10011,7 @@ dependencies = [
  "re_case",
  "re_error",
  "re_log",
+ "re_quota_channel",
  "re_tracing",
  "regex-lite",
  "serde",
@@ -10053,6 +10077,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_mutex",
+ "re_quota_channel",
  "re_tracing",
  "ron",
  "serde",
@@ -10499,7 +10524,6 @@ dependencies = [
  "bitflags 2.9.4",
  "bytemuck",
  "camino",
- "cfg-if",
  "crossbeam",
  "datafusion",
  "directories",
@@ -10538,6 +10562,7 @@ dependencies = [
  "re_memory",
  "re_mutex",
  "re_query",
+ "re_quota_channel",
  "re_redap_client",
  "re_renderer",
  "re_rvl",
@@ -10869,6 +10894,7 @@ dependencies = [
  "re_memory",
  "re_perf_telemetry",
  "re_protos",
+ "re_quota_channel",
  "re_redap_client",
  "re_sdk",
  "re_sdk_types",
@@ -10963,6 +10989,7 @@ dependencies = [
  "re_memory",
  "re_perf_telemetry",
  "re_protos",
+ "re_quota_channel",
  "re_redap_client",
  "re_sdk",
  "re_server",

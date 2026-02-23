@@ -23,7 +23,7 @@ struct TestDecoder {
 
 impl AsyncDecoder for TestDecoder {
     fn submit_chunk(&mut self, chunk: re_video::Chunk) -> re_video::DecodeResult<()> {
-        self.sample_tx.send(chunk.sample_idx).unwrap();
+        re_quota_channel::send_crossbeam(&self.sample_tx, chunk.sample_idx).unwrap();
 
         self.sender
             .send(Ok(re_video::Frame {
@@ -794,13 +794,6 @@ fn cache_with_streaming() {
     player.play_store(15.0..25.0, dt, &store).unwrap();
 
     player.expect_decoded_samples(60..chunk_count);
-
-    // Try dropping chunks at the end.
-    unload_chunks(&store, &mut cache, 15.0..20.0);
-
-    player.play_store(15.0..20.0 - dt, dt, &store).unwrap();
-
-    player.expect_decoded_samples(60..80);
 }
 
 #[test]

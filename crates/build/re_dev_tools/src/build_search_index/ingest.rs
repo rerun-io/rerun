@@ -135,7 +135,7 @@ impl Document {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct DocumentData {
     kind: DocumentKind,
     title: String,
@@ -145,7 +145,7 @@ struct DocumentData {
     url: String,
 }
 
-#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum DocumentKind {
     Docs,

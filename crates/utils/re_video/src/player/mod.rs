@@ -699,6 +699,8 @@ impl<T: Default> VideoPlayer<T> {
             && let Some(keyframe_idx) = video_description.sample_keyframe_idx(last_enqueued)
         {
             if keyframe_idx < requested_keyframe_idx {
+                // Need to reset if we're skipping frames.
+                self.reset(video_description)?;
                 // Skip forward and just enqueue the requested keyframe.
                 self.enqueue_keyframe_range(
                     video_description,
@@ -727,13 +729,21 @@ impl<T: Default> VideoPlayer<T> {
         let min_last_sample_idx =
             requested_sample_idx + self.sample_decoder.min_num_samples_to_enqueue_ahead();
 
+        let max_last_sample_idx =
+            requested_sample_idx + self.sample_decoder.max_num_samples_to_enqueue_ahead();
+
         loop {
             let Some(last_enqueued) = self.last_enqueued else {
                 break;
             };
 
             // Enqueued enough samples as described above?
-            if last_enqueued >= min_last_sample_idx {
+            let enqueued_min_amount = last_enqueued >= min_last_sample_idx;
+            let enqueued_max_amount = last_enqueued + 1 >= max_last_sample_idx;
+            // Have we requested in the next gop?
+            let ahead_one_gop = requested_keyframe_idx + 1 < keyframe_idx;
+
+            if enqueued_min_amount && (enqueued_max_amount || ahead_one_gop) {
                 break;
             }
 
@@ -852,17 +862,13 @@ impl<T: Default> VideoPlayer<T> {
             // This way, it might later recover from the error as we progress in the video.
             self.reset(video_description)?;
         }
-        // Reset if our last enqueued sample has been unloaded.
-        //
-        // Or seeking forward by more than one GOP
+        // Reset if seeking forward by more than one GOP
         // (starting over is more efficient than trying to have the decoder catch up)
-        else if self.last_enqueued.is_some_and(|enqueued_idx| {
-            video_description
-                .samples
-                .get(enqueued_idx)
-                .is_none_or(|s| s.sample().is_none())
-                || enqueued_idx < video_description.keyframe_indices[requested_keyframe]
-        }) {
+        else if let Some(last_keyframe) = requested_keyframe.checked_sub(1)
+            && self.last_enqueued.is_some_and(|enqueued_idx| {
+                enqueued_idx < video_description.keyframe_indices[last_keyframe]
+            })
+        {
             self.reset(video_description)?;
         }
         // Previously signaled the end of the video, but encountering frames that are newer than the last enqueued.

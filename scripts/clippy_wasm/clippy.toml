@@ -108,6 +108,7 @@ disallowed-methods = [
   { path = "std::time::SystemTime::now", reason = "use `web-time` or `time` crates instead for wasm/web compatibility" },
   { path = "tokio::spawn", reason = "no Tokio runtime on web" },
   { path = "tokio::sync::mpsc::unbounded_channel", reason = "Use bounded channels on native to apply backpressure." },
+  { path = "tokio::time::sleep", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn_blocking", reason = "no Tokio runtime on web" },
   { path = "tokio::task::spawn", reason = "no Tokio runtime on web" },
 ]

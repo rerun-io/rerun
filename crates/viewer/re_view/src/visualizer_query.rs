@@ -6,7 +6,7 @@ use re_viewer_context::{
 
 use crate::{
     BlueprintResolvedResults, BlueprintResolvedResultsExt as _, ChunksWithComponent,
-    HybridResultsChunkIter,
+    ComponentMappingError, HybridResultsChunkIter,
 };
 
 /// Utility for processing queries while executing a visualizer instruction and reporting errors/warnings as they arise.
@@ -58,17 +58,25 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
         ) {
             Ok(chunks) => chunks,
             Err(err) => {
-                let report = VisualizerInstructionReport {
-                    severity: VisualizerReportSeverity::Error,
-                    context: VisualizerReportContext {
-                        component: Some(component),
-                        extra: None,
-                    },
-                    summary: err.summary(),
-                    details: err.details(),
-                };
+                // Don't report an error when the component is just still loading or simply not in our range.
+                if !matches!(
+                    err,
+                    ComponentMappingError::NoComponentDataForQuery(_)
+                        | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_)
+                ) {
+                    let report = VisualizerInstructionReport {
+                        severity: VisualizerReportSeverity::Error,
+                        context: VisualizerReportContext {
+                            component: Some(component),
+                            extra: None,
+                        },
+                        summary: err.summary(),
+                        details: err.details(),
+                    };
 
-                self.output.report(self.instruction_id, report);
+                    self.output.report(self.instruction_id, report);
+                }
+
                 ChunksWithComponent::empty(component)
             }
         };

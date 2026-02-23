@@ -11,6 +11,7 @@ use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
 use re_chunk::{Chunk, ChunkId, RowId, TimeInt, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkTrackingMode};
+use re_quota_channel::send_crossbeam;
 use re_sdk::external::arrow;
 use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::{Archetype as _, ComponentIdentifier, EntityPath, StoreId, StoreKind, Timeline};
@@ -331,7 +332,7 @@ impl SplitCommand {
         for (store_id, store) in stores {
             if let Some(msgs) = meta_messages.remove(&store_id) {
                 for tx in &txs_encoding {
-                    tx.send((store_id.clone(), msgs.clone()))?;
+                    send_crossbeam(tx, (store_id.clone(), msgs.clone()))?;
                 }
             }
 
@@ -354,7 +355,7 @@ impl SplitCommand {
 
                 // Make sure to do the forwarding for *every* split! They all need the blueprint!
                 for tx in &txs_encoding {
-                    tx.send((store_id.clone(), chunks.clone()))?;
+                    send_crossbeam(tx, (store_id.clone(), chunks.clone()))?;
                 }
 
                 continue;
@@ -728,51 +729,54 @@ impl SplitCommand {
 
             let mut all_unique_indexes_in_split = HashSet::default();
 
-            txs_encoding[i].send((
-                store.id(),
-                all_chunks_in_split
-                    .into_iter()
-                    .map(move |(original_chunk_id, chunk)| {
-                        (
-                            original_chunk_id,
-                            if self.discard_unused_timelines {
-                                chunk.timeline_sliced(*cutoff_timeline.name())
-                            } else {
-                                chunk
-                            },
-                        )
-                    })
-                    .inspect(|(_original_chunk_id, chunk)| {
-                        if cfg!(debug_assertions) {
-                            for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
-                                if !all_unique_indexes_in_split.insert((time, row_id)) {
-                                    eprintln!(
-                                        "ERROR: duplicate index detected on {}: {} / {row_id}",
-                                        chunk.entity_path(),
-                                        time_to_human_string(cutoff_timeline, time),
-                                    );
+            send_crossbeam(
+                &txs_encoding[i],
+                (
+                    store.id(),
+                    all_chunks_in_split
+                        .into_iter()
+                        .map(move |(original_chunk_id, chunk)| {
+                            (
+                                original_chunk_id,
+                                if self.discard_unused_timelines {
+                                    chunk.timeline_sliced(*cutoff_timeline.name())
+                                } else {
+                                    chunk
+                                },
+                            )
+                        })
+                        .inspect(|(_original_chunk_id, chunk)| {
+                            if cfg!(debug_assertions) {
+                                for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
+                                    if !all_unique_indexes_in_split.insert((time, row_id)) {
+                                        eprintln!(
+                                            "ERROR: duplicate index detected on {}: {} / {row_id}",
+                                            chunk.entity_path(),
+                                            time_to_human_string(cutoff_timeline, time),
+                                        );
+                                    }
                                 }
                             }
-                        }
-                    })
-                    .map(move |(original_chunk_id, chunk)| {
-                        (
-                            original_chunk_id,
-                            re_log_types::LogMsg::ArrowMsg(
-                                store.id(),
-                                re_log_types::ArrowMsg {
-                                    chunk_id: *chunk.id(),
-                                    batch: chunk
-                                        .to_record_batch()
-                                        .expect("we got it in, surely we can get it out"),
-                                    on_release: None,
-                                },
-                            ),
-                        )
-                    })
-                    .map(|(_, chunk)| chunk)
-                    .collect(),
-            ))?;
+                        })
+                        .map(move |(original_chunk_id, chunk)| {
+                            (
+                                original_chunk_id,
+                                re_log_types::LogMsg::ArrowMsg(
+                                    store.id(),
+                                    re_log_types::ArrowMsg {
+                                        chunk_id: *chunk.id(),
+                                        batch: chunk
+                                            .to_record_batch()
+                                            .expect("we got it in, surely we can get it out"),
+                                        on_release: None,
+                                    },
+                                ),
+                            )
+                        })
+                        .map(|(_, chunk)| chunk)
+                        .collect(),
+                ),
+            )?;
         }
 
         Ok(())

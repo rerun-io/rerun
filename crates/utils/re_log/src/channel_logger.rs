@@ -45,6 +45,9 @@ impl log::Log for ChannelLogger {
             return;
         }
 
+        // Ok with a naked `send` here, because we use an unbounded channel,
+        // so this can never block.
+        #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))]
         self.tx
             .lock()
             .send(LogMsg {

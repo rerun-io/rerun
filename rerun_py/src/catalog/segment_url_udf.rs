@@ -14,10 +14,12 @@ use datafusion_ffi::udf::FFI_ScalarUDF;
 use pyo3::types::PyCapsule;
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
 
-use re_log_types::{NonMinI64, TimeCell, TimeType, TimelineName};
+use re_log_types::{
+    AbsoluteTimeRange, DataPath, NonMinI64, TimeCell, TimeType, Timeline, TimelineName,
+};
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
-use re_uri::{DatasetSegmentUri, Fragment, Origin};
+use re_uri::{DatasetSegmentUri, Fragment, Origin, TimeSelection};
 
 #[derive(Debug)]
 struct SegmentUrlUdf {
@@ -53,7 +55,7 @@ impl SegmentUrlUdf {
             // Instead, we:
             // - check the input type in `Self::return_type` (still give use plan-time validation)
             // - handle casting ourselves (we don't get automatic coercion when using `any`)
-            signature: Signature::any(5, Volatility::Immutable),
+            signature: Signature::any(8, Volatility::Immutable),
         }
     }
 }
@@ -73,9 +75,9 @@ impl ScalarUDFImpl for SegmentUrlUdf {
 
     fn return_type(&self, arg_types: &[DataType]) -> DataFusionResult<DataType> {
         // validate signature
-        if arg_types.len() != 5 {
+        if arg_types.len() != 8 {
             return Err(DataFusionError::Plan(format!(
-                "segment_url_udf expects 5 arguments, got {}",
+                "segment_url_udf expects 8 arguments, got {}",
                 arg_types.len()
             )));
         }
@@ -104,9 +106,9 @@ impl ScalarUDFImpl for SegmentUrlUdf {
             )));
         }
 
-        // arg 3: timestamp
-        let time_type = TimeType::from_arrow_datatype(&arg_types[3]);
-        if time_type.is_none() && arg_types[3] != DataType::Null {
+        // arg 3: timestamp (when)
+        let when_time_type = TimeType::from_arrow_datatype(&arg_types[3]);
+        if when_time_type.is_none() && arg_types[3] != DataType::Null {
             return Err(DataFusionError::Plan(format!(
                 "segment_url_udf expects timestamp (arg 3) to be either null, or a supported timestamp datatype, got {}",
                 arg_types[3]
@@ -121,11 +123,46 @@ impl ScalarUDFImpl for SegmentUrlUdf {
             )));
         }
 
-        // timeline must be provided if timestamp is not null
-        if arg_types[3] != DataType::Null && arg_types[4] == DataType::Null {
+        // arg 5: time_range_start
+        let range_start_time_type = TimeType::from_arrow_datatype(&arg_types[5]);
+        if range_start_time_type.is_none() && arg_types[5] != DataType::Null {
             return Err(DataFusionError::Plan(format!(
-                "segment_url_udf expects timeline (arg 4) to be provided if timestamp (arg 3) is not null, got {}",
-                arg_types[4]
+                "segment_url_udf expects time_range_start (arg 5) to be either null, or a supported timestamp datatype, got {}",
+                arg_types[5]
+            )));
+        }
+
+        // arg 6: time_range_end
+        let range_end_time_type = TimeType::from_arrow_datatype(&arg_types[6]);
+        if range_end_time_type.is_none() && arg_types[6] != DataType::Null {
+            return Err(DataFusionError::Plan(format!(
+                "segment_url_udf expects time_range_end (arg 6) to be either null, or a supported timestamp datatype, got {}",
+                arg_types[6]
+            )));
+        }
+
+        // args 5 and 6 must both be Null or both non-Null
+        let has_range_start = arg_types[5] != DataType::Null;
+        let has_range_end = arg_types[6] != DataType::Null;
+        if has_range_start != has_range_end {
+            return Err(DataFusionError::Plan(
+                "segment_url_udf expects time_range_start (arg 5) and time_range_end (arg 6) to both be null or both be non-null".to_owned(),
+            ));
+        }
+
+        // timeline must be provided if timestamp or time_range is not null
+        let needs_timeline = arg_types[3] != DataType::Null || has_range_start;
+        if needs_timeline && arg_types[4] == DataType::Null {
+            return Err(DataFusionError::Plan(
+                "segment_url_udf expects timeline (arg 4) to be provided if timestamp (arg 3) or time_range (args 5/6) is not null".to_owned(),
+            ));
+        }
+
+        // arg 7: selection (Null or castable to Utf8)
+        if !(arg_types[7] == DataType::Null || can_cast_types(&arg_types[7], &DataType::Utf8)) {
+            return Err(DataFusionError::Plan(format!(
+                "segment_url_udf expects selection (arg 7) to be Null or castable to Utf8, got {}",
+                arg_types[7]
             )));
         }
 
@@ -134,6 +171,7 @@ impl ScalarUDFImpl for SegmentUrlUdf {
 
     fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
         // Derive num_rows from all arguments: each is either a scalar (length 1) or an array (length N).
+        // TODO(ab): we could move this validation over to `Self::return_type_with_args`
         let num_rows = {
             let mut n: Option<usize> = None;
             for (i, arg) in args.args.iter().enumerate() {
@@ -168,13 +206,18 @@ impl ScalarUDFImpl for SegmentUrlUdf {
         let segment_id_array = cast_array(&args.args[2].to_array(num_rows)?, &DataType::Utf8)?;
         let segment_ids = segment_id_array.as_string::<i32>();
 
-        // Arg 3: timestamp, Arg 4: timeline
-        let ts_datatype = args.args[3].data_type();
-        let time_info = if ts_datatype == DataType::Null {
+        // Arg 4: timeline (shared between `when` and `time_selection`)
+        let timeline_name = if args.args[4].data_type() == DataType::Null {
             None
         } else {
-            let timeline_name = extract_scalar_string(&args.args[4])?;
+            Some(extract_scalar_string(&args.args[4])?)
+        };
 
+        // Arg 3: timestamp (when)
+        let ts_datatype = args.args[3].data_type();
+        let time_info: Option<(TimeType, ArrayRef)> = if ts_datatype == DataType::Null {
+            None
+        } else {
             let time_type = TimeType::from_arrow_datatype(&ts_datatype).ok_or_else(|| {
                 DataFusionError::Execution(format!(
                     "segment_url: unsupported timestamp datatype {ts_datatype:?}"
@@ -184,7 +227,38 @@ impl ScalarUDFImpl for SegmentUrlUdf {
             let ts_array = args.args[3].to_array(num_rows)?;
             let ts_array = cast_array(&ts_array, &DataType::Int64)?;
 
-            Some((timeline_name, time_type, ts_array))
+            Some((time_type, ts_array))
+        };
+
+        // Args 5/6: time_range_start / time_range_end
+        let range_start_datatype = args.args[5].data_type();
+        let time_range_info: Option<(TimeType, ArrayRef, ArrayRef)> = if range_start_datatype
+            == DataType::Null
+        {
+            None
+        } else {
+            let time_type =
+                    TimeType::from_arrow_datatype(&range_start_datatype).ok_or_else(|| {
+                        DataFusionError::Execution(format!(
+                            "segment_url: unsupported time_range_start datatype {range_start_datatype:?}"
+                        ))
+                    })?;
+
+            let start_array = args.args[5].to_array(num_rows)?;
+            let start_array = cast_array(&start_array, &DataType::Int64)?;
+
+            let end_array = args.args[6].to_array(num_rows)?;
+            let end_array = cast_array(&end_array, &DataType::Int64)?;
+
+            Some((time_type, start_array, end_array))
+        };
+
+        // Arg 7: selection (entity path string)
+        let selection_array = if args.args[7].data_type() == DataType::Null {
+            None
+        } else {
+            let arr = args.args[7].to_array(num_rows)?;
+            Some(cast_array(&arr, &DataType::Utf8)?)
         };
 
         let mut string_builder = StringBuilder::new();
@@ -197,18 +271,54 @@ impl ScalarUDFImpl for SegmentUrlUdf {
 
             let segment_id = segment_ids.value(row).to_owned();
 
-            let when = time_info
+            let when = time_info.as_ref().and_then(|(time_type, ts_array)| {
+                if ts_array.is_null(row) {
+                    return None;
+                }
+                let i64_val = ts_array
+                    .as_primitive::<arrow::datatypes::Int64Type>()
+                    .value(row);
+                let time_cell = TimeCell::new(*time_type, NonMinI64::try_from(i64_val).ok()?);
+                let tl_name = timeline_name.as_deref()?;
+                Some((TimelineName::new(tl_name), time_cell))
+            });
+
+            let time_selection =
+                time_range_info
+                    .as_ref()
+                    .and_then(|(time_type, start_arr, end_arr)| {
+                        if start_arr.is_null(row) || end_arr.is_null(row) {
+                            return None;
+                        }
+                        let start_val = start_arr
+                            .as_primitive::<arrow::datatypes::Int64Type>()
+                            .value(row);
+                        let end_val = end_arr
+                            .as_primitive::<arrow::datatypes::Int64Type>()
+                            .value(row);
+                        let start = NonMinI64::try_from(start_val).ok()?;
+                        let end = NonMinI64::try_from(end_val).ok()?;
+                        let tl_name = timeline_name.as_deref()?;
+                        let timeline = Timeline::new(tl_name, *time_type);
+                        let range = AbsoluteTimeRange::new(start, end);
+                        Some(TimeSelection { timeline, range })
+                    });
+
+            let selection = selection_array
                 .as_ref()
-                .and_then(|(timeline, time_type, ts_array)| {
-                    if ts_array.is_null(row) {
+                .and_then(|arr| {
+                    let str_arr = arr.as_string::<i32>();
+                    if str_arr.is_null(row) {
                         return None;
                     }
-                    let i64_val = ts_array
-                        .as_primitive::<arrow::datatypes::Int64Type>()
-                        .value(row);
-                    let time_cell = TimeCell::new(*time_type, NonMinI64::try_from(i64_val).ok()?);
-                    Some((TimelineName::new(timeline.as_str()), time_cell))
-                });
+                    let s = str_arr.value(row);
+                    Some(s.parse::<DataPath>().map_err(|err| {
+                        DataFusionError::Execution(format!(
+                            "segment_url: failed to parse selection '{s}': {err}"
+                        ))
+                    }))
+                })
+                .transpose()?;
 
             // TODO(ab): this is an unfortunate lot of cloning just to format a URL string, but
             // chances are we'll run in other problems by the time this becomes a performance issue.
@@ -217,9 +327,9 @@ impl ScalarUDFImpl for SegmentUrlUdf {
                 dataset_id,
                 segment_id,
                 fragment: Fragment {
-                    selection: None,
+                    selection,
                     when,
-                    time_selection: None,
+                    time_selection,
                 },
             };
 

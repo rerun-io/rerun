@@ -306,11 +306,18 @@ impl StoreHub {
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(&app_id);
             let caches = self.active_caches();
 
+            let caches = caches.unwrap_or_else(|| {
+                if recording.is_some() {
+                    re_log::debug_warn!("Active recording is missing cache");
+                }
+                &EMPTY_CACHES
+            });
+
             Some(StoreContext {
                 blueprint: active_blueprint,
                 default_blueprint,
                 recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
-                caches: caches.unwrap_or(&EMPTY_CACHES),
+                caches,
                 should_enable_heuristics,
             })
         };
@@ -608,14 +615,7 @@ impl StoreHub {
     #[inline]
     pub fn active_caches(&self) -> Option<&Caches> {
         let store_id = self.active_store_id()?;
-        let caches = self.caches_per_recording.get(store_id);
-
-        debug_assert!(
-            caches.is_some(),
-            "active recordings should always have associated caches",
-        );
-
-        caches
+        self.caches_per_recording.get(store_id)
     }
 
     /// Get the [`Caches`] for a given store.

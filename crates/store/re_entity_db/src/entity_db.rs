@@ -1155,7 +1155,7 @@ impl EntityDb {
                     .entity_has_temporal_data_on_timeline(path, timeline)
                     || engine
                         .store()
-                        .entity_has_temporal_data_on_timeline(timeline, path)
+                        .entity_has_temporal_data_on_timeline(path, timeline)
             })
             .is_some()
     }
@@ -1175,7 +1175,31 @@ impl EntityDb {
             .entity_has_temporal_data_on_timeline(entity_path, timeline)
             || engine
                 .store()
-                .entity_has_temporal_data_on_timeline(timeline, entity_path)
+                .entity_has_temporal_data_on_timeline(entity_path, timeline)
+    }
+
+    /// Returns true if an entity has data for the given component on the given timeline at any point in time.
+    ///
+    /// This ignores static data.
+    /// This is a more fine grained version of [`Self::entity_has_temporal_data_on_timeline`].
+    pub fn entity_has_temporal_data_on_timeline_for_component(
+        &self,
+        engine: &StorageEngineReadGuard<'_>,
+        timeline: &TimelineName,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.rrd_manifest_index
+            .entity_has_temporal_data_on_timeline_for_component(entity_path, timeline, component)
+            || engine
+                .store()
+                .entity_has_temporal_data_on_timeline_for_component(
+                    entity_path,
+                    timeline,
+                    &component,
+                )
     }
 }
 

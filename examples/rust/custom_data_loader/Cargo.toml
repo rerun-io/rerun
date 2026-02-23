@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 crossbeam = "0.8"
+re_quota_channel = { path = "../../../crates/utils/re_quota_channel" }
 rerun = { path = "../../../crates/top/rerun", features = ["native_viewer", "run"] }
 
 [build-dependencies]

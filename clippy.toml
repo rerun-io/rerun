@@ -50,6 +50,7 @@ disallowed-methods = [
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },
   { path = "arrow::compute::take", reason = "Use `re_arrow_util::arrow_util::take_array` instead" },
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
+  { path = "crossbeam::channel::Sender::send", reason = "Use `re_quota_channel::send_crossbeam` instead, which warns if the channel is full." },
   { path = "crossbeam::channel::unbounded", reason = "Consider using bounded channels (like re_quota_channel) to apply backpressure. Only use unbounded channels when the sender and receiver are on the same thread." },
   { path = "ecolor::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
