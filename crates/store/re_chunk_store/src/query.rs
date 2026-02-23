@@ -461,7 +461,7 @@ impl ChunkStore {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_data(entity_path)
-            || self.entity_has_temporal_data_on_timeline(timeline, entity_path)
+            || self.entity_has_temporal_data_on_timeline(entity_path, timeline)
     }
 
     /// Check whether an entity has any static data or any temporal data on any timeline.
@@ -521,8 +521,8 @@ impl ChunkStore {
     #[inline]
     pub fn entity_has_temporal_data_on_timeline(
         &self,
-        timeline: &TimelineName,
         entity_path: &EntityPath,
+        timeline: &TimelineName,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
@@ -535,6 +535,33 @@ impl ChunkStore {
                     .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
                     .flat_map(|chunk_id_set| chunk_id_set.iter())
                     .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+            })
+    }
+
+    /// Check whether an entity has any temporal data for a given component.
+    ///
+    /// This is different from checking if the entity has any component, it also ensures
+    /// that some _data_ currently exists in the store for this entity.
+    ///
+    /// See [`Self::entity_has_temporal_data_on_timeline`] if you don't care about any particular component.
+    pub fn entity_has_temporal_data_on_timeline_for_component(
+        &self,
+        entity_path: &re_chunk::EntityPath,
+        timeline: &TimelineName,
+        component: &re_chunk::ComponentIdentifier,
+    ) -> bool {
+        self.temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .and_then(|temporal_chunks_per_timeline| temporal_chunks_per_timeline.get(timeline))
+            .is_some_and(|temporal_chunks_per_component| {
+                temporal_chunks_per_component
+                    .get(component)
+                    .is_some_and(|chunk_id_sets| {
+                        let chunk_id_sets = chunk_id_sets.per_start_time.values();
+                        chunk_id_sets
+                            .flat_map(|chunk_id_set| chunk_id_set.iter())
+                            .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+                    })
             })
     }
 

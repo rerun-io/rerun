@@ -88,6 +88,59 @@ struct ActiveRemapping {
     selector: Option<re_arrow_combinators::Selector>,
 }
 
+/// Determines the exact reason why a component was not found.
+fn component_not_found_error(
+    component: ComponentIdentifier,
+    entity_path: &re_log_types::EntityPath,
+    missing_virtual_chunks: &[re_chunk_store::ChunkId],
+    entity_db: &re_entity_db::EntityDb,
+    store_engine: &re_query::StorageEngineReadGuard<'_>,
+    timeline_name: re_log_types::TimelineName,
+) -> ComponentMappingError {
+    // Check whether the component is *ever* present on this entity.
+    // Since static data would show up in both latest-at & range queries, we only care about temporal data here.
+    if entity_db.entity_has_temporal_data_on_timeline_for_component(
+        store_engine,
+        &timeline_name,
+        entity_path,
+        component,
+    ) {
+        ComponentMappingError::NoComponentDataForQuery(component)
+    } else {
+        // Check whether the data *might* come in later.
+        if !missing_virtual_chunks.is_empty()
+            && let Some(rrd_manifest) = entity_db.rrd_manifest_index().manifest()
+        {
+            let store = store_engine.store();
+
+            let timeline = store.timelines().get(&timeline_name).copied();
+
+            for missing_root_chunk_id in missing_virtual_chunks
+                .iter()
+                .flat_map(|chunk_id| store.find_root_chunks(chunk_id))
+            {
+                if let Some(per_component) = rrd_manifest.static_map().get(entity_path)
+                    && per_component.get(&component) == Some(&missing_root_chunk_id)
+                {
+                    return ComponentMappingError::NoComponentDataForQueryButIsFetchable(component);
+                }
+
+                if let Some(timeline) = &timeline
+                    && let Some(per_timeline) = rrd_manifest.temporal_map().get(entity_path)
+                    && let Some(per_component) = per_timeline.get(timeline)
+                    && let Some(per_chunk) = per_component.get(&component)
+                    && per_chunk.contains_key(&missing_root_chunk_id)
+                {
+                    return ComponentMappingError::NoComponentDataForQueryButIsFetchable(component);
+                }
+            }
+        }
+
+        // Seems the lack of data is just specific to our current query.
+        ComponentMappingError::ComponentNotPresentOnEntity(component)
+    }
+}
+
 /// Queries for the given `components` using range semantics with blueprint support.
 ///
 /// Data will be resolved, in order of priority:
@@ -161,7 +214,8 @@ pub fn range_with_blueprint_resolved_data<'a>(
             component_sources.insert(*target_component, source);
         }
 
-        let mut results = ctx.recording_engine().cache().range(
+        let engine = ctx.recording_engine();
+        let mut results = engine.cache().range(
             range_query,
             &data_result.entity_path,
             components.iter().copied(),
@@ -198,7 +252,14 @@ pub fn range_with_blueprint_resolved_data<'a>(
             } else {
                 component_sources.insert(
                     *target,
-                    Err(ComponentMappingError::ComponentNotFound(*source)),
+                    Err(component_not_found_error(
+                        *source,
+                        &data_result.entity_path,
+                        &results.missing_virtual,
+                        ctx.recording(),
+                        &engine,
+                        range_query.timeline,
+                    )),
                 );
             }
         }
@@ -316,7 +377,8 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         }
     }
 
-    let mut store_results = ctx.viewer_ctx.recording_engine().cache().latest_at(
+    let engine = ctx.viewer_ctx.recording_engine();
+    let mut store_results = engine.cache().latest_at(
         latest_at_query,
         &data_result.entity_path,
         components.iter().copied(),
@@ -350,7 +412,14 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         } else {
             component_sources.insert(
                 *target,
-                Err(ComponentMappingError::ComponentNotFound(*source)),
+                Err(component_not_found_error(
+                    *source,
+                    &data_result.entity_path,
+                    &store_results.missing_virtual,
+                    ctx.viewer_ctx.recording(),
+                    &engine,
+                    latest_at_query.timeline(),
+                )),
             );
         }
     }

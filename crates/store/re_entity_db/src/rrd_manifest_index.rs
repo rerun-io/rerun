@@ -342,6 +342,9 @@ impl RrdManifestIndex {
         });
     }
 
+    /// Returns true if an entity has any temporal data on the given timeline.
+    ///
+    /// This ignores static data.
     pub fn entity_has_temporal_data_on_timeline(
         &self,
         entity: &re_chunk::EntityPath,
@@ -350,6 +353,21 @@ impl RrdManifestIndex {
         self.sorted_chunks
             .get(timeline, &entity.hash())
             .is_some_and(|e| e.has_data())
+    }
+
+    /// Returns true if an entity has data for the given component on the given timeline at any point in time.
+    ///
+    /// This ignores static data.
+    /// This is a more fine grained version of [`Self::entity_has_temporal_data_on_timeline`].
+    pub fn entity_has_temporal_data_on_timeline_for_component(
+        &self,
+        entity: &re_chunk::EntityPath,
+        timeline: &TimelineName,
+        component: re_chunk::ComponentIdentifier,
+    ) -> bool {
+        self.sorted_chunks
+            .get(timeline, &entity.hash())
+            .is_some_and(|e| !e.component_chunks(&component).is_empty())
     }
 
     pub fn entity_has_static_data(&self, entity: &re_chunk::EntityPath) -> bool {

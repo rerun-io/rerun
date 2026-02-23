@@ -69,9 +69,15 @@ pub enum ComponentMappingError {
         err: Arc<arrow::error::ArrowError>,
     },
 
-    /// Component was not found.
-    #[error("Component '{0}' not found")]
-    ComponentNotFound(re_types_core::ComponentIdentifier),
+    #[error("Component '{0}' does not exist on the entity.")]
+    ComponentNotPresentOnEntity(re_types_core::ComponentIdentifier),
+
+    #[error("Component '{0}' exists on the entity but no data is available at the given time.")]
+    NoComponentDataForQuery(re_types_core::ComponentIdentifier),
+
+    // Note that we don't know whether we're actively fetching data for it.
+    #[error("Component '{0}' exists on the entity but data for it hasn't been loaded yet.")]
+    NoComponentDataForQueryButIsFetchable(re_types_core::ComponentIdentifier),
 }
 
 impl ComponentMappingError {
@@ -86,9 +92,9 @@ impl ComponentMappingError {
             } => {
                 format!("Failed to cast from {source_datatype} to {target_datatype}.")
             }
-            Self::ComponentNotFound(component) => {
-                format!("Component '{component}' not found.")
-            }
+            Self::ComponentNotPresentOnEntity(_)
+            | Self::NoComponentDataForQuery(_)
+            | Self::NoComponentDataForQueryButIsFetchable(_) => self.to_string(),
         }
     }
 
@@ -98,7 +104,9 @@ impl ComponentMappingError {
                 Some(err.to_string())
             }
             Self::CastFailed { err, .. } => Some(err.to_string()),
-            Self::ComponentNotFound(_) => None,
+            Self::ComponentNotPresentOnEntity(_)
+            | Self::NoComponentDataForQuery(_)
+            | Self::NoComponentDataForQueryButIsFetchable(_) => None,
         }
     }
 }
