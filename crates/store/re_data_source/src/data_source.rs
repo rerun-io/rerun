@@ -153,17 +153,42 @@ impl LogDataSource {
         } else if let Ok(uri) = url.parse::<re_uri::ProxyUri>() {
             Some(Self::RedapProxy(uri))
         } else {
+            // Only do magic bytes loading if the url has a protocol
+            // without this, `anything` or `xyz` would be a proper url we'd try to load from
+            let mut was_proper_http_url = true;
             let url = url::Url::parse(url)
-                .or_else(|_| url::Url::parse(&format!("http://{url}")))
+                .or_else(|_| {
+                    was_proper_http_url = false;
+                    url::Url::parse(&format!("http://{url}"))
+                })
                 .ok()?;
+
+            // We can only load http/s urls, so don't try to load any other schemes
+            if url.scheme() != "http" && url.scheme() != "https" {
+                return None;
+            }
+
             let path = url.path();
             let extension = std::path::Path::new(path)
                 .extension()
                 .and_then(|e| e.to_str())
                 .unwrap_or("");
 
-            re_data_loader::is_supported_file_extension(extension)
-                .then_some(Self::HttpUrl { url, follow })
+            // If the url contains a `?url=…` param, it'll be parsed as a `ViewerOpenUrl` later
+            // so don't try loading it as a `HttpUrl` if it doesn't have a file extension we know.
+            let contains_viewer_query_url_param = url.query_pairs().any(|(key, _)| key == "url");
+
+            if re_data_loader::is_supported_file_extension(extension) {
+                Some(Self::HttpUrl { url, follow: false })
+            } else if extension.is_empty()
+                && was_proper_http_url
+                && !contains_viewer_query_url_param
+            {
+                // No extension — accept the URL and try to detect format after download
+                Some(Self::HttpUrl { url, follow })
+            } else {
+                None // Has an extension but it's not one we support
+            }
         }
     }
 
@@ -429,6 +454,14 @@ mod tests {
             "https://example.com/scene.glb",
             "https://example.com/photo.png",
             "https://example.com/video.mp4",
+            // Extensionless URLs — accepted for magic bytes detection after download
+            "https://example.com/download",
+            "https://example.com/api/file?id=123",
+            "https://storage.example.com/abc123?token=xyz",
+            "https://example.com/files?my.id",
+            // Since the path has an explicit extension, this will be parsed as a DataSource and
+            // not a `ViewerOpenUrl` (see invalid section below)
+            "https://example.com/some-file.rrd?url=recording.rrd",
         ];
         let grpc = [
             // segment_id (new)
@@ -443,6 +476,16 @@ mod tests {
             "rerun+http://127.0.0.1:9876/proxy",
             "rerun+https://127.0.0.1:9876/proxy",
             "rerun+http://example.com/proxy",
+        ];
+
+        let invalid = [
+            // This will be ignored as a DataSource so it can later be parsed as a
+            // `ViewerOpenUrl` (due to the ?url=)
+            "https://example.com/some-file?url=recording.rrd",
+            // Extensionless urls need a proper http protocol present, otherwise even `aaaa` would
+            // be parsed as an http url.
+            "example.com/some-file",
+            "aaaa",
         ];
 
         let file_source = FileSource::DragAndDrop {
@@ -486,6 +529,14 @@ mod tests {
                 eprintln!(
                     "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
                 );
+                failed = true;
+            }
+        }
+
+        for uri in invalid {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
+            if data_source.is_some() {
+                eprintln!("Expected {uri:?} to be None. Instead it got parsed as {data_source:?}");
                 failed = true;
             }
         }

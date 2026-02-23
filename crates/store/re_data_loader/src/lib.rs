@@ -521,10 +521,106 @@ pub fn is_supported_file_extension(extension: &str) -> bool {
     supported_extensions().any(|ext| ext == extension)
 }
 
+/// Detect the file format from the first bytes of a file (magic bytes).
+///
+/// Returns the file extension (e.g., `"rrd"`, `"mcap"`, `"png"`) if the format is recognized.
+///
+/// Delegates to [`re_sdk_types::components::MediaType::guess_from_data`] which handles
+/// Robotics-specific formats (RRD, MCAP, PLY) and standard formats (PNG, JPEG, GLB, MP4, etc.).
+pub fn detect_format_from_bytes(bytes: &[u8]) -> Option<String> {
+    let media_type = re_sdk_types::components::MediaType::guess_from_data(bytes)?;
+    media_type.file_extension().map(|e| e.to_owned())
+}
+
+/// Map a MIME content type to a file extension.
+///
+/// Returns `None` for types that are too generic to be useful (e.g. `application/octet-stream`)
+/// or for unrecognized types.
+///
+/// Delegates to [`re_sdk_types::components::MediaType::file_extension`].
+pub fn content_type_to_extension(content_type: &str) -> Option<String> {
+    // Take just the MIME type, ignoring parameters like charset
+    let mime = content_type.split(';').next()?.trim();
+
+    // Skip overly generic types
+    if mime == "application/octet-stream" {
+        return None;
+    }
+
+    let media_type = re_sdk_types::components::MediaType(mime.to_owned().into());
+    media_type.file_extension().map(|e| e.to_owned())
+}
+
 #[test]
 fn test_supported_extensions() {
     assert!(is_supported_file_extension("rrd"));
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
     assert!(is_supported_file_extension("urdf"));
+}
+
+#[test]
+fn test_detect_format_from_bytes() {
+    assert_eq!(
+        detect_format_from_bytes(b"RRF2xxxxx").as_deref(),
+        Some("rrd")
+    );
+    assert_eq!(
+        detect_format_from_bytes(b"RRF0xxxxx").as_deref(),
+        Some("rrd")
+    );
+    assert_eq!(
+        detect_format_from_bytes(&[0x89, 0x4D, 0x43, 0x41, 0x50, 0x30, 0x0D, 0x0A]).as_deref(),
+        Some("mcap")
+    );
+    assert_eq!(
+        detect_format_from_bytes(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).as_deref(),
+        Some("png")
+    );
+    assert_eq!(
+        detect_format_from_bytes(&[0xFF, 0xD8, 0xFF, 0xE0]).as_deref(),
+        Some("jpg")
+    );
+    assert_eq!(
+        detect_format_from_bytes(b"glTFxxxx").as_deref(),
+        Some("glb")
+    );
+    assert_eq!(
+        detect_format_from_bytes(b"ply\nxxx").as_deref(),
+        Some("ply")
+    );
+    assert_eq!(detect_format_from_bytes(b"unknown").as_deref(), None);
+    assert_eq!(detect_format_from_bytes(b"").as_deref(), None);
+}
+
+#[test]
+fn test_content_type_to_extension() {
+    assert_eq!(
+        content_type_to_extension("image/png").as_deref(),
+        Some("png")
+    );
+    assert_eq!(
+        content_type_to_extension("image/png; charset=utf-8").as_deref(),
+        Some("png")
+    );
+    assert_eq!(
+        content_type_to_extension("image/jpeg").as_deref(),
+        Some("jpg")
+    );
+    assert_eq!(
+        content_type_to_extension("video/mp4").as_deref(),
+        Some("mp4")
+    );
+    assert_eq!(
+        content_type_to_extension("model/gltf-binary").as_deref(),
+        Some("glb")
+    );
+    assert_eq!(
+        content_type_to_extension("application/x-rerun").as_deref(),
+        Some("rrd")
+    );
+    assert_eq!(
+        content_type_to_extension("application/octet-stream").as_deref(),
+        None
+    );
 }

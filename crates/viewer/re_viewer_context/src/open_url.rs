@@ -871,10 +871,8 @@ mod tests {
         ];
 
         for url in invalid_urls {
-            assert!(
-                url.parse::<ViewerOpenUrl>().is_err(),
-                "Expected error for {url}"
-            );
+            let result = url.parse::<ViewerOpenUrl>();
+            assert!(result.is_err(), "Expected error for {url}: {result:?}");
         }
     }
 

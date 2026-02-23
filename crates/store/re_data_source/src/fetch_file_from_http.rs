@@ -51,6 +51,10 @@ pub fn fetch_and_load(url: &url::Url) -> LogReceiver {
                         re_format::format_bytes(response.bytes.len() as f64)
                     );
 
+                    // If the URL-derived filename has no recognized extension,
+                    // try to detect the format from Content-Type header or magic bytes.
+                    let filename = detect_filename(&filename, &response, &response.bytes);
+
                     let bytes: Arc<[u8]> = response.bytes.into();
 
                     let shared_recording_id = RecordingId::random();
@@ -86,4 +90,31 @@ pub fn fetch_and_load(url: &url::Url) -> LogReceiver {
     );
 
     rx
+}
+
+/// If `url_filename` has no recognized extension, try to detect the format
+/// from the Content-Type header, then from magic bytes.
+fn detect_filename(url_filename: &str, response: &ehttp::Response, bytes: &[u8]) -> String {
+    let has_known_extension = std::path::Path::new(url_filename)
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(re_data_loader::is_supported_file_extension);
+
+    if has_known_extension {
+        return url_filename.to_owned();
+    }
+
+    // Try Content-Type header
+    if let Some(content_type) = response.content_type()
+        && let Some(ext) = re_data_loader::content_type_to_extension(content_type)
+    {
+        return format!("{url_filename}.{ext}");
+    }
+
+    // Try magic bytes
+    if let Some(ext) = re_data_loader::detect_format_from_bytes(bytes) {
+        return format!("{url_filename}.{ext}");
+    }
+
+    url_filename.to_owned()
 }
