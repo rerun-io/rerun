@@ -263,6 +263,10 @@ pub struct LatestAtResults {
     /// Results for each individual component.
     ///
     /// Each [`UnitChunkShared`] MUST always contain the corresponding component.
+    ///
+    /// Each [`UnitChunkShared`] will either contain the queried timeline, or be static.
+    /// Regardless, calling [`UnitChunkShared::index`] with the
+    /// [`LatestAtQuery::timeline`] will always return `Some`thing.
     pub components: IntMap<ComponentIdentifier, UnitChunkShared>,
 }
 
@@ -347,7 +351,7 @@ impl LatestAtResults {
         index: (TimeInt, RowId),
         chunk: UnitChunkShared,
     ) {
-        debug_assert!(chunk.num_rows() == 1);
+        re_log::debug_assert_eq!(chunk.num_rows(), 1);
 
         self.min_index = self.min_index.min(index);
         self.max_index = self.max_index.max(index);

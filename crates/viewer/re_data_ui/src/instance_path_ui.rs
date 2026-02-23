@@ -14,6 +14,9 @@ use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 use super::DataUi;
 use crate::{ArchetypeComponentMap, extra_data_ui::ExtraDataUi};
 
+// Showing more than this takes up too much space
+const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
+
 impl DataUi for InstancePath {
     fn data_ui(
         &self,
@@ -71,14 +74,12 @@ impl DataUi for InstancePath {
         let any_missing_chunks = !query_results.missing_virtual.is_empty();
 
         instance_path_ui(
-            self,
             ctx,
             ui,
             ui_layout,
+            self,
             query,
             db,
-            entity_path,
-            instance,
             &components_by_archetype,
             &query_results,
         );
@@ -117,146 +118,170 @@ impl DataUi for InstancePath {
 
 #[expect(clippy::too_many_arguments)]
 fn instance_path_ui(
-    instance_path: &InstancePath,
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
+    instance_path: &InstancePath,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
-    entity_path: &re_log_types::EntityPath,
-    instance: &re_log_types::Instance,
     components_by_archetype: &ArchetypeComponentMap,
     query_results: &LatestAtResults,
 ) {
-    // Showing more than this takes up too much space
-    const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
-
     let num_components = components_by_archetype
         .values()
         .map(|v| v.len())
         .sum::<usize>();
 
-    if ui_layout.is_single_line() {
-        ui_layout.label(
-            ui,
-            format!(
-                "{} with {}",
-                format_plural_s(components_by_archetype.len(), "archetype"),
-                format_plural_s(num_components, "total component")
-            ),
-        );
-    } else if ui_layout == UiLayout::Tooltip && MAX_COMPONENTS_IN_TOOLTIP < num_components {
-        // Too many to show all in a tooltip.
-
-        let mut show_only_instanced = false;
-
-        if !instance_path.is_all() {
-            // Focus on the components that have different values per instance (non-splatted components):
-            let instanced_components_by_archetype: ArchetypeComponentMap = components_by_archetype
-                .iter()
-                .filter_map(|(archetype_name, archetype_components)| {
-                    let instanced_archetype_components = archetype_components
-                        .iter()
-                        .filter(|descr| {
-                            query_results
-                                .components
-                                .get(&descr.component)
-                                .is_some_and(|unit| unit.num_instances(descr.component) > 1)
-                        })
-                        .cloned()
-                        .collect_vec();
-                    if instanced_archetype_components.is_empty() {
-                        None
-                    } else {
-                        Some((*archetype_name, instanced_archetype_components))
-                    }
-                })
-                .collect();
-
-            let num_instanced_components = instanced_components_by_archetype
-                .values()
-                .map(|v| v.len())
-                .sum::<usize>();
-
-            show_only_instanced = num_instanced_components <= MAX_COMPONENTS_IN_TOOLTIP;
-
-            if show_only_instanced {
+    match ui_layout {
+        UiLayout::List => {
+            ui_layout.label(
+                ui,
+                format!(
+                    "{} with {}",
+                    format_plural_s(components_by_archetype.len(), "archetype"),
+                    format_plural_s(num_components, "total component")
+                ),
+            );
+        }
+        UiLayout::Tooltip => {
+            if num_components <= MAX_COMPONENTS_IN_TOOLTIP {
                 component_list_ui(
                     ctx,
                     ui,
                     ui_layout,
+                    instance_path,
                     query,
                     db,
-                    entity_path,
-                    instance,
-                    &instanced_components_by_archetype,
+                    components_by_archetype,
                     query_results,
                 );
+            } else {
+                // Too many to show all in a tooltip.
+                let showed_short_summary = try_summary_ui_for_tooltip(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    instance_path,
+                    query,
+                    db,
+                    components_by_archetype,
+                    query_results,
+                )
+                .is_ok();
 
-                let num_skipped = num_components - num_instanced_components;
-                ui.label(format!(
-                    "…plus {num_skipped} more {}",
-                    if num_skipped == 1 {
-                        "component"
-                    } else {
-                        "components"
-                    }
-                ));
+                if !showed_short_summary {
+                    // Show just a very short summary:
+
+                    ui.list_item_label(format_plural_s(num_components, "component"));
+
+                    let archetype_count = components_by_archetype.len();
+                    ui.list_item_label(format!(
+                        "{}: {}",
+                        format_plural_s(archetype_count, "archetype"),
+                        components_by_archetype
+                            .keys()
+                            .map(|archetype| {
+                                if let Some(archetype) = archetype {
+                                    archetype.short_name()
+                                } else {
+                                    "<Without archetype>"
+                                }
+                            })
+                            .join(", ")
+                    ));
+                }
             }
         }
-
-        if !show_only_instanced {
-            // Show just a rough summary:
-
-            ui.list_item_label(format_plural_s(num_components, "component"));
-
-            let archetype_count = components_by_archetype.len();
-            ui.list_item_label(format!(
-                "{}: {}",
-                format_plural_s(archetype_count, "archetype"),
-                components_by_archetype
-                    .keys()
-                    .map(|archetype| {
-                        if let Some(archetype) = archetype {
-                            archetype.short_name()
-                        } else {
-                            "<Without archetype>"
-                        }
-                    })
-                    .join(", ")
-            ));
+        UiLayout::SelectionPanel => {
+            component_list_ui(
+                ctx,
+                ui,
+                ui_layout,
+                instance_path,
+                query,
+                db,
+                components_by_archetype,
+                query_results,
+            );
         }
-    } else {
-        // TODO(#7026): Instances today are too poorly defined:
-        // For many archetypes it makes sense to slice through all their component arrays with the same index.
-        // However, there are cases when there are multiple dimensions of slicing that make sense.
-        // This is most obvious for meshes & graph nodes where there are different dimensions for vertices/edges/etc.
-        //
-        // For graph nodes this is particularly glaring since our indicices imply nodes today and
-        // unlike with meshes it's very easy to hover & select individual nodes.
-        // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
-        // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
-        let mut components_by_archetype = components_by_archetype.clone();
-        if !instance_path.is_all() {
-            for components in components_by_archetype.values_mut() {
-                components.retain(|component| {
-                    component.component_type != Some(components::GraphEdge::name())
-                });
-            }
-        }
-
-        component_list_ui(
-            ctx,
-            ui,
-            ui_layout,
-            query,
-            db,
-            entity_path,
-            instance,
-            &components_by_archetype,
-            query_results,
-        );
     }
+}
+
+/// Show the value of a single instance (e.g. a point in a point cloud),
+/// focusing only on the components that are different between different points.
+#[expect(clippy::too_many_arguments)]
+fn try_summary_ui_for_tooltip(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    instance_path: &InstancePath,
+    query: &re_chunk_store::LatestAtQuery,
+    db: &re_entity_db::EntityDb,
+    components_by_archetype: &ArchetypeComponentMap,
+    query_results: &LatestAtResults,
+) -> Result<(), ()> {
+    let num_components = components_by_archetype
+        .values()
+        .map(|v| v.len())
+        .sum::<usize>();
+
+    if instance_path.is_all() {
+        return Err(()); // not an instance
+    }
+
+    // Focus on the components that have different values per instance (non-splatted components):
+    let instanced_components_by_archetype: ArchetypeComponentMap = components_by_archetype
+        .iter()
+        .filter_map(|(archetype_name, archetype_components)| {
+            let instanced_archetype_components = archetype_components
+                .iter()
+                .filter(|descr| {
+                    query_results
+                        .components
+                        .get(&descr.component)
+                        .is_some_and(|unit| unit.num_instances(descr.component) > 1)
+                })
+                .cloned()
+                .collect_vec();
+            if instanced_archetype_components.is_empty() {
+                None
+            } else {
+                Some((*archetype_name, instanced_archetype_components))
+            }
+        })
+        .collect();
+
+    let num_instanced_components = instanced_components_by_archetype
+        .values()
+        .map(|v| v.len())
+        .sum::<usize>();
+
+    if MAX_COMPONENTS_IN_TOOLTIP < num_instanced_components {
+        return Err(());
+    }
+
+    component_list_ui(
+        ctx,
+        ui,
+        ui_layout,
+        instance_path,
+        query,
+        db,
+        &instanced_components_by_archetype,
+        query_results,
+    );
+
+    let num_skipped = num_components - num_instanced_components;
+    ui.label(format!(
+        "…plus {num_skipped} more {}",
+        if num_skipped == 1 {
+            "component"
+        } else {
+            "components"
+        }
+    ));
+
+    Ok(())
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -264,18 +289,40 @@ fn component_list_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
+    instance_path: &InstancePath,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
-    entity_path: &re_log_types::EntityPath,
-    instance: &re_log_types::Instance,
     components_by_archetype: &ArchetypeComponentMap,
     query_results: &LatestAtResults,
 ) {
+    let InstancePath {
+        entity_path,
+        instance,
+    } = instance_path;
+
+    // TODO(#7026): Instances today are too poorly defined:
+    // For many archetypes it makes sense to slice through all their component arrays with the same index.
+    // However, there are cases when there are multiple dimensions of slicing that make sense.
+    // This is most obvious for meshes & graph nodes where there are different dimensions for vertices/edges/etc.
+    //
+    // For graph nodes this is particularly glaring since our indicices imply nodes today and
+    // unlike with meshes it's very easy to hover & select individual nodes.
+    // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
+    // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
+    let mut components_by_archetype = components_by_archetype.clone();
+    if !instance.is_all() {
+        for components in components_by_archetype.values_mut() {
+            components.retain(|component| {
+                component.component_type != Some(components::GraphEdge::name())
+            });
+        }
+    }
+
     re_ui::list_item::list_item_scope(
         ui,
         egui::Id::from("component list").with(entity_path),
         |ui| {
-            for (archetype, archetype_components) in components_by_archetype {
+            for (archetype, archetype_components) in &components_by_archetype {
                 if archetype.is_none() && components_by_archetype.len() == 1 {
                     // They are all without archetype, so we can skip the label.
                 } else {
@@ -299,10 +346,9 @@ fn component_list_ui(
                             ctx,
                             ui,
                             ui_layout,
+                            instance_path,
                             query,
                             db,
-                            entity_path,
-                            instance,
                             &archetype_component_units,
                             component_descr,
                             unit,
@@ -334,14 +380,18 @@ fn component_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
+    instance_path: &InstancePath,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
-    entity_path: &re_log_types::EntityPath,
-    instance: &re_log_types::Instance,
     archetype_components: &[(ComponentDescriptor, UnitChunkShared)],
     component_descr: &ComponentDescriptor,
     unit: &UnitChunkShared,
 ) {
+    let InstancePath {
+        entity_path,
+        instance,
+    } = instance_path;
+
     let interactive = ui_layout != UiLayout::Tooltip;
 
     let component_path = ComponentPath::new(entity_path.clone(), component_descr.component);

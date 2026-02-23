@@ -199,8 +199,7 @@ fn atomic_latest_at_query(
 
         if let Some(row_index) = highest_row_index_with_expected_frame_id {
             re_log::debug_assert!(!chunk.is_empty());
-            let new_unit_chunk = chunk.row_sliced_shallow(row_index, 1).into_unit()
-                .expect("Chunk was just sliced to single row, therefore it must be convertible to a unit chunk");
+            let new_unit_chunk = chunk.row_sliced_unit_shallow(row_index);
 
             if let Some(previous_chunk) = &unit_chunk
                 && previous_chunk.row_id() > new_unit_chunk.row_id()
@@ -208,7 +207,7 @@ fn atomic_latest_at_query(
                 // This should be rare: there's another chunk that also fits the exact same child id and the exact same time.
                 // Have to use row id as the tie breaker - if we failed that we're in here.
             } else {
-                unit_chunk = chunk.row_sliced_shallow(row_index, 1).into_unit();
+                unit_chunk = Some(chunk.row_sliced_unit_shallow(row_index));
             }
         }
     }

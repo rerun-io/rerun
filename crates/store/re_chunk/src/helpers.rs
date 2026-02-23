@@ -231,6 +231,7 @@ impl UnitChunkShared {
     /// Returns the [`RowId`] of the single row within, on the given timeline.
     ///
     /// Returns the single static `RowId` if the chunk is static.
+    // TODO(emilk): this is infallible, so remove the `Option` returntype
     #[inline]
     pub fn row_id(&self) -> Option<RowId> {
         debug_assert!(self.num_rows() == 1);

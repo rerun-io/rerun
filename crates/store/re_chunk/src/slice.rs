@@ -7,7 +7,7 @@ use nohash_hasher::IntSet;
 use re_log_types::TimelineName;
 use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
-use crate::{Chunk, RowId, TimeColumn};
+use crate::{Chunk, RowId, TimeColumn, UnitChunkShared};
 
 // ---
 
@@ -59,6 +59,14 @@ impl Chunk {
     pub fn row_sliced_shallow(&self, index: usize, len: usize) -> Self {
         let deep = false;
         self.row_sliced_impl(index, len, deep)
+    }
+
+    /// Slice out a single row. Panics if out-of-index.
+    ///
+    /// See also [`Self::row_sliced_shallow`].
+    pub fn row_sliced_unit_shallow(&self, index: usize) -> UnitChunkShared {
+        #[expect(clippy::unwrap_used)] // cannot fail: we always have exactly one row
+        self.row_sliced_shallow(index, 1).into_unit().unwrap()
     }
 
     /// Deep-slices the [`Chunk`] vertically.
