@@ -316,7 +316,7 @@ function delay(ms: number) {
  * ```
  *
  * Data may be provided to the Viewer as:
- * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.29.0/examples/dna.rrd")`
+ * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.30.0-alpha.7/examples/dna.rrd")`
  * - A Rerun gRPC URL, e.g. `viewer.start("rerun+http://127.0.0.1:9876/proxy")`
  * - A stream of log messages, via {@link WebViewer.open_channel}.
  *
