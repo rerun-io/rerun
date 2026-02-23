@@ -1,5 +1,47 @@
 # Rerun changelog
 
+
+## 0.30.0 - (UNRELEASED) - plot any scalar & on-demand streaming
+
+### ✨ Overview & highlights
+
+#### 📈 Plot any scalar
+You can now plot any scalar value, even if it lacks Rerun semantics. For instance, this lets you plot any value in an MCAP file.
+
+TODO(grtlr): fill in more
+
+#### 📡 On-demand streaming / larger-than-RAM
+The Rerun Viewer now supports _on-demand streaming_, when connected to either the OSS server or [Rerun Cloud](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=rerun.io).
+
+With on-demand streaming, whatever you are currently viewing will be downloaded first.
+This includes time-scrubbing to the end of a very long recording and quickly seeing what is there, or viewing only one camera feed of many.
+
+Of course, your memory limit will be respected, and when you change your view or move the time cursor, the stale data will be evicted and the new data downloaded.
+
+This also means that the web viewer can finally view recordings larger than the 4GiB limit enforced by Wasm32, as long as those recordings are served by a Rerun server.
+
+It also means that Rerun Cloud users can view huge recordings, larger than what fits into RAM.
+The OSS server, however, still loads everything into RAM before serving it.
+
+Usage:
+
+```
+> rerun server -d folder_with_large_recordings
+```
+
+Then either open the native viewer:
+
+```
+> rerun "rerun+http://127.0.0.1:51234"
+```
+
+Or the web viewer:
+
+```
+> rerun --serve-web "rerun+http://127.0.0.1:51234"
+```
+
+
 ## [0.29.2](https://github.com/rerun-io/rerun/compare/0.29.1...0.29.2) - 2026-02-13 - Bug fixes and documentation update
 
 ### ✨ Overview & highlights
