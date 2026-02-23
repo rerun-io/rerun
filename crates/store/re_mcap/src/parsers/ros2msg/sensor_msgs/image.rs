@@ -153,6 +153,8 @@ pub enum ImageEncoding {
     Cv32SC1,
     #[strum(to_string = "32FC1")]
     Cv32FC1,
+    #[strum(to_string = "64FC1")]
+    Cv64FC1,
 }
 
 impl ImageEncoding {
@@ -169,6 +171,9 @@ impl ImageEncoding {
                 | Self::Cv16SC1
                 | Self::Cv32SC1
                 | Self::Cv32FC1
+                | Self::Cv64FC1
+                | Self::Mono8
+                | Self::Mono16
         )
     }
 
@@ -209,6 +214,7 @@ impl ImageEncoding {
             Self::Cv16SC1 => ImageFormat::depth(dimensions, ChannelDatatype::I16),
             Self::Cv32SC1 => ImageFormat::depth(dimensions, ChannelDatatype::I32),
             Self::Cv32FC1 => ImageFormat::depth(dimensions, ChannelDatatype::F32),
+            Self::Cv64FC1 => ImageFormat::depth(dimensions, ChannelDatatype::F64),
         }
     }
 }
