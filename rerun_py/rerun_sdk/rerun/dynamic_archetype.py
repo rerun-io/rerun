@@ -34,6 +34,20 @@ class DynamicArchetype(AsComponents):
     )
     ```
 
+    Component values can also be Rerun batch types, which is useful when you need
+    proper type handling (e.g. RGBA color packing):
+
+    ```python
+    rr.log(
+        "my_entity", rr.DynamicArchetype(
+            archetype="MyColors",
+            components={
+                "colors": rr.components.ColorBatch([[255, 0, 0], [0, 255, 0]]),
+            },
+        ),
+    )
+    ```
+
     """
 
     def __init__(
@@ -44,9 +58,10 @@ class DynamicArchetype(AsComponents):
 
         Each of the provided components will be logged as a separate component batch with the same archetype using the provided data.
          - The key will be used as the name of the component
-         - The value must be able to be converted to an array of arrow types. In
-           general, if you can pass it to [pyarrow.array][] you can log it as a
-           extension component.
+         - The value can be any Rerun component batch type (e.g. `rr.components.ColorBatch(...)`,
+           `rr.components.ScalarBatch(...)`) or any data convertible to a pyarrow array.
+           Using Rerun batch types is recommended when the component needs specific type
+           handling (e.g. RGBA color packing from Nx3/Nx4 arrays).
 
         Note: rerun requires that a given component only take on a single type.
         The first type logged will be the type that is used for all future logs
