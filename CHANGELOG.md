@@ -9,9 +9,7 @@
 
 TODO: add link to release video
 
-📖 Release blogpost: TODO: add link
-
-🧳 Migration guide: TODO: add link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-30
 
 ### ✨ Overview & highlights
 
@@ -90,8 +88,14 @@ Or the web viewer:
 ```
 
 ### ⚠️ Breaking changes
-TODO: fill in
-🧳 Migration guide: TODO: add link (yes, again)
+
+- **Python**: `segment_url_udf` and `segment_url_with_timeref_udf` have been removed
+- **Python**: `segment_url` parameter names have been updated
+- **CLI**: `.rrd` files are no longer tailed by default
+- **SDK**: `SeriesVisible` component type has been removed
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-30
+
 
 ### 🔎 Details
 
