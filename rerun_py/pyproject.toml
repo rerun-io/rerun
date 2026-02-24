@@ -47,7 +47,7 @@ tests = [
   "torch>=2.5", # Needs numpy 2 support
   "datafusion==50.1.0",
 ]
-notebook = ["rerun-notebook==0.30.0-alpha.1+dev"]
+notebook = ["rerun-notebook==0.30.0-rc.1"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
 datafusion = ["datafusion==50.1.0", "pandas>=2"] # deprecated, replaced by `dataplatform` (NOLINT)
 dataplatform = [ # NOLINT
