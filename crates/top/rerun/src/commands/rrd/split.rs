@@ -410,10 +410,10 @@ impl SplitCommand {
     /// The splits are inclusive on their leftmost bound and exclusive on their rightmost bound.
     ///
     /// For example, if `times == [t1, t2, t3]`, the final output of this script will be:
-    /// * recording0: [<min>:t1)
+    /// * recording0: [$min:t1)
     /// * recording1: [t1:t2)
     /// * recording2: [t2:t3)
-    /// * recording3: [t3:<max>)
+    /// * recording3: [t3:$max)
     ///
     /// Returns `(cutoff_timeline, cutoff_times)`.
     fn compute_cutoff_times(
