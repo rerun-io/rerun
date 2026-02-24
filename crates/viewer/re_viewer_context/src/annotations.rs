@@ -13,7 +13,7 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::AnnotationContext;
 use re_sdk_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
-use super::{ViewerContext, auto_color_egui};
+use super::auto_color_egui;
 
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 
@@ -224,26 +224,22 @@ impl AnnotationMap {
     /// For each passed [`EntityPath`], walk up the tree and find the nearest ancestor
     ///
     /// An entity is considered its own (nearest) ancestor.
-    pub fn load(&mut self, ctx: &ViewerContext<'_>, time_query: &LatestAtQuery) {
+    pub fn load(&mut self, db: &re_entity_db::EntityDb, time_query: &LatestAtQuery) {
         re_tracing::profile_function!();
 
         let entities_with_annotation_context =
-            AnnotationContextStoreSubscriber::access(ctx.recording().store_id(), |entities| {
-                entities.clone()
-            })
-            .unwrap_or_default();
+            AnnotationContextStoreSubscriber::access(db.store_id(), |entities| entities.clone())
+                .unwrap_or_default();
 
         // Load current annotations.
         // (order doesn't matter, we're feeding into another hashmap)
         #[expect(clippy::iter_over_hash_type)]
         for entity in entities_with_annotation_context {
-            if let Some(((_time, row_id), ann_ctx)) =
-                ctx.recording().latest_at_component::<AnnotationContext>(
-                    &entity,
-                    time_query,
-                    archetypes::AnnotationContext::descriptor_context().component,
-                )
-            {
+            if let Some(((_time, row_id), ann_ctx)) = db.latest_at_component::<AnnotationContext>(
+                &entity,
+                time_query,
+                archetypes::AnnotationContext::descriptor_context().component,
+            ) {
                 let annotations = Annotations {
                     row_id,
                     class_map: ann_ctx

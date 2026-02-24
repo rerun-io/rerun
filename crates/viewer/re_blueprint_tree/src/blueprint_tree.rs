@@ -146,7 +146,7 @@ impl BlueprintTree {
                 re_tracing::profile_scope!("blueprint_tree_scroll_area");
                 ui.panel_content(|ui| {
                     self.blueprint_tree_scroll_to_item =
-                        ctx.focused_item.as_ref().and_then(|item| {
+                        ctx.focused_item().as_ref().and_then(|item| {
                             self.handle_focused_item(ctx, viewport_blueprint, ui, item)
                         });
 
@@ -1060,7 +1060,7 @@ impl BlueprintTree {
             false
         };
         if dragged_contents.iter().any(parent_contains_dragged_content) {
-            ctx.drag_and_drop_manager
+            ctx.drag_and_drop_manager()
                 .set_feedback(DragAndDropFeedback::Reject);
             return;
         }
@@ -1073,7 +1073,7 @@ impl BlueprintTree {
 
         let Contents::Container(target_container_id) = drop_target.target_parent_id else {
             // this shouldn't happen
-            ctx.drag_and_drop_manager
+            ctx.drag_and_drop_manager()
                 .set_feedback(DragAndDropFeedback::Reject);
             return;
         };
@@ -1087,7 +1087,7 @@ impl BlueprintTree {
 
             egui::DragAndDrop::clear_payload(ui.ctx());
         } else {
-            ctx.drag_and_drop_manager
+            ctx.drag_and_drop_manager()
                 .set_feedback(DragAndDropFeedback::Accept);
             self.next_candidate_drop_parent_container_id = Some(target_container_id);
         }
@@ -1136,7 +1136,7 @@ impl BlueprintTree {
             }
             Item::View(view_id) => {
                 self.expand_all_contents_until(viewport, ui.ctx(), &Contents::View(*view_id));
-                ctx.focused_item.clone()
+                ctx.focused_item().clone()
             }
             Item::DataResult(data_result) => {
                 self.expand_all_contents_until(
@@ -1151,7 +1151,7 @@ impl BlueprintTree {
                     &data_result.instance_path.entity_path,
                 );
 
-                ctx.focused_item.clone()
+                ctx.focused_item().clone()
             }
             Item::InstancePath(instance_path) => {
                 let view_ids =

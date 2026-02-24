@@ -277,7 +277,7 @@ impl ViewportUi {
 
         let any_is_visualizable = entities.iter().any(can_entity_be_added);
 
-        ctx.drag_and_drop_manager
+        ctx.drag_and_drop_manager()
             .set_feedback(if any_is_visualizable {
                 DragAndDropFeedback::Accept
             } else {

@@ -773,7 +773,7 @@ impl TimePanel {
 
         // Expand if one of the children is focused
         let focused_entity_path = ctx
-            .focused_item
+            .focused_item()
             .as_ref()
             .and_then(|item| item.entity_path());
 

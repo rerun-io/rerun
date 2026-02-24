@@ -30,7 +30,7 @@ pub fn image_preview_ui(
         .store_context
         .caches
         .entry(|c: &mut ImageStatsCache| c.entry(image));
-    let annotations = crate::annotations(ctx, query, entity_path);
+    let annotations = crate::annotations(ctx.recording(), query, entity_path);
     let debug_name = entity_path.to_string();
     let texture = image_to_gpu(
         ctx.render_ctx(),

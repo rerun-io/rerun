@@ -416,6 +416,9 @@ impl AppState {
                         storage_context,
                         component_ui_registry,
                         display_mode,
+                        selection_state,
+                        focused_item,
+                        drag_and_drop_manager: &drag_and_drop_manager,
                         auth_context: auth_state.as_ref(),
                     },
                     component_fallback_registry,
@@ -427,10 +430,7 @@ impl AppState {
                     query_results: &query_results,
                     time_ctrl,
                     blueprint_time_ctrl: blueprint_time_control,
-                    selection_state,
                     blueprint_query: &blueprint_query,
-                    focused_item,
-                    drag_and_drop_manager: &drag_and_drop_manager,
                 };
 
                 // enable the heuristics if we must this frame

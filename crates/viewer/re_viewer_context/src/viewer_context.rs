@@ -14,7 +14,7 @@ use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
     AppContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
+    DragAndDropManager, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
     PerVisualizerTypeInViewClass, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _,
     TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
@@ -51,18 +51,6 @@ pub struct ViewerContext<'a> {
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
-
-    /// Selection & hovering state.
-    pub selection_state: &'a ApplicationSelectionState,
-
-    /// Item that got focused on the last frame if any.
-    ///
-    /// The focused item is cleared every frame, but views may react with side-effects
-    /// that last several frames.
-    pub focused_item: &'a Option<crate::Item>,
-
-    /// Helper object to manage drag-and-drop operations.
-    pub drag_and_drop_manager: &'a DragAndDropManager,
 
     /// Where we are getting our data from.
     pub connected_receivers: &'a re_log_channel::LogReceiverSet,
@@ -177,48 +165,41 @@ impl ViewerContext<'_> {
 
     /// Returns the current selection.
     pub fn selection(&self) -> &ItemCollection {
-        self.selection_state.selected_items()
+        self.app_ctx.selection()
     }
 
     /// Returns if this item should be displayed as selected or not.
-    ///
-    /// This does not always line up with [`Self::selection`], if we
-    /// are currently loading something that will be prioritized here.
     pub fn is_selected_or_loading(&self, item: &Item) -> bool {
-        if let DisplayMode::Loading(source) = self.display_mode() {
-            if let Item::DataSource(other_source) = item {
-                source.is_same_ignoring_uri_fragments(other_source)
-            } else {
-                false
-            }
-        } else {
-            self.selection().contains_item(item)
-        }
+        self.app_ctx.is_selected_or_loading(item)
     }
 
     /// Returns the currently hovered objects.
     pub fn hovered(&self) -> &ItemCollection {
-        self.selection_state.hovered_items()
+        self.app_ctx.hovered()
     }
 
     pub fn selection_state(&self) -> &ApplicationSelectionState {
-        self.selection_state
+        self.app_ctx.selection_state()
     }
 
     /// The current active Redap entry id, if any.
     pub fn active_redap_entry(&self) -> Option<EntryId> {
-        match self.display_mode() {
-            DisplayMode::RedapEntry(entry) => Some(entry.entry_id),
-            _ => None,
-        }
+        self.app_ctx.active_redap_entry()
     }
 
     /// The current active local table, if any.
     pub fn active_table_id(&self) -> Option<&TableId> {
-        match self.display_mode() {
-            DisplayMode::LocalTable(table_id) => Some(table_id),
-            _ => None,
-        }
+        self.app_ctx.active_table_id()
+    }
+
+    /// Item that got focused on the last frame if any.
+    pub fn focused_item(&self) -> &Option<crate::Item> {
+        self.app_ctx.focused_item
+    }
+
+    /// Helper object to manage drag-and-drop operations.
+    pub fn drag_and_drop_manager(&self) -> &DragAndDropManager {
+        self.app_ctx.drag_and_drop_manager
     }
 
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
@@ -304,6 +285,7 @@ impl ViewerContext<'_> {
             };
 
             let items_may_be_dragged = self
+                .app_ctx
                 .drag_and_drop_manager
                 .are_items_draggable(&dragged_items);
 

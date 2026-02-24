@@ -652,6 +652,9 @@ impl TestContext {
                     store_context.recording_store_id().clone(),
                 ),
 
+                selection_state: &selection_state,
+                focused_item: &focused_item,
+                drag_and_drop_manager: &drag_and_drop_manager,
                 auth_context: None,
             },
             component_fallback_registry: &self.component_fallback_registry,
@@ -663,10 +666,7 @@ impl TestContext {
             query_results: &self.query_results,
             time_ctrl: &self.time_ctrl.read(),
             blueprint_time_ctrl: &Default::default(),
-            selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
-            focused_item: &focused_item,
-            drag_and_drop_manager: &drag_and_drop_manager,
         };
 
         func(&ctx);
@@ -1010,7 +1010,7 @@ mod test {
 
         test_context.run_in_egui_central_panel(|ctx, _| {
             assert_eq!(
-                ctx.selection_state.selected_items().single_item(),
+                ctx.selection_state().selected_items().single_item(),
                 Some(&item)
             );
         });

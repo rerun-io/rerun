@@ -281,7 +281,7 @@ impl SpatialView3D {
         );
 
         // Track focused entity if any.
-        if let Some(focused_item) = ctx.focused_item {
+        if let Some(focused_item) = ctx.focused_item() {
             let focused_entity = match focused_item {
                 Item::AppId(_)
                 | Item::DataSource(_)

@@ -148,7 +148,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     ctx,
                     ui,
                     re_viewer_context::EditTarget {
-                        store_id: ctx.store_id().clone(),
+                        store_id: db.store_id().clone(),
                         timepoint: TimePoint::STATIC,
                         entity_path: entity_path.clone(),
                     },

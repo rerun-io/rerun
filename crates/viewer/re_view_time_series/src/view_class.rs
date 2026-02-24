@@ -941,7 +941,7 @@ fn visualizer_ui_element(
 
                 if response.hovered() {
                     frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                    ctx.viewer_ctx.selection_state.set_hovered(item.clone());
+                    ctx.viewer_ctx.selection_state().set_hovered(item.clone());
                 }
                 if response.clicked() {
                     ctx.viewer_ctx
