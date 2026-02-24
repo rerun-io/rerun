@@ -16,9 +16,11 @@ pub fn series_supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes
         arrow::datatypes::DataType::Float32,
         arrow::datatypes::DataType::Float64,
         arrow::datatypes::DataType::Int8,
+        arrow::datatypes::DataType::Int16,
         arrow::datatypes::DataType::Int32,
         arrow::datatypes::DataType::Int64,
         arrow::datatypes::DataType::UInt8,
+        arrow::datatypes::DataType::UInt16,
         arrow::datatypes::DataType::UInt32,
         arrow::datatypes::DataType::UInt64,
         // TODO(andreas): Support bool types?
