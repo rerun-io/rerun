@@ -47,6 +47,16 @@ pub struct Args {
     /// Artificial latency to add to each request (in milliseconds).
     #[clap(long, default_value_t = 0)]
     pub latency_ms: u16,
+
+    /// Artificial bandwidth limit for responses (e.g. '10MB' for 10 megabytes per second).
+    #[clap(long, value_parser = parse_bandwidth_limit)]
+    pub bandwidth_limit: Option<u64>,
+}
+
+fn parse_bandwidth_limit(s: &str) -> Result<u64, String> {
+    re_format::parse_bytes(s)
+        .and_then(|b| u64::try_from(b).ok())
+        .ok_or_else(|| format!("expected a bandwidth like '10MB' or '1GiB', got {s:?}"))
 }
 
 impl Default for Args {
@@ -58,6 +68,7 @@ impl Default for Args {
             dataset_prefixes: vec![],
             tables: vec![],
             latency_ms: 0,
+            bandwidth_limit: None,
         }
     }
 }
@@ -105,6 +116,7 @@ impl Args {
             dataset_prefixes,
             tables,
             latency_ms,
+            bandwidth_limit,
         } = self;
 
         let rerun_cloud_server = {
@@ -165,7 +177,8 @@ impl Args {
                 "/version",
                 axum::routing::get(async move || re_build_info::build_info!().to_string()),
             )
-            .with_artificial_latency(std::time::Duration::from_millis(latency_ms as _));
+            .with_artificial_latency(std::time::Duration::from_millis(latency_ms as _))
+            .with_bandwidth_limit(bandwidth_limit);
 
         let server = server_builder.build();
 

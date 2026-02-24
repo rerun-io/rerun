@@ -766,5 +766,8 @@ In-memory Rerun data server.
 >
 > [Default: `0`]
 
+* `--bandwidth-limit <BANDWIDTH_LIMIT>`
+> Artificial bandwidth limit for responses (e.g. '10MB' for 10 megabytes per second).
+
 * `-V, --version `
 > Print version.

@@ -31,6 +31,7 @@ pub struct Server {
     addr: SocketAddr,
     routes: Routes,
     artificial_latency: std::time::Duration,
+    bandwidth_limit: Option<u64>,
 }
 
 /// `ServerHandle` is a tiny helper abstraction that enables us to
@@ -87,6 +88,7 @@ impl Server {
             addr,
             routes,
             artificial_latency,
+            bandwidth_limit,
         } = self;
 
         let (ready_tx, ready_rx) = mpsc::channel(1);
@@ -145,6 +147,7 @@ impl Server {
                 })
                 .layer(tower_http::cors::CorsLayer::permissive()) // Allow CORS for all origins (to support web clients)
                 .layer(crate::latency_layer::LatencyLayer::new(artificial_latency))
+                .layer(crate::bandwidth_layer::BandwidthLayer::new(bandwidth_limit))
                 // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
                 // to avoid rejecting regular HTTP requests
                 .into_inner();
@@ -189,6 +192,7 @@ pub struct ServerBuilder {
     routes_builder: RoutesBuilder,
     axum_routes: axum::Router,
     artificial_latency: std::time::Duration,
+    bandwidth_limit: Option<u64>,
 }
 
 impl ServerBuilder {
@@ -227,12 +231,19 @@ impl ServerBuilder {
         self
     }
 
+    /// Limit response bandwidth in bytes per second.
+    pub fn with_bandwidth_limit(mut self, bytes_per_second: Option<u64>) -> Self {
+        self.bandwidth_limit = bytes_per_second;
+        self
+    }
+
     pub fn build(self) -> Server {
         let Self {
             addr,
             routes_builder,
             axum_routes,
             artificial_latency,
+            bandwidth_limit,
         } = self;
 
         let grpc_routes = routes_builder.routes();
@@ -255,6 +266,7 @@ impl ServerBuilder {
                 .unwrap_or_else(|| DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
             routes: routes.into(),
             artificial_latency,
+            bandwidth_limit,
         }
     }
 }

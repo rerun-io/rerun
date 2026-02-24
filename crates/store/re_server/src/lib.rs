@@ -3,6 +3,7 @@
 #[cfg(feature = "lance")]
 mod chunk_index;
 
+mod bandwidth_layer;
 mod entrypoint;
 mod latency_layer;
 mod rerun_cloud;

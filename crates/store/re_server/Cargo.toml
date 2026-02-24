@@ -35,6 +35,7 @@ re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
+re_format.workspace = true
 re_grpc_server.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
@@ -51,12 +52,14 @@ anyhow.workspace = true
 arrow.workspace = true
 axum.workspace = true
 bincode.workspace = true
+bytes.workspace = true
 cfg-if.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive", "env"] }
 datafusion.workspace = true
 futures.workspace = true
 http.workspace = true
+http-body.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 nohash-hasher.workspace = true
