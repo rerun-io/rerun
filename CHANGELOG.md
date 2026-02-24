@@ -6,9 +6,47 @@
 ### ✨ Overview & highlights
 
 #### 📈 Plot any scalar
-You can now plot any scalar value, even if it lacks Rerun semantics. For instance, this lets you plot any value in an MCAP file.
+You can now plot any scalar value, even if it lacks Rerun semantics in time series views. For instance, this lets you plot any value in an MCAP file.
 
-TODO(grtlr): fill in more
+In addition to plotting scalars from MCAP files, it is now possible to visualize arbitrary scalar components that were logged using `AnyValues` or `DynamicArchetype`. The supported data types are:
+
+- `Float32` and `Float64`
+- `Int8`, `Int16`, `Int32`, and `Int64`
+- `UInt8`, `UInt16`, `UInt32`, and `UInt64`
+- Any of the above nested inside of [Arrow structs](https://arrow.apache.org/docs/format/Intro.html#struct).
+
+This also makes it possible to log and visualize multiple scalars to the same entity, which can drastically reduce the size of the resulting `.rrd` files.
+
+_Note that by default, and without blueprints, views are still only spawned for entities with Rerun semantics._
+
+Time series views for entities with custom scalar components need to be spawned either:
+
+- from the context menu of the streams,
+- by adding a view from the blueprint panel,
+- or by specifying a blueprint using the Python or Rust SDK.
+
+The components that should be visualized can be selected via a new dropdown menu from the completely revised visualizer section in the selection panel.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/viscomp-add-custom/ac6e0df27139c7be2f446c17981bed74509c0b31/full.png" alt="New Source dropdown menu">
+</picture>
+
+To quickly navigate to the desired visualizer, each time series view now shows an overview of it's current visualizers.
+
+<picture>
+  <img src="https://static.rerun.io/visualizer-list/93a598b8423ffba3d302447f0da519014cb79a10/480w.png" alt="List of visualizer in view selection panel.">
+</picture>
+
+For more details please refer to our documentation:
+
+<!-- TODO(RR-3477): [Customize views]() -->
+<!-- TODO(RR-3409): [Howto plot any scalars]() -->
+
+Thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
+
+<picture>
+  <img src="https://static.rerun.io/interpolation-mode/093d901acd73f84baf838cee37bb579135f15dfa/480w.png" alt="Dropdown of different interpolation modes">
+</picture>
 
 #### 📡 On-demand streaming / larger-than-RAM
 The Rerun Viewer now supports _on-demand streaming_, when connected to either the OSS server or [Rerun Cloud](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=rerun.io).
