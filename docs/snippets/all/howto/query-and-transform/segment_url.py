@@ -13,7 +13,7 @@ from rerun.utilities.datafusion.functions.url_generation import segment_url
 
 sample_5_path = Path(__file__).parents[5] / "tests" / "assets" / "rrd" / "sample_5"
 
-server = rr.server.Server(datasets={"sample_dataset": sample_5_path}, port=51234)
+server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 client = server.client()
 dataset = client.get_dataset(name="sample_dataset")
 
