@@ -201,6 +201,66 @@ impl PyUrdfJoint {
         }
     }
 
+    /// Compute transforms for this joint at multiple values in a single call.
+    ///
+    /// Returns a dictionary with:
+    /// - `"translations"`: list of `(x, y, z)` tuples
+    /// - `"quaternions_xyzw"`: list of `(x, y, z, w)` tuples
+    /// - `"parent_frame"`: single string (constant per joint)
+    /// - `"child_frame"`: single string (constant per joint)
+    /// - `"warnings"`: list of warning strings
+    #[pyo3(signature = (values, clamp = false))]
+    #[allow(clippy::needless_pass_by_value)] // PyO3 requires owned Vec for Python list extraction
+    pub fn compute_transform_columns(
+        &self,
+        py: Python<'_>,
+        values: Vec<f64>,
+        clamp: bool,
+    ) -> PyResult<PyObject> {
+        let mut translations = Vec::with_capacity(values.len());
+        let mut quaternions = Vec::with_capacity(values.len());
+        let mut warnings = Vec::new();
+        let mut parent_frame = String::new();
+        let mut child_frame = String::new();
+
+        for (i, &value) in values.iter().enumerate() {
+            match urdf_joint_transform::internal::compute_joint_transform(&self.0, value, clamp) {
+                Ok(result) => {
+                    translations.push((
+                        result.translation.x,
+                        result.translation.y,
+                        result.translation.z,
+                    ));
+                    quaternions.push((
+                        result.quaternion.x,
+                        result.quaternion.y,
+                        result.quaternion.z,
+                        result.quaternion.w,
+                    ));
+                    if let Some(warning) = result.warning {
+                        warnings.push(warning);
+                    }
+                    if i == 0 {
+                        parent_frame = result.parent_frame;
+                        child_frame = result.child_frame;
+                    }
+                }
+                Err(e @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
+                    return Err(PyNotImplementedError::new_err(e.to_string()));
+                }
+            }
+        }
+
+        let dict = pyo3::types::PyDict::new(py);
+        dict.set_item("translations", translations)?;
+        dict.set_item("quaternions_xyzw", quaternions)?;
+        dict.set_item("parent_frame", parent_frame)?;
+        dict.set_item("child_frame", child_frame)?;
+        dict.set_item("warnings", warnings)?;
+
+        Ok(dict.into())
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "UrdfJoint(name={:?}, type={}, parent={:?}, child={:?})",
