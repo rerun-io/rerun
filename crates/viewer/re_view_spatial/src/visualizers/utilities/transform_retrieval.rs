@@ -61,15 +61,15 @@ pub fn format_transform_info_result<'a>(
             let src = transform_context.format_frame(*src);
             let target = transform_context.format_frame(*target);
             Err(format!(
-                "No transform path from {src:?} to the view's origin frame ({target:?})."
+                "No transform path from {src:?} to the view's target frame ({target:?})."
             ))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
-            // The target frame is the view's origin.
-            // This means this could be hit if the view's origin frame doesn't show up in any data.
+            // The target frame is the view's target frame.
+            // This means this could be hit if the view's target frame doesn't show up in any data.
             let target = transform_context.format_frame(*target);
-            Err(format!("The view's origin frame {target:?} is unknown."))
+            Err(format!("The view's target frame {target:?} is unknown."))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {

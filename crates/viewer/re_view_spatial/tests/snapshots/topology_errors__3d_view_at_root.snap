@@ -4,5 +4,5 @@ expression: snapshot_content
 ---
 "Boxes3D": /misplaced_boxes3d_entity: Can't visualize 3D content that is under a pinhole projection.
 "DepthImage": /misplaced_depth_image_entity: 2D visualizers require a pinhole ancestor to be shown in a 3D view.
-"Ellipsoids3D": /disconnected_entity: No transform path from "disconnected" to the view's origin frame ("world").
+"Ellipsoids3D": /disconnected_entity: No transform path from "disconnected" to the view's target frame ("world").
 "Image": /misplaced_image_entity: 2D visualizers require a pinhole ancestor to be shown in a 3D view.
