@@ -3348,10 +3348,15 @@ impl App {
             .active_caches()
             .map_or(0, |caches| caches.memory_use_after_last_purge());
 
+        const APP_OVERHEAD_BYTES: u64 = 300_000_000;
+        const FIXED_FRACTION_OVERHEAD: f32 = 0.10;
+        const FALLBACK_FIXED_FRACTION_OVERHEAD: f32 = 0.20;
         // Prefetch new chunks for the active recording (if any):
-        if let Some(recording) = store_hub.active_recording_mut()
-            && let Some(time_ctrl) = self.state.time_controls.get(recording.store_id())
-        {
+        let mut memory_limit = if let Some(recording) = store_hub.active_recording_mut() {
+            if recording.is_currently_downloading_manifest() {
+                return;
+            }
+
             // What is our memory budget for this recording?
             // If need be, we can evict all other recordings and their caches.
 
@@ -3360,16 +3365,16 @@ impl App {
             // We also want some headroom for spikes.
             let overhead = recording
                 .estimated_application_overhead_bytes
-                .unwrap_or(300_000_000 + unpurgable_cache_size);
+                .unwrap_or(APP_OVERHEAD_BYTES + unpurgable_cache_size);
 
             // Leave some extra headroom (beyond the fixed overhead) for
             // * secondary indices
             // * failures in our accounting
             let fixed_fraction_overhead =
                 if recording.estimated_application_overhead_bytes.is_some() {
-                    0.10 // We have a good estimate, so we need less headroom
+                    FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
                 } else {
-                    0.20
+                    FALLBACK_FIXED_FRACTION_OVERHEAD
                 };
 
             let memory_budget = self.startup_options.memory_limit.saturating_sub(overhead);
@@ -3380,18 +3385,108 @@ impl App {
                 re_log::warn_once!("Very little memory budget left for active recording.");
             }
 
-            // If we can't afford at least this much for data, then what is even the point?
-            let memory_budget = memory_budget.at_least(100_000_000);
-
             // eprintln!("Memory budget for active recording: {memory_budget}");
 
-            crate::prefetch_chunks::prefetch_chunks_for_active_recording(
+            let time_ctrl = self.state.time_controls.get(recording.store_id());
+
+            crate::prefetch_chunks::prefetch_chunks_for_recording(
                 &self.egui_ctx,
-                memory_budget,
+                // If we can't afford at least this much for data, then what is even the point?
+                memory_budget.at_least(100_000_000),
                 recording,
                 time_ctrl,
                 self.connection_registry(),
             );
+
+            memory_budget
+        } else {
+            // No recording is open, use the memory limit with some memory left for the app.
+            self.startup_options
+                .memory_limit
+                .saturating_sub(APP_OVERHEAD_BYTES + unpurgable_cache_size)
+                .split(FALLBACK_FIXED_FRACTION_OVERHEAD)
+                .1
+        };
+
+        // Fetch background recordings if we have space for them.
+        if store_hub
+            .active_recording()
+            .is_none_or(|rec| !rec.can_load_more())
+        {
+            re_tracing::profile_scope!("fetch_background_recordings");
+
+            const BACKGROUND_HEADROOM_FRACTION: f32 = 0.2;
+            const RECORDING_HEADROOM_BYTES: u64 = 10_000_000;
+
+            // Leave a good amount of extra headroom for downloading background
+            // recordings.
+            memory_limit = memory_limit.split(BACKGROUND_HEADROOM_FRACTION).1;
+
+            // Subtract all already loaded physical chunks from the memory limit.
+            for recording in store_hub.store_bundle().recordings() {
+                if recording.is_currently_downloading_manifest() {
+                    // If any are downloading manifest, don't prefetch background recordings.
+                    memory_limit = re_memory::MemoryLimit::ZERO;
+                    break;
+                }
+
+                let fixed_fraction_overhead =
+                    if recording.estimated_application_overhead_bytes.is_some() {
+                        FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
+                    } else {
+                        FALLBACK_FIXED_FRACTION_OVERHEAD
+                    };
+
+                let size = recording.byte_size_of_physical_chunks()
+                    + recording.estimated_application_overhead_bytes.unwrap_or(0);
+
+                let estimated_size = ((1.0 + fixed_fraction_overhead as f64) * size as f64) as u64
+                    + RECORDING_HEADROOM_BYTES;
+
+                memory_limit = memory_limit.saturating_sub(estimated_size);
+
+                if memory_limit == re_memory::MemoryLimit::ZERO {
+                    break;
+                }
+            }
+
+            if memory_limit != re_memory::MemoryLimit::ZERO {
+                for recording in store_hub.store_bundle_mut().recordings_mut() {
+                    // This means we skip the active recording, since we're only
+                    // in this block to begin with if there is no active recording
+                    // or the active recording cannot load more.
+                    if !recording.can_load_more() {
+                        continue;
+                    }
+
+                    // For this stores memory limit, add back the size of all physical chunks
+                    // since that's considered in `prefetch_chunks_for_recording`.
+                    let memory_limit =
+                        memory_limit.saturating_add(recording.byte_size_of_physical_chunks());
+
+                    if memory_limit
+                        .checked_sub(recording.rrd_manifest_index().full_uncompressed_size())
+                        .is_none()
+                    {
+                        // Continue if this recording doesn't fit, smaller ones
+                        // might.
+                        continue;
+                    }
+
+                    let time_ctrl = self.state.time_controls.get(recording.store_id());
+
+                    crate::prefetch_chunks::prefetch_chunks_for_recording(
+                        &self.egui_ctx,
+                        memory_limit,
+                        recording,
+                        time_ctrl,
+                        &self.connection_registry,
+                    );
+
+                    // Only prefetch for one at a time.
+                    break;
+                }
+            }
         }
     }
 }

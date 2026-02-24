@@ -835,12 +835,14 @@ impl StoreHub {
 
         let mut num_bytes_freed = 0;
 
-        let target = GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _);
+        let background_target = GarbageCollectionTarget::Everything;
 
         for store_id in &background_recording_ids {
             let time_cursor = time_cursor_for(store_id);
-            num_bytes_freed += self.gc_store(target, store_id, time_cursor);
+            num_bytes_freed += self.gc_store(background_target, store_id, time_cursor);
         }
+
+        let target = GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _);
 
         if num_bytes_freed == 0
             && let Some(active_store_id) = active_store_id
@@ -849,6 +851,35 @@ impl StoreHub {
             // so try the active one:
             let time_cursor = time_cursor_for(&active_store_id);
             num_bytes_freed += self.gc_store(target, &active_store_id, time_cursor);
+        }
+
+        // Didn't free memory from the active recording, or background recordings,
+        // so resort to closing background recordings.
+        if num_bytes_freed == 0 {
+            let mut closed_count = 0;
+            for store_id in &background_recording_ids {
+                let Some(recording) = self.store_bundle.get(store_id) else {
+                    continue;
+                };
+
+                // Don't close the active recording.
+                if self.active_store_id() == Some(store_id) {
+                    continue;
+                }
+
+                num_bytes_freed += recording.total_size_bytes();
+
+                self.remove_store(store_id);
+
+                closed_count += 1;
+            }
+
+            if closed_count > 0 {
+                re_log::warn!(
+                    "Closed {} to stay within memory limit",
+                    re_format::format_plural_s(closed_count, "background recording")
+                );
+            }
         }
 
         num_bytes_freed
@@ -867,11 +898,7 @@ impl StoreHub {
         time_cursor: Option<TimelinePoint>,
     ) -> u64 {
         re_tracing::profile_function!();
-        let is_active_recording = Some(store_id) == self.active_store_id();
-
         let store_bundle = &mut self.store_bundle;
-
-        let is_last_recording = store_bundle.recordings().count() == 1;
 
         let Some(entity_db) = store_bundle.get_mut(store_id) else {
             if cfg!(debug_assertions) {
@@ -888,30 +915,7 @@ impl StoreHub {
             caches.on_store_events(&store_events, entity_db);
         }
 
-        let num_bytes_freed = store_size_before.saturating_sub(store_size_after);
-
-        // No point keeping an empty recording around… but don't close the active one.
-        if entity_db.num_physical_chunks() == 0 && !is_active_recording {
-            self.remove_store(store_id);
-            return store_size_before;
-        }
-
-        if num_bytes_freed == 0 {
-            // Running the GC didn't do anything.
-            //
-            // That's because all that's left in that store is protected rows: it's time to remove it
-            // entirely, unless it's the last recording still standing, in which case we're better off
-            // keeping some data around to show the user rather than a blank screen.
-            //
-            // If the user needs the memory for something else, they will get it back as soon as they
-            // log new things anyhow.
-            if !is_last_recording {
-                self.remove_store(store_id);
-                return store_size_before;
-            }
-        }
-
-        num_bytes_freed
+        store_size_before.saturating_sub(store_size_after)
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.

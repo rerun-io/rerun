@@ -136,6 +136,26 @@ impl MemoryLimit {
         }
     }
 
+    #[must_use]
+    pub fn saturating_add(self, rhs: u64) -> Self {
+        if let Some(max_bytes) = self.max_bytes {
+            let new_max = max_bytes.saturating_add(rhs);
+            Self::from_bytes(new_max)
+        } else {
+            Self::UNLIMITED
+        }
+    }
+
+    #[must_use]
+    pub fn checked_sub(self, rhs: u64) -> Option<Self> {
+        if let Some(max_bytes) = self.max_bytes {
+            let new_max = max_bytes.checked_sub(rhs)?;
+            Some(Self::from_bytes(new_max))
+        } else {
+            Some(Self::UNLIMITED)
+        }
+    }
+
     /// Split the memory limit into two limits according to the given fraction.
     ///
     /// The first returned limit will have `fraction` of the bytes,

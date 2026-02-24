@@ -566,8 +566,17 @@ impl EntityDb {
         None
     }
 
+    /// Can we load this recording more right now?
+    pub fn can_load_more(&self) -> bool {
+        if !self.can_fetch_chunks_from_redap() {
+            return false;
+        }
+
+        self.is_buffering() || !self.rrd_manifest_index.is_fully_loaded()
+    }
+
     /// Check if we have all loaded chunk for the given entity and component at `query.at()`.
-    pub fn has_fully_loaded(
+    pub fn has_fully_loaded_query(
         &self,
         entity_path: &EntityPath,
         component: ComponentIdentifier,

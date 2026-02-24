@@ -571,9 +571,9 @@ impl ChunkPrioritizer {
         high_priority_chunks: &'a HighPrioChunks,
         store: &'a ChunkStore,
         used_and_missing: &QueriedChunkIdTracker,
-        time_cursor: TimelinePoint,
+        time_cursor: Option<TimelinePoint>,
         root_chunks: &'a HashMap<ChunkId, RootChunkInfo>,
-        root_chunks_on_timeline: &'a SortedRangeMap<TimeInt, ChunkId>,
+        root_chunks_on_timeline: Option<&'a SortedRangeMap<TimeInt, ChunkId>>,
     ) -> impl Iterator<Item = PrioritizedRootChunk> + use<'a> {
         re_tracing::profile_function!();
 
@@ -585,19 +585,34 @@ impl ChunkPrioritizer {
         missing_roots.dedup();
 
         let chunks_ids_after_time_cursor = move || {
-            root_chunks_on_timeline
-                .query(time_cursor.time..=TimeInt::MAX)
-                .map(|(_, chunk_id)| *chunk_id)
+            time_cursor
+                .zip(root_chunks_on_timeline)
+                .map(|(time_cursor, root_chunks_on_timeline)| {
+                    root_chunks_on_timeline
+                        .query(time_cursor.time..=TimeInt::MAX)
+                        .map(|(_, chunk_id)| *chunk_id)
+                })
+                .into_iter()
+                .flatten()
         };
         let chunks_ids_before_time_cursor = move || {
-            root_chunks_on_timeline
-                .query(TimeInt::MIN..=time_cursor.time.saturating_sub(1))
-                .map(|(_, chunk_id)| *chunk_id)
+            time_cursor
+                .zip(root_chunks_on_timeline)
+                .map(|(time_cursor, root_chunks_on_timeline)| {
+                    root_chunks_on_timeline
+                        .query(TimeInt::MIN..=time_cursor.time.saturating_sub(1))
+                        .map(|(_, chunk_id)| *chunk_id)
+                })
+                .into_iter()
+                .flatten()
         };
 
         // Note: we do NOT take `components_of_interest` for high-priority transform chunks,
         // because that seems to cause bugs for unknown reasons.
-        let high_prio_chunks_before_time_cursor = high_priority_chunks.all_before(time_cursor);
+        let high_prio_chunks_before_time_cursor = time_cursor
+            .map(|time_cursor| high_priority_chunks.all_before(time_cursor))
+            .into_iter()
+            .flatten();
 
         // Chunks that are required for the current view.
         let required_chunks = chain!(
@@ -670,7 +685,7 @@ impl ChunkPrioritizer {
         store: &ChunkStore,
         used_and_missing: &QueriedChunkIdTracker,
         options: &ChunkPrefetchOptions,
-        time_cursor: TimelinePoint,
+        time_cursor: Option<TimelinePoint>,
         manifest: &RrdManifest,
         root_chunks: &HashMap<ChunkId, RootChunkInfo>,
     ) -> Result<Vec<(RecordBatch, RequestInfo)>, PrefetchError> {
@@ -719,10 +734,8 @@ impl ChunkPrioritizer {
             }
         }
 
-        let Some(root_chunks_on_timeline) = self.root_chunk_intervals.get(&time_cursor.timeline())
-        else {
-            return Err(PrefetchError::UnknownTimeline(time_cursor.timeline()));
-        };
+        let root_chunks_on_timeline = time_cursor
+            .and_then(|time_cursor| self.root_chunk_intervals.get(&time_cursor.timeline()));
 
         let root_chunk_ids_in_priority_order = Self::root_chunks_in_priority(
             &self.components_of_interest,
@@ -855,9 +868,8 @@ impl ChunkPrioritizer {
                             continue;
                         };
 
-                        if !remaining_byte_budget
-                            .try_fit_into_budget(Chunk::total_size_bytes(chunk.as_ref()), required)
-                        {
+                        let bytes = Chunk::total_size_bytes(chunk.as_ref());
+                        if !remaining_byte_budget.try_fit_into_budget(bytes, required) {
                             state.memory_budget_filled = true;
                             break;
                         }

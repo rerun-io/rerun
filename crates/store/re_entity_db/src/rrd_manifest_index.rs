@@ -516,7 +516,7 @@ impl RrdManifestIndex {
         &mut self,
         store: &ChunkStore,
         options: &ChunkPrefetchOptions,
-        time_cursor: TimelinePoint,
+        time_cursor: Option<TimelinePoint>,
         load_chunks: &dyn Fn(RecordBatch) -> ChunkPromise,
     ) -> Result<(), PrefetchError> {
         re_tracing::profile_function!();
@@ -549,7 +549,9 @@ impl RrdManifestIndex {
                 self.chunk_prioritizer.chunk_requests_mut().add(batch);
             }
 
-            self.update_loaded_ranges(time_cursor.name);
+            if let Some(time_cursor) = time_cursor {
+                self.update_loaded_ranges(time_cursor.name);
+            }
 
             // Sanity checking:
             if let Some(state) = self.chunk_prioritizer.latest_result()

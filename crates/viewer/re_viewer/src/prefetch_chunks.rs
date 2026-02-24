@@ -6,26 +6,30 @@ use re_log_types::TimelinePoint;
 use re_redap_client::{ApiResult, ConnectionClient};
 use re_viewer_context::TimeControl;
 
-pub fn prefetch_chunks_for_active_recording(
+pub fn prefetch_chunks_for_recording(
     egui_ctx: &egui::Context,
     chunk_budget: re_memory::MemoryLimit,
     recording: &mut EntityDb,
-    time_ctrl: &TimeControl,
+    time_ctrl: Option<&TimeControl>,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
-) -> Option<()> {
+) {
     re_tracing::profile_function!();
 
-    let current_time = time_ctrl.time_i64()?;
-    let timeline = *time_ctrl.timeline()?;
-
-    let redap_uri = recording.redap_uri()?.clone();
+    let Some(redap_uri) = recording.redap_uri().cloned() else {
+        return;
+    };
     let origin = redap_uri.origin.clone();
 
-    let start_time = TimeInt::new_temporal(current_time);
-    let time_cursor = TimelinePoint::from((timeline, start_time));
+    let time_cursor = time_ctrl.and_then(|time_ctrl| {
+        let current_time = time_ctrl.time_i64()?;
+        let timeline = *time_ctrl.timeline()?;
+        let start_time = TimeInt::new_temporal(current_time);
+
+        Some(TimelinePoint::from((timeline, start_time)))
+    });
 
     if !recording.can_fetch_chunks_from_redap() {
-        return None;
+        return;
     }
 
     let options = re_entity_db::ChunkPrefetchOptions {
@@ -64,8 +68,6 @@ pub fn prefetch_chunks_for_active_recording(
     {
         re_log::warn_once!("prefetch_chunks failed: {err}");
     }
-
-    None
 }
 
 /// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).

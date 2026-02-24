@@ -600,7 +600,7 @@ impl TestContext {
                     total_uncompressed_byte_budget: 0, // So that we don't try to load anything
                     ..Default::default()
                 },
-                TimelinePoint::from((*timeline, TimeInt::ZERO)),
+                Some(TimelinePoint::from((*timeline, TimeInt::ZERO))),
                 &|_| panic!("We have 0 bytes allowed memory"),
             );
         }
