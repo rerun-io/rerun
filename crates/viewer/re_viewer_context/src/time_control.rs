@@ -208,6 +208,20 @@ impl From<AbsoluteTimeRange> for TimeView {
     }
 }
 
+/// Direction for time movement commands.
+#[derive(Debug, Clone, Copy)]
+pub enum MoveDirection {
+    Back,
+    Forward,
+}
+
+/// Speed for time movement commands.
+#[derive(Debug, Clone, Copy)]
+pub enum MoveSpeed {
+    Normal,
+    Fast,
+}
+
 /// A command used to mutate `TimeControl`.
 ///
 /// Can be sent using [`crate::SystemCommand::TimeControlCommands`].
@@ -227,7 +241,10 @@ pub enum TimeControlCommand {
     TogglePlayPause,
     StepTimeBack,
     StepTimeForward,
-    MoveBySeconds(f64),
+    Move {
+        direction: MoveDirection,
+        speed: MoveSpeed,
+    },
     MoveBeginning,
     MoveEnd,
 
@@ -913,9 +930,8 @@ impl TimeControl {
 
                 NeedsRepaint::Yes
             }
-            TimeControlCommand::MoveBySeconds(seconds) => {
-                self.move_by_seconds(timeline_histograms, *seconds);
-
+            TimeControlCommand::Move { direction, speed } => {
+                self.move_time(timeline_histograms, blueprint_ctx, *direction, *speed);
                 NeedsRepaint::Yes
             }
             TimeControlCommand::MoveBeginning => {
@@ -1164,15 +1180,50 @@ impl TimeControl {
         }
     }
 
-    fn move_by_seconds(&mut self, timeline_histograms: &TimeHistogramPerTimeline, seconds: f64) {
-        if let Some(time) = self.time() {
-            let mut new_time = match self.time_type() {
-                Some(TimeType::Sequence) => time + TimeReal::from(seconds as i64),
-                Some(TimeType::DurationNs | TimeType::TimestampNs) => {
-                    time + TimeReal::from_secs(seconds)
+    fn move_time(
+        &mut self,
+        timeline_histograms: &TimeHistogramPerTimeline,
+        blueprint_ctx: Option<&impl BlueprintContext>,
+        direction: MoveDirection,
+        speed: MoveSpeed,
+    ) {
+        match self.time_type() {
+            Some(TimeType::Sequence) => {
+                let steps = match speed {
+                    MoveSpeed::Normal => 1,
+                    MoveSpeed::Fast => 10,
+                };
+                for _ in 0..steps {
+                    match direction {
+                        MoveDirection::Back => {
+                            self.step_time_back(timeline_histograms, blueprint_ctx);
+                        }
+                        MoveDirection::Forward => {
+                            self.step_time_fwd(timeline_histograms, blueprint_ctx);
+                        }
+                    }
                 }
-                None => return,
-            };
+            }
+            Some(TimeType::DurationNs | TimeType::TimestampNs) => {
+                let seconds = match (direction, speed) {
+                    (MoveDirection::Back, MoveSpeed::Normal) => -0.1,
+                    (MoveDirection::Forward, MoveSpeed::Normal) => 0.1,
+                    (MoveDirection::Back, MoveSpeed::Fast) => -1.0,
+                    (MoveDirection::Forward, MoveSpeed::Fast) => 1.0,
+                };
+                self.move_by_seconds_temporal(timeline_histograms, seconds);
+            }
+            None => {}
+        }
+    }
+
+    fn move_by_seconds_temporal(
+        &mut self,
+        timeline_histograms: &TimeHistogramPerTimeline,
+        seconds: f64,
+    ) {
+        if let Some(time) = self.time() {
+            let mut new_time = time + TimeReal::from_secs(seconds);
 
             let range = self
                 .time_selection()

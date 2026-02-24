@@ -29,9 +29,10 @@ use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
     CommandSender, ComponentUiRegistry, DisplayMode, EditRedapServerModalCommand,
-    FallbackProviderRegistry, Item, NeedsRepaint, RecordingOrTable, StorageContext, StoreContext,
-    SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
+    FallbackProviderRegistry, Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
+    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
+    sanitize_file_name,
 };
 
 use crate::AppState;
@@ -1970,7 +1971,10 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(-0.1)],
+                            time_commands: vec![TimeControlCommand::Move {
+                                direction: MoveDirection::Back,
+                                speed: MoveSpeed::Normal,
+                            }],
                         });
                 }
             }
@@ -1979,7 +1983,10 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(0.1)],
+                            time_commands: vec![TimeControlCommand::Move {
+                                direction: MoveDirection::Forward,
+                                speed: MoveSpeed::Normal,
+                            }],
                         });
                 }
             }
@@ -1988,7 +1995,10 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(-1.0)],
+                            time_commands: vec![TimeControlCommand::Move {
+                                direction: MoveDirection::Back,
+                                speed: MoveSpeed::Fast,
+                            }],
                         });
                 }
             }
@@ -1997,7 +2007,10 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(1.0)],
+                            time_commands: vec![TimeControlCommand::Move {
+                                direction: MoveDirection::Forward,
+                                speed: MoveSpeed::Fast,
+                            }],
                         });
                 }
             }
