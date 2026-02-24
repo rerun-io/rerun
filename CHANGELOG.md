@@ -39,10 +39,10 @@ To quickly navigate to the desired visualizer, each time series view now shows a
 
 For more details please refer to our documentation:
 
-<!-- TODO(RR-3477): [Customize views]() -->
+- [Customize views](https://rerun.io/docs/concepts/visualization/customize-views?speculative-link)
 <!-- TODO(RR-3409): [Howto plot any scalars]() -->
 
-Thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
+And finally, thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
 
 <picture>
   <img src="https://static.rerun.io/interpolation-mode/093d901acd73f84baf838cee37bb579135f15dfa/480w.png" alt="Dropdown of different interpolation modes">

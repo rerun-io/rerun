@@ -49,7 +49,8 @@ concepts/spaces-and-transforms: concepts/logging-and-ingestion/transforms
 concepts/static: concepts/logging-and-ingestion/static
 concepts/timelines: concepts/logging-and-ingestion/timelines
 concepts/transforms: concepts/logging-and-ingestion/transforms
-concepts/visualizers-and-overrides: concepts/visualization/visualizers-and-overrides
+concepts/visualizers-and-overrides: concepts/visualization/customize-views
+concepts/visualization/visualizers-and-overrides: concepts/visualization/customize-views
 
 # Reference section
 reference/dataframes: concepts/query-and-transform/dataframe-queries
