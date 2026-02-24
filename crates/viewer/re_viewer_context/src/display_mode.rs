@@ -87,6 +87,10 @@ impl DisplayMode {
         }
     }
 
+    /// Returns the redap origin for the current display mode, if any.
+    ///
+    /// Proxy origins are excluded because they are local and don't represent
+    /// a remote server connection.
     pub fn redap_origin(&self, store_hub: &crate::StoreHub) -> Option<re_uri::Origin> {
         match self {
             Self::LocalTable(_) => None,
@@ -96,12 +100,26 @@ impl DisplayMode {
                 let source = db.data_source.as_ref()?;
                 let uri = source.redap_uri()?;
 
+                // Don't return proxy origins — they are local.
+                if matches!(uri, re_uri::RedapUri::Proxy(_)) {
+                    return None;
+                }
+
                 Some(uri.origin().clone())
             }
 
             Self::Settings(d) | Self::ChunkStoreBrowser(d) => d.redap_origin(store_hub),
 
-            Self::Loading(log_source) => log_source.redap_uri().map(|r| r.origin().clone()),
+            Self::Loading(log_source) => {
+                let uri = log_source.redap_uri()?;
+
+                // Don't return proxy origins — they are local.
+                if matches!(uri, re_uri::RedapUri::Proxy(_)) {
+                    return None;
+                }
+
+                Some(uri.origin().clone())
+            }
             Self::RedapEntry(entry) => Some(entry.origin.clone()),
             Self::RedapServer(origin) => Some(origin.clone()),
         }
