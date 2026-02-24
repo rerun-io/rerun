@@ -62,10 +62,8 @@ runs:
     - name: Ensure correct version of Rust is installed
       shell: bash --noprofile --norc -euo pipefail {0}
       run: |
-        # This is the only way to force rustup to install the version of Rust
-        # and the components/targets specified in our `rust-toolchain` file.
-        # It might break at some point: https://github.com/rust-lang/rustup/issues/1397
-        rustup show
+        rustup --version
+        rustup install
 
     - name: Install additional targets
       if: ${{ inputs.targets != '' }}
@@ -87,6 +85,13 @@ runs:
         use_gcs: true
         gcs_bucket: rerun-sccache
         gcs_read_only: false
+
+    - name: Configure sccache environment
+      shell: bash --noprofile --norc -euo pipefail {0}
+      run: |
+        echo "SCCACHE_GHA_ENABLED=false" >> $GITHUB_ENV
+        echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+        echo "CARGO_INCREMENTAL=0" >> $GITHUB_ENV
 
     - name: Verify sccache
       shell: bash --noprofile --norc -euo pipefail {0}
