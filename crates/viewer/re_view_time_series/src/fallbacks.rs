@@ -7,9 +7,9 @@ use re_sdk_types::{
 use re_viewer_context::ViewStateExt as _;
 
 use crate::view_class::{TimeSeriesViewState, make_range_sane};
-
-const MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT: usize = 20;
-const MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN: usize = 20;
+use crate::{
+    MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN, MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT,
+};
 
 /// Register fallback providers for TimeSeriesView-related components and view properties.
 pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>) {

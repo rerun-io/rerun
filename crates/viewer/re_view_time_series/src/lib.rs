@@ -21,6 +21,9 @@ use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewport_blueprint::ViewPropertyQueryError;
 pub use view_class::TimeSeriesView;
 
+pub(crate) const MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT: usize = 20;
+pub(crate) const MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN: usize = 20;
+
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the view
 /// itself.
 ///

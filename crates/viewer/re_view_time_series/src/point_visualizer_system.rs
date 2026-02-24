@@ -175,7 +175,7 @@ impl SeriesPointsSystem {
             },
         };
 
-        let num_series = determine_num_series(all_scalar_chunks);
+        let num_series = determine_num_series(all_scalar_chunks, &results);
         let mut points_per_series =
             allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
 

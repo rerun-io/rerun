@@ -109,3 +109,35 @@ pub async fn per_visualizer_instruction_errors() {
     harness.click_label("View errors");
     harness.snapshot_app("per_visualizer_instruction_errors_3b_errors_only_menu");
 }
+
+/// Tests that logging more series than `MAX_SERIES_COUNT` doesn't crash and the extra series
+/// are silently dropped.
+#[tokio::test(flavor = "multi_thread")]
+pub async fn series_count_exceeds_max() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    harness.init_recording();
+    harness.set_blueprint_panel_opened(false);
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    let timeline = Timeline::new_sequence("t");
+    let num_scalars = 1001;
+    for t in 0..100 {
+        let values: Vec<f64> = (0..num_scalars)
+            .map(|i| ((t * 50 + i * 100) as f64 * 0.001).sin())
+            .collect();
+        harness.log_entity("many_series", |builder| {
+            builder.with_archetype_auto_row([(timeline, t)], &Scalars::new(values))
+        });
+    }
+
+    harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new(
+            TimeSeriesView::identifier(),
+            RecommendedView::new_single_entity("many_series"),
+        ))
+    });
+
+    harness.click_label("View errors");
+    harness.snapshot_app("series_count_exceeds_max");
+}

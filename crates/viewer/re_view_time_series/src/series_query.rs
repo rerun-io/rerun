@@ -11,23 +11,32 @@ use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::QueryContext;
 
-use crate::{PlotPoint, PlotSeriesKind};
+use crate::{MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT, PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
 /// Determines how many series there are in the scalar chunks.
-pub fn determine_num_series(all_scalar_chunks: &re_view::ChunksWithComponent<'_>) -> usize {
+pub fn determine_num_series(
+    all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
+) -> usize {
     // TODO(andreas): We should determine this only once and cache the result.
     // As data comes in we can validate that the number of series is consistent.
     // Keep in mind clears here.
-    all_scalar_chunks
+    let count = all_scalar_chunks
         .iter()
         .find_map(|chunk| {
             chunk
                 .iter_slices::<f64>()
                 .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         })
-        .unwrap_or(1)
+        .unwrap_or(1);
+    if count > MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT {
+        results.report_error(format!("Number of series ({count}) exceeds the maximum ({MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT}). Only the first {MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT} series will be visualized."));
+        MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT
+    } else {
+        count
+    }
 }
 
 /// Queries the visibility flags for all series in a query.
@@ -142,7 +151,7 @@ pub fn collect_colors(
     query: &RangeQuery,
     query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
-    points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
+    points_per_series: &mut PlotPointsPerSeries,
     color_descriptor: &ComponentDescriptor,
 ) {
     re_tracing::profile_function!();
@@ -306,7 +315,7 @@ pub fn collect_radius_ui(
     query: &RangeQuery,
     query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
-    points_per_series: &mut smallvec::SmallVec<[Vec<PlotPoint>; 1]>,
+    points_per_series: &mut PlotPointsPerSeries,
     radius_descriptor: &ComponentDescriptor,
     radius_multiplier: f32,
 ) {
