@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use arrow::array::AsArray as _;
 use itertools::Itertools as _;
 
-use re_log_encoding::RawRrdManifest;
+use re_log_encoding::{Decodable as _, RawRrdManifest, RrdFooter};
 use re_log_types::LogMsg;
 use re_sdk_types::reflection::{ComponentDescriptorExt as _, Reflection};
 
@@ -17,6 +17,8 @@ pub struct VerifyCommand {
     path_to_input_rrds: Vec<String>,
 
     /// If true, ensures that RRD footers are present and well formed.
+    //
+    // TODO(cmc): consider making this mandatory?
     #[clap(long, default_value_t=true, num_args=0..=1)]
     check_footers: bool,
 }
@@ -32,43 +34,56 @@ impl VerifyCommand {
 
         let (rx, rx_done) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
-        let mut seen_files: HashMap<InputSource, Option<RawRrdManifest>> = HashMap::new();
+        let mut seen_files: HashMap<InputSource, RrdFooter> = HashMap::new();
 
         for (source, res) in rx {
             verifier.verify_log_msg(&source.to_string(), res?);
-            seen_files.insert(source, None);
+            seen_files.insert(source, RrdFooter::default());
         }
 
         if *check_footers {
             for (_, rrd_manifests) in rx_done {
                 for (source, rrd_manifest) in rrd_manifests {
                     let rrd_manifest = match rrd_manifest {
-                        Ok(m) => Some(m),
+                        Ok(m) => m,
 
                         Err(err) => {
                             verifier
                                 .errors
                                 .insert(format!("{source}: Corrupt RRD manifest: {err:#}"));
-                            None
+                            continue;
                         }
                     };
 
-                    if seen_files
-                        .insert(source.clone(), rrd_manifest)
-                        .is_some_and(|v| v.is_some())
+                    let rrd_footer = seen_files.entry(source.clone()).or_default();
+                    if rrd_footer
+                        .manifests
+                        .insert(rrd_manifest.store_id.clone(), rrd_manifest.clone())
+                        .is_some()
                     {
-                        verifier
-                            .errors
-                            .insert(format!("{source}: More than one RRD manifest"));
+                        verifier.errors.insert(format!(
+                            "{source}/{}/{}: More than one RRD manifest",
+                            rrd_manifest.store_id.application_id(),
+                            rrd_manifest.store_id.recording_id(),
+                        ));
+                    }
+
+                    if let InputSource::File(path) = &source
+                        && let Err(err) =
+                            load_from_rrd_filepath_with_rrd_manifest(path, &rrd_manifest)
+                    {
+                        verifier.errors.insert(format!(
+                            "{source}: Corrupt RRD manifest, cannot deserialize chunk data: {err:#}"
+                        ));
                     }
                 }
             }
 
-            for (source, rrd_manifest) in &seen_files {
-                if rrd_manifest.is_none() {
+            for (source, rrd_footer) in &seen_files {
+                if rrd_footer.manifests.is_empty() {
                     verifier
                         .errors
-                        .insert(format!("{source}: Missing RRD manifest"));
+                        .insert(format!("{source}: Missing RRD footer / no RRD manifests"));
                 }
             }
         }
@@ -91,6 +106,8 @@ impl VerifyCommand {
         }
     }
 }
+
+// ---
 
 struct Verifier {
     reflection: Reflection,
@@ -212,13 +229,13 @@ impl Verifier {
                 // Verify archetype field.
                 // We may want to have a flag to allow some of this?
                 let archetype_field_reflection = archetype_reflection
-                        .field_by_name(column_descriptor.component_descriptor().archetype_field_name())
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "Input column referred to the component {component:?} of {archetype_name:?}, which only has the fields: {}",
-                                archetype_reflection.fields.iter().map(|field| field.name).join(" ")
-                            )
-                        })?;
+                    .field_by_name(column_descriptor.component_descriptor().archetype_field_name())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Input column referred to the component {component:?} of {archetype_name:?}, which only has the fields: {}",
+                            archetype_reflection.fields.iter().map(|field| field.name).join(" ")
+                        )
+                    })?;
 
                 let expected_component_type = &archetype_field_reflection.component_type;
                 if &component_type != expected_component_type {
@@ -233,4 +250,49 @@ impl Verifier {
 
         Ok(())
     }
+}
+
+// ---
+
+/// Attempts to deserialize chunks according to the given RRD manifest.
+///
+/// Useful to check for corrupt manifests.
+fn load_from_rrd_filepath_with_rrd_manifest(
+    path_to_rrd: impl AsRef<std::path::Path>,
+    rrd_manifest: &RawRrdManifest,
+) -> anyhow::Result<()> {
+    use std::io::{Read as _, Seek as _, SeekFrom};
+
+    let path_to_rrd = path_to_rrd.as_ref();
+
+    re_tracing::profile_function!(path_to_rrd.to_string_lossy());
+
+    let mut file = std::fs::File::open(path_to_rrd)?;
+
+    let chunk_ids = rrd_manifest.col_chunk_id()?;
+    let byte_offsets = rrd_manifest.col_chunk_byte_offset()?;
+    let byte_sizes = rrd_manifest.col_chunk_byte_size()?;
+
+    let mut buf = Vec::new();
+    for (chunk_id, offset, size) in itertools::izip!(chunk_ids, byte_offsets, byte_sizes) {
+        file.seek(SeekFrom::Start(offset))?;
+
+        buf.resize(size as usize, 0u8);
+        file.read_exact(&mut buf)?;
+
+        let chunk = re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(&buf)?;
+        anyhow::ensure!(
+            chunk_id
+                == re_chunk::ChunkId::from_tuid(
+                    chunk
+                        .chunk_id
+                        .expect("must have chunk ID")
+                        .try_into()
+                        .expect("must be valid TUID")
+                ),
+            "corrupt RRD manifest, chunk IDs don't align"
+        );
+    }
+
+    Ok(())
 }

@@ -311,7 +311,7 @@ impl<W: std::io::Write> Encoder<W> {
         self.footer_state = None;
     }
 
-    /// Returns the size in bytes of the encoded data.
+    /// Returns the span and uncompressed size in bytes of the encoded data.
     ///
     /// ⚠️ This implies [`Self::do_not_emit_footer`]. ⚠️
     ///
@@ -323,7 +323,7 @@ impl<W: std::io::Write> Encoder<W> {
     pub unsafe fn append_transport(
         &mut self,
         message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
-    ) -> Result<u64, EncodeError> {
+    ) -> Result<(re_span::Span<u64>, u64), EncodeError> {
         if self.is_finished {
             return Err(EncodeError::AlreadyFinished);
         }
@@ -339,8 +339,11 @@ impl<W: std::io::Write> Encoder<W> {
             return Err(EncodeError::AlreadyUnwrapped);
         };
 
+        let byte_offset_excluding_header =
+            self.num_written + crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
+
         self.scratch.clear();
-        match self.serializer {
+        let n = match self.serializer {
             Serializer::Protobuf => {
                 message.to_rrd_bytes(&mut self.scratch)?;
                 let n = w
@@ -348,9 +351,53 @@ impl<W: std::io::Write> Encoder<W> {
                     .map(|_| self.scratch.len() as u64)
                     .map_err(EncodeError::Write)?;
                 self.num_written += n;
-                Ok(n)
+                n
             }
+        };
+
+        let byte_size_excluding_header = n - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
+
+        let byte_span_excluding_header = re_span::Span {
+            start: byte_offset_excluding_header,
+            len: byte_size_excluding_header,
+        };
+
+        Ok((byte_span_excluding_header, message.byte_size_uncompressed()))
+    }
+
+    /// Like [`Self::finish`], but appends the specified, custom RRD footer.
+    ///
+    /// # Safety
+    ///
+    /// This is extremely unsafe and only makes sense if you know exactly what you are doing.
+    /// This is generally only useful when manipulating existing footers and manifests directly,
+    /// like e.g. `rerun rrd route` does.
+    ///
+    /// You can verify that the footer you produced is still deserializable using `rerun rrd verify`.
+    ///
+    /// [RRD footer]: crate::RrdFooter
+    #[inline]
+    #[expect(unsafe_code)]
+    pub unsafe fn finish_with_custom_footer(
+        &mut self,
+        rrd_footer: &crate::RrdFooter,
+    ) -> Result<(), EncodeError> {
+        if self.is_finished {
+            return Ok(());
         }
+
+        let Some(w) = self.write.as_mut() else {
+            return Err(EncodeError::AlreadyUnwrapped);
+        };
+
+        self.is_finished = true;
+
+        re_log::debug_assert!(
+            self.footer_state.is_none(),
+            "using a custom footer in addition to a builtin one is a very bad idea",
+        );
+
+        Self::finish_impl(w, &mut self.num_written, rrd_footer)
     }
 
     /// Appends an end-of-stream marker to the encoded bytes. Does not flush.
@@ -376,6 +423,16 @@ impl<W: std::io::Write> Encoder<W> {
             return Ok(());
         };
 
+        let rrd_footer = footer_state.finish()?;
+
+        Self::finish_impl(w, &mut self.num_written, &rrd_footer)
+    }
+
+    fn finish_impl(
+        w: &mut W,
+        num_written: &mut u64,
+        rrd_footer: &crate::RrdFooter,
+    ) -> Result<(), EncodeError> {
         // TODO(cmc): the extra heap-allocs and copies could be easily avoided with the
         // introduction of an InMemoryWriter trait or similar. In practice it makes no
         // difference and the cognitive overhead of this crate is already through the roof.
@@ -384,7 +441,6 @@ impl<W: std::io::Write> Encoder<W> {
 
         // Message Header (::End)
 
-        let rrd_footer = footer_state.finish()?;
         let rrd_footer = rrd_footer.to_transport(())?;
 
         let mut out_header = Vec::new();
@@ -394,16 +450,16 @@ impl<W: std::io::Write> Encoder<W> {
         }
         .to_rrd_bytes(&mut out_header)?;
         w.write_all(&out_header).map_err(EncodeError::Write)?;
-        self.num_written += out_header.len() as u64;
+        *num_written += out_header.len() as u64;
 
-        let end_msg_byte_offset_from_start_excluding_header = self.num_written;
+        let end_msg_byte_offset_from_start_excluding_header = *num_written;
 
         // Message payload (re_protos::RrdFooter)
 
         let mut out_rrd_footer = Vec::new();
         rrd_footer.to_rrd_bytes(&mut out_rrd_footer)?;
         w.write_all(&out_rrd_footer).map_err(EncodeError::Write)?;
-        self.num_written += out_rrd_footer.len() as u64;
+        *num_written += out_rrd_footer.len() as u64;
 
         // StreamFooter
 
@@ -415,7 +471,7 @@ impl<W: std::io::Write> Encoder<W> {
         .to_rrd_bytes(&mut out_stream_footer)?;
         w.write_all(&out_stream_footer)
             .map_err(EncodeError::Write)?;
-        self.num_written += out_stream_footer.len() as u64;
+        *num_written += out_stream_footer.len() as u64;
 
         Ok(())
     }
