@@ -400,6 +400,7 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/dual_color_point_cloud" = ["cpp"] # Not implemented
 "tutorials/visualization" = [
   "py", # Requires passing RRD as argument
   "cpp", # Not implemented
@@ -529,6 +530,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"howto/dual_color_point_cloud" = ["py", "rust"] # Uses random point generation
 "howto/layers" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",

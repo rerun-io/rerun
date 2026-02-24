@@ -50,6 +50,7 @@ For more details please refer to our documentation:
 
 <!-- TODO(RR-3477): [Customize views]() -->
 <!-- TODO(RR-3409): [Howto plot any scalars]() -->
+- [Component mappings outside of plotting](https://rerun.io/docs/howto/visualizations/component-mappings?speculative-link), shown on the example of a colored point cloud
 
 Thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
 
