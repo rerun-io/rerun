@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .visualizer()
                         .with_mappings(vec![
                             rerun::blueprint::VisualizerComponentMapping::new_default(
-                                "SeriesLines:colors",
+                                rerun::SeriesLines::descriptor_colors().component,
                             )
                             .into(),
                         ]),
@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .visualizer()
                         .with_mappings(vec![
                             rerun::blueprint::VisualizerComponentMapping::new_source_component(
-                                "Scalars:scalars",
+                                rerun::Scalars::descriptor_scalars().component,
                                 "custom:my_custom_scalar",
                             )
                             .into(),
@@ -76,13 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
     );
 
-    blueprint.send(
-        &rec,
-        rerun::blueprint::BlueprintActivation {
-            make_active: true,
-            make_default: false,
-        },
-    )?;
+    blueprint.send(&rec, rerun::blueprint::BlueprintActivation::default())?;
 
     Ok(())
 }

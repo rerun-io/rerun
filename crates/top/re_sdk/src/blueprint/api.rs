@@ -10,13 +10,22 @@ use crate::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
 use super::{BlueprintPanel, ContainerLike, SelectionPanel, Tabs, TimePanel};
 
 /// Activation options for a [`Blueprint`].
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct BlueprintActivation {
     /// Activate the blueprint immediately in the viewer.
     pub make_active: bool,
 
     /// Set this blueprint as the default for the application.
     pub make_default: bool,
+}
+
+impl Default for BlueprintActivation {
+    fn default() -> Self {
+        Self {
+            make_active: true,
+            make_default: true,
+        }
+    }
 }
 
 /// A [`Blueprint`] bundled with its activation options.
