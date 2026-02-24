@@ -21,6 +21,7 @@ In addition to plotting scalars from MCAP files, it is now possible to visualize
 - `Float32` and `Float64`
 - `Int8`, `Int16`, `Int32`, and `Int64`
 - `UInt8`, `UInt16`, `UInt32`, and `UInt64`
+- `Boolean`
 - Any of the above nested inside of [Arrow structs](https://arrow.apache.org/docs/format/Intro.html#struct).
 
 This also makes it possible to log and visualize multiple scalars to the same entity, which can drastically reduce the size of the resulting `.rrd` files.

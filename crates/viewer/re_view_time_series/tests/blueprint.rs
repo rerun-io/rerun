@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use re_log_types::external::arrow::array::{
-    Array as _, Float64Array, Int32Array, ListArray, StringArray, StructArray,
+    Array as _, BooleanArray, Float64Array, Int32Array, ListArray, StringArray, StructArray,
 };
 use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
@@ -399,12 +399,13 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
         let timepoint = TimePoint::from([(timeline, i)]);
         let t = i as f64 / 8.0;
 
-        let single_value = 1.0 - sigmoid(t - 2.0); // Flipped sigmoid: starts top-left, moves to bottom-right
+        // Flipped sigmoid scaled to [-2, 2]
+        let single_value = (1.0 - sigmoid(t - 2.0)) * 4.0 - 2.0;
 
         let shifts = [0.0, -0.5, 0.5];
         let multiple_values: Vec<f64> = shifts
             .iter()
-            .map(|&shift| 1.0 - sigmoid(t - 2.0 + shift))
+            .map(|&shift| (1.0 - sigmoid(t - 2.0 + shift)) * 4.0 - 2.0)
             .collect();
 
         use re_log_types::external::arrow;
@@ -443,15 +444,19 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
         // Struct(
         //   single Float64,
         //   multiple List(Float64),
-        //   step Int32,
+        //   stairstep Int32,
+        //   toggle Boolean,
         //   properties Struct(
         //     color List(UInt32),
         //     name Utf8))
         // )
         // ```
 
-        // Int32 step function to test casting - transitions halfway through (0 -> 1)
-        let step_value = i32::from(i > MAX_TIME / 2);
+        // Int32 staircase from -2 to 2 to test casting (each step lasts ~6 ticks)
+        let stairstep_value = (i * 5 / (MAX_TIME + 1)) as i32 - 2;
+
+        // Boolean square wave to test bool-to-scalar casting - toggles every 4 ticks
+        let toggle_value = (i / 4) % 2 == 0;
 
         let name_array =
             Arc::new(StringArray::from(vec!["my-sigmoid"])) as Arc<dyn arrow::array::Array>;
@@ -485,8 +490,12 @@ fn log_data_nested(test_context: &mut TestContext, timeline: re_log_types::Timel
                 Arc::new(list_array) as Arc<dyn arrow::array::Array>,
             ),
             (
-                Arc::new(Field::new("step", DataType::Int32, false)),
-                Arc::new(Int32Array::from(vec![step_value])) as Arc<dyn arrow::array::Array>,
+                Arc::new(Field::new("stairstep", DataType::Int32, false)),
+                Arc::new(Int32Array::from(vec![stairstep_value])) as Arc<dyn arrow::array::Array>,
+            ),
+            (
+                Arc::new(Field::new("toggle", DataType::Boolean, false)),
+                Arc::new(BooleanArray::from(vec![toggle_value])) as Arc<dyn arrow::array::Array>,
             ),
             (
                 Arc::new(Field::new(
@@ -588,9 +597,12 @@ fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) 
         // * Lines (for .multiple[] field elements):
         //    * scalar - map to data.multiple[]
         //    * no explicit styling (auto)
-        // * Lines (for .step field):
-        //    * scalar - map to data.step (Int32, tests casting)
-        //    * explicit red color, step function transitions halfway
+        // * Lines (for .stairstep field):
+        //    * scalar - map to data.stairstep (Int32, tests casting)
+        //    * explicit red color, staircase from -2 to 2
+        // * Lines (for .toggle field):
+        //    * scalar - map to data.toggle (Boolean, tests bool-to-scalar casting)
+        //    * explicit green color, square wave toggling every 4 ticks
         let single_mapping = VisualizerComponentMapping {
             target: Scalars::descriptor_scalars().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
@@ -619,11 +631,18 @@ fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) 
             selector: Some(".multiple[]".into()),
         };
 
-        let step_mapping = VisualizerComponentMapping {
+        let stairstep_mapping = VisualizerComponentMapping {
             target: Scalars::descriptor_scalars().component.as_str().into(),
             source_kind: ComponentSourceKind::SourceComponent,
             source_component: Some("custom:data".into()),
-            selector: Some(".step".into()),
+            selector: Some(".stairstep".into()),
+        };
+
+        let toggle_mapping = VisualizerComponentMapping {
+            target: Scalars::descriptor_scalars().component.as_str().into(),
+            source_kind: ComponentSourceKind::SourceComponent,
+            source_component: Some("custom:data".into()),
+            selector: Some(".toggle".into()),
         };
 
         let visualizers = vec![
@@ -642,7 +661,13 @@ fn setup_blueprint_with_explicit_mapping_nested(test_context: &mut TestContext) 
                 .with_colors([components::Color::from_rgb(255, 0, 0)])
                 .visualizer()
                 .with_mappings([blueprint::components::VisualizerComponentMapping(
-                    step_mapping,
+                    stairstep_mapping,
+                )]),
+            SeriesLines::new()
+                .with_colors([components::Color::from_rgb(0, 128, 0)])
+                .visualizer()
+                .with_mappings([blueprint::components::VisualizerComponentMapping(
+                    toggle_mapping,
                 )]),
         ];
 

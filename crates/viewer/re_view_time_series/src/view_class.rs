@@ -997,11 +997,11 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
         DataType::Int32 => 5,
         DataType::Int16 => 7,
         DataType::Int8 => 9,
-        DataType::Boolean => 11,
         DataType::UInt64 => 4,
         DataType::UInt32 => 6,
         DataType::UInt16 => 8,
         DataType::UInt8 => 10,
+        DataType::Boolean => 11,
         _ => 100, // Any other type gets lowest priority
     }
 }
