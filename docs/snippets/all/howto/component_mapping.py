@@ -82,6 +82,7 @@ blueprint = rrb.Blueprint(
                 # * source scalars from the custom component "custom:my_custom_scalar"
                 # * set the name via an override
                 # * everything else uses the automatic component mappings, so it will pick up colors from the view default.
+                # region: source_mapping
                 rr.SeriesLines(names="cosine (custom)").visualizer(
                     mappings=[
                         # Map scalars to the custom component.

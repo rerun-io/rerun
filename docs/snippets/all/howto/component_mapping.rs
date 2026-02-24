@@ -97,6 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // * source scalars from the custom component "plot:my_custom_scalar"
                     // * set the name via an override
                     // * everything else uses the automatic component mappings, so it will pick up colors from the view default
+                    // region: source_mapping
                     rerun::SeriesLines::new()
                         .with_names(["cosine (custom)"])
                         .visualizer()
