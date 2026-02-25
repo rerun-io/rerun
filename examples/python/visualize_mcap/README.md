@@ -27,7 +27,7 @@ Visualize Protobuf-encoded [MCAP](https://mcap.dev/) data in the Rerun Viewer us
 
 ## Background
 
-[MCAP](https://mcap.dev/) is a popular open-source container format for multimodal log data, widely used in robotics. Rerun can load MCAP files directly via [`log_file_from_path`](https://www.rerun.io/docs/reference/sdk/python#rerun.log_file_from_path) and has [built-in support for many popular robotics message types](https://www.rerun.io/docs/howto/logging-and-ingestion/mcap) such as images, point clouds, and transforms.
+[MCAP](https://mcap.dev/) is a popular open-source container format for multimodal log data, widely used in robotics. Rerun can load MCAP files directly via [`log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path) and has [built-in support for many popular robotics message types](https://www.rerun.io/docs/howto/logging-and-ingestion/mcap) such as images, point clouds, and transforms.
 
 However, MCAP files often also contain domain-specific Protobuf messages (like `JointState` in this example) whose fields don't map to Rerun archetypes out of the box. **Component mapping** solves this: it lets you define, purely in the blueprint, how to extract fields from a source component and map them onto Rerun visualization types—using jq-like selectors—without writing any deserialization code.
 
