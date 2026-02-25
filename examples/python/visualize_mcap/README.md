@@ -7,7 +7,7 @@ thumbnail = "https://static.rerun.io/visualize_mcap/2ab44dd2cd60b441b36020349541
 thumbnail_dimensions = [480, 254]
 -->
 
-Visualize Protobuf-encoded [MCAP](https://mcap.dev/) data in the Rerun Viewer using [component mapping](https://rerun.io/docs/concepts/visualization/visualizers-and-overrides) to extract and plot fields from raw messages—no custom deserialization code required.
+Visualize Protobuf-encoded [MCAP](https://mcap.dev/) data in the Rerun Viewer using [component mapping](https://www.rerun.io/docs/concepts/visualization/visualizers-and-overrides) to extract and plot fields from raw messages—no custom deserialization code required.
 
 <picture>
   <img src="https://static.rerun.io/visualize_mcap/2ab44dd2cd60b441b36020349541a64f2ca498eb/full.png" alt="">
@@ -17,15 +17,23 @@ Visualize Protobuf-encoded [MCAP](https://mcap.dev/) data in the Rerun Viewer us
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/visualize_mcap/2ab44dd2cd60b441b36020349541a64f2ca498eb/1200w.png">
 </picture>
 
+## Used Rerun types
+- [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines)
+- [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars)
+- [`VisualizerComponentMapping`](https://www.rerun.io/docs/reference/types/datatypes/visualizer_component_mapping?speculative-link)
+- [`TimeSeriesView`](https://www.rerun.io/docs/reference/types/views/time_series_view)
+- [`Spatial3DView`](https://www.rerun.io/docs/reference/types/views/spatial3d_view)
+- [`Spatial2DView`](https://www.rerun.io/docs/reference/types/views/spatial2d_view)
+
 ## Background
 
-[MCAP](https://mcap.dev/) is a popular open-source container format for multimodal log data, widely used in robotics. Rerun can load MCAP files directly via [`log_file_from_path`](https://rerun.io/docs/reference/sdk/python#rerun.log_file_from_path) and has [built-in support for many popular robotics message types](https://rerun.io/docs/howto/logging-and-ingestion/mcap) such as images, point clouds, and transforms.
+[MCAP](https://mcap.dev/) is a popular open-source container format for multimodal log data, widely used in robotics. Rerun can load MCAP files directly via [`log_file_from_path`](https://www.rerun.io/docs/reference/sdk/python#rerun.log_file_from_path) and has [built-in support for many popular robotics message types](https://www.rerun.io/docs/howto/logging-and-ingestion/mcap) such as images, point clouds, and transforms.
 
 However, MCAP files often also contain domain-specific Protobuf messages (like `JointState` in this example) whose fields don't map to Rerun archetypes out of the box. **Component mapping** solves this: it lets you define, purely in the blueprint, how to extract fields from a source component and map them onto Rerun visualization types—using jq-like selectors—without writing any deserialization code.
 
 ## Component mapping
 
-The core of this example is the blueprint-based component mapping. Each `JointState` Protobuf message contains `joint_positions` and `joint_names` arrays. Rather than parsing these in Python, the example uses [`VisualizerComponentMapping`](https://rerun.io/docs/reference/types/datatypes/visualizer_component_mapping) to tell the viewer how to extract them at display time:
+The core of this example is the blueprint-based component mapping. Each `JointState` Protobuf message contains `joint_positions` and `joint_names` arrays. Rather than parsing these in Python, the example uses [`VisualizerComponentMapping`](https://www.rerun.io/docs/reference/types/datatypes/visualizer_component_mapping?speculative-link) to tell the viewer how to extract them at display time:
 
 ```python
 rr.SeriesLines().visualizer(
@@ -50,7 +58,7 @@ rr.SeriesLines().visualizer(
 - **`selector`** is a jq-like expression (`.joint_positions[]`) that extracts the desired field.
 - **`target`** specifies the Rerun archetype component to map it onto (`Scalars:scalars` for plotting, `SeriesLines:names` for labels).
 
-This mapping is applied as a [visualizer override](https://rerun.io/docs/concepts/visualization/visualizers-and-overrides) on the relevant entity paths, so the raw Protobuf data is plotted as labeled time series in a [`TimeSeriesView`](https://rerun.io/docs/reference/types/views/time_series_view).
+This mapping is applied as a [visualizer override](https://www.rerun.io/docs/concepts/visualization/visualizers-and-overrides) on the relevant entity paths, so the raw Protobuf data is plotted as labeled time series in a [`TimeSeriesView`](https://www.rerun.io/docs/reference/types/views/time_series_view).
 
 ## Data
 
