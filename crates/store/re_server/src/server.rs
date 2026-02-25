@@ -14,12 +14,6 @@ use tracing::{error, info};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ServerError {
-    #[error("Ready channel closed unexpectedly")]
-    ReadyChannelClosedUnexpectedly,
-
-    #[error("Failed channel closed unexpectedly")]
-    FailedChannelClosedUnexpectedly,
-
     #[error("Server failed to start: {reason}")]
     ServerFailedToStart { reason: String },
 }
@@ -40,6 +34,7 @@ pub struct ServerHandle {
     shutdown: Option<Sender<()>>,
     ready: mpsc::Receiver<SocketAddr>,
     failed: mpsc::Receiver<String>,
+    task: tokio::task::JoinHandle<()>,
 }
 
 impl ServerHandle {
@@ -52,15 +47,30 @@ impl ServerHandle {
                         info!("Ready for connections.");
                         Ok(local_addr)
                     },
-                    None => Err(ServerError::ReadyChannelClosedUnexpectedly)
-
+                    None => Err(ServerError::ServerFailedToStart {
+                        reason: "ready channel closed unexpectedly".into(),
+                    }),
                 }
             }
             failed = self.failed.recv() => {
                 match failed {
                     Some(reason) => Err(ServerError::ServerFailedToStart { reason }),
-                    None => Err(ServerError::FailedChannelClosedUnexpectedly)
-
+                    None => Err(ServerError::ServerFailedToStart {
+                        reason: "failed channel closed unexpectedly".into(),
+                    }),
+                }
+            }
+            result = &mut self.task => {
+                match result {
+                    Ok(()) => Err(ServerError::ServerFailedToStart {
+                        reason: "server task exited without signaling ready or failed".into(),
+                    }),
+                    Err(join_err) if join_err.is_panic() => Err(ServerError::ServerFailedToStart {
+                        reason: format!("server task panicked: {join_err}"),
+                    }),
+                    Err(join_err) => Err(ServerError::ServerFailedToStart {
+                        reason: format!("server task was cancelled: {join_err}"),
+                    }),
                 }
             }
         }
@@ -95,7 +105,7 @@ impl Server {
         let (failed_tx, failed_rx) = mpsc::channel(1);
         let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             let listener = if let Ok(listener) = TcpListener::bind(addr).await {
                 #[expect(clippy::unwrap_used)]
                 let bind_addr = listener.local_addr().unwrap();
@@ -179,6 +189,7 @@ impl Server {
             shutdown: Some(shutdown_tx),
             ready: ready_rx,
             failed: failed_rx,
+            task,
         }
     }
 }
