@@ -104,6 +104,16 @@ jobs:
         run: |
           pixi run rerun-build-web-release
 
+      - name: "Create HTML aliases without extensions"
+        run: |
+          cd crates/viewer/re_web_viewer_server/web_viewer
+          for f in *.html; do
+            name="${f%.html}"
+            if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
+              cp "$f" "$name"
+            fi
+          done
+
       - name: Build examples
         run: |
           pixi run build-examples rrd --install \
