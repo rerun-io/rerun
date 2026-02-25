@@ -1172,6 +1172,17 @@ class _UrdfJointInternal:
         If `clamp` is False (default), values outside limits are used as-is without warnings.
         """
 
+    def compute_transform_columns(self, values: list[float], *, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute transforms for this joint at multiple values in a single call.
+
+        Returns a dictionary with translations, quaternions, frame names, and warnings
+        for use with columnar APIs like `send_columns`.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
+
 class _UrdfLinkInternal:
     """Internal Rust representation of a URDF link."""
 

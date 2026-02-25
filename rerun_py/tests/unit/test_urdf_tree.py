@@ -84,6 +84,31 @@ def test_urdf_tree_transform() -> None:
     )
 
 
+def test_urdf_compute_transform_columns() -> None:
+    tree = rru.UrdfTree.from_file_path(URDF_PATH)
+
+    joint = tree.get_joint_by_name("1")
+    assert joint is not None
+
+    values = [0.0, 0.5, 1.0]
+    columns = joint.compute_transform_columns(values, clamp=True)
+
+    from rerun._baseclasses import ComponentColumnList
+
+    assert isinstance(columns, ComponentColumnList)
+    assert len(columns) > 0
+
+    # Verify the result is usable with send_columns by checking that
+    # the individual transform matches what compute_transform returns.
+    single = joint.compute_transform(0.5, clamp=True)
+    assert single.translation is not None
+    assert single.quaternion is not None
+
+    # Verify that out-of-range values produce warnings.
+    with pytest.warns(UserWarning, match="outside limits"):
+        joint.compute_transform_columns([joint.limit_upper + 1.0], clamp=True)
+
+
 def assert_quat_equivalent(actual: rr.components.RotationQuatBatch, expected: list[float]) -> None:
     actual_values = actual.pa_array.to_pylist()[0]
     dot = sum(a * b for a, b in zip(actual_values, expected, strict=False))
