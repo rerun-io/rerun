@@ -1303,7 +1303,28 @@ impl App {
                         re_log::error!("Failed to logout: {err}");
                     }
                 }
-                self.state.redap_servers.logout();
+                let logged_out_origins = self.state.redap_servers.logout();
+
+                // Close any open recordings that came from the logged-out servers.
+                store_hub.retain_recordings(|db| {
+                    let Some(data_source) = &db.data_source else {
+                        return true;
+                    };
+                    match data_source {
+                        LogSource::RedapGrpcStream { uri, .. } => {
+                            !logged_out_origins.contains(&uri.origin)
+                        }
+                        _ => true,
+                    }
+                });
+
+                // Also stop receiving data from those servers.
+                self.rx_log.retain(|r| match r.source() {
+                    LogSource::RedapGrpcStream { uri, .. } => {
+                        !logged_out_origins.contains(&uri.origin)
+                    }
+                    _ => true,
+                });
             }
             SystemCommand::SaveScreenshot { target, view_id } => {
                 if let Some(view_id) = view_id {
