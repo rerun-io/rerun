@@ -109,7 +109,7 @@ class UrdfJoint:
             child_frame=result["child_frame"],
         )
 
-    def compute_transform_columns(self, values: Sequence[float], clamp: bool = True) -> ComponentColumnList:
+    def compute_transform_columns(self, values: Sequence[float], *, clamp: bool = True) -> ComponentColumnList:
         """
         Compute transforms for this joint at multiple values, returning columnar data for use with `send_columns`.
 
