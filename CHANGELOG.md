@@ -41,7 +41,7 @@ To quickly navigate to the desired visualizer, each time series view now shows a
 For more details please refer to our documentation:
 
 - [Customize views](https://rerun.io/docs/concepts/visualization/customize-views?speculative-link)
-<!-- TODO(RR-3409): [Howto plot any scalars]() -->
+- [Plot any scalar](https://rerun.io/docs/howto/visualization/plot-any-scalar?speculative-link)
 - [Component mappings outside of plotting](https://rerun.io/docs/howto/visualizations/component-mappings?speculative-link), shown on the example of a colored point cloud
 
 And finally, thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
