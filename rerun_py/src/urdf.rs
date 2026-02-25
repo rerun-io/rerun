@@ -209,7 +209,7 @@ impl PyUrdfJoint {
     /// - `"parent_frame"`: single string (constant per joint)
     /// - `"child_frame"`: single string (constant per joint)
     /// - `"warnings"`: list of warning strings
-    #[pyo3(signature = (values, clamp = false))]
+    #[pyo3(signature = (values, *, clamp = false))]
     #[allow(clippy::needless_pass_by_value)] // PyO3 requires owned Vec for Python list extraction
     pub fn compute_transform_columns(
         &self,
