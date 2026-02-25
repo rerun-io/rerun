@@ -197,7 +197,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Fix NV12/YUYV ROS2 images being incorrectly loaded as depth [04beb77](https://github.com/rerun-io/rerun/commit/04beb777f4a49e6f720b09207fb5873ae22dacc0)
 - Don't include redo-buffer when saving blueprints [85cc4f9](https://github.com/rerun-io/rerun/commit/85cc4f96e00fb5b9b4a68e6249917832c9c7abc3)
 - Address issue where `.dae` with multiple triangle groups is not rendered [83e96bf](https://github.com/rerun-io/rerun/commit/83e96bf585dc7e9f708af6952d506e8013959078)
-- Don't reset video player on keyframe boundrary for AV1 [3bcd9b8](https://github.com/rerun-io/rerun/commit/3bcd9b87d02b1af80e3bfb7c4ad42d6483f0d274)
+- Don't reset video player on keyframe boundary for AV1 [3bcd9b8](https://github.com/rerun-io/rerun/commit/3bcd9b87d02b1af80e3bfb7c4ad42d6483f0d274)
 - Fix mono8/mono16 image channel classification [#12660](https://github.com/rerun-io/rerun/pull/12660)
 - Set AR for wasm development build on macOS [7945601](https://github.com/rerun-io/rerun/commit/7945601bb1b162fc09e79640419a0216c9d14e8e)
 - Fix interactions going through popups to the timepanel [1efc8c1](https://github.com/rerun-io/rerun/commit/1efc8c131d4f13c3238972c7bcf7957e2685833e)
@@ -237,7 +237,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Add `InterpolationMode` component for step function rendering [#12657](https://github.com/rerun-io/rerun/pull/12657) (thanks [@vfilter](https://github.com/vfilter)!)
 - Allow loading extensionless http urls via magic bytes detection [daf7a35](https://github.com/rerun-io/rerun/commit/daf7a35ebd5b25a3b53c7fda9d4b6c77dee0e705)
 - Fixes performance issue of too many time series plots [a74b382](https://github.com/rerun-io/rerun/commit/a74b382b9ce0b413f14d96d4a2f264e1f4b2abe8)
-- Suppport `(U)Int16` in time series plots [6bb58e4](https://github.com/rerun-io/rerun/commit/6bb58e489ba76c1744599e222180f9a358720933)
+- Support `(U)Int16` in time series plots [6bb58e4](https://github.com/rerun-io/rerun/commit/6bb58e489ba76c1744599e222180f9a358720933)
 - Support custom bool types in plots [fe8d955](https://github.com/rerun-io/rerun/commit/fe8d955ab3053d5aa388455a474abf8bcb469dda)
 
 #### 🗄️ OSS server
