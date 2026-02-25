@@ -671,6 +671,8 @@ async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<ApiResult<ChunksWithSegment>>,
 ) -> Result<(), DataFusionError> {
+    #![expect(clippy::redundant_iter_cloned)] // False positive? Or requires smarter async code.
+
     // TODO(zehiko) make these configurable
     let target_size_bytes = TARGET_BATCH_SIZE_BYTES as u64;
     let target_concurrency = TARGET_CONCURRENCY;

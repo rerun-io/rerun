@@ -24,7 +24,7 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.90.0` once you are done.
+Make sure `cargo --version` prints `1.92.0` once you are done.
 
 ### Python/PyO3 configuration (important!)
 
@@ -53,7 +53,7 @@ For more details, see [Python build configuration](#python-build-configuration-a
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.90.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.92.0
 ```
 
 ## Git-lfs

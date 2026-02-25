@@ -10,7 +10,7 @@ Let's try it out in a brand-new Rust project:
 cargo init cube && cd cube && cargo add rerun --features native_viewer
 ```
 
-Note that the Rerun SDK requires a working installation of Rust 1.90+.
+Note that the Rerun SDK requires a working installation of Rust 1.92+.
 
 ## Logging your own data
 
