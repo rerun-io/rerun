@@ -1040,10 +1040,12 @@ impl TimeControl {
             TimeControlCommand::SetTime(time) => {
                 let time_int = time.floor();
                 let repaint = self.time_int() != Some(time_int);
-                self.states
+                let state = self
+                    .states
                     .entry(*self.timeline_name())
-                    .or_insert_with(|| TimeState::new(*time))
-                    .time = *time;
+                    .or_insert_with(|| TimeState::new(*time));
+                state.time = *time;
+                self.following = false;
                 self.wait_for_data = true;
 
                 if repaint {
