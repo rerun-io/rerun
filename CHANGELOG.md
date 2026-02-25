@@ -5,15 +5,18 @@
 
 
 
-## 0.30.0 - (UNRELEASED) - plot any scalar & on-demand streaming
-
-TODO: add link to release video
+## [0.30.0](https://github.com/rerun-io/rerun/compare/0.29.2...0.30.0) - 2026-02-25 - plot any scalar & on-demand streaming
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-30
 
 ### ✨ Overview & highlights
 
 #### 📈 Plot any scalar
+
+<!-- https://static.rerun.io/9985de090ad18e3b169d35e1a485939d761ce60f_anyscalar action 4.mp4 -->
+
+https://github.com/user-attachments/assets/cb10e8fd-7428-44ae-9f22-37fd721a357f
+
 You can now plot any scalar value, even if it lacks Rerun semantics in time series views. For instance, this lets you plot any value in an MCAP file.
 
 In addition to plotting scalars from MCAP files, it is now possible to visualize arbitrary scalar components that were logged using `AnyValues` or `DynamicArchetype`. The supported data types are:
@@ -48,9 +51,9 @@ To quickly navigate to the desired visualizer, each time series view now shows a
 
 For more details please refer to our documentation:
 
-- [Customize views](https://rerun.io/docs/concepts/visualization/customize-views?speculative-link)
-- [Plot any scalar](https://rerun.io/docs/howto/visualization/plot-any-scalar?speculative-link)
-- [Component mappings outside of plotting](https://rerun.io/docs/howto/visualizations/component-mappings?speculative-link), shown on the example of a colored point cloud
+- [Customize views](https://rerun.io/docs/concepts/visualization/customize-views)
+- [Plot any scalar](https://rerun.io/docs/howto/visualization/plot-any-scalar)
+- [Component mappings outside of plotting](https://rerun.io/docs/howto/visualizations/component-mappings), shown on the example of a colored point cloud
 
 Thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
 
@@ -88,6 +91,44 @@ Or the web viewer:
 ```
 > rerun --serve-web "rerun+http://127.0.0.1:51234"
 ```
+
+#### 🦾 Support for many more MCAP message types
+Like in the previous releases, we're continually expanding our support for common robotics data to make it easier for users to load their existing recordings.
+
+This release adds support for Foxglove Protobuf schemas to our built-in MCAP data loader, in addition to the existing set of supported ROS 2 messages.
+
+You can find an overview of all the messages that are currently supported [here](https://rerun.io/docs/concepts/logging-and-ingestion/mcap/message-formats).
+
+
+<picture>
+  <img src="https://static.rerun.io/fg-data-demo/8873255bdbbd17f1f53b2fecb3a964099b95e53b/1200w.png" alt="Complex scene imported from MCAP">
+</picture>
+
+<!-- <picture>
+  <img src="https://static.rerun.io/fg-data-demo/8873255bdbbd17f1f53b2fecb3a964099b95e53b/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/fg-data-demo/8873255bdbbd17f1f53b2fecb3a964099b95e53b/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/fg-data-demo/8873255bdbbd17f1f53b2fecb3a964099b95e53b/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/fg-data-demo/8873255bdbbd17f1f53b2fecb3a964099b95e53b/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/fg-data-demo/8873255bdbbd17f1f53b2fecb3a964099b95e53b/1200w.png">
+</picture> -->
+
+#### 🎨 Extend existing views without forking
+Previously, extending the Viewer with custom Rust code required creating an entirely new view type,
+even if you just wanted to add a single new visualization to the existing 3D view.
+
+Now, you can register custom visualizers that plug directly into existing views, using fully custom archetypes & shaders in the process!
+
+<!--
+GH embeds only its own videos. Here's a mirror:ƒ
+https://static.rerun.io/146c3dfb86db05ee6796850f5fae5272595d3f3f_customvisualizer.mp4
+-->
+
+https://github.com/user-attachments/assets/df609f10-5515-49bc-86fd-6940cc25706f
+
+In practice this works currently only well for 2D, 3D, and Map views but we'll keep working towards
+making the Viewer more and more modular & extensible!
+
+For more details, see the [custom visualizer example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_visualizer) and the [viewer rust extension docs](https://rerun.io/docs/howto/visualization/extend-ui) for a general overview.
 
 ### ⚠️ Breaking changes
 
@@ -250,7 +291,6 @@ Or the web viewer:
 - Add `rerun auth logout` [7b3ae54](https://github.com/rerun-io/rerun/commit/7b3ae543dc0de39cf382aefc435f420de99ef223)
 - `rerun rrd split` [9bde24f](https://github.com/rerun-io/rerun/commit/9bde24fb5860f507bec155da377f40c1b8b0359e)
 - Add `--follow` option to explicitly follow files and URLs [c34a84b](https://github.com/rerun-io/rerun/commit/c34a84b5382620033182bb41719d1e1de74f10c6)
-
 
 
 ## [0.29.2](https://github.com/rerun-io/rerun/compare/0.29.1...0.29.2) - 2026-02-13 - Bug fixes and documentation update
