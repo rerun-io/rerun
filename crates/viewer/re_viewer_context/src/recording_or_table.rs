@@ -43,7 +43,9 @@ impl RecordingOrTable {
     /// The display mode this would equate to.
     pub fn display_mode(&self) -> DisplayMode {
         match self {
-            Self::Recording { store_id } => DisplayMode::LocalRecordings(store_id.clone()),
+            Self::Recording { store_id } => DisplayMode::LocalRecording {
+                recording_id: store_id.clone(),
+            },
             Self::Table { table_id } => DisplayMode::LocalTable(table_id.clone()),
         }
     }

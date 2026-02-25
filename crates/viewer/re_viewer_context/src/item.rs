@@ -2,8 +2,8 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
-use crate::blueprint_id::ViewIdRegistry;
 use crate::{BlueprintId, ContainerId, Contents, ViewId};
+use crate::{blueprint_id::ViewIdRegistry, open_url::EXAMPLES_ORIGIN};
 
 /// `Item` state for a dataresult interaction, i.e. when hovering or selecting an item in a view's data results.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -86,6 +86,11 @@ pub enum Item {
 }
 
 impl Item {
+    /// The example page / welcome screen
+    pub fn welcome_page() -> Self {
+        Self::RedapServer(EXAMPLES_ORIGIN.clone())
+    }
+
     pub fn view_id(&self) -> Option<BlueprintId<ViewIdRegistry>> {
         match self {
             Self::AppId(_)

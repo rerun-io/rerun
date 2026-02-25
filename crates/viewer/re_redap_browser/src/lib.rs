@@ -30,9 +30,9 @@ pub fn switch_to_welcome_screen(command_sender: &re_viewer_context::CommandSende
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     command_sender.send_system(SystemCommand::ChangeDisplayMode(
-        re_viewer_context::DisplayMode::RedapServer(EXAMPLES_ORIGIN.clone()),
+        re_viewer_context::DisplayMode::welcome_page(),
     ));
     command_sender.send_system(SystemCommand::set_selection(
-        re_viewer_context::Item::RedapServer(EXAMPLES_ORIGIN.clone()),
+        re_viewer_context::Item::welcome_page(),
     ));
 }

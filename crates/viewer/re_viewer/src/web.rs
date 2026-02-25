@@ -13,7 +13,8 @@ use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
 use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
+    AsyncRuntimeHandle, RecordingOrTable, SystemCommand, SystemCommandSender as _,
+    TimeControlCommand, open_url,
 };
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -386,7 +387,8 @@ impl WebHandle {
     pub fn get_active_recording_id(&self) -> Option<String> {
         let app = self.runner.app_mut::<crate::App>()?;
         let hub = app.store_hub.as_ref()?;
-        let recording = hub.active_recording()?;
+        let recording_id = app.active_recording_id()?;
+        let recording = hub.entity_db(recording_id)?;
 
         Some(recording.store_id().recording_id().to_string())
     }
@@ -406,7 +408,12 @@ impl WebHandle {
             return;
         };
 
-        hub.set_active_recording(store_id);
+        if store_id.is_recording() {
+            app.command_sender
+                .send_system(SystemCommand::ActivateRecordingOrTable(
+                    RecordingOrTable::Recording { store_id },
+                ));
+        }
 
         app.egui_ctx.request_repaint();
     }

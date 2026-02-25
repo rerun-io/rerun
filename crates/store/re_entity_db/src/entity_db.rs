@@ -696,6 +696,8 @@ impl EntityDb {
 
     /// Insert new data into the store.
     pub fn add_log_msg(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
+
         debug_assert_eq!(msg.store_id(), self.store_id());
 
         match &msg {

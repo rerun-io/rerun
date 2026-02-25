@@ -164,6 +164,11 @@ pub(crate) struct WelcomeScreenState {
 }
 
 impl AppState {
+    /// The active recording [`StoreId`], if any, derived from the current [`DisplayMode`].
+    pub fn active_recording_id(&self) -> Option<&StoreId> {
+        self.navigation.current().recording_id()
+    }
+
     pub fn set_examples_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         self.welcome_screen.set_examples_manifest_url(egui_ctx, url);
     }
@@ -198,6 +203,8 @@ impl AppState {
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
+        // TODO(RR-3033): the viewer should be robust to not having a `StoreContext`.
+        // We should only have one if we are currently looking at a blueprint.
         store_context: &StoreContext<'_>,
         storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
@@ -217,7 +224,7 @@ impl AppState {
         let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
         match self.navigation.current() {
-            DisplayMode::Settings(prior_mode) => {
+            DisplayMode::Settings { previous } => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(
                     ui,
@@ -226,16 +233,16 @@ impl AppState {
                     &mut show_settings_ui,
                 );
                 if !show_settings_ui {
-                    self.navigation.replace((**prior_mode).clone());
+                    self.navigation.replace((**previous).clone());
                 }
             }
 
-            DisplayMode::ChunkStoreBrowser(prior_mode) => {
+            DisplayMode::ChunkStoreBrowser { previous, .. } => {
                 let should_datastore_ui_remain_active =
                     self.datastore_ui
                         .ui(store_context, ui, self.app_options.timestamp_format);
                 if !should_datastore_ui_remain_active {
-                    self.navigation.replace((**prior_mode).clone());
+                    self.navigation.replace((**previous).clone());
                 }
             }
 
@@ -448,7 +455,7 @@ impl AppState {
                 //
 
                 if app_options.inspect_blueprint_timeline
-                    && matches!(display_mode, DisplayMode::LocalRecordings(_))
+                    && matches!(display_mode, DisplayMode::LocalRecording { .. })
                 {
                     let blueprint_db = ctx.store_context.blueprint;
 
@@ -559,13 +566,13 @@ impl AppState {
                         ui.spacing_mut().item_spacing.y = 0.0;
 
                         match display_mode {
-                            DisplayMode::LocalRecordings(..)
+                            DisplayMode::LocalRecording { .. }
                             | DisplayMode::LocalTable(..)
                             | DisplayMode::RedapEntry(..)
                             | DisplayMode::RedapServer(..)
                             | DisplayMode::Loading(..) => {
                                 let show_blueprints =
-                                    matches!(display_mode, DisplayMode::LocalRecordings(_));
+                                    matches!(display_mode, DisplayMode::LocalRecording { .. });
                                 let resizable = show_blueprints;
                                 if resizable {
                                     // Ensure Blueprint panel has at least 150px minimum height, because now it doesn't autogrow (as it does without resizing=active)
@@ -613,7 +620,8 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // handled above
+                            DisplayMode::ChunkStoreBrowser { .. }
+                            | DisplayMode::Settings { .. } => {} // handled above
                         }
                     },
                 );
@@ -647,16 +655,16 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::LocalRecordings(_) => {
+                            DisplayMode::LocalRecording { .. } => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
                                 if ctx.store_context.application_id()
-                                    == &StoreHub::welcome_screen_app_id()
+                                    == StoreHub::welcome_screen_app_id()
                                 {
                                     ctx.command_sender().send_system(
-                                        SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                                            re_redap_browser::EXAMPLES_ORIGIN.clone(),
-                                        )),
+                                        SystemCommand::ChangeDisplayMode(
+                                            DisplayMode::welcome_page(),
+                                        ),
                                     );
                                 }
                                 viewport_ui.viewport_ui(ui, &ctx, view_states);
@@ -714,7 +722,8 @@ impl AppState {
                                 ui.loading_screen("Loading data source:", &*source);
                             }
 
-                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // Handled above
+                            DisplayMode::ChunkStoreBrowser { .. }
+                            | DisplayMode::Settings { .. } => {} // Handled above
                         }
                     });
 

@@ -1,5 +1,4 @@
 use egui::{AtomExt as _, IntoAtoms, NumExt as _};
-use re_redap_browser::EXAMPLES_ORIGIN;
 use re_ui::list_item::PropertyContent;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UiExt as _, icons};
@@ -78,8 +77,8 @@ impl ShareModal {
 
         let url_for_current_screen =
             Self::current_url(store_hub, display_mode, time_ctrl, selection);
-        let enable_share_button = url_for_current_screen.is_ok()
-            && display_mode != &DisplayMode::RedapServer(EXAMPLES_ORIGIN.clone());
+        let enable_share_button =
+            url_for_current_screen.is_ok() && display_mode != &DisplayMode::welcome_page();
 
         let share_button_resp = ui
             .add_enabled_ui(enable_share_button, |ui| ui.button("Share"))

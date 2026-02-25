@@ -270,8 +270,12 @@ impl StoreId {
 
 // ----------------------------------------------------------------------------
 
-/// The user-chosen name of the application doing the logging. In the context of a remote recording,
-/// this is the dataset entry id.
+/// The user-chosen name of the application doing the logging.
+///
+/// Application IDs are really schema names.
+/// Every recording using the same schema (approximately!) could share the same blueprint.
+///
+/// In the context of a remote recording, this is the dataset entry id.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ApplicationId(Arc<String>);

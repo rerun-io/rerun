@@ -216,11 +216,15 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     ) {
         let app = self.state_mut();
+        let recording_id = app
+            .active_recording_id()
+            .expect("expected a recording display mode")
+            .clone();
         let builder = build_chunk(Chunk::builder(entity_path));
         let store_hub = app.testonly_get_store_hub();
         let active_recording = store_hub
-            .active_recording_mut()
-            .expect("active_recording should be initialized");
+            .entity_db_mut(&recording_id)
+            .expect("Failed to find recording");
         active_recording
             .add_chunk(&Arc::new(
                 builder.build().expect("chunk should be successfully built"),
@@ -290,11 +294,16 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
         store_hub.insert_entity_db(recording_store);
         store_hub.insert_entity_db(blueprint_store);
-        store_hub.set_active_recording_id(recording_store_id.clone());
         store_hub
             .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
 
+        app.command_sender
+            .send_system(SystemCommand::ActivateRecordingOrTable(
+                re_viewer_context::RecordingOrTable::Recording {
+                    store_id: recording_store_id.clone(),
+                },
+            ));
         app.command_sender.send_system(SystemCommand::set_selection(
             re_viewer_context::Item::StoreId(recording_store_id.clone()),
         ));
@@ -340,14 +349,15 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
     }
 
     fn debug_viewer_state(&mut self) {
-        println!(
-            "Active recording: {:#?}",
-            self.state_mut().testonly_get_store_hub().active_recording()
-        );
-        println!(
-            "Active blueprint: {:#?}",
-            self.state_mut().testonly_get_store_hub().active_blueprint()
-        );
+        let app = self.state_mut();
+        let display_mode = app.testonly_get_display_mode().clone();
+        let store_hub = app.testonly_get_store_hub();
+        let active_recording = display_mode
+            .recording_id()
+            .and_then(|id| store_hub.entity_db(id));
+        let active_blueprint = store_hub.active_blueprint_for_display_mode(&display_mode);
+        println!("Active recording: {active_recording:#?}");
+        println!("Active blueprint: {active_blueprint:#?}");
         self.setup_viewport_blueprint(|_viewer_context, blueprint| {
             println!("Blueprint view count: {}", blueprint.views.len());
             for id in blueprint.view_ids() {
@@ -437,8 +447,15 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let mut file = std::fs::File::create(&path)
             .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
 
-        let store_hub = self.state_mut().testonly_get_store_hub();
-        let recording_entity_db = store_hub.active_recording().expect("No active recording");
+        let app = self.state_mut();
+        let recording_id = app
+            .active_recording_id()
+            .expect("No active recording")
+            .clone();
+        let store_hub = app.testonly_get_store_hub();
+        let recording_entity_db = store_hub
+            .entity_db(&recording_id)
+            .expect("No active recording");
         let messages = recording_entity_db.to_messages(None);
 
         let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
@@ -455,8 +472,12 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let mut file = std::fs::File::create(&path)
             .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
 
-        let store_hub = self.state_mut().testonly_get_store_hub();
-        let blueprint_entity_db = store_hub.active_blueprint().expect("No active blueprint");
+        let app = self.state_mut();
+        let display_mode = app.testonly_get_display_mode().clone();
+        let store_hub = app.testonly_get_store_hub();
+        let blueprint_entity_db = store_hub
+            .active_blueprint_for_display_mode(&display_mode)
+            .expect("No active blueprint");
         let messages = blueprint_entity_db.to_messages(None);
 
         let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;

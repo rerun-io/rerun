@@ -45,25 +45,19 @@ impl crate::DataUi for EntityDb {
         });
 
         let hub = ctx.store_hub();
-        let store_id = Some(self.store_id());
 
         match self.store_kind() {
-            StoreKind::Recording => {
-                if false {
-                    // Just confusing and unnecessary to show this.
-                    if store_id == hub.active_store_id() {
-                        ui.add_space(8.0);
-                        ui.label("This is the active recording.");
-                    }
-                }
-            }
+            StoreKind::Recording => {}
+
             StoreKind::Blueprint => {
                 let active_app_id = ctx.store_context.application_id();
                 let is_active_app_id = self.application_id() == active_app_id;
 
                 if is_active_app_id {
-                    let is_default = hub.default_blueprint_id_for_app(active_app_id) == store_id;
-                    let is_active = hub.active_blueprint_id_for_app(active_app_id) == store_id;
+                    let is_default =
+                        hub.default_blueprint_id_for_app(active_app_id) == Some(self.store_id());
+                    let is_active =
+                        hub.active_blueprint_id_for_app(active_app_id) == Some(self.store_id());
 
                     match (is_default, is_active) {
                         (false, false) => {}

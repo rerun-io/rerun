@@ -443,7 +443,7 @@ impl ViewerContext<'_> {
     ///
     /// It excludes the globally hardcoded welcome screen app ID.
     pub fn has_active_recording(&self) -> bool {
-        self.recording().application_id() != &StoreHub::welcome_screen_app_id()
+        self.recording().application_id() != StoreHub::welcome_screen_app_id()
     }
 
     /// Reverts to the default display mode

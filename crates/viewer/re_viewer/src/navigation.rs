@@ -8,7 +8,7 @@ pub(crate) struct Navigation {
 
 impl Default for Navigation {
     fn default() -> Self {
-        let start_mode = DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone());
+        let start_mode = DisplayMode::welcome_page();
         Self {
             current_mode: start_mode.clone(),
             start_mode,

@@ -230,7 +230,7 @@ fn welcome_item_ui(
     ui: &mut egui::Ui,
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
-    let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
+    let item = Item::welcome_page();
     let selected = ctx.is_selected_or_loading(&item);
     let active = matches!(
         ctx.display_mode(),

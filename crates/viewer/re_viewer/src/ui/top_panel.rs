@@ -433,14 +433,14 @@ fn panel_buttons_r2l(
     app.notifications.notification_toggle_button(ui);
 
     let selection = app.state.selection_state.selected_items();
-    let rec_cfg = store_hub
-        .active_store_id()
+    let time_ctrl = app
+        .active_recording_id()
         .and_then(|id| app.state.time_controls.get(id));
     app.state.share_modal.button_ui(
         ui,
         store_hub,
         app.state.navigation.current(),
-        rec_cfg,
+        time_ctrl,
         selection,
     );
 

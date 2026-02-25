@@ -217,7 +217,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
             let entity_paths = test_context
                 .store_hub
                 .lock()
-                .active_recording()
+                .entity_db(&test_context.recording_store_id)
                 .expect("expected an active recording")
                 .sorted_entity_paths()
                 .cloned()

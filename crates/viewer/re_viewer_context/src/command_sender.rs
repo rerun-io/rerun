@@ -69,7 +69,7 @@ pub enum SystemCommand {
     ClearActiveBlueprintAndEnableHeuristics,
 
     /// Switch to this [`RecordingOrTable`].
-    ActivateRecordingOrTable(RecordingOrTable),
+    ActivateRecordingOrTable(RecordingOrTable), // TODO(RR-3033): rename to `SetDisplayMode(DisplayMode)`
 
     /// Close an [`RecordingOrTable`] and free its memory.
     CloseRecordingOrTable(RecordingOrTable),

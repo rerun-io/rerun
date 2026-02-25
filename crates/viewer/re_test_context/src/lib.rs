@@ -11,7 +11,9 @@ use parking_lot::{Mutex, RwLock};
 use re_chunk::{Chunk, ChunkBuilder, TimeInt};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
+use re_log_types::{
+    ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+};
 use re_log_types::{TimelinePoint, external::re_tuid::Tuid};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
@@ -48,7 +50,13 @@ pub mod external {
 pub struct TestContext {
     pub app_options: AppOptions,
 
-    /// Store hub prepopulated with a single active recording & a blueprint recording.
+    /// The recording store id that this test context was created with.
+    pub recording_store_id: StoreId,
+
+    /// The application id that this test context was created with.
+    pub application_id: ApplicationId,
+
+    /// Store hub prepopulated with a single recording & a blueprint recording.
     pub store_hub: Mutex<StoreHub>,
     pub view_class_registry: ViewClassRegistry,
 
@@ -248,13 +256,13 @@ impl TestContext {
                 .unwrap();
         }
 
-        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id.clone());
         let blueprint_store = EntityDb::new(blueprint_id.clone());
 
         let mut store_hub = StoreHub::test_hub();
         store_hub.insert_entity_db(recording_store);
+        store_hub.cache_entry(&recording_store_id); // create cache
         store_hub.insert_entity_db(blueprint_store);
-        store_hub.set_active_recording_id(recording_store_id);
         store_hub
             .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
@@ -267,13 +275,9 @@ impl TestContext {
             let ctx = TestBlueprintCtx {
                 command_sender: &command_sender,
                 current_blueprint: store_hub
-                    .active_blueprint()
+                    .active_blueprint_for_app(&application_id)
                     .expect("We should have an active blueprint now"),
-                default_blueprint: store_hub.default_blueprint_for_app(
-                    store_hub
-                        .active_app()
-                        .expect("We should have an active app now"),
-                ),
+                default_blueprint: store_hub.default_blueprint_for_app(&application_id),
                 blueprint_query: &blueprint_query,
             };
 
@@ -290,6 +294,8 @@ impl TestContext {
 
         Self {
             app_options: Default::default(),
+            recording_store_id,
+            application_id,
 
             view_class_registry: Default::default(),
             selection_state: Default::default(),
@@ -429,13 +435,9 @@ impl TestContext {
             TestBlueprintCtx {
                 command_sender: &self.command_sender,
                 current_blueprint: store_hub
-                    .active_blueprint()
+                    .active_blueprint_for_app(&self.application_id)
                     .expect("The test context should always have an active blueprint"),
-                default_blueprint: store_hub.default_blueprint_for_app(
-                    store_hub
-                        .active_app()
-                        .expect("The test context should always have an active app"),
-                ),
+                default_blueprint: store_hub.default_blueprint_for_app(&self.application_id),
                 blueprint_query: &self.blueprint_query,
             },
             &store_hub,
@@ -506,19 +508,14 @@ impl TestContext {
     pub fn active_blueprint(&mut self) -> &mut EntityDb {
         let store_hub = self.store_hub.get_mut();
         let blueprint_id = store_hub
-            .active_blueprint_id()
+            .active_blueprint_id_for_app(&self.application_id)
             .expect("expected an active blueprint")
             .clone();
-        store_hub.entity_db_mut(&blueprint_id)
+        store_hub.entity_db_mut(&blueprint_id).unwrap()
     }
 
     pub fn active_store_id(&self) -> StoreId {
-        self.store_hub
-            .lock()
-            .active_recording()
-            .expect("expected an active recording")
-            .store_id()
-            .clone()
+        self.recording_store_id.clone()
     }
 
     pub fn edit_selection(&self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
@@ -539,7 +536,7 @@ impl TestContext {
     ) {
         let builder = build_chunk(Chunk::builder(entity_path));
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.active_recording_mut().unwrap();
+        let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         active_recording
             .add_chunk(&Arc::new(
                 builder.build().expect("chunk should be successfully built"),
@@ -549,7 +546,7 @@ impl TestContext {
 
     pub fn add_chunks(&mut self, chunks: impl Iterator<Item = Chunk>) {
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.active_recording_mut().unwrap();
+        let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         for chunk in chunks {
             active_recording.add_chunk(&Arc::new(chunk)).unwrap();
         }
@@ -557,7 +554,7 @@ impl TestContext {
 
     pub fn add_rrd_manifest(&mut self, rrd_manifest: Arc<re_log_encoding::RrdManifest>) {
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.active_recording_mut().unwrap();
+        let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);
 
         // Pretend like we are connected to a real redap server:
@@ -589,8 +586,8 @@ impl TestContext {
         let mut store_hub = self.store_hub.lock();
         store_hub.begin_frame_caches();
 
-        if let Some(db) = store_hub.active_recording_mut()
-            && db.can_fetch_chunks_from_redap()
+        let db = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
+        if db.can_fetch_chunks_from_redap()
             && let Some(timeline) = self.time_ctrl.read().timeline()
         {
             let (rrd_manifest, storage_engine) = db.rrd_manifest_index_mut_and_storage_engine();
@@ -605,9 +602,10 @@ impl TestContext {
             );
         }
 
-        let (storage_context, store_context) = store_hub.read_context();
-        let store_context = store_context
-            .expect("TestContext should always have enough information to provide a store context");
+        let display_mode = DisplayMode::LocalRecording {
+            recording_id: self.recording_store_id.clone(),
+        };
+        let (storage_context, store_context) = store_hub.read_context(&display_mode);
 
         let indicated_entities_per_visualizer = self
             .view_class_registry
@@ -646,11 +644,13 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
+
                 storage_context: &storage_context,
                 component_ui_registry: &self.component_ui_registry,
-                display_mode: &DisplayMode::LocalRecordings(
-                    store_context.recording_store_id().clone(),
-                ),
+
+                display_mode: &DisplayMode::LocalRecording {
+                    recording_id: self.recording_store_id.clone(),
+                },
 
                 selection_state: &selection_state,
                 focused_item: &focused_item,
@@ -825,7 +825,7 @@ impl TestContext {
                         .store_hub
                         .try_lock()
                         .expect("Failed to lock store hub mutex");
-                    let db = store_hub.entity_db_mut(&store_id);
+                    let db = store_hub.entity_db_mut(&store_id).unwrap();
 
                     for chunk in chunks {
                         db.add_chunk(&Arc::new(chunk))
@@ -838,10 +838,14 @@ impl TestContext {
                         .store_hub
                         .try_lock()
                         .expect("Failed to lock store hub mutex");
-                    assert_eq!(Some(&store_id), store_hub.active_blueprint_id());
+                    assert_eq!(
+                        Some(&store_id),
+                        store_hub.active_blueprint_id_for_app(&self.application_id)
+                    );
 
                     store_hub
                         .entity_db_mut(&store_id)
+                        .unwrap()
                         .drop_entity_path_recursive(&entity_path);
                 }
 
@@ -951,7 +955,7 @@ impl TestContext {
         let mut file = std::fs::File::create(path)?;
 
         let store_hub = self.store_hub.lock();
-        let Some(recording_entity_db) = store_hub.active_recording() else {
+        let Some(recording_entity_db) = store_hub.entity_db(&self.recording_store_id) else {
             anyhow::bail!("no active recording");
         };
         let messages = recording_entity_db.to_messages(None);
@@ -972,7 +976,8 @@ impl TestContext {
         let mut file = std::fs::File::create(path)?;
 
         let store_hub = self.store_hub.lock();
-        let Some(blueprint_entity_db) = store_hub.active_blueprint() else {
+        let Some(blueprint_entity_db) = store_hub.active_blueprint_for_app(&self.application_id)
+        else {
             anyhow::bail!("no active blueprint");
         };
         let messages = blueprint_entity_db.to_messages(None);

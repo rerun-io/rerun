@@ -27,12 +27,11 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DisplayMode, EditRedapServerModalCommand,
-    FallbackProviderRegistry, Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
-    sanitize_file_name,
+    AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DisplayMode, EditRedapServerModalCommand, FallbackProviderRegistry, Item,
+    MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, StorageContext, StoreContext,
+    SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
 
 use crate::AppState;
@@ -499,6 +498,11 @@ impl App {
         &self.app_env
     }
 
+    /// The active recording [`StoreId`], if any, derived from the current [`DisplayMode`].
+    pub fn active_recording_id(&self) -> Option<&StoreId> {
+        self.state.active_recording_id()
+    }
+
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
         match ViewerOpenUrl::from_str(url) {
@@ -557,7 +561,7 @@ impl App {
     /// panel is open, also open that time control.
     fn move_time(&mut self) {
         if let Some(store_hub) = &self.store_hub
-            && let Some(store_id) = store_hub.active_store_id()
+            && let Some(store_id) = self.active_recording_id()
             && let Some(blueprint) = store_hub.active_blueprint_for_app(store_id.application_id())
         {
             let default_blueprint = store_hub.default_blueprint_for_app(store_id.application_id());
@@ -578,7 +582,7 @@ impl App {
 
             let stable_dt = self.egui_ctx.input(|i| i.stable_dt);
 
-            if let Some(recording) = store_hub.active_recording() {
+            if let Some(recording) = store_hub.entity_db(store_id) {
                 // Are we still connected to the data source for the current store?
                 let more_data_is_streaming_in =
                     recording.data_source.as_ref().is_some_and(|store_source| {
@@ -740,11 +744,11 @@ impl App {
 
     /// Updates the viewer tracked history
     fn update_viewer_history(&mut self, store_hub: &StoreHub) {
-        let time_ctrl = store_hub
-            .active_recording()
-            .and_then(|db| self.state.time_control(db.store_id()));
-
         let display_mode = self.state.navigation.current();
+        let time_ctrl = display_mode
+            .recording_id()
+            .and_then(|id| self.state.time_control(id));
+
         let selection = self.state.selection_state.selected_items();
 
         let Ok(url) =
@@ -759,11 +763,10 @@ impl App {
     /// Updates the web address and web history.
     #[cfg(target_arch = "wasm32")]
     fn update_web_history(&self, store_hub: &StoreHub) {
-        let time_ctrl = store_hub
-            .active_recording()
-            .and_then(|db| self.state.time_control(db.store_id()));
-
         let display_mode = self.state.navigation.current();
+        let time_ctrl = display_mode
+            .recording_id()
+            .and_then(|id| self.state.time_control(id));
         let selection = self.state.selection_state.selected_items();
 
         let Ok(url) =
@@ -839,46 +842,44 @@ impl App {
             } => {
                 match store_id.kind() {
                     StoreKind::Recording => {
-                        store_hub.set_active_recording_id(store_id.clone()); // Switch to this recording
-                        let (storage_ctx, store_ctx) = store_hub.read_context(); // Materialize the target blueprint on-demand
-                        if let Some(store_ctx) = store_ctx {
-                            let target_blueprint = store_ctx.blueprint;
-                            let blueprint_query =
-                                self.state.blueprint_query_for_viewer(target_blueprint);
+                        store_hub.load_blueprint_and_caches(&store_id); // Ensure caches and blueprints
+                        let display_mode = DisplayMode::LocalRecording {
+                            recording_id: store_id.clone(),
+                        };
+                        let (storage_ctx, store_ctx) = store_hub.read_context(&display_mode); // Materialize the target blueprint on-demand
 
-                            let blueprint_ctx = AppBlueprintCtx {
-                                command_sender: &self.command_sender,
-                                current_blueprint: target_blueprint,
-                                default_blueprint: storage_ctx
-                                    .hub
-                                    .default_blueprint_for_app(store_id.application_id()),
-                                blueprint_query,
-                            };
+                        let target_blueprint = store_ctx.blueprint;
+                        let blueprint_query =
+                            self.state.blueprint_query_for_viewer(target_blueprint);
 
-                            let time_ctrl = self
-                                .state
-                                .time_control_mut(store_ctx.recording, &blueprint_ctx);
+                        let blueprint_ctx = AppBlueprintCtx {
+                            command_sender: &self.command_sender,
+                            current_blueprint: target_blueprint,
+                            default_blueprint: storage_ctx
+                                .hub
+                                .default_blueprint_for_app(store_id.application_id()),
+                            blueprint_query,
+                        };
 
-                            let response = time_ctrl.handle_time_commands(
-                                Some(&blueprint_ctx),
-                                store_ctx.recording.timeline_histograms(),
-                                &time_commands,
-                            );
+                        let time_ctrl = self
+                            .state
+                            .time_control_mut(store_ctx.recording, &blueprint_ctx);
 
-                            if response.needs_repaint == NeedsRepaint::Yes {
-                                self.egui_ctx.request_repaint();
-                            }
+                        let response = time_ctrl.handle_time_commands(
+                            Some(&blueprint_ctx),
+                            store_ctx.recording.timeline_histograms(),
+                            &time_commands,
+                        );
 
-                            handle_time_ctrl_event(
-                                store_ctx.recording,
-                                self.event_dispatcher.as_ref(),
-                                &response,
-                            );
-                        } else {
-                            re_log::error!(
-                                "Skipping time control command because of missing blueprint"
-                            );
+                        if response.needs_repaint == NeedsRepaint::Yes {
+                            self.egui_ctx.request_repaint();
                         }
+
+                        handle_time_ctrl_event(
+                            store_ctx.recording,
+                            self.event_dispatcher.as_ref(),
+                            &response,
+                        );
                     }
                     StoreKind::Blueprint => {
                         if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
@@ -918,13 +919,16 @@ impl App {
                 }
             }
             SystemCommand::ActivateApp(app_id) => {
-                store_hub.set_active_app(app_id);
-                if let Some(recording_id) = store_hub.active_store_id() {
+                store_hub.load_persisted_blueprints_for_app(&app_id);
+                if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
+                    store_hub.load_blueprint_and_caches(&recording_id);
                     self.state
                         .navigation
-                        .replace(DisplayMode::LocalRecordings(recording_id.clone()));
+                        .replace(DisplayMode::LocalRecording { recording_id });
                 } else {
-                    self.state.navigation.reset();
+                    // TODO(RR-3713): show a blueprint for it anyway
+                    re_log::warn_once!("Can't switch app-id - we have no recording for it");
+                    // If we can't go where we want to go, then go nowhere.
                 }
             }
 
@@ -935,7 +939,7 @@ impl App {
             SystemCommand::ActivateRecordingOrTable(entry) => {
                 match &entry {
                     RecordingOrTable::Recording { store_id } => {
-                        store_hub.set_active_recording_id(store_id.clone());
+                        store_hub.load_blueprint_and_caches(store_id);
                     }
                     RecordingOrTable::Table { .. } => {}
                 }
@@ -947,7 +951,7 @@ impl App {
 
                 let data_source = match &entry {
                     RecordingOrTable::Recording { store_id } => {
-                        store_hub.entity_db_mut(store_id).data_source.clone()
+                        store_hub.entity_db_entry(store_id).data_source.clone()
                     }
                     RecordingOrTable::Table { .. } => None,
                 };
@@ -1034,37 +1038,30 @@ impl App {
             }
 
             SystemCommand::OpenSettings => {
-                self.state
-                    .navigation
-                    .replace(DisplayMode::Settings(Box::new(
-                        self.state.navigation.current().clone(),
-                    )));
+                self.state.navigation.replace(DisplayMode::Settings {
+                    previous: Box::new(self.state.navigation.current().clone()),
+                });
 
                 #[cfg(feature = "analytics")]
                 re_analytics::record(|| re_analytics::event::SettingsOpened {});
             }
 
-            SystemCommand::OpenChunkStoreBrowser => match self.state.navigation.current() {
-                DisplayMode::LocalRecordings(_)
-                | DisplayMode::RedapEntry(_)
-                | DisplayMode::RedapServer(_) => {
+            SystemCommand::OpenChunkStoreBrowser => {
+                if let Some(recording_id) = self.state.navigation.current().recording_id().cloned()
+                {
                     self.state
                         .navigation
-                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
-                            self.state.navigation.current().clone(),
-                        )));
-                }
-
-                DisplayMode::ChunkStoreBrowser(_)
-                | DisplayMode::Settings(_)
-                | DisplayMode::Loading(_)
-                | DisplayMode::LocalTable(_) => {
+                        .replace(DisplayMode::ChunkStoreBrowser {
+                            recording_id,
+                            previous: Box::new(self.state.navigation.current().clone()),
+                        });
+                } else {
                     re_log::debug!(
                         "Cannot activate chunk store browser from current display mode: {:?}",
                         self.state.navigation.current()
                     );
                 }
-            },
+            }
 
             SystemCommand::ResetDisplayMode => {
                 self.state.navigation.reset();
@@ -1082,11 +1079,7 @@ impl App {
 
                 self.state.redap_servers.add_server(origin.clone());
 
-                if self
-                    .store_hub
-                    .as_ref()
-                    .is_none_or(|store_hub| store_hub.active_recording_or_table().is_none())
-                {
+                if self.state.navigation.current().recording_id().is_none() {
                     self.state
                         .navigation
                         .replace(DisplayMode::RedapServer(origin));
@@ -1105,14 +1098,14 @@ impl App {
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearActiveBlueprintAndEnableHeuristics => {
                 re_log::debug!("Clear and generate new blueprint");
-                store_hub.clear_active_blueprint_and_generate();
+                store_hub.clear_active_blueprint_and_generate(self.state.navigation.current());
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::ClearActiveBlueprint => {
                 // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint to default");
-                store_hub.clear_active_blueprint();
+                store_hub.clear_active_blueprint(self.state.navigation.current());
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
 
@@ -1125,7 +1118,7 @@ impl App {
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
 
-                let db = store_hub.entity_db_mut(&store_id);
+                let db = store_hub.entity_db_entry(&store_id);
 
                 // No need to clear undo buffer if we're just appending static data.
                 //
@@ -1161,7 +1154,7 @@ impl App {
 
             SystemCommand::UndoBlueprint { blueprint_id } => {
                 let inspect_blueprint_timeline = self.app_options().inspect_blueprint_timeline;
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                let blueprint_db = store_hub.entity_db_entry(&blueprint_id);
                 let undo_state = self
                     .state
                     .blueprint_undo_state
@@ -1226,7 +1219,7 @@ impl App {
             }
 
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                let blueprint_db = store_hub.entity_db_entry(&blueprint_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
             }
 
@@ -1239,8 +1232,8 @@ impl App {
                 if let Some(item) = set.selection.single_item() {
                     // If the selected item has its own page, switch to it.
                     if let Some(display_mode) = DisplayMode::from_item(item) {
-                        if let DisplayMode::LocalRecordings(store_id) = &display_mode {
-                            store_hub.set_active_recording_id(store_id.clone());
+                        if let DisplayMode::LocalRecording { recording_id } = &display_mode {
+                            store_hub.load_blueprint_and_caches(recording_id);
                         }
                         self.state.navigation.replace(display_mode);
                     }
@@ -1601,7 +1594,7 @@ impl App {
         let active_store_id = store_context
             .map(|ctx| ctx.recording_store_id().clone())
             // Don't redirect data to the welcome screen.
-            .filter(|store_id| store_id.application_id() != &StoreHub::welcome_screen_app_id())
+            .filter(|store_id| store_id.application_id() != StoreHub::welcome_screen_app_id())
             .unwrap_or_else(|| {
                 // If we don't have any application ID to recommend (which means we are on the welcome screen),
                 // then just generate a new one using a UUID.
@@ -1884,25 +1877,23 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
-                DisplayMode::LocalRecordings(_)
-                | DisplayMode::RedapEntry(_)
-                | DisplayMode::RedapServer(_) => {
-                    self.state
-                        .navigation
-                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
-                            self.state.navigation.current().clone(),
-                        )));
+                DisplayMode::ChunkStoreBrowser { previous, .. } => {
+                    self.state.navigation.replace((**previous).clone());
                 }
 
-                DisplayMode::ChunkStoreBrowser(mode) => {
-                    self.state.navigation.replace((**mode).clone());
-                }
-
-                DisplayMode::Settings(_) | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
-                    re_log::debug!(
-                        "Cannot toggle chunk store browser from current display mode: {:?}",
-                        self.state.navigation.current()
-                    );
+                current => {
+                    if let Some(recording_id) = current.recording_id().cloned() {
+                        self.state
+                            .navigation
+                            .replace(DisplayMode::ChunkStoreBrowser {
+                                recording_id,
+                                previous: Box::new(current.clone()),
+                            });
+                    } else {
+                        re_log::debug!(
+                            "Cannot toggle chunk store browser from current display mode: {current:?}",
+                        );
+                    }
                 }
             },
 
@@ -1950,7 +1941,7 @@ impl App {
             }
 
             UICommand::PlaybackTogglePlayPause => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1959,7 +1950,7 @@ impl App {
                 }
             }
             UICommand::PlaybackFollow => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1970,7 +1961,7 @@ impl App {
                 }
             }
             UICommand::PlaybackStepBack => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1979,7 +1970,7 @@ impl App {
                 }
             }
             UICommand::PlaybackStepForward => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1988,7 +1979,7 @@ impl App {
                 }
             }
             UICommand::PlaybackBack => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2000,7 +1991,7 @@ impl App {
                 }
             }
             UICommand::PlaybackForward => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2012,7 +2003,7 @@ impl App {
                 }
             }
             UICommand::PlaybackBackFast => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2024,7 +2015,7 @@ impl App {
                 }
             }
             UICommand::PlaybackForwardFast => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2036,7 +2027,7 @@ impl App {
                 }
             }
             UICommand::PlaybackBeginning => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2045,7 +2036,7 @@ impl App {
                 }
             }
             UICommand::PlaybackEnd => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2054,7 +2045,7 @@ impl App {
                 }
             }
             UICommand::PlaybackRestart => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2064,7 +2055,7 @@ impl App {
             }
 
             UICommand::PlaybackSpeed(speed) => {
-                if let Some(store_id) = storage_context.hub.active_store_id() {
+                if let Some(store_id) = display_mode.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2112,9 +2103,8 @@ impl App {
 
             UICommand::Share => {
                 let selection = self.state.selection_state.selected_items();
-                let rec_cfg = storage_context
-                    .hub
-                    .active_store_id()
+                let rec_cfg = display_mode
+                    .recording_id()
                     .and_then(|id| self.state.time_controls.get(id));
                 if let Err(err) = self.state.share_modal.open(
                     storage_context.hub,
@@ -2136,9 +2126,8 @@ impl App {
                 match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
                     Ok(mut url) => {
                         if let Some(fragment) = url.fragment_mut() {
-                            let time_ctrl = storage_context
-                                .hub
-                                .active_store_id()
+                            let time_ctrl = display_mode
+                                .recording_id()
                                 .and_then(|id| self.state.time_control(id));
 
                             if let Some(time_ctrl) = &time_ctrl
@@ -2369,7 +2358,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: &StoreContext<'_>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -2391,7 +2380,7 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    store_context,
+                    Some(store_context),
                     storage_context.hub,
                     gpu_resource_stats,
                     ui,
@@ -2411,48 +2400,46 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    if let Some(store_context) = store_context {
-                        render_ctx.begin_frame(); // This may actually be called multiple times per egui frame, if we have a multi-pass layout frame.
+                    render_ctx.begin_frame(); // This may actually be called multiple times per egui frame, if we have a multi-pass layout frame.
 
-                        // In some (rare) circumstances we run two egui passes in a single frame.
-                        // This happens on call to `egui::Context::request_discard`.
-                        let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+                    // In some (rare) circumstances we run two egui passes in a single frame.
+                    // This happens on call to `egui::Context::request_discard`.
+                    let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
 
-                        if is_start_of_new_frame {
-                            self.state.redap_servers.on_frame_start(
-                                &self.connection_registry,
-                                &self.async_runtime,
-                                &self.egui_ctx,
-                            );
-                        }
-
-                        let mut startup_options = self.startup_options.clone();
-
-                        self.state.show(
-                            &self.app_env,
-                            &mut startup_options,
-                            app_blueprint,
-                            ui,
-                            render_ctx,
-                            store_context,
-                            storage_context,
-                            &self.reflection,
-                            &self.component_ui_registry,
-                            &self.component_fallback_registry,
-                            &self.view_class_registry,
-                            &self.rx_log,
-                            &self.command_sender,
-                            &WelcomeScreenState {
-                                hide_examples: self.startup_options.hide_welcome_screen,
-                                opacity: self.welcome_screen_opacity(egui_ctx),
-                            },
-                            self.event_dispatcher.as_ref(),
+                    if is_start_of_new_frame {
+                        self.state.redap_servers.on_frame_start(
                             &self.connection_registry,
                             &self.async_runtime,
+                            &self.egui_ctx,
                         );
-                        self.startup_options = startup_options;
-                        render_ctx.before_submit();
                     }
+
+                    let mut startup_options = self.startup_options.clone();
+
+                    self.state.show(
+                        &self.app_env,
+                        &mut startup_options,
+                        app_blueprint,
+                        ui,
+                        render_ctx,
+                        store_context,
+                        storage_context,
+                        &self.reflection,
+                        &self.component_ui_registry,
+                        &self.component_fallback_registry,
+                        &self.view_class_registry,
+                        &self.rx_log,
+                        &self.command_sender,
+                        &WelcomeScreenState {
+                            hide_examples: self.startup_options.hide_welcome_screen,
+                            opacity: self.welcome_screen_opacity(egui_ctx),
+                        },
+                        self.event_dispatcher.as_ref(),
+                        &self.connection_registry,
+                        &self.async_runtime,
+                    );
+                    self.startup_options = startup_options;
+                    render_ctx.before_submit();
 
                     self.show_text_logs_as_notifications();
                 }
@@ -2484,6 +2471,7 @@ impl App {
                 re_log_channel::SmartMessagePayload::Msg(msg) => msg,
 
                 re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    re_tracing::profile_scope!("on_flush_done");
                     on_flush_done();
                     continue;
                 }
@@ -2503,11 +2491,11 @@ impl App {
 
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
-                    let entity_db = store_hub.entity_db_mut(&store_id);
+                    let entity_db = store_hub.entity_db_entry(&store_id);
                     entity_db.add_rrd_manifest_message(rrd_manifest);
 
                     // TODO(RR-3329): Should this run for all caches?
-                    if let Some(caches) = store_hub.active_caches() {
+                    if let Some(caches) = store_hub.caches_for_store(&store_id) {
                         // Downgrade to read-only, so we can access caches.
                         let entity_db = store_hub
                             .entity_db(&store_id)
@@ -2544,12 +2532,14 @@ impl App {
     /// There is logic duplicated between this and [`Self::prefetch_chunks`].
     /// Make sure they are kept in sync!
     fn receive_log_msg(
-        &self,
+        &mut self,
         msg: &LogMsg,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
         channel_source: &LogSource,
     ) {
+        re_tracing::profile_function!();
+
         let store_id = msg.store_id();
 
         if store_hub.is_active_blueprint(store_id) {
@@ -2562,7 +2552,7 @@ impl App {
         // Note that the `SetStoreInfo` message might be missing. It's not strictly necessary to add a new store.
         let msg_will_add_new_store = !store_hub.store_bundle().contains(store_id);
 
-        let entity_db = store_hub.entity_db_mut(store_id);
+        let entity_db = store_hub.entity_db_entry(store_id);
         if entity_db.data_source.is_none() {
             entity_db.data_source = Some((*channel_source).clone());
         }
@@ -2634,7 +2624,28 @@ impl App {
                                 });
 
                             // Switch to this app, e.g. on drag-and-drop of a blueprint file
-                            store_hub.set_active_app(app_id);
+
+                            if self.state.navigation.current().app_id() != Some(&app_id) {
+                                // Switch to this app:
+
+                                store_hub.load_persisted_blueprints_for_app(&app_id);
+                                if let Some(recording_id) =
+                                    store_hub.earliest_recording_for_app(&app_id)
+                                {
+                                    store_hub.load_blueprint_and_caches(&recording_id);
+                                    self.state
+                                        .selection_state
+                                        .set_selection(Item::StoreId(recording_id.clone()));
+                                    self.state
+                                        .navigation
+                                        .replace(DisplayMode::LocalRecording { recording_id });
+                                } else {
+                                    // TODO(RR-3713): show a blueprint for it anyway
+                                    re_log::warn_once!(
+                                        "Can't show {app_id} at this time - we have no recording for it"
+                                    );
+                                }
+                            }
 
                             // If the viewer is in the background, tell the user that it has received something new.
                             egui_ctx.send_viewport_cmd(
@@ -2683,6 +2694,8 @@ impl App {
         egui_ctx: &egui::Context,
         table: TableMsg,
     ) {
+        re_tracing::profile_function!();
+
         let TableMsg { id, data } = table;
 
         // TODO(grtlr): For now we don't append anything to existing stores and always replace.
@@ -2710,7 +2723,7 @@ impl App {
     }
 
     fn on_new_store(
-        &self,
+        &mut self,
         egui_ctx: &egui::Context,
         store_id: &StoreId,
         channel_source: &LogSource,
@@ -2734,7 +2747,7 @@ impl App {
             }
         }
 
-        let entity_db = store_hub.entity_db_mut(store_id);
+        let entity_db = store_hub.entity_db_entry(store_id);
         let is_example = entity_db.store_class().is_example();
 
         if cfg!(target_arch = "wasm32") && !self.startup_options.is_in_notebook && !is_example {
@@ -2776,6 +2789,7 @@ impl App {
         ui_command: DataSourceUiCommand,
         channel_source: &LogSource,
     ) {
+        re_tracing::profile_function!();
         match ui_command {
             DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
                 match re_uri::Fragment::from_str(&fragment) {
@@ -2817,7 +2831,7 @@ impl App {
 
     /// Makes the first recording store active that is found for a given data source if any.
     fn try_make_recording_from_source_active(
-        &self,
+        &mut self,
         egui_ctx: &egui::Context,
         store_hub: &mut StoreHub,
         new_source: &LogSource,
@@ -2831,7 +2845,7 @@ impl App {
 
     /// Makes the given store active and request user attention if Rerun in the background.
     fn make_store_active_and_highlight(
-        &self,
+        &mut self,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
         store_id: &StoreId,
@@ -2843,7 +2857,10 @@ impl App {
             return;
         }
 
-        store_hub.set_active_recording_id(store_id.clone());
+        store_hub.load_blueprint_and_caches(store_id);
+        self.state.navigation.replace(DisplayMode::LocalRecording {
+            recording_id: store_id.clone(),
+        });
 
         // Also select the new recording:
         self.command_sender
@@ -2916,11 +2933,16 @@ impl App {
                 );
             }
 
+            let active_recording_id = self.active_recording_id();
             let time_cursor_for = |store_id: &StoreId| -> Option<TimelinePoint> {
                 let time_ctrl = self.state.time_controls.get(store_id)?;
                 Some((*time_ctrl.timeline()?, time_ctrl.time_int()?).into())
             };
-            store_hub.purge_fraction_of_ram(fraction_to_purge, &time_cursor_for);
+            store_hub.purge_fraction_of_ram(
+                fraction_to_purge,
+                active_recording_id,
+                &time_cursor_for,
+            );
 
             let mem_use_after = MemoryUse::capture();
 
@@ -2972,15 +2994,17 @@ impl App {
     }
 
     pub fn recording_db(&self) -> Option<&EntityDb> {
-        self.store_hub.as_ref()?.active_recording()
+        let store_hub = self.store_hub.as_ref()?;
+        let recording_id = self.active_recording_id()?;
+        store_hub.entity_db(recording_id)
     }
 
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
     // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
         egui_ctx: &egui::Context,
-        storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
+        display_mode: &DisplayMode,
     ) {
         #![allow(clippy::allow_attributes, clippy::needless_continue)] // false positive, depending on target_arch
 
@@ -2995,12 +3019,11 @@ impl App {
         let mut force_store_info = false;
 
         for file in dropped_files {
-            let active_store_id = storage_ctx
-                .hub
-                .active_store_id()
+            let active_store_id = display_mode
+                .recording_id()
                 .cloned()
                 // Don't redirect data to the welcome screen.
-                .filter(|store_id| store_id.application_id() != &StoreHub::welcome_screen_app_id())
+                .filter(|store_id| store_id.application_id() != StoreHub::welcome_screen_app_id())
                 .unwrap_or_else(|| {
                     // When we're on the welcome screen, there is no recording ID to recommend.
                     // But we want one, otherwise multiple things being dropped simultaneously on the
@@ -3250,29 +3273,6 @@ impl App {
         }
     }
 
-    /// Get a helper struct to interact with the given recording.
-    pub fn blueprint_ctx<'a>(&'a self, recording_id: &StoreId) -> Option<AppBlueprintCtx<'a>> {
-        let hub = self.store_hub.as_ref()?;
-
-        let blueprint = hub.active_blueprint_for_app(recording_id.application_id())?;
-
-        let default_blueprint = hub.default_blueprint_for_app(recording_id.application_id());
-
-        let blueprint_query = self
-            .state
-            .get_blueprint_query_for_viewer(blueprint)
-            .unwrap_or_else(|| {
-                re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
-            });
-
-        Some(AppBlueprintCtx {
-            command_sender: &self.command_sender,
-            current_blueprint: blueprint,
-            default_blueprint,
-            blueprint_query,
-        })
-    }
-
     /// Receive in-transit chunks (previously prefetched):
     fn receive_fetched_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
@@ -3284,7 +3284,7 @@ impl App {
             .collect();
 
         for store_id in store_ids {
-            let db = store_hub.entity_db_mut(&store_id);
+            let db = store_hub.entity_db_entry(&store_id);
 
             if cfg!(debug_assertions) && db.can_fetch_chunks_from_redap() {
                 // Some sanity checks:
@@ -3340,7 +3340,7 @@ impl App {
                 self.process_store_events_for_db(store_hub, &store_id, &store_events);
 
                 // Need to reborrow since we pass `&mut store_hub` above.
-                let db = store_hub.entity_db_mut(&store_id);
+                let db = store_hub.entity_db_entry(&store_id);
 
                 // Note: some of the logic above is duplicated in `fn receive_log_msg`.
                 // Make sure they are kept in sync!
@@ -3364,17 +3364,24 @@ impl App {
     fn prefetch_chunks(&self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
+        let active_recording_id = self.active_recording_id();
+
         // Even if we wanted, we cannot get rid of this overhead
-        let unpurgable_cache_size = store_hub
-            .active_caches()
+        let unpurgable_cache_size = active_recording_id
+            .and_then(|id| store_hub.caches_for_store(id))
             .map_or(0, |caches| caches.memory_use_after_last_purge());
 
         const APP_OVERHEAD_BYTES: u64 = 300_000_000;
         const FIXED_FRACTION_OVERHEAD: f32 = 0.10;
         const FALLBACK_FIXED_FRACTION_OVERHEAD: f32 = 0.20;
         // Prefetch new chunks for the active recording (if any):
-        let mut memory_limit = if let Some(recording) = store_hub.active_recording_mut() {
-            if recording.is_currently_downloading_manifest() {
+
+        let active_recording = active_recording_id.and_then(|active_recording_id| {
+            store_hub.store_bundle_mut().get_mut(active_recording_id)
+        });
+
+        let mut memory_limit = if let Some(active_recording) = active_recording {
+            if active_recording.is_currently_downloading_manifest() {
                 return;
             }
 
@@ -3384,19 +3391,21 @@ impl App {
             // There is some fixed overhead in the process that we cannot purge.
             // This includes things like fonts, icons, etc.
             // We also want some headroom for spikes.
-            let overhead = recording
+            let overhead = active_recording
                 .estimated_application_overhead_bytes
                 .unwrap_or(APP_OVERHEAD_BYTES + unpurgable_cache_size);
 
             // Leave some extra headroom (beyond the fixed overhead) for
             // * secondary indices
             // * failures in our accounting
-            let fixed_fraction_overhead =
-                if recording.estimated_application_overhead_bytes.is_some() {
-                    FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
-                } else {
-                    FALLBACK_FIXED_FRACTION_OVERHEAD
-                };
+            let fixed_fraction_overhead = if active_recording
+                .estimated_application_overhead_bytes
+                .is_some()
+            {
+                FIXED_FRACTION_OVERHEAD // We have a good estimate, so we need less headroom
+            } else {
+                FALLBACK_FIXED_FRACTION_OVERHEAD
+            };
 
             let memory_budget = self.startup_options.memory_limit.saturating_sub(overhead);
 
@@ -3408,13 +3417,13 @@ impl App {
 
             // eprintln!("Memory budget for active recording: {memory_budget}");
 
-            let time_ctrl = self.state.time_controls.get(recording.store_id());
+            let time_ctrl = self.state.time_controls.get(active_recording.store_id());
 
             crate::prefetch_chunks::prefetch_chunks_for_recording(
                 &self.egui_ctx,
                 // If we can't afford at least this much for data, then what is even the point?
                 memory_budget.at_least(100_000_000),
-                recording,
+                active_recording,
                 time_ctrl,
                 self.connection_registry(),
             );
@@ -3429,11 +3438,11 @@ impl App {
                 .1
         };
 
+        let active_recording = active_recording_id
+            .and_then(|active_recording_id| store_hub.store_bundle().get(active_recording_id));
+
         // Fetch background recordings if we have space for them.
-        if store_hub
-            .active_recording()
-            .is_none_or(|rec| !rec.can_load_more())
-        {
+        if active_recording.is_none_or(|rec| !rec.can_load_more()) {
             re_tracing::profile_scope!("fetch_background_recordings");
 
             const BACKGROUND_HEADROOM_FRACTION: f32 = 0.2;
@@ -3759,34 +3768,39 @@ impl eframe::App for App {
             if !self.msg_receive_set().contains(source) {
                 self.state.navigation.reset();
             }
-        } else if store_hub.active_app().is_none() {
-            let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
-                .store_bundle()
-                .entity_dbs()
-                .map(|db| db.application_id())
-                .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-                .collect();
-            if let Some(app_id) = apps.first().copied() {
-                store_hub.set_active_app(app_id.clone());
-                // set_active_app will also activate a new entry.
-                // Select this entry so it's more obvious to the user which recording
-                // is now active.
-                match store_hub.active_recording_or_table() {
-                    Some(RecordingOrTable::Recording { store_id }) => {
+        } else {
+            // If the current display mode points to a stale recording, find a new valid state.
+            let display_mode_is_valid = self
+                .state
+                .navigation
+                .current()
+                .recording_id()
+                .is_none_or(|recording_id| store_hub.entity_db(recording_id).is_some());
+
+            if !display_mode_is_valid {
+                let any_other_app_id: Option<ApplicationId> = store_hub
+                    .store_bundle()
+                    .entity_dbs()
+                    .map(|db| db.application_id())
+                    .filter(|app_id| *app_id != StoreHub::welcome_screen_app_id())
+                    .min()
+                    .cloned();
+                if let Some(app_id) = any_other_app_id {
+                    store_hub.load_persisted_blueprints_for_app(&app_id);
+                    if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
+                        store_hub.load_blueprint_and_caches(&recording_id);
                         self.state
                             .selection_state
-                            .set_selection(Item::StoreId(store_id.clone()));
-                    }
-                    Some(RecordingOrTable::Table { table_id }) => {
+                            .set_selection(Item::StoreId(recording_id.clone()));
                         self.state
-                            .selection_state
-                            .set_selection(Item::TableId(table_id.clone()));
+                            .navigation
+                            .replace(DisplayMode::LocalRecording { recording_id });
+                    } else {
+                        self.state.navigation.reset();
                     }
-                    None => {}
+                } else {
+                    self.state.navigation.reset();
                 }
-            } else {
-                self.state.navigation.reset();
-                store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
 
@@ -3794,18 +3808,15 @@ impl eframe::App for App {
         self.prefetch_chunks(&mut store_hub);
 
         {
-            let (storage_context, store_context) = store_hub.read_context();
+            let (storage_context, store_context) =
+                store_hub.read_context(self.state.navigation.current());
 
-            let blueprint_query = store_context.as_ref().map_or_else(
-                BlueprintUndoState::default_query,
-                |store_context| {
-                    self.state
-                        .blueprint_query_for_viewer(store_context.blueprint)
-                },
-            );
+            let blueprint_query = self
+                .state
+                .blueprint_query_for_viewer(store_context.blueprint);
 
             let app_blueprint = AppBlueprint::new(
-                store_context.as_ref().map(|ctx| ctx.blueprint),
+                Some(store_context.blueprint),
                 &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
@@ -3817,7 +3828,7 @@ impl eframe::App for App {
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
-                store_context.as_ref(),
+                &store_context,
                 &storage_context,
                 mem_usage_tree,
                 store_stats.as_ref(),
@@ -3861,15 +3872,15 @@ impl eframe::App for App {
                 }
             }
 
-            Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
+            let display_mode = self.state.navigation.current().clone();
+            Self::handle_dropping_files(egui_ctx, &self.command_sender, &display_mode);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            let display_mode = self.state.navigation.current().clone();
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,
                 &storage_context,
-                store_context.as_ref(),
+                Some(&store_context),
                 &display_mode,
             );
         }

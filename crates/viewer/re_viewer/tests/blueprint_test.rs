@@ -70,7 +70,7 @@ fn load_blueprint_from_file(test_context: &mut TestContext, path: &Path) {
         re_entity_db::StoreBundle::from_rrd(file).expect("Failed to load blueprint store");
     {
         let mut lock = test_context.store_hub.lock();
-        let app_id = lock.active_app().expect("Missing active app").clone();
+        let app_id = test_context.application_id.clone();
         lock.load_blueprint_store(rbl_store, &app_id)
             .expect("Failed to load blueprint store");
     }
