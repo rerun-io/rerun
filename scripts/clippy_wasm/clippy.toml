@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main clippy.toml:
 
-msrv = "1.90"
+msrv = "1.92"
 
 allow-unwrap-in-tests = true
 

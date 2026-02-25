@@ -8,8 +8,8 @@ import subprocess
 import sys
 
 PIXI_VERSION = "0.55.0"
-CARGO_VERSION = "1.90.0"
-RUST_VERSION = "1.90.0"
+CARGO_VERSION = "1.92.0"
+RUST_VERSION = "1.92.0"
 
 
 def check_version(cmd: str, expected: str, update: str, install: str) -> bool:

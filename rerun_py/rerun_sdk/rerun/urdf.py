@@ -6,9 +6,11 @@ from typing import TYPE_CHECKING
 from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfTreeInternal
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     from . import Transform3D
+    from ._baseclasses import ComponentColumnList
 
 __all__ = ["UrdfJoint", "UrdfLink", "UrdfTree"]
 
@@ -105,6 +107,38 @@ class UrdfJoint:
             translation=result["translation"],
             parent_frame=result["parent_frame"],
             child_frame=result["child_frame"],
+        )
+
+    def compute_transform_columns(self, values: Sequence[float], *, clamp: bool = True) -> ComponentColumnList:
+        """
+        Compute transforms for this joint at multiple values, returning columnar data for use with `send_columns`.
+
+        Parameters
+        ----------
+        values:
+            Joint values: angles in radians (revolute/continuous) or distances in meters (prismatic).
+            Values outside limits are clamped with a warning if `clamp` is True.
+        clamp:
+            Whether to clamp & warn about values outside joint limits.
+
+        Returns
+        -------
+        ComponentColumnList
+            Columnar transform data ready for use with :func:`rerun.send_columns`.
+
+        """
+        from . import Transform3D
+
+        result = self._inner.compute_transform_columns(list(values), clamp=clamp)
+
+        for warning in result["warnings"]:
+            warnings.warn(warning, UserWarning, stacklevel=2)
+
+        return Transform3D.columns(
+            translation=result["translations"],
+            quaternion=result["quaternions_xyzw"],
+            parent_frame=[result["parent_frame"]] * len(values),
+            child_frame=[result["child_frame"]] * len(values),
         )
 
     def __repr__(self) -> str:

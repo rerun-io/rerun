@@ -55,7 +55,7 @@ For more details please refer to our documentation:
 - [Plot any scalar](https://rerun.io/docs/howto/visualization/plot-any-scalar)
 - [Component mappings outside of plotting](https://rerun.io/docs/howto/visualizations/component-mappings), shown on the example of a colored point cloud
 
-Thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
+And finally, thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
 
 <picture>
   <img src="https://static.rerun.io/interpolation-mode/093d901acd73f84baf838cee37bb579135f15dfa/480w.png" alt="Dropdown of different interpolation modes">
@@ -168,8 +168,9 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - notebook: Re-export viewer event types [4c7d978](https://github.com/rerun-io/rerun/commit/4c7d97826a284371291155a5bb67359fb025b3de)
 - Add `entity_paths()`, `archetypes()`, and `component_types()` methods to `Schema` [015f1fc](https://github.com/rerun-io/rerun/commit/015f1fc22c6aa8b7af3b42fecf6feaf81dff2ef0)
 - Error when querying an unknown index [74a27df](https://github.com/rerun-io/rerun/commit/74a27dfb1c1257d6edbabbf42f28afe8bb043d2b)
-- Rename `rerun-sdk[datafusion]` to `rerun-sdk[dataplatform]` and add pandas dependency [b82cd06](https://github.com/rerun-io/rerun/commit/b82cd060273a20ce2a5b99b3b591bce654182710)
+- Rename `rerun-sdk[datafusion]` to `rerun-sdk[dataplatform]` and add pandas dependency [b82cd06](https://github.com/rerun-io/rerun/commit/b82cd060273a20ce2a5b99b3b591bce654182710) <!-- NOLINT -->
 - Add (and document) time range and selection support to `segment_url` [b2e7eff](https://github.com/rerun-io/rerun/commit/b2e7eff71b53e75d3a6d34c1804773ccc483f648)
+- Improve `DynamicArchetype` docs with example on how to use builtin batch types [ccdfe29](https://github.com/rerun-io/rerun/commit/ccdfe2924e3e4b73379a13c4e273ca9b22d6aae8)
 
 #### 🦀 Rust API
 - Basic Rust & Python blueprint API for component mappings [c6d7409](https://github.com/rerun-io/rerun/commit/c6d7409bcd94402e219b4d31c682fef52eb3b340)
@@ -179,6 +180,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 
 #### 🪳 Bug fixes
 - Fix first-person camera having zero speed in zero-sized scenes [#12535](https://github.com/rerun-io/rerun/pull/12535) (thanks [@Shivam-Bhardwaj](https://github.com/Shivam-Bhardwaj)!)
+- Rust `BlueprintActivation` default now matches python behavior [3f85747](https://github.com/rerun-io/rerun/commit/3f8574733c537038d6aee67c58e2b4967f1d21ea)
 - Fix heuristic for `target_frame` in 3D views for scenes with pinholes & named frames [3c678cc](https://github.com/rerun-io/rerun/commit/3c678cccb0e0e64bbaa2f02c6d6b0ed270bd319d)
 - Fix `sensor_msgs::PointCloud2` MCAP parser for small pointclouds [6491b95](https://github.com/rerun-io/rerun/commit/6491b955fb3d4d31f14ef0a6ac0d41398c3d3cf4)
 - Bug fix: allow copying selected text [4094a91](https://github.com/rerun-io/rerun/commit/4094a918637ad60efb27677701e0ae4d86e1b1a6)
@@ -236,6 +238,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Allow loading extensionless http urls via magic bytes detection [daf7a35](https://github.com/rerun-io/rerun/commit/daf7a35ebd5b25a3b53c7fda9d4b6c77dee0e705)
 - Fixes performance issue of too many time series plots [a74b382](https://github.com/rerun-io/rerun/commit/a74b382b9ce0b413f14d96d4a2f264e1f4b2abe8)
 - Suppport `(U)Int16` in time series plots [6bb58e4](https://github.com/rerun-io/rerun/commit/6bb58e489ba76c1744599e222180f9a358720933)
+- Support custom bool types in plots [fe8d955](https://github.com/rerun-io/rerun/commit/fe8d955ab3053d5aa388455a474abf8bcb469dda)
 
 #### 🗄️ OSS server
 - Test handling of schema conflict and make OSS server compliant [c618910](https://github.com/rerun-io/rerun/commit/c6189106664d039a28312f1ac3007de99c979dc5)
@@ -265,6 +268,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Add documentation for converting custom data to rrd using log/send_column [f8cf13c](https://github.com/rerun-io/rerun/commit/f8cf13c6686b0dd06e518ec0b8ebe24017bc75ab)
 - Update MCAP message support documentation [a77922a](https://github.com/rerun-io/rerun/commit/a77922a46338cc1037d5c97ef9680e9879c86f2f)
 - Add layer identifier "foxglove" to `rerun mcap convert` [1436027](https://github.com/rerun-io/rerun/commit/14360275483603361d0c05ce522046344b226fed)
+- Add generalized example (snippet + doc page) for component mappings [82da40f](https://github.com/rerun-io/rerun/commit/82da40f5959d238b1f426f802e16be1ab1782810)
 
 #### 🖼 UI improvements
 - Show that other timelines have data on timeline loader [47bf28f](https://github.com/rerun-io/rerun/commit/47bf28f7377bf09230ddf38151db43c58cfdc3fa)

@@ -579,15 +579,17 @@ impl RedapServers {
             .is_some()
     }
 
-    pub fn logout(&mut self) {
+    pub fn logout(&mut self) -> Vec<re_uri::Origin> {
         self.inline_login_flow = None;
         self.server_modal_ui.logout();
         // Log out from the servers that used the accounts token.
+        let mut origins = Vec::new();
         for server in self.servers.values() {
             if matches!(
                 server.connection_registry.credentials(&server.origin),
                 Some(Credentials::Stored)
             ) {
+                origins.push(server.origin.clone());
                 server
                     .connection_registry
                     .remove_credentials(&server.origin);
@@ -598,6 +600,7 @@ impl RedapServers {
                 .ok();
             }
         }
+        origins
     }
 
     /// Per-frame housekeeping.

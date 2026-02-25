@@ -209,7 +209,7 @@ impl UICommand {
 
             Self::ResetViewer => (
                 "Reset Viewer",
-                "Reset the Viewer to how it looked the first time you ran it, forgetting all stored blueprints and UI state",
+                "Reset the Viewer to how it looked the first time you ran it, forgetting UI state and all stored blueprints, except the ones loaded from *.rbl resources",
             ),
 
             Self::ClearActiveBlueprint => (
