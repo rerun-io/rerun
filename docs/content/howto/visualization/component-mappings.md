@@ -14,8 +14,8 @@ This guide uses a point cloud with two color sets as a running example, but the 
 
 You can find the full example here:
 
-* 🐍 [Python](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.py?speculative-link)
-* 🦀 [Rust](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.rs?speculative-link)
+* 🐍 [Python](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.py)
+* 🦀 [Rust](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.rs)
 
 <picture>
   <img src="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/full.png" alt="">
