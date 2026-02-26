@@ -90,6 +90,10 @@ class AsComponents(Protocol):
 class Archetype(AsComponents):
     """Base class for all archetypes."""
 
+    # Class-level caches, populated once per archetype subclass
+    _component_field_names_cache: list[str] | None = None
+    _descriptor_cache: dict[str, ComponentDescriptor] | None = None
+
     def __str__(self) -> str:
         from pprint import pformat
 
@@ -132,24 +136,55 @@ class Archetype(AsComponents):
     def archetype_short_name(cls) -> str:
         return cls.archetype().rsplit(".", 1)[-1]
 
+    @classmethod
+    def _ensure_caches(cls) -> tuple[list[str], dict[str, ComponentDescriptor]]:
+        """Build and cache the component field names and descriptor templates for this archetype."""
+        field_names = cls.__dict__.get("_component_field_names_cache")
+        if field_names is not None:
+            return field_names, cls._descriptor_cache  # type: ignore[return-value]
+
+        field_names = []
+        descriptor_cache: dict[str, ComponentDescriptor] = {}
+        short_name = cls.archetype_short_name()
+        arch = cls.archetype()
+
+        for fld in fields(cls):
+            if "component" in fld.metadata:
+                field_names.append(fld.name)
+                # We can't cache the full descriptor yet because _COMPONENT_TYPE
+                # varies per batch instance. But we can cache the archetype-level parts.
+                # Actually, for a given archetype+field, the component_type is always the same
+                # (determined by the converter/batch class). We'll fill these in on first use.
+                descriptor_cache[fld.name] = None  # type: ignore[assignment]
+
+        cls._component_field_names_cache = field_names
+        cls._descriptor_cache = descriptor_cache
+        cls._archetype_short_name_cached = short_name
+        cls._archetype_cached = arch
+        return field_names, descriptor_cache
+
     def as_component_batches(self) -> list[DescribedComponentBatch]:
         """
         Return all the component batches that make up the archetype.
 
         Part of the `AsComponents` logging interface.
         """
-        batches = []
+        cls = type(self)
+        field_names, descriptor_cache = cls._ensure_caches()
 
-        for fld in fields(type(self)):
-            if "component" in fld.metadata:
-                comp = getattr(self, fld.name)
-                if comp is not None:
+        batches = []
+        for name in field_names:
+            comp = getattr(self, name)
+            if comp is not None:
+                descr = descriptor_cache.get(name)
+                if descr is None:
                     descr = ComponentDescriptor(
-                        self.archetype_short_name() + ":" + fld.name,
+                        cls._archetype_short_name_cached + ":" + name,
                         component_type=comp._COMPONENT_TYPE,
-                        archetype=self.archetype(),
+                        archetype=cls._archetype_cached,
                     )
-                    batches.append(DescribedComponentBatch(comp, descr))
+                    descriptor_cache[name] = descr
+                batches.append(DescribedComponentBatch(comp, descr))
 
         return batches
 
@@ -187,7 +222,7 @@ class BaseBatch(Generic[T]):
 
         """
         if data is not None:
-            with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
+            try:
                 # If data is already an arrow array, use it
                 if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
                     self.pa_array = data
@@ -199,8 +234,26 @@ class BaseBatch(Generic[T]):
                     else:
                         self.pa_array = result
                 return
+            except Exception:
+                self._init_with_catch(data, strict=strict)
+                return
 
         # If we didn't return above, default to the empty array
+        self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
+
+    def _init_with_catch(self, data: T, strict: bool | None = None) -> None:
+        """Fallback init path with full error handling."""
+        with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
+            if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
+                self.pa_array = data
+            else:
+                result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
+                if isinstance(result, np.ndarray):
+                    self._numpy_data = result
+                else:
+                    self.pa_array = result
+            return
+        # If exception was swallowed, ensure we have a valid empty array
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
 
     def __getattr__(self, name: str) -> Any:
