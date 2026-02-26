@@ -15,7 +15,7 @@ use re_test_context::VisualizerBlueprintContext as _;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -26,10 +26,7 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
 
     log_data(&mut test_context, timeline);
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 
     let view_id = setup_blueprint(&mut test_context, timeline.name(), None, None);
     let size = egui::vec2(300.0, 300.0);
@@ -91,10 +88,7 @@ pub fn test_custom_visible_time_range() {
 
     log_data(&mut test_context, timeline);
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 
     let size = egui::vec2(300.0, 300.0);
 

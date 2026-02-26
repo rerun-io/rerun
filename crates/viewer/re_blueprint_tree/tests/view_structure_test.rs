@@ -14,7 +14,7 @@ use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_ui::filter_widget::FilterState;
-use re_viewer_context::{RecommendedView, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 const VIEW_ID: &str = "this-is-a-view-id";
@@ -181,10 +181,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     }
 
     // set the current timeline to the timeline where data was logged to
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
+    test_context.set_active_timeline("frame_nr");
 
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([400.0, 800.0])

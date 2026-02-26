@@ -5,7 +5,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
 fn color_gradient0(step: i64) -> re_sdk_types::components::Color {
@@ -92,10 +92,7 @@ fn test_clear_series_points_and_line_impl(
         }
     }
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 
     let view_id = setup_blueprint(&mut test_context);
     snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
@@ -203,10 +200,7 @@ fn test_line_properties_impl(
         });
     }
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 
     let view_id = setup_blueprint(&mut test_context);
     let mut name = "line_properties".to_owned();
@@ -253,10 +247,7 @@ fn test_per_series_visibility() {
             });
         }
 
-        test_context.send_time_commands(
-            test_context.active_store_id(),
-            [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-        );
+        test_context.set_active_timeline(*timeline.name());
 
         let view_id = setup_blueprint(&mut test_context);
         snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
@@ -355,10 +346,7 @@ fn test_point_properties_impl(
         });
     }
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 
     let view_id = setup_blueprint(&mut test_context);
     let mut name = "point_properties".to_owned();
@@ -402,10 +390,7 @@ fn test_special_characters_in_entity_path() {
         });
     }
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 
     let view_id = setup_blueprint(&mut test_context);
     let mut snapshot_results = SnapshotResults::new();
@@ -487,12 +472,7 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool, snapshot_results: &mu
         blueprint.add_view_at_root(view)
     });
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(
-            *Timeline::log_tick().name(),
-        )],
-    );
+    test_context.set_active_timeline(*Timeline::log_tick().name());
 
     let name = if partial_range {
         "bootstrapped_secondaries_partial"

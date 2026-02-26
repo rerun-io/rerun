@@ -7,7 +7,7 @@ use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_context::{TestContext, VisualizerBlueprintContext as _};
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -34,10 +34,7 @@ fn test_interpolation_modes() {
             });
         }
 
-        test_context.send_time_commands(
-            test_context.active_store_id(),
-            [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-        );
+        test_context.set_active_timeline(*timeline.name());
 
         let view_id = setup_blueprint(&mut test_context, mode);
         snapshot_results.add(test_context.run_view_ui_and_save_snapshot(

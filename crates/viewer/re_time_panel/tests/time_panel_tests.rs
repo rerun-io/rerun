@@ -35,12 +35,9 @@ pub fn time_panel_two_sections() {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
-
     add_sparse_data(&mut test_context);
+
+    test_context.set_active_timeline("frame_nr");
 
     let mut snapshot_results = SnapshotResults::new();
     run_time_panel_and_save_snapshot(
@@ -60,11 +57,6 @@ pub fn time_panel_two_sections() {
 pub fn time_panel_dense_data() {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
 
     let points1 = MyPoint::from_iter(0..1);
 
@@ -91,6 +83,8 @@ pub fn time_panel_dense_data() {
 
         builder
     });
+
+    test_context.set_active_timeline("frame_nr");
 
     let mut snapshot_results = SnapshotResults::new();
     run_time_panel_and_save_snapshot(
@@ -127,11 +121,6 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
-
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
         test_context.log_entity(format!("/entity/{i}"), |mut builder| {
@@ -156,6 +145,8 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
             builder
         });
     }
+
+    test_context.set_active_timeline("frame_nr");
 
     let mut time_panel = TimePanel::default();
     if filter_active {
@@ -227,12 +218,9 @@ pub fn test_focused_item_is_focused() {
 
     let mut test_context = TestContext::new();
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("timeline_a".into())],
-    );
-
     log_data_for_various_entity_kinds_tests(&mut test_context);
+
+    test_context.set_active_timeline("timeline_a");
 
     *test_context.focused_item.lock() =
         Some(EntityPath::from("/parent_with_data/of/entity").into());
@@ -263,11 +251,6 @@ fn with_unloaded_chunks() {
         re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("timeline_a".into())],
-    );
-
     let mut chunks = create_chunks();
 
     let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
@@ -277,6 +260,8 @@ fn with_unloaded_chunks() {
     .unwrap();
 
     test_context.add_rrd_manifest(rrd_manifest);
+
+    test_context.set_active_timeline("timeline_a");
 
     let mut snapshot_results = SnapshotResults::new();
 

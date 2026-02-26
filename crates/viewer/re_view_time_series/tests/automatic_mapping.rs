@@ -15,7 +15,7 @@ use re_sdk_types::{DynamicArchetype, archetypes};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -328,10 +328,7 @@ fn setup_store(test_context: &mut TestContext) {
         });
     }
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {

@@ -107,10 +107,7 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
         )
     });
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
+    test_context.set_active_timeline(*timeline.name());
 }
 
 #[test]

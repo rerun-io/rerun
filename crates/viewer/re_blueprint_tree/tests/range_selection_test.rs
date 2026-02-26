@@ -9,7 +9,7 @@ use re_log_types::build_frame_nr;
 use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{Contents, TimeControlCommand, ViewClass as _, VisitorControlFlow};
+use re_viewer_context::{Contents, ViewClass as _, VisitorControlFlow};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
@@ -29,10 +29,7 @@ fn test_range_selection_in_blueprint_tree() {
     let mut blueprint_tree = BlueprintTree::default();
 
     // set the current timeline to the timeline where data was logged to
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
+    test_context.set_active_timeline("frame_nr");
 
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([400.0, 500.0])

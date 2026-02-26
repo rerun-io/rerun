@@ -8,9 +8,7 @@ use re_log_types::build_frame_nr;
 use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{
-    CollapseScope, RecommendedView, TimeControlCommand, ViewClass as _, ViewId,
-};
+use re_viewer_context::{CollapseScope, RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
@@ -62,10 +60,7 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         let mut blueprint_tree = BlueprintTree::default();
 
         // set the current timeline to the timeline where data was logged to
-        test_context.send_time_commands(
-            test_context.active_store_id(),
-            [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-        );
+        test_context.set_active_timeline("frame_nr");
 
         let mut harness = test_context
             .setup_kittest_for_rendering_ui([400.0, 800.0])
@@ -192,10 +187,7 @@ fn run_blueprint_panel_and_save_snapshot(
     snapshot_name: &str,
 ) {
     // set the current timeline to the timeline where data was logged to
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
+    test_context.set_active_timeline("frame_nr");
 
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([400.0, 800.0])

@@ -8,7 +8,7 @@ use std::sync::atomic::AtomicBool;
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-use re_chunk::{Chunk, ChunkBuilder, TimeInt};
+use re_chunk::{Chunk, ChunkBuilder, TimeInt, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
@@ -460,6 +460,15 @@ impl TestContext {
                     time_commands: commands,
                 });
         }
+    }
+
+    pub fn set_active_timeline(&self, timeline_name: impl Into<TimelineName>) {
+        let store_id = self.active_store_id();
+        self.send_time_commands(
+            store_id,
+            [TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+        );
+        self.handle_system_commands(&egui::Context::default());
     }
 
     /// Set up for rendering UI, with not 3D/2D in it.

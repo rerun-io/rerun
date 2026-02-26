@@ -6,7 +6,7 @@ use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -15,11 +15,6 @@ pub fn test_null_timeline() {
 
     let timeline_a = Timeline::new_sequence("timeline_a");
     let timeline_b = Timeline::new_sequence("timeline_b");
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline_a.name())],
-    );
 
     test_context.log_entity("first", |builder| {
         builder.with_archetype(RowId::new(), [(timeline_a, 0)], &Scalars::single(10.0))
@@ -32,6 +27,8 @@ pub fn test_null_timeline() {
             &Scalars::single(12.0),
         )
     });
+
+    test_context.set_active_timeline(*timeline_a.name());
 
     let view_id = setup_blueprint(&mut test_context, timeline_a.name());
     test_context
