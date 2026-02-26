@@ -2309,7 +2309,7 @@ fn quote_arrow_serialization(
                     } else {
                         return Ok(unindent(&format!(
                             r##"
-                                array = np.asarray(data, dtype={np_dtype}).flatten()
+                                array = np.asarray(data, dtype={np_dtype}).ravel()
                                 return pa.array(array, type=data_type)
                             "##
                         )));
