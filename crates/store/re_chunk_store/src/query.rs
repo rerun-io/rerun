@@ -804,9 +804,6 @@ impl QueryResults {
     /// them, load them, and then try the query again.
     ///
     /// [missing chunk IDs]: `Self::missing_virtual`
-    //
-    // TODO(RR-3295): this should ultimately not exist once all callsite have been updated to
-    // the do whatever happens to be "the right thing" in their respective context.
     #[track_caller]
     pub fn into_iter_verbose(self) -> impl Iterator<Item = Arc<Chunk>> {
         if self.is_partial() {

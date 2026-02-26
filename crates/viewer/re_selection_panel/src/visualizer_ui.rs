@@ -525,7 +525,6 @@ fn collect_source_component_options(
         std::iter::once(target_component_reflection.datatype.clone()).collect()
     };
 
-    // TODO(RR-3567): Provide a better structure/ordering that help user navigate the list.
     entity_components_with_datatype
         .iter()
         .flat_map(|(source_component, datatype)| {

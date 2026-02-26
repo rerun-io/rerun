@@ -62,8 +62,6 @@ impl VisualizerComponentMapping {
 
     /// Creates a new mapping that sources from a specific component using a selector.
     ///
-    /// ⚠️TODO(RR-3308): Not fully implemented yet.
-    ///
     /// Selectors use jq-like syntax to pick a specific field within a component.
     ///
     /// # Example

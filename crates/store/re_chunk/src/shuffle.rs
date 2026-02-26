@@ -190,7 +190,7 @@ impl Chunk {
     ///
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     //
-    // TODO(apache/arrow-rs#5375): Provide a path that only shuffles offsets instead of the data itself, using a `ListView`.
+    // TODO(RR-3865): Use arrow's `ListView` to only shuffle offsets instead of the data itself.
     pub(crate) fn shuffle_with(&mut self, swaps: &[usize]) {
         re_tracing::profile_function!();
 

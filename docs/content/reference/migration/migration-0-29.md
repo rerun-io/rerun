@@ -32,9 +32,6 @@ rr.send_blueprint(rrb.TimeSeriesView(overrides={"trig/sin": [rr.SeriesLines(), r
 In general, you can now pass any archetype that has a corresponding visualizer.
 Internally, passing such a `VisualizableArchetype` is a shorthand for calling `.visualizer()` on the object.
 
-<!-- TODO(RR-3153): While we're here, illustrate the other motivation a bit. Something like:
-Note that this now allows to specify overrides for multiple instances of the same visualizer: EXAMPLE HERE. -->
-
 ### `Entry.update()` is deprecated in favor of `Entry.set_name()`
 
 The `Entry.update()` method has been deprecated. Use `Entry.set_name()` instead for renaming entries.

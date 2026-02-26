@@ -394,7 +394,6 @@ class RecordingStream:
         """
         bindings.flush(timeout_sec=timeout_sec, recording=self.to_native())
 
-    # TODO(RR-3065): SDK should flush both IO and app-level logic when a recording gets GC'd
     def __del__(self) -> None:  # type: ignore[no-untyped-def]
         recording = self.to_native()
         # It's definitely a problem if we are in a forked child process. The rerun SDK will still

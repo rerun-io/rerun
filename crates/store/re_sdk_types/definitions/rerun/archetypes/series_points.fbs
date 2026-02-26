@@ -25,7 +25,7 @@ table SeriesPoints (
 
   // --- Optional ---
 
-  // TODO(#8368, #9334): Once it's trivial to override how scalars for a plot are sourced,
+  // TODO(#8368): Once it's trivial to override how scalars for a plot are sourced,
   // we should make it explicit that the `SeriesLines`/`SeriesPoints` visualizers require
   // scalars as an input.
   // Doing so right now would break the model of how time series logging works too much:

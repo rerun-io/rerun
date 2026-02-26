@@ -74,8 +74,6 @@ class VisualizerComponentMapping(VisualizerComponentMappingExt):
         selector:
             Optional selector string using jq-like syntax to pick a specific field on `source_component`.
 
-            ⚠ TODO(RR-3308): Not fully implemented yet.
-
             Example: ".x" picks a field called "x" from the `source_component` if present.
 
             Defaults to empty string if not specified.
@@ -108,8 +106,6 @@ class VisualizerComponentMapping(VisualizerComponentMappingExt):
 
     selector: str | None = field(default=None, converter=str_or_none)
     # Optional selector string using jq-like syntax to pick a specific field on `source_component`.
-    #
-    # ⚠ TODO(RR-3308): Not fully implemented yet.
     #
     # Example: ".x" picks a field called "x" from the `source_component` if present.
     #

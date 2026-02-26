@@ -2480,7 +2480,6 @@ impl App {
                     let entity_db = store_hub.entity_db_entry(&store_id);
                     entity_db.add_rrd_manifest_message(rrd_manifest);
 
-                    // TODO(RR-3329): Should this run for all caches?
                     if let Some(caches) = store_hub.caches_for_store(&store_id) {
                         // Downgrade to read-only, so we can access caches.
                         let entity_db = store_hub

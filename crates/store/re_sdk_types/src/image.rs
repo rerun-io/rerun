@@ -32,10 +32,11 @@ impl ImageKind {
     pub fn from_archetype_name(archetype_name: Option<ArchetypeName>) -> Self {
         if archetype_name == Some(archetypes::SegmentationImage::name()) {
             Self::Segmentation
-        } else if archetype_name == Some(archetypes::DepthImage::name()) {
+        } else if archetype_name == Some(archetypes::DepthImage::name())
+            || archetype_name == Some(archetypes::EncodedDepthImage::name())
+        {
             Self::Depth
         } else {
-            // TODO(#9046): Note that currently all encoded images are treated as color images.
             Self::Color
         }
     }

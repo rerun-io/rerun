@@ -2,15 +2,17 @@
 
 use re_chunk_store::external::re_chunk::external::crossbeam::atomic::AtomicCell;
 use re_log_types::TimePoint;
-use re_sdk_types::{ViewClassIdentifier, archetypes};
+use re_sdk_types::{
+    ViewClassIdentifier, archetypes, blueprint::archetypes as blueprint_archetypes,
+};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 struct TestScenario {
     name: &'static str,
-    space_origin: &'static str,
+    target_frame: &'static str,
     view_class: ViewClassIdentifier,
 }
 
@@ -62,25 +64,11 @@ fn setup_scene(test_context: &mut TestContext) {
             )
     });
     test_context.log_entity("pinhole_entity", |builder| {
-        builder
-            .with_archetype_auto_row(
-                TimePoint::STATIC,
-                &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
-                    .with_child_frame("pinhole")
-                    .with_parent_frame("world"),
-            )
-            // TODO(RR-2997): Space origin can only be an entity, so we rely on pinhole having a coordinate frame that we can pick up.
-            .with_archetype_auto_row(
-                TimePoint::STATIC,
-                &archetypes::CoordinateFrame::new("pinhole"),
-            )
-    });
-
-    // TODO(RR-2997): If we could set the view's origin directly to a frame, we would set it to `world`. As there's nothing to be visualized on `world_entity` this would make this log call redundant.
-    test_context.log_entity("world_entity", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
-            &archetypes::CoordinateFrame::new("world"),
+            &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
+                .with_child_frame("pinhole")
+                .with_parent_frame("world"),
         )
     });
     test_context.log_entity("points3d_entity", |builder| {
@@ -167,36 +155,42 @@ fn test_topology_errors() {
     let scenarios = [
         TestScenario {
             name: "3d_view_at_root",
-            space_origin: "world_entity",
+            target_frame: "world",
             view_class: re_view_spatial::SpatialView3D::identifier(),
         },
         TestScenario {
             name: "2d_view_at_root",
-            space_origin: "world_entity",
+            target_frame: "world",
             view_class: re_view_spatial::SpatialView2D::identifier(),
         },
         TestScenario {
             name: "2d_view_at_pinhole",
-            space_origin: "pinhole_entity",
+            target_frame: "pinhole",
             view_class: re_view_spatial::SpatialView2D::identifier(),
         },
         TestScenario {
             name: "3d_view_at_pinhole",
-            space_origin: "pinhole_entity",
+            target_frame: "pinhole",
             view_class: re_view_spatial::SpatialView3D::identifier(),
         },
     ];
 
     for scenario in scenarios {
-        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-            let view_blueprint = ViewBlueprint::new(
-                scenario.view_class,
-                RecommendedView {
-                    origin: scenario.space_origin.into(),
-                    query_filter: re_log_types::EntityPathFilter::all(),
-                },
-            );
+        let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view_blueprint = ViewBlueprint::new(scenario.view_class, RecommendedView::root());
             let view_id = view_blueprint.id;
+
+            ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                view_id,
+            )
+            .save_blueprint_component(
+                ctx,
+                &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
+                &re_tf::TransformFrameId::new(scenario.target_frame),
+            );
+
             blueprint.add_views(std::iter::once(view_blueprint), None, None);
             view_id
         });

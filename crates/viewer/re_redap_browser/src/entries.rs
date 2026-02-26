@@ -229,8 +229,7 @@ fn fetch_entry_details(
     use itertools::Either::{Left, Right};
     #[expect(clippy::match_same_arms)]
     match &entry.kind {
-        // TODO(rerun-io/dataplatform#857): these are often empty datasets, and thus fail. For
-        // some reason, this failure is silent but blocks other tables from being registered.
+        // These are often empty datasets, and thus fail.
         // Since we don't need these tables yet, we just skip them for now.
         EntryKind::BlueprintDataset => None,
         EntryKind::Dataset => Some(Left(Left(

@@ -145,7 +145,7 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 #[pyo3(name = "rerun_bindings")]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
-        // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
+        // TODO(tokio/tracing#2499): allow installing multiple tracing sinks.
     } else {
         // NOTE: We set up the logging this here because some the inner init methods don't respond too kindly to being
         // called more than once.

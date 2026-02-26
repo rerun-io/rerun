@@ -14,8 +14,6 @@ pub struct Visualizer {
     pub overrides: Vec<SerializedComponentBatch>,
 
     /// Component mappings that define how data components map to visualizer parameters.
-    ///
-    /// TODO(RR-3255): Mappings aren't yet supported.
     pub mappings: Vec<bp_components::VisualizerComponentMapping>,
 }
 

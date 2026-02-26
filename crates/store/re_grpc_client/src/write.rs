@@ -124,7 +124,7 @@ pub struct Client {
 
 impl Client {
     pub fn new(uri: ProxyUri, options: Options) -> Self {
-        let (cmd_tx, cmd_rx) = mpsc::channel(100); // TODO(#11024): specify size in bytes instead of number of messages
+        let (cmd_tx, cmd_rx) = mpsc::channel(100); // TODO(RR-3869): specify size in bytes instead of number of messages
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
         let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting {

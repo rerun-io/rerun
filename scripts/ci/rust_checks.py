@@ -84,9 +84,7 @@ def run_cargo(
             f"{os.getcwd()}/{clippy_conf}"
         )
 
-    # TODO(#11359): We don't capture output on mac runners to help debug random hangs.
-    # However, if output_checks is provided, we need to capture output even on macOS.
-    capture = sys.platform != "darwin" or output_checks is not None
+    capture = output_checks is not None
 
     env = os.environ.copy()
     env.update(additional_env_vars)

@@ -621,7 +621,6 @@ pub fn build_density_graph<'a>(
                         &item.entity_path,
                         component,
                     )
-                    // TODO(RR-3295): what should we do with virtual chunks here?
                     .into_iter_verbose()
                     .filter_map(|chunk| {
                         let time_range = chunk.timelines().get(timeline)?.time_range();

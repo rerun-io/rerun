@@ -693,7 +693,7 @@ const MAX_ENTRY_NAME_LENGTH: usize = 180;
 /// - Be at most 180 characters long
 /// - Only contain ASCII alphanumeric characters, underscores, hyphens, dots, and spaces
 ///
-// TODO(RR-3719): Entry names should support a broader set of characters.
+// TODO(RR-3718): Entry names should support a broader set of characters.
 pub fn validate_entry_name(name: &str) -> Result<(), String> {
     if name.len() > MAX_ENTRY_NAME_LENGTH {
         return Err(format!(

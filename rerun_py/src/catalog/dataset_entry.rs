@@ -101,7 +101,6 @@ impl PyDatasetEntryInternal {
     }
 
     /// Return the Arrow schema of the data contained in the dataset.
-    //TODO(#9457): there should be another `schema` method which returns a `PySchema`
     #[instrument(skip_all)]
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
         let arrow_schema = Self::fetch_arrow_schema(&self_)?;

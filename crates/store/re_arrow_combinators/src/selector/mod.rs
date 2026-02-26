@@ -1,9 +1,27 @@
 //! Selector API for parsing and executing [`jq`](https://github.com/jqlang/jq/)-like queries on Arrow arrays.
 //!
-//! This module provides a high-level path-based API, but in contrast to jq its semantics are **columnar**,
+//! This module provides a high-level path-based API, but in contrast to `jq` its semantics are **columnar**,
 //! following Apache Arrow's data model rather than a row-oriented object model.
-
-// TODO(RR-3409): Explain the syntax and the similarities/differences to `jq` in the documentation.
+//!
+//! # Syntax
+//!
+//! The selector syntax is a subset of `jq`:
+//!
+//! | Syntax      | Meaning                                     | Example          |
+//! |-------------|---------------------------------------------|------------------|
+//! | `.field`    | Access a named field in a struct             | `.location`      |
+//! | `[]`        | Iterate over every element of a list         | `.poses[]`       |
+//! | `[N]`       | Index into a list by position                | `.[0]`           |
+//! | `\|`        | Pipe the output of one expression to another | `.foo \| .bar`   |
+//!
+//! Segments can be chained without an explicit pipe: `.poses[].x` is equivalent to `.poses[] | .x`.
+//!
+//! # Differences from `jq`
+//!
+//! * **Columnar, not row-oriented** — operations apply to entire Arrow columns rather than individual JSON values.
+//! * **No filters, arithmetic, or built-in functions** — only path navigation and iteration are supported.
+//! * **No quoted field names or string interpolation** — field names must be bare identifiers
+//!   (alphanumeric, `-`, `_`).
 
 mod lexer;
 mod parser;

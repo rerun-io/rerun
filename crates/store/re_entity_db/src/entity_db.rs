@@ -518,7 +518,6 @@ impl EntityDb {
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self.latest_at(query, entity_path, [component]);
-        // TODO(RR-3295): report missing chunks to caller
         results
             .component_mono(component)
             .map(|value| (results.max_index(), value))
@@ -540,7 +539,6 @@ impl EntityDb {
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self.latest_at(query, entity_path, [component]);
-        // TODO(RR-3295): report missing chunks to caller
         results
             .component_mono_quiet(component)
             .map(|value| (results.max_index(), value))

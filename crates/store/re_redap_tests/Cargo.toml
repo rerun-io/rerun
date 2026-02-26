@@ -45,5 +45,5 @@ tokio.workspace = true
 tonic.workspace = true
 url.workspace = true
 
-# TODO(lancedb/lance#5075): we need to force activate this feature
+# TODO(lancedb/lance#5075): lance doesn't activate chrono/serde itself. Fixed in lance 0.39.
 chrono = { workspace = true, features = ["serde"] }

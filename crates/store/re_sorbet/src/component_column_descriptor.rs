@@ -28,7 +28,8 @@ pub struct ComponentColumnDescriptor {
     /// and will also be set in the schema for the whole chunk.
     ///
     /// If this is missing from the metadata, it will be set to `/`.
-    pub entity_path: EntityPath, // TODO(#8744): make optional for general sorbet batches
+    // TODO(emilk): Should be optional for general sorbet batches instead?
+    pub entity_path: EntityPath,
 
     /// Optional name of the `Archetype` associated with this data.
     ///
@@ -327,7 +328,7 @@ impl ComponentColumnDescriptor {
             } else if let Some(chunk_entity_path) = chunk_entity_path {
                 chunk_entity_path.clone()
             } else {
-                EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
+                EntityPath::root() // NOTE: should be optional for general sorbet batches
             };
 
         let component =
