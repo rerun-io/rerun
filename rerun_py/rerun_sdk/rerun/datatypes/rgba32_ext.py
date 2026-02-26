@@ -61,6 +61,7 @@ class Rgba32Ext:
 
     @staticmethod
     def native_to_pa_array_override(data: Rgba32ArrayLike, data_type: pa.DataType) -> pa.Array:
+        _ = data_type  # unused: conversion handled on Rust side
         from . import Rgba32
 
         if isinstance(data, int) or isinstance(data, Rgba32):
@@ -128,4 +129,4 @@ class Rgba32Ext:
                 # auto-generated `__int__()` method.
                 int_array = np.array([Rgba32(datum) for datum in data_list], np.uint32)  # type: ignore[arg-type]
 
-        return pa.array(int_array, type=data_type)
+        return np.asarray(int_array, dtype=np.uint32).ravel()

@@ -61,5 +61,5 @@ class Float64Batch(BaseBatch[Float64ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Float64ArrayLike, data_type: pa.DataType) -> pa.Array:
-        array = np.asarray(data, dtype=np.float64).flatten()
-        return pa.array(array, type=data_type)
+        _ = data_type  # unused: conversion handled on Rust side
+        return np.asarray(data, dtype=np.float64).ravel()

@@ -59,5 +59,5 @@ class UInt32Batch(BaseBatch[UInt32ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UInt32ArrayLike, data_type: pa.DataType) -> pa.Array:
-        array = np.asarray(data, dtype=np.uint32).flatten()
-        return pa.array(array, type=data_type)
+        _ = data_type  # unused: conversion handled on Rust side
+        return np.asarray(data, dtype=np.uint32).ravel()

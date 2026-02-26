@@ -4,8 +4,9 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use arrow::array::{
-    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, FixedSizeListArray, Float32Array,
-    Float64Array, ListArray as ArrowListArray, UInt8Array, UInt32Array, make_array,
+    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, BooleanArray, FixedSizeListArray,
+    Float32Array, Float64Array, Int64Array, ListArray as ArrowListArray, UInt8Array, UInt16Array,
+    UInt32Array, UInt64Array, make_array,
 };
 use arrow::buffer::{OffsetBuffer as ArrowOffsetBuffer, ScalarBuffer};
 use arrow::datatypes::Field as ArrowField;
@@ -136,15 +137,92 @@ fn numpy_to_fixed_size_list(
     ))
 }
 
+/// Build a plain Arrow primitive array directly from a numpy buffer.
+///
+/// This avoids the ~1us overhead of going through PyArrow for each component.
+/// Supports f32, f64, u16, u32, u64, i64, u8, and bool element types.
+fn numpy_to_primitive_array(np_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> {
+    // f32 (Float32, Angle, Radius, Opacity, etc.)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, f32>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(Float32Array::new(
+            ScalarBuffer::from(slice.to_vec()),
+            None,
+        )));
+    }
+    // f64 (Float64, Scalar)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, f64>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(Float64Array::new(
+            ScalarBuffer::from(slice.to_vec()),
+            None,
+        )));
+    }
+    // u32 (Rgba32/Color)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, u32>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(UInt32Array::new(
+            ScalarBuffer::from(slice.to_vec()),
+            None,
+        )));
+    }
+    // u16 (ClassId, KeypointId)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, u16>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(UInt16Array::new(
+            ScalarBuffer::from(slice.to_vec()),
+            None,
+        )));
+    }
+    // u64 (Count)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, u64>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(UInt64Array::new(
+            ScalarBuffer::from(slice.to_vec()),
+            None,
+        )));
+    }
+    // i64 (Timestamp, VideoTimestamp)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, i64>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(Int64Array::new(
+            ScalarBuffer::from(slice.to_vec()),
+            None,
+        )));
+    }
+    // u8 (enums, PixelFormat, ChannelDatatype)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, u8>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(UInt8Array::new(
+            ScalarBuffer::from(slice.to_vec()),
+            None,
+        )));
+    }
+    // bool (ShowLabels, Visible, etc.)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, bool>>() {
+        let slice = arr.as_slice()?;
+        return Ok(Arc::new(BooleanArray::from(slice.to_vec())));
+    }
+
+    Err(PyTypeError::new_err(
+        "unsupported numpy dtype for primitive array",
+    ))
+}
+
 /// Extract an Arrow array from a Python value.
 ///
 /// The value may be either a `(numpy_array, list_size)` tuple (fast path)
 /// or a PyArrow array (fallback).
+///
+/// Convention: `list_size == 0` signals a plain primitive array (not FixedSizeList).
 fn value_to_arrow_array(value: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> {
     if let Ok(tuple) = value.downcast::<PyTuple>() {
         if tuple.len()? == 2 {
             let np_array = tuple.get_item(0)?;
             let list_size: i32 = tuple.get_item(1)?.extract()?;
+            if list_size == 0 {
+                return numpy_to_primitive_array(&np_array);
+            }
             return numpy_to_fixed_size_list(&np_array, list_size);
         }
     }

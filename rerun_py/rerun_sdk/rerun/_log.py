@@ -227,7 +227,7 @@ def _log_components(
         batch = comp._batch
         nd = batch.__dict__.get("_numpy_data") if hasattr(batch, "__dict__") else None
         if nd is not None and isinstance(nd, np.ndarray):
-            list_size = batch._ARROW_DATATYPE.list_size
+            list_size = getattr(batch._ARROW_DATATYPE, "list_size", 0)
             instanced[descr] = (nd, list_size)
         else:
             array = comp.as_arrow_array()

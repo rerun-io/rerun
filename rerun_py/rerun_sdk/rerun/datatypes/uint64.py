@@ -59,5 +59,5 @@ class UInt64Batch(BaseBatch[UInt64ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UInt64ArrayLike, data_type: pa.DataType) -> pa.Array:
-        array = np.asarray(data, dtype=np.uint64).flatten()
-        return pa.array(array, type=data_type)
+        _ = data_type  # unused: conversion handled on Rust side
+        return np.asarray(data, dtype=np.uint64).ravel()

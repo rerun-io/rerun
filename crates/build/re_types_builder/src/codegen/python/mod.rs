@@ -2309,8 +2309,8 @@ fn quote_arrow_serialization(
                     } else {
                         return Ok(unindent(&format!(
                             r##"
-                                array = np.asarray(data, dtype={np_dtype}).ravel()
-                                return pa.array(array, type=data_type)
+                                _ = data_type  # unused: conversion handled on Rust side
+                                return np.asarray(data, dtype={np_dtype}).ravel()
                             "##
                         )));
                     }

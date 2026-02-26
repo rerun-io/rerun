@@ -260,7 +260,11 @@ class BaseBatch(Generic[T]):
         if name == "pa_array":
             nd = self.__dict__.get("_numpy_data")
             if nd is not None:
-                arr = pa.FixedSizeListArray.from_arrays(nd, type=self._ARROW_DATATYPE)
+                dt = self._ARROW_DATATYPE
+                if hasattr(dt, "list_size"):
+                    arr = pa.FixedSizeListArray.from_arrays(nd, type=dt)
+                else:
+                    arr = pa.array(nd, type=dt)
                 self.pa_array = arr
                 return arr
         raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
@@ -296,7 +300,10 @@ class BaseBatch(Generic[T]):
     def __len__(self) -> int:
         nd = self.__dict__.get("_numpy_data")
         if nd is not None:
-            return len(nd) // self._ARROW_DATATYPE.list_size  # type: ignore[union-attr]
+            list_size = getattr(self._ARROW_DATATYPE, "list_size", None)
+            if list_size is not None:
+                return len(nd) // list_size
+            return len(nd)  # primitive: 1 element per array element
         return len(self.pa_array)
 
     @staticmethod
