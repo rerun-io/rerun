@@ -25,14 +25,13 @@ if TYPE_CHECKING:
     from rerun.catalog import DatasetEntry
     from syrupy import SnapshotAssertion
 
-
 # Marker expressions for test profiles. Each profile defines a `-m`-style expression
 # that is AND-combined with user-supplied `-m` flag (if any). Local is the default profile
 # if nothing's specified
 PROFILES: dict[str, str] = {
     "local": "",
-    "dpf-docker": "not (local_only or creates_table)",
-    "dpf-stack": "not (local_only or creates_table) or cloud_only",
+    "dpf-docker": "not local_only",
+    "dpf-stack": "not local_only or cloud_only",
 }
 
 
@@ -63,8 +62,8 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default="local",
         choices=PROFILES.keys(),
         help="Test profile controlling which marker categories are auto-skipped. "
-        "Choices: 'local' (default), 'dpf-docker' (skip local_only/creates_table), "
-        "'dpf-stack' (skip local_only/creates_table), 'all' (skip nothing).",
+        "Choices: 'local' (default), 'dpf-docker' (skip local_only), "
+        "'dpf-stack' (skip local_only), 'all' (skip nothing).",
     )
     parser.addoption(
         "--cloud",
@@ -81,13 +80,6 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "local_only: mark test as requiring local resources (e.g., uses RecordingStream to generate .rrd files on-the-fly)",
-    )
-
-    # TODO(RR-2969): these tests needs to be identified because we must currently provide an URI for the created table
-    # which, in general, is not possible for arbitrary server URLs.
-    config.addinivalue_line(
-        "markers",
-        "creates_table: mark test as creating a table (which requires providing a server-accessible path)",
     )
 
     config.addinivalue_line(

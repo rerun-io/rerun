@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
-import pytest
 
 if TYPE_CHECKING:
     from syrupy import SnapshotAssertion
@@ -11,7 +10,6 @@ if TYPE_CHECKING:
     from e2e_redap_tests.conftest import EntryFactory
 
 
-@pytest.mark.creates_table
 def test_entries_without_hidden(entry_factory: EntryFactory, snapshot: SnapshotAssertion) -> None:
     """Test that entries(), datasets(), and tables() exclude hidden entries by default."""
     client = entry_factory.client
@@ -41,7 +39,6 @@ def test_entries_without_hidden(entry_factory: EntryFactory, snapshot: SnapshotA
     assert new_entries == snapshot
 
 
-@pytest.mark.creates_table
 def test_entries_with_hidden(entry_factory: EntryFactory, snapshot_redact_id: SnapshotAssertion) -> None:
     """Test that entries(), datasets(), and tables() include hidden entries when include_hidden=True."""
     client = entry_factory.client
@@ -71,7 +68,6 @@ def test_entries_with_hidden(entry_factory: EntryFactory, snapshot_redact_id: Sn
     assert new_entries == snapshot_redact_id
 
 
-@pytest.mark.creates_table
 def test_entry_names_without_hidden(entry_factory: EntryFactory, snapshot: SnapshotAssertion) -> None:
     """Test that entry_names(), dataset_names(), and table_names() exclude hidden entries by default."""
     client = entry_factory.client
@@ -101,7 +97,6 @@ def test_entry_names_without_hidden(entry_factory: EntryFactory, snapshot: Snaps
     assert new_entry_names == snapshot
 
 
-@pytest.mark.creates_table
 def test_entry_names_with_hidden(entry_factory: EntryFactory, snapshot_redact_id: SnapshotAssertion) -> None:
     """Test that entry_names(), dataset_names(), and table_names() include hidden entries when include_hidden=True."""
     client = entry_factory.client

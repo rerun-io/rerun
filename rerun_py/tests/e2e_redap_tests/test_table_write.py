@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.local_only
-@pytest.mark.creates_table
 def test_datafusion_write_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """Test DataFusion write operations (append/overwrite) on a table created from scratch."""
     base_name = "test_table"
@@ -49,7 +48,6 @@ def test_datafusion_write_table(entry_factory: EntryFactory, tmp_path: pathlib.P
 
 
 @pytest.mark.local_only
-@pytest.mark.creates_table
 def test_client_write_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """Test client write operations with various input formats on a table created from scratch."""
     base_name = "test_table"
@@ -103,7 +101,6 @@ def test_client_write_table(entry_factory: EntryFactory, tmp_path: pathlib.Path)
 
 
 @pytest.mark.local_only
-@pytest.mark.creates_table
 def test_client_append_to_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """Test TableEntry.append() convenience method on a table created from scratch."""
     base_name = "test_table"
@@ -125,7 +122,6 @@ def test_client_append_to_table(entry_factory: EntryFactory, tmp_path: pathlib.P
 
 
 @pytest.mark.local_only
-@pytest.mark.creates_table
 def test_table_upsert(entry_factory: EntryFactory, tmp_path: pathlib.Path, snapshot: SnapshotAssertion) -> None:
     """Test TableEntry.upsert() method on a table with an index column."""
     base_name = "test_table"

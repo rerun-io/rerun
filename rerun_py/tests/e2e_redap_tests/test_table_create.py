@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.local_only
-@pytest.mark.creates_table
 def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     table_name = "created_table"
 
@@ -28,7 +27,6 @@ def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> No
 
 
 @pytest.mark.local_only
-@pytest.mark.creates_table
 def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path: pathlib.Path) -> None:
     table_name = "dataset_to_table"
 
@@ -53,14 +51,12 @@ def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path
         assert returned_field.metadata == original_field.metadata
 
 
-@pytest.mark.local_only
-@pytest.mark.creates_table
-def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: pathlib.Path) -> None:
+def test_create_table_in_custom_schema(catalog_client: CatalogClient) -> None:
     table_name = "my_catalog.my_schema.created_table"
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
-    table_entry = catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
+    table_entry = catalog_client.create_table(table_name, original_schema)
 
     try:
         df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
@@ -71,8 +67,7 @@ def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: 
         table_entry.delete()
 
 
-@pytest.mark.creates_table
-def test_create_table_invalid_name(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
+def test_create_table_invalid_name(entry_factory: EntryFactory) -> None:
     table_name = "created-table"
 
     schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
@@ -80,4 +75,4 @@ def test_create_table_invalid_name(entry_factory: EntryFactory, tmp_path: pathli
         ValueError,
         match="sql parser error: Unexpected token in identifier: -",
     ):
-        _ = entry_factory.create_table(table_name, schema, tmp_path.absolute().as_uri())
+        _ = entry_factory.create_table(table_name, schema)
