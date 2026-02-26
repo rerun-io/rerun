@@ -43,4 +43,4 @@ class ViewCoordinatesExt:
             if value not in range(1, 7):
                 raise ValueError("ViewCoordinates must contain only values in the range [1,6].")
 
-        return pa.FixedSizeListArray.from_arrays(data, type=data_type)
+        return np.ascontiguousarray(data)

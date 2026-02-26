@@ -20,5 +20,4 @@ class UuidExt:
     @staticmethod
     def native_to_pa_array_override(data: UuidArrayLike, data_type: pa.DataType) -> pa.Array:
         uuids = to_np_uint8(data)  # type: ignore[arg-type]    # Any array like works and Uuid has an __array__ method.
-        uuids = flat_np_array_from_array_like(uuids, 16)
-        return pa.FixedSizeListArray.from_arrays(uuids, type=data_type)
+        return flat_np_array_from_array_like(uuids, 16)

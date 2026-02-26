@@ -62,5 +62,4 @@ class Mat3x3Ext:
                 result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[arg-type, union-attr, call-overload]
                 float_arrays = np.hstack(result).ravel()
 
-        float_arrays = np.ascontiguousarray(float_arrays)
-        return pa.FixedSizeListArray.from_arrays(float_arrays, type=data_type)
+        return np.ascontiguousarray(float_arrays, dtype=np.float32)

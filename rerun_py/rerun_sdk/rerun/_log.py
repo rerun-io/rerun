@@ -10,20 +10,18 @@ from ._baseclasses import AsComponents  # noqa: TC001
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    import pyarrow as pa
 
     from ._baseclasses import ComponentDescriptor, DescribedComponentBatch
     from .recording_stream import RecordingStream
 
 
-@catch_and_log_exceptions()
 def log(
     entity_path: str | list[object],
     entity: AsComponents | Iterable[DescribedComponentBatch],
     *extra: AsComponents | Iterable[DescribedComponentBatch],
     static: bool = False,
     recording: RecordingStream | None = None,
-    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
+    strict: bool | None = None,
 ) -> None:
     r"""
     Log data to Rerun.
@@ -99,7 +97,19 @@ def log(
         if None, use the global default from `rerun.strict_mode()`
 
     """
+    try:
+        _log_inner(entity_path, entity, *extra, static=static, recording=recording)
+    except Exception:
+        _log_with_catch(entity_path, entity, *extra, static=static, recording=recording, strict=strict)
 
+
+def _log_inner(
+    entity_path: str | list[object],
+    entity: AsComponents | Iterable[DescribedComponentBatch],
+    *extra: AsComponents | Iterable[DescribedComponentBatch],
+    static: bool = False,
+    recording: RecordingStream | None = None,
+) -> None:
     # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
     # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
     #
@@ -134,6 +144,19 @@ def log(
         static=static,
         recording=recording,  # NOLINT
     )
+
+
+@catch_and_log_exceptions()
+def _log_with_catch(
+    entity_path: str | list[object],
+    entity: AsComponents | Iterable[DescribedComponentBatch],
+    *extra: AsComponents | Iterable[DescribedComponentBatch],
+    static: bool = False,
+    recording: RecordingStream | None = None,
+    strict: bool | None = None,  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
+) -> None:
+    """Fallback log path with full error handling."""
+    _log_inner(entity_path, entity, *extra, static=static, recording=recording)
 
 
 def _log_components(
@@ -179,23 +202,17 @@ def _log_components(
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    import numpy as np
 
-    instanced: dict[ComponentDescriptor, pa.Array] = {}
-
-    descriptors = [comp.component_descriptor() for comp in components]
-    arrow_arrays = [comp.as_arrow_array() for comp in components]
+    instanced: dict[ComponentDescriptor, Any] = {}
 
     if isinstance(entity_path, list):
         entity_path = bindings.new_entity_path([str(part) for part in entity_path])
 
-    added = set()
+    added: set[ComponentDescriptor] = set()
 
-    for descr, array in zip(descriptors, arrow_arrays, strict=False):
-        # Array could be None if there was an error producing the empty array
-        # Nothing we can do at this point other than ignore it. Some form of error
-        # should have been logged.
-        if array is None:
-            continue
+    for comp in components:
+        descr = comp.component_descriptor()
 
         # Skip components which were logged multiple times.
         if descr in added:
@@ -204,10 +221,18 @@ def _log_components(
                 depth_to_user_code=1,
             )
             continue
-        else:
-            added.add(descr)
+        added.add(descr)
 
-        instanced[descr] = array
+        # Fast path: check for numpy-backed batch (avoids PyArrow conversion)
+        batch = comp._batch
+        nd = batch.__dict__.get("_numpy_data") if hasattr(batch, "__dict__") else None
+        if nd is not None and isinstance(nd, np.ndarray):
+            list_size = batch._ARROW_DATATYPE.list_size
+            instanced[descr] = (nd, list_size)
+        else:
+            array = comp.as_arrow_array()
+            if array is not None:
+                instanced[descr] = array
 
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,

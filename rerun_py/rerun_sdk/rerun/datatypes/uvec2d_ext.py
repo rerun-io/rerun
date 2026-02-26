@@ -19,5 +19,4 @@ class UVec2DExt:
 
     @staticmethod
     def native_to_pa_array_override(data: UVec2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        points = flat_np_uint32_array_from_array_like(data, 2)
-        return pa.FixedSizeListArray.from_arrays(points, type=data_type)
+        return flat_np_uint32_array_from_array_like(data, 2)

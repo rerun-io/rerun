@@ -56,5 +56,6 @@ class Mat4x4Ext:
                 # Let this value error propagate as the fallback
                 matrices = [Mat4x4(d) for d in data]
 
-        float_arrays = np.asarray([matrix.flat_columns for matrix in matrices], dtype=np.float32).reshape(-1)
-        return pa.FixedSizeListArray.from_arrays(float_arrays, type=data_type)
+        return np.ascontiguousarray(
+            np.asarray([matrix.flat_columns for matrix in matrices], dtype=np.float32).reshape(-1)
+        )

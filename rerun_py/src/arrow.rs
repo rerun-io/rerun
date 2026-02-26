@@ -1,15 +1,18 @@
 //! Methods for handling Arrow datamodel log ingest
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use arrow::array::{
-    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, make_array,
+    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, FixedSizeListArray, Float32Array,
+    Float64Array, ListArray as ArrowListArray, UInt8Array, UInt32Array, make_array,
 };
-use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+use arrow::buffer::{OffsetBuffer as ArrowOffsetBuffer, ScalarBuffer};
 use arrow::datatypes::Field as ArrowField;
 use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyRuntimeError;
-use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString};
+use numpy::PyReadonlyArray1;
+use pyo3::exceptions::{PyRuntimeError, PyTypeError};
+use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString, PyTuple};
 use pyo3::{Bound, PyAny, PyResult};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
@@ -55,6 +58,99 @@ pub fn array_to_rust(arrow_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> 
     Ok(make_array(py_array.0))
 }
 
+/// Build an Arrow `FixedSizeListArray` directly from a numpy buffer.
+///
+/// This avoids the ~1us overhead of going through PyArrow for each component.
+/// Supports f32, f64, u32, and u8 element types (covering all FixedSizeList datatypes).
+fn numpy_to_fixed_size_list(
+    np_array: &Bound<'_, PyAny>,
+    list_size: i32,
+) -> PyResult<ArrowArrayRef> {
+    // Try f32 first (most common: Vec2D/3D/4D, Quaternion, Mat3x3/4x4, Plane3D)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, f32>>() {
+        let slice = arr.as_slice()?;
+        let values = Float32Array::new(ScalarBuffer::<f32>::from(slice.to_vec()), None);
+        let field = Arc::new(ArrowField::new(
+            "item",
+            arrow::datatypes::DataType::Float32,
+            false,
+        ));
+        return Ok(Arc::new(FixedSizeListArray::new(
+            field,
+            list_size,
+            Arc::new(values),
+            None,
+        )));
+    }
+    // Then f64 (DVec2D, Range1D)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, f64>>() {
+        let slice = arr.as_slice()?;
+        let values = Float64Array::new(ScalarBuffer::<f64>::from(slice.to_vec()), None);
+        let field = Arc::new(ArrowField::new(
+            "item",
+            arrow::datatypes::DataType::Float64,
+            false,
+        ));
+        return Ok(Arc::new(FixedSizeListArray::new(
+            field,
+            list_size,
+            Arc::new(values),
+            None,
+        )));
+    }
+    // Then u32 (UVec2D, UVec3D)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, u32>>() {
+        let slice = arr.as_slice()?;
+        let values = UInt32Array::new(ScalarBuffer::<u32>::from(slice.to_vec()), None);
+        let field = Arc::new(ArrowField::new(
+            "item",
+            arrow::datatypes::DataType::UInt32,
+            false,
+        ));
+        return Ok(Arc::new(FixedSizeListArray::new(
+            field,
+            list_size,
+            Arc::new(values),
+            None,
+        )));
+    }
+    // Then u8 (UUID, ViewCoordinates)
+    if let Ok(arr) = np_array.extract::<PyReadonlyArray1<'_, u8>>() {
+        let slice = arr.as_slice()?;
+        let values = UInt8Array::new(ScalarBuffer::<u8>::from(slice.to_vec()), None);
+        let field = Arc::new(ArrowField::new(
+            "item",
+            arrow::datatypes::DataType::UInt8,
+            false,
+        ));
+        return Ok(Arc::new(FixedSizeListArray::new(
+            field,
+            list_size,
+            Arc::new(values),
+            None,
+        )));
+    }
+
+    Err(PyTypeError::new_err(
+        "numpy array must be float32, float64, uint32, or uint8",
+    ))
+}
+
+/// Extract an Arrow array from a Python value.
+///
+/// The value may be either a `(numpy_array, list_size)` tuple (fast path)
+/// or a PyArrow array (fallback).
+fn value_to_arrow_array(value: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> {
+    if let Ok(tuple) = value.downcast::<PyTuple>() {
+        if tuple.len()? == 2 {
+            let np_array = tuple.get_item(0)?;
+            let list_size: i32 = tuple.get_item(1)?.extract()?;
+            return numpy_to_fixed_size_list(&np_array, list_size);
+        }
+    }
+    array_to_rust(value)
+}
+
 /// Build a [`PendingRow`] given a '**kwargs'-style dictionary of component arrays.
 pub fn build_row_from_components(
     components_per_descr: &Bound<'_, PyDict>,
@@ -65,9 +161,9 @@ pub fn build_row_from_components(
     let row_id = RowId::new();
 
     let mut components = IntMap::default();
-    for (component_descr, array) in components_per_descr {
+    for (component_descr, value) in components_per_descr {
         let component_descr = descriptor_to_rust(&component_descr)?;
-        let list_array = array_to_rust(&array)?;
+        let list_array = value_to_arrow_array(&value)?;
         let batch = re_sdk::SerializedComponentBatch::new(list_array, component_descr);
         components.insert(batch.descriptor.component, batch);
     }
@@ -128,9 +224,9 @@ pub fn build_chunk_from_components(
     // Extract the component data
     let (arrays, component_descrs): (Vec<ArrowArrayRef>, Vec<ComponentDescriptor>) =
         itertools::process_results(
-            components_per_descr.iter().map(|(component_descr, array)| {
+            components_per_descr.iter().map(|(component_descr, value)| {
                 let component_descr = descriptor_to_rust(&component_descr)?;
-                array_to_rust(&array).map(|array| (array, component_descr))
+                value_to_arrow_array(&value).map(|array| (array, component_descr))
             }),
             |iter| iter.unzip(),
         )?;

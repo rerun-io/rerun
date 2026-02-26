@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Iterator
-from typing import Generic, Protocol, TypeVar, overload, runtime_checkable
+from typing import Any, Generic, Protocol, TypeVar, overload, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -192,11 +192,25 @@ class BaseBatch(Generic[T]):
                 if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
                     self.pa_array = data
                 else:
-                    self.pa_array = self._native_to_pa_array(data, self._ARROW_DATATYPE)
+                    result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
+                    if isinstance(result, np.ndarray):
+                        # Fast path: store numpy data directly, convert to Arrow lazily
+                        self._numpy_data = result
+                    else:
+                        self.pa_array = result
                 return
 
         # If we didn't return above, default to the empty array
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
+
+    def __getattr__(self, name: str) -> Any:
+        if name == "pa_array":
+            nd = self.__dict__.get("_numpy_data")
+            if nd is not None:
+                arr = pa.FixedSizeListArray.from_arrays(nd, type=self._ARROW_DATATYPE)
+                self.pa_array = arr
+                return arr
+        raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
 
     @classmethod
     def _converter(cls, data: T | None) -> BaseBatch[T] | None:
@@ -224,9 +238,12 @@ class BaseBatch(Generic[T]):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BaseBatch):
             return NotImplemented
-        return self.pa_array == other.pa_array  # type: ignore[no-any-return]
+        return self.as_arrow_array() == other.as_arrow_array()  # type: ignore[no-any-return]
 
     def __len__(self) -> int:
+        nd = self.__dict__.get("_numpy_data")
+        if nd is not None:
+            return len(nd) // self._ARROW_DATATYPE.list_size  # type: ignore[union-attr]
         return len(self.pa_array)
 
     @staticmethod

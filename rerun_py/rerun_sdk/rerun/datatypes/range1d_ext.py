@@ -20,5 +20,4 @@ class Range1DExt:
                 raise ValueError("Steps other than 1 are not supported for Range1D.")
             data = [data.start, data.stop]
 
-        ranges = flat_np_float64_array_from_array_like(data, 2)
-        return pa.FixedSizeListArray.from_arrays(ranges, type=data_type)
+        return flat_np_float64_array_from_array_like(data, 2)

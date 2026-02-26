@@ -70,5 +70,4 @@ class Plane3DExt:
 
     @staticmethod
     def native_to_pa_array_override(data: Plane3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        planes = flat_np_float32_array_from_array_like(data, 4)
-        return pa.FixedSizeListArray.from_arrays(planes, type=data_type)
+        return flat_np_float32_array_from_array_like(data, 4)
