@@ -63,14 +63,6 @@ impl SorbetBatch {
         &self.schema
     }
 
-    /// The heap size of this batch in bytes, if known.
-    #[inline]
-    pub fn heap_size_bytes(&self) -> Option<u64> {
-        // NOTE: This is *not* the size of the schema, it's the value carried in the
-        // `rerun:heap_size_bytes` key of the header metadata.
-        self.schema.heap_size_bytes
-    }
-
     #[inline]
     pub fn fields(&self) -> &ArrowFields {
         &self.schema_ref().fields

@@ -447,6 +447,10 @@ impl Clone for Chunk {
 }
 
 impl Chunk {
+    fn reset_cached_heap_size_bytes(&self) {
+        self.heap_size_bytes.store(0, Ordering::Relaxed);
+    }
+
     /// Clones the chunk and assign new IDs to the resulting chunk and its rows.
     ///
     /// `first_row_id` will become the [`RowId`] of the first row in the duplicated chunk.
@@ -464,17 +468,24 @@ impl Chunk {
         .take(self.row_ids.len())
         .collect_vec();
 
-        Self {
+        let new_chunk = Self {
             id,
             row_ids: RowId::arrow_from_slice(&row_ids),
             ..self.clone()
-        }
+        };
+
+        // Need to reset the cache size here as `row_ids`'s capacity could have
+        // changed here.
+        new_chunk.reset_cached_heap_size_bytes();
+
+        new_chunk
     }
 
     /// Clones the chunk into a new chunk without any time data.
     #[inline]
     pub fn into_static(mut self) -> Self {
         self.timelines.clear();
+        self.reset_cached_heap_size_bytes();
         self
     }
 
@@ -484,7 +495,13 @@ impl Chunk {
 
         let row_ids = RowId::arrow_from_slice(&row_ids);
 
-        Self { row_ids, ..self }
+        let new_chunk = Self { row_ids, ..self };
+
+        // Need to reset the cache size here as `row_ids`'s capacity could have
+        // changed here.
+        new_chunk.reset_cached_heap_size_bytes();
+
+        new_chunk
     }
 
     /// Computes the time range covered by each individual component column on each timeline.
@@ -908,6 +925,7 @@ impl Chunk {
         component_column: SerializedComponentColumn,
     ) -> ChunkResult<()> {
         self.components.insert(component_column);
+        self.reset_cached_heap_size_bytes();
         self.sanity_check()
     }
 
@@ -920,6 +938,8 @@ impl Chunk {
     pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
         self.timelines
             .insert(*chunk_timeline.timeline.name(), chunk_timeline);
+        self.reset_cached_heap_size_bytes();
+
         self.sanity_check()
     }
 }
@@ -1433,29 +1453,37 @@ impl TimeColumn {
     }
 }
 
-impl re_byte_size::SizeBytes for Chunk {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
+impl Chunk {
+    fn heap_size_bytes_inner(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let Self {
             id,
             entity_path,
-            heap_size_bytes,
+            heap_size_bytes: _,
             is_sorted,
             row_ids,
             timelines,
             components,
         } = self;
 
-        let mut size_bytes = heap_size_bytes.load(Ordering::Relaxed);
+        id.heap_size_bytes()
+            + entity_path.heap_size_bytes()
+            + is_sorted.heap_size_bytes()
+            + row_ids.heap_size_bytes()
+            + timelines.heap_size_bytes()
+            + components.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::SizeBytes for Chunk {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let mut size_bytes = self.heap_size_bytes.load(Ordering::Relaxed);
 
         if size_bytes == 0 {
-            size_bytes = id.heap_size_bytes()
-                + entity_path.heap_size_bytes()
-                + is_sorted.heap_size_bytes()
-                + row_ids.heap_size_bytes()
-                + timelines.heap_size_bytes()
-                + components.heap_size_bytes();
-            heap_size_bytes.store(size_bytes, Ordering::Relaxed);
+            size_bytes = self.heap_size_bytes_inner();
+            self.heap_size_bytes.store(size_bytes, Ordering::Relaxed);
         }
 
         size_bytes
@@ -1500,9 +1528,10 @@ impl Chunk {
         } = self;
 
         if cfg!(debug_assertions) {
-            let measured = self.heap_size_bytes();
+            let measured = self.heap_size_bytes_inner();
             let advertised = heap_size_bytes.load(Ordering::Relaxed);
-            if advertised != measured {
+            // We use 0 as not set yet.
+            if advertised != 0 && advertised != measured {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "Chunk advertises a heap size of {} but we measure {} instead",

@@ -26,9 +26,6 @@ pub struct SorbetSchema {
     /// The segment id that this chunk belongs to.
     pub segment_id: Option<String>,
 
-    /// The heap size of this batch in bytes, if known.
-    pub heap_size_bytes: Option<u64>,
-
     /// Timing statistics.
     pub timestamps: TimestampMetadata,
 }
@@ -47,12 +44,6 @@ impl SorbetSchema {
 }
 
 impl SorbetSchema {
-    #[inline]
-    pub fn with_heap_size_bytes(mut self, heap_size_bytes: u64) -> Self {
-        self.heap_size_bytes = Some(heap_size_bytes);
-        self
-    }
-
     pub fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
         ("rerun:id".to_owned(), chunk_id.to_string())
     }
@@ -76,7 +67,6 @@ impl SorbetSchema {
             columns: _,
             chunk_id,
             entity_path,
-            heap_size_bytes,
             segment_id,
             timestamps,
         } = self;
@@ -89,12 +79,6 @@ impl SorbetSchema {
             chunk_id.as_ref().map(Self::chunk_id_metadata),
             entity_path.as_ref().map(Self::entity_path_metadata),
             segment_id.as_ref().map(Self::segment_id_metadata),
-            heap_size_bytes.as_ref().map(|heap_size_bytes| {
-                (
-                    "rerun:heap_size_bytes".to_owned(),
-                    heap_size_bytes.to_string(),
-                )
-            }),
         ]
         .into_iter()
         .flatten()
@@ -153,19 +137,6 @@ impl SorbetSchema {
             None
         };
 
-        let heap_size_bytes = if let Some(heap_size_bytes) = metadata.get("rerun:heap_size_bytes") {
-            heap_size_bytes
-                .parse()
-                .map_err(|err| {
-                    re_log::warn_once!(
-                        "Failed to parse heap_size_bytes {heap_size_bytes:?} in chunk: {err}"
-                    );
-                })
-                .ok()
-        } else {
-            None
-        };
-
         // Support both new "rerun:segment_id" and legacy "rerun:partition_id" keys
         let segment_id = metadata
             .get("rerun:segment_id")
@@ -187,7 +158,6 @@ impl SorbetSchema {
             chunk_id,
             entity_path,
             segment_id,
-            heap_size_bytes,
             timestamps: TimestampMetadata::parse_record_batch_metadata(metadata),
         })
     }

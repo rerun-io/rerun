@@ -2,7 +2,6 @@ use arrow::array::{Array as _, ListArray as ArrowListArray, RecordBatch as Arrow
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
-use re_byte_size::SizeBytes as _;
 use re_types_core::arrow_helpers::as_array_ref;
 use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
 
@@ -15,8 +14,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
-    ///
-    /// NOTE: This should never fail for valid chunks.
+    // TODO(#8744): this is infallible, so we should not return a `Result` here.
     pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
         re_tracing::profile_function!();
         Ok(self.to_chunk_batch()?.into())
@@ -25,8 +23,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
-    ///
-    /// NOTE: This should never fail for valid chunks.
+    // TODO(#8744): this is infallible, so we should not return a `Result` here.
     pub fn to_chunk_batch(&self) -> ChunkResult<re_sorbet::ChunkBatch> {
         re_tracing::profile_function!();
         self.sanity_check()?;
@@ -37,7 +34,6 @@ impl Chunk {
             self.num_rows()
         ));
 
-        let heap_size_bytes = self.heap_size_bytes();
         let Self {
             id,
             entity_path,
@@ -110,7 +106,8 @@ impl Chunk {
                         component_type,
 
                         // These are a consequence of using `ComponentColumnDescriptor` both for chunk batches and dataframe batches.
-                        // Setting them all to `false` at least ensures they aren't written to the arrow metadata.
+                        // Setting them all to `false` at least ensures they aren't written to the arrow metadata:
+                        // TODO(#8744): figure out what to do here
                         is_static: false,
                         is_tombstone: false,
                         is_semantically_empty: false,
@@ -131,8 +128,7 @@ impl Chunk {
             index_schemas,
             data_schemas,
             Default::default(),
-        )
-        .with_heap_size_bytes(heap_size_bytes);
+        );
 
         Ok(re_sorbet::ChunkBatch::try_new(
             schema,
@@ -236,7 +232,7 @@ impl Chunk {
             None // Check whether or not it is sorted
         };
 
-        let mut res = Self::new(
+        let res = Self::new(
             batch.chunk_id(),
             batch.entity_path().clone(),
             is_sorted_by_row_id,
@@ -244,10 +240,6 @@ impl Chunk {
             timelines,
             components,
         )?;
-
-        if let Some(heap_size_bytes) = batch.heap_size_bytes() {
-            res.heap_size_bytes = heap_size_bytes.into();
-        }
 
         Ok(res)
     }
@@ -375,10 +367,6 @@ mod tests {
             let chunk_after = Chunk::from_chunk_batch(&chunk_batch_after).unwrap();
 
             assert_eq!(chunk_before.entity_path(), chunk_after.entity_path());
-            assert_eq!(
-                chunk_before.heap_size_bytes(),
-                chunk_after.heap_size_bytes(),
-            );
             assert_eq!(chunk_before.num_columns(), chunk_after.num_columns());
             assert_eq!(chunk_before.num_rows(), chunk_after.num_rows());
             assert!(chunk_before.are_equal(&chunk_after));
