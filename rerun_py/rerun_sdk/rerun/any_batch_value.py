@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Sized
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol, TypeAlias
 
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from pyarrow import ArrowInvalid
 
@@ -12,6 +13,25 @@ from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentBatchLike, ComponentColumn
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions, strict_mode as strict_mode
+
+
+class _SupportsDLPack(Protocol):
+    """Protocol for objects supporting the DLPack data exchange protocol (e.g., GPU tensors)."""
+
+    def __dlpack__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+
+ComponentValueLike: TypeAlias = ComponentBatchLike | pa.Array | npt.ArrayLike | _SupportsDLPack
+"""
+Type alias for values accepted by :class:`AnyBatchValue` and :class:`DynamicArchetype`.
+
+This includes:
+- Rerun component batch types implementing :class:`ComponentBatchLike` (e.g. ``rr.components.ColorBatch(...)``)
+- PyArrow arrays (``pa.Array``)
+- Any numpy-compatible data (``npt.ArrayLike``): scalars (``int``, ``float``, ``str``, ``bool``, ``bytes``),
+  sequences (``list``, ``tuple``), numpy arrays, and objects implementing ``__array__``
+- Objects supporting the DLPack protocol (``__dlpack__``)
+"""
 
 
 @dataclass(frozen=True)

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
-
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
-from .any_batch_value import AnyBatchValue
+from .any_batch_value import AnyBatchValue, ComponentValueLike
 from .dynamic_archetype import DynamicArchetype
 from .error_utils import catch_and_log_exceptions
 
@@ -29,7 +27,7 @@ class AnyValues(AsComponents):
 
     """
 
-    def __init__(self, drop_untyped_nones: bool = True, **kwargs: Any) -> None:
+    def __init__(self, drop_untyped_nones: bool = True, **kwargs: ComponentValueLike | None) -> None:
         """
         Construct a new AnyValues bundle.
 
@@ -77,13 +75,15 @@ class AnyValues(AsComponents):
         self._builder = DynamicArchetype._default_without_archetype(drop_untyped_nones, **kwargs)
         self._builder._with_name(self.__class__.__name__)
 
-    def with_component_from_data(self, descriptor: str, value: Any, *, drop_untyped_nones: bool = True) -> AnyValues:
+    def with_component_from_data(
+        self, descriptor: str, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
+    ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
         self._builder.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     def with_component_override(
-        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
+        self, field: str, component_type: str, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
     ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle with name and component type."""
         self._builder.with_component_override(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
@@ -93,7 +93,7 @@ class AnyValues(AsComponents):
         return self._builder.as_component_batches()
 
     @classmethod
-    def columns(cls, drop_untyped_nones: bool = True, **kwargs: Any) -> ComponentColumnList:
+    def columns(cls, drop_untyped_nones: bool = True, **kwargs: ComponentValueLike | None) -> ComponentColumnList:
         """
         Construct a new column-oriented AnyValues bundle.
 

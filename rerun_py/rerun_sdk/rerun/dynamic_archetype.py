@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
-from .any_batch_value import AnyBatchValue
+from .any_batch_value import AnyBatchValue, ComponentValueLike
 from .error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -51,7 +51,10 @@ class DynamicArchetype(AsComponents):
     """
 
     def __init__(
-        self, archetype: str, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
+        self,
+        archetype: str,
+        drop_untyped_nones: bool = True,
+        components: Mapping[str, ComponentValueLike | None] | None = None,
     ) -> None:
         """
         Construct a new DynamicArchetype.
@@ -107,7 +110,10 @@ class DynamicArchetype(AsComponents):
         self._optional_archetype(archetype, drop_untyped_nones, components)
 
     def _optional_archetype(
-        self, archetype: str | None, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
+        self,
+        archetype: str | None,
+        drop_untyped_nones: bool = True,
+        components: Mapping[str, ComponentValueLike | None] | None = None,
     ) -> None:
         """Support more flexible initialization."""
         self._archetype = archetype
@@ -134,7 +140,9 @@ class DynamicArchetype(AsComponents):
                         self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
 
     @classmethod
-    def _default_without_archetype(cls, drop_untyped_nones: bool = True, **kwargs: Any) -> DynamicArchetype:
+    def _default_without_archetype(
+        cls, drop_untyped_nones: bool = True, **kwargs: ComponentValueLike | None
+    ) -> DynamicArchetype:
         """Directly construct an DynamicArchetype without the Archetype."""
         # Create an empty archetype
         archetype = cls(archetype="placeholder", drop_untyped_nones=drop_untyped_nones, components={})
@@ -149,7 +157,7 @@ class DynamicArchetype(AsComponents):
         self._name = name
 
     def _with_descriptor_internal(
-        self, descriptor: ComponentDescriptor, value: Any, *, drop_untyped_nones: bool = True
+        self, descriptor: ComponentDescriptor, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
@@ -157,7 +165,9 @@ class DynamicArchetype(AsComponents):
             self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
         return self
 
-    def with_component_from_data(self, field: str, value: Any, *, drop_untyped_nones: bool = True) -> DynamicArchetype:
+    def with_component_from_data(
+        self, field: str, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
+    ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         descriptor = ComponentDescriptor(component=field)
         if self._archetype is not None:
@@ -165,7 +175,7 @@ class DynamicArchetype(AsComponents):
         return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
     def with_component_override(
-        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
+        self, field: str, component_type: str, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle with name and component type."""
         descriptor = ComponentDescriptor(component=field, component_type=component_type)
@@ -181,7 +191,10 @@ class DynamicArchetype(AsComponents):
 
     @classmethod
     def columns(
-        cls, archetype: str, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
+        cls,
+        archetype: str,
+        drop_untyped_nones: bool = True,
+        components: Mapping[str, ComponentValueLike | None] | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented DynamicArchetype bundle.

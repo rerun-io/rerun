@@ -89,6 +89,7 @@ from ._send_dataframe import (
 )
 from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
+    ComponentValueLike as ComponentValueLike,
 )
 from .any_value import (
     AnyValues as AnyValues,
