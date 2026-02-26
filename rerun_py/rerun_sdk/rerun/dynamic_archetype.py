@@ -24,11 +24,11 @@ class DynamicArchetype(AsComponents):
         "some_type", rr.DynamicArchetype(
             archetype="my_archetype",
             components = {
-                confidence=[1.2, 3.4, 5.6],
-                description="Bla bla bla…",
+                "confidence":[1.2, 3.4, 5.6],
+                "description":"Bla bla bla…",
                 # URIs will become clickable links
-                homepage="https://www.rerun.io",
-                repository="https://github.com/rerun-io/rerun",
+                "homepage":"https://www.rerun.io",
+                "repository":"https://github.com/rerun-io/rerun",
             },
         ),
     )
