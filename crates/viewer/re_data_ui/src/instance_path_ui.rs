@@ -2,17 +2,21 @@ use egui::RichText;
 use itertools::Itertools as _;
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
-use re_entity_db::{InstancePath, external::re_query::LatestAtResults};
+use re_entity_db::InstancePath;
 use re_format::format_plural_s;
 use re_log_types::ComponentPath;
+use re_query::{LatestAllComponentResults, LatestAllResults};
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ArchetypeName, Component as _, ComponentDescriptor, components};
-use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 
 use super::DataUi;
-use crate::{ArchetypeComponentMap, extra_data_ui::ExtraDataUi};
+use crate::{
+    ArchetypeComponentMap, extra_data_ui::ExtraDataUi,
+    latest_all_instance_ui::LatestAllInstanceResult,
+};
 
 // Showing more than this takes up too much space
 const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
@@ -65,7 +69,7 @@ impl DataUi for InstancePath {
             component_descriptors.iter().cloned(),
         );
 
-        let query_results = db.storage_engine().cache().latest_at(
+        let query_results = db.storage_engine().cache().latest_all(
             query,
             entity_path,
             unordered_components.iter().copied(),
@@ -85,6 +89,10 @@ impl DataUi for InstancePath {
         );
 
         if instance.is_all() {
+            // For special things (videos etc) we show a preview.
+            // Let's ignore the complexity of latest-all here, and just show the latest data:
+            let query_results = query_results.into_latest_at();
+
             // There are some examples where we need to combine several archetypes for a single preview.
             // For instance `VideoFrameReference` and `VideoAsset` are used together for a single preview.
             let all_components = component_descriptors
@@ -125,7 +133,7 @@ fn instance_path_ui(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     components_by_archetype: &ArchetypeComponentMap,
-    query_results: &LatestAtResults,
+    query_results: &LatestAllResults,
 ) {
     let num_components = components_by_archetype
         .values()
@@ -144,7 +152,7 @@ fn instance_path_ui(
             );
         }
         UiLayout::Tooltip => {
-            if num_components <= MAX_COMPONENTS_IN_TOOLTIP {
+            if query_results.num_rows_total() <= MAX_COMPONENTS_IN_TOOLTIP {
                 component_list_ui(
                     ctx,
                     ui,
@@ -218,7 +226,7 @@ fn try_summary_ui_for_tooltip(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     components_by_archetype: &ArchetypeComponentMap,
-    query_results: &LatestAtResults,
+    query_results: &LatestAllResults,
 ) -> Result<(), ()> {
     let num_components = components_by_archetype
         .values()
@@ -236,10 +244,11 @@ fn try_summary_ui_for_tooltip(
             let instanced_archetype_components = archetype_components
                 .iter()
                 .filter(|descr| {
-                    query_results
-                        .components
-                        .get(&descr.component)
-                        .is_some_and(|unit| unit.num_instances(descr.component) > 1)
+                    query_results.components.get(&descr.component).is_some_and(
+                        |component_results| {
+                            component_results.max_num_instances(descr.component) > 1
+                        },
+                    )
                 })
                 .cloned()
                 .collect_vec();
@@ -293,7 +302,7 @@ fn component_list_ui(
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     components_by_archetype: &ArchetypeComponentMap,
-    query_results: &LatestAtResults,
+    query_results: &LatestAllResults,
 ) {
     let InstancePath {
         entity_path,
@@ -329,19 +338,10 @@ fn component_list_ui(
                     archetype_label_list_item_ui(ui, archetype);
                 }
 
-                let archetype_component_units: Vec<(ComponentDescriptor, UnitChunkShared)> =
-                    archetype_components
-                        .iter()
-                        .filter_map(|descr| {
-                            let unit = query_results.components.get(&descr.component)?;
-                            Some((descr.clone(), unit.clone()))
-                        })
-                        .collect();
-
                 let mut missing_units = false;
 
                 for component_descr in archetype_components {
-                    if let Some(unit) = query_results.components.get(&component_descr.component) {
+                    if let Some(hits) = query_results.components.get(&component_descr.component) {
                         component_ui(
                             ctx,
                             ui,
@@ -349,9 +349,10 @@ fn component_list_ui(
                             instance_path,
                             query,
                             db,
-                            &archetype_component_units,
+                            archetype_components,
                             component_descr,
-                            unit,
+                            hits,
+                            query_results,
                         );
                     } else {
                         missing_units = true;
@@ -383,9 +384,10 @@ fn component_ui(
     instance_path: &InstancePath,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
-    archetype_components: &[(ComponentDescriptor, UnitChunkShared)],
+    archetype_components: &[ComponentDescriptor],
     component_descr: &ComponentDescriptor,
-    unit: &UnitChunkShared,
+    hits: &LatestAllComponentResults,
+    query_results: &LatestAllResults,
 ) {
     let InstancePath {
         entity_path,
@@ -396,15 +398,6 @@ fn component_ui(
 
     let component_path = ComponentPath::new(entity_path.clone(), component_descr.component);
 
-    let is_static = db
-        .storage_engine()
-        .store()
-        .entity_has_static_component(entity_path, component_descr.component);
-    let icon = if is_static {
-        &re_ui::icons::COMPONENT_STATIC
-    } else {
-        &re_ui::icons::COMPONENT_TEMPORAL
-    };
     let item = Item::ComponentPath(component_path);
 
     let mut list_item = ui.list_item().interactive(interactive);
@@ -415,47 +408,55 @@ fn component_ui(
         list_item = list_item.force_hovered(is_hovered);
     }
 
-    let data = ExtraDataUi::from_components(
-        ctx,
-        query,
-        entity_path,
-        component_descr,
-        unit,
-        archetype_components,
-    );
+    let extra_data_ui = hits.try_as_unit().and_then(|unit| {
+        // We show an extra
 
-    let mut content =
-        re_ui::list_item::PropertyContent::new(component_descr.archetype_field_name())
-            .with_icon(icon)
-            .value_fn(|ui, _| {
-                if instance.is_all() {
-                    crate::ComponentPathLatestAtResults {
-                        component_path: ComponentPath::new(
-                            entity_path.clone(),
-                            component_descr.component,
-                        ),
-                        unit,
-                    }
-                    .data_ui(ctx, ui, UiLayout::List, query, db);
-                } else {
-                    ctx.component_ui_registry().component_ui(
-                        ctx,
-                        ui,
-                        UiLayout::List,
-                        query,
-                        db,
-                        entity_path,
-                        component_descr,
-                        unit,
-                        instance,
-                    );
-                }
-            });
+        let archetype_component_units: Vec<(ComponentDescriptor, UnitChunkShared)> =
+            archetype_components
+                .iter()
+                .filter_map(|descr| {
+                    let unit = query_results
+                        .components
+                        .get(&descr.component)?
+                        .latest_row()?;
+                    Some((descr.clone(), unit.clone()))
+                })
+                .collect();
 
-    if let Some(data) = &data
+        ExtraDataUi::from_components(
+            ctx,
+            query,
+            entity_path,
+            component_descr,
+            &unit,
+            &archetype_component_units,
+        )
+    });
+
+    let is_static = hits.time().is_static();
+
+    let icon = if is_static {
+        &re_ui::icons::COMPONENT_STATIC
+    } else {
+        &re_ui::icons::COMPONENT_TEMPORAL
+    };
+
+    let mut content = PropertyContent::new(component_descr.archetype_field_name())
+        .with_icon(icon)
+        .value_fn(move |ui, _| {
+            LatestAllInstanceResult {
+                entity_path: entity_path.clone(),
+                component: component_descr.component,
+                instance: *instance,
+                hits,
+            }
+            .data_ui(ctx, ui, UiLayout::List, query, db);
+        });
+
+    if let Some(extra_data_ui) = &extra_data_ui
         && ui_layout == UiLayout::SelectionPanel
     {
-        content = data
+        content = extra_data_ui
             .add_inline_buttons(ctx, MainThreadToken::from_egui_ui(ui), entity_path, content)
             .with_always_show_buttons(true);
     }
@@ -465,14 +466,17 @@ fn component_ui(
             component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
         }
 
-        if let Some(array) = unit.component_batch_raw(component_descr.component) {
+        if let Some(column) = db.storage_engine().store().resolve_component_selector(
+            &re_sorbet::ComponentColumnSelector::from_descriptor(
+                entity_path.clone(),
+                component_descr,
+            ),
+        ) {
             re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
-                ui.list_item_flat_noninteractive(
-                    re_ui::list_item::PropertyContent::new("Data type").value_text(
-                        // TODO(#11071): use re_arrow_ui to format the datatype here
-                        re_arrow_util::format_data_type(array.data_type()),
-                    ),
-                );
+                ui.list_item_flat_noninteractive(PropertyContent::new("Data type").value_text(
+                    // TODO(#11071): use re_arrow_ui to format the datatype here
+                    re_arrow_util::format_data_type(&column.store_datatype),
+                ));
             });
         }
     });

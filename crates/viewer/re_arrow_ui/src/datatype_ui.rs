@@ -1,5 +1,4 @@
 use arrow::datatypes::DataType;
-use egui::Id;
 use re_ui::UiExt as _;
 use re_ui::list_item::PropertyContent;
 
@@ -113,7 +112,7 @@ impl<'a> DataTypeUi<'a> {
         if let Some(datatype_ui) = self.content {
             ui.list_item().show_hierarchical_with_children(
                 ui,
-                Id::new("data_type_ui_root"),
+                ui.id().with("data_type_ui_root"),
                 false,
                 content,
                 datatype_ui,

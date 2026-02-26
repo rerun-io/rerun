@@ -400,11 +400,11 @@ impl ChunkStore {
 
     /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
     ///
-    /// If the component is not found in the store, a default descriptor is returned with a null datatype.
+    /// If the component is not found in the store, `None` is returned.
     pub fn resolve_component_selector(
         &self,
         selector: &ComponentColumnSelector,
-    ) -> ComponentColumnDescriptor {
+    ) -> Option<ComponentColumnDescriptor> {
         // Unfortunately, we can't return an error here, so we craft a default descriptor and
         // add information to it that we find.
 
@@ -421,16 +421,12 @@ impl ChunkStore {
             is_semantically_empty: false,
         };
 
-        let Some(per_identifier) = self.per_column_metadata.get(&selector.entity_path) else {
-            return result;
-        };
+        let per_identifier = self.per_column_metadata.get(&selector.entity_path)?;
 
         // We perform a scan over all component descriptors in the queried entity path.
-        let Some((component_descr, _, datatype)) =
-            per_identifier.get(&selector.component.as_str().into())
-        else {
-            return result;
-        };
+        let (component_descr, _, datatype) =
+            per_identifier.get(&selector.component.as_str().into())?;
+
         result.store_datatype = datatype.clone();
         result.archetype = component_descr.archetype;
         result.component_type = component_descr.component_type;
@@ -446,7 +442,7 @@ impl ChunkStore {
             result.is_semantically_empty = is_semantically_empty;
         }
 
-        result
+        Some(result)
     }
 
     /// Returns the filtered schema for the given [`QueryExpression`].

@@ -638,10 +638,7 @@ fn line_ui(
                 &re_ui::icons::EXPAND,
                 CellStyle::InstanceData,
                 |ui| {
-                    ui.label(format!(
-                        "{} instances",
-                        re_format::format_uint(instance_count)
-                    ));
+                    ui.label(re_format::format_plural_s(instance_count, "instance"));
                 },
             );
 
