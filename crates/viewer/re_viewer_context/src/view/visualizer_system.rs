@@ -210,28 +210,6 @@ impl re_byte_size::SizeBytes for VisualizerInstructionReport {
     }
 }
 
-impl VisualizerInstructionReport {
-    /// Create a new error report
-    pub fn error(summary: impl Into<String>) -> Self {
-        Self {
-            severity: VisualizerReportSeverity::Error,
-            summary: summary.into(),
-            details: None,
-            context: VisualizerReportContext::default(),
-        }
-    }
-
-    /// Create a new warning report
-    pub fn warning(summary: impl Into<String>) -> Self {
-        Self {
-            severity: VisualizerReportSeverity::Warning,
-            summary: summary.into(),
-            details: None,
-            context: VisualizerReportContext::default(),
-        }
-    }
-}
-
 /// Result of running [`VisualizerSystem::execute`].
 #[derive(Default)]
 pub struct VisualizerExecutionOutput {
@@ -275,34 +253,24 @@ impl VisualizerExecutionOutput {
         &self.missing_chunk_reporter
     }
 
-    /// Marks the given visualizer instruction as having encountered an error during visualization.
-    pub fn report_error_for(
+    /// Report a message for a visualizer instruction with the given severity but no component context.
+    ///
+    /// Use [`Self::report`] instead when component-specific context is available.
+    pub fn report_unspecified_source(
         &self,
         instruction_id: VisualizerInstructionId,
-        error: impl Into<String>,
+        severity: VisualizerReportSeverity,
+        summary: impl Into<String>,
     ) {
-        // TODO(RR-3506): enforce supplying context information.
-        let report = VisualizerInstructionReport::error(error);
-        self.reports_per_instruction
-            .lock()
-            .entry(instruction_id)
-            .and_modify(|v| v.push(report.clone()))
-            .or_insert_with(|| vec1::vec1![report]);
-    }
-
-    /// Marks the given visualizer instruction as having encountered a warning during visualization.
-    pub fn report_warning_for(
-        &self,
-        instruction_id: VisualizerInstructionId,
-        warning: impl Into<String>,
-    ) {
-        // TODO(RR-3506): enforce supplying context information.
-        let report = VisualizerInstructionReport::warning(warning);
-        self.reports_per_instruction
-            .lock()
-            .entry(instruction_id)
-            .and_modify(|v| v.push(report.clone()))
-            .or_insert_with(|| vec1::vec1![report]);
+        self.report(
+            instruction_id,
+            VisualizerInstructionReport {
+                severity,
+                summary: summary.into(),
+                details: None,
+                context: VisualizerReportContext::default(),
+            },
+        );
     }
 
     /// Report a detailed diagnostic for a visualizer instruction.

@@ -128,11 +128,33 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
         self.query_results.query_result_hash()
     }
 
-    pub fn report_error(&self, message: impl Into<String>) {
-        self.output.report_error_for(self.instruction_id, message);
+    pub fn report_unspecified_source(
+        &self,
+        severity: VisualizerReportSeverity,
+        message: impl Into<String>,
+    ) {
+        self.output
+            .report_unspecified_source(self.instruction_id, severity, message);
     }
 
-    pub fn report_warning(&self, message: impl Into<String>) {
-        self.output.report_warning_for(self.instruction_id, message);
+    /// Report a diagnostic tied to a specific component.
+    pub fn report_for_component(
+        &self,
+        component: re_sdk_types::ComponentIdentifier,
+        severity: VisualizerReportSeverity,
+        summary: impl Into<String>,
+    ) {
+        self.output.report(
+            self.instruction_id,
+            VisualizerInstructionReport {
+                severity,
+                context: VisualizerReportContext {
+                    component: Some(component),
+                    extra: None,
+                },
+                summary: summary.into(),
+                details: None,
+            },
+        );
     }
 }

@@ -9,8 +9,8 @@ use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::series_query::{
@@ -314,7 +314,10 @@ impl SeriesLinesSystem {
                 &mut series,
                 instruction.id,
             ) {
-                results.report_error(format!("Failed to create series: {err}"));
+                results.report_unspecified_source(
+                    VisualizerReportSeverity::Error,
+                    format!("Failed to create series: {err}"),
+                );
             }
         }
 

@@ -8,7 +8,8 @@ use re_sdk_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerReportSeverity, VisualizerSystem,
 };
 
 use super::entity_iterator::process_archetype;
@@ -107,7 +108,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 ) {
                     let Some(blob) = blobs.first() else {
-                        results.report_error("EncodedDepthImage blob is empty.");
+                        // If missing we already reported an error.
                         continue;
                     };
 
@@ -125,9 +126,11 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     }) {
                         Ok(image) => image,
                         Err(err) => {
-                            results.report_error(format!(
-                                "Failed to decode EncodedDepthImage blob: {err}"
-                            ));
+                            results.report_for_component(
+                                EncodedDepthImage::descriptor_blob().component,
+                                VisualizerReportSeverity::Error,
+                                format!("Failed to decode EncodedDepthImage blob: {err}"),
+                            );
                             continue;
                         }
                     };
@@ -141,7 +144,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     };
 
                     let mut report_error = |error: String| {
-                        results.report_error(error);
+                        results.report_unspecified_source(VisualizerReportSeverity::Error, error);
                     };
 
                     process_depth_image_data(

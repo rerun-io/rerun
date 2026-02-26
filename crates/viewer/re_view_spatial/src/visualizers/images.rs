@@ -4,8 +4,8 @@ use re_sdk_types::components::{ImageFormat, Opacity};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -151,7 +151,11 @@ impl ImageVisualizer {
                     );
                 }
                 Err(err) => {
-                    results.report_error(re_error::format(err));
+                    results.report_for_component(
+                        Image::descriptor_buffer().component,
+                        VisualizerReportSeverity::Error,
+                        re_error::format(err),
+                    );
                 }
             }
         }

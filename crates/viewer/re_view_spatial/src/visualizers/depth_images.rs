@@ -9,7 +9,8 @@ use re_sdk_types::{Archetype as _, ArchetypeName, ComponentIdentifier};
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use super::entity_iterator::process_archetype;
@@ -289,11 +290,11 @@ impl VisualizerSystem for DepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 ) {
                     let Some(buffer) = buffers.first() else {
-                        results.report_error("Depth image buffer is empty.");
+                        // If missing we already reported an error.
                         continue;
                     };
                     let Some(format) = first_copied(format.as_deref()) else {
-                        results.report_error("Depth image format is missing.");
+                        // If missing we already reported an error.
                         continue;
                     };
 
@@ -312,7 +313,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     };
 
                     let mut report_error = |error: String| {
-                        results.report_error(error);
+                        results.report_unspecified_source(VisualizerReportSeverity::Error, error);
                     };
 
                     process_depth_image_data(

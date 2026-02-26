@@ -5,7 +5,7 @@ use re_view::VisualizerInstructionQueryResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem, typed_fallback_for,
+    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -157,7 +157,11 @@ impl EncodedImageVisualizer {
                     );
                 }
                 Err(err) => {
-                    results.report_error(re_error::format(err));
+                    results.report_for_component(
+                        EncodedImage::descriptor_blob().component,
+                        VisualizerReportSeverity::Error,
+                        re_error::format(err),
+                    );
                 }
             }
         }

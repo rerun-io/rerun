@@ -9,7 +9,7 @@ use re_log_types::external::arrow::buffer::BooleanBuffer;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, components};
 use re_view::clamped_or_nothing;
-use re_viewer_context::QueryContext;
+use re_viewer_context::{QueryContext, VisualizerReportSeverity};
 
 use crate::{MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT, PlotPoint, PlotSeriesKind};
 
@@ -32,7 +32,7 @@ pub fn determine_num_series(
         })
         .unwrap_or(1);
     if count > MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT {
-        results.report_error(format!("Number of series ({count}) exceeds the maximum ({MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT}). Only the first {MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT} series will be visualized."));
+        results.report_unspecified_source(VisualizerReportSeverity::Error,format!("Number of series ({count}) exceeds the maximum ({MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT}). Only the first {MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT} series will be visualized."));
         MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT
     } else {
         count
