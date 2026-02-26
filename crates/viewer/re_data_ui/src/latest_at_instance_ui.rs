@@ -1,20 +1,32 @@
 use egui::NumExt as _;
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::{ComponentPath, EntityPath, Instance, TimeInt, TimePoint};
+use re_format::format_plural_s;
+use re_log_types::{EntityPath, Instance, TimePoint};
+use re_sdk_types::ComponentIdentifier;
 use re_ui::{SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use super::DataUi;
 use crate::item_ui;
 
+use super::DataUi;
+
 /// All the values of a specific [`re_log_types::ComponentPath`].
-pub struct ComponentPathLatestAtResults<'a> {
-    pub component_path: ComponentPath,
+#[derive(Clone)]
+pub struct LatestAtInstanceResult<'a> {
+    /// `camera / "left" / points / #42`
+    pub entity_path: EntityPath,
+
+    /// e.g. `Points3D:color`
+    pub component: ComponentIdentifier,
+
+    /// A specific instance (e.g. point in a point cloud), or [`Instance::ALL`] of them.
+    pub instance: Instance,
+
     pub unit: &'a UnitChunkShared,
 }
 
-impl DataUi for ComponentPathLatestAtResults<'_> {
+impl DataUi for LatestAtInstanceResult<'_> {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -23,23 +35,24 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_path.component);
+        let Self {
+            entity_path,
+            component,
+            instance,
+            unit,
+        } = self.clone();
+
+        re_tracing::profile_function!(component);
 
         ui.sanity_check();
 
         let tokens = ui.tokens();
 
-        let ComponentPath {
-            entity_path,
-            component,
-        } = &self.component_path;
-
         let engine = db.storage_engine();
 
-        let component = *component;
         let Some(component_descriptor) = engine
             .store()
-            .entity_component_descriptor(entity_path, component)
+            .entity_component_descriptor(&entity_path, component)
         else {
             ui.label(format!(
                 "Entity {entity_path:?} has no component {component:?}"
@@ -47,14 +60,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             return;
         };
 
-        let Some(num_instances) = self
-            .unit
-            .component_batch_raw(component)
-            .map(|data| data.len())
-        else {
-            ui.weak("<pending>");
-            return;
-        };
+        let num_instances = unit.num_instances(component);
 
         // in some cases, we don't want to display all instances
         let max_row = match ui_layout {
@@ -62,59 +68,6 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             UiLayout::Tooltip => num_instances.at_most(4), // includes "…x more" if any
             UiLayout::SelectionPanel => num_instances,
         };
-
-        let engine = db.storage_engine();
-
-        // Display data time and additional diagnostic information for static components.
-        if !ui_layout.is_single_line() {
-            let time = self
-                .unit
-                .index(&query.timeline())
-                .map_or(TimeInt::STATIC, |(time, _)| time);
-
-            // if the component is static, we display extra diagnostic information
-            if time.is_static() {
-                let static_message_count = engine
-                    .store()
-                    .num_physical_static_events_for_component(entity_path, component);
-                if static_message_count > 1 {
-                    ui.warning_label(format!(
-                        "Static component value was overridden {} times.",
-                        static_message_count.saturating_sub(1),
-                    ))
-                    .on_hover_text(
-                        "When a static component is logged multiple times, only the last value \
-                        is stored. Previously logged values are overwritten and not \
-                        recoverable.",
-                    );
-                }
-
-                let temporal_message_count = engine
-                    .store()
-                    .num_physical_temporal_events_for_component_on_all_timelines(
-                        entity_path,
-                        component,
-                    );
-                if temporal_message_count > 0 {
-                    ui.error_label(format!(
-                        "Static component has {} logged on timelines.",
-                        re_format::format_plural_s(temporal_message_count, "event")
-                    ))
-                    .on_hover_text(
-                        "Components should be logged either as static or on timelines, but \
-                        never both. Values for static components logged to timelines cannot be \
-                        displayed.",
-                    );
-                }
-            } else {
-                let typ = db.timeline_type(&query.timeline());
-                let formatted_time = typ.format(time, ctx.app_options().timestamp_format);
-                ui.horizontal(|ui| {
-                    ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
-                    ui.label(format!("Temporal component at {formatted_time}"));
-                });
-            }
-        }
 
         // Here we enforce that exactly `max_row` rows are displayed, which means that:
         // - For `num_instances == max_row`, then `max_row` rows are displayed.
@@ -140,10 +93,11 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             max_row.saturating_sub(1)
         };
 
-        if num_instances <= 1 {
+        if num_instances == 1 || instance.is_specific() {
             // Allow editing recording properties:
-            if entity_path.starts_with(&EntityPath::properties())
-                && let Some(array) = self.unit.component_batch_raw(component)
+            if num_instances == 1
+                && entity_path.starts_with(&EntityPath::properties())
+                && let Some(array) = unit.component_batch_raw(component)
                 && ctx.component_ui_registry().try_show_edit_ui(
                     ctx,
                     ui,
@@ -166,13 +120,13 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                 ui_layout,
                 query,
                 db,
-                entity_path,
+                &entity_path,
                 &component_descriptor,
-                self.unit,
-                &Instance::from(0),
+                unit,
+                &instance,
             );
         } else if ui_layout.is_single_line() {
-            ui.label(format!("{} values", re_format::format_uint(num_instances)));
+            ui.label(format_plural_s(num_instances, "value"));
         } else {
             let table_style = re_ui::TableStyle::Dense;
             ui_layout
@@ -193,7 +147,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                 .body(|mut body| {
                     tokens.setup_table_body(&mut body, table_style);
                     let row_height = tokens.table_row_height(table_style);
-                    body.rows(row_height, num_displayed_rows, |mut row| {
+                    body.rows(row_height, num_displayed_rows as _, |mut row| {
                         let instance = Instance::from(row.index() as u64);
                         row.col(|ui| {
                             let instance_text = instance.syntax_highlighted(ui.style());
@@ -222,9 +176,9 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                                 UiLayout::List,
                                 query,
                                 db,
-                                entity_path,
+                                &entity_path,
                                 &component_descriptor,
-                                self.unit,
+                                unit,
                                 &instance,
                             );
                         });

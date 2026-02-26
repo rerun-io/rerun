@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use nohash_hasher::IntMap;
 use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, EntityPath, LatestAtQuery, RangeQuery, RowId,
@@ -69,7 +71,7 @@ impl LatestAllResults {
 
             // We have exactly one row, so there should be exactly one chunk with one row
             let chunk = component_results.chunks.first()?;
-            let unit = chunk.clone().into_unit()?;
+            let unit = chunk.to_unit()?;
 
             let index = unit.index(&self.query.timeline())?;
             results.min_index = results.min_index.min(index);
@@ -115,10 +117,27 @@ pub struct LatestAllComponentResults {
     time: TimeInt,
 
     /// We may have zero chunks, but each chunk is non-empty.
-    chunks: Vec<Chunk>,
+    chunks: Vec<Arc<Chunk>>,
 }
 
 impl LatestAllComponentResults {
+    pub fn new(time: TimeInt, chunks: Vec<Arc<Chunk>>) -> Self {
+        // TODO(emilk): consider converting to `Vec<UnitChunkShared>` right away
+        Self { time, chunks }
+    }
+
+    pub fn from_unit(time: TimeInt, unit: UnitChunkShared) -> Self {
+        Self {
+            time,
+            chunks: vec![unit.into_chunk()],
+        }
+    }
+
+    /// At what time all the hits are at
+    pub fn time(&self) -> TimeInt {
+        self.time
+    }
+
     /// Number of hits. Guaranteed to be non-zero.
     pub fn num_rows(&self) -> usize {
         self.chunks.iter().map(|chunk| chunk.num_rows()).sum()
@@ -134,11 +153,18 @@ impl LatestAllComponentResults {
             .unwrap_or(0)
     }
 
-    /// Iterate over all hits, in some undefined order.
-    pub fn iter_units(&self) -> impl Iterator<Item = UnitChunkShared> + '_ {
-        self.chunks.iter().flat_map(|chunk| {
-            (0..chunk.num_rows()).map(|row_index| chunk.row_sliced_unit_shallow(row_index))
-        })
+    /// Iterate over all hits, sorted by [`RowId`] order.
+    pub fn iter_units(&self) -> impl Iterator<Item = UnitChunkShared> {
+        let mut units: Vec<UnitChunkShared> = self
+            .chunks
+            .iter()
+            .flat_map(|chunk| {
+                (0..chunk.num_rows()).map(|row_index| chunk.row_sliced_unit_shallow(row_index))
+            })
+            .collect();
+        // We need to sort, because the chunks could theoretically be interleaved.
+        units.sort_by_key(|unit| unit.row_id());
+        units.into_iter()
     }
 
     /// Returns an iterator over all component batches (one `Vec<C>` per row).
@@ -156,6 +182,7 @@ impl LatestAllComponentResults {
     }
 
     /// Returns the row with the highest [`RowId`].
+    // TODO(emilk): have this return a non-Option, since we always have at least one hit
     pub fn latest_row(&self) -> Option<UnitChunkShared> {
         let mut best: Option<(UnitChunkShared, RowId)> = None;
 
@@ -173,6 +200,11 @@ impl LatestAllComponentResults {
                 best = Some((unit, row_id));
             }
         }
+
+        re_log::debug_assert!(
+            best.is_some(),
+            "Each LatestAll should have at least one hit"
+        );
 
         Some(best?.0)
     }
@@ -193,6 +225,11 @@ impl QueryCache {
     ///
     /// For instance: if you log many transforms to the same entity on the same timestep,
     /// only one of them will show up in a latest-at query, but all in a latest-all.
+    ///
+    /// In case of static data, only ONE value will ever be returned.
+    /// This is because the store only ever keeps the last static value of everything.
+    /// This, in turn, is because some users log e.g. a video stream
+    /// as one static image after the other.
     pub fn latest_all(
         &self,
         query: &LatestAllQuery,
@@ -216,19 +253,30 @@ impl QueryCache {
 
         for (component, latest_unit) in components {
             if let Some((time, _row_id)) = latest_unit.index(&query.timeline()) {
-                let range_query =
-                    RangeQuery::new(query.timeline(), AbsoluteTimeRange::new(time, time));
-                let mut component_range_result =
-                    self.range(&range_query, entity_path, std::iter::once(component));
+                if time.is_static() {
+                    latest_all_results.components.insert(
+                        component,
+                        LatestAllComponentResults::from_unit(time, latest_unit),
+                    );
+                } else {
+                    let range_query =
+                        RangeQuery::new(query.timeline(), AbsoluteTimeRange::new(time, time));
+                    let mut component_range_result =
+                        self.range(&range_query, entity_path, std::iter::once(component));
 
-                latest_all_results
-                    .missing_virtual
-                    .append(&mut component_range_result.missing_virtual);
-
-                if let Some(chunks) = component_range_result.components.remove(&component) {
                     latest_all_results
-                        .components
-                        .insert(component, LatestAllComponentResults { time, chunks });
+                        .missing_virtual
+                        .append(&mut component_range_result.missing_virtual);
+
+                    if let Some(chunks) = component_range_result.components.remove(&component) {
+                        latest_all_results.components.insert(
+                            component,
+                            LatestAllComponentResults::new(
+                                time,
+                                chunks.into_iter().map(Arc::new).collect(),
+                            ),
+                        );
+                    }
                 }
             }
         }

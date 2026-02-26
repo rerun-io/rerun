@@ -775,7 +775,7 @@ impl StoreHub {
         // Didn't free memory from the active recording, or background recordings,
         // so resort to closing background recordings.
         if num_bytes_freed == 0 {
-            let mut closed_count = 0;
+            let mut closed_count = 0_usize;
             for store_id in &background_recording_ids {
                 let Some(recording) = self.store_bundle.get(store_id) else {
                     continue;

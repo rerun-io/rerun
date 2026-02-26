@@ -1451,7 +1451,9 @@ mod tests {
     use re_test_context::TestContext;
     use re_test_context::external::egui_kittest::kittest::Queryable as _;
     use re_test_viewport::{TestContextExt as _, TestView};
-    use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
+    use re_viewer_context::{
+        RecommendedView, TimeControlCommand, ViewClass as _, blueprint_timeline,
+    };
     use re_viewport_blueprint::ViewBlueprint;
 
     use super::*;
@@ -1825,5 +1827,194 @@ mod tests {
         harness.run();
 
         harness.snapshot("selection_panel_view_entity_no_match");
+    }
+
+    /// Helper to set the active timeline on the time control.
+    fn set_active_timeline(test_context: &TestContext, timeline_name: &str) {
+        let store_id = test_context.active_store_id();
+        test_context.send_time_commands(
+            store_id,
+            [TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+        );
+        test_context.handle_system_commands(&egui::Context::default());
+    }
+
+    /// Snapshot test for the selection panel when multiple things are logged to the
+    /// same temporal time point (the "latest-all" scenario).
+    ///
+    /// Each `log_entity` call creates a separate chunk, and `latest_all` returns all of them.
+    #[test]
+    fn selection_panel_component_temporal_latest_all_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("temporal_latest_all");
+
+        // Log 3 separate chunks at the same time point, each with a single Position2D.
+        let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+        for points in [[(1.0, 2.0)], [(3.0, 4.0)], [(5.0, 6.0)]] {
+            test_context.log_entity(entity_path.clone(), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    [(timeline, 42)],
+                    &archetypes::Points2D::new(points),
+                )
+            });
+        }
+
+        set_active_timeline(&test_context, "frame_nr");
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component: archetypes::Points2D::descriptor_positions().component,
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 450.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_temporal_latest_all");
+    }
+
+    /// Snapshot test for the selection panel when multiple chunks with multiple instances
+    /// are logged at the same temporal time point.
+    #[test]
+    fn selection_panel_component_temporal_latest_all_multi_instance_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("multi_instance_latest_all");
+
+        let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+
+        // First chunk: 3 positions
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, 42)],
+                &archetypes::Points2D::new([(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)]),
+            )
+        });
+
+        // Second chunk: 2 positions
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, 42)],
+                &archetypes::Points2D::new([(10.0, 20.0), (30.0, 40.0)]),
+            )
+        });
+
+        set_active_timeline(&test_context, "frame_nr");
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component: archetypes::Points2D::descriptor_positions().component,
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 550.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_temporal_latest_all_multi_instance");
+    }
+
+    /// Snapshot test for the selection panel when an *entity* is selected and multiple
+    /// things are logged to the same temporal time point (the "latest-all" scenario).
+    #[test]
+    fn selection_panel_entity_temporal_latest_all_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("temporal_latest_all");
+
+        let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+        for points in [[(1.0, 2.0)], [(3.0, 4.0)], [(5.0, 6.0)]] {
+            test_context.log_entity(entity_path.clone(), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    [(timeline, 42)],
+                    &archetypes::Points2D::new(points),
+                )
+            });
+        }
+
+        set_active_timeline(&test_context, "frame_nr");
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::from(entity_path));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 200.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_entity_temporal_latest_all");
+    }
+
+    /// Snapshot test for the selection panel when an *entity* is selected and multiple
+    /// things are logged as static in separate chunks.
+    #[test]
+    fn selection_panel_entity_static_latest_all_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("static_latest_all");
+
+        for points in [[(1.0, 2.0)], [(3.0, 4.0)], [(5.0, 6.0)]] {
+            test_context.log_entity(entity_path.clone(), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new(points),
+                )
+            });
+        }
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::from(entity_path));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 200.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_entity_static_latest_all");
     }
 }

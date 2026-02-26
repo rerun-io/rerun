@@ -15,13 +15,14 @@ mod app_id_ui;
 mod blob_ui;
 mod component_path_ui;
 mod component_type_ui;
-mod component_ui;
 mod component_ui_registry;
 mod data_source_ui;
 mod entity_db_ui;
 mod entity_path_ui;
 mod image_ui;
 mod instance_path_ui;
+mod latest_all_instance_ui;
+mod latest_at_instance_ui;
 mod store_id_ui;
 mod tensor_ui;
 mod transform_frames_ui;
@@ -30,10 +31,11 @@ mod video_ui;
 mod extra_data_ui;
 pub mod item_ui;
 
-pub use self::component_ui::ComponentPathLatestAtResults;
 pub use self::component_ui_registry::{add_to_registry, register_component_uis};
 pub use self::image_ui::image_preview_ui;
 pub use self::instance_path_ui::archetype_label_list_item_ui;
+pub use self::latest_all_instance_ui::LatestAllInstanceResult;
+pub use self::latest_at_instance_ui::LatestAtInstanceResult;
 pub use self::tensor_ui::tensor_summary_ui_grid_contents;
 
 use re_chunk_store::UnitChunkShared;
