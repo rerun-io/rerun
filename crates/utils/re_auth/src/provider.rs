@@ -120,11 +120,11 @@ pub enum Claims {
 }
 
 impl Claims {
-    /// Subject, usually the user ID.
+    /// Subject. An email if available, otherwise it's usually the user ID.
     pub fn sub(&self) -> &str {
         match self {
             #[cfg(feature = "oauth")]
-            Self::RerunCloud(claims) => claims.sub.as_str(),
+            Self::RerunCloud(claims) => claims.email.as_deref().unwrap_or(claims.sub.as_str()),
             Self::Redap(claims) => claims.sub.as_str(),
         }
     }

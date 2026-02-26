@@ -227,6 +227,10 @@ pub struct RerunCloudClaims {
 
     /// Issued at
     pub iat: i64,
+
+    /// Subject's email address.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
 }
 
 impl RerunCloudClaims {
