@@ -9,9 +9,9 @@
 //!
 //! ```text
 //! Expr → Term ( ( '|' | ε ) Term )*
-//! Term → FIELD
+//! Term → FIELD '?'?
 //!      | DOT
-//!      | '[' INTEGER ']'
+//!      | '[' INTEGER ']' '?'?
 //!      | '[' ']'
 //! ```
 //!
@@ -29,19 +29,35 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Segment {
+pub enum SegmentKind {
     Field(String),
     Index(u64),
     Each,
 }
 
-impl std::fmt::Display for Segment {
+impl std::fmt::Display for SegmentKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Field(name) => write!(f, ".{name}"),
             Self::Index(n) => write!(f, "[{n}]"),
             Self::Each => write!(f, "[]"),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Segment {
+    pub kind: SegmentKind,
+    pub optional: bool,
+}
+
+impl std::fmt::Display for Segment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.kind)?;
+        if self.optional {
+            write!(f, "?")?;
+        }
+        Ok(())
     }
 }
 
@@ -159,13 +175,27 @@ where
         )
     }
 
+    fn peek_optional(&mut self) -> bool {
+        if let Some(token) = self.tokens.peek()
+            && token.typ == TokenType::QuestionMark
+        {
+            self.tokens.next();
+            return true;
+        }
+        false
+    }
+
     fn segment(&mut self) -> Result<Segment> {
         match self.tokens.peek() {
             Some(token) => match &token.typ {
                 TokenType::Field(s) => {
                     let result = s.clone();
                     self.tokens.next();
-                    Ok(Segment::Field(result))
+                    let optional = self.peek_optional();
+                    Ok(Segment {
+                        kind: SegmentKind::Field(result),
+                        optional,
+                    })
                 }
                 TokenType::LBracket => {
                     self.tokens.next(); // Consume `[`
@@ -174,13 +204,20 @@ where
                         Some(token) => match &token.typ {
                             TokenType::RBracket => {
                                 self.tokens.next(); // Consume `]`
-                                Ok(Segment::Each)
+                                Ok(Segment {
+                                    kind: SegmentKind::Each,
+                                    optional: false,
+                                })
                             }
                             TokenType::Integer(n) => {
                                 let index = *n;
                                 self.tokens.next();
                                 self.consume(TokenType::RBracket)?;
-                                Ok(Segment::Index(index))
+                                let optional = self.peek_optional();
+                                Ok(Segment {
+                                    kind: SegmentKind::Index(index),
+                                    optional,
+                                })
                             }
                             unexpected => Err(Error::UnexpectedSymbol {
                                 symbol: unexpected.clone(),
@@ -222,6 +259,41 @@ mod test {
         Parser::new(tokens.into_iter()).parse()
     }
 
+    fn field(name: &str) -> Segment {
+        Segment {
+            kind: SegmentKind::Field(name.into()),
+            optional: false,
+        }
+    }
+
+    fn field_opt(name: &str) -> Segment {
+        Segment {
+            kind: SegmentKind::Field(name.into()),
+            optional: true,
+        }
+    }
+
+    fn index(n: u64) -> Segment {
+        Segment {
+            kind: SegmentKind::Index(n),
+            optional: false,
+        }
+    }
+
+    fn index_opt(n: u64) -> Segment {
+        Segment {
+            kind: SegmentKind::Index(n),
+            optional: true,
+        }
+    }
+
+    fn each() -> Segment {
+        Segment {
+            kind: SegmentKind::Each,
+            optional: false,
+        }
+    }
+
     fn path(segments: Vec<Segment>) -> Expr {
         Expr::Path(segments)
     }
@@ -234,11 +306,7 @@ mod test {
     fn basic() {
         assert_eq!(
             parse(".a.b.c"),
-            Ok(path(vec![
-                Segment::Field("a".into()),
-                Segment::Field("b".into()),
-                Segment::Field("c".into())
-            ]))
+            Ok(path(vec![field("a"), field("b"), field("c")]))
         );
     }
 
@@ -246,10 +314,7 @@ mod test {
     fn explicit_pipe() {
         assert_eq!(
             parse(".foo | .bar"),
-            Ok(pipe(
-                path(vec![Segment::Field("foo".into())]),
-                path(vec![Segment::Field("bar".into())])
-            ))
+            Ok(pipe(path(vec![field("foo")]), path(vec![field("bar")])))
         );
     }
 
@@ -262,10 +327,7 @@ mod test {
     fn identity_pipe() {
         assert_eq!(
             parse(". | .foo"),
-            Ok(pipe(
-                Expr::Identity,
-                path(vec![Segment::Field("foo".into())])
-            ))
+            Ok(pipe(Expr::Identity, path(vec![field("foo")])))
         );
     }
 
@@ -281,49 +343,36 @@ mod test {
 
     #[test]
     fn array_index() {
-        assert_eq!(parse(".[0]"), Ok(path(vec![Segment::Index(0)])));
-        assert_eq!(parse(".[42]"), Ok(path(vec![Segment::Index(42)])));
+        assert_eq!(parse(".[0]"), Ok(path(vec![index(0)])));
+        assert_eq!(parse(".[42]"), Ok(path(vec![index(42)])));
     }
 
     #[test]
     fn array_index_with_pipe() {
         assert_eq!(
             parse(".foo | .[0]"),
-            Ok(pipe(
-                path(vec![Segment::Field("foo".into())]),
-                path(vec![Segment::Index(0)])
-            ))
+            Ok(pipe(path(vec![field("foo")]), path(vec![index(0)])))
         );
     }
 
     #[test]
     fn array_index_implicit_pipe() {
-        assert_eq!(
-            parse(".foo[0]"),
-            Ok(path(vec![Segment::Field("foo".into()), Segment::Index(0)]))
-        );
+        assert_eq!(parse(".foo[0]"), Ok(path(vec![field("foo"), index(0)])));
         assert_eq!(
             parse(".foo[0][1]"),
-            Ok(path(vec![
-                Segment::Field("foo".into()),
-                Segment::Index(0),
-                Segment::Index(1)
-            ]))
+            Ok(path(vec![field("foo"), index(0), index(1)]))
         );
     }
 
     #[test]
     fn array_each() {
-        assert_eq!(parse(".[]"), Ok(path(vec![Segment::Each])));
-        assert_eq!(
-            parse(".foo[]"),
-            Ok(path(vec![Segment::Field("foo".into()), Segment::Each]))
-        );
+        assert_eq!(parse(".[]"), Ok(path(vec![each()])));
+        assert_eq!(parse(".foo[]"), Ok(path(vec![field("foo"), each()])));
         assert_eq!(
             parse(".foo[] | .bar"),
             Ok(pipe(
-                path(vec![Segment::Field("foo".into()), Segment::Each]),
-                path(vec![Segment::Field("bar".into())])
+                path(vec![field("foo"), each()]),
+                path(vec![field("bar")])
             ))
         );
     }
@@ -332,19 +381,11 @@ mod test {
     fn array_each_implicit_pipe() {
         assert_eq!(
             parse(".foo[].bar"),
-            Ok(path(vec![
-                Segment::Field("foo".into()),
-                Segment::Each,
-                Segment::Field("bar".into())
-            ]))
+            Ok(path(vec![field("foo"), each(), field("bar")]))
         );
         assert_eq!(
             parse(".foo[][0]"),
-            Ok(path(vec![
-                Segment::Field("foo".into()),
-                Segment::Each,
-                Segment::Index(0)
-            ]))
+            Ok(path(vec![field("foo"), each(), index(0)]))
         );
     }
 
@@ -358,13 +399,46 @@ mod test {
         let chain = parse(".location.x").unwrap();
         assert_eq!(chain.to_string(), ".location.x");
 
-        let pipe = parse(".foo | .bar").unwrap();
-        assert_eq!(pipe.to_string(), ".foo | .bar");
+        let piped = parse(".foo | .bar").unwrap();
+        assert_eq!(piped.to_string(), ".foo | .bar");
 
         let identity = parse(".").unwrap();
         assert_eq!(identity.to_string(), ".");
 
         let complex = parse(".a.b[] | .c[0]").unwrap();
         assert_eq!(complex.to_string(), ".a.b[] | .c[0]");
+    }
+
+    #[test]
+    fn optional_field() {
+        assert_eq!(parse(".foo?"), Ok(path(vec![field_opt("foo")])));
+        assert_eq!(
+            parse(".foo?.bar"),
+            Ok(path(vec![field_opt("foo"), field("bar")]))
+        );
+    }
+
+    #[test]
+    fn optional_index() {
+        assert_eq!(parse(".[0]?"), Ok(path(vec![index_opt(0)])));
+    }
+
+    #[test]
+    fn optional_each_not_supported() {
+        // `?` after `[]` should be a parse error (unexpected symbol)
+        assert!(parse(".[]?").is_err());
+    }
+
+    #[test]
+    fn test_display_optional() {
+        let expr = parse(".foo?").unwrap();
+        assert_eq!(expr.to_string(), ".foo?");
+
+        let expr = parse(".foo?.bar").unwrap();
+        assert_eq!(expr.to_string(), ".foo?.bar");
+
+        // Note: leading `.` is consumed by the path parser, not stored in segments.
+        let expr = parse(".[0]?").unwrap();
+        assert_eq!(expr.to_string(), "[0]?");
     }
 }

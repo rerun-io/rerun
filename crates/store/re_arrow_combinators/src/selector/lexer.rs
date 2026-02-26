@@ -16,6 +16,7 @@ pub enum TokenType {
     // Operators
     Dot,
     Pipe,
+    QuestionMark,
 }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error, Clone)]
@@ -44,6 +45,7 @@ impl std::fmt::Display for TokenType {
             Self::RBracket => write!(f, "]"),
             Self::Dot => write!(f, "."),
             Self::Pipe => write!(f, "|"),
+            Self::QuestionMark => write!(f, "?"),
         }
     }
 }
@@ -141,6 +143,7 @@ impl<'a> Lexer<'a> {
 
             // Single-char tokens
             '|' => Ok(Some(self.make_token(TokenType::Pipe))),
+            '?' => Ok(Some(self.make_token(TokenType::QuestionMark))),
             '[' => Ok(Some(self.make_token(TokenType::LBracket))),
             ']' => Ok(Some(self.make_token(TokenType::RBracket))),
 
@@ -230,6 +233,24 @@ mod test {
                 line: 1,
                 column: 6
             })
+        );
+    }
+
+    #[test]
+    fn question_mark() {
+        assert_eq!(
+            extract_inner(Lexer::new(".foo?").scan_tokens().unwrap()),
+            vec![TokenType::Field("foo".into()), TokenType::QuestionMark,]
+        );
+        assert_eq!(
+            extract_inner(Lexer::new(".[0]?").scan_tokens().unwrap()),
+            vec![
+                TokenType::Dot,
+                TokenType::LBracket,
+                TokenType::Integer(0),
+                TokenType::RBracket,
+                TokenType::QuestionMark,
+            ]
         );
     }
 

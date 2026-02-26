@@ -7,12 +7,13 @@
 //!
 //! The selector syntax is a subset of `jq`:
 //!
-//! | Syntax      | Meaning                                     | Example          |
-//! |-------------|---------------------------------------------|------------------|
-//! | `.field`    | Access a named field in a struct             | `.location`      |
-//! | `[]`        | Iterate over every element of a list         | `.poses[]`       |
-//! | `[N]`       | Index into a list by position                | `.[0]`           |
-//! | `\|`        | Pipe the output of one expression to another | `.foo \| .bar`   |
+//! | Syntax      | Meaning                                          | Example        |
+//! |-------------|--------------------------------------------------|----------------|
+//! | `.field`    | Access a named field in a struct                 | `.location`    |
+//! | `[]`        | Iterate over every element of a list             | `.poses[]`     |
+//! | `[N]`       | Index into a list by position                    | `.[0]`         |
+//! | `?`         | Optional: suppress errors if a field is missing  | `.field?`      |
+//! | `\|`        | Pipe the output of one expression to another     | `.foo \| .bar` |
 //!
 //! Segments can be chained without an explicit pipe: `.poses[].x` is equivalent to `.poses[] | .x`.
 //!
@@ -27,10 +28,13 @@ mod lexer;
 mod parser;
 mod runtime;
 
-use arrow::{array::ListArray, datatypes::DataType};
+use arrow::{
+    array::{Array as _, ListArray},
+    datatypes::{DataType, Field},
+};
 use vec1::Vec1;
 
-use parser::{Expr, Segment};
+use parser::{Expr, Segment, SegmentKind};
 
 /// A parsed selector expression that can be executed against Arrow arrays.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,7 +52,9 @@ impl Selector {
     /// Performs implicit iteration over the inner list array, and reconstructs the array at the end.
     ///
     /// `[.[].poses[].x]` is the actual query, we only require writing the `.poses[].x` portion.
-    pub fn execute_per_row(&self, source: &ListArray) -> Result<ListArray, Error> {
+    ///
+    /// Returns `None` if the expression was suppressed by an optional segment (e.g. `.field?`).
+    pub fn execute_per_row(&self, source: &ListArray) -> Result<Option<ListArray>, Error> {
         runtime::execute_per_row(&self.0, source).map_err(Into::into)
     }
 }
@@ -73,7 +79,8 @@ impl crate::Transform for Selector {
     type Target = ListArray;
 
     fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
-        self.execute_per_row(source).map_err(Into::into)
+        let result = self.execute_per_row(source).map_err(crate::Error::from)?;
+        Ok(result.unwrap_or_else(|| null_list_like(source)))
     }
 }
 
@@ -82,8 +89,17 @@ impl crate::Transform for &Selector {
     type Target = ListArray;
 
     fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
-        self.execute_per_row(source).map_err(Into::into)
+        let result = self.execute_per_row(source).map_err(crate::Error::from)?;
+        Ok(result.unwrap_or_else(|| null_list_like(source)))
     }
+}
+
+/// Creates an all-null [`ListArray`] with the same type and length as `source`.
+fn null_list_like(source: &ListArray) -> ListArray {
+    ListArray::new_null(
+        Field::new_list_field(source.value_type(), true).into(),
+        source.len(),
+    )
 }
 
 /// Errors that can occur during selector parsing or execution.
@@ -126,7 +142,10 @@ where
     while let Some((path, fields)) = queue.pop_front() {
         for field in fields {
             let mut field_path = path.clone();
-            field_path.push(Segment::Field(field.name().clone()));
+            field_path.push(Segment {
+                kind: SegmentKind::Field(field.name().clone()),
+                optional: false,
+            });
 
             match field.data_type() {
                 DataType::Struct(nested_fields) => {
@@ -135,7 +154,10 @@ where
                 }
                 DataType::List(inner) => {
                     // Add the Each segment to unwrap the list
-                    field_path.push(Segment::Each);
+                    field_path.push(Segment {
+                        kind: SegmentKind::Each,
+                        optional: false,
+                    });
 
                     match inner.data_type() {
                         DataType::Struct(nested_fields) => {

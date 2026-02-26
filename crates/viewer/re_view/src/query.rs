@@ -59,6 +59,12 @@ fn transform_chunk(
         let transformed = if let Some(sel) = selector {
             sel.execute_per_row(&arr)
                 .map_err(ComponentMappingError::SelectorExecutionFailed)?
+                .unwrap_or_else(|| {
+                    arrow::array::ListArray::new_null(
+                        arrow::datatypes::Field::new_list_field(arr.value_type(), true).into(),
+                        arr.len(),
+                    )
+                })
         } else {
             arr
         };

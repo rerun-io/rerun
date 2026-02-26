@@ -16,7 +16,10 @@ use crate::util::fixtures;
 fn execute_nested_struct() -> Result<(), Error> {
     let array = fixtures::nested_struct_column();
 
-    let result = ".location.x".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".location.x"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌───────────────────────────────────┐
@@ -45,7 +48,7 @@ fn execute_nested_struct() -> Result<(), Error> {
 fn execute_identity() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
-    let result = ".".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".".parse::<Selector>()?.execute_per_row(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌───────────────────────────────────────────────────┐
@@ -73,7 +76,10 @@ fn execute_identity() -> Result<(), Error> {
 fn execute_simple_field() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
-    let result = ".poses".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".poses"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
     ┌───────────────────────────────────────────────┐
@@ -101,7 +107,10 @@ fn execute_simple_field() -> Result<(), Error> {
 fn execute_index() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
-    let result = ".poses[0]".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".poses[0]"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌─────────────────────────────────────────┐
@@ -129,7 +138,10 @@ fn execute_index() -> Result<(), Error> {
 fn execute_index_chained() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
-    let result = ".poses[0].x".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".poses[0].x"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌───────────────────────────────────┐
@@ -157,7 +169,10 @@ fn execute_index_chained() -> Result<(), Error> {
 fn execute_index_to_extract_second_element() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
-    let result = ".poses[1]".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".poses[1]"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌─────────────────────────────────────────┐
@@ -185,7 +200,10 @@ fn execute_index_to_extract_second_element() -> Result<(), Error> {
 fn execute_array_each() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
-    let result = ".poses[]".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".poses[]"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌─────────────────────────────────────────┐
@@ -237,7 +255,10 @@ fn execute_missing_field() {
 fn execute_index_out_of_bounds() -> Result<(), Error> {
     let array = fixtures::nested_list_struct_column();
 
-    let result = ".poses[10]".parse::<Selector>()?.execute_per_row(&array)?;
+    let result = ".poses[10]"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌─────────────────────────────────────────┐
@@ -287,6 +308,29 @@ fn execute_index_on_fixed_size_list() -> Result<(), Error> {
     let result = ".[0][1]".parse::<Selector>()?.execute_per_row(&array);
 
     assert!(matches!(result, Err(Error::Runtime(..))));
+
+    Ok(())
+}
+
+#[test]
+fn execute_optional_field() -> Result<(), Error> {
+    let array = fixtures::nested_struct_column();
+
+    // Without `?`, accessing a field that doesn't exist errors.
+    let err = ".location.z".parse::<Selector>()?.execute_per_row(&array);
+    assert!(matches!(
+        err,
+        Err(Error::Runtime(
+            re_arrow_combinators::Error::FieldNotFound { .. }
+        ))
+    ));
+
+    // With `?`, the missing field is suppressed and we get `None` instead.
+    let result = ".location.z?"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?;
+
+    assert!(result.is_none(), "optional segment should return None");
 
     Ok(())
 }
