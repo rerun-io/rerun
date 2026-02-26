@@ -75,9 +75,6 @@ EXECUTABLE_EXTENSION = ".exe"
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "%PIXI_PROJECT_ROOT%\\scripts\\pixi;%PATH%"
 
-[target.osx-arm64.activation.env]
-AR = "llvm-ar" # Various Wasm targets fail on mac without llvm-ar
-
 ################################################################################
 # ENVIRONMENTS
 ################################################################################
