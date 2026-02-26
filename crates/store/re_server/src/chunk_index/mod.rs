@@ -426,9 +426,16 @@ mod tests {
         );
         store.insert_chunk(&Arc::new(chunk))?;
         let handle = ChunkStoreHandle::new(store);
+        let store_slot_id = crate::store::StoreSlotId::new();
 
         dataset
-            .add_layer(segment_id, layer_name, handle, IfDuplicateBehavior::Error)
+            .add_layer(
+                segment_id,
+                layer_name,
+                store_slot_id,
+                handle,
+                IfDuplicateBehavior::Error,
+            )
             .await?;
 
         //----- Create the index

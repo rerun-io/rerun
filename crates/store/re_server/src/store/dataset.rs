@@ -16,7 +16,9 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 
-use crate::store::{Error, InMemoryStore, Layer, Segment, Tracked};
+use crate::store::{
+    Error, InMemoryStore, Layer, Segment, StoreSlotId, Tracked, store_pool::StorePool,
+};
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
@@ -232,7 +234,7 @@ impl Dataset {
 
             for (layer_name, layer) in segment.iter_layers() {
                 layer_names_row.push(layer_name.to_owned());
-                storage_urls_row.push(format!("memory:///{}/{segment_id}/{layer_name}", self.id));
+                storage_urls_row.push(format!("memory:///store/{}", layer.store_slot_id()));
 
                 let layer_properties = layer
                     .compute_properties()
@@ -421,7 +423,7 @@ impl Dataset {
 
         for (layer_name, segment_id, layer) in layers {
             layer_names.push(layer_name.to_owned());
-            storage_urls.push(format!("memory:///{}/{segment_id}/{layer_name}", self.id));
+            storage_urls.push(format!("memory:///store/{}", layer.store_slot_id()));
             segment_ids.push(segment_id);
             layer_types.push(layer.layer_type().to_owned());
             registration_times.push(layer.registration_time().as_nanosecond() as i64);
@@ -476,7 +478,7 @@ impl Dataset {
 
         let mut chunk_keys = Vec::new();
 
-        for (layer_name, layer) in partition.iter_layers() {
+        for (_layer_name, layer) in partition.iter_layers() {
             let store = layer.store_handle();
 
             let mut offset = 0;
@@ -518,9 +520,7 @@ impl Dataset {
                 chunk_keys.push(
                     crate::store::ChunkKey {
                         chunk_id: chunk.id(),
-                        segment_id: segment_id.clone(),
-                        layer_name: layer_name.to_owned(),
-                        dataset_id: self.id(),
+                        store_slot_id: layer.store_slot_id(),
                     }
                     .encode()?,
                 );
@@ -558,18 +558,6 @@ impl Dataset {
         Ok(rrd_manifest)
     }
 
-    pub fn layer_store_handle(
-        &self,
-        segment_id: &SegmentId,
-        layer_name: &str,
-    ) -> Option<&ChunkStoreHandle> {
-        self.inner
-            .segments
-            .get(segment_id)
-            .and_then(|segment| segment.layer(layer_name))
-            .map(|layer| layer.store_handle())
-    }
-
     // we can't expect there are no async calls without the lance feature
     #[allow(clippy::allow_attributes)]
     #[allow(clippy::unused_async)]
@@ -577,6 +565,7 @@ impl Dataset {
         &mut self,
         segment_id: SegmentId,
         layer_name: String,
+        store_slot_id: StoreSlotId,
         store_handle: ChunkStoreHandle,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
@@ -602,7 +591,7 @@ impl Dataset {
             .or_default()
             .insert_layer(
                 layer_name.clone(),
-                Layer::new(store_handle.clone()),
+                Layer::new(store_slot_id, store_handle.clone()),
                 on_duplicate,
             )?;
 
@@ -667,9 +656,11 @@ impl Dataset {
 
     /// Load a RRD using its recording id as segment id.
     ///
-    /// Only stores with matching kinds with be loaded.
-    pub async fn load_rrd(
+    /// Only stores with matching kinds will be loaded. The stores are registered in the provided
+    /// [`StorePool`] automatically.
+    pub async fn register_rrd(
         &mut self,
+        pool: &mut StorePool,
         path: &Path,
         layer_name: Option<&str>,
         on_duplicate: IfDuplicateBehavior,
@@ -690,16 +681,17 @@ impl Dataset {
             }
 
             let segment_id = SegmentId::new(store_id.recording_id().to_string());
+            let slot_id = pool.register(&chunk_store);
 
             self.add_layer(
                 segment_id.clone(),
                 layer_name.to_owned(),
-                chunk_store.clone(),
+                slot_id,
+                chunk_store,
                 on_duplicate,
             )
             .await?;
-
-            new_segment_ids.insert(segment_id.clone());
+            new_segment_ids.insert(segment_id);
         }
 
         Ok(new_segment_ids)

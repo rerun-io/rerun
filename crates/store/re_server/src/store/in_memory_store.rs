@@ -12,15 +12,16 @@ use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry};
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
 use crate::OnError;
 use crate::entrypoint::NamedPath;
+use crate::store::store_pool::StorePool;
 use crate::store::table::TableType;
 use crate::store::task_registry::TaskRegistry;
-use crate::store::{ChunkKey, Dataset, Error, Table};
+use crate::store::{ChunkKey, Dataset, Error, StoreSlotId, Table};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 
@@ -29,6 +30,7 @@ pub struct InMemoryStore {
     tables: HashMap<EntryId, Table>,
     id_by_name: HashMap<String, EntryId>,
     task_registry: TaskRegistry,
+    store_pool: StorePool,
 }
 
 impl Default for InMemoryStore {
@@ -38,6 +40,7 @@ impl Default for InMemoryStore {
             datasets: HashMap::default(),
             id_by_name: HashMap::default(),
             task_registry: TaskRegistry::default(),
+            store_pool: StorePool::default(),
         };
         ret.update_entries_table()
             .expect("update_entries_table should never fail on initialization.");
@@ -52,6 +55,30 @@ impl InMemoryStore {
             .unwrap_or(ChunkStoreConfig::CHANGELOG_DISABLED)
     }
 
+    /// Look up a store by its [`StoreSlotId`], upgrading the weak reference.
+    pub fn resolve_store(&self, slot_id: &StoreSlotId) -> Option<re_chunk_store::ChunkStoreHandle> {
+        self.store_pool.get(slot_id)
+    }
+
+    /// Register a store in the pool, returning its new [`StoreSlotId`].
+    pub fn register_store(&mut self, handle: &re_chunk_store::ChunkStoreHandle) -> StoreSlotId {
+        self.store_pool.register(handle)
+    }
+
+    /// Register a store under an existing [`StoreSlotId`] (e.g. for `memory://` re-registration).
+    pub fn register_store_with_id(
+        &mut self,
+        id: StoreSlotId,
+        handle: &re_chunk_store::ChunkStoreHandle,
+    ) {
+        self.store_pool.register_with_id(id, handle);
+    }
+
+    /// Drop expired weak entries from the store pool.
+    pub fn cleanup_store_pool(&mut self) {
+        self.store_pool.cleanup();
+    }
+
     /// Returns the chunks corresponding to the provided chunk keys.
     ///
     /// Important: there is no guarantee on the order of the returned chunks.
@@ -59,60 +86,51 @@ impl InMemoryStore {
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
-        // sort keys per dataset, segment, layer
-        let mut chunk_key_index: HashMap<
-            &EntryId,
-            HashMap<&SegmentId, HashMap<&str, Vec<&ChunkKey>>>,
-        > = Default::default();
-
-        for chunk_key in chunk_keys {
-            chunk_key_index
-                .entry(&chunk_key.dataset_id)
-                .or_default()
-                .entry(&chunk_key.segment_id)
-                .or_default()
-                .entry(&chunk_key.layer_name)
-                .or_default()
-                .push(chunk_key);
-        }
-
         let mut result = Vec::with_capacity(chunk_keys.len());
 
-        for (dataset_id, segment_index) in chunk_key_index {
-            let dataset = self.dataset(*dataset_id)?;
-
-            for (segment_id, layer_index) in segment_index {
-                let segment = dataset.segment(segment_id)?;
-
-                let store_id = StoreId::new(
-                    StoreKind::Recording,
-                    dataset_id.to_string(),
-                    segment_id.id.as_str(),
-                );
-
-                for (layer_name, chunk_keys) in layer_index {
-                    let store_handle = segment
-                        .layer(layer_name)
-                        .ok_or_else(|| Error::LayerNameNotFound {
-                            layer_name: layer_name.to_owned(),
-                            segment_id: segment_id.clone(),
-                            entry_id: *dataset_id,
-                        })?
-                        .store_handle()
-                        .read();
-
-                    for chunk_key in chunk_keys {
-                        let chunk = store_handle
-                            .physical_chunk(&chunk_key.chunk_id)
-                            .ok_or_else(|| Error::ChunkNotFound(chunk_key.clone()))?;
-
-                        result.push((store_id.clone(), Arc::clone(chunk)));
-                    }
-                }
-            }
+        for chunk_key in chunk_keys {
+            let store_handle = self
+                .resolve_store(&chunk_key.store_slot_id)
+                .ok_or_else(|| {
+                    Error::InvalidChunkKey(format!(
+                        "store id {} not found",
+                        chunk_key.store_slot_id
+                    ))
+                })?;
+            let store = store_handle.read();
+            let store_id = store.id().clone();
+            let chunk = store.physical_chunk(&chunk_key.chunk_id).ok_or_else(|| {
+                Error::InvalidChunkKey(format!("chunk id {} not found", chunk_key.chunk_id))
+            })?;
+            result.push((store_id, Arc::clone(chunk)));
         }
 
         Ok(result)
+    }
+
+    /// Load a single RRD into an existing dataset, registering stores in the pool.
+    pub async fn register_rrd_to_dataset(
+        &mut self,
+        dataset_id: EntryId,
+        path: &std::path::Path,
+        layer_name: Option<&str>,
+        on_duplicate: IfDuplicateBehavior,
+        store_kind: StoreKind,
+    ) -> Result<std::collections::BTreeSet<re_protos::common::v1alpha1::ext::SegmentId>, Error>
+    {
+        let dataset = self
+            .datasets
+            .get_mut(&dataset_id)
+            .ok_or(Error::EntryIdNotFound(dataset_id))?;
+        dataset
+            .register_rrd(
+                &mut self.store_pool,
+                path,
+                layer_name,
+                on_duplicate,
+                store_kind,
+            )
+            .await
     }
 
     /// Load a directory of RRDs.
@@ -140,7 +158,7 @@ impl InMemoryStore {
                 .to_string_lossy(),
         };
 
-        let dataset = self
+        let dataset_id = self
             .create_dataset(entry_name.into(), None)
             .expect("Name cannot yet exist");
 
@@ -152,18 +170,29 @@ impl InMemoryStore {
                     .to_str()
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
-                if is_rrd
-                    && let Err(err) = dataset
-                        .load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
-                        .await
-                {
-                    match on_error {
-                        OnError::Continue => {
-                            re_log::warn!("Failed loading file in {}: {err}", directory.display());
-                        }
-                        OnError::Abort => {
-                            return Err(err);
-                        }
+                if is_rrd {
+                    let load_result = self
+                        .register_rrd_to_dataset(
+                            dataset_id,
+                            &entry.path(),
+                            None,
+                            on_duplicate,
+                            StoreKind::Recording,
+                        )
+                        .await;
+                    match load_result {
+                        Ok(_segment_ids) => {}
+                        Err(err) => match on_error {
+                            OnError::Continue => {
+                                re_log::warn!(
+                                    "Failed loading file in {}: {err}",
+                                    directory.display()
+                                );
+                            }
+                            OnError::Abort => {
+                                return Err(err);
+                            }
+                        },
                     }
                 }
             }
@@ -314,7 +343,7 @@ impl InMemoryStore {
         &mut self,
         dataset_name: String,
         dataset_id: Option<EntryId>,
-    ) -> Result<&mut Dataset, Error> {
+    ) -> Result<EntryId, Error> {
         re_protos::cloud::v1alpha1::ext::validate_entry_name(&dataset_name)
             .map_err(Error::InvalidEntryName)?;
 
@@ -349,7 +378,7 @@ impl InMemoryStore {
         entry_id: EntryId,
         store_kind: StoreKind,
         details: Option<DatasetDetails>,
-    ) -> Result<&mut Dataset, Error> {
+    ) -> Result<EntryId, Error> {
         re_log::debug!(name, "create_dataset");
         if self.id_by_name.contains_key(&name) {
             return Err(Error::DuplicateEntryNameError(name));
@@ -367,7 +396,7 @@ impl InMemoryStore {
         );
 
         self.update_entries_table()?;
-        self.dataset_mut(entry_id)
+        Ok(entry_id)
     }
 
     /// Delete the provided entry.
@@ -384,11 +413,16 @@ impl InMemoryStore {
             self.id_by_name.remove(dataset.name());
             self.update_entries_table()?;
 
-            if let Some(blueprint_entry_id) = dataset.dataset_details().blueprint_dataset {
-                self.delete_entry(blueprint_entry_id)
-            } else {
-                Ok(())
-            }
+            let result =
+                if let Some(blueprint_entry_id) = dataset.dataset_details().blueprint_dataset {
+                    self.delete_entry(blueprint_entry_id)
+                } else {
+                    Ok(())
+                };
+
+            self.cleanup_store_pool();
+
+            result
         } else {
             Err(Error::EntryIdNotFound(entry_id))
         }

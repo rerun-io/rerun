@@ -6,15 +6,26 @@ use re_chunk_store::ChunkStoreHandle;
 use re_log_types::{AbsoluteTimeRange, Timeline};
 use std::collections::{BTreeMap, HashMap};
 
+use super::StoreSlotId;
+
 #[derive(Clone)]
 pub struct Layer {
+    store_slot_id: StoreSlotId,
     store_handle: ChunkStoreHandle,
     registration_time: jiff::Timestamp,
 }
 
 impl Layer {
-    pub fn new(store_handle: ChunkStoreHandle) -> Self {
-        store_handle.into()
+    pub fn new(store_slot_id: StoreSlotId, store_handle: ChunkStoreHandle) -> Self {
+        Self {
+            store_slot_id,
+            store_handle,
+            registration_time: jiff::Timestamp::now(),
+        }
+    }
+
+    pub fn store_slot_id(&self) -> StoreSlotId {
+        self.store_slot_id
     }
 
     pub fn store_handle(&self) -> &ChunkStoreHandle {
@@ -76,14 +87,5 @@ impl Layer {
         }
 
         ranges
-    }
-}
-
-impl From<ChunkStoreHandle> for Layer {
-    fn from(value: ChunkStoreHandle) -> Self {
-        Self {
-            store_handle: value,
-            registration_time: jiff::Timestamp::now(),
-        }
     }
 }

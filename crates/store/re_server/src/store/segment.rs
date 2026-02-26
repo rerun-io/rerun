@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use itertools::Itertools as _;
-use re_chunk_store::ChunkStoreHandle;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 
 use crate::store::{Error, Layer, Tracked};
@@ -29,16 +28,6 @@ impl Default for Segment {
 }
 
 impl Segment {
-    pub fn from_layer_data(layer_name: &str, chunk_store_handle: ChunkStoreHandle) -> Self {
-        Self {
-            inner: Tracked::new(SegmentInner {
-                layers: vec![(layer_name.to_owned(), Layer::new(chunk_store_handle))]
-                    .into_iter()
-                    .collect(),
-            }),
-        }
-    }
-
     pub fn layer_count(&self) -> usize {
         self.inner.layers.len()
     }

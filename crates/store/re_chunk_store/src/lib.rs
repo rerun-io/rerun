@@ -53,8 +53,8 @@ pub use self::properties::ExtractPropertiesError;
 pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
 pub use self::store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
-    QueriedChunkIdTracker,
+    ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreHandleWeak,
+    ColumnMetadata, QueriedChunkIdTracker,
 };
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,

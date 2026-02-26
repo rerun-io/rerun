@@ -294,7 +294,7 @@ pub enum LayerType {
     /// See [`crate::create_simple_blueprint`]
     SimpleBlueprint,
 
-    /// See [`crate::utils::rerun::multi_chunked_entities_recording`]
+    /// See [`crate::multi_chunked_entities_recording`]
     MultiChunkedEntities { entities: &'static [&'static str] },
 }
 

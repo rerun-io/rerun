@@ -43,7 +43,7 @@ re_log_types.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
 re_span.workspace = true
-re_tuid.workspace = true
+re_tuid = { workspace = true, features = ["serde"] }
 re_types_core.workspace = true
 
 # External
@@ -89,6 +89,7 @@ lance-linalg = { workspace = true, optional = true }
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_redap_tests.workspace = true
+re_tuid.workspace = true
 ehttp = { workspace = true, features = ["native-async"] }
 
 

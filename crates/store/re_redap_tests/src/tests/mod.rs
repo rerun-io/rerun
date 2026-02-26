@@ -1,5 +1,5 @@
 mod column_projection;
-mod common;
+pub mod common;
 mod create_dataset;
 mod create_table;
 mod dataset_schema;

@@ -370,6 +370,16 @@ pub struct ChunkStoreGeneration {
 #[derive(Clone)]
 pub struct ChunkStoreHandle(Arc<parking_lot::RwLock<ChunkStore>>);
 
+/// Weak reference to a [`ChunkStore`]. Call [`upgrade`](Self::upgrade) to obtain a
+/// [`ChunkStoreHandle`]; returns `None` if all strong references have been dropped.
+pub struct ChunkStoreHandleWeak(std::sync::Weak<parking_lot::RwLock<ChunkStore>>);
+
+impl ChunkStoreHandleWeak {
+    pub fn upgrade(&self) -> Option<ChunkStoreHandle> {
+        self.0.upgrade().map(ChunkStoreHandle)
+    }
+}
+
 impl std::fmt::Display for ChunkStoreHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0.read()))
@@ -385,6 +395,10 @@ impl ChunkStoreHandle {
     #[inline]
     pub fn into_inner(self) -> Arc<parking_lot::RwLock<ChunkStore>> {
         self.0
+    }
+
+    pub fn downgrade(&self) -> ChunkStoreHandleWeak {
+        ChunkStoreHandleWeak(Arc::downgrade(&self.0))
     }
 }
 

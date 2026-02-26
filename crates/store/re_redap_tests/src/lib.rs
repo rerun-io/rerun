@@ -22,6 +22,9 @@ mod utils;
 
 pub use ::re_arrow_util::{FieldsTestExt, RecordBatchTestExt, SchemaTestExt};
 
+pub use self::tests::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt, register_and_wait,
+};
 pub use self::tests::*;
 pub use self::utils::path::TempPath;
 pub use self::utils::rerun::{
@@ -29,5 +32,5 @@ pub use self::utils::rerun::{
     create_recording_with_embeddings, create_recording_with_properties,
     create_recording_with_scalars, create_recording_with_static_components,
     create_recording_with_text, create_simple_blueprint, create_simple_recording,
-    create_simple_recording_in,
+    create_simple_recording_in, multi_chunked_entities_recording,
 }; // convenience
