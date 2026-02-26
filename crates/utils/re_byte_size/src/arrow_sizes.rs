@@ -1,4 +1,4 @@
-use arrow::array::{Array, ArrayRef, ListArray, RecordBatch};
+use arrow::array::{Array, ListArray, RecordBatch};
 use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields};
 
@@ -15,13 +15,6 @@ impl SizeBytes for dyn Array {
 }
 
 impl<T: Array> SizeBytes for &T {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        array_slice_memory_size(self)
-    }
-}
-
-impl SizeBytes for ArrayRef {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         array_slice_memory_size(self)
@@ -49,7 +42,7 @@ impl SizeBytes for RecordBatch {
             + self
                 .columns()
                 .iter()
-                .map(|array| array.heap_size_bytes())
+                .map(std::sync::Arc::heap_size_bytes)
                 .sum::<u64>()
     }
 }

@@ -243,7 +243,7 @@ impl<T: SizeBytes, E: SizeBytes> SizeBytes for Result<T, E> {
     }
 }
 
-impl<T: SizeBytes> SizeBytes for Arc<T> {
+impl<T: SizeBytes + ?Sized> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // Overhead for strong and weak counts:
