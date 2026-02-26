@@ -9686,7 +9686,6 @@ dependencies = [
 name = "re_sdk_types"
 version = "0.30.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "array-init",
  "arrow",
  "bytemuck",

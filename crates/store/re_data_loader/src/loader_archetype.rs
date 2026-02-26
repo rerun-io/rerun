@@ -348,7 +348,8 @@ fn load_point_cloud(
     let rows = [
         {
             // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
-            let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)?;
+            let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)
+                .map_err(anyhow::Error::from)?;
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &points3d)
                 .build()?
@@ -372,7 +373,8 @@ fn load_text_document(
             let arch = re_sdk_types::archetypes::TextDocument::from_file_contents(
                 contents,
                 re_sdk_types::components::MediaType::guess_from_path(filepath),
-            )?;
+            )
+            .map_err(anyhow::Error::from)?;
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &arch)
                 .build()?

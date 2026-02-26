@@ -64,7 +64,6 @@ re_types_core.workspace = true
 re_video = { workspace = true, optional = true }
 
 # External
-anyhow.workspace = true # TODO(#1845): Use thiserror instead
 array-init.workspace = true
 arrow.workspace = true
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
