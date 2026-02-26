@@ -3,10 +3,9 @@ use re_log_types::{ApplicationId, StoreId, TableId};
 use crate::{Item, open_url::EXAMPLES_ORIGIN};
 
 /// What are we currently showing in the viewer?
-//
-// TODO(RR-3033): Rename to `Route`
+// TODO(RR-3033): This needs to be further cleaned up
 #[derive(Clone, PartialEq, Eq)]
-pub enum DisplayMode {
+pub enum Route {
     /// The settings dialog for application-wide configuration.
     Settings {
         /// What to return to when exiting this mode.
@@ -43,7 +42,7 @@ pub enum DisplayMode {
     },
 }
 
-impl std::fmt::Debug for DisplayMode {
+impl std::fmt::Debug for Route {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Settings { .. } => write!(f, "Settings"),
@@ -59,9 +58,7 @@ impl std::fmt::Debug for DisplayMode {
     }
 }
 
-// TODO(grtlr,ab): This needs to be further cleaned up and split into separately handled
-// display modes. See https://www.notion.so/rerunio/Major-refactor-of-re_viewer-1d8b24554b198085a02dfe441db330b4
-impl DisplayMode {
+impl Route {
     /// The example page / welcome screen
     pub fn welcome_page() -> Self {
         Self::RedapServer(EXAMPLES_ORIGIN.clone())
@@ -141,7 +138,7 @@ impl DisplayMode {
         }
     }
 
-    /// Returns the redap origin for the current display mode, if any.
+    /// Returns the redap origin for the current route, if any.
     ///
     /// Proxy origins are excluded because they are local and don't represent
     /// a remote server connection.

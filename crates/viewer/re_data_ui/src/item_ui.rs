@@ -12,8 +12,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    DataResultInteractionAddress, HoverHighlight, Item, SystemCommand, SystemCommandSender as _,
-    TimeControlCommand, UiLayout, ViewId, ViewerContext,
+    DataResultInteractionAddress, HoverHighlight, Item, Route, SystemCommand,
+    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewId, ViewerContext,
 };
 
 use super::DataUi as _;
@@ -783,7 +783,7 @@ pub fn entity_db_button_ui(
     let new_entry: re_viewer_context::RecordingOrTable = store_id.clone().into();
 
     response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_display_mode(ctx.store_hub(), &new_entry.display_mode())
+        let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_entry.route())
             .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
@@ -815,7 +815,7 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.is_recording() {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateRecordingOrTable(new_entry));
+                .send_system(SystemCommand::SetRoute(new_entry.route()));
         }
     }
 
@@ -872,9 +872,7 @@ pub fn table_id_button_ui(
 
     if response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::ActivateRecordingOrTable(
-                table_id.clone().into(),
-            ));
+            .send_system(SystemCommand::SetRoute(Route::LocalTable(table_id.clone())));
     }
     ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

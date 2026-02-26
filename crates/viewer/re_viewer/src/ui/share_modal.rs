@@ -4,7 +4,7 @@ use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UiExt as _, icons};
 use re_uri::Fragment;
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::{DisplayMode, ItemCollection, StoreHub, TimeControl, ViewerContext};
+use re_viewer_context::{ItemCollection, Route, StoreHub, TimeControl, ViewerContext};
 
 pub struct ShareModal {
     modal: ModalHandler,
@@ -38,22 +38,22 @@ impl ShareModal {
     /// URL for the current screen, used as a starting point for the modal.
     fn current_url(
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<ViewerOpenUrl> {
-        ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
+        ViewerOpenUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
     }
 
     /// Opens the share modal with the current URL.
     pub fn open(
         &mut self,
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<()> {
-        let url = Self::current_url(store_hub, display_mode, time_ctrl, selection)?;
+        let url = Self::current_url(store_hub, route, time_ctrl, selection)?;
         self.open_with_url(url);
         Ok(())
     }
@@ -69,16 +69,14 @@ impl ShareModal {
         &mut self,
         ui: &mut egui::Ui,
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) {
         re_tracing::profile_function!();
 
-        let url_for_current_screen =
-            Self::current_url(store_hub, display_mode, time_ctrl, selection);
-        let enable_share_button =
-            url_for_current_screen.is_ok() && display_mode != &DisplayMode::welcome_page();
+        let url_for_current_screen = Self::current_url(store_hub, route, time_ctrl, selection);
+        let enable_share_button = url_for_current_screen.is_ok() && route != &Route::welcome_page();
 
         let share_button_resp = ui
             .add_enabled_ui(enable_share_button, |ui| ui.button("Share"))
@@ -360,7 +358,7 @@ mod tests {
     use re_log_types::{AbsoluteTimeRangeF, TimeCell};
     use re_test_context::TestContext;
     use re_viewer_context::open_url::ViewerOpenUrl;
-    use re_viewer_context::{DisplayMode, Item, ItemCollection, TimeControlCommand};
+    use re_viewer_context::{Item, ItemCollection, Route, TimeControlCommand};
 
     use crate::ui::ShareModal;
 
@@ -391,7 +389,7 @@ mod tests {
                 .lock()
                 .open(
                     &store_hub,
-                    &DisplayMode::RedapServer(origin.clone()),
+                    &Route::RedapServer(origin.clone()),
                     Some(&test_ctx.time_ctrl.read()),
                     &ItemCollection::default(),
                 )

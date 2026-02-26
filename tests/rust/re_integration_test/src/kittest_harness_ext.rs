@@ -18,7 +18,7 @@ use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{self, ViewerContext, blueprint_timeline};
 use re_viewer::viewer_test_utils::AppTestingExt as _;
 use re_viewer::{SystemCommand, SystemCommandSender as _};
-use re_viewer_context::ContainerId;
+use re_viewer_context::{ContainerId, Route};
 use re_viewport_blueprint::ViewportBlueprint;
 
 // use crate::GetSection;
@@ -218,7 +218,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let app = self.state_mut();
         let recording_id = app
             .active_recording_id()
-            .expect("expected a recording display mode")
+            .expect("expected a recording route")
             .clone();
         let builder = build_chunk(Chunk::builder(entity_path));
         let store_hub = app.testonly_get_store_hub();
@@ -299,11 +299,9 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .expect("Failed to set blueprint as active");
 
         app.command_sender
-            .send_system(SystemCommand::ActivateRecordingOrTable(
-                re_viewer_context::RecordingOrTable::Recording {
-                    store_id: recording_store_id.clone(),
-                },
-            ));
+            .send_system(SystemCommand::SetRoute(Route::LocalRecording {
+                recording_id: recording_store_id.clone(),
+            }));
         app.command_sender.send_system(SystemCommand::set_selection(
             re_viewer_context::Item::StoreId(recording_store_id.clone()),
         ));
@@ -350,12 +348,10 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn debug_viewer_state(&mut self) {
         let app = self.state_mut();
-        let display_mode = app.testonly_get_display_mode().clone();
+        let route = app.testonly_get_route().clone();
         let store_hub = app.testonly_get_store_hub();
-        let active_recording = display_mode
-            .recording_id()
-            .and_then(|id| store_hub.entity_db(id));
-        let active_blueprint = store_hub.active_blueprint_for_display_mode(&display_mode);
+        let active_recording = route.recording_id().and_then(|id| store_hub.entity_db(id));
+        let active_blueprint = store_hub.active_blueprint_for_route(&route);
         println!("Active recording: {active_recording:#?}");
         println!("Active blueprint: {active_blueprint:#?}");
         self.setup_viewport_blueprint(|_viewer_context, blueprint| {
@@ -363,7 +359,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             for id in blueprint.view_ids() {
                 println!("View id: {id}");
             }
-            println!("Display mode: {:?}", _viewer_context.app_ctx.display_mode);
+            println!("Route: {:?}", _viewer_context.app_ctx.route);
         });
     }
 
@@ -473,10 +469,10 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
 
         let app = self.state_mut();
-        let display_mode = app.testonly_get_display_mode().clone();
+        let route = app.testonly_get_route().clone();
         let store_hub = app.testonly_get_store_hub();
         let blueprint_entity_db = store_hub
-            .active_blueprint_for_display_mode(&display_mode)
+            .active_blueprint_for_route(&route)
             .expect("No active blueprint");
         let messages = blueprint_entity_db.to_messages(None);
 

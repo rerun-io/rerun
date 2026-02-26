@@ -8,7 +8,7 @@ use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{ReButton, UiExt as _};
 use re_uri::Scheme;
 use re_viewer_context::{
-    AppContext, DisplayMode, EditRedapServerModalCommand, SystemCommand, SystemCommandSender as _,
+    AppContext, EditRedapServerModalCommand, Route, SystemCommand, SystemCommandSender as _,
 };
 
 use crate::context::Context;
@@ -364,8 +364,8 @@ impl ServerModal {
                                 let command_sender = app_ctx.command_sender.clone();
                                 let origin = origin.clone();
                                 Box::new(move || {
-                                    command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                                        DisplayMode::RedapServer(origin),
+                                    command_sender.send_system(SystemCommand::SetRoute(
+                                        Route::RedapServer(origin),
                                     ));
                                 })
                             };

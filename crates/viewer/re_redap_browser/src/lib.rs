@@ -29,8 +29,8 @@ pub static LOCAL_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::Ori
 pub fn switch_to_welcome_screen(command_sender: &re_viewer_context::CommandSender) {
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
-    command_sender.send_system(SystemCommand::ChangeDisplayMode(
-        re_viewer_context::DisplayMode::welcome_page(),
+    command_sender.send_system(SystemCommand::SetRoute(
+        re_viewer_context::Route::welcome_page(),
     ));
     command_sender.send_system(SystemCommand::set_selection(
         re_viewer_context::Item::welcome_page(),

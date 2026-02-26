@@ -18,8 +18,8 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
 use crate::{
-    BlueprintUndoState, Caches, DisplayMode, RecordingOrTable, StorageContext, StoreContext,
-    TableStore, TableStores,
+    BlueprintUndoState, Caches, RecordingOrTable, Route, StorageContext, StoreContext, TableStore,
+    TableStores,
 };
 
 /// Interface for accessing all blueprints and recordings.
@@ -27,7 +27,7 @@ use crate::{
 /// The [`StoreHub`] provides access to the [`EntityDb`] instances that are used
 /// to store both blueprints and recordings.
 ///
-/// What is currently "active" (which recording, which app) is determined by [`DisplayMode`],
+/// What is currently "active" (which recording, which app) is determined by [`Route`],
 /// not by the [`StoreHub`] itself. See [`StoreHub::read_context`].
 ///
 /// ## Blueprints
@@ -215,10 +215,7 @@ impl StoreHub {
     ///
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
-    pub fn read_context(
-        &mut self,
-        display_mode: &DisplayMode,
-    ) -> (StorageContext<'_>, StoreContext<'_>) {
+    pub fn read_context(&mut self, route: &Route) -> (StorageContext<'_>, StoreContext<'_>) {
         static EMPTY_RECORDING: LazyLock<EntityDb> =
             LazyLock::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
         static EMPTY_BLUEPRINT: LazyLock<EntityDb> = LazyLock::new(|| {
@@ -233,7 +230,7 @@ impl StoreHub {
 
         let store_context = 'ctx: {
             // If we have an app-id, then use it to look up the blueprint.
-            let Some(app_id) = display_mode.app_id() else {
+            let Some(app_id) = route.app_id() else {
                 break 'ctx None;
             };
 
@@ -282,12 +279,12 @@ impl StoreHub {
                 .get(app_id)
                 .and_then(|id| self.store_bundle.get(id));
 
-            let recording = display_mode
+            let recording = route
                 .recording_id()
                 .and_then(|store_id| self.store_bundle.get(store_id));
 
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
-            let caches = display_mode
+            let caches = route
                 .recording_id()
                 .and_then(|store_id| self.caches_per_recording.get(store_id));
 
@@ -567,7 +564,7 @@ impl StoreHub {
 
     /// Ensure caches and blueprints are set up for the given recording.
     ///
-    /// Call this when a recording becomes active (e.g. via [`DisplayMode::LocalRecording`]).
+    /// Call this when a recording becomes active (e.g. via [`Route::LocalRecording`]).
     // TODO(RR-3033): get rid of this?
     pub fn load_blueprint_and_caches(&mut self, recording_id: &StoreId) {
         debug_assert!(recording_id.is_recording());
@@ -634,12 +631,9 @@ impl StoreHub {
         self.store_bundle.get(id)
     }
 
-    /// Like [`Self::active_blueprint_for_app`], but derives the app id from a [`DisplayMode`].
-    pub fn active_blueprint_for_display_mode(
-        &self,
-        display_mode: &DisplayMode,
-    ) -> Option<&EntityDb> {
-        let app_id = display_mode.app_id()?;
+    /// Like [`Self::active_blueprint_for_app`], but derives the app id from a [`Route`].
+    pub fn active_blueprint_for_route(&self, route: &Route) -> Option<&EntityDb> {
+        let app_id = route.app_id()?;
         self.active_blueprint_for_app(app_id)
     }
 
@@ -695,8 +689,8 @@ impl StoreHub {
     }
 
     /// Clear the currently active blueprint
-    pub fn clear_active_blueprint(&mut self, display_mode: &DisplayMode) {
-        if let Some(app_id) = display_mode.app_id() {
+    pub fn clear_active_blueprint(&mut self, route: &Route) {
+        if let Some(app_id) = route.app_id() {
             self.clear_active_blueprint_for_app_id(app_id);
         }
     }
@@ -705,8 +699,8 @@ impl StoreHub {
     ///
     /// These keeps the default blueprint as is, so the user may reset to the default blueprint
     /// afterward.
-    pub fn clear_active_blueprint_and_generate(&mut self, display_mode: &DisplayMode) {
-        if let Some(app_id) = display_mode.app_id() {
+    pub fn clear_active_blueprint_and_generate(&mut self, route: &Route) {
+        if let Some(app_id) = route.app_id() {
             self.clear_active_blueprint_for_app_id(app_id);
 
             // Simply clearing the default blueprint would trigger a reset to default. Instead, we must

@@ -1,6 +1,6 @@
 use re_log_types::{StoreId, TableId};
 
-use crate::DisplayMode;
+use crate::Route;
 
 #[derive(Clone, Debug)]
 pub enum RecordingOrTable {
@@ -40,13 +40,13 @@ impl RecordingOrTable {
         }
     }
 
-    /// The display mode this would equate to.
-    pub fn display_mode(&self) -> DisplayMode {
+    /// The route this would equate to.
+    pub fn route(&self) -> Route {
         match self {
-            Self::Recording { store_id } => DisplayMode::LocalRecording {
+            Self::Recording { store_id } => Route::LocalRecording {
                 recording_id: store_id.clone(),
             },
-            Self::Table { table_id } => DisplayMode::LocalTable(table_id.clone()),
+            Self::Table { table_id } => Route::LocalTable(table_id.clone()),
         }
     }
 }

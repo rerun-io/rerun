@@ -1,6 +1,6 @@
 use crate::{
-    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DisplayMode,
-    DragAndDropManager, ItemCollection, StorageContext,
+    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
+    ItemCollection, Route, StorageContext,
 };
 
 /// Application context that is shared across all parts of the viewer.
@@ -40,8 +40,8 @@ pub struct AppContext<'a> {
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
 
-    /// The current display mode of the viewer.
-    pub display_mode: &'a DisplayMode,
+    /// The current route of the viewer.
+    pub route: &'a Route,
 
     /// Selection & hovering state.
     pub selection_state: &'a ApplicationSelectionState,
@@ -87,7 +87,7 @@ impl AppContext<'_> {
     /// This does not always line up with [`Self::selection`], if we
     /// are currently loading something that will be prioritized here.
     pub fn is_selected_or_loading(&self, item: &crate::Item) -> bool {
-        if let DisplayMode::Loading(source) = self.display_mode {
+        if let Route::Loading(source) = self.route {
             if let crate::Item::DataSource(other_source) = item {
                 source.is_same_ignoring_uri_fragments(other_source)
             } else {
@@ -100,16 +100,16 @@ impl AppContext<'_> {
 
     /// The current active Redap entry id, if any.
     pub fn active_redap_entry(&self) -> Option<re_log_types::EntryId> {
-        match self.display_mode {
-            DisplayMode::RedapEntry(entry) => Some(entry.entry_id),
+        match self.route {
+            Route::RedapEntry(entry) => Some(entry.entry_id),
             _ => None,
         }
     }
 
     /// The current active local table, if any.
     pub fn active_table_id(&self) -> Option<&re_log_types::TableId> {
-        match self.display_mode {
-            DisplayMode::LocalTable(table_id) => Some(table_id),
+        match self.route {
+            Route::LocalTable(table_id) => Some(table_id),
             _ => None,
         }
     }

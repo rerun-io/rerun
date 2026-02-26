@@ -14,7 +14,7 @@ use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
-use re_viewer_context::{DisplayMode, Item, ViewerContext};
+use re_viewer_context::{Item, Route, ViewerContext};
 
 /// Short-lived structure containing all the data that will be displayed in the recording panel.
 #[derive(Debug)]
@@ -277,8 +277,8 @@ impl<'a> ServerData<'a> {
 
         let is_selected = ctx.is_selected_or_loading(&item);
         let is_active = matches!(
-            ctx.display_mode(),
-            DisplayMode::RedapServer(current_origin)
+            ctx.route(),
+            Route::RedapServer(current_origin)
             if current_origin == origin
         );
 

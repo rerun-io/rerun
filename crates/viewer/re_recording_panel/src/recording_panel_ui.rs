@@ -10,7 +10,7 @@ use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    DisplayMode, EditRedapServerModalCommand, Item, RecordingOrTable, SystemCommand,
+    EditRedapServerModalCommand, Item, RecordingOrTable, Route, SystemCommand,
     SystemCommandSender as _, ViewerContext,
 };
 
@@ -233,8 +233,8 @@ fn welcome_item_ui(
     let item = Item::welcome_page();
     let selected = ctx.is_selected_or_loading(&item);
     let active = matches!(
-        ctx.display_mode(),
-        DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
+        ctx.route(),
+        Route::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
     );
 
     let title = list_item::LabelContent::header("Welcome to rerun").with_icon(&icons::HOME);
@@ -335,9 +335,7 @@ fn server_section_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                origin.clone(),
-            )));
+            .send_system(SystemCommand::SetRoute(Route::RedapServer(origin.clone())));
     }
 }
 
@@ -468,11 +466,10 @@ fn dataset_entry_ui(
         ui.label(format!("Dataset: {name:?}"));
     });
 
-    let new_display_mode =
-        DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
+    let new_route = Route::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
 
     item_response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_display_mode(ctx.store_hub(), &new_display_mode)
+        let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
             .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))
@@ -503,7 +500,7 @@ fn dataset_entry_ui(
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(new_display_mode));
+            .send_system(SystemCommand::SetRoute(new_route));
     }
 }
 
@@ -538,7 +535,7 @@ fn remote_table_entry_ui(
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
+            .send_system(SystemCommand::SetRoute(Route::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
             )));
     }
@@ -573,7 +570,7 @@ fn failed_entry_ui(
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
+            .send_system(SystemCommand::SetRoute(Route::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
             )));
     }

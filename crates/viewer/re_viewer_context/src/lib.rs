@@ -16,7 +16,6 @@ mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
 mod contents;
-mod display_mode;
 mod drag_and_drop;
 mod file_dialog;
 mod heuristics;
@@ -28,6 +27,7 @@ pub mod open_url;
 mod query_context;
 mod query_range;
 mod recording_or_table;
+mod route;
 mod selection_state;
 mod storage_context;
 mod store_context;
@@ -77,7 +77,6 @@ pub use self::component_ui_registry::{
     ComponentUiRegistry, ComponentUiTypes, EditTarget, TryShowEditUiResult, VariantName,
 };
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
-pub use self::display_mode::DisplayMode;
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
 pub use self::file_dialog::sanitize_file_name;
 pub use self::heuristics::suggest_view_for_each_entity;
@@ -94,6 +93,7 @@ pub use self::query_context::{
 };
 pub use self::query_range::QueryRange;
 pub use self::recording_or_table::RecordingOrTable;
+pub use self::route::Route;
 pub use self::selection_state::{
     ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
     SelectionHighlight,

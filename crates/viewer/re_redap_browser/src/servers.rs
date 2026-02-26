@@ -742,7 +742,7 @@ impl RedapServers {
                 server.server_ui(viewer_ctx, ctx, ui, has_login_flow);
             });
         } else {
-            viewer_ctx.revert_to_default_display_mode();
+            viewer_ctx.revert_to_default_route();
         }
     }
 

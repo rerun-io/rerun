@@ -8,7 +8,7 @@ use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
 use crate::time_control::TimeControlCommand;
-use crate::{AuthContext, RecordingOrTable, ScreenshotTarget, ViewId};
+use crate::{AuthContext, RecordingOrTable, Route, ScreenshotTarget, ViewId};
 
 // ----------------------------------------------------------------------------
 
@@ -36,16 +36,16 @@ pub enum SystemCommand {
     /// Open a modal to edit this redap server.
     EditRedapServerModal(EditRedapServerModalCommand),
 
-    ChangeDisplayMode(crate::DisplayMode),
-
-    /// Activates the setting display mode.
+    /// Activates the setting route.
     OpenSettings,
 
-    /// Activates the chunk store display mode.
+    /// Activates the chunk store route.
     OpenChunkStoreBrowser,
 
-    /// Sets the display mode to what it is at startup.
-    ResetDisplayMode,
+    SetRoute(Route),
+
+    /// Sets the route to what it is at startup.
+    ResetRoute,
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
@@ -67,9 +67,6 @@ pub enum SystemCommand {
     /// The final outcome of this is to set the active blueprint to the heuristics. This command
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
-
-    /// Switch to this [`RecordingOrTable`].
-    ActivateRecordingOrTable(RecordingOrTable), // TODO(RR-3033): rename to `SetDisplayMode(DisplayMode)`
 
     /// Close an [`RecordingOrTable`] and free its memory.
     CloseRecordingOrTable(RecordingOrTable),

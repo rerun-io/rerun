@@ -1,14 +1,14 @@
-use re_viewer_context::DisplayMode;
+use re_viewer_context::Route;
 
-/// Keeps track of the current display mode of the viewer.
+/// Keeps track of the current [`Route`] of the viewer.
 pub(crate) struct Navigation {
-    current_mode: DisplayMode,
-    start_mode: DisplayMode,
+    current_mode: Route,
+    start_mode: Route,
 }
 
 impl Default for Navigation {
     fn default() -> Self {
-        let start_mode = DisplayMode::welcome_page();
+        let start_mode = Route::welcome_page();
         Self {
             current_mode: start_mode.clone(),
             start_mode,
@@ -17,7 +17,7 @@ impl Default for Navigation {
 }
 
 impl Navigation {
-    /// Resets to use the start display mode, which is also the fallback mode for
+    /// Resets to use the start route, which is also the fallback mode for
     /// navigation.
     ///
     /// This is defined in the default implementation for [`Navigation`]
@@ -25,7 +25,7 @@ impl Navigation {
         self.current_mode = self.start_mode.clone();
     }
 
-    pub fn replace(&mut self, new_mode: DisplayMode) -> DisplayMode {
+    pub fn replace(&mut self, new_mode: Route) -> Route {
         let previous = std::mem::replace(&mut self.current_mode, new_mode);
 
         if previous != *self.current() {
@@ -36,7 +36,7 @@ impl Navigation {
     }
 
     /// Current state
-    pub fn current(&self) -> &DisplayMode {
+    pub fn current(&self) -> &Route {
         &self.current_mode
     }
 }

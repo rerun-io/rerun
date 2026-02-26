@@ -7,8 +7,8 @@ use re_uri::external::url::{self, Url};
 use vec1::{Vec1, vec1};
 
 use crate::{
-    CommandSender, DisplayMode, Item, ItemCollection, StoreHub, SystemCommand,
-    SystemCommandSender as _, ViewerContext,
+    CommandSender, Item, ItemCollection, Route, StoreHub, SystemCommand, SystemCommandSender as _,
+    ViewerContext,
 };
 
 /// A URL that points to a selection (typically an entity) within the currently active recording.
@@ -238,7 +238,7 @@ impl ViewerOpenUrl {
     pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
         Self::from_context_expanded(
             ctx.store_hub(),
-            ctx.display_mode(),
+            ctx.route(),
             Some(ctx.time_ctrl),
             ctx.selection(),
         )
@@ -246,11 +246,11 @@ impl ViewerOpenUrl {
 
     pub fn from_context_expanded(
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&crate::TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<Self> {
-        let mut this = Self::from_display_mode(store_hub, display_mode)?;
+        let mut this = Self::from_route(store_hub, route)?;
 
         if let Some(fragment) = this.fragment_mut() {
             fragment.selection = selection.first_item().and_then(|item| item.to_data_path());
@@ -279,7 +279,7 @@ impl ViewerOpenUrl {
 
     /// Create a link for a channel source.
     ///
-    /// Refer to [`Self::from_display_mode`] for more information.
+    /// Refer to [`Self::from_route`] for more information.
     pub fn from_data_source(data_source: &LogSource) -> anyhow::Result<Self> {
         // Note that some of these data sources aren't actually sharable URLs.
         // But since we have to handles this for `open_url` and `sharable_url` anyways,
@@ -324,7 +324,7 @@ impl ViewerOpenUrl {
         }
     }
 
-    /// Tries to create a viewer import URL for a [`DisplayMode`] (typically for sharing purposes).
+    /// Tries to create a viewer import URL for a [`Route`] (typically for sharing purposes).
     ///
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
     /// intra-recording links aren't stand-alone enough to be returned by this function.
@@ -332,16 +332,13 @@ impl ViewerOpenUrl {
     /// To produce a sharable url, from this result, call [`Self::sharable_url`].
     ///
     /// Returns Err(reason) if the current state can't be shared with a url.
-    pub fn from_display_mode(
-        store_hub: &StoreHub,
-        display_mode: &DisplayMode,
-    ) -> anyhow::Result<Self> {
-        match display_mode {
-            DisplayMode::Settings { .. } => Ok(Self::Settings),
+    pub fn from_route(store_hub: &StoreHub, route: &Route) -> anyhow::Result<Self> {
+        match route {
+            Route::Settings { .. } => Ok(Self::Settings),
 
-            DisplayMode::Loading(source) => Self::from_data_source(source),
+            Route::Loading(source) => Self::from_data_source(source),
 
-            DisplayMode::LocalRecording { recording_id } => {
+            Route::LocalRecording { recording_id } => {
                 // Local recordings includes those downloaded from rrd urls
                 // (as of writing this includes the sample recordings!)
                 // If it's one of those we want to update the address bar accordingly.
@@ -358,20 +355,20 @@ impl ViewerOpenUrl {
                 Self::from_data_source(data_source)
             }
 
-            DisplayMode::LocalTable(_table_id) => {
+            Route::LocalTable(_table_id) => {
                 // We can't share links to local tables, so can't update the url.
                 Err(anyhow::anyhow!("Can't share links to local tables."))
             }
 
-            DisplayMode::RedapEntry(entry) => Ok(Self::RedapEntry(entry.clone())),
+            Route::RedapEntry(entry) => Ok(Self::RedapEntry(entry.clone())),
 
-            DisplayMode::RedapServer(origin) => {
+            Route::RedapServer(origin) => {
                 // `as_url` on the origin gives us an http link.
                 // We want a rerun link here instead.
                 Ok(Self::RedapCatalog(re_uri::CatalogUri::new(origin.clone())))
             }
 
-            DisplayMode::ChunkStoreBrowser { .. } => Ok(Self::ChunkStoreBrowser),
+            Route::ChunkStoreBrowser { .. } => Ok(Self::ChunkStoreBrowser),
         }
     }
 
@@ -519,9 +516,9 @@ impl ViewerOpenUrl {
         {
             // It doesn't matter if this is overridden by some command below, as that most likely
             // means we want to skip the loading screen anyway.
-            command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(
-                Box::new(data_source),
-            )));
+            command_sender.send_system(SystemCommand::SetRoute(Route::Loading(Box::new(
+                data_source,
+            ))));
         }
 
         match self {
@@ -766,7 +763,7 @@ mod tests {
     use re_uri::{CatalogUri, DatasetSegmentUri, Fragment};
 
     use super::ViewerOpenUrl;
-    use crate::{DisplayMode, Item, StoreHub};
+    use crate::{Item, Route, StoreHub};
 
     #[test]
     fn test_viewer_open_url_from_str() {
@@ -877,14 +874,14 @@ mod tests {
     }
 
     #[test]
-    fn test_viewer_open_url_from_display_mode() {
+    fn test_viewer_open_url_from_route() {
         let store_hub = StoreHub::test_hub();
 
         // RedapServer
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::RedapServer("rerun://localhost:51234".parse().unwrap()),
+                &Route::RedapServer("rerun://localhost:51234".parse().unwrap()),
             )
             .unwrap(),
             ViewerOpenUrl::RedapCatalog("rerun://localhost:51234".parse().unwrap())
@@ -892,9 +889,9 @@ mod tests {
 
         // LocalTable
         assert!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::LocalTable(TableId::new("test_table".to_owned())),
+                &Route::LocalTable(TableId::new("test_table".to_owned())),
             )
             .is_err()
         );
@@ -903,20 +900,16 @@ mod tests {
         let origin = "rerun://localhost:51234".parse().unwrap();
         let entry_uri = re_uri::EntryUri::new(origin, EntryId::new());
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::RedapEntry(entry_uri.clone()),
-            )
-            .unwrap(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::RedapEntry(entry_uri.clone()),).unwrap(),
             ViewerOpenUrl::RedapEntry(entry_uri.clone())
         );
 
-        let dummy_mode = DisplayMode::RedapEntry(entry_uri);
+        let dummy_mode = Route::RedapEntry(entry_uri);
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::Settings {
+                &Route::Settings {
                     previous: Box::new(dummy_mode.clone())
                 }
             )
@@ -925,9 +918,9 @@ mod tests {
         );
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::ChunkStoreBrowser {
+                &Route::ChunkStoreBrowser {
                     recording_id: StoreId::empty_recording(),
                     previous: Box::new(dummy_mode),
                 }
@@ -936,11 +929,11 @@ mod tests {
             ViewerOpenUrl::ChunkStoreBrowser
         );
 
-        // Local recordings is handled in `test_viewer_open_url_from_local_recordings_display_mode`
+        // Local recordings is handled in `test_viewer_open_url_from_local_recordings_route`
     }
 
     #[test]
-    fn test_viewer_open_url_from_local_recordings_display_mode() {
+    fn test_viewer_open_url_from_local_recordings_route() {
         let mut store_hub = StoreHub::test_hub();
 
         fn add_store(store_hub: &mut StoreHub, data_source: Option<LogSource>) -> StoreId {
@@ -960,11 +953,8 @@ mod tests {
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .unwrap(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .unwrap(),
             ViewerOpenUrl::FilePath(std::path::PathBuf::from("/path/to/test.rrd"))
         );
 
@@ -977,42 +967,30 @@ mod tests {
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .unwrap(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .unwrap(),
             ViewerOpenUrl::HttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
 
         // originating from SDK (not possible).
         let id = add_store(&mut store_hub, Some(LogSource::Sdk));
         assert!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .is_err(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .is_err(),
         );
 
         // originating from stdin (not possible).
         let id = add_store(&mut store_hub, Some(LogSource::Stdin));
         assert!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .is_err(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .is_err(),
         );
 
         // originating from web event listener.
         let id = add_store(&mut store_hub, Some(LogSource::RrdWebEvent));
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .unwrap(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .unwrap(),
             ViewerOpenUrl::WebEventListener
         );
 
@@ -1024,11 +1002,8 @@ mod tests {
             }),
         );
         assert!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .is_err(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .is_err(),
         );
 
         // originating from Redap gRPC stream.
@@ -1045,9 +1020,9 @@ mod tests {
         let mut uri: re_uri::DatasetSegmentUri = uri.parse().unwrap();
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::LocalRecording {
+                &Route::LocalRecording {
                     recording_id: id.clone()
                 }
             )
@@ -1073,11 +1048,9 @@ mod tests {
 
         uri.fragment = fragment.clone();
 
-        let mut url = ViewerOpenUrl::from_display_mode(
-            &store_hub,
-            &DisplayMode::LocalRecording { recording_id: id },
-        )
-        .unwrap();
+        let mut url =
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .unwrap();
 
         *url.fragment_mut().unwrap() = fragment;
 
@@ -1090,22 +1063,16 @@ mod tests {
             Some(LogSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .unwrap(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .unwrap(),
             ViewerOpenUrl::RedapProxy(uri.parse().unwrap())
         );
 
         // with no data source (not possible).
         let id = add_store(&mut store_hub, None);
         assert!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecording { recording_id: id }
-            )
-            .is_err(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
+                .is_err(),
         );
     }
 

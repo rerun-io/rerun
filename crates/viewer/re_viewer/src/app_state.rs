@@ -17,11 +17,11 @@ use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext,
-    BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode,
-    DragAndDropManager, FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass,
-    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
-    ViewStates, ViewerContext, blueprint_timeline,
+    BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry, DragAndDropManager,
+    FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass, Route, SelectionChange,
+    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
+    TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
+    blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -85,7 +85,7 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) test_hook: Option<TestHookFn>,
 
-    /// A stack of display modes that represents tab-like navigation of the user.
+    /// A stack of [`Route`]s that represents tab-like navigation of the user.
     #[serde(skip)]
     pub(crate) navigation: Navigation,
 
@@ -164,7 +164,7 @@ pub(crate) struct WelcomeScreenState {
 }
 
 impl AppState {
-    /// The active recording [`StoreId`], if any, derived from the current [`DisplayMode`].
+    /// The active recording [`StoreId`], if any, derived from the current [`Route`].
     pub fn active_recording_id(&self) -> Option<&StoreId> {
         self.navigation.current().recording_id()
     }
@@ -224,7 +224,7 @@ impl AppState {
         let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
         match self.navigation.current() {
-            DisplayMode::Settings { previous } => {
+            Route::Settings { previous } => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(
                     ui,
@@ -237,7 +237,7 @@ impl AppState {
                 }
             }
 
-            DisplayMode::ChunkStoreBrowser { previous, .. } => {
+            Route::ChunkStoreBrowser { previous, .. } => {
                 let should_datastore_ui_remain_active =
                     self.datastore_ui
                         .ui(store_context, ui, self.app_options.timestamp_format);
@@ -246,8 +246,7 @@ impl AppState {
                 }
             }
 
-            // TODO(grtlr,ab): This needs to be further cleaned up and split into separately handled
-            // display modes. See https://www.notion.so/rerunio/Major-refactor-of-re_viewer-1d8b24554b198085a02dfe441db330b4
+            // TODO(RR-3033): This needs to be further cleaned up and split into separately handled routes.
             _ => {
                 let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
 
@@ -406,7 +405,7 @@ impl AppState {
                 };
 
                 let egui_ctx = ui.ctx().clone();
-                let display_mode = self.navigation.current();
+                let route = self.navigation.current();
                 let ctx = ViewerContext {
                     app_ctx: AppContext {
                         is_test: app_env.is_test(),
@@ -422,7 +421,7 @@ impl AppState {
                         connection_registry,
                         storage_context,
                         component_ui_registry,
-                        display_mode,
+                        route,
                         selection_state,
                         focused_item,
                         drag_and_drop_manager: &drag_and_drop_manager,
@@ -455,7 +454,7 @@ impl AppState {
                 //
 
                 if app_options.inspect_blueprint_timeline
-                    && matches!(display_mode, DisplayMode::LocalRecording { .. })
+                    && matches!(route, Route::LocalRecording { .. })
                 {
                     let blueprint_db = ctx.store_context.blueprint;
 
@@ -501,7 +500,7 @@ impl AppState {
                 }
 
                 // TODO(grtlr): We override the app blueprint, until we have proper blueprint support for tables.
-                let app_blueprint = if matches!(display_mode, DisplayMode::LocalTable(..)) {
+                let app_blueprint = if matches!(route, Route::LocalTable(..)) {
                     &AppBlueprint::new(
                         None,
                         &LatestAtQuery::latest(blueprint_timeline()),
@@ -516,7 +515,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if display_mode.has_time_panel() {
+                if route.has_time_panel() {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -532,7 +531,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if display_mode.has_selection_panel() {
+                if route.has_selection_panel() {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -565,14 +564,13 @@ impl AppState {
                         // before drawing the blueprint panel.
                         ui.spacing_mut().item_spacing.y = 0.0;
 
-                        match display_mode {
-                            DisplayMode::LocalRecording { .. }
-                            | DisplayMode::LocalTable(..)
-                            | DisplayMode::RedapEntry(..)
-                            | DisplayMode::RedapServer(..)
-                            | DisplayMode::Loading(..) => {
-                                let show_blueprints =
-                                    matches!(display_mode, DisplayMode::LocalRecording { .. });
+                        match route {
+                            Route::LocalRecording { .. }
+                            | Route::LocalTable(..)
+                            | Route::RedapEntry(..)
+                            | Route::RedapServer(..)
+                            | Route::Loading(..) => {
+                                let show_blueprints = matches!(route, Route::LocalRecording { .. });
                                 let resizable = show_blueprints;
                                 if resizable {
                                     // Ensure Blueprint panel has at least 150px minimum height, because now it doesn't autogrow (as it does without resizing=active)
@@ -620,8 +618,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::ChunkStoreBrowser { .. }
-                            | DisplayMode::Settings { .. } => {} // handled above
+                            Route::ChunkStoreBrowser { .. } | Route::Settings { .. } => {} // handled above
                         }
                     },
                 );
@@ -643,8 +640,8 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
-                        match display_mode {
-                            DisplayMode::LocalTable(table_id) => {
+                        match route {
+                            Route::LocalTable(table_id) => {
                                 if let Some(store) = ctx.table_stores().get(table_id) {
                                     table_ui(&ctx, runtime, ui, table_id, store);
                                 } else {
@@ -655,26 +652,24 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::LocalRecording { .. } => {
+                            Route::LocalRecording { .. } => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
                                 if ctx.store_context.application_id()
                                     == StoreHub::welcome_screen_app_id()
                                 {
-                                    ctx.command_sender().send_system(
-                                        SystemCommand::ChangeDisplayMode(
-                                            DisplayMode::welcome_page(),
-                                        ),
-                                    );
+                                    ctx.command_sender().send_system(SystemCommand::SetRoute(
+                                        Route::welcome_page(),
+                                    ));
                                 }
                                 viewport_ui.viewport_ui(ui, &ctx, view_states);
                             }
 
-                            DisplayMode::RedapEntry(entry) => {
+                            Route::RedapEntry(entry) => {
                                 redap_servers.entry_ui(&ctx, ui, entry.entry_id);
                             }
 
-                            DisplayMode::RedapServer(origin) => {
+                            Route::RedapServer(origin) => {
                                 if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
                                     let origin = redap_servers
                                         .iter_servers()
@@ -710,7 +705,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::Loading(source) => {
+                            Route::Loading(source) => {
                                 let source = if let Ok(url) =
                                     ViewerOpenUrl::from_data_source(source)
                                 {
@@ -722,8 +717,7 @@ impl AppState {
                                 ui.loading_screen("Loading data source:", &*source);
                             }
 
-                            DisplayMode::ChunkStoreBrowser { .. }
-                            | DisplayMode::Settings { .. } => {} // Handled above
+                            Route::ChunkStoreBrowser { .. } | Route::Settings { .. } => {} // Handled above
                         }
                     });
 

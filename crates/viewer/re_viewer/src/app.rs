@@ -28,8 +28,8 @@ use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_ba
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, EditRedapServerModalCommand, FallbackProviderRegistry, Item,
-    MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, StorageContext, StoreContext,
+    ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry, Item,
+    MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext, StoreContext,
     SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
@@ -498,7 +498,7 @@ impl App {
         &self.app_env
     }
 
-    /// The active recording [`StoreId`], if any, derived from the current [`DisplayMode`].
+    /// The active recording [`StoreId`], if any, derived from the current [`Route`].
     pub fn active_recording_id(&self) -> Option<&StoreId> {
         self.state.active_recording_id()
     }
@@ -701,7 +701,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
-        display_mode: &DisplayMode,
+        route: &Route,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
             self.run_ui_command(
@@ -709,7 +709,7 @@ impl App {
                 app_blueprint,
                 storage_context,
                 store_context,
-                display_mode,
+                route,
                 cmd,
             );
         }
@@ -744,15 +744,14 @@ impl App {
 
     /// Updates the viewer tracked history
     fn update_viewer_history(&mut self, store_hub: &StoreHub) {
-        let display_mode = self.state.navigation.current();
-        let time_ctrl = display_mode
+        let route = self.state.navigation.current();
+        let time_ctrl = route
             .recording_id()
             .and_then(|id| self.state.time_control(id));
 
         let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) =
-            ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
+        let Ok(url) = ViewerOpenUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
         else {
             return;
         };
@@ -763,32 +762,31 @@ impl App {
     /// Updates the web address and web history.
     #[cfg(target_arch = "wasm32")]
     fn update_web_history(&self, store_hub: &StoreHub) {
-        let display_mode = self.state.navigation.current();
-        let time_ctrl = display_mode
+        let route = self.state.navigation.current();
+        let time_ctrl = route
             .recording_id()
             .and_then(|id| self.state.time_control(id));
         let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) =
-            ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
-                .map(|mut url| {
-                    // We don't want to update the url while playing, so we use the last paused time.
-                    if let Some(fragment) = url.fragment_mut() {
-                        fragment.when = time_ctrl.and_then(|time_ctrl| {
-                            Some((
-                                *time_ctrl.timeline_name(),
-                                re_log_types::TimeCell {
-                                    typ: time_ctrl.time_type()?,
-                                    value: time_ctrl.last_paused_time()?.floor().into(),
-                                },
-                            ))
-                        });
-                    }
+        let Ok(url) = ViewerOpenUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
+            .map(|mut url| {
+                // We don't want to update the url while playing, so we use the last paused time.
+                if let Some(fragment) = url.fragment_mut() {
+                    fragment.when = time_ctrl.and_then(|time_ctrl| {
+                        Some((
+                            *time_ctrl.timeline_name(),
+                            re_log_types::TimeCell {
+                                typ: time_ctrl.time_type()?,
+                                value: time_ctrl.last_paused_time()?.floor().into(),
+                            },
+                        ))
+                    });
+                }
 
-                    url
-                })
-                // History entries expect the url parameter, not the full url, therefore don't pass a base url.
-                .and_then(|url| url.sharable_url(None))
+                url
+            })
+            // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+            .and_then(|url| url.sharable_url(None))
         else {
             return;
         };
@@ -843,10 +841,10 @@ impl App {
                 match store_id.kind() {
                     StoreKind::Recording => {
                         store_hub.load_blueprint_and_caches(&store_id); // Ensure caches and blueprints
-                        let display_mode = DisplayMode::LocalRecording {
+                        let route = Route::LocalRecording {
                             recording_id: store_id.clone(),
                         };
-                        let (storage_ctx, store_ctx) = store_hub.read_context(&display_mode); // Materialize the target blueprint on-demand
+                        let (storage_ctx, store_ctx) = store_hub.read_context(&route); // Materialize the target blueprint on-demand
 
                         let target_blueprint = store_ctx.blueprint;
                         let blueprint_query =
@@ -924,7 +922,7 @@ impl App {
                     store_hub.load_blueprint_and_caches(&recording_id);
                     self.state
                         .navigation
-                        .replace(DisplayMode::LocalRecording { recording_id });
+                        .replace(Route::LocalRecording { recording_id });
                 } else {
                     // TODO(RR-3713): show a blueprint for it anyway
                     re_log::warn_once!("Can't switch app-id - we have no recording for it");
@@ -934,16 +932,6 @@ impl App {
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
-            }
-
-            SystemCommand::ActivateRecordingOrTable(entry) => {
-                match &entry {
-                    RecordingOrTable::Recording { store_id } => {
-                        store_hub.load_blueprint_and_caches(store_id);
-                    }
-                    RecordingOrTable::Table { .. } => {}
-                }
-                self.state.navigation.replace(entry.display_mode());
             }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
@@ -1011,13 +999,13 @@ impl App {
                 self.add_log_receiver(rx);
             }
 
-            SystemCommand::ChangeDisplayMode(display_mode) => {
-                if &display_mode == self.state.navigation.current() {
+            SystemCommand::SetRoute(new_route) => {
+                if &new_route == self.state.navigation.current() {
                     return;
                 }
 
                 // Suppress loading screen if we're loading a recording that's already loaded, even if only partially.
-                if let DisplayMode::Loading(source) = &display_mode
+                if let Route::Loading(source) = &new_route
                     && let Some(re_uri::RedapUri::DatasetData(dataset_uri)) = source.redap_uri()
                     && store_hub
                         .store_bundle()
@@ -1027,18 +1015,23 @@ impl App {
                     return;
                 }
 
-                if matches!(display_mode, DisplayMode::Loading(_)) {
+                if let Some(recording_id) = new_route.recording_id() {
+                    store_hub.load_blueprint_and_caches(recording_id);
+                }
+
+                if matches!(new_route, Route::Loading(_)) {
                     self.state
                         .selection_state
                         .set_selection(re_viewer_context::ItemCollection::default());
                 }
-                self.state.navigation.replace(display_mode);
+
+                self.state.navigation.replace(new_route);
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
             SystemCommand::OpenSettings => {
-                self.state.navigation.replace(DisplayMode::Settings {
+                self.state.navigation.replace(Route::Settings {
                     previous: Box::new(self.state.navigation.current().clone()),
                 });
 
@@ -1049,21 +1042,19 @@ impl App {
             SystemCommand::OpenChunkStoreBrowser => {
                 if let Some(recording_id) = self.state.navigation.current().recording_id().cloned()
                 {
-                    self.state
-                        .navigation
-                        .replace(DisplayMode::ChunkStoreBrowser {
-                            recording_id,
-                            previous: Box::new(self.state.navigation.current().clone()),
-                        });
+                    self.state.navigation.replace(Route::ChunkStoreBrowser {
+                        recording_id,
+                        previous: Box::new(self.state.navigation.current().clone()),
+                    });
                 } else {
                     re_log::debug!(
-                        "Cannot activate chunk store browser from current display mode: {:?}",
+                        "Cannot activate chunk store browser from current route: {:?}",
                         self.state.navigation.current()
                     );
                 }
             }
 
-            SystemCommand::ResetDisplayMode => {
+            SystemCommand::ResetRoute => {
                 self.state.navigation.reset();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
@@ -1080,9 +1071,7 @@ impl App {
                 self.state.redap_servers.add_server(origin.clone());
 
                 if self.state.navigation.current().recording_id().is_none() {
-                    self.state
-                        .navigation
-                        .replace(DisplayMode::RedapServer(origin));
+                    self.state.navigation.replace(Route::RedapServer(origin));
                 }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
@@ -1231,11 +1220,11 @@ impl App {
             SystemCommand::SetSelection(set) => {
                 if let Some(item) = set.selection.single_item() {
                     // If the selected item has its own page, switch to it.
-                    if let Some(display_mode) = DisplayMode::from_item(item) {
-                        if let DisplayMode::LocalRecording { recording_id } = &display_mode {
+                    if let Some(route) = Route::from_item(item) {
+                        if let Route::LocalRecording { recording_id } = &route {
                             store_hub.load_blueprint_and_caches(recording_id);
                         }
-                        self.state.navigation.replace(display_mode);
+                        self.state.navigation.replace(route);
                     }
                 }
 
@@ -1390,7 +1379,7 @@ impl App {
     /// and if so, will not load the data again.
     /// Instead, it will only perform any kind of selection/mode-switching operations associated with loading the given data source.
     ///
-    /// Note that we *do not* change the display mode here _unconditionally_.
+    /// Note that we *do not* change the route here _unconditionally_.
     /// For instance if the datasource is a blueprint for a dataset that may be loaded later,
     /// we don't want to switch out to it while the user browses a server.
     fn load_data_source(
@@ -1587,7 +1576,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
-        display_mode: &DisplayMode,
+        route: &Route,
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
@@ -1877,21 +1866,19 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
-                DisplayMode::ChunkStoreBrowser { previous, .. } => {
+                Route::ChunkStoreBrowser { previous, .. } => {
                     self.state.navigation.replace((**previous).clone());
                 }
 
                 current => {
                     if let Some(recording_id) = current.recording_id().cloned() {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::ChunkStoreBrowser {
-                                recording_id,
-                                previous: Box::new(current.clone()),
-                            });
+                        self.state.navigation.replace(Route::ChunkStoreBrowser {
+                            recording_id,
+                            previous: Box::new(current.clone()),
+                        });
                     } else {
                         re_log::debug!(
-                            "Cannot toggle chunk store browser from current display mode: {current:?}",
+                            "Cannot toggle chunk store browser from current route: {current:?}",
                         );
                     }
                 }
@@ -1941,7 +1928,7 @@ impl App {
             }
 
             UICommand::PlaybackTogglePlayPause => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1950,7 +1937,7 @@ impl App {
                 }
             }
             UICommand::PlaybackFollow => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1961,7 +1948,7 @@ impl App {
                 }
             }
             UICommand::PlaybackStepBack => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1970,7 +1957,7 @@ impl App {
                 }
             }
             UICommand::PlaybackStepForward => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1979,7 +1966,7 @@ impl App {
                 }
             }
             UICommand::PlaybackBack => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -1991,7 +1978,7 @@ impl App {
                 }
             }
             UICommand::PlaybackForward => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2003,7 +1990,7 @@ impl App {
                 }
             }
             UICommand::PlaybackBackFast => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2015,7 +2002,7 @@ impl App {
                 }
             }
             UICommand::PlaybackForwardFast => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2027,7 +2014,7 @@ impl App {
                 }
             }
             UICommand::PlaybackBeginning => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2036,7 +2023,7 @@ impl App {
                 }
             }
             UICommand::PlaybackEnd => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2045,7 +2032,7 @@ impl App {
                 }
             }
             UICommand::PlaybackRestart => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2055,7 +2042,7 @@ impl App {
             }
 
             UICommand::PlaybackSpeed(speed) => {
-                if let Some(store_id) = display_mode.recording_id() {
+                if let Some(store_id) = route.recording_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
@@ -2103,30 +2090,29 @@ impl App {
 
             UICommand::Share => {
                 let selection = self.state.selection_state.selected_items();
-                let rec_cfg = display_mode
+                let rec_cfg = route
                     .recording_id()
                     .and_then(|id| self.state.time_controls.get(id));
-                if let Err(err) = self.state.share_modal.open(
-                    storage_context.hub,
-                    display_mode,
-                    rec_cfg,
-                    selection,
-                ) {
+                if let Err(err) =
+                    self.state
+                        .share_modal
+                        .open(storage_context.hub, route, rec_cfg, selection)
+                {
                     re_log::error!("Cannot share link to current screen: {err}");
                 }
             }
             UICommand::CopyDirectLink => {
-                match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
+                match ViewerOpenUrl::from_route(storage_context.hub, route) {
                     Ok(url) => self.run_copy_link_command(&url),
                     Err(err) => re_log::error!("{err}"),
                 }
             }
 
             UICommand::CopyTimeSelectionLink => {
-                match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
+                match ViewerOpenUrl::from_route(storage_context.hub, route) {
                     Ok(mut url) => {
                         if let Some(fragment) = url.fragment_mut() {
-                            let time_ctrl = display_mode
+                            let time_ctrl = route
                                 .recording_id()
                                 .and_then(|id| self.state.time_control(id));
 
@@ -2638,7 +2624,7 @@ impl App {
                                         .set_selection(Item::StoreId(recording_id.clone()));
                                     self.state
                                         .navigation
-                                        .replace(DisplayMode::LocalRecording { recording_id });
+                                        .replace(Route::LocalRecording { recording_id });
                                 } else {
                                     // TODO(RR-3713): show a blueprint for it anyway
                                     re_log::warn_once!(
@@ -2858,7 +2844,7 @@ impl App {
         }
 
         store_hub.load_blueprint_and_caches(store_id);
-        self.state.navigation.replace(DisplayMode::LocalRecording {
+        self.state.navigation.replace(Route::LocalRecording {
             recording_id: store_id.clone(),
         });
 
@@ -3004,7 +2990,7 @@ impl App {
     fn handle_dropping_files(
         egui_ctx: &egui::Context,
         command_sender: &CommandSender,
-        display_mode: &DisplayMode,
+        route: &Route,
     ) {
         #![allow(clippy::allow_attributes, clippy::needless_continue)] // false positive, depending on target_arch
 
@@ -3019,7 +3005,7 @@ impl App {
         let mut force_store_info = false;
 
         for file in dropped_files {
-            let active_store_id = display_mode
+            let active_store_id = route
                 .recording_id()
                 .cloned()
                 // Don't redirect data to the welcome screen.
@@ -3764,20 +3750,20 @@ impl eframe::App for App {
 
         // Make sure some app is active
         // Must be called before `read_context` below.
-        if let DisplayMode::Loading(source) = self.state.navigation.current() {
+        if let Route::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
                 self.state.navigation.reset();
             }
         } else {
-            // If the current display mode points to a stale recording, find a new valid state.
-            let display_mode_is_valid = self
+            // If the current route points to a stale recording, find a new valid state.
+            let route_is_valid = self
                 .state
                 .navigation
                 .current()
                 .recording_id()
                 .is_none_or(|recording_id| store_hub.entity_db(recording_id).is_some());
 
-            if !display_mode_is_valid {
+            if !route_is_valid {
                 let any_other_app_id: Option<ApplicationId> = store_hub
                     .store_bundle()
                     .entity_dbs()
@@ -3794,7 +3780,7 @@ impl eframe::App for App {
                             .set_selection(Item::StoreId(recording_id.clone()));
                         self.state
                             .navigation
-                            .replace(DisplayMode::LocalRecording { recording_id });
+                            .replace(Route::LocalRecording { recording_id });
                     } else {
                         self.state.navigation.reset();
                     }
@@ -3872,8 +3858,8 @@ impl eframe::App for App {
                 }
             }
 
-            let display_mode = self.state.navigation.current().clone();
-            Self::handle_dropping_files(egui_ctx, &self.command_sender, &display_mode);
+            let route = self.state.navigation.current().clone();
+            Self::handle_dropping_files(egui_ctx, &self.command_sender, &route);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
             self.run_pending_ui_commands(
@@ -3881,7 +3867,7 @@ impl eframe::App for App {
                 &app_blueprint,
                 &storage_context,
                 Some(&store_context),
-                &display_mode,
+                &route,
             );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);

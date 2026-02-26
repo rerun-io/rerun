@@ -13,8 +13,7 @@ use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
 use re_viewer_context::{
-    AsyncRuntimeHandle, RecordingOrTable, SystemCommand, SystemCommandSender as _,
-    TimeControlCommand, open_url,
+    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -409,10 +408,11 @@ impl WebHandle {
         };
 
         if store_id.is_recording() {
-            app.command_sender
-                .send_system(SystemCommand::ActivateRecordingOrTable(
-                    RecordingOrTable::Recording { store_id },
-                ));
+            app.command_sender.send_system(SystemCommand::SetRoute(
+                re_viewer_context::Route::LocalRecording {
+                    recording_id: store_id,
+                },
+            ));
         }
 
         app.egui_ctx.request_repaint();

@@ -21,8 +21,8 @@ use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry,
-    Item, ItemCollection, NeedsRepaint, StoreHub, SystemCommand, SystemCommandSender as _,
+    CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, Item,
+    ItemCollection, NeedsRepaint, Route, StoreHub, SystemCommand, SystemCommandSender as _,
     TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
     ViewerContext, blueprint_timeline, command_channel,
 };
@@ -602,10 +602,10 @@ impl TestContext {
             );
         }
 
-        let display_mode = DisplayMode::LocalRecording {
+        let route = Route::LocalRecording {
             recording_id: self.recording_store_id.clone(),
         };
-        let (storage_context, store_context) = store_hub.read_context(&display_mode);
+        let (storage_context, store_context) = store_hub.read_context(&route);
 
         let indicated_entities_per_visualizer = self
             .view_class_registry
@@ -648,7 +648,7 @@ impl TestContext {
                 storage_context: &storage_context,
                 component_ui_registry: &self.component_ui_registry,
 
-                display_mode: &DisplayMode::LocalRecording {
+                route: &Route::LocalRecording {
                     recording_id: self.recording_store_id.clone(),
                 },
 
@@ -887,16 +887,15 @@ impl TestContext {
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
-                | SystemCommand::ActivateRecordingOrTable(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseRecordingOrTable(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
-                | SystemCommand::ChangeDisplayMode(_)
+                | SystemCommand::SetRoute(_)
                 | SystemCommand::OpenSettings
                 | SystemCommand::OpenChunkStoreBrowser
-                | SystemCommand::ResetDisplayMode
+                | SystemCommand::ResetRoute
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }

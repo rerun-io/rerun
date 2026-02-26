@@ -309,10 +309,10 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
 fn connection_status_ui(
     ui: &mut egui::Ui,
     latency_trackers: &mut ServerLatencyTrackers,
-    display_mode: &re_viewer_context::DisplayMode,
+    route: &re_viewer_context::Route,
     store_hub: &StoreHub,
 ) {
-    if let Some(origin) = display_mode.redap_origin(store_hub)
+    if let Some(origin) = route.redap_origin(store_hub)
         && origin != *re_redap_browser::EXAMPLES_ORIGIN
     {
         let latency = latency_trackers.origin_latency(&origin);
@@ -357,7 +357,7 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
-    let display_mode = app.state.navigation.current();
+    let route = app.state.navigation.current();
 
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
@@ -378,7 +378,7 @@ fn panel_buttons_r2l(
 
     // selection panel
     ui.add_enabled_ui(
-        display_mode.has_selection_panel() && !app_blueprint.selection_panel_overridden(),
+        route.has_selection_panel() && !app_blueprint.selection_panel_overridden(),
         |ui| {
             if ui
                 .medium_icon_toggle_button(
@@ -396,7 +396,7 @@ fn panel_buttons_r2l(
 
     // time panel
     ui.add_enabled_ui(
-        display_mode.has_time_panel() && !app_blueprint.time_panel_overridden(),
+        route.has_time_panel() && !app_blueprint.time_panel_overridden(),
         |ui| {
             if ui
                 .medium_icon_toggle_button(
@@ -414,7 +414,7 @@ fn panel_buttons_r2l(
 
     // blueprint panel
     ui.add_enabled_ui(
-        display_mode.has_blueprint_panel() && !app_blueprint.blueprint_panel_overridden(),
+        route.has_blueprint_panel() && !app_blueprint.blueprint_panel_overridden(),
         |ui| {
             if ui
                 .medium_icon_toggle_button(

@@ -111,9 +111,9 @@ impl ViewerContext<'_> {
         self.app_ctx.command_sender
     }
 
-    /// The active display mode
-    pub fn display_mode(&self) -> &crate::DisplayMode {
-        self.app_ctx.display_mode
+    /// The active route
+    pub fn route(&self) -> &crate::Route {
+        self.app_ctx.route
     }
 
     /// The [`StoreHub`].
@@ -446,10 +446,9 @@ impl ViewerContext<'_> {
         self.recording().application_id() != StoreHub::welcome_screen_app_id()
     }
 
-    /// Reverts to the default display mode
-    pub fn revert_to_default_display_mode(&self) {
-        self.command_sender()
-            .send_system(SystemCommand::ResetDisplayMode);
+    /// Reverts to the default route
+    pub fn revert_to_default_route(&self) {
+        self.command_sender().send_system(SystemCommand::ResetRoute);
     }
 
     /// Iterates over all entities that are visualizeable for a given view class.
