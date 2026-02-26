@@ -44,22 +44,28 @@ class Mat3x3Ext:
         from . import Mat3x3
 
         if isinstance(data, Mat3x3):
-            float_arrays = data.flat_columns
-        elif len(data) == 0:  # type: ignore[arg-type]
-            float_arrays = np.empty((0,), dtype=np.float32)
-        else:
-            try:
-                # Try to convert it to a single Mat3x3
-                # Will raise ValueError if the wrong shape
-                float_arrays = Mat3x3(data).flat_columns  # type: ignore[arg-type]
-            except ValueError:
-                # If the data can't be possibly more than one Mat3x3, raise the original ValueError.
-                if isinstance(data[0], numbers.Number):  # type: ignore[arg-type, index]
-                    raise
+            # Single Mat3x3 instance — already stored as flat column-major
+            return np.ascontiguousarray(data.flat_columns, dtype=np.float32)
 
-                # Otherwise try to convert it to a sequence of Mat3x3s
-                # Let this value error propagate as the fallback
-                result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[arg-type, union-attr, call-overload]
-                float_arrays = np.hstack(result).ravel()
+        try:
+            arr = np.asarray(data, dtype=np.float32)
+        except (ValueError, TypeError):
+            # Heterogeneous list (e.g. mixed Mat3x3, lists, numpy arrays)
+            # Fall back to per-element conversion
+            result = [Mat3x3(d).flat_columns for d in data]  # type: ignore[union-attr, call-overload]
+            return np.ascontiguousarray(np.concatenate(result))
 
-        return np.ascontiguousarray(float_arrays, dtype=np.float32)
+        if arr.size == 0:
+            return np.empty((0,), dtype=np.float32)
+
+        # Fast path for single matrix (most common case: np.eye(3), flat list of 9)
+        if arr.ndim == 1 and arr.size == 9:
+            return np.ascontiguousarray(arr.reshape(3, 3).ravel("F"))
+
+        if arr.ndim == 2 and arr.shape == (3, 3):
+            return np.ascontiguousarray(arr.ravel("F"))
+
+        # Batch: reshape to (-1, 3, 3), transpose each, flatten
+        # This will raise ValueError with a clear message if shape is incompatible
+        arr = arr.reshape(-1, 3, 3)
+        return np.ascontiguousarray(arr.transpose(0, 2, 1).ravel())
