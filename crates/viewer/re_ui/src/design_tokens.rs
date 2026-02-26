@@ -227,8 +227,9 @@ pub struct DesignTokens {
     // Visualizer list (selection panel)
     pub visualizer_list_title_text_color: Color32,
     pub visualizer_list_path_text_color: Color32,
-    pub visualizer_list_color_box_size: f32,
-    pub visualizer_list_color_box_stroke: Stroke,
+    pub color_swatch_size: f32,
+    pub color_swatch_interactive_stroke: Stroke,
+    pub color_swatch_noninteractive_stroke: Stroke,
     pub visualizer_list_pill_bg_color: Color32,
     pub visualizer_list_pill_bg_color_hovered: Color32,
 
@@ -401,8 +402,9 @@ impl DesignTokens {
 
             visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
             visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
-            visualizer_list_color_box_size: get_scalar("visualizer_list_color_box_size")?,
-            visualizer_list_color_box_stroke: get_stroke("visualizer_list_color_box_stroke"),
+            color_swatch_size: get_scalar("color_swatch_size")?,
+            color_swatch_interactive_stroke: get_stroke("color_swatch_interactive_stroke"),
+            color_swatch_noninteractive_stroke: get_stroke("color_swatch_noninteractive_stroke"),
             visualizer_list_pill_bg_color: get_color("visualizer_list_pill_bg_color"),
             visualizer_list_pill_bg_color_hovered: get_color(
                 "visualizer_list_pill_bg_color_hovered",

@@ -20,6 +20,7 @@ all-features = true
 
 [dependencies]
 re_chunk_store.workspace = true
+re_component_ui.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true

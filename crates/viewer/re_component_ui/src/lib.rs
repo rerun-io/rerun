@@ -6,6 +6,7 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod color;
+pub mod color_swatch;
 mod datatype_uis;
 mod entity_path;
 mod geo_line_string;

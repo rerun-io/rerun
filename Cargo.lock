@@ -10399,6 +10399,7 @@ dependencies = [
  "nohash-hasher",
  "rayon",
  "re_chunk_store",
+ "re_component_ui",
  "re_format",
  "re_log",
  "re_log_types",

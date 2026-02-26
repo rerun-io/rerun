@@ -5,6 +5,7 @@ use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 use re_chunk_store::TimeType;
+use re_component_ui::color_swatch::ColorSwatch;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
@@ -1577,10 +1578,7 @@ impl TimeSeriesColors {
             return;
         }
 
-        let size = ui.tokens().visualizer_list_color_box_size;
-        let color_box_size = egui::vec2(size, size);
-        let spacing = 4.0;
-        ui.spacing_mut().item_spacing.x = spacing;
+        ui.spacing_mut().item_spacing.x = 4.0;
 
         let num_boxes = if self.instance_count > 2 {
             1
@@ -1601,14 +1599,9 @@ impl TimeSeriesColors {
 
         // Draw color boxes from right to left
         for color in self.colors[..num_boxes].iter().rev() {
-            let (rect, _response) = ui.allocate_exact_size(color_box_size, egui::Sense::hover());
-            ui.painter().rect(
-                rect,
-                3.0,
-                *color,
-                ui.tokens().visualizer_list_color_box_stroke,
-                egui::StrokeKind::Inside,
-            );
+            let rgba = re_sdk_types::datatypes::Rgba32::from(*color);
+            let mut color_ref = re_viewer_context::MaybeMutRef::Ref(&rgba);
+            ui.add(ColorSwatch::new(&mut color_ref));
         }
     }
 }
