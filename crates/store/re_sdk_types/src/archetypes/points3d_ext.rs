@@ -15,12 +15,10 @@ impl Points3D {
     ///
     /// The media type will be inferred from the path (extension), or the contents if that fails.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_file_path(filepath: &std::path::Path) -> anyhow::Result<Self> {
+    pub fn from_file_path(filepath: &std::path::Path) -> std::io::Result<Self> {
         re_tracing::profile_function!(filepath.to_string_lossy());
-        use anyhow::Context as _;
 
-        let file = std::fs::File::open(filepath)
-            .with_context(|| format!("Failed to open file {filepath:?}"))?;
+        let file = std::fs::File::open(filepath)?;
         let mut file = std::io::BufReader::new(file);
 
         let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
@@ -35,7 +33,7 @@ impl Points3D {
     /// Creates a new [`Points3D`] from the contents of a `.ply` file.
     ///
     /// If unspecified, he media type will be inferred from the contents.
-    pub fn from_file_contents(contents: &[u8]) -> anyhow::Result<Self> {
+    pub fn from_file_contents(contents: &[u8]) -> std::io::Result<Self> {
         re_tracing::profile_function!();
         let parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
         let mut contents = std::io::Cursor::new(contents);
