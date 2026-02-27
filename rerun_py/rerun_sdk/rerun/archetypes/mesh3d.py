@@ -124,6 +124,8 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             albedo_texture_buffer=None,
             albedo_texture_format=None,
             class_ids=None,
+            shader_source=None,
+            shader_parameters=None,
         )
 
     @classmethod
@@ -147,6 +149,8 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
         albedo_texture_buffer: datatypes.BlobLike | None = None,
         albedo_texture_format: datatypes.ImageFormatLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
+        shader_source: datatypes.Utf8Like | None = None,
+        shader_parameters: datatypes.Utf8Like | None = None,
     ) -> Mesh3D:
         """
         Update only some specific fields of a `Mesh3D`.
@@ -188,6 +192,16 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             Optional class Ids for the vertices.
 
             The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+        shader_source:
+            Optional WGSL shader source code for custom fragment rendering.
+
+            When provided, replaces the default Phong lighting fragment shader.
+            The shader's fragment entry point must be named `fs_main`.
+        shader_parameters:
+            Optional JSON-encoded shader parameter metadata.
+
+            Describes uniform parameters, their types, and source entity paths
+            for data binding with the custom shader.
 
         """
 
@@ -203,6 +217,8 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
                 "albedo_texture_buffer": albedo_texture_buffer,
                 "albedo_texture_format": albedo_texture_format,
                 "class_ids": class_ids,
+                "shader_source": shader_source,
+                "shader_parameters": shader_parameters,
             }
 
             if clear_unset:
@@ -232,6 +248,8 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
         albedo_texture_buffer: datatypes.BlobArrayLike | None = None,
         albedo_texture_format: datatypes.ImageFormatArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
+        shader_source: datatypes.Utf8ArrayLike | None = None,
+        shader_parameters: datatypes.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -276,6 +294,16 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             Optional class Ids for the vertices.
 
             The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+        shader_source:
+            Optional WGSL shader source code for custom fragment rendering.
+
+            When provided, replaces the default Phong lighting fragment shader.
+            The shader's fragment entry point must be named `fs_main`.
+        shader_parameters:
+            Optional JSON-encoded shader parameter metadata.
+
+            Describes uniform parameters, their types, and source entity paths
+            for data binding with the custom shader.
 
         """
 
@@ -291,6 +319,8 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
                 albedo_texture_buffer=albedo_texture_buffer,
                 albedo_texture_format=albedo_texture_format,
                 class_ids=class_ids,
+                shader_source=shader_source,
+                shader_parameters=shader_parameters,
             )
 
         batches = inst.as_component_batches()
@@ -307,6 +337,8 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             "Mesh3D:albedo_texture_buffer": albedo_texture_buffer,
             "Mesh3D:albedo_texture_format": albedo_texture_format,
             "Mesh3D:class_ids": class_ids,
+            "Mesh3D:shader_source": shader_source,
+            "Mesh3D:shader_parameters": shader_parameters,
         }
         columns = []
 
@@ -430,6 +462,30 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
     # Optional class Ids for the vertices.
     #
     # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    shader_source: components.ShaderSourceBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ShaderSourceBatch._converter,  # type: ignore[misc]
+    )
+    # Optional WGSL shader source code for custom fragment rendering.
+    #
+    # When provided, replaces the default Phong lighting fragment shader.
+    # The shader's fragment entry point must be named `fs_main`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    shader_parameters: components.ShaderParametersBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ShaderParametersBatch._converter,  # type: ignore[misc]
+    )
+    # Optional JSON-encoded shader parameter metadata.
+    #
+    # Describes uniform parameters, their types, and source entity paths
+    # for data binding with the custom shader.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

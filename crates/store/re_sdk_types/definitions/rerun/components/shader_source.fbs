@@ -1,0 +1,19 @@
+namespace rerun.components;
+
+// ---
+
+/// WGSL shader source code for custom rendering.
+///
+/// This component holds inline WGSL shader source that replaces the default
+/// fragment shader when attached to a mesh archetype. The shader's fragment
+/// entry point must be named `fs_main`.
+table ShaderSource (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  value: rerun.datatypes.Utf8 (order: 100);
+}

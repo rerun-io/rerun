@@ -1,14 +1,18 @@
 mod compositor;
+pub mod custom_shader_mesh;
 mod debug_overlay;
 mod depth_cloud;
 mod generic_skybox;
 mod lines;
-mod mesh_renderer;
+pub(crate) mod mesh_renderer;
 mod point_cloud;
 mod rectangles;
 mod test_triangle;
 mod world_grid;
 
+pub use custom_shader_mesh::{
+    CustomShaderMeshInstance, create_custom_shader_module, custom_shader_draw_phases,
+};
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};

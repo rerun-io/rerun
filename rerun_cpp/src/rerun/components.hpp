@@ -56,6 +56,8 @@
 #include "components/scalar.hpp"
 #include "components/scale3d.hpp"
 #include "components/schema_id.hpp"
+#include "components/shader_parameters.hpp"
+#include "components/shader_source.hpp"
 #include "components/show_labels.hpp"
 #include "components/stroke_width.hpp"
 #include "components/tensor_data.hpp"

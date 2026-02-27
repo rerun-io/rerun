@@ -8,6 +8,7 @@
 
 mod image_data_to_texture;
 mod texture_manager;
+mod texture_manager_3d;
 mod yuv_converter;
 
 pub use image_data_to_texture::{
@@ -16,4 +17,5 @@ pub use image_data_to_texture::{
 pub use texture_manager::{
     AlphaChannelUsage, GpuTexture2D, TextureManager2D, TextureManager2DError,
 };
+pub use texture_manager_3d::{GpuTexture3D, TextureManager3D, VolumeDataDesc};
 pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};

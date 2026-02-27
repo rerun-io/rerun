@@ -1,7 +1,7 @@
 use std::hash::Hash;
 use std::path::PathBuf;
 
-use ahash::HashSet;
+use ahash::{HashMap, HashSet};
 use anyhow::Context as _;
 
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
@@ -105,9 +105,26 @@ impl ShaderModuleDesc {
 
 // ---
 
+/// Descriptor for an inline WGSL shader module (not loaded from a file).
+///
+/// Inline shaders are keyed by a content hash for caching.
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct InlineShaderModuleDesc {
+    /// Debug label for this shader.
+    pub label: DebugLabel,
+
+    /// The WGSL source code.
+    pub wgsl_source: String,
+}
+
+// ---
+
 #[derive(Default)]
 pub struct GpuShaderModulePool {
     pool: StaticResourcePool<GpuShaderModuleHandle, ShaderModuleDesc, wgpu::ShaderModule>,
+
+    /// Cache for inline WGSL shader modules, keyed by content hash.
+    inline_cache: parking_lot::RwLock<HashMap<u64, GpuShaderModuleHandle>>,
 
     /// Workarounds via text replacement in shader source code.
     ///
@@ -128,6 +145,33 @@ impl GpuShaderModulePool {
                 &self.shader_text_workaround_replacements,
             )
         })
+    }
+
+    /// Creates (or retrieves from cache) a shader module from inline WGSL source.
+    ///
+    /// Unlike file-based shaders, inline shaders do not support hot-reloading
+    /// or import resolution. They are cached by content hash.
+    pub fn get_or_create_inline(
+        &self,
+        device: &wgpu::Device,
+        label: &str,
+        wgsl_source: &str,
+        content_hash: u64,
+    ) -> GpuShaderModuleHandle {
+        // Fast path: check read lock first
+        if let Some(&handle) = self.inline_cache.read().get(&content_hash) {
+            return handle;
+        }
+
+        // Slow path: create and insert
+        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some(label),
+            source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
+        });
+
+        let handle = self.pool.insert_resource(shader_module);
+        self.inline_cache.write().insert(content_hash, handle);
+        handle
     }
 
     pub fn begin_frame<Fs: FileSystem>(

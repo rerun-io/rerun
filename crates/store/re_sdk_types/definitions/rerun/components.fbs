@@ -54,6 +54,8 @@ include "./components/rotation_quat.fbs";
 include "./components/scalar.fbs";
 include "./components/scale3d.fbs";
 include "./components/schema_id.fbs";
+include "./components/shader_parameters.fbs";
+include "./components/shader_source.fbs";
 include "./components/show_labels.fbs";
 include "./components/stroke_width.fbs";
 include "./components/tensor_data.fbs";

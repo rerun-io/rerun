@@ -24,10 +24,16 @@ DESCRIPTION = """
 # Dicom MRI
 This example visualizes an MRI scan using Rerun.
 
-The visualization of the data consists of just the following line
+The visualization includes both a standard tensor view of the volume data and
+an experimental custom shader-based volumetric rendering using raymarching.
+
+The tensor visualization is a single line:
 ```python
 rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"]))
 ```
+
+The volumetric rendering logs a bounding box mesh with a custom WGSL fragment shader
+that raymarches through a 3D texture.
 
 The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/dicom_mri).
@@ -56,6 +62,84 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
                 yield Path(path) / f
 
 
+def make_volume_bbox_mesh(
+    shape: tuple[int, ...],
+) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32]]:
+    """Create a unit cube mesh that serves as the bounding box for volume rendering."""
+    d, h, w = float(shape[0]), float(shape[1]), float(shape[2])
+    # Normalize so the longest axis is 1.0
+    max_dim = max(d, h, w)
+    sx, sy, sz = w / max_dim, h / max_dim, d / max_dim
+
+    # 8 corners of the bounding box
+    positions = np.array(
+        [
+            [0, 0, 0],
+            [sx, 0, 0],
+            [sx, sy, 0],
+            [0, sy, 0],
+            [0, 0, sz],
+            [sx, 0, sz],
+            [sx, sy, sz],
+            [0, sy, sz],
+        ],
+        dtype=np.float32,
+    )
+
+    # 12 triangles (2 per face)
+    indices = np.array(
+        [
+            [0, 2, 1], [0, 3, 2],  # front
+            [4, 5, 6], [4, 6, 7],  # back
+            [0, 1, 5], [0, 5, 4],  # bottom
+            [2, 3, 7], [2, 7, 6],  # top
+            [0, 4, 7], [0, 7, 3],  # left
+            [1, 2, 6], [1, 6, 5],  # right
+        ],
+        dtype=np.uint32,
+    )
+
+    return positions, indices
+
+
+def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[int, ...]) -> None:
+    """Log volume data with a custom raymarching shader for 3D rendering."""
+    example_dir = Path(os.path.dirname(__file__))
+
+    # Load the pre-compiled WGSL shader and parameters
+    wgsl_path = example_dir / "volume_raymarch.wgsl"
+    params_path = example_dir / "volume_raymarch_params.json"
+
+    if not wgsl_path.exists() or not params_path.exists():
+        print("Volumetric shader files not found, skipping 3D volume rendering.")
+        return
+
+    wgsl_source = wgsl_path.read_text()
+    params_json = params_path.read_text()
+
+    # Create bounding box mesh
+    positions, indices = make_volume_bbox_mesh(shape)
+
+    # Log the mesh with custom shader
+    rr.log(
+        "volume/mesh",
+        rr.Mesh3D(
+            vertex_positions=positions,
+            triangle_indices=indices,
+            shader_source=wgsl_source,
+            shader_parameters=params_json,
+        ),
+        static=True,
+    )
+
+    # Log the volume data as a 3D tensor (to be bound as texture by the shader)
+    voxels_f32 = voxels_volume.astype(np.float32)
+    rr.log("volume/mesh/volume_data", rr.Tensor(voxels_f32, dim_names=["depth", "height", "width"]), static=True)
+
+    # Log shader parameters as queryable values
+    rr.log("volume/mesh/density_scale", rr.Scalar(1.0), static=True)
+
+
 def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
@@ -65,6 +149,9 @@ def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
     voxels_volume_u16: npt.NDArray[np.uint16] = np.require(voxels_volume, np.uint16)
 
     rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"]))
+
+    # Experimental: Log volumetric rendering with custom shader
+    log_volumetric_rendering(voxels_volume, voxels_volume.shape)
 
 
 def ensure_dataset_downloaded() -> Iterable[Path]:

@@ -28,6 +28,8 @@ front faces are assumed to those with counter clockwise triangle winding order (
 * `albedo_texture_buffer`: [`ImageBuffer`](../components/image_buffer.md)
 * `albedo_texture_format`: [`ImageFormat`](../components/image_format.md)
 * `class_ids`: [`ClassId`](../components/class_id.md)
+* `shader_source`: [`ShaderSource`](../components/shader_source.md)
+* `shader_parameters`: [`ShaderParameters`](../components/shader_parameters.md)
 
 
 ## Can be shown in

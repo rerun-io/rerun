@@ -1218,6 +1218,28 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ShaderParameters as Component>::name(),
+            ComponentReflection {
+                docstring_md: "JSON-encoded shader parameter metadata for custom rendering.\n\nDescribes uniform parameters, their types, and source entity paths for\ndata binding. Used alongside [`components.ShaderSource`](https://rerun.io/docs/reference/types/components/shader_source) to configure custom shaders.\n\nThe JSON schema supports `uniforms` (scalar/vector values) and `textures`\n(2D/3D texture bindings), each with a `source` field pointing to the entity\npath where the data should be queried.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ShaderParameters::default().to_arrow()?),
+                datatype: ShaderParameters::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: ShaderParameters::verify_arrow_array,
+            },
+        ),
+        (
+            <ShaderSource as Component>::name(),
+            ComponentReflection {
+                docstring_md: "WGSL shader source code for custom rendering.\n\nThis component holds inline WGSL shader source that replaces the default\nfragment shader when attached to a mesh archetype. The shader's fragment\nentry point must be named `fs_main`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ShaderSource::default().to_arrow()?),
+                datatype: ShaderSource::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: ShaderSource::verify_arrow_array,
+            },
+        ),
+        (
             <ShowLabels as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
@@ -2900,6 +2922,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Class ids",
                         component_type: "rerun.components.ClassId".into(),
                         docstring_md: "Optional class Ids for the vertices.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "shader_source",
+                        display_name: "Shader source",
+                        component_type: "rerun.components.ShaderSource".into(),
+                        docstring_md: "Optional WGSL shader source code for custom fragment rendering.\n\nWhen provided, replaces the default Phong lighting fragment shader.\nThe shader's fragment entry point must be named `fs_main`.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "shader_parameters",
+                        display_name: "Shader parameters",
+                        component_type: "rerun.components.ShaderParameters".into(),
+                        docstring_md: "Optional JSON-encoded shader parameter metadata.\n\nDescribes uniform parameters, their types, and source entity paths\nfor data binding with the custom shader.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

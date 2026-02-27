@@ -10,7 +10,7 @@ use crate::device_caps::DeviceCaps;
 use crate::error_handling::{ErrorTracker, WgpuErrorScope};
 use crate::global_bindings::GlobalBindings;
 use crate::renderer::{Renderer, RendererExt};
-use crate::resource_managers::TextureManager2D;
+use crate::resource_managers::{TextureManager2D, TextureManager3D};
 use crate::wgpu_resources::WgpuResourcePools;
 use crate::{FileServer, RecommendedFileResolver};
 
@@ -106,6 +106,7 @@ pub struct RenderContext {
     pub(crate) resolver: RecommendedFileResolver,
 
     pub texture_manager_2d: TextureManager2D,
+    pub texture_manager_3d: TextureManager3D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
     pub gpu_readback_belt: Mutex<GpuReadbackBelt>,
 
@@ -306,6 +307,7 @@ impl RenderContext {
 
         let resolver = crate::new_recommended_file_resolver();
         let texture_manager_2d = TextureManager2D::new(&device, &queue, &gpu_resources.textures);
+        let texture_manager_3d = TextureManager3D::new();
 
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
@@ -347,6 +349,7 @@ impl RenderContext {
             resolver,
             top_level_error_tracker,
             texture_manager_2d,
+            texture_manager_3d,
             cpu_write_gpu_read_belt,
             gpu_readback_belt,
             inflight_queue_submissions: Vec::new(),
@@ -459,6 +462,7 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         }
 
         self.texture_manager_2d.begin_frame(frame_index);
+        self.texture_manager_3d.begin_frame();
         self.gpu_readback_belt.get_mut().begin_frame(frame_index);
 
         {

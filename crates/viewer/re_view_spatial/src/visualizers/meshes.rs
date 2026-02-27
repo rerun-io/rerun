@@ -4,7 +4,7 @@ use re_log_types::{Instance, TimeInt};
 use re_renderer::RenderContext;
 use re_renderer::renderer::GpuMeshInstance;
 use re_sdk_types::archetypes::Mesh3D;
-use re_sdk_types::components::ImageFormat;
+use re_sdk_types::components::{ImageFormat, ShaderParameters, ShaderSource};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -32,6 +32,8 @@ struct Mesh3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
     native_mesh: NativeMesh3D<'a>,
+    shader_source: Option<String>,
+    shader_parameters: Option<String>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -58,6 +60,14 @@ impl Mesh3DVisualizer {
             if data.native_mesh.vertex_positions.is_empty() {
                 continue;
             }
+
+            // Check if a custom shader is attached to this mesh.
+            let _has_custom_shader = data.shader_source.is_some();
+
+            // TODO(custom_shaders): When a full CustomShaderMeshRenderer is implemented,
+            // branch here: if _has_custom_shader, create a CustomShaderMeshInstance
+            // with the compiled shader module, resolved parameters, and custom bind group.
+            // For now, all meshes render through the standard pipeline.
 
             let mesh = ctx.store_ctx().caches.entry(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
@@ -157,10 +167,14 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     results.iter_optional(Mesh3D::descriptor_albedo_texture_buffer().component);
                 let all_albedo_formats =
                     results.iter_optional(Mesh3D::descriptor_albedo_texture_format().component);
+                let all_shader_sources =
+                    results.iter_optional(Mesh3D::descriptor_shader_source().component);
+                let all_shader_parameters =
+                    results.iter_optional(Mesh3D::descriptor_shader_parameters().component);
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x9(
                     all_vertex_positions.slice::<[f32; 3]>(),
                     all_vertex_normals.slice::<[f32; 3]>(),
                     all_vertex_colors.slice::<u32>(),
@@ -170,6 +184,9 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_albedo_buffers.slice::<&[u8]>(),
                     // Legit call to `component_slow`, `ImageFormat` is real complicated.
                     all_albedo_formats.component_slow::<ImageFormat>(),
+                    // Legit call to `component_slow`, string-based components.
+                    all_shader_sources.component_slow::<ShaderSource>(),
+                    all_shader_parameters.component_slow::<ShaderParameters>(),
                 )
                 .map(
                     |(
@@ -182,6 +199,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
                         albedo_factors,
                         albedo_buffers,
                         albedo_formats,
+                        shader_sources,
+                        shader_parameters,
                     )| {
                         Mesh3DComponentData {
                             index,
@@ -208,6 +227,10 @@ impl VisualizerSystem for Mesh3DVisualizer {
                                     .first()
                                     .map(|format| format.0),
                             },
+                            shader_source: shader_sources
+                                .and_then(|s| s.first().map(|v| v.0.to_string())),
+                            shader_parameters: shader_parameters
+                                .and_then(|s| s.first().map(|v| v.0.to_string())),
                         }
                     },
                 );
