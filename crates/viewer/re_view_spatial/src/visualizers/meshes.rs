@@ -101,6 +101,8 @@ impl Mesh3DVisualizer {
                     create_custom_shader_module(render_ctx, "custom_mesh_shader", shader_source);
 
                 // Parse shader parameters and resolve values from the store.
+                // If shader params are specified but data isn't available yet (e.g.
+                // textures still streaming), skip custom rendering for this frame.
                 let (custom_bind_group, custom_bind_group_layout) = self
                     .resolve_custom_shader_bindings(
                         ctx,
@@ -108,6 +110,12 @@ impl Mesh3DVisualizer {
                         entity_path,
                         data.shader_parameters.as_deref(),
                     );
+
+                let has_params = data.shader_parameters.is_some();
+                if has_params && custom_bind_group.is_none() {
+                    // Required bindings not yet available; retry next frame.
+                    continue;
+                }
 
                 for &world_from_instance in ent_context.transform_info.target_from_instances() {
                     let world_from_instance = world_from_instance.as_affine3a();

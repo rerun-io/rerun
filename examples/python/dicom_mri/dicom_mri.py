@@ -122,6 +122,16 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
     # Create bounding box mesh (positions in [0,1]^3 = volume coordinates)
     positions, indices = make_volume_bbox_mesh(shape)
 
+    # Rotate 90° around Z so the volume's "up" axis (texture X) aligns with
+    # Rerun's Y-up world space. The DICOM data axes are [right, back, up] and
+    # the 3D texture maps X→up, Y→back, Z→right. Without rotation the head
+    # lies on its side.
+    rr.log(
+        "volume",
+        rr.Transform3D(rotation=rr.RotationAxisAngle(axis=[0, 0, 1], angle=rr.Angle(deg=90))),
+        static=True,
+    )
+
     # Log the mesh with custom shader
     rr.log(
         "volume/mesh",
