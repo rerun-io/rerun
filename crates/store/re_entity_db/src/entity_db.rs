@@ -67,6 +67,20 @@ impl EntityDbClass<'_> {
 
 // ---
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RedapConnectionState {
+    /// We are not connected to redap
+    NotConnected,
+
+    DownloadingManifest,
+
+    MissingManifest,
+
+    Ready,
+}
+
+// ---
+
 struct StoreSizeBytes(Mutex<Option<u64>>);
 
 impl Clone for StoreSizeBytes {
@@ -321,46 +335,59 @@ impl EntityDb {
         &mut self.rrd_manifest_index
     }
 
+    fn redap_connection_state(&self) -> RedapConnectionState {
+        // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
+        let is_connected_to_redap = self
+            .data_source
+            .as_ref()
+            .is_some_and(|source| source.is_redap());
+
+        if is_connected_to_redap {
+            if self.rrd_manifest_index.has_manifest() {
+                RedapConnectionState::Ready
+            } else if self.num_physical_chunks() == 0 {
+                RedapConnectionState::DownloadingManifest
+            } else {
+                // This handles the case where we tried and failed to download the manifest,
+                // but managed to download the data anyhow.
+                RedapConnectionState::MissingManifest
+            }
+        } else {
+            RedapConnectionState::NotConnected
+        }
+    }
+
     /// Are we connected to redap, and can fetch missing chunks?
     pub fn can_fetch_chunks_from_redap(&self) -> bool {
-        // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
-        self.data_source
-            .as_ref()
-            .is_some_and(|source| source.is_redap())
+        match self.redap_connection_state() {
+            RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
+            RedapConnectionState::DownloadingManifest | RedapConnectionState::Ready => true,
+        }
     }
 
     /// Are we currently in the process of downloading the RRD Manifest?
     pub fn is_currently_downloading_manifest(&self) -> bool {
-        // The `num_physical_chunks == 0` check handles the case where we tried and failed to download the manifest,
-        // but managed to download the data anyhow.
-        self.num_physical_chunks() == 0
-            && !self.rrd_manifest_index.has_manifest()
-            && self.can_fetch_chunks_from_redap()
+        self.redap_connection_state() == RedapConnectionState::DownloadingManifest
     }
 
     /// True if we're are currently waiting for necessary
     /// data to be loaded before we can show it.
     pub fn is_buffering(&self) -> bool {
-        if self.is_currently_downloading_manifest() {
-            return true;
-        }
+        match self.redap_connection_state() {
+            RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
+            RedapConnectionState::DownloadingManifest => true,
 
-        if !self.can_fetch_chunks_from_redap() {
-            return false;
-        }
-
-        if self.num_physical_chunks() == 0 {
-            return true; // waiting for initial data
-        }
-
-        if let Some(state) = self
-            .rrd_manifest_index()
-            .chunk_prioritizer()
-            .latest_result()
-        {
-            !state.all_required_are_loaded
-        } else {
-            true // no prefetch done yet
+            RedapConnectionState::Ready => {
+                if let Some(state) = self
+                    .rrd_manifest_index()
+                    .chunk_prioritizer()
+                    .latest_result()
+                {
+                    !state.all_required_are_loaded
+                } else {
+                    true // no prefetch done yet
+                }
+            }
         }
     }
 
