@@ -9,7 +9,6 @@ from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
@@ -53,16 +52,24 @@ class AffixFuzzer9Batch(BaseBatch[AffixFuzzer9ArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer9ArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, str):
-            array: list[str] | npt.ArrayLike = [data]
-        elif isinstance(data, Sequence):
-            array = [str(datum) for datum in data]
-        elif isinstance(data, np.ndarray):
-            array = data
-        else:
-            array = [str(data)]
+        _ = data_type  # unused: conversion handled on Rust side
 
-        return pa.array(array, type=data_type)
+        if isinstance(data, str):
+            strings: list[str] = [data]
+        elif isinstance(data, Sequence):
+            strings = [str(datum) for datum in data]
+        elif isinstance(data, np.ndarray):
+            strings = [str(x) for x in data]
+        else:
+            strings = [str(data)]
+
+        encoded = [s.encode("utf-8") for s in strings]
+        offsets = np.empty(len(encoded) + 1, dtype=np.int32)
+        offsets[0] = 0
+        for i, e in enumerate(encoded):
+            offsets[i + 1] = offsets[i] + len(e)
+        data_bytes = np.frombuffer(b"".join(encoded), dtype=np.uint8) if encoded else np.array([], dtype=np.uint8)
+        return (data_bytes, offsets, -1)
 
 
 # This is patched in late to avoid circular dependencies.

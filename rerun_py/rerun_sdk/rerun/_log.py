@@ -226,9 +226,13 @@ def _log_components(
         # Fast path: check for numpy-backed batch (avoids PyArrow conversion)
         batch = comp._batch
         nd = batch.__dict__.get("_numpy_data") if hasattr(batch, "__dict__") else None
-        if nd is not None and isinstance(nd, np.ndarray):
-            list_size = getattr(batch._ARROW_DATATYPE, "list_size", 0)
-            instanced[descr] = (nd, list_size)
+        if nd is not None:
+            if isinstance(nd, tuple):
+                # Variable-length: (data, offsets, inner_size) → pass as 3-tuple
+                instanced[descr] = nd
+            elif isinstance(nd, np.ndarray):
+                list_size = getattr(batch._ARROW_DATATYPE, "list_size", 0)
+                instanced[descr] = (nd, list_size)
         else:
             array = comp.as_arrow_array()
             if array is not None:

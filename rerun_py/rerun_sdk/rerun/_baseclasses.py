@@ -228,7 +228,7 @@ class BaseBatch(Generic[T]):
                     self.pa_array = data
                 else:
                     result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
-                    if isinstance(result, np.ndarray):
+                    if isinstance(result, (np.ndarray, tuple)):
                         # Fast path: store numpy data directly, convert to Arrow lazily
                         self._numpy_data = result
                     else:
@@ -248,7 +248,7 @@ class BaseBatch(Generic[T]):
                 self.pa_array = data
             else:
                 result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
-                if isinstance(result, np.ndarray):
+                if isinstance(result, (np.ndarray, tuple)):
                     self._numpy_data = result
                 else:
                     self.pa_array = result
@@ -261,7 +261,19 @@ class BaseBatch(Generic[T]):
             nd = self.__dict__.get("_numpy_data")
             if nd is not None:
                 dt = self._ARROW_DATATYPE
-                if hasattr(dt, "list_size"):
+                if isinstance(nd, tuple):
+                    data, offsets, inner_size = nd
+                    if inner_size == -1:
+                        # String: decode bytes back via offsets
+                        strings = [data[offsets[i] : offsets[i + 1]].tobytes().decode("utf-8") for i in range(len(offsets) - 1)]
+                        arr = pa.array(strings, type=dt)
+                    elif inner_size == 0:
+                        arr = pa.ListArray.from_arrays(offsets, pa.array(data), type=dt)
+                    else:
+                        inner_type = dt.value_type  # type: ignore[union-attr]
+                        inner = pa.FixedSizeListArray.from_arrays(data, type=inner_type)
+                        arr = pa.ListArray.from_arrays(offsets, inner, type=dt)
+                elif hasattr(dt, "list_size"):
                     arr = pa.FixedSizeListArray.from_arrays(nd, type=dt)
                 else:
                     arr = pa.array(nd, type=dt)
@@ -300,6 +312,8 @@ class BaseBatch(Generic[T]):
     def __len__(self) -> int:
         nd = self.__dict__.get("_numpy_data")
         if nd is not None:
+            if isinstance(nd, tuple):
+                return len(nd[1]) - 1  # offsets length - 1
             list_size = getattr(self._ARROW_DATATYPE, "list_size", None)
             if list_size is not None:
                 return len(nd) // list_size

@@ -5,10 +5,10 @@ use std::sync::Arc;
 
 use arrow::array::{
     ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, BooleanArray, FixedSizeListArray,
-    Float32Array, Float64Array, Int64Array, ListArray as ArrowListArray, UInt8Array, UInt16Array,
-    UInt32Array, UInt64Array, make_array,
+    Float32Array, Float64Array, Int64Array, ListArray as ArrowListArray, StringArray, UInt8Array,
+    UInt16Array, UInt32Array, UInt64Array, make_array,
 };
-use arrow::buffer::{OffsetBuffer as ArrowOffsetBuffer, ScalarBuffer};
+use arrow::buffer::{Buffer as ArrowBuffer, OffsetBuffer as ArrowOffsetBuffer, ScalarBuffer};
 use arrow::datatypes::Field as ArrowField;
 use arrow::pyarrow::PyArrowType;
 use numpy::PyReadonlyArray1;
@@ -209,21 +209,85 @@ fn numpy_to_primitive_array(np_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayR
     ))
 }
 
+/// Build an Arrow `StringArray` from UTF-8 bytes + offsets numpy arrays.
+fn numpy_to_string_array(
+    data: &Bound<'_, PyAny>,
+    offsets: &Bound<'_, PyAny>,
+) -> PyResult<ArrowArrayRef> {
+    let data_arr = data.extract::<PyReadonlyArray1<'_, u8>>()?;
+    let data_slice = data_arr.as_slice()?;
+    let offsets_arr = offsets.extract::<PyReadonlyArray1<'_, i32>>()?;
+    let offsets_slice = offsets_arr.as_slice()?;
+
+    let arrow_offsets =
+        ArrowOffsetBuffer::new(ScalarBuffer::<i32>::from(offsets_slice.to_vec()));
+    let values = ArrowBuffer::from(data_slice.to_vec());
+
+    let string_array = StringArray::new(arrow_offsets, values, None);
+    Ok(Arc::new(string_array))
+}
+
+/// Build an Arrow `ListArray` from flat data + offsets numpy arrays.
+///
+/// `inner_size > 0`: inner elements are `FixedSizeList<T, inner_size>`.
+/// `inner_size == 0`: inner elements are plain primitives.
+fn numpy_to_list_array(
+    data: &Bound<'_, PyAny>,
+    offsets: &Bound<'_, PyAny>,
+    inner_size: i32,
+) -> PyResult<ArrowArrayRef> {
+    let offsets_arr = offsets.extract::<PyReadonlyArray1<'_, i32>>()?;
+    let offsets_slice = offsets_arr.as_slice()?;
+    let arrow_offsets =
+        ArrowOffsetBuffer::new(ScalarBuffer::<i32>::from(offsets_slice.to_vec()));
+
+    let inner_values: ArrowArrayRef = if inner_size > 0 {
+        numpy_to_fixed_size_list(data, inner_size)?
+    } else {
+        numpy_to_primitive_array(data)?
+    };
+
+    let field = Arc::new(ArrowField::new(
+        "item",
+        inner_values.data_type().clone(),
+        true,
+    ));
+    let list_array = ArrowListArray::try_new(field, arrow_offsets, inner_values, None)
+        .map_err(|err| PyTypeError::new_err(format!("Failed to build ListArray: {err}")))?;
+    Ok(Arc::new(list_array))
+}
+
 /// Extract an Arrow array from a Python value.
 ///
-/// The value may be either a `(numpy_array, list_size)` tuple (fast path)
-/// or a PyArrow array (fallback).
+/// Supported formats:
+/// - `(numpy_array, list_size)` 2-tuple: FixedSizeList or primitive
+/// - `(data_numpy, offsets_numpy, inner_size)` 3-tuple: variable-length list or string
+/// - PyArrow array (fallback)
 ///
-/// Convention: `list_size == 0` signals a plain primitive array (not FixedSizeList).
+/// Convention for 2-tuples: `list_size == 0` → plain primitive.
+/// Convention for 3-tuples: `inner_size == -1` → UTF-8 string,
+///   `inner_size == 0` → List\<primitive\>, `inner_size > 0` → List\<FixedSizeList\>.
 fn value_to_arrow_array(value: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> {
     if let Ok(tuple) = value.downcast::<PyTuple>() {
-        if tuple.len()? == 2 {
-            let np_array = tuple.get_item(0)?;
-            let list_size: i32 = tuple.get_item(1)?.extract()?;
-            if list_size == 0 {
-                return numpy_to_primitive_array(&np_array);
+        match tuple.len()? {
+            2 => {
+                let np_array = tuple.get_item(0)?;
+                let list_size: i32 = tuple.get_item(1)?.extract()?;
+                if list_size == 0 {
+                    return numpy_to_primitive_array(&np_array);
+                }
+                return numpy_to_fixed_size_list(&np_array, list_size);
             }
-            return numpy_to_fixed_size_list(&np_array, list_size);
+            3 => {
+                let data = tuple.get_item(0)?;
+                let offsets = tuple.get_item(1)?;
+                let inner_size: i32 = tuple.get_item(2)?.extract()?;
+                if inner_size == -1 {
+                    return numpy_to_string_array(&data, &offsets);
+                }
+                return numpy_to_list_array(&data, &offsets, inner_size);
+            }
+            _ => {}
         }
     }
     array_to_rust(value)

@@ -20,68 +20,76 @@ class LineStrip3DExt:
 
     @staticmethod
     def native_to_pa_array_override(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:
+        _ = data_type  # unused: conversion handled on Rust side
         from ..datatypes import Vec3DBatch
         from . import LineStrip3D
 
         # pure-numpy fast path
         if isinstance(data, np.ndarray):
             if len(data) == 0:
-                inners = []
+                return (np.array([], dtype=np.float32), np.array([0], dtype=np.int32), 3)
             elif data.ndim == 2:
-                inners = [Vec3DBatch(data).as_arrow_array()]
+                flat = np.ascontiguousarray(np.asarray(data, dtype=np.float32).reshape(-1))
+                offsets = np.array([0, len(data)], dtype=np.int32)
+                return (flat, offsets, 3)
             else:
-                o = 0
-                offsets = [o] + [o := next_offset(o, arr) for arr in data]
-                inner = Vec3DBatch(data.reshape(-1)).as_arrow_array()
-                return pa.ListArray.from_arrays(offsets, inner, type=data_type)
+                # Array of arrays (ragged)
+                parts = [np.asarray(arr, dtype=np.float32).reshape(-1) for arr in data]
+                flat = np.concatenate(parts) if parts else np.array([], dtype=np.float32)
+                offsets = np.empty(len(parts) + 1, dtype=np.int32)
+                offsets[0] = 0
+                for i, p in enumerate(parts):
+                    offsets[i + 1] = offsets[i] + len(p) // 3
+                return (flat, offsets, 3)
 
         # pure-object
         elif isinstance(data, LineStrip3D):
-            inners = [Vec3DBatch(data.points).as_arrow_array()]
+            flat = np.ascontiguousarray(np.asarray(data.points, dtype=np.float32).reshape(-1))
+            offsets = np.array([0, len(data.points)], dtype=np.int32)
+            return (flat, offsets, 3)
 
         # sequences
         elif isinstance(data, Sequence):
             if len(data) == 0:
-                inners = []
+                return (np.array([], dtype=np.float32), np.array([0], dtype=np.int32), 3)
+
             # Is it a single strip or several?
-            # It could be a sequence of the style `[[0, 0, 0], [1, 1, 1]]` which is a single strip.
-            elif isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
+            if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
                 if len(data[0]) == 3:
-                    # If any of the following elements are not sequence of length 2, Vec2DBatch should raise an error.
-                    inners = [Vec3DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
+                    flat = np.ascontiguousarray(np.asarray(data, dtype=np.float32).reshape(-1))
+                    offsets = np.array([0, len(data)], dtype=np.int32)
+                    return (flat, offsets, 3)
                 else:
                     raise ValueError(
                         "Expected a sequence of sequences of 3D vectors, but the inner sequence length was not equal to 2.",
                     )
-            # It could be a sequence of the style `[np.array([0, 0, 0]), np.array([1, 1, 1])]` which is a single strip.
             elif isinstance(data[0], np.ndarray) and data[0].shape == (3,):
-                # If any of the following elements are not sequence of length 3, Vec3DBatch should raise an error.
-                inners = [Vec3DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
-            # .. otherwise assume that it's several strips.
+                flat = np.ascontiguousarray(np.asarray(data, dtype=np.float32).reshape(-1))
+                offsets = np.array([0, len(data)], dtype=np.int32)
+                return (flat, offsets, 3)
             else:
-
-                def to_vec3d_batch(strip: Any) -> Vec3DBatch:
+                # Several strips
+                parts = []
+                for strip in data:
                     if isinstance(strip, LineStrip3D):
-                        return Vec3DBatch(strip.points)
+                        arr = np.asarray(strip.points, dtype=np.float32).reshape(-1)
                     else:
-                        if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 3):
+                        s = np.asarray(strip, dtype=np.float32)
+                        if s.ndim != 2 or s.shape[1] != 3:
                             raise ValueError(
-                                f"Expected a sequence of 3D vectors, instead got array with shape {strip.shape}.",
+                                f"Expected a sequence of 3D vectors, instead got array with shape {s.shape}.",
                             )
-                        return Vec3DBatch(strip)
+                        arr = s.reshape(-1)
+                    parts.append(arr)
 
-                inners = [to_vec3d_batch(strip).as_arrow_array() for strip in data]
+                flat = np.concatenate(parts) if parts else np.array([], dtype=np.float32)
+                offsets = np.empty(len(parts) + 1, dtype=np.int32)
+                offsets[0] = 0
+                for i, p in enumerate(parts):
+                    offsets[i + 1] = offsets[i] + len(p) // 3
+                return (flat, offsets, 3)
         else:
-            inners = [Vec3DBatch(data)]
-
-        if len(inners) == 0:
-            offsets = pa.array([0], type=pa.int32())
-            inner = Vec3DBatch([]).as_arrow_array()
+            # Fallback: build via Vec3DBatch + pa
+            inner = Vec3DBatch(data).as_arrow_array()
+            offsets = pa.array([0, len(inner)], type=pa.int32())
             return pa.ListArray.from_arrays(offsets, inner, type=data_type)
-
-        o = 0
-        offsets = [o] + [o := next_offset(o, inner) for inner in inners]
-
-        inner = pa.concat_arrays(inners)
-
-        return pa.ListArray.from_arrays(offsets, inner, type=data_type)

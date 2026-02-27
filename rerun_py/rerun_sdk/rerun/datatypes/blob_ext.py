@@ -19,57 +19,65 @@ class BlobExt:
 
     @staticmethod
     def native_to_pa_array_override(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
+        _ = data_type  # unused: conversion handled on Rust side
         from ..datatypes import Blob, BlobBatch
 
         # someone or something is building things manually, let them!
         if isinstance(data, BlobBatch):
             return data.as_arrow_array()
 
+        def _to_uint8(arr: np.ndarray) -> np.ndarray:  # type: ignore[type-arg]
+            return np.asarray(arr, dtype=np.uint8).ravel()
+
         # pure-numpy fast path
-        elif isinstance(data, np.ndarray):
+        if isinstance(data, np.ndarray):
             if len(data) == 0:
-                inners = []
+                return (np.array([], dtype=np.uint8), np.array([0], dtype=np.int32), 0)
             elif data.ndim == 1:
-                inners = [pa.array(np.array(data, dtype=np.uint8).flatten())]
+                flat = _to_uint8(data)
+                offsets = np.array([0, len(flat)], dtype=np.int32)
+                return (flat, offsets, 0)
             else:
-                o = 0
-                offsets = [o] + [o := next_offset(o, arr) for arr in data]
-                inner = pa.array(np.array(data, dtype=np.uint8).flatten())
-                return pa.ListArray.from_arrays(offsets, inner, type=data_type)
+                parts = [_to_uint8(arr) for arr in data]
+                flat = np.concatenate(parts)
+                offsets = np.empty(len(parts) + 1, dtype=np.int32)
+                offsets[0] = 0
+                for i, p in enumerate(parts):
+                    offsets[i + 1] = offsets[i] + len(p)
+                return (flat, offsets, 0)
 
         # pure-object
         elif isinstance(data, Blob):
-            inners = [pa.array(np.array(data.data, dtype=np.uint8).flatten())]
+            flat = _to_uint8(np.array(data.data))
+            return (flat, np.array([0, len(flat)], dtype=np.int32), 0)
 
         # pure-bytes
         elif isinstance(data, bytes):
-            inners = [pa.array(np.frombuffer(data, dtype=np.uint8))]
+            flat = np.frombuffer(data, dtype=np.uint8)
+            return (flat, np.array([0, len(flat)], dtype=np.int32), 0)
 
         elif hasattr(data, "read"):
-            inners = [pa.array(np.frombuffer(data.read(), dtype=np.uint8))]
+            flat = np.frombuffer(data.read(), dtype=np.uint8)
+            return (flat, np.array([0, len(flat)], dtype=np.int32), 0)
 
         # sequences
         elif isinstance(data, Sequence):
             if len(data) == 0:
-                inners = []
+                return (np.array([], dtype=np.uint8), np.array([0], dtype=np.int32), 0)
             elif isinstance(data[0], Blob):
-                inners = [pa.array(np.array(datum.data, dtype=np.uint8).flatten()) for datum in data]  # type: ignore[union-attr]
+                parts = [_to_uint8(np.array(datum.data)) for datum in data]  # type: ignore[union-attr]
             elif isinstance(data[0], bytes):
-                inners = [pa.array(np.frombuffer(datum, dtype=np.uint8)) for datum in data]  # type: ignore[arg-type]
+                parts = [np.frombuffer(datum, dtype=np.uint8) for datum in data]  # type: ignore[arg-type]
             else:
-                inners = [pa.array(np.array(datum, dtype=np.uint8).flatten()) for datum in data]
+                parts = [_to_uint8(np.array(datum)) for datum in data]
+
+            flat = np.concatenate(parts) if parts else np.array([], dtype=np.uint8)
+            offsets = np.empty(len(parts) + 1, dtype=np.int32)
+            offsets[0] = 0
+            for i, p in enumerate(parts):
+                offsets[i + 1] = offsets[i] + len(p)
+            return (flat, offsets, 0)
 
         else:
-            inners = [pa.array(np.array(data.data, dtype=np.uint8).flatten())]
-
-        if len(inners) == 0:
-            offsets = pa.array([0], type=pa.int32())
-            inner = np.array([], dtype=np.uint8).flatten()
-            return pa.ListArray.from_arrays(offsets, inner, type=data_type)
-
-        o = 0
-        offsets = [o] + [o := next_offset(o, inner) for inner in inners]
-
-        inner = pa.concat_arrays(inners)
-
-        return pa.ListArray.from_arrays(offsets, inner, type=data_type)
+            flat = _to_uint8(np.array(data.data))
+            return (flat, np.array([0, len(flat)], dtype=np.int32), 0)
