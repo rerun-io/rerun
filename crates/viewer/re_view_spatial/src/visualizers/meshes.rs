@@ -250,6 +250,8 @@ impl Mesh3DVisualizer {
         let resolved = resolve_shader_params(mesh_entity, &params, &resolve_scalar, &resolve_vec);
 
         // Upload 3D textures and collect bindings.
+        // If any required texture is missing (e.g. data not yet arrived via streaming),
+        // skip the custom shader entirely for this frame.
         let mut texture_bindings = Vec::new();
         for (binding, source_entity) in &resolved.texture_3d_bindings {
             if let Some(gpu_tex) =
@@ -257,9 +259,11 @@ impl Mesh3DVisualizer {
             {
                 texture_bindings.push((*binding, gpu_tex));
             } else {
-                re_log::warn_once!(
-                    "Failed to upload 3D texture for binding {binding} from {source_entity}"
+                re_log::debug!(
+                    "Texture not yet available for binding {binding} from {source_entity}, \
+                     skipping custom shader this frame"
                 );
+                return (None, None);
             }
         }
 
@@ -322,7 +326,8 @@ fn upload_3d_texture_from_store(
 
     let tensor_data = results.component_mono::<re_sdk_types::components::TensorData>(
         re_sdk_types::archetypes::Tensor::descriptor_data().component,
-    )?;
+    );
+    let tensor_data = tensor_data?;
 
     let shape = &tensor_data.0.shape;
     if shape.len() != 3 {

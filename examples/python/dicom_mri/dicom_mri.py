@@ -71,22 +71,19 @@ def make_volume_bbox_mesh(
     which maps directly to volume texture coordinates. The custom shader uses
     position_object (from the vertex shader) to determine volume coordinates.
     """
-    d, h, w = float(shape[0]), float(shape[1]), float(shape[2])
-    # Normalize so the longest axis is 1.0
-    max_dim = max(d, h, w)
-    sx, sy, sz = w / max_dim, h / max_dim, d / max_dim
+    _ = shape  # Uniform cube; the shader maps [0,1]^3 to the full volume texture.
 
-    # 8 corners of the bounding box in [0,1]^3 object space (= volume coordinates)
+    # 8 corners of the unit cube [0,1]^3 (= volume texture coordinates)
     positions = np.array(
         [
             [0, 0, 0],
-            [sx, 0, 0],
-            [sx, sy, 0],
-            [0, sy, 0],
-            [0, 0, sz],
-            [sx, 0, sz],
-            [sx, sy, sz],
-            [0, sy, sz],
+            [1, 0, 0],
+            [1, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+            [1, 0, 1],
+            [1, 1, 1],
+            [0, 1, 1],
         ],
         dtype=np.float32,
     )
