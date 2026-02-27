@@ -51,6 +51,18 @@ impl BinaryStreamStorage {
     pub fn flush(&self, timeout: std::time::Duration) -> Result<(), SinkFlushError> {
         self.rec.flush_with_timeout(timeout)
     }
+
+    /// Create a [`BinaryStreamSink`] that shares this storage's buffer.
+    ///
+    /// This is useful when using [`BinaryStreamStorage`] with
+    /// [`set_sinks`][crate::RecordingStream::set_sinks] — it creates a new sink
+    /// that writes to the same buffer, so data logged through the multi-sink
+    /// can be read from this storage.
+    pub fn create_sink(&self) -> BinaryStreamSink {
+        BinaryStreamSink {
+            buffer: self.inner.clone(),
+        }
+    }
 }
 
 impl Drop for BinaryStreamStorage {
