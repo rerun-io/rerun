@@ -47,6 +47,12 @@ struct VertexOut {
 
     @location(7)
     position_object: vec3f,
+
+    // Camera position transformed into mesh/object space, for custom shaders
+    // that need to compute view-dependent rays in object coordinates.
+    // Computed per-vertex from the inverse of world_from_mesh; constant per instance.
+    @location(8) @interpolate(flat)
+    camera_pos_object: vec3f,
 };
 
 @vertex
@@ -74,6 +80,25 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
     out.picking_layer_id = in_instance.picking_layer_id;
     out.position_world = world_position;
     out.position_object = in_vertex.position;
+
+    // Compute camera position in object/mesh space using the inverse of world_from_mesh.
+    // M^{-1} = adj(M) / det(M), where adj(M) is the adjugate (cofactor transpose).
+    let r0 = in_instance.world_from_mesh_row_0.xyz;
+    let r1 = in_instance.world_from_mesh_row_1.xyz;
+    let r2 = in_instance.world_from_mesh_row_2.xyz;
+    let t = vec3f(in_instance.world_from_mesh_row_0.w,
+                  in_instance.world_from_mesh_row_1.w,
+                  in_instance.world_from_mesh_row_2.w);
+    let inv_col0 = cross(r1, r2);
+    let inv_col1 = cross(r2, r0);
+    let inv_col2 = cross(r0, r1);
+    let det = dot(r0, inv_col0);
+    let cam_minus_t = frame.camera_position - t;
+    out.camera_pos_object = vec3f(
+        dot(inv_col0, cam_minus_t),
+        dot(inv_col1, cam_minus_t),
+        dot(inv_col2, cam_minus_t),
+    ) / det;
 
     return out;
 }

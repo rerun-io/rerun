@@ -3,11 +3,13 @@
 // This shader raymarches through a 3D texture bound to a mesh's bounding box,
 // using view-dependent rays with front-to-back alpha compositing.
 //
-// The mesh's object-space positions define the [0,1]^3 volume coordinate system.
-// The camera position and direction from global uniforms (group 0) are used to
-// compute per-pixel ray directions for proper 3D perspective.
+// The vertex shader provides both world-space and object-space positions, plus
+// the camera position pre-transformed into object space. The ray direction in
+// object space is simply normalize(position_object - camera_pos_object).
 
 // ---- Global uniforms (group 0) ----
+// (Declared here for completeness; camera_pos_object from the vertex shader
+// already incorporates the camera position.)
 
 struct FrameUniformBuffer {
     view_from_world: mat4x3<f32>,
@@ -55,16 +57,22 @@ struct VertexOutput {
     @location(5) @interpolate(flat) picking_layer_id: vec4<u32>,
     @location(6) position_world: vec3<f32>,
     @location(7) position_object: vec3<f32>,
+    @location(8) @interpolate(flat) camera_pos_object: vec3<f32>,
 };
 
 // ---- Ray-AABB intersection ----
 
-// Intersect a ray with the [0,1]^3 axis-aligned bounding box.
+// Intersect a ray with the axis-aligned box [aabb_min, aabb_max].
 // Returns (t_near, t_far). If t_near > t_far, the ray misses the box.
-fn intersect_aabb(origin: vec3<f32>, dir: vec3<f32>) -> vec2<f32> {
+fn intersect_aabb(
+    origin: vec3<f32>,
+    dir: vec3<f32>,
+    aabb_min: vec3<f32>,
+    aabb_max: vec3<f32>,
+) -> vec2<f32> {
     let inv_dir = 1.0 / dir;
-    let t0 = (vec3<f32>(0.0) - origin) * inv_dir;
-    let t1 = (vec3<f32>(1.0) - origin) * inv_dir;
+    let t0 = (aabb_min - origin) * inv_dir;
+    let t1 = (aabb_max - origin) * inv_dir;
     let t_min = min(t0, t1);
     let t_max = max(t0, t1);
     let t_near = max(max(t_min.x, t_min.y), t_min.z);
@@ -72,46 +80,18 @@ fn intersect_aabb(origin: vec3<f32>, dir: vec3<f32>) -> vec2<f32> {
     return vec2<f32>(t_near, t_far);
 }
 
-// ---- Camera ray computation ----
-
-fn camera_ray_direction(frag_coord: vec2<f32>) -> vec3<f32> {
-    let screen_uv = frag_coord / frame.framebuffer_resolution;
-
-    // Orthographic camera: all rays are parallel
-    if frame.tan_half_fov.x >= 3.402823e+38 {
-        return frame.camera_forward;
-    }
-
-    // Perspective camera: compute per-pixel ray direction
-    let ndc = vec2<f32>(screen_uv.x - 0.5, 0.5 - screen_uv.y) * 2.0;
-    let view_dir = vec3<f32>(ndc * frame.tan_half_fov, -1.0);
-
-    // Transform from view to world space.
-    // Since view_from_world is orthonormal, right-multiply gives the inverse (transpose).
-    let world_dir = vec3<f32>(
-        dot(view_dir, vec3<f32>(frame.view_from_world[0].x, frame.view_from_world[1].x, frame.view_from_world[2].x)),
-        dot(view_dir, vec3<f32>(frame.view_from_world[0].y, frame.view_from_world[1].y, frame.view_from_world[2].y)),
-        dot(view_dir, vec3<f32>(frame.view_from_world[0].z, frame.view_from_world[1].z, frame.view_from_world[2].z)),
-    );
-
-    return normalize(world_dir);
-}
-
 // ---- Entry point ----
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // The object-space position maps directly to [0,1]^3 volume coordinates.
-    let surface_pos = in.position_object;
+    // Compute ray direction in object space directly from the pre-transformed camera position.
+    let ray_dir_object = normalize(in.position_object - in.camera_pos_object);
 
-    // Compute camera ray direction in world space.
-    // For the DICOM demo the mesh is axis-aligned, so world-space ≈ object-space direction.
-    let ray_dir_world = camera_ray_direction(in.position.xy);
+    // Step back along the object-space ray to get outside the volume.
+    let ray_start = in.position_object - ray_dir_object * 2.0;
 
-    // Intersect the camera ray with the [0,1]^3 volume AABB.
-    // We back up the ray origin so we can compute the full entry/exit.
-    let ray_origin = surface_pos - ray_dir_world * 2.0;
-    let hit = intersect_aabb(ray_origin, ray_dir_world);
+    // Intersect with the volume's bounding box in object space [0,1]^3.
+    let hit = intersect_aabb(ray_start, ray_dir_object, vec3<f32>(0.0), vec3<f32>(1.0));
 
     if hit.x > hit.y || hit.y < 0.0 {
         discard;
@@ -119,10 +99,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let t_near = max(hit.x, 0.0);
     let t_far = hit.y;
-    let entry = ray_origin + ray_dir_world * t_near;
-    let exit = ray_origin + ray_dir_world * t_far;
-    let march_length = distance(entry, exit);
-    let march_dir = normalize(exit - entry);
+    let entry = ray_start + ray_dir_object * t_near;
+    let exit_point = ray_start + ray_dir_object * t_far;
+    let march_length = distance(entry, exit_point);
 
     let num_steps: i32 = 128;
     let step_size: f32 = march_length / f32(num_steps);
@@ -141,8 +120,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             break;
         }
 
-        let t = f32(i) * step_size;
-        let sample_pos = entry + march_dir * t;
+        let t = (f32(i) + 0.5) * step_size;
+        let sample_pos = entry + ray_dir_object * t;
 
         // Skip samples outside the [0,1]^3 volume.
         if any(sample_pos < vec3<f32>(0.0)) || any(sample_pos > vec3<f32>(1.0)) {
@@ -163,13 +142,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         // Normalize to [0, 1] using the value range.
         let normalized = clamp((raw_value - range_min) / range_extent, 0.0, 1.0);
 
-        // Simple transfer function: map intensity to color and opacity.
+        // Transfer function: map intensity to color and opacity.
         let sample_alpha = normalized * params.density_scale * step_size;
         let sample_color = transfer_function(normalized);
 
         // Front-to-back compositing.
-        accumulated_color = accumulated_color + (1.0 - accumulated_alpha) * sample_alpha * sample_color;
-        accumulated_alpha = accumulated_alpha + (1.0 - accumulated_alpha) * sample_alpha;
+        accumulated_color += (1.0 - accumulated_alpha) * sample_alpha * sample_color;
+        accumulated_alpha += (1.0 - accumulated_alpha) * sample_alpha;
     }
 
     return vec4<f32>(accumulated_color, accumulated_alpha);

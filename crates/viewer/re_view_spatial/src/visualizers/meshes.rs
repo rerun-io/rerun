@@ -163,7 +163,7 @@ impl Mesh3DVisualizer {
 
     /// Parse shader parameters JSON, resolve uniform/texture values from the store,
     /// and build the custom bind group for a custom shader mesh.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn resolve_custom_shader_bindings(
         &self,
         ctx: &QueryContext<'_>,
