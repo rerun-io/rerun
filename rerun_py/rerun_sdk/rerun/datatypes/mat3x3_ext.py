@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import numbers
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pyarrow as pa
 
 from rerun.error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import Mat3x3ArrayLike, Mat3x3Like
 
 

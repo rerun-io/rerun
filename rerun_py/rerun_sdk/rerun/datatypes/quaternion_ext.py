@@ -4,11 +4,12 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
-import pyarrow as pa
 
 from .._validators import flat_np_float32_array_from_array_like
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import Quaternion, QuaternionArrayLike
 
 

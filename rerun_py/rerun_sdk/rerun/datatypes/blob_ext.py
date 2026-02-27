@@ -4,9 +4,10 @@ from collections.abc import Sequence, Sized
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pyarrow as pa
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import BlobArrayLike
 
 

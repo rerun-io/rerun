@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pyarrow as pa
 
 from .._converters import to_np_uint8
 from .._validators import flat_np_array_from_array_like
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import UuidArrayLike
 
 NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))

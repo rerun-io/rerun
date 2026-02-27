@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pyarrow as pa
-
 from .._validators import flat_np_float64_array_from_array_like
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import Range1DArrayLike
 
 

@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
-import pyarrow as pa
 
 from .._color_conversion import u8_array_to_rgba
 from ..error_utils import RerunWarning
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import Rgba32ArrayLike, Rgba32Like
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Sequence, Sized
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pyarrow as pa

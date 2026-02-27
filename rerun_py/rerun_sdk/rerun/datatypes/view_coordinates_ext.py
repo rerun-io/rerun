@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-import pyarrow as pa
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from . import ViewCoordinatesArrayLike
 
 
