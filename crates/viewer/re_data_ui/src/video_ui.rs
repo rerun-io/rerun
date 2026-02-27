@@ -384,12 +384,12 @@ fn decoded_frame_ui<'a>(
             };
 
             if decoder_delay_state.should_request_more_frames() {
-                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
+                ui.request_repaint(); // Keep polling for an up-to-date texture
             }
 
             {
                 let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
-                let loading_indicator_opacity = ui.ctx().animate_bool(
+                let loading_indicator_opacity = ui.animate_bool(
                     ui.id().with((video_id, "loading_indicator")),
                     show_loading_indicator,
                 );
@@ -710,7 +710,7 @@ impl VideoUi {
                         // TODO(emilk): Some time controls would be nice,
                         // but the point here is not to have a nice viewer,
                         // but to show the user what they have selected
-                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                        ui.request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
                         let time = ui.input(|i| i.time);
 
                         if let Some(duration) = video.data_descr().duration() {

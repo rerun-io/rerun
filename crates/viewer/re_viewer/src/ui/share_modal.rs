@@ -111,7 +111,7 @@ impl ShareModal {
             ui.ctx(),
             || ModalWrapper::new("Share"),
             |ui| {
-                let panel_max_height = (ui.ctx().content_rect().height() - 100.0)
+                let panel_max_height = (ui.content_rect().height() - 100.0)
                     .at_least(0.0)
                     .at_most(640.0);
                 ui.set_max_height(panel_max_height);
@@ -160,7 +160,7 @@ impl ShareModal {
                         let visuals = &mut ui.style_mut().visuals;
                         visuals.override_text_color = Some(tokens.text_inverse);
 
-                        let response = ui.ctx().read_response(ui.next_auto_id());
+                        let response = ui.read_response(ui.next_auto_id());
                         let fill_color = if response.is_some_and(|r| r.hovered()) {
                             tokens.bg_fill_inverse_hover
                         } else {
@@ -175,7 +175,7 @@ impl ShareModal {
                     })
                     .inner;
                 if copy_link_response.clicked() {
-                    ui.ctx().copy_text(url_string.clone());
+                    ui.copy_text(url_string.clone());
                     self.show_copied_feedback = true;
                 } else if !copy_link_response.hovered() {
                     self.show_copied_feedback = false;

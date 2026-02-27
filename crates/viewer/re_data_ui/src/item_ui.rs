@@ -801,7 +801,7 @@ pub fn entity_db_button_ui(
 
         if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {recording_name:?} to clipboard");
-            ui.ctx().copy_text(recording_name);
+            ui.copy_text(recording_name);
         }
     });
 

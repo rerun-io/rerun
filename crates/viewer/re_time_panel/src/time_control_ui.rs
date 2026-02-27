@@ -94,7 +94,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                     if ui.button("Copy timeline name").clicked() {
                         let timeline = format!("{}", time_ctrl.timeline_name());
                         re_log::info!("Copied timeline: {}", timeline);
-                        ui.ctx().copy_text(timeline);
+                        ui.copy_text(timeline);
                     }
                 })
         });

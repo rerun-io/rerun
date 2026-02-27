@@ -39,12 +39,12 @@ pub fn picking(
 ) -> Result<(egui::Response, Option<ViewPickingConfiguration>), ViewSystemExecutionError> {
     re_tracing::profile_function!();
 
-    if ui.ctx().dragged_id().is_some() {
+    if ui.dragged_id().is_some() {
         state.previous_picking_result = None;
         return Ok((response, None));
     }
 
-    let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
+    let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.pixels_per_point();
     // Make the picking rect bigger than necessary so we can use it to counter-act delays.
     // (by the time the picking rectangle is read back, the cursor may have moved on).
     let picking_rect_size = (picking_rect_size * 2.0)

@@ -231,7 +231,7 @@ impl TimePanel {
             panel_frame.inner_margin.right = 0;
         }
 
-        let window_height = ui.ctx().content_rect().height();
+        let window_height = ui.content_rect().height();
 
         let id: egui::Id = self.source.into();
 
@@ -1009,8 +1009,7 @@ impl TimePanel {
 
                     if total_num_messages == 0 {
                         ui.label(
-                            ui.ctx()
-                                .warning_text(format!("No event logged on timeline {timeline:?}")),
+                            ui.warning_text(format!("No event logged on timeline {timeline:?}")),
                         );
                     } else {
                         list_item::list_item_scope(ui, "hover tooltip", |ui| {
@@ -1187,7 +1186,7 @@ impl TimePanel {
                 ctx.selection_state().set_hovered(item.to_item());
             }
 
-            if ui.ctx().dragged_id().is_none() {
+            if ui.dragged_id().is_none() {
                 // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
                 //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
                 egui::Tooltip::always_open(
@@ -1396,7 +1395,7 @@ impl TimePanel {
                     }
 
                     if 0.0 < rate {
-                        ui.ctx().request_repaint(); // Show latest estimate
+                        ui.request_repaint(); // Show latest estimate
                     }
 
                     let staleness = 1.0 - freshness;
@@ -1696,7 +1695,7 @@ fn help(os: egui::os::OperatingSystem) -> Help {
 
 fn help_button(ui: &mut egui::Ui) {
     ui.help_button(|ui| {
-        help(ui.ctx().os()).ui(ui);
+        help(ui.os()).ui(ui);
     });
 }
 
@@ -1865,7 +1864,7 @@ fn paint_time_ranges_gaps(
 
     if let Some(segment) = time_ranges_ui.segments.first() {
         let gap_edge = *segment.x.start() as f32;
-        let gap_edge_left_side = ui.ctx().content_rect().left() - GAP_END_MARGIN;
+        let gap_edge_left_side = ui.content_rect().left() - GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
             // Left side of first segment - paint as a very wide gap that we only see the right side of
@@ -1887,7 +1886,7 @@ fn paint_time_ranges_gaps(
 
     if let Some(segment) = time_ranges_ui.segments.last() {
         let gap_edge = *segment.x.end() as f32;
-        let gap_edge_right_side = ui.ctx().content_rect().right() + GAP_END_MARGIN;
+        let gap_edge_right_side = ui.content_rect().right() + GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
             // Right side of last segment - paint as a very wide gap that we only see the left side of
@@ -1943,7 +1942,7 @@ fn pan_and_zoom_interaction(
 
     if response.dragged_by(PointerButton::Middle) {
         delta_x += response.drag_delta().x;
-        ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
+        ui.set_cursor_icon(CursorIcon::AllScroll);
     }
 
     if delta_x != 0.0
@@ -2012,7 +2011,7 @@ fn timeline_properties_context_menu(
     if ui.button("Copy timestamp").clicked() {
         let time = format!("{}", hovered_time.floor().as_i64());
         re_log::info!("Copied hovered timestamp: {}", time);
-        ui.ctx().copy_text(time);
+        ui.copy_text(time);
     }
 }
 
@@ -2020,7 +2019,7 @@ fn copy_time_properties_context_menu(ui: &mut egui::Ui, time: TimeReal) {
     if ui.button("Copy timestamp").clicked() {
         let time = format!("{}", time.floor().as_i64());
         re_log::info!("Copied hovered timestamp: {}", time);
-        ui.ctx().copy_text(time);
+        ui.copy_text(time);
     }
 }
 
@@ -2098,12 +2097,11 @@ impl TimePanel {
                     })
                     .is_some();
                 if popup_is_open {
-                    ui.ctx().memory_mut(|mem| {
+                    ui.memory_mut(|mem| {
                         mem.data.insert_temp(right_clicked_time_id, preview_time);
                     });
                 } else {
-                    ui.ctx()
-                        .memory_mut(|mem| mem.data.remove::<TimeReal>(right_clicked_time_id));
+                    ui.memory_mut(|mem| mem.data.remove::<TimeReal>(right_clicked_time_id));
                 }
             }
         }

@@ -84,7 +84,7 @@ impl LoginFlow {
     fn done(&mut self, ui: &egui::Ui, cmd: &CommandSender) -> Option<LoginFlowResult> {
         match self.state.done() {
             Ok(Some(credentials)) => {
-                ui.ctx().request_repaint();
+                ui.request_repaint();
 
                 cmd.send_system(SystemCommand::ShowNotification(Notification::new(
                     NotificationLevel::Success,

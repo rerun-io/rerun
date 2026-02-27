@@ -296,8 +296,8 @@ impl ModalWrapper {
 
                     if self.scrollable.any() {
                         // Make the modal size less jumpy and work around https://github.com/emilk/egui/issues/5138
-                        let max_height = 0.85 * ui.ctx().content_rect().height();
-                        let min_height = 0.3 * ui.ctx().content_rect().height().at_most(max_height);
+                        let max_height = 0.85 * ui.content_rect().height();
+                        let min_height = 0.3 * ui.content_rect().height().at_most(max_height);
 
                         egui::ScrollArea::new(self.scrollable)
                             .min_scrolled_height(max_height)
@@ -384,7 +384,7 @@ pub fn prevent_shrinking(ui: &mut egui::Ui) {
     let last_rect = ui.response().rect;
 
     #[expect(clippy::useless_let_if_seq)]
-    let mut screen_size = ui.ctx().content_rect().size();
+    let mut screen_size = ui.content_rect().size();
     if ui.is_sizing_pass() {
         // On the very first frame, there will be a sizing pass and the max_rect that frame might
         // be bigger than necessary. We don't want to lock to that size, so we need to ignore it.

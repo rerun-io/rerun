@@ -95,7 +95,7 @@ impl Widget for ComboItem<'_> {
             atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
             atoms.push_right(Atom::custom(error_id, ui.tokens().small_icon_size));
         } else if value.is_some() {
-            let value_scope_response = ui.ctx().read_response(value_scope_id);
+            let value_scope_response = ui.read_response(value_scope_id);
             let size = value_scope_response
                 .map(|r| r.rect.size())
                 .unwrap_or_default();

@@ -288,7 +288,7 @@ impl ViewClass for GraphView {
         state.visual_bounds = Some(updated_bounds);
 
         if state.layout_state.is_in_progress() {
-            ui.ctx().request_repaint();
+            ui.request_repaint();
         }
 
         Ok(())

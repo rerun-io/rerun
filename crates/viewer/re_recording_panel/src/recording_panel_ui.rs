@@ -483,13 +483,13 @@ fn dataset_entry_ui(
 
         if ui.button("Copy dataset name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
-            ui.ctx().copy_text(name.clone());
+            ui.copy_text(name.clone());
         }
 
         if ui.button("Copy dataset id").clicked() {
             let id = entry_id.id.to_string();
             re_log::info!("Copied {id:?} to clipboard");
-            ui.ctx().copy_text(id);
+            ui.copy_text(id);
         }
     });
 
@@ -726,7 +726,7 @@ fn receiver_ui(
 
         if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
-            ui.ctx().copy_text(name);
+            ui.copy_text(name);
         }
     });
 }

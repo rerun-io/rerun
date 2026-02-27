@@ -283,7 +283,7 @@ impl RightPanel {
                         ui.list_item().show_hierarchical(
                             ui,
                             list_item::PropertyContent::new("Some item:").value_fn(|ui, _| {
-                                ui.ctx().debug_painter().debug_rect(
+                                ui.debug_painter().debug_rect(
                                     ui.max_rect(),
                                     egui::Color32::LIGHT_BLUE,
                                     "space for value",
@@ -327,7 +327,7 @@ impl RightPanel {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::CustomContent::new(|ui, _| {
-                        ui.ctx().debug_painter().debug_rect(
+                        ui.debug_painter().debug_rect(
                             ui.max_rect(),
                             egui::Color32::LIGHT_RED,
                             "CustomContent delegates to a closure",
@@ -338,7 +338,7 @@ impl RightPanel {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::CustomContent::new(|ui, _| {
-                        ui.ctx().debug_painter().debug_rect(
+                        ui.debug_painter().debug_rect(
                             ui.max_rect(),
                             egui::Color32::LIGHT_RED,
                             "CustomContent with an action button",

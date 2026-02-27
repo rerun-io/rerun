@@ -33,7 +33,7 @@ pub static EXAMPLES_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::
 /// Types of URLs that can be opened directly in the viewer.
 ///
 /// This is the highest level way of handling arbitrary URLs inside the viewer.
-/// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
+/// The only higher level way of opening URLs is `ui.open_url(...)` which will
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
 #[derive(Clone, PartialEq)]
 pub enum ViewerOpenUrl {
@@ -501,7 +501,7 @@ impl ViewerOpenUrl {
     /// * web event listeners
     ///
     /// This is the highest level way of opening arbitrary URLs inside the viewer.
-    /// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
+    /// The only higher level way of opening URLs is `ui.open_url(...)` which will
     /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
     pub fn open(
         self,

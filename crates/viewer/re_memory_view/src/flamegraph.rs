@@ -168,7 +168,7 @@ pub fn flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree, state: &mut Fl
     // Update animation state
     let current_time = ui.input(|i| i.time);
     if state.update_animation(current_time) {
-        ui.ctx().request_repaint();
+        ui.request_repaint();
     }
 
     // Auto-fit continuously while enabled (but not during animation)
@@ -249,12 +249,12 @@ pub fn flamegraph_ui(ui: &mut egui::Ui, tree: &NamedMemUsageTree, state: &mut Fl
         // Handle zoom action from double-click on a node:
         state.auto_fit = false;
         state.animate_to_range(current_time, action.start_bytes, action.size_bytes);
-        ui.ctx().request_repaint();
+        ui.request_repaint();
     } else if bg_response.double_clicked() {
         // Reset view to show all content:
         state.auto_fit = true;
         state.animate_to_range(current_time, 0.0, total_size_bytes as f64);
-        ui.ctx().request_repaint();
+        ui.request_repaint();
     }
 }
 

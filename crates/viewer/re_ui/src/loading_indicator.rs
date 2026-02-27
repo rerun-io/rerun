@@ -114,5 +114,5 @@ pub fn paint_loading_indicator_inside(
             .on_hover_text(format!("[DEBUG REASON] {reason}"));
     }
 
-    ui.ctx().request_repaint();
+    ui.request_repaint();
 }

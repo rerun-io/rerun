@@ -130,8 +130,8 @@ pub fn redap_uri_button(
 
 fn handle_open_full_recording_link(ui: &Ui, uri: RedapUri, response: &egui::Response) {
     if response.clicked_with_open_in_background() {
-        ui.ctx().open_url(egui::OpenUrl::new_tab(uri));
+        ui.open_url(egui::OpenUrl::new_tab(uri));
     } else if response.clicked() {
-        ui.ctx().open_url(egui::OpenUrl::same_tab(uri));
+        ui.open_url(egui::OpenUrl::same_tab(uri));
     }
 }

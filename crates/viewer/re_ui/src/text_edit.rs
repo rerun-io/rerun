@@ -40,7 +40,7 @@ pub fn autocomplete_text_edit(
 
     // Persist the selected index using egui's temporary data storage if the suggestions popup is open.
     let selected_index: Option<usize> = if suggestions_open {
-        let previous_index = ui.ctx().data(|d| d.get_temp::<usize>(response.id));
+        let previous_index = ui.data(|d| d.get_temp::<usize>(response.id));
         let index = if index_delta != 0 {
             // (prev + n + delta) % n handles both directions correctly.
             let base = previous_index.map_or(if index_delta > 0 { usize::MAX } else { 0 }, |i| i);
@@ -54,11 +54,11 @@ pub fn autocomplete_text_edit(
             previous_index
         };
         if let Some(i) = index {
-            ui.ctx().data_mut(|d| d.insert_temp(response.id, i));
+            ui.data_mut(|d| d.insert_temp(response.id, i));
         }
         index
     } else {
-        ui.ctx().data_mut(|d| d.remove::<usize>(response.id));
+        ui.data_mut(|d| d.remove::<usize>(response.id));
         None
     };
 

@@ -44,7 +44,7 @@ pub(crate) fn view_space_origin_widget_ui(
 
             // Delay opening the popup until the click is finished, otherwise the popup will close
             // immediately because the popup thinks this is a clicked_elsewhere.
-            let click_finished = ui.ctx().input(|i| !i.pointer.any_down());
+            let click_finished = ui.input(|i| !i.pointer.any_down());
             if output.response.has_focus() && click_finished {
                 state = SpaceOriginEditState::Editing(EditState {
                     origin_string: space_origin_string,

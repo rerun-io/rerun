@@ -208,7 +208,7 @@ impl FilterState {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
         let textedit_id = ui.id().with("textedit");
-        let response = ui.ctx().read_response(textedit_id);
+        let response = ui.read_response(textedit_id);
 
         let visuals = response
             .as_ref()

@@ -183,17 +183,17 @@ impl ViewportUi {
             // We want the rectangle to be on top of everything in the viewport,
             // including stuff in "zoom-pan areas", like we use in the graph view.
             let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
-            ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
+            ui.set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
             let painter = ui.painter().clone().with_layer_id(top_layer_id);
 
             // Draw selection outlines
-            let selection_stroke = ui.ctx().selection_stroke();
+            let selection_stroke = ui.selection_stroke();
             for rect in selection_rects {
                 painter.rect_stroke(rect, 0.0, selection_stroke, egui::StrokeKind::Inside);
             }
 
             // Draw hover outlines
-            let hover_stroke = ui.ctx().hover_stroke();
+            let hover_stroke = ui.hover_stroke();
             for rect in hover_rects {
                 painter.rect_stroke(rect, 0.0, hover_stroke, egui::StrokeKind::Inside);
             }
@@ -417,7 +417,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     );
                 });
 
-            ui.ctx().memory_mut(|mem| {
+            ui.memory_mut(|mem| {
                 mem.caches
                     .cache::<re_viewer_context::ViewRectPublisher>()
                     .set(
@@ -587,7 +587,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     Help::new_without_title()
                         .control(
                             "Restore - show all spaces",
-                            IconText::from_keyboard_shortcut(ui.ctx().os(), TOGGLE_MAXIMIZE_VIEW),
+                            IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                         )
                         .ui(ui);
                 })
@@ -610,10 +610,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         Help::new_without_title()
                             .control(
                                 "Maximize view",
-                                IconText::from_keyboard_shortcut(
-                                    ui.ctx().os(),
-                                    TOGGLE_MAXIMIZE_VIEW,
-                                ),
+                                IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                             )
                             .ui(ui);
                     } else {
@@ -667,7 +664,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             });
 
         ui.help_button(|ui| {
-            view_class.help(ui.ctx().os()).ui(ui);
+            view_class.help(ui.os()).ui(ui);
         });
 
         self.visualizer_errors_button(ui, view_id);

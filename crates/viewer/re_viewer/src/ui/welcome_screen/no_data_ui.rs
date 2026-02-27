@@ -47,7 +47,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()
         {
-            ui.ctx().open_url(egui::output::OpenUrl {
+            ui.open_url(egui::output::OpenUrl {
                 url: super::welcome_section::DOCS_URL.to_owned(),
                 new_tab: true,
             });

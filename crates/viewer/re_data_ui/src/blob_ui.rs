@@ -89,7 +89,7 @@ impl EntityDataUi for Blob {
 
 /// Show EXIF data about the given blob (image), if possible.
 fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_sdk_types::datatypes::Blob) {
-    let exif_result = ui.ctx().memory_mut(|mem| {
+    let exif_result = ui.memory_mut(|mem| {
         // Cache EXIF parsing to avoid re-parsing every frame.
         // The parsing is really fast, so this is not really needed.
         let cache = mem

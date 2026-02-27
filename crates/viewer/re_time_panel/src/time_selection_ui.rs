@@ -182,7 +182,7 @@ pub fn loop_selection_ui(
                 on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
 
                 if middle_response.clicked() {
-                    if ui.ctx().input(|i| i.modifiers.alt) {
+                    if ui.input(|i| i.modifiers.alt) {
                         time_commands.push(TimeControlCommand::RemoveTimeSelection);
                     } else {
                         let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
@@ -196,7 +196,7 @@ pub fn loop_selection_ui(
             }
         }
 
-        if selected_range.is_empty() && ui.ctx().dragged_id().is_none() {
+        if selected_range.is_empty() && ui.dragged_id().is_none() {
             // A zero-sized loop selection is confusing (and invisible), so remove it
             // (unless we are in the process of dragging right now):
             time_commands.push(TimeControlCommand::RemoveTimeSelection);
@@ -234,7 +234,7 @@ pub fn loop_selection_ui(
                 AbsoluteTimeRangeF::point(time).to_int(),
             ));
             time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
-            ui.ctx().set_dragged_id(right_edge_id);
+            ui.set_dragged_id(right_edge_id);
         }
     }
 
@@ -316,7 +316,7 @@ fn selection_context_menu(
     time_commands: &mut Vec<TimeControlCommand>,
     is_on_selection: bool,
 ) {
-    let modifier = ui.ctx().format_modifiers(egui::Modifiers::ALT);
+    let modifier = ui.format_modifiers(egui::Modifiers::ALT);
     if ui
         .add_enabled(
             is_on_selection,
@@ -459,7 +459,7 @@ fn drag_right_loop_selection_edge(
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-        ui.ctx().set_dragged_id(right_edge_id);
+        ui.set_dragged_id(right_edge_id);
     }
 
     Some(())
@@ -477,7 +477,7 @@ fn drag_left_loop_selection_edge(
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-        ui.ctx().set_dragged_id(left_edge_id);
+        ui.set_dragged_id(left_edge_id);
     }
 
     Some(())

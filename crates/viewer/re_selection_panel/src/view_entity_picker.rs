@@ -48,7 +48,7 @@ impl ViewEntityPicker {
             },
             |ui| {
                 // 80%, never more than 500px
-                ui.set_max_height(f32::min(ui.ctx().content_rect().height() * 0.8, 500.0));
+                ui.set_max_height(f32::min(ui.content_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     ui.close();
                     return;

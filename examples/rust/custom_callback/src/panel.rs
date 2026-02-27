@@ -81,7 +81,7 @@ impl Control {
         });
 
         list_item::list_item_scope(ui, "Message properties", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().global_style().spacing.item_spacing.y;
+            ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
             ui.section_collapsing_header("Message properties")
                 .default_open(true)
                 .show(ui, |ui| {
@@ -143,7 +143,7 @@ impl Control {
         });
 
         list_item::list_item_scope(ui, "dynamic", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().global_style().spacing.item_spacing.y;
+            ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
             ui.section_collapsing_header("Dynamic position")
                 .default_open(true)
                 .show(ui, |ui| {

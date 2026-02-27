@@ -38,9 +38,9 @@ impl App {
         MenuButton::from_button(Button::image(image))
             .config(MenuConfig::new().style(menu_style()))
             .ui(ui, |ui| {
-                ui.set_max_height(ui.ctx().content_rect().height());
+                ui.set_max_height(ui.content_rect().height());
                 ScrollArea::vertical()
-                    .max_height(ui.ctx().content_rect().height() - 16.0)
+                    .max_height(ui.content_rect().height() - 16.0)
                     .show(ui, |ui| {
                         self.rerun_menu_ui(ui, render_state, _store_context);
                     });
@@ -112,7 +112,7 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         {
             // On the web the browser controls the zoom
-            let zoom_factor = ui.ctx().zoom_factor();
+            let zoom_factor = ui.zoom_factor();
             re_ui::menu::align_non_button_menu_items(ui, |ui| {
                 ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
                     .on_hover_text(
@@ -162,10 +162,7 @@ impl App {
                 debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
 
                 ui.label("egui debug options:");
-                ui.weak(format!(
-                    "pixels_per_point: {:?}",
-                    ui.ctx().pixels_per_point()
-                ));
+                ui.weak(format!("pixels_per_point: {:?}", ui.pixels_per_point()));
                 egui_debug_options_ui(ui);
             });
 
@@ -424,9 +421,9 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
         .changed();
 
     if any_clicked {
-        let mut style = (*ui.ctx().global_style()).clone();
+        let mut style = (*ui.global_style()).clone();
         style.debug = debug;
-        ui.ctx().set_global_style(style);
+        ui.set_global_style(style);
     }
 }
 
@@ -451,10 +448,8 @@ fn debug_menu_options_ui(
         if ui.button("Mobile size").clicked() {
             // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
             let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen
-            ui.ctx()
-                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
-            ui.ctx()
-                .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+            ui.send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+            ui.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
             ui.close();
         }
     }

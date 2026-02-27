@@ -114,7 +114,7 @@ impl ChunkUi {
                     });
 
                     if response.clicked() {
-                        ui.ctx().copy_text(datatype.clone());
+                        ui.copy_text(datatype.clone());
                     }
                 });
             }
@@ -279,7 +279,7 @@ impl ChunkUi {
                 .clicked()
             {
                 //TODO(#7282): make sure the output is not dependant on the parent terminal's width
-                ui.ctx().copy_text(self.chunk.to_string());
+                ui.copy_text(self.chunk.to_string());
             }
         });
 

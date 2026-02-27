@@ -691,7 +691,7 @@ impl BlueprintTree {
                 data_result_data.kind,
                 DataResultKind::EmptyOriginPlaceholder
             ) {
-                ui.label(ui.ctx().warning_text(
+                ui.label(ui.warning_text(
                     "This view's query did not match any data under the space origin",
                 ));
             }

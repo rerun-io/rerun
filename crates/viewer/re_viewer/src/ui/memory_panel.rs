@@ -75,7 +75,7 @@ impl MemoryPanel {
         re_tracing::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
-        ui.ctx().request_repaint();
+        ui.request_repaint();
 
         ui.add_space(4.0);
 
@@ -426,7 +426,7 @@ impl MemoryPanel {
                                     // This is weird
                                     text = "No callstack available".to_owned();
                                 }
-                                ui.ctx().copy_text(text);
+                                ui.copy_text(text);
                             }
                         }
                     });

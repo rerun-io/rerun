@@ -552,9 +552,7 @@ impl AppState {
                         ..Default::default()
                     })
                     .min_size(120.0)
-                    .default_size(default_blueprint_panel_width(
-                        ui.ctx().content_rect().width(),
-                    ));
+                    .default_size(default_blueprint_panel_width(ui.content_rect().width()));
 
                 let left_panel_response = left_panel.show_animated_inside(
                     ui,
@@ -745,7 +743,7 @@ impl AppState {
         //
 
         if WATERMARK {
-            ui.ctx().paint_watermark();
+            ui.paint_watermark();
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:

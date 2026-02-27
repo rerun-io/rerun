@@ -749,7 +749,7 @@ impl ViewClass for TimeSeriesView {
             if is_resetting {
                 reset_view(ctx, time_range_property, &scalar_axis);
 
-                ui.ctx().request_repaint(); // Make sure we get another frame with the view reset.
+                ui.request_repaint(); // Make sure we get another frame with the view reset.
             } else {
                 let unchanged_bounds = egui_plot::PlotBounds::from_min_max(
                     [x_range.start(), y_range.start()],
@@ -782,7 +782,7 @@ impl ViewClass for TimeSeriesView {
                             &TimeAxis::descriptor_view_range(),
                             &new_view_time_range,
                         );
-                        ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
+                        ui.request_repaint(); // Make sure we get another frame with this new range applied.
                     }
 
                     let new_y_range = transform_axis_range(transform, 1);
@@ -794,7 +794,7 @@ impl ViewClass for TimeSeriesView {
                             &ScalarAxis::descriptor_range(),
                             &new_y_range,
                         );
-                        ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
+                        ui.request_repaint(); // Make sure we get another frame with this new range applied.
                     }
                 }
             }

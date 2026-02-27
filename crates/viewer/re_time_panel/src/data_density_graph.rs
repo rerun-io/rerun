@@ -677,7 +677,7 @@ pub fn build_density_graph<'a>(
         let can_render_individual_events = total_events < config.max_total_chunk_events;
 
         if DEBUG_PAINT {
-            ui.ctx().debug_painter().debug_rect(
+            ui.debug_painter().debug_rect(
                 row_rect,
                 egui::Color32::LIGHT_BLUE,
                 format!(

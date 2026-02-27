@@ -2316,7 +2316,7 @@ impl App {
                         .on_hover_text("Request a second layout pass. Just for testing.")
                         .clicked()
                     {
-                        ui.ctx().request_discard("testing");
+                        ui.request_discard("testing");
                     }
 
                     egui::CollapsingHeader::new("egui settings")
@@ -3847,7 +3847,7 @@ impl eframe::App for App {
                             }
                         }
 
-                        // Note that we can't use `ui.ctx().open_url(egui::OpenUrl::same_tab(uri))` here because..
+                        // Note that we can't use `ui.open_url(egui::OpenUrl::same_tab(uri))` here because..
                         // * the url redirect in `check_for_clicked_hyperlinks` wouldn't be hit
                         // * we don't actually want to open any URLs in the browser here ever, only ever into the current viewer
                     }

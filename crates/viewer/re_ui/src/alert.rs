@@ -114,7 +114,7 @@ impl Alert {
                     ui.label("Click to copy text.");
                 });
             if response.clicked() {
-                ui.ctx().copy_text(full_text.unwrap_or(visible_text));
+                ui.copy_text(full_text.unwrap_or(visible_text));
             }
         })
         .response

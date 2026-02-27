@@ -178,7 +178,7 @@ impl SpatialView3D {
 
         // Determine view port resolution and position.
         let resolution_in_pixel =
-            gpu_bridge::viewport_resolution_in_pixels(ui_rect, ui.ctx().pixels_per_point());
+            gpu_bridge::viewport_resolution_in_pixels(ui_rect, ui.pixels_per_point());
         if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
             return Ok(());
         }
@@ -228,7 +228,7 @@ impl SpatialView3D {
             let picking_context = crate::picking::PickingContext::new(
                 pointer_pos_ui,
                 ui_pan_and_zoom_from_ui,
-                ui.ctx().pixels_per_point(),
+                ui.pixels_per_point(),
                 &eye,
             );
             crate::picking_ui::picking(
@@ -262,7 +262,7 @@ impl SpatialView3D {
             },
             viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
-            pixels_per_point: ui.ctx().pixels_per_point(),
+            pixels_per_point: ui.pixels_per_point(),
 
             outline_config: query
                 .highlights
@@ -312,7 +312,7 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if ui.ctx().input(|i| i.modifiers.alt)
+                if ui.input(|i| i.modifiers.alt)
                     || find_camera(space_cameras, entity_path).is_some()
                 {
                     if state.last_tracked_entity() != Some(entity_path) {
@@ -336,7 +336,7 @@ impl SpatialView3D {
             }
 
             // Make sure focus consequences happen in the next frames.
-            ui.ctx().request_repaint();
+            ui.request_repaint();
         }
 
         // Allow to restore the camera state with escape if a camera was tracked before.
@@ -351,7 +351,7 @@ impl SpatialView3D {
                 space_cameras,
                 state,
                 selected_context,
-                ui.ctx().selection_stroke().color,
+                ui.selection_stroke().color,
             );
         }
         if let Some(hovered_context) = ctx.selection_state().hovered_item_context() {
@@ -360,7 +360,7 @@ impl SpatialView3D {
                 space_cameras,
                 state,
                 hovered_context,
-                ui.ctx().hover_stroke().color,
+                ui.hover_stroke().color,
             );
         }
 

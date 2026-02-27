@@ -363,7 +363,7 @@ fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
         if let Some(bytes_per_second) = chunk_requests.bandwidth() {
             ui.label(format!("{}/s", format_bytes(bytes_per_second)));
             if 0.0 < bytes_per_second {
-                ui.ctx().request_repaint(); // Show latest estimate
+                ui.request_repaint(); // Show latest estimate
             }
         }
         ui.end_row();

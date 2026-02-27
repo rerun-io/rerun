@@ -145,7 +145,7 @@ impl ViewClass for TextDocumentView {
         // Since `rect_contains_pointer` checks for the layer id, this shouldn't cause any problems
         // with popups / modals.
         let hovered = ui.ctx().rect_contains_pointer(ui.layer_id(), response.rect);
-        let clicked = hovered && ui.ctx().input(|i| i.pointer.primary_pressed());
+        let clicked = hovered && ui.input(|i| i.pointer.primary_pressed());
 
         if hovered {
             ctx.selection_state().set_hovered(Item::View(query.view_id));

@@ -57,7 +57,7 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         expanded: bool,
     ) {
-        let screen_width = ui.ctx().content_rect().width();
+        let screen_width = ui.content_rect().width();
 
         let panel = egui::Panel::right("selection_view")
             .min_size(120.0)
@@ -375,7 +375,7 @@ impl SelectionPanel {
         if let Some(data_ui_item) = data_section_ui(item) {
             ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().global_style().spacing.item_spacing.y;
+                ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
                 data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
             });
         }
@@ -468,8 +468,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 .with_help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y =
-                        ui.ctx().global_style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
                     if let Some(new_entity_path_filter) = entity_path_filter_ui(
                         ctx,
@@ -516,8 +515,7 @@ This section lists all active visualizers in this view.";
 
                 header.show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y =
-                        ui.ctx().global_style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
                     visualizers_output(ui);
                 });
@@ -526,8 +524,7 @@ This section lists all active visualizers in this view.";
             ui.section_collapsing_header("View properties")
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y =
-                        ui.ctx().global_style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
                     let cursor = ui.cursor();
 
@@ -591,7 +588,7 @@ fn menu_add_new_visualizer_for_view(
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
     ui.spacing_mut().item_spacing.y = 0.0;
 
-    let max_height = 0.85 * ui.ctx().content_rect().height();
+    let max_height = 0.85 * ui.content_rect().height();
     egui::ScrollArea::vertical()
         .max_height(max_height)
         .show(ui, |ui| {

@@ -4,9 +4,7 @@ pub fn mobile_warning_ui(ui: &mut egui::Ui) {
     // We have not yet optimized the UI experience for mobile. Show a warning banner
     // with a link to the tracking issue.
 
-    if ui.ctx().os() == egui::os::OperatingSystem::IOS
-        || ui.ctx().os() == egui::os::OperatingSystem::Android
-    {
+    if ui.os() == egui::os::OperatingSystem::IOS || ui.os() == egui::os::OperatingSystem::Android {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
             ..ui.tokens().bottom_panel_frame()

@@ -22,13 +22,13 @@ pub fn top_panel(
     re_tracing::profile_function!();
 
     let style_like_web = app.is_screenshotting() || app.app_env().is_test();
-    let top_bar_style = ui.ctx().top_bar_style(frame, style_like_web);
+    let top_bar_style = ui.top_bar_style(frame, style_like_web);
     let top_panel_frame = ui.tokens().top_panel_frame();
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
         #[cfg(not(target_arch = "wasm32"))]
-        if !re_ui::native_window_bar(ui.ctx().os()) {
+        if !re_ui::native_window_bar(ui.os()) {
             // Interact with background first, so that buttons in the top bar gets input priority
             // (last added widget has priority for input).
             let title_bar_response = ui.interact(
@@ -38,12 +38,11 @@ pub fn top_panel(
             );
             if title_bar_response.double_clicked() {
                 let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+                ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
             } else if title_bar_response.is_pointer_button_down_on() {
                 // TODO(emilk): This should probably only run on `title_bar_response.drag_started_by(PointerButton::Primary)`,
                 // see https://github.com/emilk/egui/pull/4656
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
         }
 
@@ -72,7 +71,7 @@ pub fn top_panel(
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if !re_ui::native_window_bar(ui.ctx().os()) {
+    if !re_ui::native_window_bar(ui.os()) {
         panel.show_inside(ui, |ui| content(ui, is_expanded));
     } else {
         panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
@@ -264,12 +263,12 @@ fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
 /// An infrequent blinking of the dot (e.g. when opening a new panel) is expected,
 /// but it should not be sustained.
 fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
-    let is_multi_pass = 0 < ui.ctx().current_pass_index();
+    let is_multi_pass = 0 < ui.current_pass_index();
 
     // Showing the dot just one frame is not enough (e.g. easily missed at 120Hz),
     // so we blink it up and then fade it out quickly.
 
-    let now = ui.ctx().input(|i| i.time);
+    let now = ui.input(|i| i.time);
     let last_multipass_time = ui.data_mut(|data| {
         let last_multipass_time = data
             .get_temp_mut_or_insert_with(egui::Id::new("last_multipass_time"), || {
@@ -296,7 +295,7 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
         painter.circle_filled(response.rect.center(), radius, egui::Color32::ORANGE);
 
         // Make sure we ask for a repaint so we can animate the dot fading out:
-        ui.ctx().request_repaint();
+        ui.request_repaint();
     }
 
     response.on_hover_text(
@@ -518,7 +517,7 @@ fn website_link_ui(ui: &mut egui::Ui) {
         .add(egui::Button::image(image))
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.clicked() {
-        ui.ctx().open_url(egui::output::OpenUrl {
+        ui.open_url(egui::output::OpenUrl {
             url: url.to_owned(),
             new_tab: true,
         });
@@ -548,9 +547,9 @@ fn fps_ui(ui: &mut egui::Ui, app: &App) {
         let visuals = ui.visuals();
 
         // We only warn if we _suspect_ that we're in "continuous repaint mode".
-        let low_fps_right_now = fps < 20.0 && ui.ctx().has_requested_repaint();
+        let low_fps_right_now = fps < 20.0 && ui.has_requested_repaint();
 
-        let now = ui.ctx().input(|i| i.time);
+        let now = ui.input(|i| i.time);
         let warn_start_id = ui.id().with("fps_warning");
         let warn_start_time = ui.data_mut(|d| {
             if low_fps_right_now {
@@ -601,7 +600,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             .on_hover_ui(|ui| add_contents_on_hover(ui))
             .clicked()
         {
-            ui.ctx().copy_text(CODE.to_owned());
+            ui.copy_text(CODE.to_owned());
         }
     }
 
@@ -687,7 +686,7 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
     };
 
     // The user is interested in the latency, so keep it updated.
-    ui.ctx().request_repaint();
+    ui.request_repaint();
 
     let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
     This includes time for encoding, network latency, and decoding.\n\

@@ -688,7 +688,7 @@ impl DataFusionTableDelegate<'_> {
                         if let Some(segment_link) =
                             self.segment_link_for_row(row, segment_links_spec)
                         {
-                            ui.ctx().open_url(OpenUrl {
+                            ui.open_url(OpenUrl {
                                 url: segment_link,
                                 new_tab,
                             });

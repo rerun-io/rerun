@@ -40,13 +40,12 @@ impl State {
                     .show(ui, &mut self.show_copy_feedback)
                     .clicked()
                 {
-                    ui.ctx()
-                        .copy_text(self.callback_server.get_login_url().to_owned());
+                    ui.copy_text(self.callback_server.get_login_url().to_owned());
                 }
             });
         }
 
-        ui.ctx().request_repaint_after(Duration::from_millis(10));
+        ui.request_repaint_after(Duration::from_millis(10));
     }
 
     pub fn done(&mut self) -> Result<Option<Credentials>, String> {

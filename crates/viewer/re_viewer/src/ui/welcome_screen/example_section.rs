@@ -348,7 +348,7 @@ impl ExampleSection {
                                     // panel to quit auto-zoom mode.
                                     ui.input_mut(|i| i.pointer = Default::default());
 
-                                    ui.ctx().open_url(egui::output::OpenUrl {
+                                    ui.open_url(egui::output::OpenUrl {
                                         url: example.desc.rrd_url.clone(),
                                         new_tab: false,
                                     });
@@ -528,7 +528,7 @@ impl ExampleDescLayout {
                     .clicked()
                     && let Some(source_url) = source_url
                 {
-                    ui.ctx().open_url(egui::output::OpenUrl {
+                    ui.open_url(egui::output::OpenUrl {
                         url: source_url.to_owned(),
                         new_tab: true,
                     });
