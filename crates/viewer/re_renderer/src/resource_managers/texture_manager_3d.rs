@@ -1,8 +1,8 @@
 use ahash::{HashMap, HashSet};
 use re_mutex::Mutex;
 
-use crate::wgpu_resources::{GpuTexture, TextureDesc};
 use crate::RenderContext;
+use crate::wgpu_resources::{GpuTexture, TextureDesc};
 
 /// Handle to a 3D texture resource.
 ///

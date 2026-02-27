@@ -46,7 +46,7 @@ DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dico
 def extract_voxel_data(
     dicom_files: Iterable[Path],
 ) -> tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
-    slices = [dicom.read_file(f) for f in dicom_files]  # type: ignore[misc]
+    slices = [dicom.dcmread(f) for f in dicom_files]
     try:
         voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices)
     except dicom_numpy.DicomImportException:
@@ -153,13 +153,18 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
         static=True,
     )
 
-    # Log the volume data as a 3D tensor (to be bound as texture by the shader)
-    voxels_f32 = voxels_volume.astype(np.float32)
-    rr.log("volume/mesh/volume_data", rr.Tensor(voxels_f32, dim_names=["depth", "height", "width"]), static=True)
+    # Log the volume data as a 3D tensor (to be bound as texture by the shader).
+    # Downscale to fit within GPU 3D texture limits (typically 256 per dimension).
+    max_dim = 128
+    from scipy.ndimage import zoom as ndimage_zoom
+
+    scale_factors = tuple(max_dim / s if s > max_dim else 1.0 for s in shape)
+    voxels_small = ndimage_zoom(voxels_volume.astype(np.float32), scale_factors, order=1)
+    rr.log("volume/mesh/volume_data", rr.Tensor(voxels_small, dim_names=["depth", "height", "width"]), static=True)
 
     # Log shader parameters as queryable values
     # The data is i16 in range [0, 536]
-    rr.log("volume/mesh/density_scale", rr.Scalar(1.0), static=True)
+    rr.log("volume/mesh/density_scale", rr.Scalars(1.0), static=True)
     rr.log("volume/mesh/value_range", rr.Tensor(np.array([0.0, 536.0], dtype=np.float32)), static=True)
 
 

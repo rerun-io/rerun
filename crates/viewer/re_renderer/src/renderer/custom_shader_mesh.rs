@@ -14,7 +14,7 @@ use smallvec::smallvec;
 use super::mesh_renderer::gpu_data as instance_gpu_data;
 use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
-use crate::mesh::{mesh_vertices, GpuMesh};
+use crate::mesh::{GpuMesh, mesh_vertices};
 use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
 use crate::view_builder::ViewBuilder;
 use crate::wgpu_resources::{
@@ -22,8 +22,8 @@ use crate::wgpu_resources::{
     GpuShaderModuleHandle, PipelineLayoutDesc, RenderPipelineDesc,
 };
 use crate::{
-    include_shader_module, Color32, CpuWriteGpuReadError, DrawableCollector, OutlineMaskPreference,
-    PickingLayerId, PickingLayerProcessor,
+    Color32, CpuWriteGpuReadError, DrawableCollector, OutlineMaskPreference, PickingLayerId,
+    PickingLayerProcessor, include_shader_module,
 };
 
 /// A single instance of a mesh rendered with a custom shader.

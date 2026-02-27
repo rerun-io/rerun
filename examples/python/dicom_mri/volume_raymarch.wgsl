@@ -22,19 +22,20 @@ var<uniform> params: VolumeParams;
 @group(2) @binding(1)
 var volume_texture: texture_3d<f32>;
 
-@group(2) @binding(101)
-var volume_sampler: sampler;
-
 // ---- Entry point ----
 
 // The fragment entry point for custom mesh shaders must be named `fs_main`.
-// It receives the interpolated vertex data from the standard mesh vertex shader.
+// It receives the interpolated vertex data from the standard instanced_mesh.wgsl vertex shader.
+// The struct layout MUST match VertexOut in instanced_mesh.wgsl exactly.
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) texcoord: vec2<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) world_position: vec3<f32>,
+    @location(0) color: vec3<f32>,
+    @location(1) texcoord: vec2<f32>,
+    @location(2) normal_world_space: vec3<f32>,
+    @location(3) @interpolate(flat) additive_tint_rgba: vec4<f32>,
+    @location(4) @interpolate(flat) outline_mask_ids: vec2<u32>,
+    @location(5) @interpolate(flat) picking_layer_id: vec4<u32>,
 };
 
 @fragment
@@ -54,6 +55,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let range_max = params.value_range.y;
     let range_extent = max(range_max - range_min, 0.001);
 
+    // Get volume texture dimensions for textureLoad coordinate conversion.
+    let tex_dim = textureDimensions(volume_texture);
+
     for (var i: i32 = 0; i < num_steps; i = i + 1) {
         if accumulated_alpha >= 0.95 {
             break;
@@ -62,8 +66,18 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         let t = f32(i) * step_size;
         let sample_pos = ray_origin + ray_dir * t;
 
-        // Sample the 3D volume texture.
-        let raw_value = textureSample(volume_texture, volume_sampler, sample_pos).r;
+        // Convert normalized [0,1] coordinates to texel coordinates.
+        let texel = vec3<i32>(
+            i32(sample_pos.x * f32(tex_dim.x)),
+            i32(sample_pos.y * f32(tex_dim.y)),
+            i32(sample_pos.z * f32(tex_dim.z)),
+        );
+
+        // Clamp to valid range.
+        let clamped = clamp(texel, vec3<i32>(0), vec3<i32>(tex_dim) - vec3<i32>(1));
+
+        // Load the texel directly (R32Float is not filterable).
+        let raw_value = textureLoad(volume_texture, clamped, 0).r;
 
         // Normalize to [0, 1] using the value range.
         let normalized = clamp((raw_value - range_min) / range_extent, 0.0, 1.0);

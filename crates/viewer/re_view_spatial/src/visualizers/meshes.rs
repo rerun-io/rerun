@@ -4,14 +4,14 @@ use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
 use re_log_types::hash::Hash64;
 use re_log_types::{Instance, TimeInt};
+use re_renderer::RenderContext;
 use re_renderer::external::wgpu;
 use re_renderer::renderer::{
-    create_custom_shader_module, CustomShaderMeshInstance, GpuMeshInstance,
+    CustomShaderMeshInstance, GpuMeshInstance, create_custom_shader_module,
 };
-use re_renderer::RenderContext;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Mesh3D;
 use re_sdk_types::components::{ImageFormat, Scalar, ShaderParameters, ShaderSource};
-use re_sdk_types::Archetype as _;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -204,32 +204,46 @@ impl Mesh3DVisualizer {
                 .component_mono::<Scalar>(
                     re_sdk_types::archetypes::Scalars::descriptor_scalars().component,
                 )
-                .map(|s| s.0 .0)
+                .map(|s| s.0.0)
         };
 
         let resolve_vec = |source_entity: &EntityPath, count: usize| -> Vec<f64> {
-            // Try to read a Tensor logged at this entity to get vector values.
-            let results = entity_db.latest_at(
+            // First, try reading as a batch of Scalars (e.g. rr.Scalars([0.0, 700.0])).
+            let scalars_results = entity_db.latest_at(
+                query,
+                source_entity,
+                re_sdk_types::archetypes::Scalars::all_component_identifiers(),
+            );
+            if let Some(scalars) = scalars_results.component_batch::<Scalar>(
+                re_sdk_types::archetypes::Scalars::descriptor_scalars().component,
+            ) && scalars.len() >= count
+            {
+                let mut v: Vec<f64> = scalars.iter().take(count).map(|s| s.0.0).collect();
+                v.resize(count, 0.0);
+                return v;
+            }
+
+            // Then try reading as a Tensor.
+            let tensor_results = entity_db.latest_at(
                 query,
                 source_entity,
                 re_sdk_types::archetypes::Tensor::all_component_identifiers(),
             );
-            if let Some(tensor_data) = results
+            if let Some(tensor_data) = tensor_results
                 .component_mono::<re_sdk_types::components::TensorData>(
                     re_sdk_types::archetypes::Tensor::descriptor_data().component,
                 )
             {
-                // Extract flat f64 values from the tensor buffer.
-                extract_tensor_f64_values(&tensor_data, count)
+                return extract_tensor_f64_values(&tensor_data, count);
+            }
+
+            // Fallback: try reading as a single scalar.
+            if let Some(scalar_val) = resolve_scalar(source_entity) {
+                let mut v = vec![scalar_val];
+                v.resize(count, 0.0);
+                v
             } else {
-                // Fallback: try reading as a single scalar.
-                if let Some(scalar_val) = resolve_scalar(source_entity) {
-                    let mut v = vec![scalar_val];
-                    v.resize(count, 0.0);
-                    v
-                } else {
-                    vec![0.0; count]
-                }
+                vec![0.0; count]
             }
         };
 
@@ -242,6 +256,10 @@ impl Mesh3DVisualizer {
                 upload_3d_texture_from_store(ctx, render_ctx, source_entity, query)
             {
                 texture_bindings.push((*binding, gpu_tex));
+            } else {
+                re_log::warn_once!(
+                    "Failed to upload 3D texture for binding {binding} from {source_entity}"
+                );
             }
         }
 

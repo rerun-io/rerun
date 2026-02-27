@@ -84,13 +84,15 @@ pub fn build_custom_bind_group(
 
     // 3D texture bindings
     for (binding, _texture) in textures_3d {
+        // R32Float is not filterable on most GPUs, so use non-filterable sample type
+        // and a non-filtering sampler.
         layout_entries.push(wgpu::BindGroupLayoutEntry {
             binding: *binding,
             visibility: wgpu::ShaderStages::FRAGMENT,
             ty: wgpu::BindingType::Texture {
                 multisampled: false,
                 view_dimension: wgpu::TextureViewDimension::D3,
-                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                sample_type: wgpu::TextureSampleType::Float { filterable: false },
             },
             count: None,
         });
@@ -99,7 +101,7 @@ pub fn build_custom_bind_group(
         layout_entries.push(wgpu::BindGroupLayoutEntry {
             binding: *binding + 100,
             visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
             count: None,
         });
     }
@@ -135,8 +137,8 @@ pub fn build_custom_bind_group(
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
         });
