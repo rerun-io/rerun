@@ -84,10 +84,9 @@ class TimelineColumnBatch(BaseBatch[TimelineColumnArrayLike]):
         else:
             typed_data = [x if isinstance(x, TimelineColumn) else TimelineColumn(x) for x in data]
 
-        return pa.StructArray.from_arrays(
-            [
-                BoolBatch([x.visible for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                Utf8Batch([x.timeline for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "visible": BoolBatch([x.visible for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "timeline": Utf8Batch([x.timeline for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

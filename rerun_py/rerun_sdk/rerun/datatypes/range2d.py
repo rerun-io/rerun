@@ -98,10 +98,9 @@ class Range2DBatch(BaseBatch[Range2DArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                Range1DBatch([x.x_range for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                Range1DBatch([x.y_range for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "x_range": Range1DBatch([x.x_range for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "y_range": Range1DBatch([x.y_range for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

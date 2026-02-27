@@ -2333,7 +2333,6 @@ fn quote_arrow_serialization(
                     .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
                     .is_some_and(|s| !s.is_empty());
 
-            code.push_indented(0, "from typing import cast", 1);
             code.push_indented(
                 0,
                 quote_local_batch_type_imports(&obj.fields, obj.is_testing()),
@@ -2358,8 +2357,8 @@ fn quote_arrow_serialization(
                 code.push_indented(1, "typed_data = data", 2);
             }
 
-            code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
-            code.push_indented(1, "[", 1);
+            code.push_indented(0, "_ = data_type  # unused: conversion handled on Rust side", 2);
+            code.push_indented(0, "return {", 1);
             for field in &obj.fields {
                 let field_name = &field.name;
                 let field_array = format!("[x.{field_name} for x in typed_data]");
@@ -2379,8 +2378,8 @@ fn quote_arrow_serialization(
                     | Type::Float64 => {
                         let np_dtype = np_dtype_from_type(&field.typ).unwrap();
                         let field_fwd =
-                            format!("pa.array(np.asarray({field_array}, dtype={np_dtype})),");
-                        code.push_indented(2, &field_fwd, 1);
+                            format!("\"{field_name}\": (np.asarray({field_array}, dtype={np_dtype}), 0),");
+                        code.push_indented(1, &field_fwd, 1);
                     }
 
                     Type::Unit
@@ -2400,18 +2399,14 @@ fn quote_arrow_serialization(
 
                         let field_batch_type = format!("{field_type_name}Batch");
 
-                        // Type checker struggles with this occasionally, exact pattern is unclear.
-                        // Tried casting the array earlier via `cast(Sequence[{name}], data)` but to no avail.
                         let field_fwd = format!(
-                            "{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]"
+                            "\"{field_name}\": {field_batch_type}({field_array})._as_raw(),  # type: ignore[misc, arg-type]"
                         );
-                        code.push_indented(2, &field_fwd, 1);
+                        code.push_indented(1, &field_fwd, 1);
                     }
                 }
             }
-            code.push_indented(1, "],", 1);
-            code.push_indented(1, "fields=list(data_type),", 1);
-            code.push_indented(0, ")", 1);
+            code.push_indented(0, "}", 1);
 
             Ok(code)
         }

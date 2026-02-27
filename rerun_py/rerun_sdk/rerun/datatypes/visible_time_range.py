@@ -95,10 +95,9 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                Utf8Batch([x.timeline for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeRangeBatch([x.range for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "timeline": Utf8Batch([x.timeline for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "range": TimeRangeBatch([x.range for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

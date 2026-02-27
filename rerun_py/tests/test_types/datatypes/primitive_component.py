@@ -60,9 +60,8 @@ class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                pa.array(np.asarray([x.value for x in typed_data], dtype=np.uint32)),
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "value": (np.asarray([x.value for x in typed_data], dtype=np.uint32), 0),
+        }

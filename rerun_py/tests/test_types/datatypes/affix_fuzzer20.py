@@ -71,10 +71,9 @@ class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                PrimitiveComponentBatch([x.p for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                StringComponentBatch([x.s for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "p": PrimitiveComponentBatch([x.p for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "s": StringComponentBatch([x.s for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

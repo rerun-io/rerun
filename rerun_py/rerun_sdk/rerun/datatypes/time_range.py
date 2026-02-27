@@ -112,10 +112,9 @@ class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                TimeRangeBoundaryBatch([x.start for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeRangeBoundaryBatch([x.end for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "start": TimeRangeBoundaryBatch([x.start for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "end": TimeRangeBoundaryBatch([x.end for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

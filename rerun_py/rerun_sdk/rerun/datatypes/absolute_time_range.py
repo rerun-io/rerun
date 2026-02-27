@@ -63,10 +63,9 @@ class AbsoluteTimeRangeBatch(BaseBatch[AbsoluteTimeRangeArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                TimeIntBatch([x.min for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeIntBatch([x.max for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "min": TimeIntBatch([x.min for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "max": TimeIntBatch([x.max for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

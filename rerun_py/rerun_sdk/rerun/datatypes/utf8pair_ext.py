@@ -32,6 +32,8 @@ class Utf8PairExt:
     def native_to_pa_array_override(data: Utf8PairArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import Utf8Batch, Utf8Pair
 
+        _ = data_type  # unused: conversion handled on Rust side
+
         if isinstance(data, Utf8Pair):
             first_string_batch = Utf8Batch(data.first)
             second_string_batch = Utf8Batch(data.second)
@@ -49,7 +51,7 @@ class Utf8PairExt:
             first_string_batch = Utf8Batch(first_strings)
             second_string_batch = Utf8Batch(second_strings)
 
-        return pa.StructArray.from_arrays(
-            arrays=[first_string_batch.as_arrow_array(), second_string_batch.as_arrow_array()],
-            fields=[data_type.field("first"), data_type.field("second")],
-        )
+        return {
+            "first": first_string_batch._as_raw(),
+            "second": second_string_batch._as_raw(),
+        }

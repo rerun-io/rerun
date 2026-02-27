@@ -30,6 +30,8 @@ class KeypointPairExt:
     def native_to_pa_array_override(data: KeypointPairArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import KeypointIdBatch, KeypointPair
 
+        _ = data_type  # unused: conversion handled on Rust side
+
         if isinstance(data, KeypointPair):
             data = [data]
 
@@ -38,10 +40,7 @@ class KeypointPairExt:
         keypoint0 = [pair.keypoint0 for pair in keypoints]
         keypoint1 = [pair.keypoint1 for pair in keypoints]
 
-        keypoint0_array = KeypointIdBatch(keypoint0).as_arrow_array()
-        keypoint1_array = KeypointIdBatch(keypoint1).as_arrow_array()
-
-        return pa.StructArray.from_arrays(
-            arrays=[keypoint0_array, keypoint1_array],
-            fields=[data_type.field("keypoint0"), data_type.field("keypoint1")],
-        )
+        return {
+            "keypoint0": KeypointIdBatch(keypoint0)._as_raw(),
+            "keypoint1": KeypointIdBatch(keypoint1)._as_raw(),
+        }

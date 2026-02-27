@@ -227,7 +227,9 @@ def _log_components(
         batch = comp._batch
         nd = batch.__dict__.get("_numpy_data") if hasattr(batch, "__dict__") else None
         if nd is not None:
-            if isinstance(nd, tuple):
+            if isinstance(nd, dict):
+                instanced[descr] = nd
+            elif isinstance(nd, tuple):
                 # Variable-length: (data, offsets, inner_size) → pass as 3-tuple
                 instanced[descr] = nd
             elif isinstance(nd, np.ndarray):

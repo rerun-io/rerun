@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use arrow::array::{
     ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, BooleanArray, FixedSizeListArray,
-    Float32Array, Float64Array, Int64Array, ListArray as ArrowListArray, StringArray, UInt8Array,
-    UInt16Array, UInt32Array, UInt64Array, make_array,
+    Float32Array, Float64Array, Int64Array, ListArray as ArrowListArray, StringArray, StructArray,
+    UInt8Array, UInt16Array, UInt32Array, UInt64Array, make_array,
 };
 use arrow::buffer::{Buffer as ArrowBuffer, OffsetBuffer as ArrowOffsetBuffer, ScalarBuffer};
 use arrow::datatypes::Field as ArrowField;
@@ -257,9 +257,27 @@ fn numpy_to_list_array(
     Ok(Arc::new(list_array))
 }
 
+/// Build an Arrow `StructArray` from a Python dict of field names → values.
+///
+/// Each value follows the same conventions as `value_to_arrow_array` (tuples, dicts, or PyArrow).
+fn dict_to_struct_array(dict: &Bound<'_, PyDict>) -> PyResult<ArrowArrayRef> {
+    let mut fields = Vec::new();
+    let mut arrays = Vec::new();
+    for (key, value) in dict.iter() {
+        let name: String = key.extract()?;
+        let array = value_to_arrow_array(&value)?;
+        fields.push(ArrowField::new(name, array.data_type().clone(), true));
+        arrays.push(array);
+    }
+    StructArray::try_new(fields.into(), arrays, None)
+        .map(|sa| Arc::new(sa) as ArrowArrayRef)
+        .map_err(|e| PyTypeError::new_err(format!("Failed to build StructArray: {e}")))
+}
+
 /// Extract an Arrow array from a Python value.
 ///
 /// Supported formats:
+/// - `dict` mapping field names → values: StructArray (recursive)
 /// - `(numpy_array, list_size)` 2-tuple: FixedSizeList or primitive
 /// - `(data_numpy, offsets_numpy, inner_size)` 3-tuple: variable-length list or string
 /// - PyArrow array (fallback)
@@ -268,6 +286,9 @@ fn numpy_to_list_array(
 /// Convention for 3-tuples: `inner_size == -1` → UTF-8 string,
 ///   `inner_size == 0` → List\<primitive\>, `inner_size > 0` → List\<FixedSizeList\>.
 fn value_to_arrow_array(value: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> {
+    if let Ok(dict) = value.downcast::<PyDict>() {
+        return dict_to_struct_array(dict);
+    }
     if let Ok(tuple) = value.downcast::<PyTuple>() {
         match tuple.len()? {
             2 => {

@@ -79,10 +79,9 @@ class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                Vec3DBatch([x.axis for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                AngleBatch([x.angle for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "axis": Vec3DBatch([x.axis for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "angle": AngleBatch([x.angle for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

@@ -73,10 +73,9 @@ class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                EnumTestBatch([x.value1 for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ValuedEnumBatch([x.value2 for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "value1": EnumTestBatch([x.value1 for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "value2": ValuedEnumBatch([x.value2 for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

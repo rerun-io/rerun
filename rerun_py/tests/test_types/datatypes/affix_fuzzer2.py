@@ -57,9 +57,8 @@ class AffixFuzzer2Batch(BaseBatch[AffixFuzzer2ArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                pa.array(np.asarray([x.single_float_optional for x in typed_data], dtype=np.float32)),
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "single_float_optional": (np.asarray([x.single_float_optional for x in typed_data], dtype=np.float32), 0),
+        }

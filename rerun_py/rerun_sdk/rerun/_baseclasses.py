@@ -228,7 +228,7 @@ class BaseBatch(Generic[T]):
                     self.pa_array = data
                 else:
                     result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
-                    if isinstance(result, (np.ndarray, tuple)):
+                    if isinstance(result, (np.ndarray, tuple, dict)):
                         # Fast path: store numpy data directly, convert to Arrow lazily
                         self._numpy_data = result
                     else:
@@ -248,7 +248,7 @@ class BaseBatch(Generic[T]):
                 self.pa_array = data
             else:
                 result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
-                if isinstance(result, (np.ndarray, tuple)):
+                if isinstance(result, (np.ndarray, tuple, dict)):
                     self._numpy_data = result
                 else:
                     self.pa_array = result
@@ -256,11 +256,63 @@ class BaseBatch(Generic[T]):
         # If exception was swallowed, ensure we have a valid empty array
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
 
+    def _as_raw(self) -> Any:
+        """Return the raw representation for use as a struct field value."""
+        nd = self.__dict__.get("_numpy_data")
+        if nd is not None:
+            if isinstance(nd, (tuple, dict)):
+                return nd
+            list_size = getattr(self._ARROW_DATATYPE, "list_size", 0)
+            return (nd, list_size)
+        return self.as_arrow_array()
+
     def __getattr__(self, name: str) -> Any:
         if name == "pa_array":
             nd = self.__dict__.get("_numpy_data")
             if nd is not None:
                 dt = self._ARROW_DATATYPE
+                if isinstance(nd, dict):
+                    # Struct: dict of field_name → raw value
+                    field_arrays = []
+                    for i in range(dt.num_fields):
+                        field = dt.field(i)
+                        val = nd[field.name]
+                        if isinstance(val, pa.Array):
+                            field_arrays.append(val)
+                        elif isinstance(val, dict):
+                            # Nested struct: recursively build
+                            sub_fields = []
+                            sub_arrays = []
+                            for j in range(field.type.num_fields):
+                                sf = field.type.field(j)
+                                sv = val[sf.name]
+                                if isinstance(sv, pa.Array):
+                                    sub_arrays.append(sv)
+                                elif isinstance(sv, tuple) and len(sv) == 2:
+                                    sub_arrays.append(pa.FixedSizeListArray.from_arrays(sv[0], type=sf.type) if hasattr(sf.type, "list_size") else pa.array(sv[0], type=sf.type))
+                                else:
+                                    sub_arrays.append(pa.array(sv, type=sf.type))
+                                sub_fields.append(sf)
+                            field_arrays.append(pa.StructArray.from_arrays(sub_arrays, fields=sub_fields))
+                        elif isinstance(val, tuple):
+                            if len(val) == 2:
+                                arr_data, ls = val
+                                if ls == 0:
+                                    field_arrays.append(pa.array(arr_data, type=field.type))
+                                else:
+                                    field_arrays.append(pa.FixedSizeListArray.from_arrays(arr_data, type=field.type))
+                            elif len(val) == 3:
+                                arr_data, offsets, inner_size = val
+                                if inner_size == -1:
+                                    strings = [arr_data[offsets[k] : offsets[k + 1]].tobytes().decode("utf-8") for k in range(len(offsets) - 1)]
+                                    field_arrays.append(pa.array(strings, type=field.type))
+                                else:
+                                    field_arrays.append(pa.ListArray.from_arrays(offsets, pa.array(arr_data), type=field.type))
+                        else:
+                            field_arrays.append(pa.array(val, type=field.type))
+                    arr = pa.StructArray.from_arrays(field_arrays, fields=list(dt))
+                    self.pa_array = arr
+                    return arr
                 if isinstance(nd, tuple):
                     data, offsets, inner_size = nd
                     if inner_size == -1:
@@ -312,6 +364,26 @@ class BaseBatch(Generic[T]):
     def __len__(self) -> int:
         nd = self.__dict__.get("_numpy_data")
         if nd is not None:
+            if isinstance(nd, dict):
+                # Struct: all fields have the same length; use the first
+                first_val = next(iter(nd.values()))
+                if isinstance(first_val, (tuple, dict)):
+                    # Delegate to a temporary batch or just count from underlying data
+                    if isinstance(first_val, tuple):
+                        if len(first_val) == 2:
+                            arr, ls = first_val
+                            return len(arr) // ls if ls > 0 else len(arr)
+                        else:
+                            return len(first_val[1]) - 1  # offsets
+                    # Nested dict: recurse on first value of that dict
+                    inner = next(iter(first_val.values()))
+                    if isinstance(inner, tuple):
+                        if len(inner) == 2:
+                            arr, ls = inner
+                            return len(arr) // ls if ls > 0 else len(arr)
+                        return len(inner[1]) - 1
+                    return len(inner)
+                return len(first_val)
             if isinstance(nd, tuple):
                 return len(nd[1]) - 1  # offsets length - 1
             list_size = getattr(self._ARROW_DATATYPE, "list_size", None)

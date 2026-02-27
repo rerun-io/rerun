@@ -208,9 +208,8 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                AffixFuzzer4Batch([x.single_optional_union for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "single_optional_union": AffixFuzzer4Batch([x.single_optional_union for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

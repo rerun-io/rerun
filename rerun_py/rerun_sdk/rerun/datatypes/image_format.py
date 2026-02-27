@@ -137,13 +137,12 @@ class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                pa.array(np.asarray([x.width for x in typed_data], dtype=np.uint32)),
-                pa.array(np.asarray([x.height for x in typed_data], dtype=np.uint32)),
-                PixelFormatBatch([x.pixel_format for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ColorModelBatch([x.color_model for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ChannelDatatypeBatch([x.channel_datatype for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "width": (np.asarray([x.width for x in typed_data], dtype=np.uint32), 0),
+            "height": (np.asarray([x.height for x in typed_data], dtype=np.uint32), 0),
+            "pixel_format": PixelFormatBatch([x.pixel_format for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "color_model": ColorModelBatch([x.color_model for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+            "channel_datatype": ChannelDatatypeBatch([x.channel_datatype for x in typed_data])._as_raw(),  # type: ignore[misc, arg-type]
+        }

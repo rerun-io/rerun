@@ -81,10 +81,9 @@ class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelection
         else:
             typed_data = data
 
-        return pa.StructArray.from_arrays(
-            [
-                pa.array(np.asarray([x.dimension for x in typed_data], dtype=np.uint32)),
-                pa.array(np.asarray([x.index for x in typed_data], dtype=np.uint64)),
-            ],
-            fields=list(data_type),
-        )
+        _ = data_type  # unused: conversion handled on Rust side
+
+        return {
+            "dimension": (np.asarray([x.dimension for x in typed_data], dtype=np.uint32), 0),
+            "index": (np.asarray([x.index for x in typed_data], dtype=np.uint64), 0),
+        }
