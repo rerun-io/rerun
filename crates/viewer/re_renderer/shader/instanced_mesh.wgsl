@@ -41,6 +41,12 @@ struct VertexOut {
 
     @location(5) @interpolate(flat)
     picking_layer_id: vec4u,
+
+    @location(6)
+    position_world: vec3f,
+
+    @location(7)
+    position_object: vec3f,
 };
 
 @vertex
@@ -66,6 +72,8 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
                                     in_instance.additive_tint_srgba.a);
     out.outline_mask_ids = in_instance.outline_mask_ids;
     out.picking_layer_id = in_instance.picking_layer_id;
+    out.position_world = world_position;
+    out.position_object = in_vertex.position;
 
     return out;
 }

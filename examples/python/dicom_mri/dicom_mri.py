@@ -64,18 +64,19 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
 
 def make_volume_bbox_mesh(
     shape: tuple[int, ...],
-) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32], npt.NDArray[np.float32]]:
-    """Create a unit cube mesh with texcoords for volume rendering.
+) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32]]:
+    """Create a unit cube mesh for volume rendering.
 
-    Returns (positions, indices, texcoords) where texcoords map each vertex
-    to normalized [0,1] volume coordinates for the raymarching shader.
+    Returns (positions, indices). The vertex positions span [0,1]^3 in object space,
+    which maps directly to volume texture coordinates. The custom shader uses
+    position_object (from the vertex shader) to determine volume coordinates.
     """
     d, h, w = float(shape[0]), float(shape[1]), float(shape[2])
     # Normalize so the longest axis is 1.0
     max_dim = max(d, h, w)
     sx, sy, sz = w / max_dim, h / max_dim, d / max_dim
 
-    # 8 corners of the bounding box
+    # 8 corners of the bounding box in [0,1]^3 object space (= volume coordinates)
     positions = np.array(
         [
             [0, 0, 0],
@@ -86,22 +87,6 @@ def make_volume_bbox_mesh(
             [sx, 0, sz],
             [sx, sy, sz],
             [0, sy, sz],
-        ],
-        dtype=np.float32,
-    )
-
-    # Texcoords: normalized [0,1] volume coordinates derived from position.
-    # Maps each vertex to its position within the unit cube.
-    texcoords = np.array(
-        [
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [0.0, 1.0],
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [0.0, 1.0],
         ],
         dtype=np.float32,
     )
@@ -119,7 +104,7 @@ def make_volume_bbox_mesh(
         dtype=np.uint32,
     )
 
-    return positions, indices, texcoords
+    return positions, indices
 
 
 def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[int, ...]) -> None:
@@ -137,8 +122,8 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
     wgsl_source = wgsl_path.read_text()
     params_json = params_path.read_text()
 
-    # Create bounding box mesh with texcoords
-    positions, indices, texcoords = make_volume_bbox_mesh(shape)
+    # Create bounding box mesh (positions in [0,1]^3 = volume coordinates)
+    positions, indices = make_volume_bbox_mesh(shape)
 
     # Log the mesh with custom shader
     rr.log(
@@ -146,7 +131,6 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
         rr.Mesh3D(
             vertex_positions=positions,
             triangle_indices=indices,
-            vertex_texcoords=texcoords,
             shader_source=wgsl_source,
             shader_parameters=params_json,
         ),
