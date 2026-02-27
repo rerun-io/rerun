@@ -7,6 +7,7 @@
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct UniformParam {
     /// Name of the uniform in the shader (e.g., `"density_scale"`).
+    #[allow(dead_code)]
     pub name: String,
 
     /// Type of the uniform. One of: `"float"`, `"vec2"`, `"vec3"`, `"vec4"`, `"mat4"`.
@@ -22,6 +23,7 @@ pub struct UniformParam {
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct TextureParam {
     /// Name of the texture in the shader (e.g., `"volume_data"`).
+    #[allow(dead_code)]
     pub name: String,
 
     /// Type of texture binding. One of: `"texture_2d"`, `"texture_3d"`.

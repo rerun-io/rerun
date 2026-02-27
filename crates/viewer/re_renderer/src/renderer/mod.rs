@@ -11,7 +11,8 @@ mod test_triangle;
 mod world_grid;
 
 pub use custom_shader_mesh::{
-    CustomShaderMeshInstance, create_custom_shader_module, custom_shader_draw_phases,
+    CustomShaderMeshDrawData, CustomShaderMeshInstance, CustomShaderMeshRenderer,
+    create_custom_shader_module, custom_shader_draw_phases,
 };
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};

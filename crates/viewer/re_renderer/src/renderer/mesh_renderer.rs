@@ -25,7 +25,7 @@ use crate::{
     PickingLayerProcessor, include_shader_module,
 };
 
-mod gpu_data {
+pub(crate) mod gpu_data {
     use ecolor::Color32;
 
     use crate::mesh::mesh_vertices;

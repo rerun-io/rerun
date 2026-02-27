@@ -105,18 +105,6 @@ impl ShaderModuleDesc {
 
 // ---
 
-/// Descriptor for an inline WGSL shader module (not loaded from a file).
-///
-/// Inline shaders are keyed by a content hash for caching.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct InlineShaderModuleDesc {
-    /// Debug label for this shader.
-    pub label: DebugLabel,
-
-    /// The WGSL source code.
-    pub wgsl_source: String,
-}
-
 // ---
 
 #[derive(Default)]

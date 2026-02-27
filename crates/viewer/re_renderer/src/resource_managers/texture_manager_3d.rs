@@ -1,8 +1,8 @@
 use ahash::{HashMap, HashSet};
 use re_mutex::Mutex;
 
-use crate::RenderContext;
 use crate::wgpu_resources::{GpuTexture, TextureDesc};
+use crate::RenderContext;
 
 /// Handle to a 3D texture resource.
 ///
@@ -124,14 +124,14 @@ impl TextureManager3D {
         &self,
         key: u64,
         render_ctx: &RenderContext,
-        desc: VolumeDataDesc<'_>,
+        desc: &VolumeDataDesc<'_>,
     ) -> GpuTexture3D {
         let mut inner = self.inner.lock();
 
         let texture = match inner.texture_cache.entry(key) {
             std::collections::hash_map::Entry::Occupied(entry) => entry.get().clone(),
             std::collections::hash_map::Entry::Vacant(entry) => {
-                let gpu_texture = Self::upload_volume(render_ctx, &desc);
+                let gpu_texture = Self::upload_volume(render_ctx, desc);
                 entry.insert(gpu_texture).clone()
             }
         };
@@ -179,19 +179,21 @@ impl TextureManager3D {
 
         let unpadded_bytes_per_row = bytes_per_texel * desc.width;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = (unpadded_bytes_per_row + align - 1) / align * align;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
         let rows_per_image = desc.height;
 
         // If row alignment padding is needed, create a padded copy of the data.
         if padded_bytes_per_row != unpadded_bytes_per_row {
             let mut padded_data =
-                vec![0u8; padded_bytes_per_row as usize * desc.height as usize * desc.depth as usize];
+                vec![
+                    0u8;
+                    padded_bytes_per_row as usize * desc.height as usize * desc.depth as usize
+                ];
             for z in 0..desc.depth as usize {
                 for y in 0..desc.height as usize {
                     let src_offset =
                         (z * desc.height as usize + y) * unpadded_bytes_per_row as usize;
-                    let dst_offset =
-                        (z * desc.height as usize + y) * padded_bytes_per_row as usize;
+                    let dst_offset = (z * desc.height as usize + y) * padded_bytes_per_row as usize;
                     let row_len = unpadded_bytes_per_row as usize;
                     if src_offset + row_len <= desc.data.len() {
                         padded_data[dst_offset..dst_offset + row_len]
