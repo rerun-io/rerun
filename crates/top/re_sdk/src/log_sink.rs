@@ -239,6 +239,10 @@ impl private::Sealed for crate::sink::GrpcSink {}
 
 impl MultiSinkCompatible for crate::sink::GrpcSink {}
 
+impl private::Sealed for crate::binary_stream_sink::BinaryStreamSink {}
+
+impl MultiSinkCompatible for crate::binary_stream_sink::BinaryStreamSink {}
+
 // ----------------------------------------------------------------------------
 
 /// Store log messages in memory until you call [`LogSink::drain_backlog`].
