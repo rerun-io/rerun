@@ -545,14 +545,14 @@ impl AppState {
                 // Left panel (recordings and blueprint)
                 //
 
-                let left_panel = egui::SidePanel::left("blueprint_panel")
+                let left_panel = egui::Panel::left("blueprint_panel")
                     .resizable(true)
                     .frame(egui::Frame {
                         fill: ui.visuals().panel_fill,
                         ..Default::default()
                     })
-                    .min_width(120.0)
-                    .default_width(default_blueprint_panel_width(
+                    .min_size(120.0)
+                    .default_size(default_blueprint_panel_width(
                         ui.ctx().content_rect().width(),
                     ));
 
@@ -584,13 +584,13 @@ impl AppState {
                                         - blueprint_min_height)
                                         .max(recordings_min_height);
 
-                                    egui::TopBottomPanel::top("recording_panel")
+                                    egui::Panel::top("recording_panel")
                                         .frame(egui::Frame::new())
                                         .resizable(resizable)
                                         .show_separator_line(false)
-                                        .min_height(recordings_min_height)
-                                        .max_height(max_recordings_height)
-                                        .default_height(160.0_f32.max(recordings_min_height))
+                                        .min_size(recordings_min_height)
+                                        .max_size(max_recordings_height)
+                                        .default_size(160.0_f32.max(recordings_min_height))
                                         .show_inside(ui, |ui| {
                                             self.recording_panel.show_panel(
                                                 &ctx,

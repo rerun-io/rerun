@@ -290,12 +290,12 @@ pub fn draw_entity_rect(
         .overall
         .is_some()
     {
-        ui.ctx().style().visuals.text_color()
+        ui.ctx().global_style().visuals.text_color()
     } else {
         ui.ctx()
-            .style()
+            .global_style()
             .visuals
-            .gray_out(ui.ctx().style().visuals.text_color())
+            .gray_out(ui.ctx().global_style().visuals.text_color())
     };
 
     let padded = rect.expand(10.0);

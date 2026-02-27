@@ -1023,9 +1023,7 @@ fn test_design_tokens() {
     crate::apply_style_and_install_loaders(&ctx);
 
     // Make sure it works:
-    let _ignored = ctx.run(Default::default(), |ctx| {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Hello Test!");
-        });
+    let _ignored = ctx.run_ui(Default::default(), |ui| {
+        ui.label("Hello Test!");
     });
 }

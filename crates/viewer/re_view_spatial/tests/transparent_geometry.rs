@@ -62,19 +62,20 @@ fn test_transparent_geometry<A: AsComponents>(
     let size = egui::vec2(300.0, 300.0);
 
     let default_options = re_ui::testing::default_snapshot_options_for_3d(size);
-    let mut harness = test_context.setup_kittest_for_rendering_3d(size);
-    harness.with_options(
-        re_ui::testing::default_snapshot_options_for_3d(size)
-            // Transparency rendering on MacOS diverges significantly from the other platforms.
-            // (not just on CI but also locally)
-            .threshold(OsThreshold::new(default_options.threshold).macos(2.5))
-            .failed_pixel_count_threshold(
-                OsThreshold::new(default_options.failed_pixel_count_threshold).macos(150),
-            ),
-    );
-    let mut harness = harness.build_ui(|ui| {
-        test_context.run_with_single_view(ui, view_id);
-    });
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(size)
+        .with_options(
+            re_ui::testing::default_snapshot_options_for_3d(size)
+                // Transparency rendering on MacOS diverges significantly from the other platforms.
+                // (not just on CI but also locally)
+                .threshold(OsThreshold::new(default_options.threshold).macos(2.5))
+                .failed_pixel_count_threshold(
+                    OsThreshold::new(default_options.failed_pixel_count_threshold).macos(150),
+                ),
+        )
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
 
     for (i, orientation_y) in [-1.0, 1.0].into_iter().enumerate() {
         // Flip the camera orientation to ensure sorting works as expected.

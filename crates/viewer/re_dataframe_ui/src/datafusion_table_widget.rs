@@ -4,7 +4,7 @@ use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _};
+use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 use itertools::Itertools as _;
 use re_format::{format_plural_s, format_uint};
@@ -515,7 +515,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let frame = Frame::new()
             .fill(ui.tokens().table_header_bg_fill)
             .inner_margin(Margin::symmetric(12, 0));
-        TopBottomPanel::bottom(session_id.with("bottom_bar"))
+        Panel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
             .show_separator_line(false)
             .show_inside(ui, |ui| {

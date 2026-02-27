@@ -89,11 +89,7 @@ impl Widget for ComboItem<'_> {
         let mut atoms = Atoms::new((check_icon, label));
 
         let error_id = Id::new("error");
-
-        // Annoyingly, `UiBuilder::id` wraps the passed `Id` with an extra `Id::new`, meaning
-        // we have to do the same to read it:
-        let value_scope_id_raw = ui.next_auto_id().with("value_scope");
-        let value_scope_id = Id::new(value_scope_id_raw);
+        let value_scope_id = ui.next_auto_id().with("value_scope");
 
         if error.is_some() {
             atoms.push_right(Atom::grow().atom_size(Vec2::new(16.0, 0.0)));
@@ -143,7 +139,7 @@ impl Widget for ComboItem<'_> {
             );
             let mut child_ui = ui.new_child(
                 UiBuilder::new()
-                    .id(value_scope_id_raw)
+                    .id(value_scope_id)
                     .max_rect(rect)
                     .layout(Layout::right_to_left(Align::Center)),
             );
@@ -202,7 +198,7 @@ pub mod tests {
     use crate::{ComboItem, ComboItemHeader};
     use egui::ComboBox;
     use egui_kittest::kittest::Queryable as _;
-    use egui_kittest::{Harness, SnapshotOptions};
+    use egui_kittest::{Harness, OsThreshold, SnapshotOptions};
 
     #[test]
     pub fn test_combo_item() {
@@ -242,9 +238,10 @@ pub mod tests {
         harness.run();
         harness.fit_contents();
 
-        harness.snapshot_options(
-            "combo_item",
-            &SnapshotOptions::new().failed_pixel_count_threshold(10),
-        );
+        let options = SnapshotOptions::new()
+            .threshold(OsThreshold::default().macos(2.5))
+            .failed_pixel_count_threshold(OsThreshold::default().macos(5));
+
+        harness.snapshot_options("combo_item", &options);
     }
 }

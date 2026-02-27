@@ -87,7 +87,7 @@ fn visible_time_range_ui(
 
     ui.scope(|ui| {
         // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+        ui.spacing_mut().item_spacing.y = ui.ctx().global_style().spacing.item_spacing.y;
         query_range_ui(
             ctx,
             ui,

@@ -862,13 +862,13 @@ unnecessary_debug_formatting = "allow"
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

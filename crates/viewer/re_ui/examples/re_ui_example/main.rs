@@ -157,16 +157,16 @@ impl eframe::App for ExampleApp {
         }
     }
 
-    fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let tokens = egui_ctx.tokens();
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        let tokens = ui.tokens();
 
         self.show_text_logs_as_notifications();
 
-        self.top_bar(_frame, egui_ctx);
+        self.top_bar(frame, ui);
 
-        egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(egui_ctx.tokens().bottom_panel_frame())
-            .show_animated(egui_ctx, self.show_bottom_panel, |ui| {
+        egui::Panel::bottom("bottom_panel")
+            .frame(ui.tokens().bottom_panel_frame())
+            .show_animated_inside(ui, self.show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
 
@@ -308,20 +308,20 @@ impl eframe::App for ExampleApp {
         };
 
         // UI code
-        egui::SidePanel::left("left_panel")
-            .default_width(500.0)
+        egui::Panel::left("left_panel")
+            .default_size(500.0)
             .frame(egui::Frame {
-                fill: egui_ctx.style().visuals.panel_fill,
+                fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show_animated(egui_ctx, self.show_left_panel, |ui| {
+            .show_animated_inside(ui, self.show_left_panel, |ui| {
                 let y_spacing = ui.spacing().item_spacing.y;
 
                 list_item::list_item_scope(ui, "left_panel", |ui| {
                     // revert change by `list_item_scope`
                     ui.spacing_mut().item_spacing.y = y_spacing;
-                    egui::TopBottomPanel::top("left_panel_top_bar")
-                        .exact_height(tokens.title_bar_height())
+                    egui::Panel::top("left_panel_top_bar")
+                        .exact_size(tokens.title_bar_height())
                         .frame(egui::Frame {
                             inner_margin: egui::Margin::symmetric(tokens.view_padding(), 0),
                             ..Default::default()
@@ -359,36 +359,36 @@ impl eframe::App for ExampleApp {
         // full-span scope, without interference from the scroll areas.
 
         let panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.panel_fill,
+            fill: ui.global_style().visuals.panel_fill,
             ..Default::default()
         };
 
-        egui::SidePanel::right("right_panel")
+        egui::Panel::right("right_panel")
             .frame(panel_frame)
-            .min_width(0.0)
-            .show_animated(egui_ctx, self.show_right_panel, |ui| {
+            .min_size(0.0)
+            .show_animated_inside(ui, self.show_right_panel, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 self.right_panel.ui(ui);
             });
 
         egui::CentralPanel::default()
             .frame(egui::Frame {
-                fill: egui_ctx.style().visuals.panel_fill,
+                fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show(egui_ctx, |ui| {
+            .show_inside(ui, |ui| {
                 tabs_ui(ui, &mut self.tree);
             });
 
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx, &parse_url) {
+        if let Some(cmd) = self.cmd_palette.show(ui, &parse_url) {
             match cmd {
                 CommandPaletteAction::UiCommand(cmd) => self.command_sender.send_ui(cmd),
                 CommandPaletteAction::OpenUrl(url) => {
-                    egui_ctx.open_url(egui::OpenUrl::new_tab(url.url));
+                    ui.open_url(egui::OpenUrl::new_tab(url.url));
                 }
             }
         }
-        if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(egui_ctx) {
+        if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(ui) {
             self.command_sender.send_ui(cmd);
         }
 
@@ -398,17 +398,17 @@ impl eframe::App for ExampleApp {
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {
-                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    let mut zoom_factor = ui.zoom_factor();
                     zoom_factor += 0.1;
-                    egui_ctx.set_zoom_factor(zoom_factor);
+                    ui.set_zoom_factor(zoom_factor);
                 }
                 UICommand::ZoomOut => {
-                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    let mut zoom_factor = ui.zoom_factor();
                     zoom_factor -= 0.1;
-                    egui_ctx.set_zoom_factor(zoom_factor);
+                    ui.set_zoom_factor(zoom_factor);
                 }
                 UICommand::ZoomReset => {
-                    egui_ctx.set_zoom_factor(1.0);
+                    ui.set_zoom_factor(1.0);
                 }
                 _ => {}
             }
@@ -424,15 +424,15 @@ fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
 }
 
 impl ExampleApp {
-    fn top_bar(&mut self, frame: &eframe::Frame, egui_ctx: &egui::Context) {
-        let top_bar_style = egui_ctx.top_bar_style(frame, false);
+    fn top_bar(&mut self, frame: &eframe::Frame, ui: &mut egui::Ui) {
+        let top_bar_style = ui.top_bar_style(frame, false);
 
-        egui::TopBottomPanel::top("top_bar")
-            .frame(egui_ctx.tokens().top_panel_frame())
-            .exact_height(top_bar_style.height)
-            .show(egui_ctx, |ui| {
+        egui::Panel::top("top_bar")
+            .frame(ui.tokens().top_panel_frame())
+            .exact_size(top_bar_style.height)
+            .show_inside(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
-                if !re_ui::native_window_bar(egui_ctx.os()) {
+                if !re_ui::native_window_bar(ui.os()) {
                     // Interact with background first, so that buttons in the top bar gets input priority
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(

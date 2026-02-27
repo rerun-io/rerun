@@ -235,23 +235,23 @@ impl TimePanel {
 
         let id: egui::Id = self.source.into();
 
-        let collapsed = egui::TopBottomPanel::bottom(id.with("time_panel_collapsed"))
+        let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
             .resizable(false)
             .show_separator_line(false)
             .frame(panel_frame)
-            .default_height(44.0);
+            .default_size(44.0);
 
         let min_height = 150.0;
         let min_top_space = 150.0 + screen_header_height;
-        let expanded = egui::TopBottomPanel::bottom(id.with("time_panel_expanded"))
+        let expanded = egui::Panel::bottom(id.with("time_panel_expanded"))
             .resizable(true)
             .show_separator_line(false)
             .frame(panel_frame)
-            .min_height(min_height)
-            .max_height((window_height - min_top_space).at_least(min_height).round())
-            .default_height((0.25 * window_height).clamp(min_height, 250.0).round());
+            .min_size(min_height)
+            .max_size((window_height - min_top_space).at_least(min_height).round())
+            .default_size((0.25 * window_height).clamp(min_height, 250.0).round());
 
-        egui::TopBottomPanel::show_animated_between_inside(
+        egui::Panel::show_animated_between_inside(
             ui,
             state.is_expanded(),
             collapsed,

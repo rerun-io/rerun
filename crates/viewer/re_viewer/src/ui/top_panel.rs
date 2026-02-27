@@ -65,9 +65,9 @@ pub fn top_panel(
         });
     };
 
-    let panel = egui::TopBottomPanel::top("top_bar")
+    let panel = egui::Panel::top("top_bar")
         .frame(top_panel_frame)
-        .exact_height(top_bar_style.height);
+        .exact_size(top_bar_style.height);
     let is_expanded = app_blueprint.top_panel_state().is_expanded();
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.

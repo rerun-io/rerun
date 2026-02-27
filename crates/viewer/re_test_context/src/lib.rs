@@ -714,8 +714,8 @@ impl TestContext {
         &self,
         mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
     ) {
-        egui::__run_test_ctx(|ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
+        egui::__run_test_ui(|ui| {
+            egui::CentralPanel::default().show_inside(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -742,7 +742,7 @@ impl TestContext {
     /// relies on system commands.
     ///
     /// Notes:
-    /// - Uses [`egui::__run_test_ctx`].
+    /// - Uses [`egui::__run_test_ui`].
     pub fn run_once_in_egui_central_panel<R>(
         &self,
         func: impl FnOnce(&ViewerContext<'_>, &mut egui::Ui) -> R,
@@ -750,8 +750,8 @@ impl TestContext {
         let mut func = Some(func);
         let mut result = None;
 
-        egui::__run_test_ctx(|ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
+        egui::__run_test_ui(|ui| {
+            egui::CentralPanel::default().show_inside(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {

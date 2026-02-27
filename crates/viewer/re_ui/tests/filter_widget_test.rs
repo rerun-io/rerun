@@ -21,8 +21,8 @@ pub fn test_filter_widget() {
 
     let mut harness = egui_kittest::Harness::builder()
         .with_size(Vec2::new(700.0, 150.0))
-        .build(|ctx| {
-            egui::SidePanel::right("right_panel").show(ctx, |ui| {
+        .build_ui(|ui| {
+            egui::Panel::right("right_panel").show_inside(ui, |ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
                 test_code(ui);

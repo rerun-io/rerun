@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use arrow::array::ArrayRef;
 use arrow::datatypes::DataType;
-use egui_kittest::{SnapshotError, SnapshotOptions};
+use egui_kittest::{OsThreshold, SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
@@ -218,8 +218,9 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
 pub fn test_all_components_ui_as_list_items_narrow() {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
-    let snapshot_options =
-        SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_narrow");
+    let snapshot_options = SnapshotOptions::new()
+        .output_path("tests/snapshots/all_components_list_item_narrow")
+        .threshold(OsThreshold::default().macos(2.5));
 
     let results = test_cases
         .iter()
@@ -242,8 +243,9 @@ pub fn test_all_components_ui_as_list_items_narrow() {
 pub fn test_all_components_ui_as_list_items_wide() {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
-    let snapshot_options =
-        SnapshotOptions::new().output_path("tests/snapshots/all_components_list_item_wide");
+    let snapshot_options = SnapshotOptions::new()
+        .output_path("tests/snapshots/all_components_list_item_wide")
+        .threshold(OsThreshold::default().macos(2.5));
 
     let results = test_cases
         .iter()

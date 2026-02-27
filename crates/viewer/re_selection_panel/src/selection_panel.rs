@@ -59,10 +59,10 @@ impl SelectionPanel {
     ) {
         let screen_width = ui.ctx().content_rect().width();
 
-        let panel = egui::SidePanel::right("selection_view")
-            .min_width(120.0)
-            .default_width(default_selection_panel_width(screen_width))
-            .max_width((0.65 * screen_width).round())
+        let panel = egui::Panel::right("selection_view")
+            .min_size(120.0)
+            .default_size(default_selection_panel_width(screen_width))
+            .max_size((0.65 * screen_width).round())
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
@@ -375,7 +375,7 @@ impl SelectionPanel {
         if let Some(data_ui_item) = data_section_ui(item) {
             ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                ui.spacing_mut().item_spacing.y = ui.ctx().global_style().spacing.item_spacing.y;
                 data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
             });
         }
@@ -468,7 +468,8 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 .with_help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y =
+                        ui.ctx().global_style().spacing.item_spacing.y;
 
                     if let Some(new_entity_path_filter) = entity_path_filter_ui(
                         ctx,
@@ -515,7 +516,8 @@ This section lists all active visualizers in this view.";
 
                 header.show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y =
+                        ui.ctx().global_style().spacing.item_spacing.y;
 
                     visualizers_output(ui);
                 });
@@ -524,7 +526,8 @@ This section lists all active visualizers in this view.";
             ui.section_collapsing_header("View properties")
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y =
+                        ui.ctx().global_style().spacing.item_spacing.y;
 
                     let cursor = ui.cursor();
 

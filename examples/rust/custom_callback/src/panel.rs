@@ -46,17 +46,17 @@ impl eframe::App for Control {
     }
 
     /// Called whenever we need repainting, which could be 60 Hz.
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         // First add our panel(s):
-        egui::SidePanel::right("Control Panel")
-            .default_width(400.0)
-            .show(ctx, |ui| {
+        egui::Panel::right("Control Panel")
+            .default_size(400.0)
+            .show_inside(ui, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     self.ui(ui);
                 });
             });
 
-        self.app.update(ctx, frame);
+        self.app.ui(ui, frame);
     }
 }
 
@@ -81,7 +81,7 @@ impl Control {
         });
 
         list_item::list_item_scope(ui, "Message properties", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+            ui.spacing_mut().item_spacing.y = ui.ctx().global_style().spacing.item_spacing.y;
             ui.section_collapsing_header("Message properties")
                 .default_open(true)
                 .show(ui, |ui| {
@@ -143,7 +143,7 @@ impl Control {
         });
 
         list_item::list_item_scope(ui, "dynamic", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+            ui.spacing_mut().item_spacing.y = ui.ctx().global_style().spacing.item_spacing.y;
             ui.section_collapsing_header("Dynamic position")
                 .default_open(true)
                 .show(ui, |ui| {

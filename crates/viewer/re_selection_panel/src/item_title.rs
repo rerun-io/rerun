@@ -73,7 +73,7 @@ impl ItemTitle {
                             .with(instance_path)
                             .with_body(" in view ")
                             .with(&view.display_name_or_default())
-                            .into_widget_text(&ctx.egui_ctx().style()),
+                            .into_widget_text(&ctx.egui_ctx().global_style()),
                     )
                 } else {
                     item_title

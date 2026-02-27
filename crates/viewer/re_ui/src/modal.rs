@@ -208,7 +208,7 @@ impl ModalWrapper {
             .show(ctx, |ui| {
                 prevent_shrinking(ui);
                 egui::Frame {
-                    fill: ctx.style().visuals.panel_fill,
+                    fill: ctx.global_style().visuals.panel_fill,
                     ..Default::default()
                 }
                 .show(ui, |ui| {

@@ -12,7 +12,7 @@ pub fn mobile_warning_ui(ui: &mut egui::Ui) {
             ..ui.tokens().bottom_panel_frame()
         };
 
-        egui::TopBottomPanel::bottom("warning_panel")
+        egui::Panel::bottom("warning_panel")
             .resizable(false)
             .frame(frame)
             .show_inside(ui, |ui| {

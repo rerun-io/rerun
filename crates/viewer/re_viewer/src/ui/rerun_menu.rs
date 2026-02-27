@@ -424,9 +424,9 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
         .changed();
 
     if any_clicked {
-        let mut style = (*ui.ctx().style()).clone();
+        let mut style = (*ui.ctx().global_style()).clone();
         style.debug = debug;
-        ui.ctx().set_style(style);
+        ui.ctx().set_global_style(style);
     }
 }
 

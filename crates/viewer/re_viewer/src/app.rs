@@ -732,7 +732,7 @@ impl App {
             // because you need to hold down pointer to aggressively scrub, need to
             // hold down key inputs to quickly step through the timeline.
             #[cfg(target_arch = "wasm32")]
-            if !self.egui_ctx.is_using_pointer()
+            if !self.egui_ctx.egui_is_using_pointer()
                 && self
                     .egui_ctx
                     .input(|input| !input.any_touches() && input.keys_down.is_empty())
@@ -2287,8 +2287,8 @@ impl App {
             ..ui.tokens().bottom_panel_frame()
         };
 
-        egui::TopBottomPanel::bottom("memory_panel")
-            .default_height(300.0)
+        egui::Panel::bottom("memory_panel")
+            .default_size(300.0)
             .resizable(true)
             .frame(frame)
             .show_animated_inside(ui, self.memory_panel_open, |ui| {
@@ -2305,8 +2305,8 @@ impl App {
     fn egui_debug_panel_ui(&self, ui: &mut egui::Ui) {
         let egui_ctx = ui.ctx().clone();
 
-        egui::SidePanel::left("style_panel")
-            .default_width(300.0)
+        egui::Panel::left("style_panel")
+            .default_size(300.0)
             .resizable(true)
             .frame(ui.tokens().top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
@@ -2338,9 +2338,9 @@ impl App {
     ///
     /// Shows the viewer ui.
     #[expect(clippy::too_many_arguments)]
-    fn ui(
+    fn ui_impl(
         &mut self,
-        egui_ctx: &egui::Context,
+        ui: &mut egui::Ui,
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
@@ -2357,7 +2357,7 @@ impl App {
 
         egui::CentralPanel::default()
             .frame(main_panel_frame)
-            .show(egui_ctx, |ui| {
+            .show_inside(ui, |ui| {
                 paint_background_fill(ui);
 
                 crate::ui::mobile_warning_ui(ui);
@@ -2390,7 +2390,7 @@ impl App {
 
                     // In some (rare) circumstances we run two egui passes in a single frame.
                     // This happens on call to `egui::Context::request_discard`.
-                    let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+                    let is_start_of_new_frame = ui.current_pass_index() == 0;
 
                     if is_start_of_new_frame {
                         self.state.redap_servers.on_frame_start(
@@ -2418,7 +2418,7 @@ impl App {
                         &self.command_sender,
                         &WelcomeScreenState {
                             hide_examples: self.startup_options.hide_welcome_screen,
-                            opacity: self.welcome_screen_opacity(egui_ctx),
+                            opacity: self.welcome_screen_opacity(ui),
                         },
                         self.event_dispatcher.as_ref(),
                         &self.connection_registry,
@@ -2432,7 +2432,7 @@ impl App {
             });
 
         if self.app_options().show_notification_toasts {
-            self.notifications.show_toasts(egui_ctx);
+            self.notifications.show_toasts(ui);
         }
     }
 
@@ -3614,13 +3614,12 @@ impl eframe::App for App {
         }
     }
 
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
 
         if let Some(seconds) = frame.info().cpu_usage {
-            self.frame_time_history
-                .add(egui_ctx.input(|i| i.time), seconds);
+            self.frame_time_history.add(ui.input(|i| i.time), seconds);
         }
 
         // NOTE: Memory stats can be very costly to compute, so only do so if the memory panel is opened.
@@ -3631,10 +3630,8 @@ impl eframe::App for App {
         #[cfg(target_arch = "wasm32")]
         if self.startup_options.enable_history {
             // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
-            let back_pressed =
-                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
-            let fwd_pressed =
-                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
+            let back_pressed = ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
+            let fwd_pressed = ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
 
             if back_pressed {
                 crate::web_history::go_back();
@@ -3662,14 +3659,14 @@ impl eframe::App for App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
-            egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(
+            ui.send_viewport_cmd(egui::ViewportCommand::InnerSize(
                 resolution_in_points.into(),
             ));
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.update(egui_ctx).quit {
-            egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        if self.screenshotter.update(ui).quit {
+            ui.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
 
@@ -3730,14 +3727,14 @@ impl eframe::App for App {
 
         // In some (rare) circumstances we run two egui passes in a single frame.
         // This happens on call to `egui::Context::request_discard`.
-        let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+        let is_start_of_new_frame = ui.current_pass_index() == 0;
         if is_start_of_new_frame {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
             store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
         }
 
-        self.receive_messages(&mut store_hub, egui_ctx);
+        self.receive_messages(&mut store_hub, ui);
 
         if self.app_options().blueprint_gc {
             store_hub.gc_blueprints(&self.state.blueprint_undo_state);
@@ -3745,7 +3742,7 @@ impl eframe::App for App {
 
         self.state.cleanup(&store_hub);
 
-        file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
+        file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver
 
         // Make sure some app is active
         // Must be called before `read_context` below.
@@ -3803,13 +3800,13 @@ impl eframe::App for App {
             let app_blueprint = AppBlueprint::new(
                 Some(store_context.blueprint),
                 &blueprint_query,
-                egui_ctx,
+                ui,
                 self.panel_state_overrides_active
                     .then_some(self.panel_state_overrides),
             );
 
-            self.ui(
-                egui_ctx,
+            self.ui_impl(
+                ui,
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
@@ -3821,13 +3818,13 @@ impl eframe::App for App {
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 // Paint the main window frame on top of everything else
-                paint_native_window_frame(egui_ctx);
+                paint_native_window_frame(ui);
             }
 
-            if let Some(cmd) = self.cmd_palette.show(
-                egui_ctx,
-                &crate::open_url_description::command_palette_parse_url,
-            ) {
+            if let Some(cmd) = self
+                .cmd_palette
+                .show(ui, &crate::open_url_description::command_palette_parse_url)
+            {
                 match cmd {
                     re_ui::CommandPaletteAction::UiCommand(cmd) => {
                         self.command_sender.send_ui(cmd);
@@ -3836,7 +3833,7 @@ impl eframe::App for App {
                         match url_desc.url.parse::<ViewerOpenUrl>() {
                             Ok(url) => {
                                 url.open(
-                                    egui_ctx,
+                                    ui,
                                     &OpenUrlOptions {
                                         follow: false,
                                         select_redap_source_when_loaded: true,
@@ -3858,18 +3855,18 @@ impl eframe::App for App {
             }
 
             let route = self.state.navigation.current().clone();
-            Self::handle_dropping_files(egui_ctx, &self.command_sender, &route);
+            Self::handle_dropping_files(ui, &self.command_sender, &route);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
             self.run_pending_ui_commands(
-                egui_ctx,
+                ui,
                 &app_blueprint,
                 &storage_context,
                 Some(&store_context),
                 &route,
             );
         }
-        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+        self.run_pending_system_commands(&mut store_hub, ui);
 
         self.update_history(&store_hub);
 
@@ -3878,7 +3875,7 @@ impl eframe::App for App {
 
         {
             // Check for returned screenshots:
-            let screenshots: Vec<_> = egui_ctx.input(|i| {
+            let screenshots: Vec<_> = ui.input(|i| {
                 i.raw
                     .events
                     .iter()
@@ -3965,7 +3962,7 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             screen_rect,
             0.0,
             egui_ctx
-                .style()
+                .global_style()
                 .visuals
                 .extreme_bg_color
                 .gamma_multiply_u8(192),
@@ -3974,8 +3971,8 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             screen_rect.center(),
             Align2::CENTER_CENTER,
             text,
-            TextStyle::Body.resolve(&egui_ctx.style()),
-            egui_ctx.style().visuals.strong_text_color(),
+            TextStyle::Body.resolve(&egui_ctx.global_style()),
+            egui_ctx.global_style().visuals.strong_text_color(),
         );
     }
 }

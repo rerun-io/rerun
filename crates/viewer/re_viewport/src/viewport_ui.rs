@@ -1208,7 +1208,7 @@ impl MaximizeAnimationState {
         egui_ctx: &egui::Context,
         viewport_rect: egui::Rect,
     ) -> (Option<ViewId>, egui::Rect) {
-        let animation_time = egui_ctx.style().animation_time;
+        let animation_time = egui_ctx.global_style().animation_time;
 
         let mut animating_view_id = None;
         let mut animated_rect = viewport_rect;

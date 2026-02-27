@@ -21,13 +21,10 @@ pub fn new_harness<T>(option: TestOptions, size: impl Into<Vec2>) -> HarnessBuil
         TestOptions::Rendering3D => default_snapshot_options_for_3d(size),
     };
 
-    let mut builder = egui_kittest::Harness::builder().wgpu().with_size(size);
-
-    // emilk did a mistake and made `with_options` a setter instead of a builder…
-    // …we will fix that in the future, but for now, we have to live with it:
-    let _unit: () = builder.with_options(options);
-
-    builder
+    egui_kittest::Harness::builder()
+        .wgpu()
+        .with_size(size)
+        .with_options(options)
 }
 
 fn use_lenient_macos_ci_thresholds() -> bool {

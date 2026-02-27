@@ -174,6 +174,8 @@ fn set_themes(egui_ctx: &egui::Context) {
 
     for theme in [egui::Theme::Dark, egui::Theme::Light] {
         let mut style = std::sync::Arc::unwrap_or_clone(egui_ctx.style_of(theme));
+        style.visuals.text_options.font_hinting = false;
+
         design_tokens_of(theme).apply(&mut style);
         egui_ctx.set_style_of(theme, style);
     }

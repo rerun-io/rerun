@@ -5,6 +5,8 @@
 //! cargo run --example demo -p re_memory_view
 //! ```
 
+use eframe::Frame;
+use egui::Ui;
 use re_byte_size::{MemUsageNode, MemUsageTree, NamedMemUsageTree};
 
 fn main() -> eframe::Result<()> {
@@ -33,8 +35,8 @@ impl DemoApp {
 }
 
 impl eframe::App for DemoApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.heading("Memory flamegraph demo");
             ui.separator();
 
