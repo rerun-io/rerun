@@ -18,7 +18,7 @@ use super::common::ExampleInfo;
 use crate::codegen::common::{Example, collect_snippets_for_api_docs};
 use crate::codegen::{StringExt as _, autogen_warning};
 use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
-use crate::objects::{ObjectClass, State};
+use crate::objects::{EnumIntegerType, ObjectClass, State};
 use crate::{
     ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, CodeGenerator, Docs, ElementType,
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
@@ -2408,16 +2408,27 @@ fn quote_arrow_serialization(
             Ok(code)
         }
 
-        ObjectClass::Enum(_) => Ok(unindent(&format!(
-            r##"
+        ObjectClass::Enum(int_type) => {
+            let np_dtype = match int_type {
+                EnumIntegerType::U8 => "np.uint8",
+                EnumIntegerType::U16 => "np.uint16",
+                EnumIntegerType::U32 => "np.uint32",
+                EnumIntegerType::U64 => "np.uint64",
+            };
+            Ok(unindent(&format!(
+                r##"
 if isinstance(data, ({name}, int, str)):
     data = [data]
 
 pa_data = [{name}.auto(v).value if v is not None else None for v in data] # type: ignore[redundant-expr]
 
-return pa.array(pa_data, type=data_type)
-        "##
-        ))),
+try:
+    return np.array(pa_data, dtype={np_dtype})
+except (ValueError, TypeError):
+    return pa.array(pa_data, type=data_type)
+            "##
+            )))
+        }
 
         ObjectClass::Union => {
             let mut variant_list_decls = String::new();

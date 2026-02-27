@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal
 
+import numpy as np
 import pyarrow as pa
 
 from .._baseclasses import (
@@ -116,4 +117,7 @@ class VideoCodecBatch(BaseBatch[VideoCodecArrayLike], ComponentBatchMixin):
 
         pa_data = [VideoCodec.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        return pa.array(pa_data, type=data_type)
+        try:
+            return np.array(pa_data, dtype=np.uint32)
+        except (ValueError, TypeError):
+            return pa.array(pa_data, type=data_type)

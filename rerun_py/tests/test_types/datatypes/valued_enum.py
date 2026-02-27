@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal
 
+import numpy as np
 import pyarrow as pa
 from rerun._baseclasses import (
     BaseBatch,
@@ -77,4 +78,7 @@ class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):
 
         pa_data = [ValuedEnum.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        return pa.array(pa_data, type=data_type)
+        try:
+            return np.array(pa_data, dtype=np.uint8)
+        except (ValueError, TypeError):
+            return pa.array(pa_data, type=data_type)
