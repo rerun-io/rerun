@@ -107,17 +107,8 @@ def set_sinks(
             blueprint=default_blueprint,
         ).storage
 
-    # Unwrap BinaryStream to its inner PyBinarySinkStorage before passing to bindings.
-    # The Rust FFI layer knows how to downcast PyBinarySinkStorage to create a BinaryStreamSink.
-    resolved_sinks: list[object] = []
-    for s in sinks:
-        if isinstance(s, BinaryStream):
-            resolved_sinks.append(s.storage)
-        else:
-            resolved_sinks.append(s)
-
     bindings.set_sinks(
-        resolved_sinks,
+        [*sinks],
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
     )
