@@ -4,7 +4,10 @@ use crate::shader_params::ShaderParametersMeta;
 
 /// Resolved shader parameters ready for GPU upload.
 pub struct ResolvedShaderParams {
-    /// Packed uniform buffer data (std140 layout).
+    /// Packed uniform buffer data (16-byte aligned per parameter).
+    ///
+    /// Each parameter is aligned to a 16-byte boundary. The WGSL uniform struct
+    /// must include explicit padding fields to match this layout.
     pub uniform_data: Vec<u8>,
 
     /// Resolved 3D texture bindings: (`binding_index`, `entity_path`).

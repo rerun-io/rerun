@@ -55,7 +55,14 @@ impl ShaderParametersMeta {
 
     /// Total number of bytes needed for the uniform buffer.
     ///
-    /// Each parameter is aligned to 16 bytes (vec4 alignment).
+    /// Uses a simplified layout where each parameter occupies a 16-byte aligned
+    /// slot. This means the WGSL uniform struct must use explicit padding to
+    /// match (e.g., `_pad` fields between smaller types). This is intentionally
+    /// conservative to avoid subtle cross-platform alignment bugs.
+    ///
+    /// Example: a `float` followed by a `vec2` uses 32 bytes total:
+    /// - float at offset 0 (4 bytes, padded to 16)
+    /// - vec2 at offset 16 (8 bytes, total padded to 32)
     pub fn uniform_buffer_size(&self) -> usize {
         let mut size = 0usize;
         for uniform in &self.uniforms {
@@ -70,7 +77,8 @@ impl ShaderParametersMeta {
                     4
                 }
             };
-            // Align to 16 bytes for std140 layout
+            // Align each parameter to 16 bytes (vec4 alignment).
+            // The WGSL struct must include explicit padding to match this layout.
             size = (size + 15) & !15;
             size += param_size;
         }

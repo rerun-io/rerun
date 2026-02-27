@@ -15,14 +15,45 @@ pub struct CustomShaderBindGroup {
 ///
 /// Layout:
 /// - Binding 0: Uniform buffer with packed parameter data
-/// - Binding 1+: Texture bindings (3D textures for volumetric data)
+/// - Texture bindings at indices specified in the `textures_3d` parameter
+///   (must not conflict with binding 0 when uniforms are present)
+/// - Sampler bindings at texture binding + 100
+///
+/// Returns `None` if binding validation fails.
 pub fn build_custom_bind_group(
     ctx: &RenderContext,
     label: &str,
     uniform_data: &[u8],
     textures_3d: &[(u32, GpuTexture3D)],
-) -> CustomShaderBindGroup {
+) -> Option<CustomShaderBindGroup> {
     let device = &ctx.device;
+
+    // Validate binding indices: no duplicates, no conflicts with binding 0 when uniforms exist
+    {
+        let has_uniforms = !uniform_data.is_empty();
+        let mut used_bindings: Vec<u32> = Vec::new();
+        if has_uniforms {
+            used_bindings.push(0);
+        }
+        for (binding, _) in textures_3d {
+            if used_bindings.contains(binding) {
+                re_log::warn_once!(
+                    "Custom shader bind group '{label}': duplicate binding index {binding}"
+                );
+                return None;
+            }
+            used_bindings.push(*binding);
+
+            let sampler_binding = binding + 100;
+            if used_bindings.contains(&sampler_binding) {
+                re_log::warn_once!(
+                    "Custom shader bind group '{label}': sampler binding {sampler_binding} conflicts"
+                );
+                return None;
+            }
+            used_bindings.push(sampler_binding);
+        }
+    }
 
     // Build layout entries
     let mut layout_entries = Vec::new();
@@ -129,8 +160,8 @@ pub fn build_custom_bind_group(
         entries: &bind_group_entries,
     });
 
-    CustomShaderBindGroup {
+    Some(CustomShaderBindGroup {
         bind_group_layout,
         bind_group,
-    }
+    })
 }

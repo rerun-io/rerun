@@ -177,28 +177,69 @@ impl TextureManager3D {
             },
         );
 
-        let bytes_per_row = bytes_per_texel * desc.width;
+        let unpadded_bytes_per_row = bytes_per_texel * desc.width;
+        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let padded_bytes_per_row = (unpadded_bytes_per_row + align - 1) / align * align;
         let rows_per_image = desc.height;
 
-        render_ctx.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &texture.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            desc.data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row),
-                rows_per_image: Some(rows_per_image),
-            },
-            wgpu::Extent3d {
-                width: desc.width,
-                height: desc.height,
-                depth_or_array_layers: desc.depth,
-            },
-        );
+        // If row alignment padding is needed, create a padded copy of the data.
+        if padded_bytes_per_row != unpadded_bytes_per_row {
+            let mut padded_data =
+                vec![0u8; padded_bytes_per_row as usize * desc.height as usize * desc.depth as usize];
+            for z in 0..desc.depth as usize {
+                for y in 0..desc.height as usize {
+                    let src_offset =
+                        (z * desc.height as usize + y) * unpadded_bytes_per_row as usize;
+                    let dst_offset =
+                        (z * desc.height as usize + y) * padded_bytes_per_row as usize;
+                    let row_len = unpadded_bytes_per_row as usize;
+                    if src_offset + row_len <= desc.data.len() {
+                        padded_data[dst_offset..dst_offset + row_len]
+                            .copy_from_slice(&desc.data[src_offset..src_offset + row_len]);
+                    }
+                }
+            }
+
+            render_ctx.queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &texture.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &padded_data,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded_bytes_per_row),
+                    rows_per_image: Some(rows_per_image),
+                },
+                wgpu::Extent3d {
+                    width: desc.width,
+                    height: desc.height,
+                    depth_or_array_layers: desc.depth,
+                },
+            );
+        } else {
+            render_ctx.queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &texture.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                desc.data,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(unpadded_bytes_per_row),
+                    rows_per_image: Some(rows_per_image),
+                },
+                wgpu::Extent3d {
+                    width: desc.width,
+                    height: desc.height,
+                    depth_or_array_layers: desc.depth,
+                },
+            );
+        }
 
         GpuTexture3D::new(texture).expect("Texture is known to be 3D")
     }

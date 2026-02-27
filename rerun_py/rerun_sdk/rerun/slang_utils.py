@@ -101,8 +101,22 @@ def _compile_with_slangc(source_path: Path) -> tuple[str, str]:
             check=True,
         )
         parameters_json = _parse_slangc_reflection(reflect_result.stdout)
-    except (subprocess.CalledProcessError, Exception):
-        # If reflection extraction fails, return empty parameters
+    except subprocess.CalledProcessError as e:
+        import warnings
+
+        warnings.warn(
+            f"slangc reflection extraction failed (stderr: {e.stderr.strip()}); "
+            "using empty parameters",
+            stacklevel=2,
+        )
+        parameters_json = json.dumps({"uniforms": [], "textures": []})
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        import warnings
+
+        warnings.warn(
+            f"Failed to parse slangc reflection output: {e}; using empty parameters",
+            stacklevel=2,
+        )
         parameters_json = json.dumps({"uniforms": [], "textures": []})
 
     return wgsl_source, parameters_json
@@ -113,6 +127,8 @@ def _extract_reflection_metadata(reflection: object) -> dict:
     Extract parameter metadata from slangpy reflection data.
 
     Converts slangpy's reflection layout into our JSON schema format.
+    Texture bindings start at 1 to avoid conflict with the uniform buffer at binding 0.
+    Samplers are auto-assigned at texture binding + 100.
     """
     uniforms: list[dict] = []
     textures: list[dict] = []
@@ -123,17 +139,18 @@ def _extract_reflection_metadata(reflection: object) -> dict:
             name = str(param.name) if hasattr(param, "name") else ""
 
             if "Texture2D" in type_name:
+                # Binding starts at 1 (binding 0 is reserved for the uniform buffer)
                 textures.append({
                     "name": name,
                     "type": "texture_2d",
-                    "binding": len(textures),
+                    "binding": len(textures) + 1,
                     "source": f"./{name}",
                 })
             elif "Texture3D" in type_name:
                 textures.append({
                     "name": name,
                     "type": "texture_3d",
-                    "binding": len(textures),
+                    "binding": len(textures) + 1,
                     "source": f"./{name}",
                 })
             else:
@@ -163,17 +180,18 @@ def _parse_slangc_reflection(json_str: str) -> str:
         kind = type_info.get("kind", "")
 
         if kind == "resource" and "Texture2D" in type_info.get("baseType", ""):
+            # Binding starts at 1 (binding 0 is reserved for the uniform buffer)
             textures.append({
                 "name": name,
                 "type": "texture_2d",
-                "binding": len(textures),
+                "binding": len(textures) + 1,
                 "source": f"./{name}",
             })
         elif kind == "resource" and "Texture3D" in type_info.get("baseType", ""):
             textures.append({
                 "name": name,
                 "type": "texture_3d",
-                "binding": len(textures),
+                "binding": len(textures) + 1,
                 "source": f"./{name}",
             })
         else:

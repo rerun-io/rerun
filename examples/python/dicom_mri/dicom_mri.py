@@ -64,8 +64,12 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
 
 def make_volume_bbox_mesh(
     shape: tuple[int, ...],
-) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32]]:
-    """Create a unit cube mesh that serves as the bounding box for volume rendering."""
+) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.uint32], npt.NDArray[np.float32]]:
+    """Create a unit cube mesh with texcoords for volume rendering.
+
+    Returns (positions, indices, texcoords) where texcoords map each vertex
+    to normalized [0,1] volume coordinates for the raymarching shader.
+    """
     d, h, w = float(shape[0]), float(shape[1]), float(shape[2])
     # Normalize so the longest axis is 1.0
     max_dim = max(d, h, w)
@@ -86,6 +90,22 @@ def make_volume_bbox_mesh(
         dtype=np.float32,
     )
 
+    # Texcoords: normalized [0,1] volume coordinates derived from position.
+    # Maps each vertex to its position within the unit cube.
+    texcoords = np.array(
+        [
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 1.0],
+            [0.0, 1.0],
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 1.0],
+            [0.0, 1.0],
+        ],
+        dtype=np.float32,
+    )
+
     # 12 triangles (2 per face)
     indices = np.array(
         [
@@ -99,7 +119,7 @@ def make_volume_bbox_mesh(
         dtype=np.uint32,
     )
 
-    return positions, indices
+    return positions, indices, texcoords
 
 
 def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[int, ...]) -> None:
@@ -117,8 +137,8 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
     wgsl_source = wgsl_path.read_text()
     params_json = params_path.read_text()
 
-    # Create bounding box mesh
-    positions, indices = make_volume_bbox_mesh(shape)
+    # Create bounding box mesh with texcoords
+    positions, indices, texcoords = make_volume_bbox_mesh(shape)
 
     # Log the mesh with custom shader
     rr.log(
@@ -126,6 +146,7 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
         rr.Mesh3D(
             vertex_positions=positions,
             triangle_indices=indices,
+            vertex_texcoords=texcoords,
             shader_source=wgsl_source,
             shader_parameters=params_json,
         ),
@@ -137,7 +158,9 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
     rr.log("volume/mesh/volume_data", rr.Tensor(voxels_f32, dim_names=["depth", "height", "width"]), static=True)
 
     # Log shader parameters as queryable values
+    # The data is i16 in range [0, 536]
     rr.log("volume/mesh/density_scale", rr.Scalar(1.0), static=True)
+    rr.log("volume/mesh/value_range", rr.Tensor(np.array([0.0, 536.0], dtype=np.float32)), static=True)
 
 
 def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:

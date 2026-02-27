@@ -163,14 +163,19 @@ impl GpuShaderModulePool {
             return handle;
         }
 
-        // Slow path: create and insert
+        // Slow path: acquire write lock, re-check, then create and insert
+        let mut inline_cache = self.inline_cache.write();
+        if let Some(&handle) = inline_cache.get(&content_hash) {
+            return handle;
+        }
+
         let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(label),
             source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
         });
 
         let handle = self.pool.insert_resource(shader_module);
-        self.inline_cache.write().insert(content_hash, handle);
+        inline_cache.insert(content_hash, handle);
         handle
     }
 
