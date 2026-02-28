@@ -14,8 +14,6 @@ from rerun.datatypes import (
     Vec3DLike,
 )
 
-from ..error_utils import catch_and_log_exceptions
-
 
 class Transform3DExt:
     """Extension for [Transform3D][rerun.archetypes.Transform3D]."""
@@ -97,7 +95,7 @@ class Transform3DExt:
 
         """
 
-        with catch_and_log_exceptions(context=self.__class__.__name__):
+        try:
             if rotation is not None:
                 if quaternion is not None or rotation_axis_angle is not None:
                     raise ValueError(
@@ -158,4 +156,18 @@ class Transform3DExt:
                 parent_frame=parent_frame,
             )
             return
+        except Exception as exc:
+            from ..error_utils import strict_mode
+
+            if strict_mode():
+                raise
+            import warnings
+
+            from ..error_utils import RerunWarning
+
+            warnings.warn(
+                f"{self.__class__.__name__}: {type(exc).__name__}({exc})",
+                category=RerunWarning,
+                stacklevel=2,
+            )
         self.__attrs_clear__()

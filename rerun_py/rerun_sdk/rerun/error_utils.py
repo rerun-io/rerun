@@ -49,8 +49,10 @@ def strict_mode() -> bool:
     or `False` if it is not set.
     """
     # If strict was set explicitly, we are in struct mode
-    if getattr(_rerun_exception_ctx, "strict_mode", None) is not None:
-        return _rerun_exception_ctx.strict_mode  # type: ignore[no-any-return]
+    ctx = _rerun_exception_ctx.__dict__
+    local_strict = ctx.get("strict_mode")
+    if local_strict is not None:
+        return local_strict  # type: ignore[no-any-return]
     else:
         return _strict_mode
 
@@ -114,14 +116,15 @@ def _send_warning_or_raise(
     warnings.warn(message, category=warning_type, stacklevel=depth_to_user_code + 1)
 
     # Logging the warning to Rerun is a complex operation could produce another warning. Avoid recursion.
-    if not getattr(_rerun_exception_ctx, "sending_warning", False):
-        _rerun_exception_ctx.sending_warning = True
+    ctx = _rerun_exception_ctx.__dict__
+    if not ctx.get("sending_warning", False):
+        ctx["sending_warning"] = True
 
         # TODO(jleibs): Context/stack should be its own component.
         context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 1)
 
         log("__warnings", TextLog(text=f"{message}\n{context_descriptor}", level="WARN"), recording=recording)  # NOLINT
-        _rerun_exception_ctx.sending_warning = False
+        ctx["sending_warning"] = False
     else:
         warnings.warn(
             "Encountered Error while sending warning",
@@ -173,15 +176,19 @@ class catch_and_log_exceptions:
         self.strict = strict
 
     def __enter__(self) -> catch_and_log_exceptions:
+        ctx = _rerun_exception_ctx.__dict__
+
         # Track the original strict_mode setting in case it's being
         # overridden locally in this stack
-        self.original_strict = getattr(_rerun_exception_ctx, "strict_mode", None)
+        self.original_strict = ctx.get("strict_mode")
         if self.strict is not None:
-            _rerun_exception_ctx.strict_mode = self.strict
-        if getattr(_rerun_exception_ctx, "depth", None) is None:
-            _rerun_exception_ctx.depth = 1
+            ctx["strict_mode"] = self.strict
+
+        depth = ctx.get("depth")
+        if depth is None:
+            ctx["depth"] = 1
         else:
-            _rerun_exception_ctx.depth += 1
+            ctx["depth"] = depth + 1
 
         return self
 
@@ -207,36 +214,42 @@ class catch_and_log_exceptions:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> bool:
+        ctx = _rerun_exception_ctx.__dict__
         try:
             # Exceptions inheriting from `BaseException` others than via `Exception` are "exiting", and should be pass
             # through. This includes `KeyboardInterrupt` and `SystemExit`.
             if exc_type is not None and issubclass(exc_type, Exception) and not strict_mode():
-                if getattr(_rerun_exception_ctx, "pending_warnings", None) is None:
-                    _rerun_exception_ctx.pending_warnings = []
+                pending = ctx.get("pending_warnings")
+                if pending is None:
+                    pending = []
+                    ctx["pending_warnings"] = pending
 
                 context = f"{self.context}: " if self.context is not None else ""
 
                 warning_message = f"{context}{exc_type.__name__}({exc_val})"
 
-                _rerun_exception_ctx.pending_warnings.append(warning_message)
+                pending.append(warning_message)
                 return True
             else:
                 return False
         finally:
-            if getattr(_rerun_exception_ctx, "depth", None) is not None:
-                _rerun_exception_ctx.depth -= 1
-                if _rerun_exception_ctx.depth == 0:
-                    pending_warnings = getattr(_rerun_exception_ctx, "pending_warnings", [])
-                    _rerun_exception_ctx.pending_warnings = []
-                    _rerun_exception_ctx.depth = None
+            depth = ctx.get("depth")
+            if depth is not None:
+                depth -= 1
+                if depth == 0:
+                    pending_warnings = ctx.get("pending_warnings", [])
+                    ctx["pending_warnings"] = []
+                    ctx["depth"] = None
 
                     for warning in pending_warnings:
                         _send_warning_or_raise(warning, depth_to_user_code=self.depth_to_user_code + 2)
+                else:
+                    ctx["depth"] = depth
 
             # If we're back to the top of the stack, send out the pending warnings
 
             # Return the local context to the prior value
-            _rerun_exception_ctx.strict_mode = self.original_strict
+            ctx["strict_mode"] = self.original_strict
 
 
 T = TypeVar("T", bound=Callable[..., Any])

@@ -172,6 +172,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyFileSink>()?;
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
+    m.add_class::<crate::arrow::NativeArrowArray>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
     m.add_class::<PyDeviceCodeFlow>()?;
     m.add_class::<PyCredentials>()?;
@@ -234,6 +235,12 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_timestamp_nanos_since_epoch, m)?)?;
     m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
+
+    // arrow helpers
+    m.add_function(wrap_pyfunction!(
+        crate::arrow::build_fixed_size_list_array,
+        m
+    )?)?;
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;

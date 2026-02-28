@@ -618,6 +618,32 @@ class ComponentDescriptor:
         """Sets `archetype` in a format similar to built-in archetypes."""
 
 #
+# arrow
+#
+
+class NativeArrowArray:
+    """
+    An opaque handle to a Rust Arrow array.
+
+    Data stays as `Arc<dyn Array>` on the Rust side. When passed back to Rust
+    via `log_arrow_msg`, it avoids the PyArrow FFI round-trip entirely.
+    """
+
+    def __len__(self) -> int:
+        """Number of top-level elements."""
+
+    def to_pyarrow(self) -> pa.Array:
+        """Export to a real `pyarrow.Array` for cold-path consumers."""
+
+def build_fixed_size_list_array(flat_array: npt.NDArray[np.float32], list_size: int) -> NativeArrowArray:
+    """
+    Build an Arrow `FixedSizeListArray` of `f32` values directly from a flat numpy array.
+
+    Returns a `NativeArrowArray` handle — the data stays on the Rust side,
+    bypassing PyArrow export/import overhead.
+    """
+
+#
 # sinks
 #
 

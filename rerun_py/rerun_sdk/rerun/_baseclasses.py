@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Iterator
-from typing import Generic, Protocol, TypeVar, overload, runtime_checkable
+from typing import Any, Generic, Protocol, TypeVar, overload, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -11,7 +11,7 @@ from attrs import define, fields
 
 from rerun_bindings import ComponentDescriptor
 
-from .error_utils import catch_and_log_exceptions
+from .error_utils import catch_and_log_exceptions, strict_mode
 
 T = TypeVar("T")
 
@@ -132,24 +132,55 @@ class Archetype(AsComponents):
     def archetype_short_name(cls) -> str:
         return cls.archetype().rsplit(".", 1)[-1]
 
+    @classmethod
+    def _get_component_field_names(cls) -> list[str]:
+        """
+        Return cached list of field names that are component fields.
+
+        Computed once per archetype class and cached.
+        """
+        cache = cls.__dict__.get("_component_field_names_cache")
+        if cache is not None:
+            return cache  # type: ignore[no-any-return, return-value]
+
+        result = [fld.name for fld in fields(cls) if "component" in fld.metadata]
+        cls._component_field_names_cache = result  # type: ignore[attr-defined]
+        return result
+
+    @classmethod
+    def _get_descriptor_cache(cls) -> dict[tuple[str, str], ComponentDescriptor]:
+        """Return cached descriptor dict for this archetype class."""
+        cache = cls.__dict__.get("_descriptor_cache")
+        if cache is not None:
+            return cache  # type: ignore[no-any-return, return-value]
+        cache = {}
+        cls._descriptor_cache = cache  # type: ignore[attr-defined]
+        return cache
+
     def as_component_batches(self) -> list[DescribedComponentBatch]:
         """
         Return all the component batches that make up the archetype.
 
         Part of the `AsComponents` logging interface.
         """
+        cls = type(self)
+        descriptor_cache = cls._get_descriptor_cache()
+        component_field_names = cls._get_component_field_names()
         batches = []
 
-        for fld in fields(type(self)):
-            if "component" in fld.metadata:
-                comp = getattr(self, fld.name)
-                if comp is not None:
+        for name in component_field_names:
+            comp = getattr(self, name)
+            if comp is not None:
+                cache_key = (name, comp._COMPONENT_TYPE)
+                descr = descriptor_cache.get(cache_key)
+                if descr is None:
                     descr = ComponentDescriptor(
-                        self.archetype_short_name() + ":" + fld.name,
+                        cls.archetype_short_name() + ":" + name,
                         component_type=comp._COMPONENT_TYPE,
-                        archetype=self.archetype(),
+                        archetype=cls.archetype(),
                     )
-                    batches.append(DescribedComponentBatch(comp, descr))
+                    descriptor_cache[cache_key] = descr
+                batches.append(DescribedComponentBatch(comp, descr))
 
         return batches
 
@@ -186,14 +217,37 @@ class BaseBatch(Generic[T]):
         The Arrow array encapsulating the data.
 
         """
+        # _native_array: when set, holds a NativeArrowArray (opaque Rust handle).
+        # The hot path (_log_components) reads this directly. Cold-path access
+        # to .pa_array triggers __getattr__ which lazily converts via .to_pyarrow().
+        self._native_array = None
+
         if data is not None:
-            with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
+            try:
                 # If data is already an arrow array, use it
                 if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
                     self.pa_array = data
                 else:
-                    self.pa_array = self._native_to_pa_array(data, self._ARROW_DATATYPE)
+                    result = self._native_to_pa_array(data, self._ARROW_DATATYPE)
+                    if hasattr(result, "to_pyarrow"):
+                        # NativeArrowArray from build_fixed_size_list_array — keep opaque.
+                        # Don't set self.pa_array so __getattr__ can lazily convert.
+                        self._native_array = result
+                    else:
+                        self.pa_array = result
                 return
+            except Exception as exc:
+                if strict is True or (strict is None and strict_mode()):
+                    raise
+                import warnings
+
+                from .error_utils import RerunWarning
+
+                warnings.warn(
+                    f"{self.__class__.__name__}: {type(exc).__name__}({exc})",
+                    category=RerunWarning,
+                    stacklevel=2,
+                )
 
         # If we didn't return above, default to the empty array
         self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
@@ -221,13 +275,25 @@ class BaseBatch(Generic[T]):
         else:
             return cls(data)
 
+    def __getattr__(self, name: str) -> Any:
+        # Lazily convert NativeArrowArray → pa.Array on first .pa_array access.
+        # __getattr__ is only called when normal lookup fails (i.e. pa_array not in __dict__).
+        if name == "pa_array":
+            native = self.__dict__.get("_native_array")
+            if native is not None:
+                arr = native.to_pyarrow()
+                self.pa_array = arr  # Cache so __getattr__ won't be called again
+                return arr
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BaseBatch):
             return NotImplemented
-        return self.pa_array == other.pa_array  # type: ignore[no-any-return]
+        return self.as_arrow_array() == other.as_arrow_array()  # type: ignore[no-any-return]
 
     def __len__(self) -> int:
-        return len(self.pa_array)
+        native = self._native_array
+        return len(native) if native is not None else len(self.pa_array)
 
     @staticmethod
     def _native_to_pa_array(data: T, data_type: pa.DataType) -> pa.Array:
@@ -267,7 +333,7 @@ class BaseBatch(Generic[T]):
 
         Part of the [`rerun.ComponentBatchLike`][] logging interface.
         """
-        return self.pa_array
+        return self.pa_array  # __getattr__ handles lazy NativeArrowArray conversion
 
 
 class ComponentColumn:
