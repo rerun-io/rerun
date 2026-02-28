@@ -48,6 +48,7 @@ examples = [
   "nv12",
   "imu_signals",
   "mcap",
+  "visualize_mcap",
   "eye_control",
   "ros_tf",
 ]
