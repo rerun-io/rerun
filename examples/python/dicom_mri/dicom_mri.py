@@ -139,10 +139,9 @@ def log_volumetric_rendering(voxels_volume: npt.NDArray[np.int16], shape: tuple[
     max_dim = 128
     from scipy.ndimage import zoom as ndimage_zoom
 
-    # The DICOM data axes are (right, back, up). Transpose to (back, up, right)
-    # so the 3D texture maps: X→right, Y→up, Z→back. This aligns the head's
-    # "up" direction with Rerun's Y-up world space (no Transform3D needed).
-    voxels_reoriented = np.ascontiguousarray(voxels_volume.transpose(1, 2, 0))
+    # Reverse the axis order so the head stands upright in Rerun's Y-up
+    # coordinate system. After transpose: World X = axis2, Y = axis1, Z = axis0.
+    voxels_reoriented = np.ascontiguousarray(voxels_volume.transpose(2, 1, 0))
     reoriented_shape = voxels_reoriented.shape
 
     scale_factors = tuple(max_dim / s if s > max_dim else 1.0 for s in reoriented_shape)
