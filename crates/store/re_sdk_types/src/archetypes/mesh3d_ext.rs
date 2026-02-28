@@ -103,4 +103,25 @@ impl Mesh3D {
             self.num_vertices() / 3
         }
     }
+
+    /// Attach a custom WGSL fragment shader with optional parameter metadata.
+    ///
+    /// The `wgsl_source` replaces the default Phong lighting fragment shader.
+    /// The shader's fragment entry point must be named `fs_main`.
+    ///
+    /// `parameters_json` is an optional JSON string describing uniform parameters,
+    /// their types, and source entity paths for data binding.
+    #[inline]
+    pub fn with_shader(
+        self,
+        wgsl_source: impl Into<components::ShaderSource>,
+        parameters_json: Option<impl Into<components::ShaderParameters>>,
+    ) -> Self {
+        let result = self.with_shader_source(wgsl_source);
+        if let Some(params) = parameters_json {
+            result.with_shader_parameters(params)
+        } else {
+            result
+        }
+    }
 }

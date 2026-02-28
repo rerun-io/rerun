@@ -1,0 +1,22 @@
+{
+  "uniforms": [
+    {
+      "name": "density_scale",
+      "type": "float",
+      "source": "./density_scale"
+    },
+    {
+      "name": "value_range",
+      "type": "vec2",
+      "source": "./value_range"
+    }
+  ],
+  "textures": [
+    {
+      "name": "volume_data",
+      "type": "texture_3d",
+      "binding": 1,
+      "source": "./volume_data"
+    }
+  ]
+}

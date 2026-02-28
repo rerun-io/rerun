@@ -23,6 +23,8 @@ utf8
 * [`GraphNode`](../components/graph_node.md)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
+* [`ShaderParameters`](../components/shader_parameters.md)
+* [`ShaderSource`](../components/shader_source.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
 * [`TransformFrameId`](../components/transform_frame_id.md)

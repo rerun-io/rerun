@@ -46,4 +46,11 @@ impl GpuBindGroupLayoutPool {
     pub fn num_resources(&self) -> usize {
         self.pool.num_resources()
     }
+
+    /// Register a pre-existing `wgpu::BindGroupLayout` and return a pool handle.
+    ///
+    /// Used when the layout was created externally (e.g. by a custom shader bind group builder).
+    pub fn register_existing(&self, layout: wgpu::BindGroupLayout) -> GpuBindGroupLayoutHandle {
+        self.pool.insert_resource(layout)
+    }
 }

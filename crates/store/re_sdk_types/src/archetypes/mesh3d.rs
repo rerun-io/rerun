@@ -155,6 +155,18 @@ pub struct Mesh3D {
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     pub class_ids: Option<SerializedComponentBatch>,
+
+    /// Optional WGSL shader source code for custom fragment rendering.
+    ///
+    /// When provided, replaces the default Phong lighting fragment shader.
+    /// The shader's fragment entry point must be named `fs_main`.
+    pub shader_source: Option<SerializedComponentBatch>,
+
+    /// Optional JSON-encoded shader parameter metadata.
+    ///
+    /// Describes uniform parameters, their types, and source entity paths
+    /// for data binding with the custom shader.
+    pub shader_parameters: Option<SerializedComponentBatch>,
 }
 
 impl Mesh3D {
@@ -265,6 +277,30 @@ impl Mesh3D {
             component_type: Some("rerun.components.ClassId".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::shader_source`].
+    ///
+    /// The corresponding component is [`crate::components::ShaderSource`].
+    #[inline]
+    pub fn descriptor_shader_source() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Mesh3D".into()),
+            component: "Mesh3D:shader_source".into(),
+            component_type: Some("rerun.components.ShaderSource".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::shader_parameters`].
+    ///
+    /// The corresponding component is [`crate::components::ShaderParameters`].
+    #[inline]
+    pub fn descriptor_shader_parameters() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Mesh3D".into()),
+            component: "Mesh3D:shader_parameters".into(),
+            component_type: Some("rerun.components.ShaderParameters".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -278,7 +314,7 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]
         ]
     });
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             Mesh3D::descriptor_vertex_colors(),
@@ -287,10 +323,12 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
             Mesh3D::descriptor_albedo_texture_buffer(),
             Mesh3D::descriptor_albedo_texture_format(),
             Mesh3D::descriptor_class_ids(),
+            Mesh3D::descriptor_shader_source(),
+            Mesh3D::descriptor_shader_parameters(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 11usize]> =
     std::sync::LazyLock::new(|| {
         [
             Mesh3D::descriptor_vertex_positions(),
@@ -302,12 +340,14 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
             Mesh3D::descriptor_albedo_texture_buffer(),
             Mesh3D::descriptor_albedo_texture_format(),
             Mesh3D::descriptor_class_ids(),
+            Mesh3D::descriptor_shader_source(),
+            Mesh3D::descriptor_shader_parameters(),
         ]
     });
 
 impl Mesh3D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 6 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 8 optional
+    pub const NUM_COMPONENTS: usize = 11usize;
 }
 
 impl ::re_types_core::Archetype for Mesh3D {
@@ -399,6 +439,16 @@ impl ::re_types_core::Archetype for Mesh3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_class_ids())
             });
+        let shader_source = arrays_by_descr
+            .get(&Self::descriptor_shader_source())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_shader_source())
+            });
+        let shader_parameters = arrays_by_descr
+            .get(&Self::descriptor_shader_parameters())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_shader_parameters())
+            });
         Ok(Self {
             vertex_positions,
             triangle_indices,
@@ -409,6 +459,8 @@ impl ::re_types_core::Archetype for Mesh3D {
             albedo_texture_buffer,
             albedo_texture_format,
             class_ids,
+            shader_source,
+            shader_parameters,
         })
     }
 }
@@ -427,6 +479,8 @@ impl ::re_types_core::AsComponents for Mesh3D {
             self.albedo_texture_buffer.clone(),
             self.albedo_texture_format.clone(),
             self.class_ids.clone(),
+            self.shader_source.clone(),
+            self.shader_parameters.clone(),
         ]
         .into_iter()
         .flatten()
@@ -462,6 +516,8 @@ impl Mesh3D {
             albedo_texture_buffer: None,
             albedo_texture_format: None,
             class_ids: None,
+            shader_source: None,
+            shader_parameters: None,
         }
     }
 
@@ -512,6 +568,14 @@ impl Mesh3D {
                 crate::components::ClassId::arrow_empty(),
                 Self::descriptor_class_ids(),
             )),
+            shader_source: Some(SerializedComponentBatch::new(
+                crate::components::ShaderSource::arrow_empty(),
+                Self::descriptor_shader_source(),
+            )),
+            shader_parameters: Some(SerializedComponentBatch::new(
+                crate::components::ShaderParameters::arrow_empty(),
+                Self::descriptor_shader_parameters(),
+            )),
         }
     }
 
@@ -561,6 +625,12 @@ impl Mesh3D {
             self.class_ids
                 .map(|class_ids| class_ids.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.shader_source
+                .map(|shader_source| shader_source.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.shader_parameters
+                .map(|shader_parameters| shader_parameters.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -582,6 +652,8 @@ impl Mesh3D {
         let len_albedo_texture_buffer = self.albedo_texture_buffer.as_ref().map(|b| b.array.len());
         let len_albedo_texture_format = self.albedo_texture_format.as_ref().map(|b| b.array.len());
         let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
+        let len_shader_source = self.shader_source.as_ref().map(|b| b.array.len());
+        let len_shader_parameters = self.shader_parameters.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_vertex_positions)
             .or(len_triangle_indices)
@@ -592,6 +664,8 @@ impl Mesh3D {
             .or(len_albedo_texture_buffer)
             .or(len_albedo_texture_format)
             .or(len_class_ids)
+            .or(len_shader_source)
+            .or(len_shader_parameters)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -755,6 +829,60 @@ impl Mesh3D {
         self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
     }
+
+    /// Optional WGSL shader source code for custom fragment rendering.
+    ///
+    /// When provided, replaces the default Phong lighting fragment shader.
+    /// The shader's fragment entry point must be named `fs_main`.
+    #[inline]
+    pub fn with_shader_source(
+        mut self,
+        shader_source: impl Into<crate::components::ShaderSource>,
+    ) -> Self {
+        self.shader_source = try_serialize_field(Self::descriptor_shader_source(), [shader_source]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ShaderSource`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_shader_source`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_shader_source(
+        mut self,
+        shader_source: impl IntoIterator<Item = impl Into<crate::components::ShaderSource>>,
+    ) -> Self {
+        self.shader_source = try_serialize_field(Self::descriptor_shader_source(), shader_source);
+        self
+    }
+
+    /// Optional JSON-encoded shader parameter metadata.
+    ///
+    /// Describes uniform parameters, their types, and source entity paths
+    /// for data binding with the custom shader.
+    #[inline]
+    pub fn with_shader_parameters(
+        mut self,
+        shader_parameters: impl Into<crate::components::ShaderParameters>,
+    ) -> Self {
+        self.shader_parameters =
+            try_serialize_field(Self::descriptor_shader_parameters(), [shader_parameters]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ShaderParameters`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_shader_parameters`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_shader_parameters(
+        mut self,
+        shader_parameters: impl IntoIterator<Item = impl Into<crate::components::ShaderParameters>>,
+    ) -> Self {
+        self.shader_parameters =
+            try_serialize_field(Self::descriptor_shader_parameters(), shader_parameters);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for Mesh3D {
@@ -769,5 +897,7 @@ impl ::re_byte_size::SizeBytes for Mesh3D {
             + self.albedo_texture_buffer.heap_size_bytes()
             + self.albedo_texture_format.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
+            + self.shader_source.heap_size_bytes()
+            + self.shader_parameters.heap_size_bytes()
     }
 }

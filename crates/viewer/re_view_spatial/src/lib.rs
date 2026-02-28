@@ -4,6 +4,7 @@
 
 mod caches;
 mod contexts;
+mod custom_shader_bind_group;
 mod eye;
 mod heuristics;
 mod max_image_dimension_subscriber;
@@ -16,6 +17,8 @@ mod pinhole;
 mod pinhole_wrapper;
 mod proc_mesh;
 mod scene_bounding_boxes;
+mod shader_param_resolver;
+mod shader_params;
 mod shared_fallbacks;
 mod spatial_topology;
 mod ui;
