@@ -28,15 +28,23 @@ pub enum LensError {
     #[error("Chunk validation failed: {0}")]
     ChunkValidationFailed(#[from] re_chunk::ChunkError),
 
-    #[error("Failed to apply operations to component '{component}': {source}")]
+    #[error(
+        "Failed to apply operations to component '{component}' (entity: `{entity_path}`, input: `{input_component}`): {source}"
+    )]
     ComponentOperationFailed {
+        entity_path: EntityPath,
+        input_component: ComponentIdentifier,
         component: ComponentIdentifier,
         #[source]
         source: Box<OpError>, // Box because of size.
     },
 
-    #[error("Failed to apply operations to timeline '{timeline_name}': {source}")]
+    #[error(
+        "Failed to apply operations to timeline '{timeline_name}' (entity: `{entity_path}`, input: `{input_component}`): {source}"
+    )]
     TimeOperationFailed {
+        entity_path: EntityPath,
+        input_component: ComponentIdentifier,
         timeline_name: TimelineName,
         #[source]
         source: Box<OpError>, // Box because of size.

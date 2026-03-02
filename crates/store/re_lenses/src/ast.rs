@@ -403,37 +403,46 @@ fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<Option<ListArray>, OpErro
 fn collect_output_components_iter<'a>(
     input: &'a SerializedComponentColumn,
     components: &'a [ComponentOutput],
+    entity_path: &'a EntityPath,
 ) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensError>> + 'a {
-    components.iter().filter_map(
-        |output| match apply_ops(input.list_array.clone(), &output.ops) {
+    components.iter().filter_map(move |output| {
+        match apply_ops(input.list_array.clone(), &output.ops) {
             Ok(Some(list_array)) => Some(Ok((output.component_descr.clone(), list_array))),
             Ok(None) => {
                 re_log::debug_once!(
-                    "Lens suppressed for component `{}`",
+                    "Lens suppressed for `{entity_path}` component `{}`",
                     output.component_descr.component
                 );
                 None
             }
             Err(source) => Some(Err(LensError::ComponentOperationFailed {
+                entity_path: entity_path.clone(),
+                input_component: input.descriptor.component,
                 component: output.component_descr.component,
                 source: Box::new(source),
             })),
-        },
-    )
+        }
+    })
 }
 
 fn collect_output_times_iter<'a>(
     input: &'a SerializedComponentColumn,
     timelines: &'a [TimeOutput],
+    entity_path: &'a EntityPath,
 ) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensError>> + 'a {
     timelines.iter().filter_map(
-        |time| match apply_ops(input.list_array.clone(), &time.ops) {
+        move |time| match apply_ops(input.list_array.clone(), &time.ops) {
             Ok(Some(list_array)) => Some(Ok((time.timeline_name, time.timeline_type, list_array))),
             Ok(None) => {
-                re_log::debug_once!("Lens suppressed for timeline `{}`", time.timeline_name);
+                re_log::debug_once!(
+                    "Lens suppressed for `{entity_path}` timeline `{}`",
+                    time.timeline_name,
+                );
                 None
             }
             Err(source) => Some(Err(LensError::TimeOperationFailed {
+                entity_path: entity_path.clone(),
+                input_component: input.descriptor.component,
                 timeline_name: time.timeline_name,
                 source: Box::new(source),
             })),
@@ -523,7 +532,7 @@ impl OneToOne {
 
         // Collect successful components directly into ChunkComponents, accumulate errors
         let component_results: re_chunk::ChunkComponents =
-            collect_output_components_iter(input, &self.components)
+            collect_output_components_iter(input, &self.components, entity_path)
                 .filter_map(|result| match result {
                     Ok(component) => Some(component),
                     Err(err) => {
@@ -538,19 +547,21 @@ impl OneToOne {
 
         // Collect successful time columns, accumulate errors
         chunk_times.extend(
-            collect_output_times_iter(input, &self.times).filter_map(|result| match result {
-                Ok((timeline_name, timeline_type, list_array)) => {
-                    match try_convert_time_column(timeline_name, timeline_type, &list_array) {
-                        Ok(time_col) => Some(time_col),
-                        Err(err) => {
-                            errors.push(err);
-                            None
+            collect_output_times_iter(input, &self.times, entity_path).filter_map(|result| {
+                match result {
+                    Ok((timeline_name, timeline_type, list_array)) => {
+                        match try_convert_time_column(timeline_name, timeline_type, &list_array) {
+                            Ok(time_col) => Some(time_col),
+                            Err(err) => {
+                                errors.push(err);
+                                None
+                            }
                         }
                     }
-                }
-                Err(err) => {
-                    errors.push(err);
-                    None
+                    Err(err) => {
+                        errors.push(err);
+                        None
+                    }
                 }
             }),
         );
@@ -575,7 +586,7 @@ impl Static {
 
         // Collect successful components directly into ChunkComponents, accumulate errors
         let component_results: re_chunk::ChunkComponents =
-            collect_output_components_iter(input, &self.components)
+            collect_output_components_iter(input, &self.components, entity_path)
                 .filter_map(|result| match result {
                     Ok(component) => Some(component),
                     Err(err) => {
@@ -613,7 +624,7 @@ impl OneToMany {
         let mut errors = Vec::new();
 
         let mut output_components =
-            collect_output_components_iter(input, &self.components).peekable();
+            collect_output_components_iter(input, &self.components, entity_path).peekable();
 
         // Peek at the first component to establish the scatter pattern (how many output rows
         // each input row produces). All components must have the same outer list structure.
@@ -697,30 +708,38 @@ impl OneToMany {
 
         // Explode all output time columns and collect errors
         chunk_times.extend(
-            collect_output_times_iter(input, &self.times).filter_map(|result| match result {
-                Ok((timeline_name, timeline_type, list_array)) => {
-                    match reshape::Explode.transform(&list_array) {
-                        Ok(exploded) => {
-                            match try_convert_time_column(timeline_name, timeline_type, &exploded) {
-                                Ok(time_col) => Some(time_col),
-                                Err(err) => {
-                                    errors.push(err);
-                                    None
+            collect_output_times_iter(input, &self.times, entity_path).filter_map(|result| {
+                match result {
+                    Ok((timeline_name, timeline_type, list_array)) => {
+                        match reshape::Explode.transform(&list_array) {
+                            Ok(exploded) => {
+                                match try_convert_time_column(
+                                    timeline_name,
+                                    timeline_type,
+                                    &exploded,
+                                ) {
+                                    Ok(time_col) => Some(time_col),
+                                    Err(err) => {
+                                        errors.push(err);
+                                        None
+                                    }
                                 }
                             }
-                        }
-                        Err(err) => {
-                            errors.push(LensError::TimeOperationFailed {
-                                timeline_name,
-                                source: Box::new(err.into()),
-                            });
-                            None
+                            Err(err) => {
+                                errors.push(LensError::TimeOperationFailed {
+                                    entity_path: entity_path.clone(),
+                                    input_component: input.descriptor.component,
+                                    timeline_name,
+                                    source: Box::new(err.into()),
+                                });
+                                None
+                            }
                         }
                     }
-                }
-                Err(err) => {
-                    errors.push(err);
-                    None
+                    Err(err) => {
+                        errors.push(err);
+                        None
+                    }
                 }
             }),
         );
@@ -735,6 +754,8 @@ impl OneToMany {
                         }
                         Err(err) => {
                             errors.push(LensError::ComponentOperationFailed {
+                                entity_path: entity_path.clone(),
+                                input_component: input.descriptor.component,
                                 component: component_descr.component,
                                 source: Box::new(err.into()),
                             });
