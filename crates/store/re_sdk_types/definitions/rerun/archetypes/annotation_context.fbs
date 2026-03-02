@@ -21,5 +21,5 @@ table AnnotationContext (
   "attr.rust.derive": "PartialEq"
 ) {
   /// List of class descriptions, mapping class indices to class names, colors etc.
-  context: rerun.components.AnnotationContext ("attr.rerun.component_required", order: 1000);
+  context: rerun.components.AnnotationContext ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 }

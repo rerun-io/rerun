@@ -32,32 +32,32 @@ table Transform3D (
   /// Translation vector.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  translation: rerun.components.Translation3D ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 1100);
+  translation: rerun.components.Translation3D ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1100);
 
   /// Rotation via axis + angle.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  rotation_axis_angle: rerun.components.RotationAxisAngle ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 1200);
+  rotation_axis_angle: rerun.components.RotationAxisAngle ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1200);
 
   /// Rotation via quaternion.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  quaternion: rerun.components.RotationQuat ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 1300);
+  quaternion: rerun.components.RotationQuat ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1300);
 
   /// Scaling factor.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  scale: rerun.components.Scale3D ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 1400);
+  scale: rerun.components.Scale3D ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1400);
 
   /// 3x3 transformation matrix.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  mat3x3: rerun.components.TransformMat3x3 ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 1500);
+  mat3x3: rerun.components.TransformMat3x3 ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 1500);
 
   /// Specifies the relation this transform establishes between this entity and its parent.
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  relation: rerun.components.TransformRelation ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false",  nullable, order: 1600);
+  relation: rerun.components.TransformRelation ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit",  nullable, order: 1600);
 
   // --- transform frame
 
@@ -73,7 +73,7 @@ table Transform3D (
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 2000);
+  child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 2000);
 
   /// The parent frame this transform transforms into.
   ///
@@ -83,5 +83,5 @@ table Transform3D (
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_ui_editable": "false", nullable, order: 2100);
+  parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.component_no_ui_edit", nullable, order: 2100);
 }

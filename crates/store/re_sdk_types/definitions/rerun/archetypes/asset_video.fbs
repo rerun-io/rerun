@@ -20,7 +20,7 @@ table AssetVideo (
   // --- Required ---
 
   /// The asset's bytes.
-  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+  blob: rerun.components.Blob ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   // --- Recommended ---
 

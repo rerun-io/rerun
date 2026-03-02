@@ -26,7 +26,19 @@ pub fn edit_or_view_vec3d(
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
         MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
     };
-    edit_or_view_vec3d_raw(ui, &mut value)
+    edit_or_view_vec3d_raw(ui, &mut value, f32::MIN..=f32::MAX)
+}
+
+pub fn edit_or_view_vec3d_positive(
+    _ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Vec3D>>,
+) -> egui::Response {
+    let mut value: MaybeMutRef<'_, datatypes::Vec3D> = match value {
+        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
+    };
+    edit_or_view_vec3d_raw(ui, &mut value, 0.0..=f32::MAX)
 }
 
 fn drag<'a>(value: &'a mut f32, range: RangeInclusive<f32>, suffix: &str) -> egui::DragValue<'a> {
@@ -77,6 +89,7 @@ pub fn edit_or_view_vec2d_raw(
 pub fn edit_or_view_vec3d_raw(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, datatypes::Vec3D>,
+    range: RangeInclusive<f32>,
 ) -> egui::Response {
     let x = value.0[0];
     let y = value.0[1];
@@ -87,9 +100,9 @@ pub fn edit_or_view_vec3d_raw(
         let mut y_edit = y;
         let mut z_edit = z;
 
-        let response_x = ui.add(drag(&mut x_edit, f32::MIN..=f32::MAX, ""));
-        let response_y = ui.add(drag(&mut y_edit, f32::MIN..=f32::MAX, ""));
-        let response_z = ui.add(drag(&mut z_edit, f32::MIN..=f32::MAX, ""));
+        let response_x = ui.add(drag(&mut x_edit, range.clone(), ""));
+        let response_y = ui.add(drag(&mut y_edit, range.clone(), ""));
+        let response_z = ui.add(drag(&mut z_edit, range, ""));
 
         let response = response_y | response_x | response_z;
 
