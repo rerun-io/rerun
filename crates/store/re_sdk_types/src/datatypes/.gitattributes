@@ -38,3 +38,4 @@ vec3d.rs linguist-generated=true
 vec4d.rs linguist-generated=true
 video_timestamp.rs linguist-generated=true
 view_coordinates.rs linguist-generated=true
+view_coordinates2d.rs linguist-generated=true

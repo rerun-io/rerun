@@ -28,6 +28,7 @@ mod transforms;
 mod variant_uis;
 mod video_timestamp;
 mod view_coordinates;
+mod view_coordinates2d;
 mod visible_dnd;
 mod visual_bounds2d;
 mod zoom_level;
@@ -190,6 +191,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view(image_format::edit_or_view_image_format);
     registry.add_singleline_edit_or_view(resolution::edit_or_view_resolution);
     registry.add_singleline_edit_or_view(view_coordinates::edit_or_view_view_coordinates);
+    registry.add_singleline_edit_or_view(view_coordinates2d::edit_or_view_view_coordinates_2d);
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
     registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);

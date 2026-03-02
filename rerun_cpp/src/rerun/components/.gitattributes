@@ -92,4 +92,5 @@ video_codec.hpp linguist-generated=true
 video_sample.hpp linguist-generated=true
 video_timestamp.hpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true
+view_coordinates2d.hpp linguist-generated=true
 visible.hpp linguist-generated=true

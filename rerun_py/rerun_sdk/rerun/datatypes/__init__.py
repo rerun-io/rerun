@@ -80,6 +80,12 @@ from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike
 from .video_timestamp import VideoTimestamp, VideoTimestampArrayLike, VideoTimestampBatch, VideoTimestampLike
 from .view_coordinates import ViewCoordinates, ViewCoordinatesArrayLike, ViewCoordinatesBatch, ViewCoordinatesLike
+from .view_coordinates2d import (
+    ViewCoordinates2D,
+    ViewCoordinates2DArrayLike,
+    ViewCoordinates2DBatch,
+    ViewCoordinates2DLike,
+)
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeArrayLike, VisibleTimeRangeBatch, VisibleTimeRangeLike
 
 __all__ = [
@@ -272,6 +278,10 @@ __all__ = [
     "VideoTimestampBatch",
     "VideoTimestampLike",
     "ViewCoordinates",
+    "ViewCoordinates2D",
+    "ViewCoordinates2DArrayLike",
+    "ViewCoordinates2DBatch",
+    "ViewCoordinates2DLike",
     "ViewCoordinatesArrayLike",
     "ViewCoordinatesBatch",
     "ViewCoordinatesLike",

@@ -8,7 +8,9 @@ use re_renderer::ViewPickingConfiguration;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
 use re_sdk_types::blueprint::components as blueprint_components;
+use re_sdk_types::components::ViewCoordinates2D;
 use re_sdk_types::{Archetype as _, archetypes};
+use re_tf::query_view_coordinates_2d_at_closest_ancestor;
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
@@ -27,11 +29,15 @@ use crate::{Pinhole, SpatialView2D};
 // ---
 
 /// Pan and zoom, and return the current transform.
+///
+/// The returned `RectTransform` maps scene coordinates to UI coordinates,
+/// with axis flips applied based on `view_coordinates_2d`.
 fn ui_from_scene(
     ctx: &ViewContext<'_>,
     response: &egui::Response,
     view_state: &mut SpatialViewState,
     bounds_property: &ViewProperty,
+    view_coordinates_2d: &ViewCoordinates2D,
 ) -> RectTransform {
     let bounds: blueprint_components::VisualBounds2D = bounds_property
         .component_or_fallback(ctx, VisualBounds2D::descriptor_range().component)
@@ -63,14 +69,21 @@ fn ui_from_scene(
 
     // --------------------------------------------------------------------------
 
-    // Temporary before applying panning/zooming delta:
+    // Temporary before applying panning/zooming delta (in RD convention):
     let ui_from_scene = RectTransform::from_to(letterboxed_bounds, response.rect);
 
     // --------------------------------------------------------------------------
 
+    // Flip pan direction for flipped axes so content follows the cursor.
     let mut pan_delta_in_ui = response.drag_delta();
     if response.hovered() {
         pan_delta_in_ui += response.ctx.input(|i| i.smooth_scroll_delta);
+    }
+    if view_coordinates_2d.flip_x() {
+        pan_delta_in_ui.x = -pan_delta_in_ui.x;
+    }
+    if view_coordinates_2d.flip_y() {
+        pan_delta_in_ui.y = -pan_delta_in_ui.y;
     }
     if pan_delta_in_ui != Vec2::ZERO {
         bounds_rect = bounds_rect.translate(-pan_delta_in_ui / ui_from_scene.scale());
@@ -110,7 +123,18 @@ fn ui_from_scene(
     // Update stored bounds on the state, so visualizers see an up-to-date value.
     view_state.visual_bounds_2d = Some(bounds);
 
-    RectTransform::from_to(letterboxed_bounds, response.rect)
+    // Apply axis flips for display: swap min/max for flipped axes.
+    // This causes the RectTransform to have negative scale for flipped axes,
+    // which correctly maps scene coordinates to UI coordinates with the flip applied.
+    let mut display_bounds = letterboxed_bounds;
+    if view_coordinates_2d.flip_x() {
+        std::mem::swap(&mut display_bounds.min.x, &mut display_bounds.max.x);
+    }
+    if view_coordinates_2d.flip_y() {
+        std::mem::swap(&mut display_bounds.min.y, &mut display_bounds.max.y);
+    }
+
+    RectTransform::from_to(display_bounds, response.rect)
 }
 
 fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
@@ -204,12 +228,25 @@ impl SpatialView2D {
             query.view_id,
         );
 
+        // Query 2D view coordinates at the view origin (default: RD = X-Right, Y-Down).
+        let view_coordinates_2d = query_view_coordinates_2d_at_closest_ancestor(
+            query.space_origin,
+            ctx.recording(),
+            &query.latest_at_query(),
+        )
+        .unwrap_or_default();
+
         // Convert ui coordinates to/from scene coordinates.
         let ui_from_scene = {
             let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
             let mut new_state = state.clone();
-            let ui_from_scene =
-                ui_from_scene(&view_ctx, &response, &mut new_state, &bounds_property);
+            let ui_from_scene = ui_from_scene(
+                &view_ctx,
+                &response,
+                &mut new_state,
+                &bounds_property,
+                &view_coordinates_2d,
+            );
             *state = new_state;
 
             ui_from_scene

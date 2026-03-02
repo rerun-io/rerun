@@ -1460,6 +1460,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ViewCoordinates2D as Component>::name(),
+            ComponentReflection {
+                docstring_md: "How we interpret the 2D coordinate system of an entity/space.\n\nFor instance: Does the Y axis point up or down?\n\nThe two coordinates are always ordered as [x, y].\n\nFor example [Right, Down] means that the X axis points to the right, and the Y axis points\ndown. This is the default 2D coordinate system and common image/screen convention.\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ViewCoordinates2D::default().to_arrow()?),
+                datatype: ViewCoordinates2D::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: ViewCoordinates2D::verify_arrow_array,
+            },
+        ),
+        (
             <Visible as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the container, view, entity or instance is currently visible.",
@@ -3542,6 +3553,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Xyz",
                     component_type: "rerun.components.ViewCoordinates".into(),
                     docstring_md: "The directions of the [x, y, z] axes.",
+                    flags: ArchetypeFieldFlags::REQUIRED,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.ViewCoordinates2D"),
+            ArchetypeReflection {
+                display_name: "View coordinates 2D",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial2DView"],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "xy",
+                    display_name: "Xy",
+                    component_type: "rerun.components.ViewCoordinates2D".into(),
+                    docstring_md: "The directions of the [x, y] axes.",
                     flags: ArchetypeFieldFlags::REQUIRED,
                 }],
             },

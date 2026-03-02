@@ -45,3 +45,4 @@ include "./archetypes/transform_axes3d.fbs";
 include "./archetypes/video_frame_reference.fbs";
 include "./archetypes/video_stream.fbs";
 include "./archetypes/view_coordinates.fbs";
+include "./archetypes/view_coordinates2d.fbs";

@@ -150,11 +150,17 @@ pub use self::transform_forest::{
     PinholeTreeRoot, TransformForest, TransformFromToError, TreeTransform,
 };
 pub use self::transform_queries::{
-    query_view_coordinates, query_view_coordinates_at_closest_ancestor,
+    query_view_coordinates, query_view_coordinates_2d,
+    query_view_coordinates_2d_at_closest_ancestor, query_view_coordinates_at_closest_ancestor,
 };
 pub use self::transform_resolution_cache::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,
 };
+
+/// Returns the default 2D view coordinates (RD = X-Right, Y-Down).
+pub fn default_2d_view_coordinates() -> re_sdk_types::components::ViewCoordinates2D {
+    re_sdk_types::components::ViewCoordinates2D::RD
+}
 
 /// Returns the view coordinates used for 2D (image) views.
 ///

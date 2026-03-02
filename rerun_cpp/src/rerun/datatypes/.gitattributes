@@ -97,5 +97,7 @@ video_timestamp.cpp linguist-generated=true
 video_timestamp.hpp linguist-generated=true
 view_coordinates.cpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true
+view_coordinates2d.cpp linguist-generated=true
+view_coordinates2d.hpp linguist-generated=true
 visible_time_range.cpp linguist-generated=true
 visible_time_range.hpp linguist-generated=true

@@ -46,3 +46,4 @@ transform_axes3d.rs linguist-generated=true
 video_frame_reference.rs linguist-generated=true
 video_stream.rs linguist-generated=true
 view_coordinates.rs linguist-generated=true
+view_coordinates2d.rs linguist-generated=true

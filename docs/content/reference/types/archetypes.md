@@ -75,6 +75,7 @@ This page lists all built-in archetypes.
 * [`Transform3D`](archetypes/transform3d.md): A transform between two 3D spaces, i.e. a pose.
 * [`TransformAxes3D`](archetypes/transform_axes3d.md): A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
 * [`ViewCoordinates`](archetypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
+* [`ViewCoordinates2D`](archetypes/view_coordinates2d.md): How we interpret the 2D coordinate system of an entity/space.
 
 ## Video
 

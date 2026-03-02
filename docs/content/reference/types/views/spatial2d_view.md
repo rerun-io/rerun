@@ -60,6 +60,7 @@ snippet: views/spatial2d
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`VideoFrameReference`](../archetypes/video_frame_reference.md)
 * [`VideoStream`](../archetypes/video_stream.md)
+* [`ViewCoordinates2D`](../archetypes/view_coordinates2d.md)
 * [`Arrows3D`](../archetypes/arrows3d.md) (if logged above active projection)
 * [`Asset3D`](../archetypes/asset3d.md) (if logged above active projection)
 * [`Boxes3D`](../archetypes/boxes3d.md) (if logged above active projection)

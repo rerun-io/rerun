@@ -74,4 +74,5 @@ include "./components/video_codec.fbs";
 include "./components/video_sample.fbs";
 include "./components/video_timestamp.fbs";
 include "./components/view_coordinates.fbs";
+include "./components/view_coordinates2d.fbs";
 include "./components/visible.fbs";

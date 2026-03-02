@@ -1,0 +1,32 @@
+namespace rerun.archetypes;
+
+
+/// How we interpret the 2D coordinate system of an entity/space.
+///
+/// For instance: Does the Y axis point up or down?
+///
+/// The two coordinates are always ordered as [x, y].
+///
+/// For example [Right, Down] means that the X axis points to the right, and the Y axis points
+/// down. This is the default 2D coordinate system and common image/screen convention.
+///
+/// Only the 4 axis-flip combinations are supported:
+///  * **RD** (Right, Down) - default, image/screen convention
+///  * **RU** (Right, Up) - math/plot convention
+///  * **LD** (Left, Down) - horizontally mirrored image
+///  * **LU** (Left, Up) - both axes flipped
+///
+/// Make sure that this archetype is logged at or above the origin entity path of your 2D views.
+///
+/// \example archetypes/view_coordinates2d_simple title="View coordinates for adjusting the 2D coordinate system"
+table ViewCoordinates2D (
+  "attr.docs.category": "Transforms",
+  "attr.docs.view_types": "Spatial2DView",
+  "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer_none",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  /// The directions of the [x, y] axes.
+  xy: rerun.components.ViewCoordinates2D ("attr.rerun.component_required", order: 1000);
+}

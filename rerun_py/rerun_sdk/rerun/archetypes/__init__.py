@@ -47,6 +47,7 @@ from .transform_axes3d import TransformAxes3D
 from .video_frame_reference import VideoFrameReference
 from .video_stream import VideoStream
 from .view_coordinates import ViewCoordinates
+from .view_coordinates2d import ViewCoordinates2D
 
 __all__ = [
     "AnnotationContext",
@@ -94,4 +95,5 @@ __all__ = [
     "VideoFrameReference",
     "VideoStream",
     "ViewCoordinates",
+    "ViewCoordinates2D",
 ]

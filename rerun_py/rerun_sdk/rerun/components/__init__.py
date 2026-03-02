@@ -108,6 +108,7 @@ from .video_codec import VideoCodec, VideoCodecArrayLike, VideoCodecBatch, Video
 from .video_sample import VideoSample, VideoSampleBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
+from .view_coordinates2d import ViewCoordinates2D, ViewCoordinates2DBatch
 from .visible import Visible, VisibleBatch
 
 __all__ = [
@@ -292,6 +293,8 @@ __all__ = [
     "VideoTimestamp",
     "VideoTimestampBatch",
     "ViewCoordinates",
+    "ViewCoordinates2D",
+    "ViewCoordinates2DBatch",
     "ViewCoordinatesBatch",
     "Visible",
     "VisibleBatch",

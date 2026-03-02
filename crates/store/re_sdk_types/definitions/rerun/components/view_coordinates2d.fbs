@@ -1,0 +1,28 @@
+namespace rerun.components;
+
+
+/// How we interpret the 2D coordinate system of an entity/space.
+///
+/// For instance: Does the Y axis point up or down?
+///
+/// The two coordinates are always ordered as [x, y].
+///
+/// For example [Right, Down] means that the X axis points to the right, and the Y axis points
+/// down. This is the default 2D coordinate system and common image/screen convention.
+///
+/// The following constants are used to represent the different directions:
+///  * Up = 1
+///  * Down = 2
+///  * Right = 3
+///  * Left = 4
+struct ViewCoordinates2D (
+  "attr.cpp.no_field_ctors",
+  "attr.python.aliases": "npt.ArrayLike",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  /// The directions of the [x, y] axes.
+  coordinates: rerun.datatypes.ViewCoordinates2D (order: 100);
+}

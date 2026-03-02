@@ -69,6 +69,8 @@ mod vec4d_ext;
 mod video_timestamp;
 mod video_timestamp_ext;
 mod view_coordinates;
+mod view_coordinates2d;
+mod view_coordinates2d_ext;
 mod view_coordinates_ext;
 
 pub use self::angle::Angle;
@@ -107,3 +109,4 @@ pub use self::vec3d::Vec3D;
 pub use self::vec4d::Vec4D;
 pub use self::video_timestamp::VideoTimestamp;
 pub use self::view_coordinates::ViewCoordinates;
+pub use self::view_coordinates2d::ViewCoordinates2D;

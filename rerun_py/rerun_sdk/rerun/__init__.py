@@ -139,6 +139,7 @@ from .archetypes import (
     VideoFrameReference as VideoFrameReference,
     VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
+    ViewCoordinates2D as ViewCoordinates2D,
 )
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,

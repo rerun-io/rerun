@@ -653,6 +653,37 @@ pub fn query_view_coordinates_at_closest_ancestor(
         .map(|(_path, _index, view_coordinates)| view_coordinates)
 }
 
+/// Queries 2D view coordinates from the [`archetypes::ViewCoordinates2D`] archetype.
+pub fn query_view_coordinates_2d(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<components::ViewCoordinates2D> {
+    entity_db
+        .latest_at_component::<components::ViewCoordinates2D>(
+            entity_path,
+            query,
+            archetypes::ViewCoordinates2D::descriptor_xy().component,
+        )
+        .map(|(_index, view_coordinates)| view_coordinates)
+}
+
+/// Queries 2D view coordinates from the [`archetypes::ViewCoordinates2D`] archetype
+/// at the closest ancestor of the given entity path.
+pub fn query_view_coordinates_2d_at_closest_ancestor(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<components::ViewCoordinates2D> {
+    entity_db
+        .latest_at_component_at_closest_ancestor::<components::ViewCoordinates2D>(
+            entity_path,
+            query,
+            archetypes::ViewCoordinates2D::descriptor_xy().component,
+        )
+        .map(|(_path, _index, view_coordinates)| view_coordinates)
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

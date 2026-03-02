@@ -50,4 +50,5 @@ vec3d.py linguist-generated=true
 vec4d.py linguist-generated=true
 video_timestamp.py linguist-generated=true
 view_coordinates.py linguist-generated=true
+view_coordinates2d.py linguist-generated=true
 visible_time_range.py linguist-generated=true

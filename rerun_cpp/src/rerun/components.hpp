@@ -78,4 +78,5 @@
 #include "components/video_sample.hpp"
 #include "components/video_timestamp.hpp"
 #include "components/view_coordinates.hpp"
+#include "components/view_coordinates2d.hpp"
 #include "components/visible.hpp"

@@ -47,3 +47,4 @@
 #include "archetypes/video_frame_reference.hpp"
 #include "archetypes/video_stream.hpp"
 #include "archetypes/view_coordinates.hpp"
+#include "archetypes/view_coordinates2d.hpp"
