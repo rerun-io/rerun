@@ -8,11 +8,13 @@
 //! Simplified jq-like grammar with implicit piping:
 //!
 //! ```text
-//! Expr → Term ( ( '|' | ε ) Term )*
-//! Term → FIELD '?'?
-//!      | DOT
-//!      | '[' INTEGER ']' '?'?
-//!      | '[' ']'
+//! Expr    → Term ( ( '|' | ε ) Term )*
+//! Term    → Segment+
+//!         | DOT
+//! Segment → Primary '?'?
+//! Primary → FIELD
+//!         | '[' INTEGER ']'
+//!         | '[' ']'
 //! ```
 //!
 //! `UPPERCASE` symbols denote terminals, and `ε` denotes end of input.
@@ -48,13 +50,13 @@ impl std::fmt::Display for SegmentKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Segment {
     pub kind: SegmentKind,
-    pub optional: bool,
+    pub suppressed: bool,
 }
 
 impl std::fmt::Display for Segment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.kind)?;
-        if self.optional {
+        if self.suppressed {
             write!(f, "?")?;
         }
         Ok(())
@@ -175,7 +177,7 @@ where
         )
     }
 
-    fn peek_optional(&mut self) -> bool {
+    fn peek_question_mark(&mut self) -> bool {
         if let Some(token) = self.tokens.peek()
             && token.typ == TokenType::QuestionMark
         {
@@ -186,16 +188,18 @@ where
     }
 
     fn segment(&mut self) -> Result<Segment> {
+        let kind = self.primary()?;
+        let suppressed = self.peek_question_mark();
+        Ok(Segment { kind, suppressed })
+    }
+
+    fn primary(&mut self) -> Result<SegmentKind> {
         match self.tokens.peek() {
             Some(token) => match &token.typ {
                 TokenType::Field(s) => {
                     let result = s.clone();
                     self.tokens.next();
-                    let optional = self.peek_optional();
-                    Ok(Segment {
-                        kind: SegmentKind::Field(result),
-                        optional,
-                    })
+                    Ok(SegmentKind::Field(result))
                 }
                 TokenType::LBracket => {
                     self.tokens.next(); // Consume `[`
@@ -204,20 +208,13 @@ where
                         Some(token) => match &token.typ {
                             TokenType::RBracket => {
                                 self.tokens.next(); // Consume `]`
-                                Ok(Segment {
-                                    kind: SegmentKind::Each,
-                                    optional: false,
-                                })
+                                Ok(SegmentKind::Each)
                             }
                             TokenType::Integer(n) => {
                                 let index = *n;
                                 self.tokens.next();
                                 self.consume(TokenType::RBracket)?;
-                                let optional = self.peek_optional();
-                                Ok(Segment {
-                                    kind: SegmentKind::Index(index),
-                                    optional,
-                                })
+                                Ok(SegmentKind::Index(index))
                             }
                             unexpected => Err(Error::UnexpectedSymbol {
                                 symbol: unexpected.clone(),
@@ -262,35 +259,42 @@ mod test {
     fn field(name: &str) -> Segment {
         Segment {
             kind: SegmentKind::Field(name.into()),
-            optional: false,
+            suppressed: false,
         }
     }
 
     fn field_opt(name: &str) -> Segment {
         Segment {
             kind: SegmentKind::Field(name.into()),
-            optional: true,
+            suppressed: true,
         }
     }
 
     fn index(n: u64) -> Segment {
         Segment {
             kind: SegmentKind::Index(n),
-            optional: false,
+            suppressed: false,
         }
     }
 
     fn index_opt(n: u64) -> Segment {
         Segment {
             kind: SegmentKind::Index(n),
-            optional: true,
+            suppressed: true,
         }
     }
 
     fn each() -> Segment {
         Segment {
             kind: SegmentKind::Each,
-            optional: false,
+            suppressed: false,
+        }
+    }
+
+    fn each_opt() -> Segment {
+        Segment {
+            kind: SegmentKind::Each,
+            suppressed: true,
         }
     }
 
@@ -424,9 +428,13 @@ mod test {
     }
 
     #[test]
-    fn optional_each_not_supported() {
-        // `?` after `[]` should be a parse error (unexpected symbol)
-        assert!(parse(".[]?").is_err());
+    fn optional_each() {
+        assert_eq!(parse(".[]?"), Ok(path(vec![each_opt()])));
+        assert_eq!(parse(".[]?.foo"), Ok(path(vec![each_opt(), field("foo")])));
+        assert_eq!(
+            parse(".foo[]?.bar"),
+            Ok(path(vec![field("foo"), each_opt(), field("bar")]))
+        );
     }
 
     #[test]
@@ -440,5 +448,8 @@ mod test {
         // Note: leading `.` is consumed by the path parser, not stored in segments.
         let expr = parse(".[0]?").unwrap();
         assert_eq!(expr.to_string(), "[0]?");
+
+        let expr = parse(".[]?").unwrap();
+        assert_eq!(expr.to_string(), "[]?");
     }
 }

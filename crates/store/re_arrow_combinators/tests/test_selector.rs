@@ -38,6 +38,8 @@ fn execute_nested_struct() -> Result<(), Error> {
     │ [3.0, 5.0]                        │
     ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     │ [null, 7.0]                       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, null]                      │
     └───────────────────────────────────┘
     ");
 
@@ -324,6 +326,13 @@ fn execute_optional_field() -> Result<(), Error> {
             re_arrow_combinators::Error::FieldNotFound { .. }
         ))
     ));
+    let err = ".foo.x".parse::<Selector>()?.execute_per_row(&array);
+    assert!(matches!(
+        err,
+        Err(Error::Runtime(
+            re_arrow_combinators::Error::FieldNotFound { .. }
+        ))
+    ),);
 
     // With `?`, the missing field is suppressed and we get `None` instead.
     let result = ".location.z?"
@@ -331,6 +340,32 @@ fn execute_optional_field() -> Result<(), Error> {
         .execute_per_row(&array)?;
 
     assert!(result.is_none(), "optional segment should return None");
+    let result = ".foo?.x".parse::<Selector>()?.execute_per_row(&array)?;
+
+    assert!(result.is_none(), "optional segment should return None");
+
+    Ok(())
+}
+
+#[test]
+fn execute_optional_each_suppressed() -> Result<(), Error> {
+    let array = fixtures::nested_struct_column();
+
+    // Without `?`, `[]` on a struct (non-list) inner type errors.
+    let err = ".[]".parse::<Selector>()?.execute_per_row(&array);
+    assert!(matches!(
+        err,
+        Err(Error::Runtime(
+            re_arrow_combinators::Error::TypeMismatch { .. }
+        ))
+    ));
+
+    // With `?`, the error is suppressed and we get `None`.
+    let result = ".[]?".parse::<Selector>()?.execute_per_row(&array)?;
+    assert!(
+        result.is_none(),
+        "optional each should return None on non-list inner type"
+    );
 
     Ok(())
 }

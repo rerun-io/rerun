@@ -15,7 +15,7 @@ use super::parser::{Expr, Segment, SegmentKind};
 
 /// Executes the given expression against the source array.
 ///
-/// Returns `None` if the expression was suppressed by an optional segment (e.g. `.field?`).
+/// Returns `None` if the expression was suppressed (e.g. `.field?`).
 /// The caller decides how to handle the absent result.
 pub fn execute_per_row(expr: &Expr, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
     // TODO(grtlr): It would be much cleaner if `MapList` (or equivalent would be called on this level).
@@ -67,9 +67,9 @@ impl Segment {
     fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
         match self.kind.execute(source) {
             Ok(result) => Ok(Some(result)),
-            // TODO(RR-3435): FixedSizeListArray errors must be suppressed via optional, but ListArray should not need it.
-            Err(err) if self.optional => {
-                re_log::trace!("Optional segment `{self}` suppressed error: {err}");
+            // TODO(RR-3435): FixedSizeListArray errors must be suppressed via `?`, but ListArray should not need it.
+            Err(err) if self.suppressed => {
+                re_log::trace!("Suppressed segment `{self}` suppressed error: {err}");
                 Ok(None)
             }
             Err(err) => Err(err),

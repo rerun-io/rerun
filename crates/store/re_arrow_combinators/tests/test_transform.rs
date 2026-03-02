@@ -7,7 +7,7 @@ use re_arrow_combinators::Selector;
 use re_arrow_combinators::Transform as _;
 use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
 use re_arrow_combinators::map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull};
-use re_arrow_combinators::reshape::{RowMajorToColumnMajor, StructToFixedList};
+use re_arrow_combinators::reshape::{PromoteInnerNulls, RowMajorToColumnMajor, StructToFixedList};
 use util::DisplayRB;
 
 use crate::util::fixtures;
@@ -442,5 +442,63 @@ fn test_map_list_outer_nullability_identity() {
     ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     │ [3, 4, 5]               │
     └─────────────────────────┘
+    ");
+}
+
+#[test]
+fn test_promote_inner_nulls_nested_struct() {
+    let array = fixtures::nested_struct_column();
+
+    let location = Selector::from_str(".location")
+        .unwrap()
+        .transform(&array)
+        .unwrap();
+
+    // Before: row 1 is `[null]` and row 5 is `[null, null]`
+    insta::assert_snapshot!(format!("{}", DisplayRB(location.clone())), @"
+    ┌─────────────────────────────────────────┐
+    │ col                                     │
+    │ ---                                     │
+    │ type: nullable List[nullable Struct[2]] │
+    ╞═════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                      │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                  │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                      │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                    │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]    │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, null]                            │
+    └─────────────────────────────────────────┘
+    ");
+
+    // After: row 1 `[null]` and row 6 `[null, null]` are promoted to outer `null`s
+    let result = PromoteInnerNulls.transform(&location).unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
+    ┌─────────────────────────────────────────┐
+    │ col                                     │
+    │ ---                                     │
+    │ type: nullable List[nullable Struct[2]] │
+    ╞═════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                      │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                    │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                      │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                    │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]    │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                    │
+    └─────────────────────────────────────────┘
     ");
 }

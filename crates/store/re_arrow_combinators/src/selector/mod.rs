@@ -12,7 +12,7 @@
 //! | `.field`    | Access a named field in a struct                 | `.location`    |
 //! | `[]`        | Iterate over every element of a list             | `.poses[]`     |
 //! | `[N]`       | Index into a list by position                    | `.[0]`         |
-//! | `?`         | Optional: suppress errors if a field is missing  | `.field?`      |
+//! | `?`         | Error suppression / optional operator            | `.field?`      |
 //! | `\|`        | Pipe the output of one expression to another     | `.foo \| .bar` |
 //!
 //! Segments can be chained without an explicit pipe: `.poses[].x` is equivalent to `.poses[] | .x`.
@@ -53,7 +53,7 @@ impl Selector {
     ///
     /// `[.[].poses[].x]` is the actual query, we only require writing the `.poses[].x` portion.
     ///
-    /// Returns `None` if the expression was suppressed by an optional segment (e.g. `.field?`).
+    /// Returns `None` if the expression's error was suppressed (e.g. `.field?`).
     pub fn execute_per_row(&self, source: &ListArray) -> Result<Option<ListArray>, Error> {
         runtime::execute_per_row(&self.0, source).map_err(Into::into)
     }
@@ -144,7 +144,7 @@ where
             let mut field_path = path.clone();
             field_path.push(Segment {
                 kind: SegmentKind::Field(field.name().clone()),
-                optional: false,
+                suppressed: false,
             });
 
             match field.data_type() {
@@ -156,7 +156,7 @@ where
                     // Add the Each segment to unwrap the list
                     field_path.push(Segment {
                         kind: SegmentKind::Each,
-                        optional: false,
+                        suppressed: false,
                     });
 
                     match inner.data_type() {

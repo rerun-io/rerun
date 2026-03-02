@@ -62,6 +62,8 @@ pub mod fixtures {
         │ [{location: {x: 3.0, y: 4.0}}, {location: {x: 5.0, y: 6.0}}] │
         ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
         │ [null, {location: {x: 7.0, y: 8.0}}]                         │
+        ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        │ [{location: null}, {location: null}]                         │
         └──────────────────────────────────────────────────────────────┘
         ");
     }
@@ -75,27 +77,28 @@ pub mod fixtures {
             Field::new("y", DataType::Float64, true),
         ]);
 
-        let x_nulls = NullBuffer::from(vec![true, false, true, true, false, true]);
-        let y_nulls = NullBuffer::from(vec![true, false, true, true, false, true]);
+        let x_nulls = NullBuffer::from(vec![true, false, true, true, false, true, false, false]);
+        let y_nulls = NullBuffer::from(vec![true, false, true, true, false, true, false, false]);
 
         let x_data = ArrayData::builder(DataType::Float64)
-            .len(6)
+            .len(8)
             .null_bit_buffer(Some(x_nulls.buffer().clone()))
-            .add_buffer(values_buffer.slice_with_length(0, 48))
+            .add_buffer(values_buffer.slice_with_length(0, 64))
             .build()
             .unwrap();
 
         let y_data = ArrayData::builder(DataType::Float64)
-            .len(6)
+            .len(8)
             .null_bit_buffer(Some(y_nulls.buffer().clone()))
-            .add_buffer(values_buffer.slice_with_length(48, 48))
+            .add_buffer(values_buffer.slice_with_length(48, 64))
             .build()
             .unwrap();
 
         let x_array = Float64Array::from(x_data);
         let y_array = Float64Array::from(y_data);
 
-        let inner_struct_nulls = NullBuffer::from(vec![true, false, true, true, false, true]);
+        let inner_struct_nulls =
+            NullBuffer::from(vec![true, false, true, true, false, true, false, false]);
         let inner_struct = StructArray::new(
             inner_struct_fields.clone(),
             vec![Arc::new(x_array), Arc::new(y_array)],
@@ -108,16 +111,17 @@ pub mod fixtures {
             true,
         )]);
 
-        let outer_struct_nulls = NullBuffer::from(vec![true, true, true, true, false, true]);
+        let outer_struct_nulls =
+            NullBuffer::from(vec![true, true, true, true, false, true, true, true]);
         let outer_struct = StructArray::new(
             outer_struct_fields,
             vec![Arc::new(inner_struct)],
             Some(outer_struct_nulls),
         );
 
-        let list_offsets = OffsetBuffer::from_lengths([1, 1, 0, 0, 2, 2]);
+        let list_offsets = OffsetBuffer::from_lengths([1, 1, 0, 0, 2, 2, 2]);
 
-        let list_nulls = NullBuffer::from(vec![true, true, true, false, true, true]);
+        let list_nulls = NullBuffer::from(vec![true, true, true, false, true, true, true]);
 
         ListArray::new(
             Arc::new(Field::new_list_field(

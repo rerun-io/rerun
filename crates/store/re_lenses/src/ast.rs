@@ -144,6 +144,9 @@ pub enum Op {
     /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
     TimeSpecToNanos,
 
+    /// Promotes lists where all inner values are null to outer nulls.
+    PromoteInnerNulls,
+
     /// A user-defined arbitrary function to convert a component column.
     Func(CustomFn),
 }
@@ -164,6 +167,7 @@ impl std::fmt::Debug for Op {
                 f.debug_tuple("StringSuffixNonEmpty").field(suffix).finish()
             }
             Self::TimeSpecToNanos => f.debug_struct("TimeSpecToNanos").finish(),
+            Self::PromoteInnerNulls => f.debug_struct("PromoteInnerNulls").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
     }
@@ -241,6 +245,11 @@ impl Op {
         Self::TimeSpecToNanos
     }
 
+    /// Promotes lists where all inner values are null to outer nulls.
+    pub fn promote_inner_nulls() -> Self {
+        Self::PromoteInnerNulls
+    }
+
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
@@ -251,41 +260,52 @@ impl Op {
 }
 
 impl Op {
-    fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
+    fn call(&self, list_array: &ListArray) -> Result<Option<ListArray>, OpError> {
         match self {
             Self::Selector(query) => {
                 let selector = Selector::from_str(query)?;
-                selector.transform(list_array).map_err(Into::into)
+                Ok(selector.execute_per_row(list_array)?)
             }
-            Self::Cast(op) => op.call(list_array),
+            Self::Cast(op) => op.call(list_array).map(Some),
             Self::BinaryToListUInt8 => map::MapList::new(semantic::BinaryToListUInt8::<i32>::new())
                 .transform(list_array)
-                .map_err(Into::into),
+                .map_err(Into::into)
+                .map(Some),
             Self::StringToVideoCodecUInt32 => {
                 map::MapList::new(semantic::StringToVideoCodecUInt32::default())
                     .transform(list_array)
                     .map_err(Into::into)
+                    .map(Some)
             }
             Self::StringPrefix(prefix) => map::MapList::new(map::StringPrefix::new(prefix.clone()))
                 .transform(list_array)
-                .map_err(Into::into),
+                .map_err(Into::into)
+                .map(Some),
             Self::StringPrefixNonEmpty(prefix) => map::MapList::new(
                 map::StringPrefix::new(prefix.clone()).with_prefix_empty_string(false),
             )
             .transform(list_array)
-            .map_err(Into::into),
+            .map_err(Into::into)
+            .map(Some),
             Self::StringSuffix(suffix) => map::MapList::new(map::StringSuffix::new(suffix.clone()))
                 .transform(list_array)
-                .map_err(Into::into),
+                .map_err(Into::into)
+                .map(Some),
             Self::StringSuffixNonEmpty(suffix) => map::MapList::new(
                 map::StringSuffix::new(suffix.clone()).with_suffix_empty_string(false),
             )
             .transform(list_array)
-            .map_err(Into::into),
+            .map_err(Into::into)
+            .map(Some),
             Self::TimeSpecToNanos => map::MapList::new(semantic::TimeSpecToNanos::default())
                 .transform(list_array)
-                .map_err(Into::into),
-            Self::Func(func) => func(list_array),
+                .map_err(Into::into)
+                .map(Some),
+            Self::PromoteInnerNulls => reshape::PromoteInnerNulls
+                .transform(list_array)
+                .map_err(Into::into)
+                .map(Some),
+            Self::Func(func) => func(list_array).map(Some),
         }
     }
 }
@@ -366,21 +386,38 @@ impl PartialChunk {
     }
 }
 
-fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<ListArray, OpError> {
-    ops.iter().try_fold(initial, |array, op| op.call(&array))
+/// Sequentially applies a list of [`Op`]s to a list array.
+///
+/// Exits early if an evaluation of an [`Op`] yields `None`, skipping subsequent ops.
+fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<Option<ListArray>, OpError> {
+    let mut current = initial;
+    for op in ops {
+        match op.call(&current)? {
+            Some(next) => current = next,
+            None => return Ok(None),
+        }
+    }
+    Ok(Some(current))
 }
 
 fn collect_output_components_iter<'a>(
     input: &'a SerializedComponentColumn,
     components: &'a [ComponentOutput],
 ) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensError>> + 'a {
-    components.iter().map(
+    components.iter().filter_map(
         |output| match apply_ops(input.list_array.clone(), &output.ops) {
-            Ok(list_array) => Ok((output.component_descr.clone(), list_array)),
-            Err(source) => Err(LensError::ComponentOperationFailed {
+            Ok(Some(list_array)) => Some(Ok((output.component_descr.clone(), list_array))),
+            Ok(None) => {
+                re_log::debug_once!(
+                    "Lens suppressed for component `{}`",
+                    output.component_descr.component
+                );
+                None
+            }
+            Err(source) => Some(Err(LensError::ComponentOperationFailed {
                 component: output.component_descr.component,
                 source: Box::new(source),
-            }),
+            })),
         },
     )
 }
@@ -389,13 +426,17 @@ fn collect_output_times_iter<'a>(
     input: &'a SerializedComponentColumn,
     timelines: &'a [TimeOutput],
 ) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensError>> + 'a {
-    timelines.iter().map(
+    timelines.iter().filter_map(
         |time| match apply_ops(input.list_array.clone(), &time.ops) {
-            Ok(list_array) => Ok((time.timeline_name, time.timeline_type, list_array)),
-            Err(source) => Err(LensError::TimeOperationFailed {
+            Ok(Some(list_array)) => Some(Ok((time.timeline_name, time.timeline_type, list_array))),
+            Ok(None) => {
+                re_log::debug_once!("Lens suppressed for timeline `{}`", time.timeline_name);
+                None
+            }
+            Err(source) => Some(Err(LensError::TimeOperationFailed {
                 timeline_name: time.timeline_name,
                 source: Box::new(source),
-            }),
+            })),
         },
     )
 }

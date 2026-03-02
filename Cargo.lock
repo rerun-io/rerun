@@ -9208,6 +9208,7 @@ dependencies = [
  "re_arrow_combinators",
  "re_arrow_util",
  "re_chunk",
+ "re_log",
  "re_log_types",
  "re_sdk_types",
  "thiserror 2.0.17",
