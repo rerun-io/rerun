@@ -8,15 +8,21 @@ use re_log_types::external::arrow::array::AsArray as _;
 use re_log_types::external::arrow::buffer::BooleanBuffer;
 use re_log_types::external::arrow::datatypes::UInt32Type;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, components};
+use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::VisualizerReportSeverity;
 
-use crate::{MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT, PlotPoint, PlotSeriesKind};
+use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
 /// Determines how many series there are in the scalar chunks.
+///
+/// If the scalar component has a non-identity mapping (i.e. it's sourced from a different
+/// component or uses a selector), the number of series is capped at
+/// [`MAX_NUM_SERIES_FOR_REMAPPED_SCALARS`].
+/// Identity mappings (direct `Scalars` data) are not capped since the user explicitly
+/// logged that data.
 pub fn determine_num_series(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
@@ -32,10 +38,16 @@ pub fn determine_num_series(
                 .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         })
         .unwrap_or(1);
-    if count > MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT {
-        results.report_unspecified_source(VisualizerReportSeverity::Error,
-            format!("Number of series ({count}) exceeds the maximum ({MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT}). Only the first {MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT} series will be visualized."));
-        MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT
+
+    let scalar_component = archetypes::Scalars::descriptor_scalars().component;
+    let is_identity = results.has_identity_mapping_for_component(scalar_component);
+
+    if !is_identity && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS {
+        results.report_unspecified_source(VisualizerReportSeverity::Error, format!(
+            "Number of series ({count}) exceeds the maximum ({MAX_NUM_SERIES_FOR_REMAPPED_SCALARS}). \
+             Only the first {MAX_NUM_SERIES_FOR_REMAPPED_SCALARS} series will be visualized."
+        ));
+        MAX_NUM_SERIES_FOR_REMAPPED_SCALARS
     } else {
         count
     }

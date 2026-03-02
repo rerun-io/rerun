@@ -1,7 +1,9 @@
 use re_log_types::hash::Hash64;
+use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_viewer_context::{
-    QueryContext, VisualizerInstructionReport, VisualizerReportContext, VisualizerReportSeverity,
+    QueryContext, VisualizerInstruction, VisualizerInstructionReport, VisualizerReportContext,
+    VisualizerReportSeverity,
 };
 
 use crate::{
@@ -11,7 +13,7 @@ use crate::{
 
 /// Utility for processing queries while executing a visualizer instruction and reporting errors/warnings as they arise.
 pub struct VisualizerInstructionQueryResults<'a> {
-    instruction_id: VisualizerInstructionId,
+    instruction: &'a VisualizerInstruction,
     query_results: &'a BlueprintResolvedResults<'a>,
     output: &'a re_viewer_context::VisualizerExecutionOutput,
 }
@@ -19,7 +21,7 @@ pub struct VisualizerInstructionQueryResults<'a> {
 impl<'a> VisualizerInstructionQueryResults<'a> {
     /// Create a new query results wrapper.
     pub fn new(
-        instruction_id: VisualizerInstructionId,
+        instruction: &'a VisualizerInstruction,
         query_results: &'a BlueprintResolvedResults<'a>,
         output: &'a re_viewer_context::VisualizerExecutionOutput,
     ) -> Self {
@@ -27,7 +29,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
             output.set_missing_chunks();
         }
         Self {
-            instruction_id,
+            instruction,
             query_results,
             output,
         }
@@ -35,7 +37,18 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
 
     /// The visualizer instruction ID these results are associated with.
     pub fn instruction_id(&self) -> VisualizerInstructionId {
-        self.instruction_id
+        self.instruction.id
+    }
+
+    /// Whether the given component has an identity mapping on this visualizer instruction.
+    ///
+    /// Identity means the component maps directly to itself with no selector,
+    /// which is also the default when no explicit mapping is present.
+    pub fn has_identity_mapping_for_component(&self, component: ComponentIdentifier) -> bool {
+        self.instruction
+            .component_mappings
+            .get(&component)
+            .is_none_or(|source| source.is_identity_mapping(component))
     }
 
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
@@ -74,7 +87,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
                         details: err.details(),
                     };
 
-                    self.output.report(self.instruction_id, report);
+                    self.output.report(self.instruction.id, report);
                 }
 
                 ChunksWithComponent::empty(component)
@@ -115,7 +128,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
                     details: err.details(),
                 };
 
-                self.output.report(self.instruction_id, report);
+                self.output.report(self.instruction.id, report);
                 ChunksWithComponent::empty(component)
             }
         };
@@ -134,7 +147,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
         message: impl Into<String>,
     ) {
         self.output
-            .report_unspecified_source(self.instruction_id, severity, message);
+            .report_unspecified_source(self.instruction.id, severity, message);
     }
 
     /// Report a diagnostic tied to a specific component.
@@ -145,7 +158,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
         summary: impl Into<String>,
     ) {
         self.output.report(
-            self.instruction_id,
+            self.instruction.id,
             VisualizerInstructionReport {
                 severity,
                 context: VisualizerReportContext {

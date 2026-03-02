@@ -56,7 +56,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         {
             let results =
                 data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 

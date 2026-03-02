@@ -104,7 +104,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 ),
             );
             let opacity_result = re_view::VisualizerInstructionQueryResults::new(
-                instruction.id,
+                instruction,
                 &opacity_result_wrapped,
                 &output,
             );

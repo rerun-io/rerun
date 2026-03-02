@@ -110,10 +110,19 @@ pub async fn per_visualizer_instruction_errors() {
     harness.snapshot_app("per_visualizer_instruction_errors_3b_errors_only_menu");
 }
 
-/// Tests that logging more series than `MAX_SERIES_COUNT` doesn't crash and the extra series
-/// are silently dropped.
+/// Tests that logging more series than `MAX_NUM_SERIES_FOR_REMAPPED_SCALARS` via a non-identity
+/// mapping doesn't crash and the extra series are silently dropped.
+///
+/// The series cap only applies to non-identity mappings (i.e. when the scalar component
+/// is sourced from a different component). Identity mappings (direct `Scalars` data)
+/// are not capped.
 #[tokio::test(flavor = "multi_thread")]
 pub async fn series_count_exceeds_max() {
+    use std::sync::Arc;
+
+    use re_sdk::external::arrow::array::Float64Array;
+    use re_viewer::external::re_sdk_types::DynamicArchetype;
+
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     harness.init_recording();
     harness.set_blueprint_panel_opened(false);
@@ -122,22 +131,48 @@ pub async fn series_count_exceeds_max() {
 
     let timeline = Timeline::new_sequence("t");
     let num_scalars = 1001;
-    for t in 0..100 {
+    for t in 0..150 {
         let values: Vec<f64> = (0..num_scalars)
             .map(|i| ((t * 50 + i * 100) as f64 * 0.001).sin())
             .collect();
+        // Log as a custom f64 component (not the builtin `Scalar`).
         harness.log_entity("many_series", |builder| {
-            builder.with_archetype_auto_row([(timeline, t)], &Scalars::new(values))
+            builder.with_archetype_auto_row(
+                [(timeline, t)],
+                &DynamicArchetype::new_without_archetype()
+                    .with_component_from_data("my_values", Arc::new(Float64Array::from(values))),
+            )
         });
     }
 
-    harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
+    // Set up a non-identity mapping: source `my_values` → target `rerun.components.Scalar`.
+    let remapped_scalar = VisualizerComponentMapping {
+        target: Scalars::descriptor_scalars().component.as_str().into(),
+        source_kind: ComponentSourceKind::SourceComponent,
+        source_component: Some("my_values".into()),
+        selector: None,
+    };
+
+    let view_id = harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
         blueprint.add_view_at_root(ViewBlueprint::new(
             TimeSeriesView::identifier(),
             RecommendedView::new_single_entity("many_series"),
         ))
     });
 
+    harness.setup_viewport_blueprint(move |viewer_context, _blueprint| {
+        viewer_context.save_visualizers(
+            &"many_series".into(),
+            view_id,
+            [SeriesLines::default()
+                .visualizer()
+                .with_mappings([remapped_scalar.into()])],
+        );
+    });
+
     harness.click_label("View errors");
+
+    // TODO(#12450): macOS CI uses SwiftShader which produces images too different from the reference.
+    #[cfg(not(target_os = "macos"))]
     harness.snapshot_app("series_count_exceeds_max");
 }
