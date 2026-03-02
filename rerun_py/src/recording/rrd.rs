@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::PyModule;
-use pyo3::{PyObject, PyResult, Python, pyclass, pyfunction, pymethods};
+use pyo3::{Py, PyAny, PyResult, Python, pyclass, pyfunction, pymethods};
 
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::StoreId;
@@ -59,7 +59,7 @@ pub struct PyRecording {
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecording {
     /// The schema describing all the columns available in the recording.
-    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn schema(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let schema_internal = PySchemaInternal {
             columns: self.store.read().schema().into(),
             metadata: Default::default(),

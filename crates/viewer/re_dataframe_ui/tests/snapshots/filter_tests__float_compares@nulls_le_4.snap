@@ -15,9 +15,6 @@ TestResult {
         name: "column",
         data_type: Float64,
         nullable: true,
-        dict_id: 0,
-        dict_is_ordered: false,
-        metadata: {},
     },
     unfiltered: PrimitiveArray<Float64>
     [

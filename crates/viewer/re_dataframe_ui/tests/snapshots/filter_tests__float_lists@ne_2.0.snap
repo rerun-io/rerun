@@ -15,18 +15,10 @@ TestResult {
         name: "column",
         data_type: List(
             Field {
-                name: "item",
                 data_type: Float64,
                 nullable: true,
-                dict_id: 0,
-                dict_is_ordered: false,
-                metadata: {},
             },
         ),
-        nullable: false,
-        dict_id: 0,
-        dict_is_ordered: false,
-        metadata: {},
     },
     unfiltered: ListArray
     [

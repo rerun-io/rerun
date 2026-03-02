@@ -1,8 +1,8 @@
 [project]
 name = "server_tables"
-version = "0.1.0"
+version = "0.1.1"
 readme = "README.md"
-dependencies = ["rerun-sdk", "datafusion==50.1"]
+dependencies = ["rerun-sdk", "datafusion==51.0.0"]
 
 [project.scripts]
 server_tables = "server_tables:main"

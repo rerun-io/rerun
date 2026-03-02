@@ -14,10 +14,6 @@ TestResult {
     field: Field {
         name: "column",
         data_type: Int16,
-        nullable: false,
-        dict_id: 0,
-        dict_is_ordered: false,
-        metadata: {},
     },
     unfiltered: PrimitiveArray<Int16>
     [

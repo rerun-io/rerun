@@ -30,12 +30,12 @@ where
     F::Output: Send,
 {
     let runtime: &Runtime = get_tokio_runtime();
-    py.allow_threads(|| runtime.block_on(f))
+    py.detach(|| runtime.block_on(f))
 }
 
 /// Issues a warning to python runtime
 pub fn py_rerun_warn_cstr(msg: &std::ffi::CStr) -> PyResult<()> {
-    Python::with_gil(|py| {
+    Python::attach(|py| {
         let warning_type = PyModule::import(py, "rerun")?
             .getattr("error_utils")?
             .getattr("RerunWarning")?;

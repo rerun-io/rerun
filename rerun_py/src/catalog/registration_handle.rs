@@ -296,7 +296,7 @@ impl PyRegistrationIterator {
         let rx = slf.rx.clone();
 
         // Release the GIL while waiting for data
-        let batch_result = py.allow_threads(|| {
+        let batch_result = py.detach(|| {
             let mut rx_guard = rx.lock();
             rx_guard.blocking_recv()
         });

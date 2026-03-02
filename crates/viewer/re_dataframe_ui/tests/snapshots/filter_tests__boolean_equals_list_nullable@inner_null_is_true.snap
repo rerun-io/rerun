@@ -13,15 +13,8 @@ TestResult {
                 name: "column",
                 data_type: Boolean,
                 nullable: true,
-                dict_id: 0,
-                dict_is_ordered: false,
-                metadata: {},
             },
         ),
-        nullable: false,
-        dict_id: 0,
-        dict_is_ordered: false,
-        metadata: {},
     },
     unfiltered: ListArray
     [
