@@ -1,4 +1,4 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, Weak};
 
 use egui::ahash::HashMap;
 use nohash_hasher::IntMap;
@@ -11,15 +11,36 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, Timel
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Debug, Clone)]
 pub struct ChunkTimelineInfo {
-    pub chunk: Arc<Chunk>,
+    chunk: Weak<Chunk>,
     pub num_events: u64,
     pub resolved_time_range: AbsoluteTimeRange,
+}
+
+impl ChunkTimelineInfo {
+    pub fn chunk(&self) -> Option<Arc<Chunk>> {
+        let chunk = self.chunk.upgrade();
+
+        if chunk.is_none() {
+            re_log::debug_warn_once!(
+                "`recursive_chunks_for_entity_and_timeline` tracking dropped chunk"
+            );
+        }
+
+        chunk
+    }
 }
 
 #[cfg(test)]
 impl PartialEq for ChunkTimelineInfo {
     fn eq(&self, other: &Self) -> bool {
-        self.chunk.id() == other.chunk.id()
+        let Some(chunk) = self.chunk() else {
+            return false;
+        };
+        let Some(other_chunk) = other.chunk() else {
+            return false;
+        };
+
+        chunk.id() == other_chunk.id()
             && self.num_events == other.num_events
             && self.resolved_time_range == other.resolved_time_range
     }
@@ -84,7 +105,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
                 .or_default();
 
             let chunk_info = ChunkTimelineInfo {
-                chunk: chunk.clone(),
+                chunk: Arc::downgrade(chunk),
                 // TODO(andreas): Would `num_events_cumulative_per_unique_time` be more appropriate?
                 num_events: chunk.num_events_cumulative(),
                 resolved_time_range: time_column.time_range(),

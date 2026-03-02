@@ -645,12 +645,8 @@ pub fn build_density_graph<'a>(
                     (
                         info.recursive_chunks_info
                             .values()
-                            .map(|info| {
-                                (
-                                    info.chunk.clone(),
-                                    info.resolved_time_range,
-                                    info.num_events,
-                                )
+                            .filter_map(|info| {
+                                Some((info.chunk()?, info.resolved_time_range, info.num_events))
                             })
                             .collect(),
                         info.total_num_events,
