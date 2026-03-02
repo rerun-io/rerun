@@ -91,7 +91,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 1,
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. See [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for more information.
+[Visualizers and Overrides](../../concepts/visualization/customize-views.md) for more information.
 
 This page lists all built-in archetypes.",
                 &archetypes,

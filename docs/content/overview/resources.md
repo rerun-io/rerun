@@ -36,7 +36,7 @@ Understanding the foundational concepts behind Rerun:
 - **[Query Semantics](../concepts/logging-and-ingestion/latest-at.md)** - How Rerun resolves data queries
 - **[Annotation Context](../concepts/visualization/annotation-context.md)** - Shared styling and labels
 - **[Recordings](../concepts/logging-and-ingestion/recordings.md)** - Managing recordings, application IDs, and the Data Platform
-- **[Visualizers and Overrides](../concepts/visualization/visualizers-and-overrides.md)** - Customizing rendering
+- **[Visualizers and Overrides](../concepts/visualization/customize-views.md)** - Customizing rendering
 - **[Chunks](../concepts/logging-and-ingestion/chunks.md)** - Internal storage mechanism (advanced)
 
 ## How-to guides
@@ -80,11 +80,24 @@ Practical guides for specific tasks and advanced features:
 
 Detailed API documentation and technical specifications:
 
-- **[Reference Documentation](../reference.md)** - Complete API reference for all supported languages
-  - Types (Archetypes, Components, Datatypes)
-  - SDKs (Python, Rust, C++)
-  - Viewer and CLI commands
-  - Migration guides
+### Types
+- **[Archetypes](../reference/types/archetypes.md)** - Bundles of components with first-class viewer support
+- **[Components](../reference/types/components.md)** - Individual data components used by archetypes
+- **[Datatypes](../reference/types/datatypes.md)** - Fundamental data structures
+- **[Views](../reference/types/views.md)** - Available visualization view types
+
+### SDKs
+- **[Python APIs](https://ref.rerun.io/docs/python)** - Python SDK reference
+- **[Rust APIs](https://docs.rs/rerun/)** - Rust SDK reference
+- **[C++ APIs](https://ref.rerun.io/docs/cpp)** - C++ SDK reference
+- **[Web Viewer API](https://ref.rerun.io/docs/js/)** - JavaScript/TypeScript web viewer API
+
+### Viewer & CLI
+- **[Viewer](../reference/viewer/overview.md)** - Viewer UI overview and features
+- **[CLI Manual](../reference/cli.md)** - Command-line interface reference
+
+### Migration guides
+- **[Migration](../reference/migration.md)** - Guides for upgrading between Rerun versions
 
 ## Development
 

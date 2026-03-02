@@ -168,7 +168,7 @@ When selecting a view, you can also set default component values that apply when
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/768w.png">
 </picture>
 
-See [Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for detailed information.
+See [Visualizers and Overrides](../../concepts/visualization/customize-views.md) for detailed information.
 
 ---
 
@@ -211,5 +211,5 @@ This is particularly valuable for:
 ## Next steps
 
 - **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options
-- **Learn about overrides**: See [Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for per-entity customization
+- **Learn about overrides**: See [Visualizers and Overrides](../../concepts/visualization/customize-views.md) for per-entity customization
 - **API Reference**: Browse the complete [Blueprint API](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control

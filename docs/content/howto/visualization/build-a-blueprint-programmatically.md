@@ -389,7 +389,7 @@ rrb.TimeSeriesView(
 )
 ```
 
-See [Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for information on overriding component values and controlling visualizers from code.
+See [Visualizers and Overrides](../../concepts/visualization/customize-views.md) for information on overriding component values and controlling visualizers from code.
 
 ---
 
