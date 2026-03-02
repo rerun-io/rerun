@@ -54,7 +54,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 view_query,
                 instruction,
             );
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let mut batch_data = GeoLineStringsBatch::default();
 

@@ -60,7 +60,7 @@ impl VisualizerSystem for TensorSystem {
             let results =
                 re_view::BlueprintResolvedResults::from((timeline_query, latest_at_results));
             let results =
-                re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+                re_view::VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let all_tensor_chunks = results.iter_required(Tensor::descriptor_data().component);
             if all_tensor_chunks.is_empty() {

@@ -90,7 +90,7 @@ impl VisualizerSystem for NodeVisualizer {
                 timeline_query.clone(),
                 latest_at_results,
             ));
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let all_nodes = results.iter_required(GraphNodes::descriptor_node_ids().component);
             let all_colors = results.iter_optional(GraphNodes::descriptor_colors().component);

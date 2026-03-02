@@ -77,7 +77,7 @@ impl VisualizerSystem for EdgesVisualizer {
                 timeline_query.clone(),
                 latest_at_results,
             ));
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let all_edges = results.iter_required(GraphEdges::descriptor_edges().component);
             let graph_type = results

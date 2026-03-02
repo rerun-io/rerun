@@ -81,7 +81,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let results =
                     BlueprintResolvedResults::LatestAt(timeline_query.clone(), latest_at_results);
                 let results =
-                    VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+                    VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
                 let widths = results.iter_optional(BarChart::descriptor_widths().component);
                 let widths: &[f32] = widths

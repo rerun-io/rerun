@@ -79,7 +79,7 @@ where
             data_result.query_archetype_with_history::<A>(ctx, query, visualizer_instruction);
 
         let visualizer_instruction_result =
-            VisualizerInstructionQueryResults::new(visualizer_instruction.id, &results, output);
+            VisualizerInstructionQueryResults::new(visualizer_instruction, &results, output);
 
         let mut query_ctx =
             ctx.query_context(data_result, latest_at.clone(), visualizer_instruction.id);

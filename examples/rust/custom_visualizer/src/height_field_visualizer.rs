@@ -53,7 +53,7 @@ impl VisualizerSystem for HeightFieldVisualizer {
 
             let results =
                 data_result.query_archetype_with_history::<HeightField>(ctx, query, instruction);
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let transform =
                 transform_info.single_transform_required_for_entity(ent_path, HeightField::name());
