@@ -1,5 +1,3 @@
-use std::str::FromStr as _;
-
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::open_url::ViewerOpenUrl;
@@ -55,7 +53,13 @@ impl OpenUrlModal {
                     // ui.ctx().send_viewport_cmd(egui::ViewportCommand::RequestPaste);
                 }
 
-                let open_url = ViewerOpenUrl::from_str(&self.url);
+                let open_url = ViewerOpenUrl::parse_with_options(
+                    &self.url,
+                    &re_data_source::FromUriOptions {
+                        accept_extensionless_http: true,
+                        ..Default::default()
+                    },
+                );
                 let can_import = match &open_url {
                     Ok(url) => {
                         let description = ViewerOpenUrlDescription::from_url(url);

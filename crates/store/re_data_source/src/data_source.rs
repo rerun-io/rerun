@@ -60,6 +60,21 @@ pub enum LogDataSource {
     RedapProxy(re_uri::ProxyUri),
 }
 
+/// Options for [`LogDataSource::from_uri`].
+#[derive(Clone, Debug, Default)]
+pub struct FromUriOptions {
+    /// If `true`, keep reading `.rrd` files past EOF, tailing new data as it arrives.
+    pub follow: bool,
+
+    /// If `true`, accept extensionless HTTP URLs for magic-bytes-based format detection.
+    ///
+    /// This should be `true` at external entry points (CLI, explicit user URL input),
+    /// but `false` when parsing URLs from viewer-internal links, where extensionless
+    /// URLs (e.g. `https://rerun.io/docs/getting-started/data-in`) should fall through to be opened in
+    /// the browser.
+    pub accept_extensionless_http: bool,
+}
+
 impl LogDataSource {
     /// Tries to classify a URI into a [`LogDataSource`].
     ///
@@ -71,7 +86,7 @@ impl LogDataSource {
     pub fn from_uri(
         _file_source: re_log_types::FileSource,
         url: &str,
-        follow: bool,
+        options: &FromUriOptions,
     ) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -132,7 +147,7 @@ impl LogDataSource {
                 return Some(Self::FilePath {
                     file_source: _file_source,
                     path,
-                    follow,
+                    follow: options.follow,
                 });
             }
 
@@ -140,7 +155,7 @@ impl LogDataSource {
                 return Some(Self::FilePath {
                     file_source: _file_source,
                     path,
-                    follow,
+                    follow: options.follow,
                 });
             }
         }
@@ -180,12 +195,16 @@ impl LogDataSource {
 
             if re_data_loader::is_supported_file_extension(extension) {
                 Some(Self::HttpUrl { url, follow: false })
-            } else if extension.is_empty()
+            } else if options.accept_extensionless_http
+                && extension.is_empty()
                 && was_proper_http_url
                 && !contains_viewer_query_url_param
             {
                 // No extension — accept the URL and try to detect format after download
-                Some(Self::HttpUrl { url, follow })
+                Some(Self::HttpUrl {
+                    url,
+                    follow: options.follow,
+                })
             } else {
                 None // Has an extension but it's not one we support
             }
@@ -454,14 +473,16 @@ mod tests {
             "https://example.com/scene.glb",
             "https://example.com/photo.png",
             "https://example.com/video.mp4",
-            // Extensionless URLs — accepted for magic bytes detection after download
+            // Since the path has an explicit extension, this will be parsed as a DataSource and
+            // not a `ViewerOpenUrl` (see invalid section below)
+            "https://example.com/some-file.rrd?url=recording.rrd",
+        ];
+        // Extensionless URLs — only accepted when accept_extensionless_http is true
+        let extensionless_http = [
             "https://example.com/download",
             "https://example.com/api/file?id=123",
             "https://storage.example.com/abc123?token=xyz",
             "https://example.com/files?my.id",
-            // Since the path has an explicit extension, this will be parsed as a DataSource and
-            // not a `ViewerOpenUrl` (see invalid section below)
-            "https://example.com/some-file.rrd?url=recording.rrd",
         ];
         let grpc = [
             // segment_id (new)
@@ -492,9 +513,14 @@ mod tests {
             recommended_store_id: None,
             force_store_info: false,
         };
+        let default_options = FromUriOptions::default();
+        let extensionless_options = FromUriOptions {
+            accept_extensionless_http: true,
+            ..Default::default()
+        };
 
         for uri in file {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, &default_options);
             if !matches!(data_source, Some(LogDataSource::FilePath { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as FilePath. Instead it got parsed as {data_source:?}"
@@ -504,7 +530,7 @@ mod tests {
         }
 
         for uri in http {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, &default_options);
             if !matches!(data_source, Some(LogDataSource::HttpUrl { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as HttpUrl. Instead it got parsed as {data_source:?}"
@@ -513,8 +539,29 @@ mod tests {
             }
         }
 
+        // Extensionless URLs are accepted when accept_extensionless_http is true
+        for uri in extensionless_http {
+            let data_source =
+                LogDataSource::from_uri(file_source.clone(), uri, &extensionless_options);
+            if !matches!(data_source, Some(LogDataSource::HttpUrl { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as HttpUrl (with accept_extensionless_http=true). Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
+
+            // …but rejected when accept_extensionless_http is false
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, &default_options);
+            if data_source.is_some() {
+                eprintln!(
+                    "Expected {uri:?} to be None (with accept_extensionless_http=false). Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
+        }
+
         for uri in grpc {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, &default_options);
             if !matches!(data_source, Some(LogDataSource::RedapDatasetSegment { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as redap dataset segment. Instead it got parsed as {data_source:?}"
@@ -524,7 +571,7 @@ mod tests {
         }
 
         for uri in proxy {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri, &default_options);
             if !matches!(data_source, Some(LogDataSource::RedapProxy { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
@@ -534,7 +581,8 @@ mod tests {
         }
 
         for uri in invalid {
-            let data_source = LogDataSource::from_uri(file_source.clone(), uri, false);
+            let data_source =
+                LogDataSource::from_uri(file_source.clone(), uri, &extensionless_options);
             if data_source.is_some() {
                 eprintln!("Expected {uri:?} to be None. Instead it got parsed as {data_source:?}");
                 failed = true;

@@ -136,15 +136,24 @@ impl std::str::FromStr for ViewerOpenUrl {
 
     /// Tries to parse a content URL or file inside the viewer.
     ///
-    /// This is for handling opening arbitrary URLs inside the viewer
-    /// (as opposed to opening them in a new tab) for both native and web.
-    /// Supported are:
-    /// * any URL or file path that can be interpreted as a [`LogDataSource`]
-    /// * intra-recording links (typically links to an entity)
-    /// * web event listeners
+    /// Uses conservative defaults: extensionless HTTP URLs are **not** accepted,
+    /// so plain URLs like `https://rerun.io/docs/getting-started/data-in` fall through to be opened
+    /// in the browser. Use [`Self::parse_with_options`] to control this behavior.
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        let follow = false;
+        Self::parse_with_options(url, &re_data_source::FromUriOptions::default())
+    }
+}
 
+impl ViewerOpenUrl {
+    /// Like [`std::str::FromStr`], but with explicit control over URI parsing options.
+    ///
+    /// Use this at entry points where the user explicitly provides a URL
+    /// (e.g. the "Open URL" modal, command palette) with
+    /// [`re_data_source::FromUriOptions::accept_extensionless_http`] set to `true`.
+    pub fn parse_with_options(
+        url: &str,
+        from_uri_options: &re_data_source::FromUriOptions,
+    ) -> anyhow::Result<Self> {
         if url == SETTINGS_URL {
             Ok(Self::Settings)
         } else if url == CHUNK_STORE_BROWSER_URL {
@@ -164,7 +173,7 @@ impl std::str::FromStr for ViewerOpenUrl {
             // Web event listener (legacy notebooks).
             Ok(Self::WebEventListener)
         } else if let Some(data_source) =
-            LogDataSource::from_uri(re_log_types::FileSource::Uri, url, follow)
+            LogDataSource::from_uri(re_log_types::FileSource::Uri, url, from_uri_options)
         {
             match data_source {
                 LogDataSource::HttpUrl { url, .. } => Ok(Self::HttpUrl(url)),
