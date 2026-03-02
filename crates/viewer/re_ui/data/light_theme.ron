@@ -309,16 +309,22 @@
     },
 
     "visualizer_list_title_text_color": {
-      "color": "{Gray.0}"
+      "color": "{Gray.100}"
+    },
+    "visualizer_list_title_text_invisible_color": {
+      "color": "{Gray.500}"
     },
     "visualizer_list_path_text_color": {
       "color": "{Gray.500}"
     },
+    "visualizer_list_path_text_invisible_color": {
+      "color": "{Gray.700}"
+    },
     "visualizer_list_pill_bg_color": {
-      "color": "{Gray.850}"
+      "color": "{Gray.900}"
     },
     "visualizer_list_pill_bg_color_hovered": {
-      "color": "{Gray.800}"
+      "color": "{Gray.850}"
     },
     "code_index_color": {
       "color": "#894783"

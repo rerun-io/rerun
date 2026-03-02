@@ -7,8 +7,8 @@ use re_chunk_store::external::re_chunk::external::arrow::array::ArrayRef;
 use re_chunk_store::{LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
+use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
-use re_sdk_types::{ComponentIdentifier, blueprint::components::VisualizerInstructionId};
 use re_viewer_context::{QueryContext, typed_fallback_for};
 
 use crate::{
@@ -103,12 +103,12 @@ impl<'a> BlueprintResolvedLatestAtResults<'a> {
 ///
 /// Although overrides are never temporal, when accessed via the [`crate::BlueprintResolvedResultsExt`] trait
 /// they will be merged into the results appropriately.
-#[derive(Debug)]
 pub struct BlueprintResolvedRangeResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) store_results: RangeResults,
     pub(crate) view_defaults: &'a LatestAtResults,
-    pub(crate) _instruction_id: VisualizerInstructionId,
+
+    pub(crate) query_context: QueryContext<'a>,
 
     pub(crate) component_sources:
         IntMap<ComponentIdentifier, Result<ComponentSourceKind, ComponentMappingError>>,
@@ -197,6 +197,16 @@ impl BlueprintResolvedRangeResults<'_> {
                 .or_default()
                 .insert(0, chunk);
         }
+    }
+
+    /// Returns the [`QueryContext`] for this result.
+    pub fn query_context(&self) -> &QueryContext<'_> {
+        &self.query_context
+    }
+
+    /// Returns the target entity path for this result.
+    pub fn entity_path(&self) -> &re_log_types::EntityPath {
+        self.query_context.target_entity_path
     }
 }
 
@@ -375,6 +385,21 @@ impl BlueprintResolvedResults<'_> {
                 Hash64::hash((&indices, r.component_mappings_hash))
             }
         }
+    }
+
+    /// Returns the [`QueryContext`] for this result.
+    #[inline]
+    pub fn query_context(&self) -> &QueryContext<'_> {
+        match self {
+            Self::LatestAt(_, results) => &results.query_context,
+            Self::Range(_, results) => &results.query_context,
+        }
+    }
+
+    /// Returns the target entity path for this result.
+    #[inline]
+    pub fn entity_path(&self) -> &re_log_types::EntityPath {
+        self.query_context().target_entity_path
     }
 }
 

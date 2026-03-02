@@ -112,7 +112,7 @@ pub fn visualizer_ui_impl(
     let override_base_path = data_result.override_base_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, visualizer_id: &VisualizerInstructionId| {
-        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
+        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Remove visualizer");
         if response.clicked() {
             let active_visualizers = active_visualizers
                 .iter()

@@ -133,25 +133,11 @@ pub trait BlueprintContext {
         entity_path: EntityPath,
         component_batch: SerializedComponentBatch,
     ) {
-        let blueprint = self.current_blueprint();
-        let timepoint = blueprint_timepoint_for_writes(blueprint);
-
-        let chunk = match Chunk::builder(entity_path)
-            .with_serialized_batch(RowId::new(), timepoint.clone(), component_batch)
-            .build()
-        {
-            Ok(chunk) => chunk,
-            Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint components: {err}");
-                return;
-            }
-        };
-
-        self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+        self.save_blueprint_array(
+            entity_path,
+            component_batch.descriptor,
+            component_batch.array,
+        );
     }
 
     fn save_blueprint_array(
@@ -165,22 +151,6 @@ pub trait BlueprintContext {
         self.append_array_to_store(
             blueprint.store_id().clone(),
             timepoint,
-            entity_path,
-            component_descr,
-            array,
-        );
-    }
-
-    fn save_static_blueprint_array(
-        &self,
-        entity_path: EntityPath,
-        component_descr: ComponentDescriptor,
-        array: ArrayRef,
-    ) {
-        let blueprint = self.current_blueprint();
-        self.append_array_to_store(
-            blueprint.store_id().clone(),
-            TimePoint::STATIC,
             entity_path,
             component_descr,
             array,
@@ -247,21 +217,6 @@ pub trait BlueprintContext {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
             self.clear_blueprint_component(entity_path, component_descr);
-        }
-    }
-
-    /// Resets a static blueprint component to the value it had in the default blueprint.
-    fn reset_static_blueprint_component(
-        &self,
-        entity_path: EntityPath,
-        component_descr: ComponentDescriptor,
-    ) {
-        if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(&entity_path, component_descr.component)
-        {
-            self.save_static_blueprint_array(entity_path, component_descr, default_value);
-        } else {
-            self.clear_static_blueprint_component(entity_path, component_descr);
         }
     }
 

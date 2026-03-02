@@ -1,7 +1,7 @@
 use re_log_types::hash::Hash64;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_viewer_context::{
-    VisualizerInstructionReport, VisualizerReportContext, VisualizerReportSeverity,
+    QueryContext, VisualizerInstructionReport, VisualizerReportContext, VisualizerReportSeverity,
 };
 
 use crate::{
@@ -156,5 +156,17 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
                 details: None,
             },
         );
+    }
+
+    /// Returns the [`QueryContext`] for this result.
+    #[inline]
+    pub fn query_context(&self) -> &QueryContext<'_> {
+        self.query_results.query_context()
+    }
+
+    /// Returns the target entity path for this result.
+    #[inline]
+    pub fn entity_path(&self) -> &re_log_types::EntityPath {
+        self.query_results.entity_path()
     }
 }

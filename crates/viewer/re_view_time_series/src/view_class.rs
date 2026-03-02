@@ -1,38 +1,31 @@
-use arrayvec::ArrayVec;
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 use re_chunk_store::TimeType;
-use re_component_ui::color_swatch::ColorSwatch;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
-use re_sdk_types::blueprint::archetypes::{
-    ActiveVisualizers, PlotBackground, PlotLegend, ScalarAxis, TimeAxis,
-};
+use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
-use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, Visible};
+use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{
-    ComponentBatch as _, ComponentIdentifier, Loggable as _, View as _, ViewClassIdentifier,
-};
+use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
-use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
-    IndicatedEntities, Item, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SystemCommandSender as _,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableReason, VisualizerComponentSource,
+    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
+    RecommendedMappings, RecommendedView, RecommendedVisualizers, SystemExecutionOutput,
+    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
+    VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -45,9 +38,6 @@ use crate::point_visualizer_system::SeriesPointsSystem;
 use crate::util::data_result_time_range;
 
 // ---
-
-/// We only show this many colors directly.
-const NUM_SHOWN_VISUALIZER_COLORS: usize = 2;
 
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
@@ -841,7 +831,13 @@ impl ViewClass for TimeSeriesView {
 
                         ui.add_space(10.0);
 
-                        visualizer_ui_element(ui, &ctx, node, pill_margin, instruction);
+                        crate::visualizer_ui::visualizer_ui_element(
+                            ui,
+                            &ctx,
+                            node,
+                            pill_margin,
+                            instruction,
+                        );
                     }
                 }
             });
@@ -849,140 +845,6 @@ impl ViewClass for TimeSeriesView {
 
         Some(Box::new(visualizer_body))
     }
-}
-
-fn visualizer_ui_element(
-    ui: &mut egui::Ui,
-    ctx: &re_viewer_context::ViewContext<'_>,
-    node: &re_viewer_context::DataResultNode,
-    pill_margin: egui::Margin,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) {
-    let entity_path = &node.data_result.entity_path;
-
-    let full_path = entity_path.ui_string().trim_start_matches('/').to_owned();
-
-    let series_color = get_time_series_color(ctx, &node.data_result, instruction);
-    let display_name = get_time_series_name(ctx, &node.data_result, instruction);
-
-    ui.scope(|ui| {
-        // Time travel: retrieve the height of the previous frame so we can set it to the right side of egui::Sides.
-        // In case of `shrink_left`, egui::Sides will render the right side first, and the content can't be centered
-        // vertically since the height of the left side is unknown at that point. By setting the height explicitly,
-        // we can vertically center the right side. It works since the height doesn't change.
-        let previous_frame_height = ui.response().rect.height();
-
-        egui::Sides::new().shrink_left().show(
-            ui,
-            |ui| {
-                let mut frame = egui::Frame::default()
-                    .fill(ui.tokens().visualizer_list_pill_bg_color)
-                    .corner_radius(4.0)
-                    .inner_margin(pill_margin)
-                    .begin(ui);
-                {
-                    let ui = &mut frame.content_ui;
-                    let previous_frame_height = ui.response().rect.height();
-
-                    // Disable text selection so hovering the text only hovers the pill
-                    ui.style_mut().interaction.selectable_labels = false;
-                    egui::Sides::new().shrink_left().show(
-                        ui,
-                        |ui| {
-                            // Visualizer name and entity path
-                            ui.vertical(|ui| {
-                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                                ui.label(
-                                    egui::RichText::new(&display_name)
-                                        .color(ui.tokens().visualizer_list_title_text_color),
-                                );
-                                ui.label(
-                                    egui::RichText::new(&full_path)
-                                        .size(10.5)
-                                        .color(ui.tokens().visualizer_list_path_text_color),
-                                );
-                            });
-                        },
-                        |ui| {
-                            if previous_frame_height.is_sign_positive() {
-                                ui.set_height(previous_frame_height);
-                            }
-                            // Color box(es) on the right, vertically centered on the labels.
-                            series_color.ui(ui);
-                        },
-                    );
-                }
-                let response = frame
-                    .allocate_space(ui)
-                    .interact(egui::Sense::click())
-                    .on_hover_cursor(egui::CursorIcon::PointingHand);
-
-                let is_highlighted =
-                    ctx.viewer_ctx
-                        .hovered()
-                        .iter()
-                        .any(|(hovered, _hover_ctx)| {
-                            if let Item::DataResult(address) = hovered {
-                                address.view_id == ctx.view_id
-                            && address.instance_path.entity_path == *entity_path // Don't care about instance id here.
-                            && address.visualizer.is_none_or(|vid| vid == instruction.id)
-                            } else {
-                                false
-                            }
-                        });
-                if is_highlighted {
-                    frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                }
-
-                let item = Item::DataResult(DataResultInteractionAddress {
-                    view_id: ctx.view_id,
-                    instance_path: InstancePath::from(entity_path.clone()),
-                    visualizer: Some(instruction.id),
-                });
-
-                if response.hovered() {
-                    frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                    ctx.viewer_ctx.selection_state().set_hovered(item.clone());
-                }
-                if response.clicked() {
-                    ctx.viewer_ctx
-                        .command_sender()
-                        .send_system(re_viewer_context::SystemCommand::set_selection(item));
-                }
-                frame.paint(ui);
-            },
-            |ui| {
-                // Trashcan button to remove this visualizer.
-                if previous_frame_height.is_sign_positive() {
-                    ui.set_height(previous_frame_height);
-                }
-
-                let remove_response =
-                    ui.small_icon_button(&re_ui::icons::TRASH, "Remove visualizer");
-                if remove_response.clicked() {
-                    let override_base_path = &node.data_result.override_base_path;
-
-                    let active_visualizers = node
-                        .data_result
-                        .visualizer_instructions
-                        .iter()
-                        .filter(|v| v.id != instruction.id)
-                        .collect::<Vec<_>>();
-
-                    let archetype =
-                        ActiveVisualizers::new(active_visualizers.iter().map(|v| v.id.0));
-
-                    ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
-
-                    // Ensure the remaining instructions are persisted so that their
-                    // types and mappings are available on the next frame.
-                    for visualizer_instruction in active_visualizers {
-                        visualizer_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-                    }
-                }
-            },
-        );
-    });
 }
 
 /// Returns a priority score for a given Arrow datatype.
@@ -1519,148 +1381,6 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-fn strip_instance_number(str: &str) -> String {
-    if let Some(stripped) = str.strip_suffix(']').and_then(|s| {
-        let i = s.rfind('[')?;
-        s[i + 1..]
-            .bytes()
-            .all(|b| b.is_ascii_digit())
-            .then_some(&s[..i])
-    }) {
-        format!("{stripped}[]")
-    } else {
-        str.to_owned()
-    }
-}
-
-/// Returns the name for a time series visualizer.
-fn get_time_series_name(
-    ctx: &re_viewer_context::ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) -> String {
-    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
-        SeriesLines::descriptor_names().component
-    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
-        SeriesPoints::descriptor_names().component
-    } else {
-        return instruction.visualizer_type.to_string();
-    };
-
-    let query_result = re_view::latest_at_with_blueprint_resolved_data(
-        ctx,
-        None,
-        &ctx.current_query(),
-        data_result,
-        [component],
-        Some(instruction),
-    );
-
-    let first_name = query_result.get_mono_with_fallback::<Name>(component);
-
-    // We might have already "injected" the instance number into the name of the series.
-    // So we re-normalize the series name again.
-    strip_instance_number(&first_name)
-}
-
-/// List of colors for a time series visualizer.
-#[derive(Default)]
-struct TimeSeriesColors {
-    instance_count: usize,
-    colors: ArrayVec<egui::Color32, NUM_SHOWN_VISUALIZER_COLORS>,
-}
-
-impl TimeSeriesColors {
-    /// Draws color boxes (and an optional "+N" badge) right-aligned and vertically centered on
-    /// the given `center_y`.
-    fn ui(&self, ui: &mut egui::Ui) {
-        if self.colors.is_empty() {
-            return;
-        }
-
-        ui.spacing_mut().item_spacing.x = 4.0;
-
-        let num_boxes = if self.instance_count > 2 {
-            1
-        } else {
-            self.colors.len()
-        };
-
-        // Draw "+N" badge when there are more than 2 instances
-        if self.instance_count > 2 {
-            let badge_text = format!("+{}", self.instance_count - 1);
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-            ui.label(
-                egui::RichText::new(&badge_text)
-                    .color(ui.tokens().visualizer_list_path_text_color)
-                    .size(10.5),
-            );
-        }
-
-        // Draw color boxes from right to left
-        for color in self.colors[..num_boxes].iter().rev() {
-            let rgba = re_sdk_types::datatypes::Rgba32::from(*color);
-            let mut color_ref = re_viewer_context::MaybeMutRef::Ref(&rgba);
-            ui.add(ColorSwatch::new(&mut color_ref));
-        }
-    }
-}
-
-/// Returns the colors of time series plots.
-fn get_time_series_color(
-    ctx: &re_viewer_context::ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) -> TimeSeriesColors {
-    let color_descr = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
-        SeriesLines::descriptor_colors()
-    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
-        SeriesPoints::descriptor_colors()
-    } else {
-        // Unkownn visualizer type, don't show any colors
-        return TimeSeriesColors::default();
-    };
-
-    // Get the colors for each instance
-    let query = ctx.current_query();
-    let color_result = re_view::latest_at_with_blueprint_resolved_data(
-        ctx,
-        None,
-        &query,
-        data_result,
-        [color_descr.component],
-        Some(instruction),
-    );
-
-    let raw_color_cell = if let Some(color_cells) = color_result.get_raw_cell(color_descr.component)
-    {
-        // We have color data either in the store or as overrides
-        color_cells
-    } else {
-        // No color data in the store or overrides, use the fallback
-        ctx.viewer_ctx.component_fallback_registry.fallback_for(
-            &color_descr,
-            &ctx.query_context(data_result, query, instruction.id),
-        )
-    };
-
-    let Ok(color_components) = Color::from_arrow(&raw_color_cell) else {
-        re_log::error_once!("Failed to cast color array to Color");
-        return TimeSeriesColors::default();
-    };
-
-    let colors = color_components
-        .iter()
-        .map(|&value| value.into()) // Color is ABGR, egui uses to RGBA, can't use bytemuck here.
-        .take(NUM_SHOWN_VISUALIZER_COLORS)
-        .collect();
-
-    TimeSeriesColors {
-        instance_count: color_components.len(),
-        colors,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1740,52 +1460,4 @@ mod tests {
             mappings[0].contains_mapping_for_component(&Scalars::descriptor_scalars().component)
         );
     }
-}
-
-#[test]
-fn test_strip_instance_number() {
-    // Empty string
-    assert_eq!(strip_instance_number(""), "");
-
-    // No brackets at all
-    assert_eq!(strip_instance_number("foo"), "foo");
-    assert_eq!(strip_instance_number("hello world"), "hello world");
-
-    // Valid instance numbers should be normalized to []
-    assert_eq!(strip_instance_number("foo[0]"), "foo[]");
-    assert_eq!(strip_instance_number("foo[1]"), "foo[]");
-    assert_eq!(strip_instance_number("foo[123]"), "foo[]");
-
-    // Empty brackets (no digits) should remain unchanged
-    assert_eq!(strip_instance_number("foo[]"), "foo[]");
-
-    // Non-digit content in brackets should remain unchanged
-    assert_eq!(strip_instance_number("foo[abc]"), "foo[abc]");
-    assert_eq!(strip_instance_number("foo[1a]"), "foo[1a]");
-    assert_eq!(strip_instance_number("foo[a1]"), "foo[a1]");
-    assert_eq!(strip_instance_number("foo[ ]"), "foo[ ]");
-    assert_eq!(strip_instance_number("foo[1 2]"), "foo[1 2]");
-
-    // Half-open brackets (only `[`) should remain unchanged
-    assert_eq!(strip_instance_number("foo["), "foo[");
-    assert_eq!(strip_instance_number("["), "[");
-    assert_eq!(strip_instance_number("foo[123"), "foo[123");
-
-    // Half-closed brackets (only `]`) should remain unchanged
-    assert_eq!(strip_instance_number("foo]"), "foo]");
-    assert_eq!(strip_instance_number("]"), "]");
-    assert_eq!(strip_instance_number("123]"), "123]");
-
-    // Multiple bracket pairs - only the last valid instance number is stripped
-    assert_eq!(strip_instance_number("foo[0][1]"), "foo[0][]");
-    assert_eq!(strip_instance_number("foo[abc][123]"), "foo[abc][]");
-
-    // Nested or malformed brackets
-    assert_eq!(strip_instance_number("foo[[0]]"), "foo[[0]]");
-    assert_eq!(strip_instance_number("foo[0]["), "foo[0][");
-    assert_eq!(strip_instance_number("foo][0]"), "foo][]");
-
-    // Edge cases with brackets in the middle
-    assert_eq!(strip_instance_number("foo[0]bar"), "foo[0]bar");
-    assert_eq!(strip_instance_number("foo[0]bar[1]"), "foo[0]bar[]");
 }

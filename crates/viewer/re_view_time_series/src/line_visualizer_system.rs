@@ -196,7 +196,6 @@ impl SeriesLinesSystem {
         collect_scalars(all_scalar_chunks, &mut points_per_series);
 
         collect_colors(
-            &query_ctx,
             &query,
             &results,
             all_scalar_chunks,
@@ -273,13 +272,11 @@ impl SeriesLinesSystem {
         }
 
         let series_visibility = collect_series_visibility(
-            &query_ctx,
             &results,
             num_series,
             &archetypes::SeriesLines::descriptor_visible_series(),
         );
         let series_names = collect_series_name(
-            &query_ctx,
             &results,
             num_series,
             &archetypes::SeriesLines::descriptor_names(),

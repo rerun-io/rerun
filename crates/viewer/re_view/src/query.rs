@@ -159,10 +159,10 @@ fn component_not_found_error(
 /// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
 /// [`crate::BlueprintResolvedResults`].
 pub fn range_with_blueprint_resolved_data<'a>(
-    ctx: &ViewContext<'a>,
+    ctx: &'a ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
-    data_result: &re_viewer_context::DataResult,
+    data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
 ) -> BlueprintResolvedRangeResults<'a> {
@@ -292,10 +292,19 @@ pub fn range_with_blueprint_resolved_data<'a>(
         }
     }
 
+    let query_context = QueryContext {
+        view_ctx: ctx,
+        target_entity_path: &data_result.entity_path,
+        instruction_id: Some(visualizer_instruction.id),
+        archetype_name: None,
+        // TODO(andreas): Rather strange to a have a latest-at query in here.
+        query: LatestAtQuery::new(range_query.timeline, range_query.range.min),
+    };
+
     BlueprintResolvedRangeResults {
         overrides,
         store_results,
-        _instruction_id: visualizer_instruction.id,
+        query_context,
         view_defaults: &ctx.query_result.view_defaults,
         component_sources,
         component_mappings_hash: Hash64::hash(&active_remappings),

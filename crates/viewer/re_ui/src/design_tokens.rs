@@ -224,12 +224,15 @@ pub struct DesignTokens {
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
 
-    // Visualizer list (selection panel)
-    pub visualizer_list_title_text_color: Color32,
-    pub visualizer_list_path_text_color: Color32,
     pub color_swatch_size: f32,
     pub color_swatch_interactive_stroke: Stroke,
     pub color_swatch_noninteractive_stroke: Stroke,
+
+    // Visualizer list (selection panel)
+    pub visualizer_list_title_text_color: Color32,
+    pub visualizer_list_title_text_invisible_color: Color32,
+    pub visualizer_list_path_text_color: Color32,
+    pub visualizer_list_path_text_invisible_color: Color32,
     pub visualizer_list_pill_bg_color: Color32,
     pub visualizer_list_pill_bg_color_hovered: Color32,
 
@@ -400,11 +403,18 @@ impl DesignTokens {
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
 
-            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
-            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
             color_swatch_size: get_scalar("color_swatch_size")?,
             color_swatch_interactive_stroke: get_stroke("color_swatch_interactive_stroke"),
             color_swatch_noninteractive_stroke: get_stroke("color_swatch_noninteractive_stroke"),
+
+            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
+            visualizer_list_title_text_invisible_color: get_color(
+                "visualizer_list_title_text_invisible_color",
+            ),
+            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
+            visualizer_list_path_text_invisible_color: get_color(
+                "visualizer_list_path_text_invisible_color",
+            ),
             visualizer_list_pill_bg_color: get_color("visualizer_list_pill_bg_color"),
             visualizer_list_pill_bg_color_hovered: get_color(
                 "visualizer_list_pill_bg_color_hovered",

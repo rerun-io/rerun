@@ -12,6 +12,7 @@ mod point_visualizer_system;
 mod series_query;
 mod util;
 mod view_class;
+mod visualizer_ui;
 
 use re_sdk_types::{
     blueprint::components::VisualizerInstructionId,
