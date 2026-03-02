@@ -213,38 +213,27 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
 
 // ---
 
-/// Test all components UI in a narrow list item context.
+/// Test all components UI as list items, in both narrow/wide and dark/light variants.
 #[test]
-pub fn test_all_components_ui_as_list_items_narrow() {
-    let test_context = get_test_context();
-    let test_cases = test_cases(&test_context.reflection);
-    let snapshot_options = SnapshotOptions::new()
-        .output_path("tests/snapshots/all_components_list_item_narrow")
-        .threshold(OsThreshold::default().macos(2.5));
-
-    let results = test_cases
-        .iter()
-        .map(|test_case| {
-            test_single_component_ui_as_list_item(
-                &test_context,
-                test_case,
-                200.0,
-                &snapshot_options,
-            )
-        })
-        .collect_vec();
-
-    check_for_unused_snapshots(&test_cases, &snapshot_options);
-    check_and_print_results(&test_cases, &results);
+pub fn test_all_components_ui_as_list_items() {
+    let test_cases = [
+        (200.0, "narrow", egui::Theme::Dark, "dark"),
+        (600.0, "wide", egui::Theme::Light, "light"),
+    ];
+    for (width, width_name, theme, theme_name) in test_cases {
+        run_all_component_tests(
+            width,
+            theme,
+            &format!("tests/snapshots/all_components_list_item_{width_name}_{theme_name}"),
+        );
+    }
 }
 
-/// Test all components UI in a wide list item context.
-#[test]
-pub fn test_all_components_ui_as_list_items_wide() {
+fn run_all_component_tests(width: f32, theme: egui::Theme, output_dir: &str) {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
     let snapshot_options = SnapshotOptions::new()
-        .output_path("tests/snapshots/all_components_list_item_wide")
+        .output_path(output_dir)
         .threshold(OsThreshold::default().macos(2.5));
 
     let results = test_cases
@@ -253,7 +242,8 @@ pub fn test_all_components_ui_as_list_items_wide() {
             test_single_component_ui_as_list_item(
                 &test_context,
                 test_case,
-                600.0,
+                width,
+                theme,
                 &snapshot_options,
             )
         })
@@ -267,6 +257,7 @@ fn test_single_component_ui_as_list_item(
     test_context: &TestContext,
     test_case: &TestCase,
     ui_width: f32,
+    theme: egui::Theme,
     _snapshot_options: &SnapshotOptions,
 ) -> Result<(), SnapshotError> {
     let actual_ui = |ctx: &ViewerContext<'_>, ui: &mut egui::Ui| {
@@ -297,6 +288,7 @@ fn test_single_component_ui_as_list_item(
 
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([ui_width, 40.0])
+        .with_theme(theme)
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |ctx| {
                 ui.full_span_scope(ui.max_rect().x_range(), |ui| {
