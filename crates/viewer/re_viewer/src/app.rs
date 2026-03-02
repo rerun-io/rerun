@@ -505,7 +505,13 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        match ViewerOpenUrl::from_str(url) {
+        match ViewerOpenUrl::parse_with_options(
+            url,
+            &re_data_source::FromUriOptions {
+                accept_extensionless_http: true,
+                ..Default::default()
+            },
+        ) {
             Ok(url) => {
                 url.open(
                     &self.egui_ctx,
@@ -3830,7 +3836,13 @@ impl eframe::App for App {
                         self.command_sender.send_ui(cmd);
                     }
                     re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
-                        match url_desc.url.parse::<ViewerOpenUrl>() {
+                        match ViewerOpenUrl::parse_with_options(
+                            &url_desc.url,
+                            &re_data_source::FromUriOptions {
+                                accept_extensionless_http: true,
+                                ..Default::default()
+                            },
+                        ) {
                             Ok(url) => {
                                 url.open(
                                     ui,

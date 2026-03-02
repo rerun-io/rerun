@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::str::FromStr as _;
 
 use ahash::HashMap;
 use egui::Ui;
@@ -915,7 +914,13 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Ok(url) = open_url::ViewerOpenUrl::from_str(&open_url.url) {
+                if let Ok(url) = open_url::ViewerOpenUrl::parse_with_options(
+                    &open_url.url,
+                    &re_data_source::FromUriOptions {
+                        accept_extensionless_http: false,
+                        ..Default::default()
+                    },
+                ) {
                     url.open(
                         egui_ctx,
                         &open_url::OpenUrlOptions {

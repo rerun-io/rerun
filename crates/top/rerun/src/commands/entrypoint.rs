@@ -1517,9 +1517,14 @@ impl ReceiversFromUrlParams {
         let mut urls_to_pass_on_to_viewer = Vec::new();
 
         for url in input_urls {
-            if let Some(data_source) =
-                LogDataSource::from_uri(re_log_types::FileSource::Cli, &url, follow)
-            {
+            if let Some(data_source) = LogDataSource::from_uri(
+                re_log_types::FileSource::Cli,
+                &url,
+                &re_data_source::FromUriOptions {
+                    follow,
+                    accept_extensionless_http: true,
+                },
+            ) {
                 match &data_source {
                     LogDataSource::HttpUrl { .. } => {
                         if config.data_sources_from_http_urls {
