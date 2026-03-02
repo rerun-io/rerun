@@ -4,6 +4,7 @@ use arrayvec::ArrayVec;
 use re_component_ui::color_swatch::ColorSwatch;
 use re_log_types::external::arrow::array::AsArray as _;
 use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
+use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::components::{self, Color, Name};
 use re_sdk_types::{ComponentDescriptor, Loggable as _};
 use re_ui::UiExt as _;
@@ -175,6 +176,53 @@ pub fn visualizer_ui_element(
         ctx.viewer_ctx
             .command_sender()
             .send_system(re_viewer_context::SystemCommand::set_selection(item));
+    }
+
+    // Context menu with hide/show and remove actions.
+    frame_response.context_menu(|ui| {
+        context_menu_ui(
+            ui,
+            ctx,
+            node,
+            instruction,
+            &visibility_descr,
+            all_series_invisible,
+        );
+    });
+}
+
+fn context_menu_ui(
+    ui: &mut egui::Ui,
+    ctx: &re_viewer_context::ViewContext<'_>,
+    node: &re_viewer_context::DataResultNode,
+    instruction: &re_viewer_context::VisualizerInstruction,
+    visibility_descr: &ComponentDescriptor,
+    all_series_invisible: bool,
+) {
+    // Hide/show toggle
+    let label = if all_series_invisible { "Show" } else { "Hide" };
+    if ui.button(label).clicked() {
+        instruction.save_override(
+            ctx.viewer_ctx,
+            visibility_descr,
+            &components::Visible::from(all_series_invisible),
+        );
+        ui.close();
+    }
+
+    // Remove visualizer
+    if ui.button("Remove").clicked() {
+        let active_visualizers: Vec<_> = node
+            .data_result
+            .visualizer_instructions
+            .iter()
+            .filter(|v| v.id != instruction.id)
+            .collect();
+
+        let archetype = ActiveVisualizers::new(active_visualizers.iter().map(|v| v.id.0));
+        let override_base_path = node.data_result.override_base_path().clone();
+        ctx.save_blueprint_archetype(override_base_path, &archetype);
+        ui.close();
     }
 }
 

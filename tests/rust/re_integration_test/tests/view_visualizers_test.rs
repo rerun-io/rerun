@@ -290,14 +290,10 @@ pub async fn test_view_visualizers_multi_scalar() {
     harness.snapshot_app("view_visualizers_multi_scalar_view_selected");
 }
 
-/// Test the "+" button on the Visualizers section when a view is selected.
-///
-/// This test:
-/// 1. Logs time series data
-/// 2. Creates a `TimeSeriesView` and selects it
-/// 3. Hides a visualizer which shouldn't affect the "+" popup options
-#[tokio::test(flavor = "multi_thread")]
-pub async fn test_view_visualizers_add_button() {
+/// Sets up a harness with two `SeriesLines` entities (`trig/sin` and `trig/cos`) logged into a
+/// single `TimeSeriesView` named "Trig view". The view is expanded and selected, ready for
+/// interaction tests.
+fn setup_trig_view() -> egui_kittest::Harness<'static, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::Vec2::new(1200.0, 1000.0)),
         max_steps: Some(100),
@@ -362,14 +358,26 @@ pub async fn test_view_visualizers_add_button() {
         blueprint.add_views(std::iter::once(view), None, None);
     });
 
-    // Expand the blueprint tree
+    // Expand the blueprint tree and select the view
     harness
         .blueprint_tree()
         .right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
-
-    // Select the view
     harness.blueprint_tree().click_label("Trig view");
+    harness.run();
+
+    harness
+}
+
+/// Test the "+" button on the Visualizers section when a view is selected.
+///
+/// This test:
+/// 1. Logs time series data
+/// 2. Creates a `TimeSeriesView` and selects it
+/// 3. Hides a visualizer which shouldn't affect the "+" popup options
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_view_visualizers_add_button() {
+    let mut harness = setup_trig_view();
 
     // Snapshot 1: View selected — all entities already have visualizers, so
     // the "+" button is disabled (nothing new to add).
@@ -389,6 +397,55 @@ pub async fn test_view_visualizers_add_button() {
 
     // Snapshot 2: Popup not showing the hidden entity's component as an option
     harness.snapshot_app("view_visualizers_add_2_popup_open");
+}
+
+/// Test the context menu on visualizer pills.
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_view_visualizers_context_menu() {
+    let mut harness = setup_trig_view();
+
+    // --- Context menu: Hide ---
+
+    // Right-click a visualizer pill to open the context menu
+    harness
+        .selection_panel()
+        .right_click_nth_label("trig/cos", 0);
+
+    // Snapshot 1: Context menu open with "Hide" and "Remove" options
+    harness.snapshot_app("view_visualizers_ctx_menu_1_open");
+
+    // Click "Hide" from the context menu
+    harness.click_label("Hide");
+
+    // Snapshot 2: After hiding via context menu — the pill shows the invisible icon
+    harness.snapshot_app("view_visualizers_ctx_menu_2_after_hide");
+
+    // --- Context menu: Show ---
+
+    // Right-click the hidden pill to see "Show" in the context menu
+    harness
+        .selection_panel()
+        .right_click_nth_label("trig/cos", 0);
+
+    // Snapshot 3: Context menu on hidden pill shows "Show" instead of "Hide"
+    harness.snapshot_app("view_visualizers_ctx_menu_3_show_option");
+
+    // Click "Show" to restore visibility
+    harness.click_label("Show");
+
+    // Snapshot 4: After restoring visibility via context menu
+    harness.snapshot_app("view_visualizers_ctx_menu_4_after_show");
+
+    // --- Context menu: Remove ---
+
+    // Right-click a visualizer pill and remove it
+    harness
+        .selection_panel()
+        .right_click_nth_label("trig/cos", 0);
+    harness.click_label("Remove");
+
+    // Snapshot 5: After removing a visualizer via context menu — only sin remains
+    harness.snapshot_app("view_visualizers_ctx_menu_5_after_remove");
 }
 
 /// Test adding multiple new visualizers to a view via the "+" button, using custom message formats.
