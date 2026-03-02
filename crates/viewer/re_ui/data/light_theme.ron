@@ -118,6 +118,16 @@
       "color": "{Gray.900}"
     },
 
+    "form_field_bg_color": {
+      "color": "{Gray.900}"
+    },
+    "form_selectable_bg_color": {
+      "color": "{Gray.975}"
+    },
+    "form_selectable_stroke_color": {
+      "color": "{Gray.700}"
+    },
+
     "blueprint_time_panel_bg_fill": {
       "color": "{Blue.900}"
     },

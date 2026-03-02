@@ -126,6 +126,10 @@ pub struct DesignTokens {
 
     pub text_edit_bg_color: Color32,
 
+    pub form_field_bg_color: Color32,
+    pub form_selectable_bg_color: Color32,
+    pub form_selectable_stroke_color: Color32,
+
     /// Color for blueprint time panel background
     pub blueprint_time_panel_bg_fill: Color32,
 
@@ -333,6 +337,9 @@ impl DesignTokens {
 
             panel_bg_color: get_color("panel_bg_color"),
             text_edit_bg_color: get_color("text_edit_bg_color"),
+            form_field_bg_color: get_color("form_field_bg_color"),
+            form_selectable_bg_color: get_color("form_selectable_bg_color"),
+            form_selectable_stroke_color: get_color("form_selectable_stroke_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
             notification_background_color: get_color("notification_background_color"),

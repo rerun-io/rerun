@@ -5,7 +5,7 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use crossbeam::channel::Receiver;
-use egui::{ComboBox, Modifiers, Widget as _, os};
+use egui::{ComboBox, Modifiers, Rect, ScrollArea, Widget as _, os};
 use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::menu::menu_style;
@@ -368,7 +368,9 @@ impl eframe::App for ExampleApp {
             .min_size(0.0)
             .show_animated_inside(ui, self.show_right_panel, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
-                self.right_panel.ui(ui);
+                ScrollArea::vertical().show(ui, |ui| {
+                    self.right_panel.ui(ui);
+                });
             });
 
         egui::CentralPanel::default()
@@ -547,7 +549,15 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.success_label("This is an example of a long success label.");
             ui.info_label("This is an example of a long info label.");
 
-            ComboBox::new("combo_item_example", "")
+            ComboBox::from_id_salt("combo_item_example")
+                // TODO(RR-3863): Allow globally customizing combobox icon
+                .icon(|ui, rect, visuals, _open| {
+                    let rect = Rect::from_center_size(rect.center(), ui.tokens().small_icon_size);
+                    icons::COMBO_ARROW
+                        .as_image()
+                        .tint(visuals.text_color())
+                        .paint_at(ui, rect);
+                })
                 .selected_text("ComboItem Example")
                 .popup_style(menu_style())
                 .height(300.0)
