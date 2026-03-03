@@ -58,6 +58,10 @@ fn test_help() {
 
         harness.try_run_realtime().ok();
 
-        snapshot_results.add(harness.try_snapshot(format!("help_{os:?}")));
+        // TODO(#12450): Keeps failing randomly on swiftshader.
+        #[cfg(not(target_os = "macos"))]
+        {
+            snapshot_results.add(harness.try_snapshot(format!("help_{os:?}")));
+        }
     }
 }

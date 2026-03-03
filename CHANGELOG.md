@@ -1,7 +1,13 @@
 # Rerun changelog
 
 
-## 0.30.0 - (UNRELEASED) - plot any scalar & on-demand streaming
+## 0.31.0 - (UNRELEASED)
+
+
+
+## [0.30.0](https://github.com/rerun-io/rerun/compare/0.29.2...0.30.0) - 2026-02-25 - plot any scalar & on-demand streaming
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-30
 
 ### ✨ Overview & highlights
 
@@ -45,9 +51,9 @@ To quickly navigate to the desired visualizer, each time series view now shows a
 
 For more details please refer to our documentation:
 
-- [Customize views](https://rerun.io/docs/concepts/visualization/customize-views?speculative-link)
-- [Plot any scalar](https://rerun.io/docs/howto/visualization/plot-any-scalar?speculative-link)
-- [Component mappings outside of plotting](https://rerun.io/docs/howto/visualizations/component-mappings?speculative-link), shown on the example of a colored point cloud
+- [Customize views](https://rerun.io/docs/concepts/visualization/customize-views)
+- [Plot any scalar](https://rerun.io/docs/howto/visualization/plot-any-scalar)
+- [Component mappings outside of plotting](https://rerun.io/docs/howto/visualization/component-mappings), shown on the example of a colored point cloud
 
 And finally, thanks to a contribution from [@vfilter](https://github.com/vfilter), the series lines visualizer now also supports different interpolation modes to render staircase (or step) functions:
 
@@ -131,7 +137,8 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - **CLI**: `.rrd` files are no longer tailed by default
 - **SDK**: `SeriesVisible` component type has been removed
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-30?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-30
+
 
 ### 🔎 Details
 
@@ -169,9 +176,11 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Basic Rust & Python blueprint API for component mappings [c6d7409](https://github.com/rerun-io/rerun/commit/c6d7409bcd94402e219b4d31c682fef52eb3b340)
 - Move URDF joint transform computation to Rust [4e10aea](https://github.com/rerun-io/rerun/commit/4e10aeac7fd4213f20337081ea4c738bdf69c1f6)
 - Allow for custom visualizer with custom shader that integrates into existing view + example [3bf7120](https://github.com/rerun-io/rerun/commit/3bf71204daed7b1d218f6fb145c20d87d0215e36)
-- Rust `BlueprintActivation` default now matches python behavior [3f85747](https://github.com/rerun-io/rerun/commit/3f8574733c537038d6aee67c58e2b4967f1d21ea)
+- Improve feature-gating in Rust SDK (removes datafusion & co from the SDK deps) [#12659](https://github.com/rerun-io/rerun/pull/12659) (thanks [@paulzhng](https://github.com/paulzhng)!)
 
 #### 🪳 Bug fixes
+- Fix first-person camera having zero speed in zero-sized scenes [#12535](https://github.com/rerun-io/rerun/pull/12535) (thanks [@Shivam-Bhardwaj](https://github.com/Shivam-Bhardwaj)!)
+- Rust `BlueprintActivation` default now matches python behavior [3f85747](https://github.com/rerun-io/rerun/commit/3f8574733c537038d6aee67c58e2b4967f1d21ea)
 - Fix heuristic for `target_frame` in 3D views for scenes with pinholes & named frames [3c678cc](https://github.com/rerun-io/rerun/commit/3c678cccb0e0e64bbaa2f02c6d6b0ed270bd319d)
 - Fix `sensor_msgs::PointCloud2` MCAP parser for small pointclouds [6491b95](https://github.com/rerun-io/rerun/commit/6491b955fb3d4d31f14ef0a6ac0d41398c3d3cf4)
 - Bug fix: allow copying selected text [4094a91](https://github.com/rerun-io/rerun/commit/4094a918637ad60efb27677701e0ae4d86e1b1a6)
@@ -184,10 +193,12 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Recover from failing to load RrdManifest [ad214ca](https://github.com/rerun-io/rerun/commit/ad214ca5d40112fcc3e460acb21283647801b679)
 - Fix transparent annotation classes not leading to transparent segmentation image [55578c3](https://github.com/rerun-io/rerun/commit/55578c35e314d284dfb82b0089ff26e26b2191e4)
 - Make the "copy" button work for components in the time panel tree [8f788a9](https://github.com/rerun-io/rerun/commit/8f788a9d92cd37bdff6e84dcf344d743ab3bb433)
+- Fix deadlock when loading LeRobot datasets [#12652](https://github.com/rerun-io/rerun/pull/12652)
 - Fix NV12/YUYV ROS2 images being incorrectly loaded as depth [04beb77](https://github.com/rerun-io/rerun/commit/04beb777f4a49e6f720b09207fb5873ae22dacc0)
 - Don't include redo-buffer when saving blueprints [85cc4f9](https://github.com/rerun-io/rerun/commit/85cc4f96e00fb5b9b4a68e6249917832c9c7abc3)
 - Address issue where `.dae` with multiple triangle groups is not rendered [83e96bf](https://github.com/rerun-io/rerun/commit/83e96bf585dc7e9f708af6952d506e8013959078)
 - Don't reset video player on keyframe boundary for AV1 [3bcd9b8](https://github.com/rerun-io/rerun/commit/3bcd9b87d02b1af80e3bfb7c4ad42d6483f0d274)
+- Fix mono8/mono16 image channel classification [#12660](https://github.com/rerun-io/rerun/pull/12660)
 - Set AR for wasm development build on macOS [7945601](https://github.com/rerun-io/rerun/commit/7945601bb1b162fc09e79640419a0216c9d14e8e)
 - Fix interactions going through popups to the timepanel [1efc8c1](https://github.com/rerun-io/rerun/commit/1efc8c131d4f13c3238972c7bcf7957e2685833e)
 - Fix arrow key stepping on sequence timeline [1c6a71c](https://github.com/rerun-io/rerun/commit/1c6a71c77be2619a3c7abb6eb5c22a6fbbdbf2be)
@@ -197,6 +208,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Extract `Selectors` from (nested) `StructArray` fields [8319663](https://github.com/rerun-io/rerun/commit/8319663a38d538adb20b2785c107d3394a969dce)
 - Video player fetching missing chunks and less memory usage with big gops [2596f4e](https://github.com/rerun-io/rerun/commit/2596f4ed342ef5fa5363354c82699d53783f7792)
 - Stop offering to visualize static scalar data as time series (would previously emitting a visualization error) [cc8c82c](https://github.com/rerun-io/rerun/commit/cc8c82c53e5bf9c7aad62f279f24de3537e268de)
+- Source selector for visualizer components [#12548](https://github.com/rerun-io/rerun/pull/12548)
 - Implement `Selector` when resolving component mappings [81879fd](https://github.com/rerun-io/rerun/commit/81879fd3f0cdbe3938865b4fa8ad2ba7b383ff24)
 - New (simpler) heuristic for spawning time series views [53fc1fe](https://github.com/rerun-io/rerun/commit/53fc1fe6e938b08d0a4e5dc9a4ac32a920d10d50)
 - Show at most 20 time series plots per entity, hide legend for more than 20 plots [b103ed5](https://github.com/rerun-io/rerun/commit/b103ed5dcc16a1384ac63bf75e5596b3b31d0d06)
@@ -220,7 +232,9 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Visualizers can be added right from a view's selection [2e0f4cf](https://github.com/rerun-io/rerun/commit/2e0f4cf7154cfcaac206e8274bd682741218e691)
 - Make columns reorderable by entity in the dataframe view [e1e439e](https://github.com/rerun-io/rerun/commit/e1e439e0ceb4604334d4e33f00e68a90613e99e2)
 - Allow loading arbitrary data loader files (mcaps, pngs, ...) via http urls [a02a22b](https://github.com/rerun-io/rerun/commit/a02a22b90a2c91b3c9b979c76b8ec83bd5b67477)
+- Drop cached videos once all referencing episodes are loaded [#12653](https://github.com/rerun-io/rerun/pull/12653)
 - Add auto-scroll feature and time indicator to the dataframe view [514f1f3](https://github.com/rerun-io/rerun/commit/514f1f32de4e0e87ecd45ce624145f9625b185e5)
+- Add `InterpolationMode` component for step function rendering [#12657](https://github.com/rerun-io/rerun/pull/12657) (thanks [@vfilter](https://github.com/vfilter)!)
 - Allow loading extensionless http urls via magic bytes detection [daf7a35](https://github.com/rerun-io/rerun/commit/daf7a35ebd5b25a3b53c7fda9d4b6c77dee0e705)
 - Fixes performance issue of too many time series plots [a74b382](https://github.com/rerun-io/rerun/commit/a74b382b9ce0b413f14d96d4a2f264e1f4b2abe8)
 - Support `(U)Int16` in time series plots [6bb58e4](https://github.com/rerun-io/rerun/commit/6bb58e489ba76c1744599e222180f9a358720933)
@@ -242,6 +256,8 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Make handling of out of order video chunks much faster [f050460](https://github.com/rerun-io/rerun/commit/f050460c8b37c83beb0a0c33cf504d79e2aeb206)
 
 #### 🧑‍🏫 Examples
+- Rerun to LeRobot export example [#12541](https://github.com/rerun-io/rerun/pull/12541)
+- Add ROS TF example [#12603](https://github.com/rerun-io/rerun/pull/12603)
 - Add webpage example [e2fd7f6](https://github.com/rerun-io/rerun/commit/e2fd7f65fa0b264f68a61935aba33ef54ff20ab4)
 
 #### 📚 Docs
@@ -279,10 +295,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Add `rerun auth logout` [7b3ae54](https://github.com/rerun-io/rerun/commit/7b3ae543dc0de39cf382aefc435f420de99ef223)
 - `rerun rrd split` [9bde24f](https://github.com/rerun-io/rerun/commit/9bde24fb5860f507bec155da377f40c1b8b0359e)
 - Add `--follow` option to explicitly follow files and URLs [c34a84b](https://github.com/rerun-io/rerun/commit/c34a84b5382620033182bb41719d1e1de74f10c6)
-- base changelog update [250bb52](https://github.com/rerun-io/rerun/commit/250bb5248b2178d02e656381af274e646ac6d239)
-- remove speculative links [c1ddfd6](https://github.com/rerun-io/rerun/commit/c1ddfd6f676ca91b32f79c9e100aa2c8972fe502)
-- Bump versions to 0.30.0-rc.1 [b7fa785](https://github.com/rerun-io/rerun/commit/b7fa78566ae4ca71775e3e521aa28f2465c72f8f)
-- fill in breaking changes + migration guide link [1555e63](https://github.com/rerun-io/rerun/commit/1555e63aea63308f4bae6ae10dc6d620bd28b016)
+
 
 ## [0.29.2](https://github.com/rerun-io/rerun/compare/0.29.1...0.29.2) - 2026-02-13 - Bug fixes and documentation update
 
