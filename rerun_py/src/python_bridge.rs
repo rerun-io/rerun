@@ -1052,11 +1052,10 @@ fn set_sinks<'py>(
             // Direct PyBinarySinkStorage
             let binary_sink: re_sdk::sink::BinaryStreamSink = (&storage.get().inner).into();
             resolved_sinks.push(Box::new(binary_sink));
-        } else if let Ok(storage) = sink
-            .bind(py)
-            .getattr("storage")
-            .and_then(|attr| attr.downcast_into::<PyBinarySinkStorage>().map_err(Into::into))
-        {
+        } else if let Ok(storage) = sink.bind(py).getattr("storage").and_then(|attr| {
+            attr.downcast_into::<PyBinarySinkStorage>()
+                .map_err(Into::into)
+        }) {
             // Python BinaryStream wrapper — extract .storage
             let binary_sink: re_sdk::sink::BinaryStreamSink = (&storage.get().inner).into();
             resolved_sinks.push(Box::new(binary_sink));
