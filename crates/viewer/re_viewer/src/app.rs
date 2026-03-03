@@ -2632,8 +2632,8 @@ impl App {
                                         .replace(Route::LocalRecording { recording_id });
                                 } else {
                                     // TODO(RR-3713): show a blueprint for it anyway
-                                    re_log::debug_warn_once!(
-                                        "Can't switch to app '{app_id}' at this time - we have no recording for it"
+                                    re_log::debug_once!(
+                                        "Received BlueprintActivationCommand for app '{app_id}', but we have no recording for it"
                                     );
                                 }
                             }
