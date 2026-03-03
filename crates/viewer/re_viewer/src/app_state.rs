@@ -804,6 +804,7 @@ impl AppState {
         create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx)
     }
 
+    /// Remove dangling state
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
 

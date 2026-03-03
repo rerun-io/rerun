@@ -3622,6 +3622,43 @@ impl eframe::App for App {
         }
     }
 
+    /// Called before each call to `ui`, but ALSO when the app is
+    /// hidden (occluded, minimized, …) if something has called `request_repaint`.
+    ///
+    /// We put things here that are unrelated to the UI,
+    /// and that we still want to happen if the application is hidden.
+    fn logic(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
+        let mut store_hub = self
+            .store_hub
+            .take()
+            .expect("Failed to take store hub from the Viewer");
+
+        {
+            // Respect memory budget:
+            self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
+
+            if self.app_options().blueprint_gc {
+                store_hub.gc_blueprints(&self.state.blueprint_undo_state);
+            }
+        }
+
+        {
+            // Download/ingest data:
+            self.receive_messages(&mut store_hub, egui_ctx);
+            self.receive_fetched_chunks(&mut store_hub);
+            self.prefetch_chunks(&mut store_hub);
+        }
+
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        self.state.cleanup(&store_hub);
+
+        // Return the `StoreHub` to the Viewer so we have it on the next frame
+        self.store_hub = Some(store_hub);
+    }
+
+    /// Called when application need to be repainted
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
@@ -3742,14 +3779,6 @@ impl eframe::App for App {
             store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
         }
 
-        self.receive_messages(&mut store_hub, ui);
-
-        if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
-        }
-
-        self.state.cleanup(&store_hub);
-
         file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver
 
         // Make sure some app is active
@@ -3793,9 +3822,6 @@ impl eframe::App for App {
                 }
             }
         }
-
-        self.receive_fetched_chunks(&mut store_hub);
-        self.prefetch_chunks(&mut store_hub);
 
         {
             let (storage_context, store_context) =
