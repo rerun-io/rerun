@@ -74,6 +74,9 @@ dev = [
   "datafusion>=50.0",
   "jupyter>=1.0",
   "types-protobuf", # Needed by mcap-protobuf-support
+  # Needed for pretty-printing tables in `fetch_patch_candidates.py`
+  "tabulate>=0.9.0",
+  "types-tabulate>=0.9.0",
 ]
 snippets = ["rerun-sdk", "av", "pandas", "mcap-protobuf-support"]
 examples = [
