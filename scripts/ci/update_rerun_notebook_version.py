@@ -40,10 +40,11 @@ def set_rerun_notebook_version(pyproject_path: Path, version: str) -> None:
 def set_dependency_version(pyproject_path: Path, version: str) -> None:
     pyproject: dict[str, Any] = tomlkit.parse(pyproject_path.read_text(encoding="utf-8"))
 
-    notebook_deps = pyproject["project"]["optional-dependencies"]["notebook"]
-    new_deps = [dep for dep in notebook_deps if not dep.startswith("rerun-notebook")]
-    new_deps.append(f"rerun-notebook=={version}")
-    pyproject["project"]["optional-dependencies"]["notebook"] = sorted(new_deps)
+    for extra in ("notebook", "all"):
+        deps = pyproject["project"]["optional-dependencies"][extra]
+        new_deps = [dep for dep in deps if not dep.startswith("rerun-notebook")]
+        new_deps.append(f"rerun-notebook=={version}")
+        pyproject["project"]["optional-dependencies"][extra] = sorted(new_deps)
 
     pyproject_path.write_text(tomlkit.dumps(pyproject), encoding="utf-8")
 

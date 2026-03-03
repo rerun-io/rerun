@@ -56,7 +56,8 @@ dataplatform = [ # NOLINT
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
-all = ["rerun-notebook==0.28.0-alpha.1+dev", "datafusion==50.1.0"]
+# TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
+all = ["rerun-notebook==0.31.0-alpha.1+dev", "datafusion==50.1.0", "pandas>=2"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
