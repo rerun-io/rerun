@@ -257,16 +257,15 @@ fn generate_impl(params: &Params) -> String {
         .collect_vec()
         .join(", ");
 
-    let next =
-        params
-            .to_required_names()
-            .into_iter()
-            .map(|r| format!("let {r}_next = self.{r}.next()?;"))
-            .chain(params.to_optional_names().into_iter().map(|o| {
-                format!("let {o}_next = self.{o}.next().or(self.{o}_latest_value.take());")
-            }))
-            .collect_vec()
-            .join("\n");
+    let next = params
+        .to_required_names()
+        .into_iter()
+        .map(|r| format!("let {r}_next = self.{r}.next()?;"))
+        .chain(params.to_optional_names().into_iter().map(|o| {
+            format!("let {o}_next = self.{o}.next().or_else(|| self.{o}_latest_value.take());")
+        }))
+        .collect_vec()
+        .join("\n");
 
     let update_latest = params
         .to_optional_names()
@@ -314,8 +313,8 @@ fn generate_impl(params: &Params) -> String {
 }
 
 fn main() {
-    let num_required = 1..3;
-    let num_optional = 1..10;
+    let num_required = 1..=2;
+    let num_optional = 1..=5;
 
     let output = num_required
         .flat_map(|num_required| {
@@ -340,7 +339,7 @@ fn main() {
 
     println!(
         "
-        // This file was generated using `cargo r -p re_query --all-features --bin clamped_zip`.
+        // This file was generated using `cargo r -p re_query --all-features --bin clamped_zip > crates/store/re_query/src/clamped_zip/generated.rs && cargo fmt`.
         // DO NOT EDIT.
 
         // ---
