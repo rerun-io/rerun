@@ -64,3 +64,36 @@ def test_configure_blueprint_dataset(entry_factory: EntryFactory, tmp_path: Path
 
     ds.set_default_blueprint(second_blueprint_name)
     assert second_blueprint_name == ds.default_blueprint()
+
+
+@pytest.mark.local_only
+def test_reregister_same_blueprint(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """Re-registering the same blueprint should succeed, not raise AlreadyExistsError (regression test for RR-3904)."""
+
+    # Create a recording and save it to a temporary file
+    rrd_path = tmp_path / "recording.rrd"
+    rec = rr.RecordingStream("rerun_example_dataset_blueprint")
+    rec.save(rrd_path)
+    rec.log("points", rr.Points2D([[0, 0], [1, 1]]))
+    rec.flush()
+
+    # Create a blueprint and save it to a temporary file
+    rbl_path = tmp_path / "blueprint.rbl"
+    blueprint = rrb.Blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds2D(x_range=[-1, 2], y_range=[-1, 2])))
+    blueprint.save("rerun_example_dataset_blueprint", rbl_path)
+
+    # Create a new dataset
+    ds = entry_factory.create_dataset("reregister_blueprint_dataset")
+
+    # Register our recording to the dataset
+    ds.register(rrd_path.absolute().as_uri()).wait()
+
+    # Register the blueprint
+    ds.register_blueprint(rbl_path.absolute().as_uri())
+
+    bds = ds.blueprint_dataset()
+    assert bds is not None
+    assert len(bds.segment_ids()) == 1
+
+    # Re-register the exact same blueprint — this should not raise
+    ds.register_blueprint(rbl_path.absolute().as_uri())
