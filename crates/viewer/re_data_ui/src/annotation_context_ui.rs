@@ -8,23 +8,21 @@ use re_sdk_types::datatypes::{
 use re_sdk_types::{Component as _, ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use re_viewer_context::{UiLayout, ViewerContext, auto_color_egui};
+use re_viewer_context::{StoreViewContext, UiLayout, auto_color_egui};
 
 use super::DataUi;
 
 impl crate::EntityDataUi for components::ClassId {
     fn entity_data_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
         _component_descriptor: &ComponentDescriptor,
         _row_id: Option<RowId>,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
     ) {
-        let annotations = crate::annotations(db, query, entity_path);
+        let annotations = crate::annotations(ctx, entity_path);
         let class = annotations
             .resolved_class_description(Some(*self))
             .class_description;
@@ -62,16 +60,14 @@ impl crate::EntityDataUi for components::ClassId {
 impl crate::EntityDataUi for components::KeypointId {
     fn entity_data_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
         _component_descriptor: &ComponentDescriptor,
         _row_id: Option<RowId>,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
     ) {
-        if let Some(info) = annotation_info(entity_path, query, db, self.0) {
+        if let Some(info) = annotation_info(ctx, entity_path, self.0) {
             ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &info);
@@ -93,9 +89,8 @@ impl crate::EntityDataUi for components::KeypointId {
 }
 
 fn annotation_info(
+    ctx: &StoreViewContext<'_>,
     entity_path: &re_log_types::EntityPath,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
     // TODO(#3168): this needs to use the index of the keypoint to look up the correct
@@ -104,7 +99,7 @@ fn annotation_info(
     // TODO(grtlr): If there's several class ids we have no idea which one to use.
     // This code uses the first one that shows up.
     // We should search instead for a class id that is likely a sibling of the keypoint id.
-    let storage_engine = db.storage_engine();
+    let storage_engine = ctx.db.storage_engine();
     let store = storage_engine.store();
     let mut possible_class_id_components = store
         .all_components_for_entity(entity_path)?
@@ -115,26 +110,19 @@ fn annotation_info(
         });
     let picked_class_id_component = possible_class_id_components.next()?;
 
-    let (_, class_id) = db.latest_at_component_quiet::<components::ClassId>(
+    let (_, class_id) = ctx.db.latest_at_component_quiet::<components::ClassId>(
         entity_path,
-        query,
+        &ctx.query(),
         picked_class_id_component,
     )?;
 
-    let annotations = crate::annotations(db, query, entity_path);
+    let annotations = crate::annotations(ctx, entity_path);
     let class = annotations.resolved_class_description(Some(class_id));
     class.keypoint_map?.get(&keypoint_id).cloned()
 }
 
 impl DataUi for AnnotationContext {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
+    fn data_ui(&self, _ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         match ui_layout {
             UiLayout::List | UiLayout::Tooltip => {
                 let text = if self.0.len() == 1 {

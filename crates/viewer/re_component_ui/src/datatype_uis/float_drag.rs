@@ -7,7 +7,7 @@ use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from zero to max float.
 pub fn edit_f32_zero_to_max(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float32>>,
 ) -> egui::Response {
@@ -16,7 +16,7 @@ pub fn edit_f32_zero_to_max(
 
 /// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from zero to max float with a suffix.
 pub fn edit_f32_zero_to_max_with_suffix(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float32>>,
     suffix: &str,
@@ -30,7 +30,7 @@ pub fn edit_f32_zero_to_max_with_suffix(
 
 /// Generic editor for a [`re_sdk_types::datatypes::Float32`] value representing a ui points value.
 pub fn edit_ui_points(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float32>>,
 ) -> egui::Response {
@@ -39,7 +39,7 @@ pub fn edit_ui_points(
 
 /// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from min to max float.
 pub fn edit_f32_min_to_max_float(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float32>>,
 ) -> egui::Response {
@@ -89,7 +89,7 @@ pub fn edit_f32_float_raw_with_speed_impl(
 
 /// Generic editor for a [`re_sdk_types::datatypes::Float32`] value from zero to one float.
 pub fn edit_f32_zero_to_one(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float32>>,
 ) -> egui::Response {
@@ -119,7 +119,7 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
 
 /// Generic editor for a [`re_sdk_types::datatypes::Float64`] value from zero to max float.
 pub fn edit_f64_zero_to_max(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float64>>,
 ) -> egui::Response {
@@ -132,7 +132,7 @@ pub fn edit_f64_zero_to_max(
 
 /// Generic editor for a [`re_sdk_types::datatypes::Float64`] value from min to max float.
 pub fn edit_f64_min_to_max_float(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float64>>,
 ) -> egui::Response {

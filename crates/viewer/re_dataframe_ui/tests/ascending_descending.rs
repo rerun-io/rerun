@@ -22,10 +22,10 @@ async fn test_no_sort() {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("No sort")
-                    .show(viewer_ctx, &runtime_handle, ui);
+                    .show(ctx, &runtime_handle, ui);
 
                 table_status.lock().replace(status);
             });
@@ -45,14 +45,14 @@ async fn test_ascending() {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Ascending")
                     .initial_blueprint(TableBlueprint {
                         sort_by: Some(SortBy::ascending("col")),
                         ..Default::default()
                     })
-                    .show(viewer_ctx, &runtime_handle, ui);
+                    .show(ctx, &runtime_handle, ui);
 
                 table_status.lock().replace(status);
             });
@@ -72,14 +72,14 @@ async fn test_descending() {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Descending")
                     .initial_blueprint(TableBlueprint {
                         sort_by: Some(SortBy::descending("col")),
                         ..Default::default()
                     })
-                    .show(viewer_ctx, &runtime_handle, ui);
+                    .show(ctx, &runtime_handle, ui);
 
                 table_status.lock().replace(status);
             });
@@ -99,10 +99,10 @@ async fn test_column_menu_button() {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([600.0, 400.0])
         .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 let status = DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Column menu button")
-                    .show(viewer_ctx, &runtime_handle, ui);
+                    .show(ctx, &runtime_handle, ui);
 
                 table_status.lock().replace(status);
             });

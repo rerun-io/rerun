@@ -185,7 +185,7 @@ impl VideoFrameReferenceVisualizer {
                     }
 
                     let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-                        ctx.viewer_ctx(),
+                        Some(ctx.viewer_ctx().time_ctrl),
                         *video_timestamp,
                         video.data_descr().timescale,
                     );

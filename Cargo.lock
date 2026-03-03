@@ -8961,7 +8961,6 @@ dependencies = [
  "ordered-float 5.1.0",
  "parking_lot",
  "re_arrow_util",
- "re_chunk_store",
  "re_component_ui",
  "re_dataframe",
  "re_format",

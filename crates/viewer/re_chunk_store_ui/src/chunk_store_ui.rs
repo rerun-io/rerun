@@ -8,7 +8,7 @@ use re_log_types::{
     AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_ui::{UiExt as _, list_item};
-use re_viewer_context::StoreContext;
+use re_viewer_context::ActiveStoreContext;
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
@@ -73,7 +73,7 @@ impl DatastoreUi {
     /// or `true` if the datastore UI should remain open.
     pub fn ui(
         &mut self,
-        ctx: &StoreContext<'_>,
+        ctx: &ActiveStoreContext<'_>,
         ui: &mut egui::Ui,
         timestamp_format: TimestampFormat,
     ) -> bool {

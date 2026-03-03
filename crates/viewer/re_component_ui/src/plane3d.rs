@@ -75,7 +75,7 @@ impl TryFrom<AxisDirection> for glam::Vec3 {
 }
 
 pub fn edit_or_view_plane3d(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, components::Plane3D>,
 ) -> egui::Response {
@@ -130,7 +130,7 @@ pub fn edit_or_view_plane3d(
 }
 
 pub fn multiline_edit_or_view_plane3d(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, components::Plane3D>,
 ) -> egui::Response {

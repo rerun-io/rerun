@@ -6,13 +6,13 @@ use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
+use re_viewer_context::{StoreViewContext, SystemCommand, SystemCommandSender as _};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
 /// Requires a String mono-component which is valid [`RedapUri`].
 pub fn redap_uri_button(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     _component: ComponentIdentifier,
     _row_id: Option<RowId>,
@@ -84,7 +84,7 @@ pub fn redap_uri_button(
                             .clicked()
                     {
                         if let Ok(url) = ViewerOpenUrl::from(uri_clone).sharable_url(None) {
-                            ctx.command_sender()
+                            ctx.command_sender
                                 .send_system(SystemCommand::CopyViewerUrl(url));
                         } else {
                             re_log::error!("Failed to create a sharable url for recording");
@@ -101,10 +101,9 @@ pub fn redap_uri_button(
                 .on_hover_text("This recording is already loaded. Click to switch to it.");
             if response.clicked() {
                 // Show it:
-                ctx.command_sender()
-                    .send_system(SystemCommand::set_selection(
-                        re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone()),
-                    ));
+                ctx.command_sender.send_system(SystemCommand::set_selection(
+                    re_viewer_context::Item::StoreId(loaded_recording_info.store_id.clone()),
+                ));
             }
         } else if is_loading {
             ui.loading_indicator("Loading redap recording");

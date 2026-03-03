@@ -4,7 +4,7 @@ use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sorbet::TimestampLocation;
 use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
-use re_viewer_context::{StoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
 use crate::App;
 use crate::app_blueprint::AppBlueprint;
@@ -14,7 +14,7 @@ pub fn top_panel(
     frame: &eframe::Frame,
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
     ui: &mut egui::Ui,
@@ -82,7 +82,7 @@ fn top_bar_ui(
     frame: &eframe::Frame,
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
     ui: &mut egui::Ui,
     gpu_resource_stats: &WgpuResourcePoolStatistics,

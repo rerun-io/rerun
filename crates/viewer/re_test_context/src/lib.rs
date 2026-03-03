@@ -22,9 +22,9 @@ use re_ui::Help;
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
     CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, Item,
-    ItemCollection, NeedsRepaint, Route, StoreHub, SystemCommand, SystemCommandSender as _,
-    TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext, blueprint_timeline, command_channel,
+    ItemCollection, NeedsRepaint, Route, StoreHub, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext, blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -584,6 +584,20 @@ impl TestContext {
             .expect("registering a class should succeed");
     }
 
+    /// Run the provided closure with a [`StoreViewContext`] produced by the [`Self`].
+    ///
+    /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
+    /// relies on system commands.
+    pub fn run_recording(
+        &self,
+        egui_ctx: &egui::Context,
+        func: impl FnOnce(&StoreViewContext<'_>),
+    ) {
+        self.run(egui_ctx, |viewer_ctx| {
+            func(&viewer_ctx.active_recording_store_view_context());
+        });
+    }
+
     /// Run the provided closure with a [`ViewerContext`] produced by the [`Self`].
     ///
     /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
@@ -655,6 +669,8 @@ impl TestContext {
                 connection_registry: &self.connection_registry,
 
                 storage_context: &storage_context,
+                active_store_context: Some(&store_context), // TODO(RR-3033): should sometimes be `None`
+
                 component_ui_registry: &self.component_ui_registry,
 
                 route: &Route::LocalRecording {
@@ -664,6 +680,8 @@ impl TestContext {
                 selection_state: &selection_state,
                 focused_item: &focused_item,
                 drag_and_drop_manager: &drag_and_drop_manager,
+                active_time_ctrl: Some(&self.time_ctrl.read()),
+                connected_receivers: &Default::default(),
                 auth_context: None,
             },
             component_fallback_registry: &self.component_fallback_registry,

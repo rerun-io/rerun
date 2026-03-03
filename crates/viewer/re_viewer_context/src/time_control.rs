@@ -558,11 +558,17 @@ impl TimeControl {
 
     /// Sets the current time.
     ///
-    /// If `blueprint_ctx` is some, this will also update the time stored in
-    /// the blueprint if `time_int` has changed.
-    fn update_time(&mut self, time: TimeReal) {
+    /// This will NOT update the blueprint!
+    pub fn set_time_ad_hoc(&mut self, time: TimeReal) {
+        self.set_time_cursor_ad_hoc(*self.timeline_name(), time);
+    }
+
+    /// Sets the current time.
+    ///
+    /// This will NOT update the blueprint!
+    pub fn set_time_cursor_ad_hoc(&mut self, timeline: TimelineName, time: TimeReal) {
         self.states
-            .entry(*self.timeline_name())
+            .entry(timeline)
             .or_insert_with(|| TimeState::new(time))
             .time = time;
     }
@@ -633,7 +639,7 @@ impl TimeControl {
 
                     if self.loop_mode == LoopMode::Off && full_range.max() <= state.time {
                         // We've reached the end of the data
-                        self.update_time(full_range.max().into());
+                        self.set_time_ad_hoc(full_range.max().into());
 
                         if more_data_is_streaming_in {
                             // then let's wait for it without pausing!
@@ -666,7 +672,7 @@ impl TimeControl {
                             new_time = loop_range.min; // loop!
                         }
 
-                        self.update_time(new_time);
+                        self.set_time_ad_hoc(new_time);
 
                         NeedsRepaint::Yes
                     }
@@ -674,7 +680,7 @@ impl TimeControl {
             }
             PlayState::Following => {
                 // Set the time to the max:
-                self.update_time(full_range.max().into());
+                self.set_time_ad_hoc(full_range.max().into());
 
                 NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
             }

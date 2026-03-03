@@ -11,8 +11,8 @@ use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
-    ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
-    VisualizerCollection, blueprint_timeline,
+    ComponentUiTypes, QueryContext, StoreViewContext, SystemCommand, SystemCommandSender as _,
+    UiLayout, ViewContext, VisualizerCollection, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -38,12 +38,11 @@ pub fn view_components_defaults_section_ui(
     ui: &mut egui::Ui,
     view: &ViewBlueprint,
 ) {
-    let db = ctx.viewer_ctx.blueprint_db();
-    let query = ctx.blueprint_query();
+    let blueprint_store_view_ctx = ctx.viewer_ctx.blueprint_store_view_ctx();
 
     // TODO(andreas): Components in `active_defaults` should be sorted by field order within each archetype.
     // Right now, they're just sorted by descriptor, which is not the same.
-    let active_defaults = active_defaults(ctx, view, db, query);
+    let active_defaults = active_defaults(&blueprint_store_view_ctx, view);
     let visualizers = ctx.new_visualizer_collection();
     let visualized_components_by_archetype =
         visualized_components_by_archetype(&visualizers, ctx.viewer_ctx.app_options());
@@ -68,7 +67,7 @@ pub fn view_components_defaults_section_ui(
                 ctx,
                 ui,
                 &view.defaults_path,
-                query,
+                &blueprint_store_view_ctx.query(),
                 components_to_show_in_add_menu.unwrap_or_default(),
             );
         })
@@ -85,7 +84,7 @@ override is specified.\n
 Click on the `+` button to add a new default value.";
 
     let body = |ui: &mut egui::Ui| {
-        active_default_ui(ctx, ui, &active_defaults, view, query, db);
+        active_default_ui(ctx, &blueprint_store_view_ctx, ui, &active_defaults, view);
     };
     ui.section_collapsing_header("Component defaults")
         .with_button(add_button)
@@ -95,18 +94,17 @@ Click on the `+` button to add a new default value.";
 
 fn active_default_ui(
     ctx: &ViewContext<'_>,
+    blueprint_store_view_ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     active_defaults: &BTreeMap<ComponentIdentifier, ArrayRef>,
     view: &ViewBlueprint,
-    query: &LatestAtQuery,
-    db: &re_entity_db::EntityDb,
 ) {
     let query_context = QueryContext {
         view_ctx: ctx,
         target_entity_path: &view.defaults_path,
         instruction_id: None,
         archetype_name: None,
-        query: query.clone(),
+        query: blueprint_store_view_ctx.query().clone(),
     };
 
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
@@ -119,7 +117,8 @@ fn active_default_ui(
         let mut previous_archetype_name = None;
 
         for (component, default_value) in active_defaults {
-            let Some(component_descr) = db
+            let Some(component_descr) = blueprint_store_view_ctx
+                .db
                 .storage_engine()
                 .store()
                 .entity_component_descriptor(&view.defaults_path, *component)
@@ -139,10 +138,11 @@ fn active_default_ui(
 
             let value_fn = |ui: &mut egui::Ui| {
                 let allow_multiline = false;
+                let store_view_ctx = ctx.viewer_ctx.blueprint_store_view_ctx();
                 ctx.viewer_ctx.component_ui_registry().edit_ui_raw(
                     &query_context,
+                    &store_view_ctx,
                     ui,
-                    db,
                     view.defaults_path.clone(),
                     &component_descr,
                     None, // No cache key.
@@ -165,8 +165,8 @@ fn active_default_ui(
 
             if let Some(component_type) = component_descr.component_type {
                 response.on_hover_ui(|ui| {
-                    component_type.data_ui_recording(
-                        ctx.viewer_ctx,
+                    component_type.data_ui(
+                        &ctx.viewer_ctx.active_recording_store_view_context(),
                         ui,
                         re_viewer_context::UiLayout::Tooltip,
                     );
@@ -217,24 +217,22 @@ fn visualized_components_by_archetype(
 }
 
 fn active_defaults(
-    ctx: &ViewContext<'_>,
+    blueprint_ctx: &StoreViewContext<'_>,
     view: &ViewBlueprint,
-    db: &re_entity_db::EntityDb,
-    query: &LatestAtQuery,
 ) -> BTreeMap<ComponentIdentifier, ArrayRef> {
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
-    ctx.blueprint_db()
-        .storage_engine()
+    let engine = blueprint_ctx.db.storage_engine();
+
+    engine
         .store()
         .all_components_on_timeline(&blueprint_timeline(), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
         .filter_map(|component| {
-            let data = db
-                .storage_engine()
+            let data = engine
                 .cache()
-                .latest_at(query, &view.defaults_path, [component])
+                .latest_at(&blueprint_ctx.query(), &view.defaults_path, [component])
                 .component_batch_raw(component)?;
             (!data.is_empty()).then_some((component, data))
         })
@@ -328,8 +326,8 @@ fn add_popup_ui(
                 if ui
                     .button(descriptor.archetype_field_name())
                     .on_hover_ui(|ui| {
-                        entry.component_type.data_ui_recording(
-                            ctx.viewer_ctx,
+                        entry.component_type.data_ui(
+                            &ctx.viewer_ctx.active_recording_store_view_context(),
                             ui,
                             UiLayout::Tooltip,
                         );

@@ -247,7 +247,7 @@ impl ViewClass for GraphView {
                 for graph in &graphs {
                     draw_graph(
                         ui,
-                        ctx,
+                        &ctx.active_recording_store_view_context(),
                         graph,
                         layout,
                         query,

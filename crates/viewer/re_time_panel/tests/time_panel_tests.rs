@@ -468,11 +468,11 @@ fn run_time_panel_and_save_snapshot(
 
                 let mut time_commands = Vec::new();
 
+                let store_ctx = viewer_ctx.active_recording_store_view_context();
                 time_panel.show_expanded_with_header(
                     viewer_ctx,
-                    viewer_ctx.time_ctrl,
+                    &store_ctx,
                     &blueprint,
-                    viewer_ctx.recording(),
                     ui,
                     &mut time_commands,
                 );

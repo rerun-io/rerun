@@ -315,7 +315,7 @@ fn visualizer_components(
             let multiline = false;
             if let TryShowEditUiResult::Shown { edited_value } =
                 ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
-                    ctx.viewer_ctx,
+                    &ctx.viewer_ctx.blueprint_store_view_ctx(),
                     ui,
                     re_viewer_context::EditTarget {
                         store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
@@ -341,12 +341,11 @@ fn visualizer_components(
                 }
             } else {
                 // Display the value without edit ui.
+                let store_view_ctx = ctx.viewer_ctx.active_recording_store_view_context();
                 ctx.viewer_ctx.component_ui_registry().component_ui_raw(
-                    ctx.viewer_ctx,
+                    &store_view_ctx,
                     ui,
                     UiLayout::List,
-                    &store_query,
-                    ctx.recording(),
                     &data_result.entity_path,
                     target_component_descr,
                     current_value_row_id,
@@ -424,7 +423,11 @@ fn visualizer_components(
         if let Some(component_type) = target_component_descr.component_type {
             response.on_hover_ui(|ui| {
                 // TODO(andreas): Add data ui for component descr?
-                component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+                component_type.data_ui(
+                    &ctx.viewer_ctx.active_recording_store_view_context(),
+                    ui,
+                    UiLayout::Tooltip,
+                );
             });
         }
 
@@ -813,12 +816,11 @@ fn source_component_item_ui(
                 ui.label(format!("{} values", re_format::format_uint(num_values)));
             } else {
                 let viewer_ctx = mapping_ctx.viewer_ctx();
+                let store_view_ctx = viewer_ctx.active_recording_store_view_context();
                 viewer_ctx.component_ui_registry().component_ui_raw(
-                    viewer_ctx,
+                    &store_view_ctx,
                     ui,
                     UiLayout::List,
-                    &mapping_ctx.query_ctx.query,
-                    mapping_ctx.view_ctx().recording(),
                     &mapping_ctx.data_result.entity_path,
                     mapping_ctx.target_component_descr,
                     None, // row id doesn't matter since we're only showing a single value here.

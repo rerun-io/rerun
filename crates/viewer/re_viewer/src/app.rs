@@ -27,9 +27,9 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry, Item,
-    MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext, StoreContext,
+    ActiveStoreContext, AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver,
+    CommandSender, ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry,
+    Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext,
     SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
@@ -706,7 +706,7 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
@@ -1581,7 +1581,7 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
         cmd: UICommand,
     ) {
@@ -2254,7 +2254,7 @@ impl App {
     fn copy_entity_hierarchy_to_clipboard(
         &mut self,
         egui_ctx: &egui::Context,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
     ) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             re_log::warn!("Could not copy entity hierarchy: No active recording");
@@ -2350,7 +2350,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: &StoreContext<'_>,
+        store_context: &ActiveStoreContext<'_>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -2632,8 +2632,8 @@ impl App {
                                         .replace(Route::LocalRecording { recording_id });
                                 } else {
                                     // TODO(RR-3713): show a blueprint for it anyway
-                                    re_log::warn_once!(
-                                        "Can't show {app_id} at this time - we have no recording for it"
+                                    re_log::debug_warn_once!(
+                                        "Can't switch to app '{app_id}' at this time - we have no recording for it"
                                     );
                                 }
                             }
@@ -4076,7 +4076,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 
 fn save_active_recording(
     app: &mut App,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
@@ -4121,7 +4121,10 @@ fn save_recording(
     )
 }
 
-fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
+fn save_blueprint(
+    app: &mut App,
+    store_context: Option<&ActiveStoreContext<'_>>,
+) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
         anyhow::bail!("No blueprint to save");
     };

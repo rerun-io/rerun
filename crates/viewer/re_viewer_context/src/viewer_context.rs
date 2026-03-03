@@ -1,25 +1,26 @@
 use ahash::HashMap;
+use re_chunk::EntityPath;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_sdk_types::ViewClassIdentifier;
-use re_ui::ContextExt as _;
 use re_ui::list_item::ListItem;
 
 use crate::command_sender::{SelectionSource, SetSelection};
 use crate::component_fallbacks::FallbackProviderRegistry;
-use crate::drag_and_drop::DragAndDropPayload;
 use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
-    AppContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, IndicatedEntities, Item, ItemCollection, PerVisualizerType,
-    PerVisualizerTypeInViewClass, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _,
-    TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
+    ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, CommandSender,
+    ComponentUiRegistry, DragAndDropManager, IndicatedEntities, Item, ItemCollection,
+    PerVisualizerType, PerVisualizerTypeInViewClass, StoreHub, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
 
-/// Common things needed to view a specific recording with a specific blueprint.
+/// The most powerful context, when you need to know the active blueprint and views.
+///
+/// Never use [`ViewerContext`] where [`StoreViewContext`] would suffice.
 pub struct ViewerContext<'a> {
     /// App context shared across all parts of the viewer.
     pub app_ctx: AppContext<'a>,
@@ -56,7 +57,7 @@ pub struct ViewerContext<'a> {
     pub connected_receivers: &'a re_log_channel::LogReceiverSet,
 
     /// The active recording and blueprint.
-    pub store_context: &'a StoreContext<'a>,
+    pub store_context: &'a ActiveStoreContext<'a>,
 }
 
 // Forwarding of `AppContext` methods to `ViewerContext`. Leaving this as a
@@ -68,7 +69,7 @@ impl ViewerContext<'_> {
     }
 
     pub fn tokens(&self) -> &'static re_ui::DesignTokens {
-        self.egui_ctx().tokens()
+        self.app_ctx.tokens()
     }
 
     /// Runtime info about components and archetypes.
@@ -96,14 +97,10 @@ impl ViewerContext<'_> {
         self.app_ctx.render_ctx
     }
 
-    /// How to configure the renderer
+    /// How to configure the renderer.
     #[inline]
     pub fn render_mode(&self) -> re_renderer::RenderMode {
-        if self.app_ctx.is_test {
-            re_renderer::RenderMode::Deterministic
-        } else {
-            re_renderer::RenderMode::Beautiful
-        }
+        self.app_ctx.render_mode()
     }
 
     /// Interface for sending commands back to the app
@@ -118,21 +115,58 @@ impl ViewerContext<'_> {
 
     /// The [`StoreHub`].
     pub fn store_hub(&self) -> &StoreHub {
-        self.app_ctx.storage_context.hub
+        self.app_ctx.store_hub()
     }
 
     /// All loaded recordings, blueprints, etc.
     pub fn store_bundle(&self) -> &re_entity_db::StoreBundle {
-        self.app_ctx.storage_context.bundle
+        self.app_ctx.store_bundle()
     }
 
     /// All loaded tables.
     pub fn table_stores(&self) -> &crate::TableStores {
-        self.app_ctx.storage_context.tables
+        self.app_ctx.table_stores()
     }
 }
 
-impl ViewerContext<'_> {
+impl<'a> ViewerContext<'a> {
+    /// Create a [`crate::StoreViewContext`] for the active recording.
+    pub fn active_recording_store_view_context(&'a self) -> StoreViewContext<'a> {
+        StoreViewContext {
+            app_ctx: &self.app_ctx,
+            db: self.store_context.recording,
+            time_ctrl: self.time_ctrl,
+            caches: self.store_context.caches,
+        }
+    }
+
+    /// Create a [`crate::StoreViewContext`] for the active blueprint.
+    pub fn blueprint_store_view_ctx(&self) -> StoreViewContext<'_> {
+        StoreViewContext {
+            app_ctx: &self.app_ctx,
+            db: self.store_context.blueprint,
+            time_ctrl: self.blueprint_time_ctrl,
+            caches: self.store_context.caches, // TODO(RR-3033): what cache to use here?
+        }
+    }
+
+    /// If the user is inspecting the blueprint, and the `entity_path` is on the blueprint
+    /// timeline, then use the blueprint. Otherwise, use the recording.
+    // TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
+    // directly from the entity_path.
+    pub fn guess_store_view_context_for_entity(
+        &self,
+        entity_path: &EntityPath,
+    ) -> StoreViewContext<'_> {
+        if self.app_options().inspect_blueprint_timeline
+            && self.store_context.blueprint.is_logged_entity(entity_path)
+        {
+            self.blueprint_store_view_ctx()
+        } else {
+            self.active_recording_store_view_context()
+        }
+    }
+
     /// The active recording.
     #[inline]
     pub fn recording(&self) -> &EntityDb {
@@ -194,14 +228,15 @@ impl ViewerContext<'_> {
 
     /// Item that got focused on the last frame if any.
     pub fn focused_item(&self) -> &Option<crate::Item> {
-        self.app_ctx.focused_item
+        self.app_ctx.focused_item()
     }
 
     /// Helper object to manage drag-and-drop operations.
     pub fn drag_and_drop_manager(&self) -> &DragAndDropManager {
-        self.app_ctx.drag_and_drop_manager
+        self.app_ctx.drag_and_drop_manager()
     }
 
+    /// The current time cursor
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
         self.time_ctrl.current_query()
     }
@@ -222,155 +257,15 @@ impl ViewerContext<'_> {
 
     /// Consistently handle the selection, hover, drag start interactions for a given set of items.
     ///
-    /// The `draggable` parameter controls whether a drag can be initiated from this item. When a UI
-    /// element represents an [`crate::Item`], one must make the call whether this element should be
-    /// meaningfully draggable by the users. This is ultimately a subjective decision, but some here
-    /// are some guidelines:
-    /// - Is there a meaningful destination for the dragged payload? For example, dragging stuff out
-    ///   of a modal dialog is by definition meaningless.
-    /// - Even if a drag destination exists, would that be obvious to the user?
-    /// - Is it expected for that kind of UI element to be draggable? For example, buttons aren't
-    ///   typically draggable.
-    ///
-    /// Drag vs. selection semantics:
-    ///
-    /// - When dragging an unselected item, that item only is dragged, and the selection is
-    ///   unchanged…
-    /// - …unless cmd/ctrl is held, in which case the item is added to the selection and the entire
-    ///   selection is dragged.
-    /// - When dragging a selected item, the entire selection is dragged as well.
-    ///
-    /// You might also want to call [`Self::handle_select_focus_sync`] to keep keyboard focus in
-    /// sync with selection.
+    /// See [`AppContext::handle_select_hover_drag_interactions`] for details.
     pub fn handle_select_hover_drag_interactions(
         &self,
         response: &egui::Response,
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        let mut interacted_items = interacted_items
-            .into()
-            .into_mono_instance_path_items(self.recording(), &self.current_query());
-        let selection_state = self.selection_state();
-
-        if response.hovered() {
-            selection_state.set_hovered(interacted_items.clone());
-        }
-
-        let single_selected = self.selection().single_item() == interacted_items.single_item();
-
-        // If we were just selected, scroll into view
-        if single_selected && self.selection_state().selection_changed().is_some() {
-            response.scroll_to_me(None);
-        }
-
-        if draggable && response.drag_started() {
-            let mut selected_items = selection_state.selected_items().clone();
-            let is_already_selected = interacted_items
-                .iter()
-                .all(|(item, _)| selected_items.contains_item(item));
-
-            let is_cmd_held = response.ctx.input(|i| i.modifiers.command);
-
-            // see semantics description in the docstring
-            let dragged_items = if !is_already_selected && is_cmd_held {
-                selected_items.extend(interacted_items);
-                self.command_sender()
-                    .send_system(SystemCommand::set_selection(selected_items.clone()));
-                selected_items
-            } else if !is_already_selected {
-                interacted_items
-            } else {
-                selected_items
-            };
-
-            let items_may_be_dragged = self
-                .app_ctx
-                .drag_and_drop_manager
-                .are_items_draggable(&dragged_items);
-
-            let payload = if items_may_be_dragged {
-                DragAndDropPayload::from_items(&dragged_items)
-            } else {
-                DragAndDropPayload::Invalid
-            };
-
-            egui::DragAndDrop::set_payload(&response.ctx, payload);
-        } else if response.clicked() {
-            if response.double_clicked()
-                && let Some(item) = interacted_items.first_item()
-            {
-                // Double click always selects the whole instance and nothing else.
-                let item = if let Item::DataResult(data_result) = item {
-                    interacted_items = Item::DataResult(data_result.as_entity_all()).into();
-                    interacted_items
-                        .first_item()
-                        .expect("That item was just added")
-                } else {
-                    item
-                };
-
-                self.app_ctx
-                    .command_sender
-                    .send_system(crate::SystemCommand::SetFocus(item.clone()));
-            }
-
-            let modifiers = response.ctx.input(|i| i.modifiers);
-
-            // Shift-clicking means extending the selection. This generally requires local context,
-            // so we don't handle it here.
-            if !modifiers.shift {
-                if modifiers.command {
-                    // Sends a command to select `ìnteracted_items` unless already selected in which case they get unselected.
-                    // If however an object is already selected but now gets passed a *different* item context, it stays selected after all
-                    // but with an updated context!
-
-                    let mut toggle_items_set: HashMap<_, _> = interacted_items
-                        .iter()
-                        .map(|(item, ctx)| (item.clone(), ctx.clone()))
-                        .collect();
-
-                    let mut new_selection = selection_state.selected_items().clone();
-
-                    // If an item was already selected with the exact same context remove it.
-                    // If an item was already selected and loses its context, remove it.
-                    new_selection.retain(|item, ctx| {
-                        if let Some(new_ctx) = toggle_items_set.get(item) {
-                            if new_ctx == ctx || new_ctx.is_none() {
-                                toggle_items_set.remove(item);
-                                false
-                            } else {
-                                true
-                            }
-                        } else {
-                            true
-                        }
-                    });
-
-                    // Update context for items that are remaining in the toggle_item_set:
-                    for (item, ctx) in new_selection.iter_mut() {
-                        if let Some(new_ctx) = toggle_items_set.get(item) {
-                            *ctx = new_ctx.clone();
-                            toggle_items_set.remove(item);
-                        }
-                    }
-
-                    // Make sure we preserve the order - old items kept in same order, new items added to the end.
-                    // Add the new items, unless they were toggling out existing items:
-                    new_selection.extend(
-                        interacted_items
-                            .into_iter()
-                            .filter(|(item, _)| toggle_items_set.contains_key(item)),
-                    );
-
-                    self.command_sender()
-                        .send_system(SystemCommand::set_selection(new_selection));
-                } else {
-                    self.command_sender()
-                        .send_system(SystemCommand::set_selection(interacted_items));
-                }
-            }
-        }
+        self.app_ctx
+            .handle_select_hover_drag_interactions(response, interacted_items, draggable);
     }
 
     /// Helper to synchronize item selection with egui focus.
@@ -446,9 +341,9 @@ impl ViewerContext<'_> {
         self.recording().application_id() != StoreHub::welcome_screen_app_id()
     }
 
-    /// Reverts to the default route
+    /// Reverts to the default route.
     pub fn revert_to_default_route(&self) {
-        self.command_sender().send_system(SystemCommand::ResetRoute);
+        self.app_ctx.revert_to_default_route();
     }
 
     /// Iterates over all entities that are visualizeable for a given view class.

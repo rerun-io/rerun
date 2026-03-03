@@ -1,12 +1,12 @@
 use re_format::{format_f32, format_uint};
 use re_sdk_types::components::{LineStrip2D, LineStrip3D};
 use re_ui::UiExt as _;
-use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext, UiLayout};
 
 use crate::DEFAULT_NUMBER_WIDTH;
 
 fn singleline_view_line_strip_3d(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip3D>,
 ) -> egui::Response {
@@ -17,7 +17,7 @@ fn singleline_view_line_strip_3d(
 }
 
 fn multiline_view_line_strip_3d(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip3D>,
 ) -> egui::Response {
@@ -71,7 +71,7 @@ fn multiline_view_line_strip_3d(
 }
 
 fn singleline_view_line_strip_2d(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip2D>,
 ) -> egui::Response {
@@ -82,7 +82,7 @@ fn singleline_view_line_strip_2d(
 }
 
 fn multiline_view_line_strip_2d(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip2D>,
 ) -> egui::Response {

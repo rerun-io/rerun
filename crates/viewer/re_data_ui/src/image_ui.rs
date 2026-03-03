@@ -10,34 +10,35 @@ use re_types_core::{Component as _, ComponentDescriptor, RowId};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::gpu_bridge::{self, image_data_range_heuristic, image_to_gpu};
-use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext};
+use re_viewer_context::{
+    AppContext, ColormapWithRange, ImageInfo, ImageStatsCache, StoreViewContext, UiLayout,
+};
 
 use crate::find_and_deserialize_archetype_mono_component;
 
 /// Show the given image with an appropriate size.
 ///
-/// For segmentation images, the annotation context is looked up.
+/// For segmentation images, the annotation context is looked up in `store_ctx`.
 pub fn image_preview_ui(
-    ctx: &ViewerContext<'_>,
+    app_ctx: &StoreViewContext<'_>,
+    store_ctx: Option<&StoreViewContext<'_>>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
-    query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
     image: &ImageInfo,
     colormap_with_range: Option<&ColormapWithRange>,
 ) -> Option<()> {
-    let image_stats = ctx
-        .store_context
+    let image_stats = app_ctx
         .caches
         .entry(|c: &mut ImageStatsCache| c.entry(image));
-    let annotations = crate::annotations(ctx.recording(), query, entity_path);
+    let annotations = store_ctx.map(|store_ctx| crate::annotations(store_ctx, entity_path));
     let debug_name = entity_path.to_string();
     let texture = image_to_gpu(
-        ctx.render_ctx(),
+        app_ctx.render_ctx,
         &debug_name,
         image,
         &image_stats,
-        &annotations,
+        annotations.as_deref(),
         colormap_with_range,
     )
     .ok()?;
@@ -46,7 +47,7 @@ pub fn image_preview_ui(
     let preview_size = texture_preview_size(ui, ui_layout, [w, h]);
 
     texture_preview_ui(
-        ctx.render_ctx(),
+        app_ctx.render_ctx,
         ui,
         ui_layout,
         &debug_name,
@@ -258,11 +259,8 @@ pub struct ImageUi {
 }
 
 impl ImageUi {
-    pub fn new(ctx: &ViewerContext<'_>, image: ImageInfo) -> Self {
-        let image_stats = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut ImageStatsCache| c.entry(&image));
+    pub fn new(ctx: &StoreViewContext<'_>, image: ImageInfo) -> Self {
+        let image_stats = ctx.caches.entry(|c: &mut ImageStatsCache| c.entry(&image));
         let data_range = image_data_range_heuristic(&image_stats, &image.format);
         Self {
             image,
@@ -272,14 +270,13 @@ impl ImageUi {
     }
 
     pub fn from_blob(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
         blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
     ) -> Option<Self> {
-        ctx.store_context
-            .caches
+        ctx.caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
                 c.entry_encoded_color(
                     blob_row_id,
@@ -293,7 +290,7 @@ impl ImageUi {
     }
 
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         image_buffer_descr: &ComponentDescriptor,
         image_buffer_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
@@ -324,10 +321,7 @@ impl ImageUi {
             image_format.0,
             kind,
         );
-        let image_stats = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut ImageStatsCache| c.entry(&image));
+        let image_stats = ctx.caches.entry(|c: &mut ImageStatsCache| c.entry(&image));
 
         let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
             entity_components,
@@ -366,7 +360,7 @@ impl ImageUi {
 
     pub fn inline_copy_button<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'_>,
+        ctx: &'a AppContext<'_>,
         property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
         property_content.with_action_button(&icons::COPY, "Copy image", move || {
@@ -375,7 +369,7 @@ impl ImageUi {
                     [rgba.width() as _, rgba.height() as _],
                     bytemuck::cast_slice(rgba.as_raw()),
                 );
-                ctx.egui_ctx().copy_image(egui_image);
+                ctx.egui_ctx.copy_image(egui_image);
                 re_log::info!("Copied image to clipboard");
             } else {
                 re_log::error!("Invalid image");
@@ -385,7 +379,7 @@ impl ImageUi {
 
     pub fn inline_download_button<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'_>,
+        ctx: &'a AppContext<'_>,
         main_thread_token: MainThreadToken,
         entity_path: &'a re_log_types::EntityPath,
         property_content: list_item::PropertyContent<'a>,
@@ -400,7 +394,7 @@ impl ImageUi {
                             .map_or("image", |name| name.unescaped_str())
                             .to_owned()
                     );
-                    ctx.command_sender().save_file_dialog(
+                    ctx.command_sender.save_file_dialog(
                         main_thread_token,
                         &file_name,
                         "Save image".to_owned(),
@@ -416,10 +410,9 @@ impl ImageUi {
 
     pub fn data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
         entity_path: &re_log_types::EntityPath,
     ) {
         let Self {
@@ -430,9 +423,9 @@ impl ImageUi {
 
         image_preview_ui(
             ctx,
+            Some(ctx),
             ui,
             ui_layout,
-            query,
             entity_path,
             image,
             colormap_with_range.as_ref(),

@@ -4,8 +4,8 @@ use re_sdk_types::components::{self, TransformFrameId};
 use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
 use re_ui::{HasDesignTokens as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
-    DataResultInteractionAddress, Item, SystemCommand, SystemCommandSender as _,
-    TransformDatabaseStoreCache, ViewerContext,
+    AppContext, DataResultInteractionAddress, Item, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TransformDatabaseStoreCache,
 };
 
 /// The max amount of ancestors we show before putting a '…'.
@@ -34,8 +34,7 @@ pub struct TransformFramesUi {
 
 impl TransformFramesUi {
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
-        query: &re_chunk_store::LatestAtQuery,
+        ctx: &StoreViewContext<'_>,
         transform_frame_descr: &ComponentDescriptor,
         transform_frame_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
@@ -75,11 +74,11 @@ impl TransformFramesUi {
 
         let mut frame_id_hash = TransformFrameIdHash::new(&frame_id);
 
-        let caches = ctx.store_context.caches;
-        let frame_ids = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
-        let transforms = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.transforms_for_timeline(ctx.recording(), *ctx.time_ctrl.timeline_name())
+        let (frame_ids, transforms) = ctx.caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            (
+                c.frame_id_registry(ctx.db),
+                c.transforms_for_timeline(ctx.db, ctx.timeline_name()),
+            )
         });
 
         let mut frames = Vec::new();
@@ -105,11 +104,11 @@ impl TransformFramesUi {
 
             frames.push(TransformFrameInfo {
                 frame_id: frame_id.clone(),
-                source_entity: Some(frame.associated_entity_path(query.at()).clone()),
+                source_entity: Some(frame.associated_entity_path(ctx.query().at()).clone()),
             });
 
             let Some(transform) =
-                frame.latest_at_transform(ctx.recording(), &missing_chunk_reporter, query)
+                frame.latest_at_transform(ctx.db, &missing_chunk_reporter, &ctx.query())
             else {
                 break false;
             };
@@ -130,7 +129,13 @@ impl TransformFramesUi {
         })
     }
 
-    pub fn data_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, layout: UiLayout) {
+    pub fn data_ui(
+        &self,
+        ctx: &AppContext<'_>,
+        db: &re_entity_db::EntityDb,
+        ui: &mut egui::Ui,
+        layout: UiLayout,
+    ) {
         match layout {
             UiLayout::Tooltip => {} // Don't show in tooltips.
             UiLayout::List | UiLayout::SelectionPanel => {
@@ -145,7 +150,7 @@ impl TransformFramesUi {
                                 .max_height(350.0)
                                 .stick_to_bottom(true)
                                 .show(ui, |ui| {
-                                    self.show_transforms(ctx, layout, ui);
+                                    self.show_transforms(ctx, db, layout, ui);
                                 })
                         });
                 });
@@ -153,7 +158,13 @@ impl TransformFramesUi {
         }
     }
 
-    fn show_transforms(&self, ctx: &ViewerContext<'_>, layout: UiLayout, ui: &mut egui::Ui) {
+    fn show_transforms(
+        &self,
+        ctx: &AppContext<'_>,
+        db: &re_entity_db::EntityDb,
+        layout: UiLayout,
+        ui: &mut egui::Ui,
+    ) {
         let Self {
             missing_chunk_reporter,
             frames,
@@ -161,7 +172,7 @@ impl TransformFramesUi {
         } = self;
 
         if missing_chunk_reporter.any_missing() {
-            if ctx.recording().can_fetch_chunks_from_redap() {
+            if db.can_fetch_chunks_from_redap() {
                 ui.loading_indicator("Fetching chunks from redap");
             } else {
                 // TODO(RR-3670): figure out how to handle missing chunks
@@ -204,7 +215,7 @@ impl TransformFramesUi {
 }
 
 fn transform_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     transform: &TransformFrameInfo,
     is_current: bool,
@@ -239,7 +250,7 @@ fn transform_ui(
                     Item::from(source_entity.clone())
                 };
 
-                ctx.command_sender()
+                ctx.command_sender
                     .send_system(SystemCommand::set_selection(item));
             }
         }

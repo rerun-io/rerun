@@ -7,7 +7,7 @@ use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic editor for a [`re_sdk_types::datatypes::UInt64`] values within a given range.
 pub fn edit_u64_range(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::UInt64>>,
     range: RangeInclusive<u64>,

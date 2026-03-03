@@ -6,7 +6,7 @@ use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::{Button, NumExt as _, ScrollArea};
 use re_ui::menu::menu_style;
 use re_ui::{UICommand, UICommandSender as _, UiExt as _};
-use re_viewer_context::StoreContext;
+use re_viewer_context::ActiveStoreContext;
 
 use crate::App;
 
@@ -16,7 +16,7 @@ impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
         render_state: Option<&egui_wgpu::RenderState>,
-        _store_context: Option<&StoreContext<'_>>,
+        _store_context: Option<&ActiveStoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
         let desired_icon_height = if ui.max_rect().height() <= 24.0 {
@@ -77,7 +77,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         render_state: Option<&egui_wgpu::RenderState>,
-        _store_context: Option<&StoreContext<'_>>,
+        _store_context: Option<&ActiveStoreContext<'_>>,
     ) {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         // no wrapping: make as wide as needed
@@ -233,7 +233,7 @@ impl App {
         }
     }
 
-    fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
+    fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&ActiveStoreContext<'_>>) {
         use re_ui::UICommandSender as _;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();

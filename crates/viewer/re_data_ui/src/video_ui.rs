@@ -13,8 +13,8 @@ use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
 use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
-    SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
-    ViewerContext, video_stream_time_from_query,
+    SharablePlayableVideoStream, StoreViewContext, UiLayout, VideoStreamCache,
+    VideoStreamProcessingError, video_stream_time_from_query,
 };
 
 use crate::image_ui::texture_preview_size;
@@ -310,7 +310,7 @@ fn timestamp_ui(
 }
 
 fn decoded_frame_ui<'a>(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
@@ -320,12 +320,7 @@ fn decoded_frame_ui<'a>(
     let player_stream_id =
         re_video::player::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(
-        ctx.render_ctx(),
-        player_stream_id,
-        video_time,
-        get_video_buffer,
-    ) {
+    match video.frame_at(render_ctx, player_stream_id, video_time, get_video_buffer) {
         Ok(VideoFrameTexture {
             texture,
             decoder_delay_state,
@@ -372,7 +367,7 @@ fn decoded_frame_ui<'a>(
 
             let response = if let Some(texture) = texture {
                 crate::image_ui::texture_preview_ui(
-                    ctx.render_ctx(),
+                    render_ctx,
                     ui,
                     ui_layout,
                     "video_preview",
@@ -603,7 +598,7 @@ pub enum VideoUi {
 
 impl VideoUi {
     pub fn from_blob(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
@@ -611,20 +606,19 @@ impl VideoUi {
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {
-        let result =
-            ctx.store_context
-                .caches
-                .entry(|c: &mut re_viewer_context::VideoAssetCache| {
-                    let debug_name = entity_path.to_string();
-                    c.entry(
-                        debug_name,
-                        blob_row_id,
-                        blob_component_descriptor.component,
-                        blob,
-                        media_type,
-                        ctx.app_options().video_decoder_settings(),
-                    )
-                });
+        let result = ctx
+            .caches
+            .entry(|c: &mut re_viewer_context::VideoAssetCache| {
+                let debug_name = entity_path.to_string();
+                c.entry(
+                    debug_name,
+                    blob_row_id,
+                    blob_component_descriptor.component,
+                    blob,
+                    media_type,
+                    ctx.app_options.video_decoder_settings(),
+                )
+            });
 
         let certain_this_is_a_video =
             blob_component_descriptor.archetype == Some(archetypes::AssetVideo::name());
@@ -644,8 +638,7 @@ impl VideoUi {
     }
 
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
-        query: &re_chunk_store::LatestAtQuery,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         descr: &ComponentDescriptor,
     ) -> Option<Self> {
@@ -653,30 +646,24 @@ impl VideoUi {
             return None;
         }
 
-        let video_stream_result = ctx.store_context.caches.entry(|c: &mut VideoStreamCache| {
+        let video_stream_result = ctx.caches.entry(|c: &mut VideoStreamCache| {
             c.entry(
-                ctx.recording(),
+                ctx.db,
                 entity_path,
-                query.timeline(),
-                ctx.app_options().video_decoder_settings(),
+                ctx.timeline_name(),
+                ctx.app_ctx.app_options.video_decoder_settings(),
             )
         });
 
         Some(Self::Stream(video_stream_result))
     }
 
-    pub fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-    ) {
+    pub fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         match self {
             Self::Stream(video_stream_result) => {
                 video_stream_result_ui(ui, ui_layout, video_stream_result);
 
-                let storage_engine = ctx.store_context.recording.storage_engine();
+                let storage_engine = ctx.db.storage_engine();
                 let get_chunk_array = |id| {
                     let chunk = storage_engine
                         .store()
@@ -693,12 +680,19 @@ impl VideoUi {
 
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
-                    let time = video_stream_time_from_query(query);
-                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time, &|id| {
-                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
+                    let time = video_stream_time_from_query(&ctx.query());
+                    decoded_frame_ui(
+                        ctx.render_ctx(),
+                        ui,
+                        ui_layout,
+                        &video.video_renderer,
+                        time,
+                        &|id| {
+                            let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
 
-                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
-                    });
+                            buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                        },
+                    );
                 }
             }
             Self::Asset(video_result, timestamp, blob) => {
@@ -721,12 +715,14 @@ impl VideoUi {
                         }
                     });
                     let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-                        ctx,
+                        Some(ctx.time_ctrl),
                         video_timestamp,
                         video.data_descr().timescale,
                     );
 
-                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time, &|_| blob);
+                    decoded_frame_ui(ctx.render_ctx(), ui, ui_layout, video, video_time, &|_| {
+                        blob
+                    });
                 }
             }
         }

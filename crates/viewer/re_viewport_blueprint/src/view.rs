@@ -9,9 +9,9 @@ use re_sdk_types::blueprint::components::{self as blueprint_components, ViewOrig
 use re_sdk_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
-    ViewStates, ViewerContext,
+    ActiveStoreContext, BlueprintContext as _, ContentsName, QueryRange, RecommendedView,
+    SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId,
+    ViewState, ViewStates, ViewerContext,
 };
 
 use crate::{ViewContents, ViewProperty};
@@ -237,7 +237,7 @@ impl ViewBlueprint {
     /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`ViewId`]
     ///
     /// Also duplicates all the queries in the view.
-    pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
+    pub fn duplicate(&self, store_context: &ActiveStoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
         let blueprint = store_context.blueprint;
         let blueprint_engine = blueprint.storage_engine();

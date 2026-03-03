@@ -6,7 +6,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
 pub fn edit_or_view_vec2d(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Vec2D>>,
 ) -> egui::Response {
@@ -18,7 +18,7 @@ pub fn edit_or_view_vec2d(
 }
 
 pub fn edit_or_view_vec3d(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Vec3D>>,
 ) -> egui::Response {
@@ -30,7 +30,7 @@ pub fn edit_or_view_vec3d(
 }
 
 pub fn edit_or_view_vec3d_positive(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Vec3D>>,
 ) -> egui::Response {

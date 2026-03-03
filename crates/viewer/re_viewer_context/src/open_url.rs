@@ -7,8 +7,8 @@ use re_uri::external::url::{self, Url};
 use vec1::{Vec1, vec1};
 
 use crate::{
-    CommandSender, Item, ItemCollection, Route, StoreHub, SystemCommand, SystemCommandSender as _,
-    ViewerContext,
+    AppContext, CommandSender, Item, ItemCollection, Route, StoreHub, SystemCommand,
+    SystemCommandSender as _,
 };
 
 /// A URL that points to a selection (typically an entity) within the currently active recording.
@@ -244,11 +244,11 @@ pub struct OpenUrlOptions {
 }
 
 impl ViewerOpenUrl {
-    pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
+    pub fn from_context(ctx: &AppContext<'_>) -> anyhow::Result<Self> {
         Self::from_context_expanded(
             ctx.store_hub(),
-            ctx.route(),
-            Some(ctx.time_ctrl),
+            ctx.route,
+            ctx.active_time_ctrl(),
             ctx.selection(),
         )
     }

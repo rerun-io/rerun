@@ -260,7 +260,7 @@ impl ViewContents {
     #[expect(clippy::too_many_arguments)]
     pub fn build_data_result_tree(
         &self,
-        ctx: &re_viewer_context::StoreContext<'_>,
+        ctx: &re_viewer_context::ActiveStoreContext<'_>,
         active_timeline: Option<&Timeline>,
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
@@ -729,7 +729,7 @@ mod tests {
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_viewer_context::{
-        Caches, StoreContext, ViewClassRegistry, VisualizableReason, blueprint_timeline,
+        ActiveStoreContext, Caches, ViewClassRegistry, VisualizableReason, blueprint_timeline,
     };
 
     use super::*;
@@ -788,7 +788,7 @@ mod tests {
                 )
             });
 
-        let ctx = StoreContext {
+        let ctx = ActiveStoreContext {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,

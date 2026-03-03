@@ -2,10 +2,10 @@ use egui::NumExt as _;
 use re_sdk_types::blueprint::components::VisualBounds2D;
 use re_sdk_types::datatypes::Range2D;
 use re_ui::UiExt as _;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 pub fn multiline_edit_visual_bounds2d(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, VisualBounds2D>,
 ) -> egui::Response {
@@ -80,7 +80,7 @@ fn range_mut_ui(ui: &mut egui::Ui, [start, end]: &mut [f64; 2]) -> egui::Respons
 }
 
 pub fn singleline_edit_visual_bounds2d(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, VisualBounds2D>,
 ) -> egui::Response {

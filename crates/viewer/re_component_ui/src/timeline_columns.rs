@@ -1,12 +1,12 @@
 use re_data_ui::item_ui::timeline_button;
 use re_log_types::TimelineName;
 use re_sdk_types::blueprint::components::TimelineColumn;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 use crate::visible_dnd::visible_dnd;
 
 pub fn edit_or_view_columns_singleline(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TimelineColumn>>,
 ) -> egui::Response {
@@ -21,7 +21,7 @@ pub fn edit_or_view_columns_singleline(
 }
 
 pub fn edit_or_view_columns_multiline(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TimelineColumn>>,
 ) -> egui::Response {
@@ -32,27 +32,29 @@ pub fn edit_or_view_columns_multiline(
             .map(|col| timeline_button(ctx, ui, &TimelineName::new(&col.timeline)))
             .reduce(|a, b| a.union(b))
             .unwrap_or_else(|| ui.weak("Empty")),
-        MaybeMutRef::MutRef(columns) => {
-            // Add new timelines to the end of the UI, if there is any edit
-            // these will be written to the component.
-            let extra_columns = ctx
-                .recording()
-                .timelines()
-                .values()
-                .filter(|timeline| {
-                    columns
-                        .iter()
-                        .all(|col| col.timeline.as_str() != timeline.name().as_str())
-                })
-                .map(|timeline| {
-                    TimelineColumn(re_sdk_types::blueprint::datatypes::TimelineColumn {
-                        visible: false.into(),
-                        timeline: timeline.name().as_str().into(),
-                    })
-                })
-                .collect::<Vec<_>>();
 
-            columns.extend(extra_columns);
+        MaybeMutRef::MutRef(columns) => {
+            if let Some(recording) = ctx.active_recording() {
+                // Add new timelines to the end of the UI, if there is any edit
+                // these will be written to the component.
+                let extra_columns = recording
+                    .timelines()
+                    .values()
+                    .filter(|timeline| {
+                        columns
+                            .iter()
+                            .all(|col| col.timeline.as_str() != timeline.name().as_str())
+                    })
+                    .map(|timeline| {
+                        TimelineColumn(re_sdk_types::blueprint::datatypes::TimelineColumn {
+                            visible: false.into(),
+                            timeline: timeline.name().as_str().into(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
+                columns.extend(extra_columns);
+            }
 
             visible_dnd(
                 ui,

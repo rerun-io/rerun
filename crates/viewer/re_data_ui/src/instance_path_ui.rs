@@ -10,7 +10,7 @@ use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ArchetypeName, Component as _, ComponentDescriptor, components};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
-use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
+use re_viewer_context::{HoverHighlight, Item, StoreViewContext, UiLayout};
 
 use super::DataUi;
 use crate::{
@@ -22,14 +22,7 @@ use crate::{
 const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
 
 impl DataUi for InstancePath {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
-    ) {
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         re_tracing::profile_function!();
 
         let Self {
@@ -37,10 +30,11 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let components = db
+        let components = ctx
+            .db
             .storage_engine()
             .store()
-            .all_components_on_timeline(&query.timeline(), entity_path);
+            .all_components_on_timeline(&ctx.timeline_name(), entity_path);
 
         let Some(unordered_components) = components else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
@@ -48,14 +42,14 @@ impl DataUi for InstancePath {
                 ui,
                 format!(
                     "{self} has no own components on timeline {:?}, but its children do",
-                    query.timeline()
+                    ctx.timeline_name()
                 ),
             );
             return;
         };
 
         let component_descriptors: Vec<ComponentDescriptor> = {
-            let storage_engine = db.storage_engine();
+            let storage_engine = ctx.db.storage_engine();
             let store = storage_engine.store();
             unordered_components
                 .iter()
@@ -65,12 +59,12 @@ impl DataUi for InstancePath {
         };
 
         let components_by_archetype = crate::sorted_component_list_by_archetype_for_ui(
-            ctx.reflection(),
+            ctx.app_ctx.reflection,
             component_descriptors.iter().cloned(),
         );
 
-        let query_results = db.storage_engine().cache().latest_all(
-            query,
+        let query_results = ctx.db.storage_engine().cache().latest_all(
+            &ctx.query(),
             entity_path,
             unordered_components.iter().copied(),
         );
@@ -82,8 +76,6 @@ impl DataUi for InstancePath {
             ui,
             ui_layout,
             self,
-            query,
-            db,
             &components_by_archetype,
             &query_results,
         );
@@ -104,34 +96,26 @@ impl DataUi for InstancePath {
                 .collect_vec();
 
             for (descr, shared) in &all_components {
-                if let Some(data) = ExtraDataUi::from_components(
-                    ctx,
-                    query,
-                    entity_path,
-                    descr,
-                    shared,
-                    &all_components,
-                ) {
-                    data.data_ui(ctx, ui, ui_layout, query, entity_path);
+                if let Some(data) =
+                    ExtraDataUi::from_components(ctx, entity_path, descr, shared, &all_components)
+                {
+                    data.data_ui(ctx, ui, ui_layout, entity_path);
                 }
             }
         }
 
-        if any_missing_chunks && db.can_fetch_chunks_from_redap() {
+        if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
             // TODO(RR-3670): figure out how to handle missing chunks
             ui.loading_indicator("Fetching chunks from redap");
         }
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn instance_path_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     instance_path: &InstancePath,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
     components_by_archetype: &ArchetypeComponentMap,
     query_results: &LatestAllResults,
 ) {
@@ -158,8 +142,6 @@ fn instance_path_ui(
                     ui,
                     ui_layout,
                     instance_path,
-                    query,
-                    db,
                     components_by_archetype,
                     query_results,
                 );
@@ -170,8 +152,6 @@ fn instance_path_ui(
                     ui,
                     ui_layout,
                     instance_path,
-                    query,
-                    db,
                     components_by_archetype,
                     query_results,
                 )
@@ -206,8 +186,6 @@ fn instance_path_ui(
                 ui,
                 ui_layout,
                 instance_path,
-                query,
-                db,
                 components_by_archetype,
                 query_results,
             );
@@ -217,14 +195,11 @@ fn instance_path_ui(
 
 /// Show the value of a single instance (e.g. a point in a point cloud),
 /// focusing only on the components that are different between different points.
-#[expect(clippy::too_many_arguments)]
 fn try_summary_ui_for_tooltip(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     instance_path: &InstancePath,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
     components_by_archetype: &ArchetypeComponentMap,
     query_results: &LatestAllResults,
 ) -> Result<(), ()> {
@@ -274,8 +249,6 @@ fn try_summary_ui_for_tooltip(
         ui,
         ui_layout,
         instance_path,
-        query,
-        db,
         &instanced_components_by_archetype,
         query_results,
     );
@@ -293,14 +266,11 @@ fn try_summary_ui_for_tooltip(
     Ok(())
 }
 
-#[expect(clippy::too_many_arguments)]
 fn component_list_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     instance_path: &InstancePath,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
     components_by_archetype: &ArchetypeComponentMap,
     query_results: &LatestAllResults,
 ) {
@@ -347,8 +317,6 @@ fn component_list_ui(
                             ui,
                             ui_layout,
                             instance_path,
-                            query,
-                            db,
                             archetype_components,
                             component_descr,
                             hits,
@@ -365,7 +333,7 @@ fn component_list_ui(
                     // Maybe there _were_ data, but it has been GCed.
                     // Maybe there _will be_ data, once we have loaded it.
                     let any_missing_chunks = !query_results.missing_virtual.is_empty();
-                    if any_missing_chunks && db.can_fetch_chunks_from_redap() {
+                    if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
                         ui.loading_indicator("Fetching chunks from redap");
                     } else {
                         ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
@@ -378,12 +346,10 @@ fn component_list_ui(
 
 #[expect(clippy::too_many_arguments)]
 fn component_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     instance_path: &InstancePath,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
     archetype_components: &[ComponentDescriptor],
     component_descr: &ComponentDescriptor,
     hits: &LatestAllComponentResults,
@@ -403,8 +369,11 @@ fn component_ui(
     let mut list_item = ui.list_item().interactive(interactive);
 
     if interactive {
-        let is_hovered =
-            ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+        let is_hovered = ctx
+            .app_ctx
+            .selection_state()
+            .highlight_for_ui_element(&item)
+            == HoverHighlight::Hovered;
         list_item = list_item.force_hovered(is_hovered);
     }
 
@@ -425,7 +394,6 @@ fn component_ui(
 
         ExtraDataUi::from_components(
             ctx,
-            query,
             entity_path,
             component_descr,
             &unit,
@@ -450,23 +418,28 @@ fn component_ui(
                 instance: *instance,
                 hits,
             }
-            .data_ui(ctx, ui, UiLayout::List, query, db);
+            .data_ui(ctx, ui, UiLayout::List);
         });
 
     if let Some(extra_data_ui) = &extra_data_ui
         && ui_layout == UiLayout::SelectionPanel
     {
         content = extra_data_ui
-            .add_inline_buttons(ctx, MainThreadToken::from_egui_ui(ui), entity_path, content)
+            .add_inline_buttons(
+                ctx.app_ctx,
+                MainThreadToken::from_egui_ui(ui),
+                entity_path,
+                content,
+            )
             .with_always_show_buttons(true);
     }
 
     let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
         if let Some(component_type) = component_descr.component_type {
-            component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+            component_type.data_ui(ctx, ui, UiLayout::Tooltip);
         }
 
-        if let Some(column) = db.storage_engine().store().resolve_component_selector(
+        if let Some(column) = ctx.db.storage_engine().store().resolve_component_selector(
             &re_sorbet::ComponentColumnSelector::from_descriptor(
                 entity_path.clone(),
                 component_descr,
@@ -482,7 +455,8 @@ fn component_ui(
     });
 
     if interactive {
-        ctx.handle_select_hover_drag_interactions(&response, item, false);
+        ctx.app_ctx
+            .handle_select_hover_drag_interactions(&response, item, false);
     }
 }
 

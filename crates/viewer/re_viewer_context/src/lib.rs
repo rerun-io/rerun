@@ -4,6 +4,7 @@
 
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
+mod active_store_context;
 mod annotations;
 mod app_context;
 mod app_options;
@@ -30,8 +31,8 @@ mod recording_or_table;
 mod route;
 mod selection_state;
 mod storage_context;
-mod store_context;
 pub mod store_hub;
+mod store_view_context;
 mod tables;
 mod tensor;
 mod time_control;
@@ -47,6 +48,7 @@ mod visitor_flow_control;
 
 pub use re_ui::UiLayout;
 
+pub use self::active_store_context::ActiveStoreContext;
 pub use self::annotations::{
     AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
     ResolvedAnnotationInfos,
@@ -99,8 +101,8 @@ pub use self::selection_state::{
     SelectionHighlight,
 };
 pub use self::storage_context::StorageContext;
-pub use self::store_context::StoreContext;
 pub use self::store_hub::StoreHub;
+pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
