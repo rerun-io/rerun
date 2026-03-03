@@ -185,6 +185,7 @@ impl ListItemContent for PropertyContent<'_> {
             buttons,
         } = *self;
 
+        let content_id_salt = egui::Id::new(label.text());
         let tokens = ui.tokens();
 
         // │                                                                              │
@@ -303,6 +304,7 @@ impl ListItemContent for PropertyContent<'_> {
         {
             let mut child_ui = ui.new_child(
                 egui::UiBuilder::new()
+                    .id_salt(content_id_salt)
                     .max_rect(value_rect)
                     .layout(egui::Layout::left_to_right(egui::Align::Center)),
             );
