@@ -4,6 +4,38 @@
 ## 0.31.0 - (UNRELEASED)
 
 
+## [0.30.1](https://github.com/rerun-io/rerun/compare/0.30.0...0.30.1)  - 2026-03-04
+
+### ✨ Overview & highlights
+
+TODO: write something about this patch
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Allow re-registering the same blueprint to a dataset [cafbec9](https://github.com/rerun-io/rerun/commit/cafbec9b874aedad35e48da14a709f5205571aab)
+- Fix `using_index_value` not accepting pyarrow data of the correct types [c59df09](https://github.com/rerun-io/rerun/commit/c59df09001094f6b494039ec13ab6cd35f97438e)
+
+#### 🪳 Bug fixes
+- Selection panel: show all values at the latest time stamp [36ff7ff](https://github.com/rerun-io/rerun/commit/36ff7ff8c6c6ab1e03696a35fb9a181885ea3073)
+- Gracefully handle Rrd Manifest failures [f14e343](https://github.com/rerun-io/rerun/commit/f14e343fc09a481e76f8898d8fbfe987a4161b80)
+- Fix docs urls being loaded as data sources [3eb98db](https://github.com/rerun-io/rerun/commit/3eb98dbbb4ade0478ba333e05f02fb7bb942e989)
+- Fix: fix clicking names of color maps [700b590](https://github.com/rerun-io/rerun/commit/700b590dca0f658b750197f9be5b9bc3495b9dfd)
+- Fix rare ui id conflict in list item content [352f7c8](https://github.com/rerun-io/rerun/commit/352f7c8b5b659fa815d3bc436c54b6d28ca05396)
+- Fix drag'n'drop issue on web [956ed91](https://github.com/rerun-io/rerun/commit/956ed9185dd952bad4fc64b9ec8bad9980fa3b45)
+
+#### 🌁 Viewer improvements
+- Limit number of plots only for non-builtin components and increase the limit [f4fb62b](https://github.com/rerun-io/rerun/commit/f4fb62b5c87a587fc2709c583734980a5b830b36)
+
+#### 📚 Docs
+- Corrected the docs example for the `DynamicArchetype` [32c37e8](https://github.com/rerun-io/rerun/commit/32c37e855b9ad2a99f38f6d63b456fc4843de179)
+
+#### 🖼 UI improvements
+- Make arrow values expandable if they don't fit [4edd93e](https://github.com/rerun-io/rerun/commit/4edd93e30d2457d90a344cf107ca96e79a3ba083)
+
+#### 🧢 MCAP
+- Support also "sec" & "nsec" in `TimeSpecToNanos` [31c9a43](https://github.com/rerun-io/rerun/commit/31c9a4388d8ec3dbcd2469ebdd26190ae5459a3b)
+
 
 ## [0.30.0](https://github.com/rerun-io/rerun/compare/0.29.2...0.30.0) - 2026-02-25 - plot any scalar & on-demand streaming
 
@@ -168,7 +200,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - notebook: Re-export viewer event types [4c7d978](https://github.com/rerun-io/rerun/commit/4c7d97826a284371291155a5bb67359fb025b3de)
 - Add `entity_paths()`, `archetypes()`, and `component_types()` methods to `Schema` [015f1fc](https://github.com/rerun-io/rerun/commit/015f1fc22c6aa8b7af3b42fecf6feaf81dff2ef0)
 - Error when querying an unknown index [74a27df](https://github.com/rerun-io/rerun/commit/74a27dfb1c1257d6edbabbf42f28afe8bb043d2b)
-- Rename `rerun-sdk[datafusion]` to `rerun-sdk[dataplatform]` and add pandas dependency [b82cd06](https://github.com/rerun-io/rerun/commit/b82cd060273a20ce2a5b99b3b591bce654182710)
+- Rename `rerun-sdk[datafusion]` to `rerun-sdk[dataplatform]` and add pandas dependency [b82cd06](https://github.com/rerun-io/rerun/commit/b82cd060273a20ce2a5b99b3b591bce654182710) <!-- NOLINT -->
 - Add (and document) time range and selection support to `segment_url` [b2e7eff](https://github.com/rerun-io/rerun/commit/b2e7eff71b53e75d3a6d34c1804773ccc483f648)
 
 #### 🦀 Rust API
@@ -195,7 +227,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Fix NV12/YUYV ROS2 images being incorrectly loaded as depth [04beb77](https://github.com/rerun-io/rerun/commit/04beb777f4a49e6f720b09207fb5873ae22dacc0)
 - Don't include redo-buffer when saving blueprints [85cc4f9](https://github.com/rerun-io/rerun/commit/85cc4f96e00fb5b9b4a68e6249917832c9c7abc3)
 - Address issue where `.dae` with multiple triangle groups is not rendered [83e96bf](https://github.com/rerun-io/rerun/commit/83e96bf585dc7e9f708af6952d506e8013959078)
-- Don't reset video player on keyframe boundrary for AV1 [3bcd9b8](https://github.com/rerun-io/rerun/commit/3bcd9b87d02b1af80e3bfb7c4ad42d6483f0d274)
+- Don't reset video player on keyframe boundary for AV1 [3bcd9b8](https://github.com/rerun-io/rerun/commit/3bcd9b87d02b1af80e3bfb7c4ad42d6483f0d274)
 - Fix mono8/mono16 image channel classification [#12660](https://github.com/rerun-io/rerun/pull/12660)
 - Set AR for wasm development build on macOS [7945601](https://github.com/rerun-io/rerun/commit/7945601bb1b162fc09e79640419a0216c9d14e8e)
 - Fix interactions going through popups to the timepanel [1efc8c1](https://github.com/rerun-io/rerun/commit/1efc8c131d4f13c3238972c7bcf7957e2685833e)
@@ -235,7 +267,7 @@ For more details, see the [custom visualizer example](https://github.com/rerun-i
 - Add `InterpolationMode` component for step function rendering [#12657](https://github.com/rerun-io/rerun/pull/12657) (thanks [@vfilter](https://github.com/vfilter)!)
 - Allow loading extensionless http urls via magic bytes detection [daf7a35](https://github.com/rerun-io/rerun/commit/daf7a35ebd5b25a3b53c7fda9d4b6c77dee0e705)
 - Fixes performance issue of too many time series plots [a74b382](https://github.com/rerun-io/rerun/commit/a74b382b9ce0b413f14d96d4a2f264e1f4b2abe8)
-- Suppport `(U)Int16` in time series plots [6bb58e4](https://github.com/rerun-io/rerun/commit/6bb58e489ba76c1744599e222180f9a358720933)
+- Support `(U)Int16` in time series plots [6bb58e4](https://github.com/rerun-io/rerun/commit/6bb58e489ba76c1744599e222180f9a358720933)
 
 #### 🗄️ OSS server
 - Test handling of schema conflict and make OSS server compliant [c618910](https://github.com/rerun-io/rerun/commit/c6189106664d039a28312f1ac3007de99c979dc5)
