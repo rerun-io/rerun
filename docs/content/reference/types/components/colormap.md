@@ -72,7 +72,7 @@ It interpolates from white to blue to purple to red to orange and back to white.
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

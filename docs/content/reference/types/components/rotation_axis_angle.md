@@ -14,10 +14,10 @@ angle is zero in which case it is treated as an identity.
 
 ## Arrow datatype
 ```
-Struct {
-    axis: FixedSizeList<3, float32>
-    angle: float32
-}
+Struct(
+    "axis": non-null FixedSizeList(3 x non-null Float32)
+    "angle": non-null Float32
+)
 ```
 
 ## API reference links

@@ -38,7 +38,6 @@ pub use outlines::{
 pub use query::{
     DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
-use re_arrow_util::DisplayDataType;
 use re_log_types::external::arrow;
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
@@ -64,8 +63,8 @@ pub enum ComponentMappingError {
     /// Failed to cast component data to target datatype.
     #[error("Failed to cast from {source_datatype} to {target_datatype}: {err}")]
     CastFailed {
-        source_datatype: DisplayDataType,
-        target_datatype: DisplayDataType,
+        source_datatype: arrow::datatypes::DataType,
+        target_datatype: arrow::datatypes::DataType,
         err: Arc<arrow::error::ArrowError>,
     },
 

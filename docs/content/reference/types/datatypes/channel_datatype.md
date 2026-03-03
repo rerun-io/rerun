@@ -44,7 +44,7 @@ How individual color channel components are encoded.
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

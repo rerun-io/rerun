@@ -13,7 +13,7 @@ This is only used for visualization purposes, and does not affect the projection
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

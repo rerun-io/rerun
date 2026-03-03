@@ -11,7 +11,7 @@ A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude an
 
 ## Arrow datatype
 ```
-FixedSizeList<2, float64>
+FixedSizeList(2 x non-null Float64)
 ```
 
 ## API reference links

@@ -23,7 +23,7 @@ From perspective of `parent/child`, the `parent` entity is translated 1 unit alo
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

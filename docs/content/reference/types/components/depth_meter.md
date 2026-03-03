@@ -19,7 +19,7 @@ In 3D views on the other hand, this affects where the points of the point cloud 
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

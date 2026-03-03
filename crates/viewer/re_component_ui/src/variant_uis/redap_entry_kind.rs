@@ -19,12 +19,7 @@ pub fn redap_entry_kind(
     let value = array
         .as_any()
         .downcast_ref::<arrow::array::Int32Array>()
-        .ok_or_else(|| {
-            format!(
-                "unsupported arrow datatype: {}",
-                re_arrow_util::format_data_type(array.data_type())
-            )
-        })?
+        .ok_or_else(|| format!("unsupported arrow datatype: {}", array.data_type()))?
         .value(0);
 
     let kind = EntryKind::try_from(value);

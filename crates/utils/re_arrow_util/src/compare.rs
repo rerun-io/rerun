@@ -2,8 +2,6 @@ use anyhow::{Context as _, bail, ensure};
 use half::f16;
 use itertools::izip;
 
-use crate::format_data_type;
-
 /// Are two arrays equal, ignoring small numeric differences?
 ///
 /// Returns `Ok` if similar.
@@ -38,7 +36,7 @@ pub fn ensure_similar(
 
         for (i, (left_buff, right_buff)) in izip!(left_buffers, right_buffers).enumerate() {
             ensure_buffers_equal(left_buff, right_buff, data_type)
-                .with_context(|| format!("Datatype {}", format_data_type(data_type)))
+                .with_context(|| format!("Datatype {data_type}"))
                 .with_context(|| format!("Buffer {i}"))?;
         }
     }
@@ -52,7 +50,7 @@ pub fn ensure_similar(
 
         for (i, (left_child, right_child)) in izip!(left_children, right_children).enumerate() {
             ensure_similar(left_child, right_child)
-                .with_context(|| format!("Datatype {}", format_data_type(data_type)))
+                .with_context(|| format!("Datatype {data_type}"))
                 .with_context(|| format!("Child {i}"))?;
         }
     }

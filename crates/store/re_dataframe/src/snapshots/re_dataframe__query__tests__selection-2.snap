@@ -5,7 +5,7 @@ expression: DisplayRB(dataframe)
 ┌──────────────────────┬──────────────────────┬────────────────────────────────────────┐
 │ frame_nr             ┆ frame_nr             ┆ ATimeColumnThatDoesntExist             │
 │ ---                  ┆ ---                  ┆ ---                                    │
-│ type: nullable i64   ┆ type: nullable i64   ┆ type: nullable null                    │
+│ type: Int64          ┆ type: Int64          ┆ type: Null                             │
 │ index_name: frame_nr ┆ index_name: frame_nr ┆ index_name: ATimeColumnThatDoesntExist │
 │ kind: index          ┆ kind: index          ┆ is_sorted: true                        │
 │                      ┆                      ┆ kind: index                            │

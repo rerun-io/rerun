@@ -11,7 +11,7 @@ A string-based ID representing a node in a graph.
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links

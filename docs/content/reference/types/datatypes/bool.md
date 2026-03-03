@@ -8,7 +8,7 @@ A single boolean.
 
 ## Arrow datatype
 ```
-boolean
+Boolean
 ```
 
 ## API reference links

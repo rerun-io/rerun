@@ -11,7 +11,7 @@ A display name, typically for an entity or a item like a plot series.
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links

@@ -448,7 +448,7 @@ fn component_ui(
             re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
                 ui.list_item_flat_noninteractive(PropertyContent::new("Data type").value_text(
                     // TODO(#11071): use re_arrow_ui to format the datatype here
-                    re_arrow_util::format_data_type(&column.store_datatype),
+                    column.store_datatype.to_string(),
                 ));
             });
         }

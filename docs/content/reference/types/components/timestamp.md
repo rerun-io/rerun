@@ -13,7 +13,7 @@ Should be an absolute time, i.e. relative to Unix Epoch.
 
 ## Arrow datatype
 ```
-int64
+Int64
 ```
 
 ## API reference links

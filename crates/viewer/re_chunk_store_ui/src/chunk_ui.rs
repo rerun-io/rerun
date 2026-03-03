@@ -89,7 +89,7 @@ impl ChunkUi {
                 (
                     component,
                     // TODO(#11071): use re_arrow_ui to format the datatype here
-                    re_arrow_util::format_data_type(column.list_array.data_type()),
+                    column.list_array.data_type().to_string(),
                 )
             })
             .collect::<BTreeMap<_, _>>();

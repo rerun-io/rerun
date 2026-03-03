@@ -8,7 +8,7 @@ A 64bit unsigned integer.
 
 ## Arrow datatype
 ```
-uint64
+UInt64
 ```
 
 ## API reference links

@@ -14,7 +14,7 @@ Unless otherwise specified, the default value is 1.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

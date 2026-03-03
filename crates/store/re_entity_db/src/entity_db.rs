@@ -253,10 +253,7 @@ impl EntityDb {
                 {
                     let name = component_type
                         .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
-                    text.push_str(&format!(
-                        "{component_indent}{name}: {}\n",
-                        re_arrow_util::format_data_type(&datatype)
-                    ));
+                    text.push_str(&format!("{component_indent}{name}: {datatype}\n"));
                 } else {
                     // Fallback to component identifier
                     text.push_str(&format!("{component_indent}{component}\n"));
@@ -1377,10 +1374,12 @@ mod tests {
             db.add_chunk(&Arc::new(chunk))?;
         }
 
-        assert_eq!(
-            db.format_with_components(),
-            "/parent\n  /parent/child1\n    /parent/child1/grandchild\n      example.MyPoint: Struct[2]\n"
-        );
+        insta::assert_snapshot!(db.format_with_components(), @r###"
+        /parent
+          /parent/child1
+            /parent/child1/grandchild
+              example.MyPoint: Struct("x": non-null Float32, "y": non-null Float32)
+        "###);
 
         Ok(())
     }

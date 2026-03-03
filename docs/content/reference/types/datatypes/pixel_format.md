@@ -99,7 +99,7 @@ the horizontal resolution of the Y plane.
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

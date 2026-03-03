@@ -27,7 +27,7 @@ The step occurs at the midpoint of the interval.
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

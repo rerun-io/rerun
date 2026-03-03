@@ -13,7 +13,7 @@ Non interactive components are still visible, but mouse interactions in the view
 
 ## Arrow datatype
 ```
-boolean
+Boolean
 ```
 
 ## API reference links

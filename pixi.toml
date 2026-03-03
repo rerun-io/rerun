@@ -324,8 +324,8 @@ meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisea
 # Update the results of `insta` and `kittest` snapshot regression tests
 rs-update-snapshot-tests = "INSTA_UPDATE=always UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet --no-fail-fast"
 
-# Update the Python-based snapshot tests
-py-update-snapshot-tests = { cmd = "uv run pytest --inline-snapshot=fix", depends-on = [
+# Update the Python-based snapshot tests (inline-snapshot for inline snapshots, --snapshot-update for syrupy .ambr files)
+py-update-snapshot-tests = { cmd = "uv run pytest -vv rerun_py/tests --inline-snapshot=fix --snapshot-update", depends-on = [
   "py-build",
 ] }
 

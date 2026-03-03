@@ -30,7 +30,7 @@ The surface of the shape is filled in with a solid color. No lines are drawn.
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

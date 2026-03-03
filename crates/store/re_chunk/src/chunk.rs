@@ -9,7 +9,7 @@ use arrow::array::{
 use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
-use re_arrow_util::{ArrowArrayDowncastRef as _, DisplayDataType, widen_binary_arrays};
+use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log::debug_assert;
 use re_log_types::{
@@ -787,7 +787,7 @@ pub enum TimeColumnError {
     ContainsNulls,
 
     #[error("Unsupported data type : {0}")]
-    UnsupportedDataType(DisplayDataType),
+    UnsupportedDataType(arrow::datatypes::DataType),
 }
 
 impl Chunk {
@@ -1164,7 +1164,7 @@ impl TimeColumn {
             Ok((times.values().clone(), times.nulls().cloned()))
         } else {
             Err(TimeColumnError::UnsupportedDataType(
-                array.data_type().clone().into(),
+                array.data_type().clone(),
             ))
         }
     }

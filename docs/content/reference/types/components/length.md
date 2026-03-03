@@ -14,7 +14,7 @@ axis or part of the entity this is the length of.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links
