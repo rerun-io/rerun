@@ -75,22 +75,39 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
     }
 }
 
-/// Converts `StructArray` of timestamps with `seconds` (i64) and `nanos` (i32) fields
+/// Converts `StructArray` of timestamps with `seconds`/`nanos` or `sec`/`nsec` fields (i64/i32)
 /// to `Int64Array` containing the corresponding total nanoseconds timestamps.
 #[derive(Default)]
 pub struct TimeSpecToNanos {}
+
+impl TimeSpecToNanos {
+    /// Extracts a struct field from different possible field name variants,
+    /// by trying each name in order. Casts to the target primitive type.
+    fn get_field_from_variants<TargetType: arrow::array::ArrowPrimitiveType>(
+        source: &StructArray,
+        field_names: &[&str],
+    ) -> Result<arrow::array::PrimitiveArray<TargetType>, Error> {
+        for &name in field_names {
+            if let Ok(array_ref) = reshape::GetField::new(name).transform(source) {
+                let casted = arrow::compute::cast(&array_ref, &TargetType::DATA_TYPE)?;
+                return DowncastRef::<TargetType>::new().transform(&casted);
+            }
+        }
+        Err(Error::FieldNotFound {
+            field_name: field_names.join(" | "),
+            available_fields: source.fields().iter().map(|f| f.name().clone()).collect(),
+        })
+    }
+}
 
 impl Transform for TimeSpecToNanos {
     type Source = StructArray;
     type Target = Int64Array;
 
     fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
-        let seconds_array = reshape::GetField::new("seconds")
-            .then(DowncastRef::<Int64Type>::new())
-            .transform(source)?;
-        let nanos_array = reshape::GetField::new("nanos")
-            .then(DowncastRef::<Int32Type>::new())
-            .transform(source)?;
+        let seconds_array =
+            Self::get_field_from_variants::<Int64Type>(source, &["seconds", "sec"])?;
+        let nanos_array = Self::get_field_from_variants::<Int32Type>(source, &["nanos", "nsec"])?;
 
         Ok(arrow::compute::try_binary(
             &seconds_array,
@@ -309,6 +326,48 @@ mod tests {
             Some(3_250_000_000),
             None,
         ]);
+        assert_eq!(output_array, expected_array);
+    }
+
+    /// Tests that timespec structs with `sec`/`nsec` field names work too.
+    #[test]
+    fn test_timespec_to_nanos_sec_nsec() {
+        let seconds_field = Arc::new(Field::new("sec", DataType::Int64, true));
+        let nanos_field = Arc::new(Field::new("nsec", DataType::Int32, true));
+
+        let seconds_array = Arc::new(Int64Array::from(vec![Some(1), Some(2)]));
+        let nanos_array = Arc::new(Int32Array::from(vec![Some(500_000_000), Some(0)]));
+
+        let struct_array = StructArray::new(
+            vec![seconds_field, nanos_field].into(),
+            vec![seconds_array, nanos_array],
+            None,
+        );
+        let output_array = TimeSpecToNanos::default()
+            .transform(&struct_array)
+            .expect("transformation failed");
+        let expected_array = Int64Array::from(vec![Some(1_500_000_000), Some(2_000_000_000)]);
+        assert_eq!(output_array, expected_array);
+    }
+
+    /// Tests that timespec with uint32 seconds and nanos fields are cast correctly.
+    #[test]
+    fn test_timespec_to_nanos_uint32() {
+        let seconds_field = Arc::new(Field::new("sec", DataType::UInt32, false));
+        let nanos_field = Arc::new(Field::new("nsec", DataType::UInt32, false));
+
+        let seconds_array = Arc::new(UInt32Array::from(vec![1u32, 2]));
+        let nanos_array = Arc::new(UInt32Array::from(vec![500_000_000u32, 0]));
+
+        let struct_array = StructArray::new(
+            vec![seconds_field, nanos_field].into(),
+            vec![seconds_array, nanos_array],
+            None,
+        );
+        let output_array = TimeSpecToNanos::default()
+            .transform(&struct_array)
+            .expect("transformation failed");
+        let expected_array = Int64Array::from(vec![1_500_000_000i64, 2_000_000_000]);
         assert_eq!(output_array, expected_array);
     }
 

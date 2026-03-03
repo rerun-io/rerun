@@ -141,7 +141,7 @@ pub enum Op {
     /// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
     StringSuffixNonEmpty(String),
 
-    /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
+    /// Converts timestamp structs with `seconds`/`nanos` or `sec`/`nsec` fields to total nanoseconds.
     TimeSpecToNanos,
 
     /// A user-defined arbitrary function to convert a component column.
@@ -236,7 +236,7 @@ impl Op {
         Self::StringSuffixNonEmpty(suffix.into())
     }
 
-    /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
+    /// Converts timestamp structs with `seconds`/`nanos` or `sec`/`nsec` fields to total nanoseconds.
     pub fn time_spec_to_nanos() -> Self {
         Self::TimeSpecToNanos
     }
