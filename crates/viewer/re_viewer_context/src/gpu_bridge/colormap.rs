@@ -78,14 +78,25 @@ fn colormap_variant_ui(
 
     let mut response = list_item.show_flat(
         ui,
-        list_item::CustomContent::new(|ui, _| {
+        list_item::CustomContent::new(|ui, context| {
             if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
                 re_log::error_once!("Failed to paint colormap preview: {err}");
             }
 
             ui.add_space(8.0);
 
-            ui.label(option.to_string());
+            // Paint text directly (like `LabelContent` does) to avoid creating a
+            // widget interaction that interferes with the ListItem's click handling.
+            let text_color = context.visuals.text_color();
+            let font_id = egui::TextStyle::Body.resolve(ui.style());
+            let galley = ui
+                .painter()
+                .layout_no_wrap(option.to_string(), font_id, text_color);
+            let (rect, _) = ui.allocate_at_least(galley.size(), egui::Sense::hover());
+            let pos = egui::Align2::LEFT_CENTER
+                .align_size_within_rect(galley.size(), rect)
+                .min;
+            ui.painter().galley(pos, galley, text_color);
         }),
     );
 
