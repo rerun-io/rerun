@@ -85,8 +85,8 @@ fn colormap_variant_ui(
 
             ui.add_space(8.0);
 
-            // Paint text directly (like `LabelContent` does) to avoid creating a
-            // widget interaction that interferes with the ListItem's click handling.
+            // Paint text directly to avoid creating a widget interaction that
+            // interferes with the ListItem's click handling.
             let text_color = context.visuals.text_color();
             let font_id = egui::TextStyle::Body.resolve(ui.style());
             let galley = ui
