@@ -389,7 +389,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.timeline_histograms(),
+                        entity_db,
                         ui,
                         time_commands,
                     );
@@ -398,19 +398,13 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let timeline_histograms = entity_db.timeline_histograms();
-
             if has_more_than_one_time_point {
                 self.time_control_ui
                     .play_pause_ui(time_ctrl, ui, time_commands);
             }
 
-            self.time_control_ui.timeline_selector_ui(
-                time_ctrl,
-                timeline_histograms,
-                ui,
-                time_commands,
-            );
+            self.time_control_ui
+                .timeline_selector_ui(time_ctrl, entity_db, ui, time_commands);
 
             if has_more_than_one_time_point {
                 self.time_control_ui
@@ -1307,12 +1301,8 @@ impl TimePanel {
                     self.time_control_ui.fps_ui(time_ctrl, ui, time_commands);
                 });
                 ui.horizontal(|ui| {
-                    self.time_control_ui.timeline_selector_ui(
-                        time_ctrl,
-                        db.timeline_histograms(),
-                        ui,
-                        time_commands,
-                    );
+                    self.time_control_ui
+                        .timeline_selector_ui(time_ctrl, db, ui, time_commands);
 
                     self.current_time_ui(store_ctx.app_options, time_ctrl, ui, time_commands);
 
@@ -1323,16 +1313,10 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let timeline_histograms = db.timeline_histograms();
-
             self.time_control_ui
                 .play_pause_ui(time_ctrl, ui, time_commands);
-            self.time_control_ui.timeline_selector_ui(
-                time_ctrl,
-                timeline_histograms,
-                ui,
-                time_commands,
-            );
+            self.time_control_ui
+                .timeline_selector_ui(time_ctrl, db, ui, time_commands);
             self.time_control_ui
                 .playback_speed_ui(time_ctrl, ui, time_commands);
             self.time_control_ui.fps_ui(time_ctrl, ui, time_commands);
@@ -1663,16 +1647,13 @@ fn initialize_time_ranges_ui(
 
     let mut time_range = Vec::new();
 
-    let timeline = store_ctx.timeline_name();
-    if let Some(times) = store_ctx.db.time_histogram(&timeline)
-        && let Some(time_type) = store_ctx.time_ctrl.time_type()
+    let timeline = store_ctx.time_ctrl.timeline_name();
+    if let Some(time_type) = store_ctx.time_ctrl.time_type()
+        && let Some(full_timeline_range) = store_ctx.db.time_range_for(timeline)
     {
-        // NOTE: `times` can be empty if a GC wiped everything.
-        if !times.is_empty() {
-            let timeline_axis = TimelineAxis::new(time_type, times);
-            time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
-            time_range.extend(timeline_axis.ranges);
-        }
+        let timeline_axis = TimelineAxis::new(time_type, &[full_timeline_range]);
+        time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
+        time_range.extend(timeline_axis.ranges);
     }
 
     TimeRangesUi::new(

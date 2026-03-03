@@ -1451,6 +1451,36 @@ impl TimeColumn {
             })
             .collect()
     }
+
+    /// Find the earliest time strictly after `after` in this time column.
+    pub fn find_next_time(&self, after: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t <= after.as_i64());
+            (idx < times.len()).then(|| TimeInt::new_temporal(times[idx]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t > after.as_i64())
+                .min()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
+
+    /// Find the latest time strictly before `before` in this time column.
+    pub fn find_prev_time(&self, before: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t < before.as_i64());
+            (idx > 0).then(|| TimeInt::new_temporal(times[idx - 1]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t < before.as_i64())
+                .max()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
 }
 
 impl Chunk {

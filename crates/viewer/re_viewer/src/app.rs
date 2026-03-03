@@ -604,7 +604,7 @@ impl App {
                 // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
                 // we want to diff state changes.
                 let response = time_ctrl.update(
-                    recording.timeline_histograms(),
+                    recording,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in,
@@ -630,7 +630,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.timeline_histograms(),
+                    bp_ctx.current_blueprint,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in: true,
@@ -871,7 +871,7 @@ impl App {
 
                         let response = time_ctrl.handle_time_commands(
                             Some(&blueprint_ctx),
-                            store_ctx.recording.timeline_histograms(),
+                            store_ctx.recording,
                             &time_commands,
                         );
 
@@ -890,7 +890,7 @@ impl App {
                             let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
                             let response = self.state.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
-                                target_store.timeline_histograms(),
+                                target_store,
                                 &time_commands,
                             );
 

@@ -890,11 +890,10 @@ impl TestContext {
                 } => {
                     self.with_blueprint_ctx(|blueprint_ctx, hub| {
                         let mut time_ctrl = self.time_ctrl.write();
-                        let timeline_histograms = hub
+                        let entity_db = hub
                             .store_bundle()
                             .get(&store_id)
-                            .expect("Invalid store id in `SystemCommand::TimeControlCommands`")
-                            .timeline_histograms();
+                            .expect("Invalid store id in `SystemCommand::TimeControlCommands`");
 
                         let blueprint_ctx =
                             Some(&blueprint_ctx).filter(|_| store_id.is_recording());
@@ -902,7 +901,7 @@ impl TestContext {
                         // We can ignore the response in the test context.
                         let res = time_ctrl.handle_time_commands(
                             blueprint_ctx,
-                            timeline_histograms,
+                            entity_db,
                             &time_commands,
                         );
 

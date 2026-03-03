@@ -9061,7 +9061,6 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_format",
- "re_int_histogram",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9151,19 +9150,6 @@ dependencies = [
  "tonic",
  "tonic-web",
  "tower-http",
-]
-
-[[package]]
-name = "re_int_histogram"
-version = "0.31.0-alpha.1+dev"
-dependencies = [
- "criterion",
- "insta",
- "mimalloc",
- "re_byte_size",
- "re_log",
- "smallvec",
- "static_assertions",
 ]
 
 [[package]]
@@ -10071,7 +10057,6 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
- "re_int_histogram",
  "re_log",
  "re_log_encoding",
  "re_log_types",

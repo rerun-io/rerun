@@ -1,7 +1,3 @@
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
-
-use re_entity_db::TimeHistogram;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
 use vec1::Vec1;
 
@@ -15,14 +11,17 @@ pub(crate) struct TimelineAxis {
 }
 
 impl TimelineAxis {
+    /// Create a new `TimelineAxis` from sorted, non-overlapping chunk time ranges.
+    ///
+    /// `chunk_ranges` must be non-empty, sorted by start time, and non-overlapping.
     #[inline]
-    pub fn new(time_type: TimeType, times: &TimeHistogram) -> Self {
+    pub fn new(time_type: TimeType, data_ranges: &[AbsoluteTimeRange]) -> Self {
         re_tracing::profile_function!();
-        assert!(!times.is_empty());
-        let gap_threshold = gap_size_heuristic(time_type, times);
+        assert!(!data_ranges.is_empty());
+        let gap_threshold = gap_size_heuristic(time_type, data_ranges);
 
         Self {
-            ranges: create_ranges(times, gap_threshold),
+            ranges: create_ranges(data_ranges, gap_threshold),
         }
     }
 
@@ -38,40 +37,56 @@ impl TimelineAxis {
 /// When looking at data recorded over hours, a few minutes of pause may be nothing.
 /// We also don't want to produce a timeline of only gaps.
 /// Finding a perfect heuristic is impossible, but we do our best!
-fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
+fn gap_size_heuristic(time_type: TimeType, chunk_ranges: &[AbsoluteTimeRange]) -> u64 {
     re_tracing::profile_function!();
 
-    assert!(!times.is_empty());
+    assert!(!chunk_ranges.is_empty());
 
-    if times.total_count() <= 2 {
+    let num_ranges = chunk_ranges.len();
+
+    if num_ranges <= 2 {
         return u64::MAX;
     }
 
-    let total_time_span = times.min_key().unwrap().abs_diff(times.max_key().unwrap());
+    let total_time_span = chunk_ranges
+        .first()
+        .expect("non-empty")
+        .min()
+        .as_i64()
+        .abs_diff(chunk_ranges.last().expect("non-empty").max().as_i64());
 
     if total_time_span == 0 {
         return u64::MAX;
     }
 
     // Don't collapse too many gaps, because then the timeline is all gaps!
-    let max_collapses = ((times.total_count() - 1) / 3).min(20) as usize;
+    let max_collapses = ((chunk_ranges.len() - 1) / 3).min(20);
 
     // We start off by a minimum gap size - any gap smaller than this will never be collapsed.
     // This is partially an optimization, and partially something that "feels right".
     let min_gap_size: u64 = match time_type {
         TimeType::Sequence => 9,
         TimeType::DurationNs | TimeType::TimestampNs => {
-            TimeInt::from_millis(100.try_into().unwrap()).as_i64() as _
+            TimeInt::from_millis(100.try_into().expect("100 fits in NonMinI64")).as_i64() as _
         }
     };
-    // Collect all gaps larger than our minimum gap size.
-    let mut gap_sizes =
-        collect_candidate_gaps(times, min_gap_size, max_collapses).unwrap_or_default();
+
+    // Collect all gaps between consecutive chunk ranges that are larger than our minimum.
+    let mut gap_sizes: Vec<u64> = chunk_ranges
+        .windows(2)
+        .inspect(|w| {
+            assert!(w[0].min <= w[0].max);
+            assert!(w[1].min <= w[1].max);
+        })
+        .inspect(|w| assert!(w[0].max < w[1].min, "{:?} < {:?}", w[0], w[1]))
+        .map(|w| w[0].max.as_i64().abs_diff(w[1].min.as_i64()))
+        .filter(|&gap| gap > min_gap_size)
+        .collect();
     gap_sizes.sort_unstable();
 
     // Only collapse gaps that take up a significant portion of the total time,
     // measured as the fraction of the total time that the gap represents.
-    let min_collapse_fraction = (2.0 / (times.total_count() - 1) as f64).max(0.35);
+    let min_collapse_fraction = (2.0 / (num_ranges - 1) as f64).max(0.35);
 
     let mut gap_threshold = u64::MAX;
     let mut uncollapsed_time = total_time_span;
@@ -92,79 +107,23 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     gap_threshold
 }
 
-/// Returns `None` to signal an abort.
-fn collect_candidate_gaps(
-    times: &TimeHistogram,
-    min_gap_size: u64,
-    max_collapses: usize,
-) -> Option<Vec<u64>> {
+/// Collapse any gaps larger or equal to the given threshold.
+fn create_ranges(
+    chunk_ranges: &[AbsoluteTimeRange],
+    gap_threshold: u64,
+) -> vec1::Vec1<AbsoluteTimeRange> {
     re_tracing::profile_function!();
-    // We want this to be fast, even when we have _a lot_ of times.
-    // `TimeHistogram::range` has a granularity argument:
-    // - if it make it too small, we get too many gaps and run very slow
-    // - if it is too large, we will miss gaps that could be important.
-    // So we start with a large granularity, and then we reduce it until we get enough gaps.
-    // This ensures a logarithmic runtime.
+    let first = chunk_ranges[0];
+    let mut ranges = vec1::vec1![first];
 
-    let max_gap_size = times.max_key().unwrap() - times.min_key().unwrap();
-    let mut granularity = max_gap_size as u64;
-
-    let mut gaps = collect_gaps_with_granularity(times, granularity, min_gap_size)?;
-    while gaps.len() < max_collapses && min_gap_size < granularity {
-        granularity /= 2;
-        gaps = collect_gaps_with_granularity(times, granularity, min_gap_size)?;
-    }
-    Some(gaps)
-}
-
-/// Returns `None` to signal an abort.
-fn collect_gaps_with_granularity(
-    times: &TimeHistogram,
-    granularity: u64,
-    min_gap_size: u64,
-) -> Option<Vec<u64>> {
-    re_tracing::profile_function!();
-
-    let mut non_gap_time_span = 0;
-
-    let mut gaps = vec![];
-    let mut last_range: Option<re_int_histogram::RangeI64> = None;
-
-    for (range, _count) in times.range(.., granularity) {
-        non_gap_time_span += range.length();
-
-        if let Some(last_range) = last_range {
-            let gap_size = last_range.max.abs_diff(range.min);
-            if min_gap_size < gap_size {
-                gaps.push(gap_size);
-            }
-        }
-        last_range = Some(range);
-    }
-
-    if min_gap_size * 100 < non_gap_time_span {
-        // If the gap is such a small fracion of the total time, we don't care about it,
-        // and we abort the gap-search, which is an important early-out.
-        return None;
-    }
-
-    Some(gaps)
-}
-
-/// Collapse any gaps larger or equals to the given threshold.
-fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<AbsoluteTimeRange> {
-    re_tracing::profile_function!();
-    let mut it = times.range(.., gap_threshold);
-    let first_range = it.next().unwrap().0;
-    let mut ranges = vec1::vec1![AbsoluteTimeRange::new(first_range.min, first_range.max,)];
-
-    for (new_range, _count) in it {
-        if ranges.last_mut().max().as_i64().abs_diff(new_range.min) < gap_threshold {
-            // join previous range:
-            ranges.last_mut().set_max(new_range.max);
+    for &range in &chunk_ranges[1..] {
+        if ranges.last().max().as_i64().abs_diff(range.min().as_i64()) < gap_threshold {
+            // Join with previous range:
+            let new_max = ranges.last().max().max(range.max());
+            ranges.last_mut().set_max(new_max);
         } else {
-            // new range:
-            ranges.push(AbsoluteTimeRange::new(new_range.min, new_range.max));
+            // New range:
+            ranges.push(range);
         }
     }
 
@@ -174,16 +133,16 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<Absolu
 #[cfg(test)]
 mod tests {
     use re_chunk_store::AbsoluteTimeRange;
-    use re_log_types::Timeline;
 
     use super::*;
 
     fn ranges(times: &[i64]) -> vec1::Vec1<AbsoluteTimeRange> {
-        let mut time_histogram = TimeHistogram::new(Timeline::log_tick());
-        for &time in times {
-            time_histogram.increment(time, 1);
-        }
-        TimelineAxis::new(TimeType::Sequence, &time_histogram).ranges
+        let mut chunk_ranges: Vec<AbsoluteTimeRange> = times
+            .iter()
+            .map(|&t| AbsoluteTimeRange::new(t, t))
+            .collect();
+        chunk_ranges.sort_by_key(|r| r.min());
+        TimelineAxis::new(TimeType::Sequence, &chunk_ranges).ranges
     }
 
     #[test]

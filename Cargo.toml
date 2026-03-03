@@ -107,7 +107,6 @@ re_case = { path = "crates/utils/re_case", version = "=0.31.0-alpha.1", default-
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.31.0-alpha.1", default-features = false }
 re_error = { path = "crates/utils/re_error", version = "=0.31.0-alpha.1", default-features = false }
 re_format = { path = "crates/utils/re_format", version = "=0.31.0-alpha.1", default-features = false }
-re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.31.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.31.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.31.0-alpha.1", default-features = false }
 re_mutex = { path = "crates/utils/re_mutex", version = "=0.31.0-alpha.1", default-features = false }
@@ -499,7 +498,6 @@ debug = false
 "re_format".debug = true
 "re_grpc_client".debug = true
 "re_grpc_server".debug = true
-"re_int_histogram".debug = true
 "re_integration_test".debug = true
 "re_log_channel".debug = true
 "re_log_encoding".debug = true

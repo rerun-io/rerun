@@ -5,6 +5,7 @@
 //!
 
 mod chunk_requests;
+mod data_meta_per_timeline;
 pub mod entity_db;
 pub mod entity_tree;
 mod ingestion_statistics;
@@ -12,7 +13,6 @@ mod instance_path;
 mod rrd_manifest_index;
 mod sorted_range_map;
 mod store_bundle;
-mod time_histogram_per_timeline;
 mod versioned_instance_path;
 
 #[doc(no_inline)]
@@ -26,7 +26,6 @@ pub use self::rrd_manifest_index::{
     ChunkPrefetchOptions, ChunkPromise, ChunkRequests, RequestInfo, RrdManifestIndex,
 };
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
-pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
 
 pub mod external {
