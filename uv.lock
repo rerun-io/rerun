@@ -4672,6 +4672,7 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "datafusion" },
+    { name = "pandas" },
     { name = "rerun-notebook" },
 ]
 datafusion = [
@@ -4708,6 +4709,7 @@ requires-dist = [
     { name = "inline-snapshot", marker = "extra == 'tests'", specifier = "==0.31.1" },
     { name = "numpy", specifier = ">=2" },
     { name = "opencv-python", marker = "extra == 'tests'", specifier = ">4.6" },
+    { name = "pandas", marker = "extra == 'all'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'datafusion'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'dataplatform'", specifier = ">=2" },
     { name = "pandas", marker = "extra == 'tests'", specifier = ">=2" },
