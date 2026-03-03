@@ -200,7 +200,7 @@ impl ColumnFilter {
             .with_body_default(self.field.name())
             .with_keyword(" ")
             .with(&TimestampFormatted::new(&self.filter, timestamp_format))
-            .into_job(ui.style());
+            .to_job(ui.style());
 
         atoms.push_right(layout_job);
 

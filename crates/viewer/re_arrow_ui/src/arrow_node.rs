@@ -76,9 +76,24 @@ impl<'a> ArrowNode<'a> {
         let data_type_ui = DataTypeUi::new(data_type);
 
         let item = ui.list_item();
+
         // We *don't* use index for the ID, since it might change across timesteps,
         // while referring the same logical data.
         let id = ui.id().with(label.text());
+
+        // An item is expandable either if it's nested, i.e a struct,
+        // or the content of the item is too wide to be displayed inline.
+        //
+        // We use a frame-delayed measurement for the overflow check because the correct
+        // available width is only known inside `value_fn`, where `PropertyContent` has
+        // already set up the two-column layout with proper indentation. This is the same
+        // pattern used by the layout system itself for left_column_width, etc.
+        let expandable = nested
+            || ui
+                .ctx()
+                .data(|r| r.get_temp::<bool>(id.with("value_overflow")))
+                .unwrap_or(false);
+
         let content = PropertyContent::new(label)
             .value_fn(|ui, visuals| {
                 ui.horizontal(|ui| {
@@ -93,6 +108,22 @@ impl<'a> ArrowNode<'a> {
                             }
                             let mut value = SyntaxHighlightedBuilder::new();
                             let result = self.values.write(index, &mut value);
+
+                            // Measure whether the value text overflows the available width.
+                            // This is stored and used on the next frame to decide expandability.
+                            if !nested && result.is_ok() {
+                                let available = ui.available_width();
+                                let text_width = ui
+                                    .fonts_mut(|f| f.layout_job(value.to_job(ui.style())))
+                                    .size()
+                                    .x;
+                                ui.ctx().data_mut(|w| {
+                                    w.insert_temp(
+                                        id.with("value_overflow"),
+                                        text_width > available,
+                                    );
+                                });
+                            }
 
                             match result {
                                 Ok(()) => UiLayout::List.data_label(ui, value),
@@ -139,10 +170,10 @@ impl<'a> ArrowNode<'a> {
             })
             .show_only_when_collapsed(false);
 
-        if nested {
+        if expandable {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
                 list_item_scope(ui, id.with("child_scope"), |ui| {
-                    self.values.show(index, ui);
+                    self.values.show(index, ui, UiLayout::SelectionPanel);
                 });
             });
         } else {
