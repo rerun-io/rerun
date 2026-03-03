@@ -25,8 +25,11 @@ SOME_ARRAY = np.arange(0, MS_TO_NS * 1000, MS_TO_NS, dtype=np.int64)
         (SOME_ARRAY.astype("datetime64[ns]"), SOME_ARRAY, nullcontext()),
         (SOME_ARRAY.astype("datetime64[ns]").astype("datetime64[ms]"), SOME_ARRAY, nullcontext()),
         (pa.array(SOME_ARRAY), SOME_ARRAY, nullcontext()),
+        (pa.array(SOME_ARRAY, type=pa.timestamp("ns")), SOME_ARRAY, nullcontext()),
+        (pa.array(SOME_ARRAY, type=pa.duration("ns")), SOME_ARRAY, nullcontext()),
         # Check error modes
         (SOME_ARRAY.astype(np.float32), SOME_ARRAY, pytest.raises(TypeError, match="IndexValuesLike must be a")),
+        (pa.array(SOME_ARRAY, type=pa.float64()), SOME_ARRAY, pytest.raises(TypeError, match="IndexValuesLike")),
     ],
 )
 def test_index_values_like_to_index_values(

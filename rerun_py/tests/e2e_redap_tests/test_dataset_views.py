@@ -305,3 +305,23 @@ def test_dataframe_api_using_index_values_dataframe(
     )
 
     assert str(df) == snapshot
+
+
+@pytest.mark.parametrize(
+    "arrow_type",
+    [
+        pa.int64(),
+        pa.timestamp("ns"),
+        pa.duration("ns"),
+    ],
+)
+def test_using_index_values_with_arrow_types(readonly_test_dataset: DatasetEntry, arrow_type: pa.DataType) -> None:
+    """Regression test for RR-3905. All arrow types returned by get_index_ranges() should be accepted."""
+
+    values = pa.array([1_000_000_000, 2_000_000_000], type=arrow_type)
+
+    # This should not fail
+    readonly_test_dataset.reader(
+        index="time_1",
+        using_index_values=values,
+    )

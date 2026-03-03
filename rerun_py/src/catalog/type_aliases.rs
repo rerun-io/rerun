@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 use std::str::FromStr as _;
 
-use arrow::array::{ArrayData, Int64Array, make_array};
+use arrow::array::{ArrayData, ArrayRef, Int64Array, make_array};
+use arrow::compute::cast;
+use arrow::datatypes::DataType;
 use arrow::pyarrow::PyArrowType;
 use numpy::PyArrayMethods as _;
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -88,15 +90,46 @@ impl<'py> FromPyObject<'py> for IndexValuesLike<'py> {
     }
 }
 
+/// Cast an Arrow array to [`Int64Array`], handling timestamp and duration types
+/// transparently.
+///
+/// Timestamp and duration arrays (e.g. from `get_index_ranges()`) share the same
+/// physical representation as int64, so the cast is essentially free.
+fn as_int64_array(array: &ArrayRef) -> PyResult<Int64Array> {
+    if let Some(arr) = array.downcast_array_ref::<Int64Array>() {
+        return Ok(arr.clone());
+    }
+
+    if matches!(
+        array.data_type(),
+        DataType::Timestamp(_, _) | DataType::Duration(_)
+    ) {
+        let cast_array = cast(array, &DataType::Int64).map_err(|err| {
+            PyTypeError::new_err(format!(
+                "Failed to cast {} to int64: {err}",
+                array.data_type()
+            ))
+        })?;
+        return cast_array
+            .downcast_array_ref::<Int64Array>()
+            .cloned()
+            .ok_or_else(|| {
+                PyTypeError::new_err(format!("Failed to cast {} to int64.", array.data_type()))
+            });
+    }
+
+    Err(PyTypeError::new_err(
+        "pyarrow.Array for IndexValuesLike must be of type int64, timestamp, or duration.",
+    ))
+}
+
 impl IndexValuesLike<'_> {
     pub fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
         match self {
             Self::PyArrow(array) => {
                 let array = make_array(array.0.clone());
 
-                let int_array = array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
-                    PyTypeError::new_err("pyarrow.Array for IndexValuesLike must be of type int64.")
-                })?;
+                let int_array = as_int64_array(&array)?;
 
                 let values: BTreeSet<re_chunk_store::TimeInt> = int_array
                     .iter()
@@ -143,12 +176,7 @@ impl IndexValuesLike<'_> {
                             let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
                             let array = make_array(chunk.0.clone());
 
-                            let int_array =
-                                array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
-                                    PyTypeError::new_err(
-                                        "pyarrow.Array for IndexValuesLike must be of type int64.",
-                                    )
-                                })?;
+                            let int_array = as_int64_array(&array)?;
 
                             values.extend(
                                 int_array
