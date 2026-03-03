@@ -2977,6 +2977,8 @@ impl App {
             return;
         }
 
+        egui_ctx.request_repaint();
+
         let mut force_store_info = false;
 
         for file in dropped_files {
