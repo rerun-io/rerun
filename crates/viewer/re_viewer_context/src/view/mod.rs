@@ -28,7 +28,7 @@ pub use system_execution_output::{
 };
 pub use view_class::{
     RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
-    ViewStateExt,
+    ViewStateExt, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
