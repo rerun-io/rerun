@@ -2,7 +2,7 @@ use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
@@ -327,6 +327,55 @@ impl ViewClass for TimeSeriesView {
         }
 
         recommended
+    }
+
+    fn visualizers_section<'a>(
+        &'a self,
+        ctx: &'a re_viewer_context::ViewContext<'a>,
+    ) -> Option<re_viewer_context::VisualizersSectionOutput<'a>> {
+        let visualizable_entities_per_visualizer = ctx
+            .viewer_ctx
+            .collect_visualizable_entities_for_view_class(Self::identifier());
+
+        let series_line_id = SeriesLinesSystem::identifier();
+        let visualizable_entities = visualizable_entities_per_visualizer.get(&series_line_id);
+
+        let data_results = ctx.query_result.tree.iter_data_results();
+        let add_options = data_results
+            .filter_map(|data_result| {
+                if data_result.tree_prefix_only {
+                    return None;
+                }
+
+                // For the "add visualizer" menu, offer a SeriesLine for every possible scalar mapping.
+                // Unlike `recommended_visualizers_for_entity` / `all_scalar_mappings`, we don't filter
+                // by indication or recommended datatypes — we show everything that could be visualized.
+                let VisualizableReason::DatatypeMatchAny {
+                    target_component: _,
+                    matches,
+                } = visualizable_entities?.get(&data_result.entity_path)?
+                else {
+                    return None;
+                };
+
+                let recommended = if let Ok(mappings) =
+                    vec1::Vec1::try_from_vec(all_scalar_mappings_for(matches))
+                {
+                    RecommendedVisualizers(std::iter::once((series_line_id, mappings)).collect())
+                } else {
+                    return None;
+                };
+
+                Some((data_result.entity_path.clone(), recommended))
+            })
+            .collect();
+
+        Some(re_viewer_context::VisualizersSectionOutput {
+            ui: Box::new(move |ui, ctx| {
+                visualizers_section_ui(ui, ctx);
+            }),
+            add_options,
+        })
     }
 
     fn ui(
@@ -802,49 +851,81 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+}
 
-    fn visualizers_ui<'a>(
-        &'a self,
-        viewer_ctx: &'a re_viewer_context::ViewerContext<'a>,
-        view_id: ViewId,
-        state: &'a mut dyn ViewState,
-        space_origin: &'a EntityPath,
-    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
-        let state = state.downcast_mut::<TimeSeriesViewState>().ok()?;
+fn all_scalar_mappings_for(
+    matches: &IntMap<ComponentIdentifier, DatatypeMatch>,
+) -> Vec<RecommendedMappings> {
+    let target = Scalars::descriptor_scalars().component;
 
-        let visualizer_body = move |ui: &mut egui::Ui| {
-            list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
-                let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-                re_tracing::profile_function!();
-                let query_result = ctx.query_result;
+    matches
+        .iter()
+        .sorted_by_key(|(k, _)| **k)
+        .flat_map(|(source_component, match_info)| match match_info {
+            DatatypeMatch::NativeSemantics { .. } => {
+                Either::Left(std::iter::once(RecommendedMappings::new(
+                    target,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: *source_component,
+                        selector: String::new(),
+                    },
+                )))
+            }
 
-                let handles = query_result.tree.data_results_by_path.values().sorted();
-                for handle in handles {
-                    let Some(node) = query_result.tree.data_results.get(*handle) else {
-                        continue;
-                    };
-                    let pill_margin = egui::Margin::symmetric(8, 6);
-                    for instruction in &node.data_result.visualizer_instructions {
-                        if !node.data_result.visible {
-                            continue;
-                        }
-
-                        ui.add_space(10.0);
-
-                        crate::visualizer_ui::visualizer_ui_element(
-                            ui,
-                            &ctx,
-                            node,
-                            pill_margin,
-                            instruction,
-                        );
-                    }
+            DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } => {
+                if selectors.is_empty() {
+                    Either::Left(std::iter::once(RecommendedMappings::new(
+                        target,
+                        VisualizerComponentSource::SourceComponent {
+                            source_component: *source_component,
+                            selector: String::new(),
+                        },
+                    )))
+                } else {
+                    Either::Right(selectors.iter().map(|(selector, _datatype)| {
+                        RecommendedMappings::new(
+                            target,
+                            VisualizerComponentSource::SourceComponent {
+                                source_component: *source_component,
+                                selector: selector.to_string(),
+                            },
+                        )
+                    }))
                 }
-            });
-        };
+            }
+        })
+        .collect()
+}
 
-        Some(Box::new(visualizer_body))
-    }
+/// Renders the active visualizer pills for the "Visualizers" section in the selection panel.
+fn visualizers_section_ui(ui: &mut egui::Ui, ctx: &re_viewer_context::ViewContext<'_>) {
+    list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
+        re_tracing::profile_function!();
+        let query_result = ctx.query_result;
+
+        let handles = query_result.tree.data_results_by_path.values().sorted();
+        for handle in handles {
+            let Some(node) = query_result.tree.data_results.get(*handle) else {
+                continue;
+            };
+            let pill_margin = egui::Margin::symmetric(8, 6);
+            for instruction in &node.data_result.visualizer_instructions {
+                if !node.data_result.visible {
+                    continue;
+                }
+
+                ui.add_space(10.0);
+
+                crate::visualizer_ui::visualizer_ui_element(
+                    ui,
+                    ctx,
+                    node,
+                    pill_margin,
+                    instruction,
+                );
+            }
+        }
+    });
 }
 
 /// Returns a priority score for a given Arrow datatype.

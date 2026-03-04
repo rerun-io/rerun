@@ -130,7 +130,7 @@ pub use self::view::{
     VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
     VisualizerInstructionReport, VisualizerInstructionsPerType, VisualizerQueryInfo,
     VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport,
-    VisualizerViewReport,
+    VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
