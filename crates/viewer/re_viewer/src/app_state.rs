@@ -237,9 +237,12 @@ impl AppState {
             }
 
             Route::ChunkStoreBrowser { previous, .. } => {
-                let should_datastore_ui_remain_active =
-                    self.datastore_ui
-                        .ui(store_context, ui, self.app_options.timestamp_format);
+                let should_datastore_ui_remain_active = self.datastore_ui.ui(
+                    store_context,
+                    storage_context,
+                    ui,
+                    self.app_options.timestamp_format,
+                );
                 if !should_datastore_ui_remain_active {
                     self.navigation.replace((**previous).clone());
                 }

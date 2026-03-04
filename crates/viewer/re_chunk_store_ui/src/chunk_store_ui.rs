@@ -5,10 +5,11 @@ use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
 use re_chunk_store::{ChunkStore, ChunkTrackingMode, LatestAtQuery, RangeQuery};
 use re_log_types::{
-    AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
+    AbsoluteTimeRange, StoreId, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_ui::{UiExt as _, list_item};
-use re_viewer_context::ActiveStoreContext;
+use re_viewer_context::external::re_entity_db::EntityDb;
+use re_viewer_context::{ActiveStoreContext, StorageContext};
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
@@ -42,6 +43,7 @@ impl ChunkListColumn {
 /// Browser UI for [`re_chunk_store::ChunkStore`].
 pub struct DatastoreUi {
     store_kind: StoreKind,
+    selected_recording_id: Option<StoreId>,
     focused_chunk: Option<ChunkUi>,
 
     chunk_list_mode: ChunkListMode,
@@ -57,6 +59,7 @@ impl Default for DatastoreUi {
     fn default() -> Self {
         Self {
             store_kind: StoreKind::Recording,
+            selected_recording_id: None,
             focused_chunk: None,
             chunk_list_mode: ChunkListMode::default(),
             chunk_list_sort_column: ChunkListSortColumn::default(),
@@ -74,10 +77,19 @@ impl DatastoreUi {
     pub fn ui(
         &mut self,
         ctx: &ActiveStoreContext<'_>,
+        storage_context: &StorageContext<'_>,
         ui: &mut egui::Ui,
         timestamp_format: TimestampFormat,
     ) -> bool {
         let mut datastore_ui_active = true;
+
+        // Resolve the recording to display: use the selected one if valid, otherwise
+        // fall back to the active recording.
+        let recording = self
+            .selected_recording_id
+            .as_ref()
+            .and_then(|id| storage_context.bundle.get(id))
+            .unwrap_or(ctx.recording);
 
         egui::Frame {
             inner_margin: egui::Margin::same(5),
@@ -89,7 +101,7 @@ impl DatastoreUi {
                     ui,
                     timestamp_format,
                     match self.store_kind {
-                        StoreKind::Recording => ctx.recording.storage_engine(),
+                        StoreKind::Recording => recording.storage_engine(),
                         StoreKind::Blueprint => ctx.blueprint.storage_engine(),
                     }
                     .store(),
@@ -98,10 +110,11 @@ impl DatastoreUi {
                 self.chunk_store_ui(
                     ui,
                     match self.store_kind {
-                        StoreKind::Recording => ctx.recording.storage_engine(),
+                        StoreKind::Recording => recording.storage_engine(),
                         StoreKind::Blueprint => ctx.blueprint.storage_engine(),
                     }
                     .store(),
+                    storage_context,
                     &mut datastore_ui_active,
                     timestamp_format,
                 );
@@ -121,12 +134,14 @@ impl DatastoreUi {
         &mut self,
         ui: &mut egui::Ui,
         chunk_store: &ChunkStore,
+        storage_context: &StorageContext<'_>,
         datastore_ui_active: &mut bool,
         timestamp_format: TimestampFormat,
     ) {
         let tokens = ui.tokens();
 
-        let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store, datastore_ui_active);
+        let should_copy_chunk =
+            self.chunk_store_info_ui(ui, chunk_store, storage_context, datastore_ui_active);
 
         // Each of these must be a column that contains the corresponding time range.
         let all_timelines = chunk_store.timelines();
@@ -193,7 +208,7 @@ impl DatastoreUi {
             ui.text_edit_singleline(&mut self.component_filter);
 
             if ui
-                .small_icon_button(&re_ui::icons::CLOSE, "Close")
+                .small_icon_button(&re_ui::icons::CLOSE, "Clear filters")
                 .clicked()
             {
                 self.entity_path_filter = String::new();
@@ -374,6 +389,7 @@ impl DatastoreUi {
         &mut self,
         ui: &mut egui::Ui,
         chunk_store: &ChunkStore,
+        storage_context: &StorageContext<'_>,
         datastore_ui_active: &mut bool,
     ) -> bool {
         let mut should_copy_chunks = false;
@@ -392,6 +408,9 @@ impl DatastoreUi {
                 .clicked()
             {
                 *datastore_ui_active = false;
+                // Reset the selected recording when closing the chunk store UI,
+                // to avoid confusion when reopening it again from a different recording.
+                self.selected_recording_id = None;
             }
 
             if ui
@@ -400,6 +419,11 @@ impl DatastoreUi {
                 .clicked()
             {
                 should_copy_chunks = true;
+            }
+
+            if self.store_kind == StoreKind::Recording {
+                ui.separator();
+                self.switch_recording_ui(ui, chunk_store, storage_context);
             }
         });
 
@@ -467,6 +491,46 @@ impl DatastoreUi {
         });
 
         should_copy_chunks
+    }
+
+    fn switch_recording_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        chunk_store: &ChunkStore,
+        storage_context: &StorageContext<'_>,
+    ) {
+        let recordings: Vec<&EntityDb> = storage_context.bundle.recordings().collect();
+        if recordings.is_empty() {
+            return;
+        }
+
+        let selected_text = format!(
+            "{} ({})",
+            chunk_store.id().application_id(),
+            chunk_store.id().recording_id(),
+        );
+        let current_store_id = chunk_store.id();
+
+        ui.label("Selected recording:");
+        egui::ComboBox::new("recording_selector", "")
+            .selected_text(selected_text)
+            .show_ui(ui, |ui| {
+                for recording in &recordings {
+                    let store_id = recording.store_id();
+                    let label = format!(
+                        "{} ({})",
+                        store_id.application_id(),
+                        store_id.recording_id(),
+                    );
+                    let is_selected = *store_id == current_store_id;
+                    if ui
+                        .add(re_ui::ComboItem::new(label).selected(is_selected))
+                        .clicked()
+                    {
+                        self.selected_recording_id = Some(store_id.clone());
+                    }
+                }
+            });
     }
 }
 
