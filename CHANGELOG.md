@@ -3,6 +3,46 @@
 
 ## 0.31.0 - (UNRELEASED)
 
+## [0.30.1](https://github.com/rerun-io/rerun/compare/0.30.0...0.30.1)  - 2026-03-04
+
+### ✨ Overview & highlights
+
+This patch on top of [0.30.0](https://github.com/rerun-io/rerun/releases/0.30.0) comes not only with a random assortment of bug fixes
+but also some small improvements to the Viewer.
+
+Most notably it's now possible to inspect values that were logged on the same timestamp!
+<img width="452" height="467" alt="image"
+src="https://github.com/user-attachments/assets/ee226e5a-9d75-4b79-87cd-8198fa573dc7"
+/>
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Allow re-registering the same blueprint to a dataset [cafbec9](https://github.com/rerun-io/rerun/commit/cafbec9b874aedad35e48da14a709f5205571aab)
+- Fix `using_index_value` not accepting pyarrow data of the correct types [c59df09](https://github.com/rerun-io/rerun/commit/c59df09001094f6b494039ec13ab6cd35f97438e)
+
+#### 🪳 Bug fixes
+- Gracefully handle Rrd Manifest failures [f14e343](https://github.com/rerun-io/rerun/commit/f14e343fc09a481e76f8898d8fbfe987a4161b80)
+- Fix docs urls being loaded as data sources [3eb98db](https://github.com/rerun-io/rerun/commit/3eb98dbbb4ade0478ba333e05f02fb7bb942e989)
+- Fix fix clicking names of color maps [700b590](https://github.com/rerun-io/rerun/commit/700b590dca0f658b750197f9be5b9bc3495b9dfd)
+- Fix rare ui id conflict in list item content [352f7c8](https://github.com/rerun-io/rerun/commit/352f7c8b5b659fa815d3bc436c54b6d28ca05396)
+- Fix drag'n'drop issue on web [956ed91](https://github.com/rerun-io/rerun/commit/956ed9185dd952bad4fc64b9ec8bad9980fa3b45)
+
+#### 🌁 Viewer improvements
+- Selection panel: show all values at the latest time stamp [36ff7ff](https://github.com/rerun-io/rerun/commit/36ff7ff8c6c6ab1e03696a35fb9a181885ea3073)
+- Limit number of plots only for non-builtin components and increase the limit [f4fb62b](https://github.com/rerun-io/rerun/commit/f4fb62b5c87a587fc2709c583734980a5b830b36)
+- Show _all_ visualizable scalars on time series add-visualizer menu [0da70a5](https://github.com/rerun-io/rerun/commit/0da70a54338e9dedc37a56a943fe4e297925718c)
+- Stop warning on synthetic `oneof` protobuf fields [84ee94e](https://github.com/rerun-io/rerun/commit/84ee94eb68b30eb48cec3ccbbfca2884a3b8b2f3)
+
+#### 📚 Docs
+- Corrected the docs example for the `DynamicArchetype` [32c37e8](https://github.com/rerun-io/rerun/commit/32c37e855b9ad2a99f38f6d63b456fc4843de179)
+
+#### 🖼 UI improvements
+- Make arrow values expandable if they don't fit [4edd93e](https://github.com/rerun-io/rerun/commit/4edd93e30d2457d90a344cf107ca96e79a3ba083)
+- Add scrolling to column popup [7dbd933](https://github.com/rerun-io/rerun/commit/7dbd9339c70c03426a4f8fe54b8499750a7bbe9a)
+
+#### 🧢 MCAP
+- Support also "sec" & "nsec" in `TimeSpecToNanos` [31c9a43](https://github.com/rerun-io/rerun/commit/31c9a4388d8ec3dbcd2469ebdd26190ae5459a3b)
 
 
 ## [0.30.0](https://github.com/rerun-io/rerun/compare/0.29.2...0.30.0) - 2026-02-25 - plot any scalar & on-demand streaming
