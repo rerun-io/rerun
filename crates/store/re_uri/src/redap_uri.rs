@@ -61,21 +61,27 @@ impl std::fmt::Display for RedapUri {
 impl std::str::FromStr for RedapUri {
     type Err = Error;
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        // If someone manually visits `https://rerun.io/viewer?url=rerun+https://…` then
+        // that `+` will be turned into a space. So let's gracefully handle that here:
+        let input = &input
+            .replace("rerun http", "rerun+http")
+            .replace("rerun https", "rerun+https");
+
         // Hacky, but I don't want to have to memorize ports.
-        let default_localhost_port = if value.contains("/proxy") {
+        let default_localhost_port = if input.contains("/proxy") {
             DEFAULT_PROXY_PORT
         } else {
             DEFAULT_REDAP_PORT
         };
 
-        let (origin, http_url) = Origin::replace_and_parse(value, Some(default_localhost_port))?;
+        let (origin, http_url) = Origin::replace_and_parse(input, Some(default_localhost_port))?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
         let segments = http_url
             .path_segments()
-            .ok_or_else(|| Error::UnexpectedBaseUrl(value.to_owned()))?
+            .ok_or_else(|| Error::UnexpectedBaseUrl(input.to_owned()))?
             .take(2)
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
@@ -390,6 +396,22 @@ mod tests {
 
         let url = "rerun://localhost:51234/proxy/";
         let address: Result<RedapUri, _> = url.parse();
+
+        assert_eq!(address.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_proxy_endpoint_with_space() {
+        let url = "rerun http://127.0.0.1:9876/proxy";
+        let address: Result<RedapUri, _> = url.parse();
+
+        let expected = RedapUri::Proxy(ProxyUri {
+            origin: Origin {
+                scheme: Scheme::RerunHttp,
+                host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+                port: 9876,
+            },
+        });
 
         assert_eq!(address.unwrap(), expected);
     }
