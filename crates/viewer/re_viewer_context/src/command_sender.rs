@@ -139,6 +139,10 @@ pub enum SystemCommand {
     /// Show a notification to the user
     ShowNotification(re_ui::notifications::Notification),
 
+    /// Start polling a texture we're reading back from the gpu, and then prompt
+    /// the user to save a png of the texture.
+    ReadbackAndSaveTexture(re_renderer::texture_readback::TextureReadbackId),
+
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),

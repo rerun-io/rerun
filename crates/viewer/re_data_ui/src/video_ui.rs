@@ -13,8 +13,8 @@ use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
 use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
-    SharablePlayableVideoStream, StoreViewContext, UiLayout, VideoStreamCache,
-    VideoStreamProcessingError, video_stream_time_from_query,
+    SharablePlayableVideoStream, StoreViewContext, SystemCommandSender as _, UiLayout,
+    VideoStreamCache, VideoStreamProcessingError, video_stream_time_from_query,
 };
 
 use crate::image_ui::texture_preview_size;
@@ -310,7 +310,7 @@ fn timestamp_ui(
 }
 
 fn decoded_frame_ui<'a>(
-    render_ctx: &re_renderer::RenderContext,
+    ctx: &re_viewer_context::AppContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
@@ -320,7 +320,12 @@ fn decoded_frame_ui<'a>(
     let player_stream_id =
         re_video::player::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(render_ctx, player_stream_id, video_time, get_video_buffer) {
+    match video.frame_at(
+        ctx.render_ctx,
+        player_stream_id,
+        video_time,
+        get_video_buffer,
+    ) {
         Ok(VideoFrameTexture {
             texture,
             decoder_delay_state,
@@ -367,12 +372,23 @@ fn decoded_frame_ui<'a>(
 
             let response = if let Some(texture) = texture {
                 crate::image_ui::texture_preview_ui(
-                    render_ctx,
+                    ctx.render_ctx,
                     ui,
                     ui_layout,
                     "video_preview",
-                    re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+                    &re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture.clone()),
                     preview_size,
+                    &|| match re_renderer::schedule_read_texture(
+                        ctx.render_ctx,
+                        &texture.inner.texture,
+                    ) {
+                        Ok(id) => ctx.command_sender.send_system(
+                            re_viewer_context::SystemCommand::ReadbackAndSaveTexture(id),
+                        ),
+                        Err(err) => {
+                            re_log::error!("Failed to save video preview: {err}");
+                        }
+                    },
                 )
             } else {
                 ui.allocate_response(preview_size, egui::Sense::hover())
@@ -681,18 +697,11 @@ impl VideoUi {
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
                     let time = video_stream_time_from_query(&ctx.query());
-                    decoded_frame_ui(
-                        ctx.render_ctx(),
-                        ui,
-                        ui_layout,
-                        &video.video_renderer,
-                        time,
-                        &|id| {
-                            let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
+                    decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time, &|id| {
+                        let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
 
-                            buffer.map(|b| b.as_slice()).unwrap_or(&[])
-                        },
-                    );
+                        buffer.map(|b| b.as_slice()).unwrap_or(&[])
+                    });
                 }
             }
             Self::Asset(video_result, timestamp, blob) => {
@@ -720,9 +729,7 @@ impl VideoUi {
                         video.data_descr().timescale,
                     );
 
-                    decoded_frame_ui(ctx.render_ctx(), ui, ui_layout, video, video_time, &|_| {
-                        blob
-                    });
+                    decoded_frame_ui(ctx, ui, ui_layout, video, video_time, &|_| blob);
                 }
             }
         }

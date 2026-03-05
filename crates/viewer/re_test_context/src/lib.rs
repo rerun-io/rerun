@@ -933,7 +933,8 @@ impl TestContext {
                 | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::Logout
                 | SystemCommand::SaveScreenshot { .. }
-                | SystemCommand::ShowNotification { .. } => handled = false,
+                | SystemCommand::ShowNotification { .. }
+                | SystemCommand::ReadbackAndSaveTexture(_) => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,

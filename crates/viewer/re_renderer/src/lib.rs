@@ -36,6 +36,7 @@ pub mod mesh;
 pub mod renderer;
 pub mod resource_managers;
 pub mod texture_info;
+pub mod texture_readback;
 pub mod video;
 pub mod view_builder;
 pub mod wgpu_buffer_types;
@@ -71,7 +72,7 @@ mod workspace_shaders;
 
 pub use allocator::{
     CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer, CpuWriteGpuReadError, DataTextureSource,
-    DataTextureSourceWriteError, GpuReadbackBuffer, GpuReadbackIdentifier,
+    DataTextureSourceWriteError, GpuReadbackBuffer, GpuReadbackError, GpuReadbackIdentifier,
     create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch,
 };
 pub use color::{Rgba32Unmul, UnalignedColor32};
@@ -91,6 +92,7 @@ pub use draw_phases::{
     PickingLayerProcessor, ScreenshotProcessor,
 };
 pub use resource_managers::AlphaChannelUsage;
+pub use texture_readback::{TextureReadback, poll_read_texture, schedule_read_texture};
 // Re-export used color types directly.
 pub use ecolor::{Color32, Hsva, Rgba};
 pub use global_bindings::GlobalBindings;

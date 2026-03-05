@@ -77,6 +77,7 @@ pub struct App {
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
+    texture_readback: crate::texture_readback::TextureReadbacks,
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
@@ -409,6 +410,7 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
             screenshotter,
+            texture_readback: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,
@@ -1244,6 +1246,10 @@ impl App {
 
             SystemCommand::ShowNotification(notification) => {
                 self.notifications.add(notification);
+            }
+
+            SystemCommand::ReadbackAndSaveTexture(texture_readback_id) => {
+                self.texture_readback.push(texture_readback_id);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -2407,6 +2413,12 @@ impl App {
                     }
 
                     let mut startup_options = self.startup_options.clone();
+
+                    self.texture_readback.poll_and_save_texture_readbacks(
+                        render_ctx,
+                        ui,
+                        &self.command_sender,
+                    );
 
                     self.state.show(
                         &self.app_env,
