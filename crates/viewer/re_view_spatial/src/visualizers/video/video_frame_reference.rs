@@ -18,8 +18,8 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::entity_iterator::process_archetype;
 use crate::visualizers::video::{
-    VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
-    visualize_video_frame_texture,
+    VideoFrameRenderInfo, VideoPlaybackIssue, VideoPlaybackIssueSeverity, show_video_frame,
+    video_stream_id,
 };
 
 pub struct VideoFrameReferenceVisualizer {
@@ -165,16 +165,19 @@ impl VideoFrameReferenceVisualizer {
 
         match query_result {
             None => {
-                show_video_playback_issue(
+                show_video_frame(
                     ctx.view_ctx,
                     &mut self.data,
-                    spatial_ctx.highlight,
-                    world_from_entity,
-                    format!("No video asset at {video_reference:?}"),
-                    VideoPlaybackIssueSeverity::Informational,
-                    video_resolution,
                     entity_path,
+                    world_from_entity,
+                    spatial_ctx.highlight,
+                    video_resolution,
                     spatial_ctx.visualizer_instruction,
+                    None,
+                    Some(VideoPlaybackIssue::custom(
+                        format!("No video asset at {video_reference:?}"),
+                        VideoPlaybackIssueSeverity::Informational,
+                    )),
                 );
             }
 
@@ -190,58 +193,45 @@ impl VideoFrameReferenceVisualizer {
                         video.data_descr().timescale,
                     );
 
-                    match video.frame_at(ctx.render_ctx(), player_stream_id, video_time, &|_| {
-                        &video_buffer
-                    }) {
-                        Ok(video_frame_reference) => {
-                            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
-                            let multiplicative_tint =
-                                re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
-                            visualize_video_frame_texture(
-                                ctx.view_ctx,
-                                &mut self.data,
-                                video_frame_reference,
-                                entity_path,
-                                spatial_ctx.depth_offset,
-                                world_from_entity,
-                                spatial_ctx.highlight,
-                                video_resolution,
-                                multiplicative_tint,
-                            );
-                        }
+                    let frame_output =
+                        video.frame_at(ctx.render_ctx(), player_stream_id, video_time, &|_| {
+                            &video_buffer
+                        });
 
-                        Err(err) => {
-                            if err.should_request_more_frames() {
-                                ctx.view_ctx.egui_ctx().request_repaint();
-                            }
-                            show_video_playback_issue(
-                                ctx.view_ctx,
-                                &mut self.data,
-                                spatial_ctx.highlight,
-                                world_from_entity,
-                                err.to_string(),
-                                // We don't want to show loading for this since
-                                // the data comes from a blob that will always
-                                // either be fully loaded or not.
-                                err.severity().loading_to_informational(),
-                                video_resolution,
-                                entity_path,
-                                spatial_ctx.visualizer_instruction,
-                            );
-                        }
-                    }
-                }
-                Err(err) => {
-                    show_video_playback_issue(
+                    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+                    let multiplicative_tint =
+                        re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
+
+                    show_video_frame(
                         ctx.view_ctx,
                         &mut self.data,
-                        spatial_ctx.highlight,
-                        world_from_entity,
-                        err.to_string(),
-                        VideoPlaybackIssueSeverity::Error,
-                        video_resolution,
                         entity_path,
+                        world_from_entity,
+                        spatial_ctx.highlight,
+                        video_resolution,
                         spatial_ctx.visualizer_instruction,
+                        frame_output.output.map(|texture| VideoFrameRenderInfo {
+                            texture,
+                            depth_offset: spatial_ctx.depth_offset,
+                            multiplicative_tint,
+                        }),
+                        frame_output.error.map(VideoPlaybackIssue::from),
+                    );
+                }
+                Err(err) => {
+                    show_video_frame(
+                        ctx.view_ctx,
+                        &mut self.data,
+                        entity_path,
+                        world_from_entity,
+                        spatial_ctx.highlight,
+                        video_resolution,
+                        spatial_ctx.visualizer_instruction,
+                        None,
+                        Some(VideoPlaybackIssue::custom(
+                            err.to_string(),
+                            VideoPlaybackIssueSeverity::Error,
+                        )),
                     );
                 }
             },

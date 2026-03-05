@@ -320,123 +320,122 @@ fn decoded_frame_ui<'a>(
     let player_stream_id =
         re_video::player::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(
+    let frame_output = video.frame_at(
         ctx.render_ctx,
         player_stream_id,
         video_time,
         get_video_buffer,
-    ) {
-        Ok(VideoFrameTexture {
-            texture,
-            decoder_delay_state,
-            show_loading_indicator,
-            frame_info,
-            source_pixel_format,
-        }) => {
-            if let Some(frame_info) = frame_info
-                && ui_layout == UiLayout::SelectionPanel
-            {
-                re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-                    let id = ui.id().with("decoded_frame_collapsible");
-                    let default_open = false;
-                    let label = if let Some(frame_nr) = frame_info.frame_nr {
-                        format!("Decoded frame #{}", re_format::format_uint(frame_nr))
-                    } else {
-                        "Current decoded frame".to_owned()
-                    };
-                    ui.list_item()
-                        .interactive(false)
-                        .show_hierarchical_with_children(
-                            ui,
-                            id,
-                            default_open,
-                            list_item::LabelContent::new(label),
-                            |ui| {
-                                list_item::list_item_scope(ui, id, |ui| {
-                                    frame_info_ui(ui, &frame_info, video.data_descr());
-                                    source_image_data_format_ui(ui, &source_pixel_format);
-                                });
-                            },
-                        )
-                });
-            }
+    );
 
-            let preview_size = if let Some(texture) = &texture {
-                let [w, h] = texture.width_height();
-                texture_preview_size(ui, ui_layout, [w, h])
-            } else if let Some([w, h]) = video.dimensions() {
-                texture_preview_size(ui, ui_layout, [w as _, h as _])
-            } else {
-                egui::Vec2::splat(ui.available_width().at_most(64.0))
-            };
-
-            let response = if let Some(texture) = texture {
-                crate::image_ui::texture_preview_ui(
-                    ctx.render_ctx,
-                    ui,
-                    ui_layout,
-                    "video_preview",
-                    &re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture.clone()),
-                    preview_size,
-                    &|| match re_renderer::schedule_read_texture(
-                        ctx.render_ctx,
-                        &texture.inner.texture,
-                    ) {
-                        Ok(id) => ctx.command_sender.send_system(
-                            re_viewer_context::SystemCommand::ReadbackAndSaveTexture(id),
-                        ),
-                        Err(err) => {
-                            re_log::error!("Failed to save video preview: {err}");
-                        }
-                    },
-                )
-            } else {
-                ui.allocate_response(preview_size, egui::Sense::hover())
-            };
-
-            if decoder_delay_state.should_request_more_frames() {
-                ui.request_repaint(); // Keep polling for an up-to-date texture
-            }
-
-            {
-                let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
-                let loading_indicator_opacity = ui.animate_bool(
-                    ui.id().with((video_id, "loading_indicator")),
-                    show_loading_indicator,
-                );
-
-                if 0.0 < loading_indicator_opacity {
-                    re_ui::loading_indicator::paint_loading_indicator_inside(
+    if let Some(VideoFrameTexture {
+        texture,
+        decoder_delay_state,
+        show_loading_indicator,
+        source_pixel_format,
+        frame_info,
+    }) = frame_output.output
+    {
+        if let Some(frame_info) = frame_info
+            && ui_layout == UiLayout::SelectionPanel
+        {
+            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+                let id = ui.id().with("decoded_frame_collapsible");
+                let default_open = false;
+                let label = if let Some(frame_nr) = frame_info.frame_nr {
+                    format!("Decoded frame #{}", re_format::format_uint(frame_nr))
+                } else {
+                    "Current decoded frame".to_owned()
+                };
+                ui.list_item()
+                    .interactive(false)
+                    .show_hierarchical_with_children(
                         ui,
-                        egui::Align2::CENTER_CENTER,
-                        response.rect,
-                        loading_indicator_opacity,
-                        None,
-                        "Decoding video frame",
-                    );
-                }
-            }
+                        id,
+                        default_open,
+                        list_item::LabelContent::new(label),
+                        |ui| {
+                            list_item::list_item_scope(ui, id, |ui| {
+                                frame_info_ui(ui, &frame_info, video.data_descr());
+                                source_image_data_format_ui(ui, &source_pixel_format);
+                            });
+                        },
+                    )
+            });
         }
 
-        Err(err) => {
-            ui.error_label(err.to_string());
+        let preview_size = if let Some(texture) = &texture {
+            let [w, h] = texture.width_height();
+            texture_preview_size(ui, ui_layout, [w, h])
+        } else if let Some([w, h]) = video.dimensions() {
+            texture_preview_size(ui, ui_layout, [w as _, h as _])
+        } else {
+            egui::Vec2::splat(ui.available_width().at_most(64.0))
+        };
 
-            #[cfg(not(target_arch = "wasm32"))]
-            if let re_video::player::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(
-                err,
-            )) = &err
-            {
-                match err.as_ref() {
-                    re_video::FFmpegError::UnsupportedFFmpegVersion { .. }
-                    | re_video::FFmpegError::FailedToDetermineFFmpegVersion(_)
-                    | re_video::FFmpegError::FFmpegNotInstalled => {
-                        if let Some(download_url) = re_video::ffmpeg_download_url() {
-                            ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
-                        }
+        let response = if let Some(texture) = texture {
+            crate::image_ui::texture_preview_ui(
+                ctx.render_ctx,
+                ui,
+                ui_layout,
+                "video_preview",
+                &re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture.clone()),
+                preview_size,
+                &|| match re_renderer::schedule_read_texture(ctx.render_ctx, &texture.inner.texture)
+                {
+                    Ok(id) => ctx
+                        .command_sender
+                        .send_system(re_viewer_context::SystemCommand::ReadbackAndSaveTexture(id)),
+                    Err(err) => {
+                        re_log::error!("Failed to save video preview: {err}");
                     }
+                },
+            )
+        } else {
+            ui.allocate_response(preview_size, egui::Sense::hover())
+        };
 
-                    _ => {}
+        if decoder_delay_state.should_request_more_frames() {
+            ui.request_repaint(); // Keep polling for an up-to-date texture
+        }
+
+        {
+            let show_loading_indicator = frame_output.error.is_some() || show_loading_indicator;
+            let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
+            let loading_indicator_opacity = ui.animate_bool(
+                ui.id().with((video_id, "loading_indicator")),
+                show_loading_indicator,
+            );
+
+            if 0.0 < loading_indicator_opacity {
+                re_ui::loading_indicator::paint_loading_indicator_inside(
+                    ui,
+                    egui::Align2::CENTER_CENTER,
+                    response.rect,
+                    loading_indicator_opacity,
+                    None,
+                    "Decoding video frame",
+                );
+            }
+        }
+    }
+
+    if let Some(err) = frame_output.error {
+        ui.error_label(err.to_string());
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let re_video::player::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(err)) =
+            &err
+        {
+            match err.as_ref() {
+                re_video::FFmpegError::UnsupportedFFmpegVersion { .. }
+                | re_video::FFmpegError::FailedToDetermineFFmpegVersion(_)
+                | re_video::FFmpegError::FFmpegNotInstalled => {
+                    if let Some(download_url) = re_video::ffmpeg_download_url() {
+                        ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                    }
                 }
+
+                _ => {}
             }
         }
     }

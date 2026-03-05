@@ -986,12 +986,13 @@ impl<T: Default> VideoPlayer<T> {
         video_descr: &crate::VideoDataDescription,
     ) -> Result<(), VideoPlayerError> {
         self.sample_decoder.reset(video_descr)?;
-        self.output = None;
-        self.frame_info = None;
         self.last_requested = None;
         self.last_enqueued = None;
         self.signaled_end_of_video = false;
-        // Do *not* reset the error state. We want to keep track of the last error.
+        // Do *not* reset the error state or last output.
+        //
+        // We want to keep track of the last error, and also be able to display
+        // the last successfully decoded frame.
         Ok(())
     }
 
