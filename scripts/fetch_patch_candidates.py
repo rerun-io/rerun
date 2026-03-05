@@ -6,6 +6,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -63,6 +64,97 @@ def eprint(*args: object, **kwargs: Any) -> None:
     print(*args, file=sys.stderr, **kwargs)
 
 
+def is_sha_on_branch(sha: str) -> bool:
+    """Check if the exact commit SHA is already an ancestor of HEAD."""
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", sha, "HEAD"],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def is_message_on_branch(message: str) -> bool:
+    """Check if a commit with the given message exists on the current branch (detects cherry-picks)."""
+    result = subprocess.run(
+        ["git", "log", "--all-match", f"--grep={message}", "--fixed-strings", "--oneline", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
+def cherry_pick_candidates(candidates: list[PatchCandidate], repo: str, dry_run: bool) -> None:
+    """Cherry-pick all pending patch candidates for the given repo onto the current branch."""
+    sha_field = "rerun_sha" if repo == "rerun" else "reality_sha"
+
+    # Filter to merged candidates that have a SHA for the chosen repo.
+    pickable = []
+    no_sha = []
+    for c in candidates:
+        if not c.merged:
+            continue
+        sha = getattr(c, sha_field)
+        if sha is None:
+            no_sha.append(c)
+        else:
+            pickable.append(c)
+
+    if no_sha:
+        eprint(
+            f"\n{Fore.YELLOW}WARNING: {len(no_sha)} candidate(s) have no {repo} SHA and will be skipped:{Style.RESET_ALL}"
+        )
+        for c in no_sha:
+            eprint(f"  - {c.prs[0].title}")
+
+    # Partition into already-picked and to-pick.
+    already_picked = []
+    to_pick = []
+    for c in pickable:
+        sha = getattr(c, sha_field)
+        title = strip_pr_number(c.prs[0].title)
+        if is_sha_on_branch(sha) or is_message_on_branch(title):
+            already_picked.append(c)
+        else:
+            to_pick.append(c)
+
+    if already_picked:
+        eprint(f"\n{Fore.GREEN}Skipping {len(already_picked)} already cherry-picked commit(s):{Style.RESET_ALL}")
+        for c in already_picked:
+            sha = getattr(c, sha_field)
+            eprint(f"  {sha[:8]}  {c.prs[0].title}")
+
+    if not to_pick:
+        eprint(f"\n{Fore.GREEN}Nothing to cherry-pick — all candidates are already on this branch.{Style.RESET_ALL}")
+        return
+
+    eprint(f"\n{Fore.CYAN}{len(to_pick)} commit(s) to cherry-pick:{Style.RESET_ALL}")
+    for c in to_pick:
+        sha = getattr(c, sha_field)
+        eprint(f"  {sha[:8]}  {c.prs[0].title}")
+
+    if dry_run:
+        eprint(f"\n{Fore.YELLOW}Dry run — no commits were cherry-picked.{Style.RESET_ALL}")
+        return
+
+    for c in to_pick:
+        sha = getattr(c, sha_field)
+        eprint(f"\n{Fore.CYAN}Cherry-picking {sha[:8]} — {c.prs[0].title}{Style.RESET_ALL}")
+        result = subprocess.run(
+            ["git", "cherry-pick", "-x", sha],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            eprint(f"\n{Fore.RED}Cherry-pick failed for {sha[:8]} — {c.prs[0].title}{Style.RESET_ALL}")
+            eprint(result.stdout)
+            eprint(result.stderr)
+            eprint(f"\n{Fore.YELLOW}Resolve the conflict, then re-run this script to continue.{Style.RESET_ALL}")
+            sys.exit(1)
+        eprint(f"{Fore.GREEN}OK{Style.RESET_ALL}")
+
+    eprint(f"\n{Fore.GREEN}Successfully cherry-picked {len(to_pick)} commit(s).{Style.RESET_ALL}")
+
+
 def strip_pr_number(title: str) -> str:
     """Strip trailing PR number from title: 'some commit (#123)' -> 'some commit'."""
     return re.sub(r"\s*\(#\d+\)\s*$", "", title).strip()
@@ -108,7 +200,7 @@ def fetch_prs(repo: str, label: str, state: str) -> list[PullRequest]:
                     number=pr["number"],
                     title=pr["title"],
                     url=pr["url"],
-                    merged_at=pr.get("mergedAt", ""),
+                    merged_at=pr.get("mergedAt") or "",
                     merge_commit_sha=(pr.get("mergeCommit") or {}).get("oid"),
                     author=author,
                 )
@@ -165,31 +257,114 @@ def maybe_warn(merged_at: str, releases: list[Release]) -> str | None:
     return f"{release.tag} released after merge! Outdated label?" if release else None
 
 
-def find_commit_via_github(repo: str, message: str) -> str | None:
-    """Search for a commit by message using GitHub's commit search API."""
-    escaped = message.replace('"', '\\"')
-    query = f'"{escaped}" repo:{OWNER}/{repo}'
+def remove_label_from_pr(repo: str, pr_number: int, label: str) -> bool:
+    """Remove a label from a PR. Returns True on success."""
     try:
-        result = subprocess.run(
+        subprocess.run(
             [
                 "gh",
-                "api",
-                "--method",
-                "GET",
-                "search/commits",
-                "-f",
-                f"q={query}",
-                "--jq",
-                ".items[0].sha",
+                "pr",
+                "edit",
+                str(pr_number),
+                "--repo",
+                f"{OWNER}/{repo}",
+                "--remove-label",
+                label,
             ],
             capture_output=True,
             text=True,
             check=True,
         )
-        sha = result.stdout.strip()
-        return sha if sha and sha != "null" else None
-    except subprocess.CalledProcessError:
-        return None
+        return True
+    except subprocess.CalledProcessError as e:
+        eprint(f"  Failed to remove label from {repo}#{pr_number}: {e.stderr.strip()}")
+        return False
+
+
+def remove_outdated_labels(candidates: list[PatchCandidate], dry_run: bool) -> None:
+    """Remove patch labels from PRs that have an outdated-label warning."""
+    outdated = [candidate for candidate in candidates if candidate.warning]
+    if not outdated:
+        eprint(f"\n{Fore.GREEN}No outdated labels found.{Style.RESET_ALL}")
+        return
+
+    eprint(f"\n{Fore.YELLOW}{len(outdated)} candidate(s) with outdated labels:{Style.RESET_ALL}")
+    for candidate in outdated:
+        for pr in candidate.prs:
+            eprint(f"  {pr.url}  — {candidate.warning}")
+
+    if dry_run:
+        eprint(f"\n{Fore.YELLOW}Dry run — no labels were removed.{Style.RESET_ALL}")
+        return
+
+    label_map = {"rerun": RERUN_LABEL, "reality": REALITY_LABEL}
+    removed = 0
+    for candidate in outdated:
+        for pr in candidate.prs:
+            label = label_map.get(pr.repo)
+            if label and remove_label_from_pr(pr.repo, pr.number, label):
+                eprint(f"  {Fore.GREEN}Removed '{label}' from {pr.url}{Style.RESET_ALL}")
+                removed += 1
+
+    eprint(f"\n{Fore.GREEN}Removed labels from {removed} PR(s).{Style.RESET_ALL}")
+
+
+def find_commit_via_github(repo: str, message: str) -> str | None:
+    """Search for a commit by message using GitHub's commit search API."""
+    escaped = message.replace('"', '\\"')
+    query = f'"{escaped}" repo:{OWNER}/{repo}'
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        # Check rate limit before making the request.
+        try:
+            rl_result = subprocess.run(
+                ["gh", "api", "rate_limit", "--jq", ".resources.search"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            rl = json.loads(rl_result.stdout)
+            remaining = rl.get("remaining", 1)
+            reset_time = rl.get("reset", 0)
+            if remaining <= 1:
+                wait = max(reset_time - int(time.time()), 1)
+                eprint(f"  Search API rate limit hit, waiting {wait}s for reset…")
+                time.sleep(wait)
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError):
+            pass  # Best-effort; proceed with the search anyway.
+
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    "--method",
+                    "GET",
+                    "search/commits",
+                    "-f",
+                    f"q={query}",
+                    "--jq",
+                    ".items[0].sha",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            sha = result.stdout.strip()
+            return sha if sha and sha != "null" else None
+        except subprocess.CalledProcessError as e:
+            stderr = e.stderr.strip()
+            if "rate limit" in stderr.lower() or "secondary" in stderr.lower():
+                wait = 30 if attempt < max_retries - 1 else 0
+                eprint(f"  Search API rate limited, retrying in {wait}s… ({stderr})")
+                time.sleep(wait)
+                continue
+            eprint(f"Warning: commit search failed for '{message}' in {repo}: {stderr}")
+            return None
+
+    eprint(f"Warning: commit search failed for '{message}' in {repo} after {max_retries} retries (rate limited)")
+    return None
 
 
 def main() -> None:
@@ -197,7 +372,22 @@ def main() -> None:
         description=DOC,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.parse_args()
+    parser.add_argument(
+        "--cherry-pick",
+        choices=["rerun", "reality"],
+        help="Cherry-pick all pending candidates for the specified repo onto the current branch.",
+    )
+    parser.add_argument(
+        "--remove-outdated-labels",
+        action="store_true",
+        help="Remove patch labels from PRs where a release was published after merge.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what would be cherry-picked or removed without actually doing it.",
+    )
+    args = parser.parse_args()
 
     with tqdm(total=5, desc="Fetching data", file=sys.stderr, leave=False) as pbar:
         pbar.set_description("Fetching rerun releases")
@@ -308,6 +498,12 @@ def main() -> None:
             maxcolwidths=MAX_COLUMN_WIDTH,
         )
     )
+
+    if args.remove_outdated_labels:
+        remove_outdated_labels(merged_results, args.dry_run)
+
+    if args.cherry_pick:
+        cherry_pick_candidates(merged_results, args.cherry_pick, args.dry_run)
 
 
 if __name__ == "__main__":
