@@ -371,6 +371,15 @@ impl LayerRegistry {
         self
     }
 
+    /// Returns all registered layer identifiers (file + message) as strings.
+    pub fn all_identifiers(&self) -> Vec<String> {
+        self.file_factories
+            .keys()
+            .chain(self.msg_factories.keys())
+            .map(|id| id.to_string())
+            .collect()
+    }
+
     /// Produce a filtered registry that only contains `selected` layers.
     pub fn select(&self, selected: &SelectedLayers) -> Self {
         let file_factories = self
