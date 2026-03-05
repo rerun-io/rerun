@@ -228,6 +228,7 @@ fn generate_secret_key(mut rng: impl rand::Rng, length: usize) -> Vec<u8> {
 impl RedapProvider {
     /// Create an authentication provider from a secret key.
     pub fn from_secret_key(secret_key: SecretKey) -> Self {
+        crate::crypto_provider::install();
         Self {
             secret_key,
             #[cfg(feature = "oauth")]
@@ -237,6 +238,7 @@ impl RedapProvider {
 
     /// Create an authentication provider from a secret key encoded as base64.
     pub fn from_secret_key_base64(secret_key: &str) -> Result<Self, Error> {
+        crate::crypto_provider::install();
         Ok(Self {
             secret_key: SecretKey::from_base64(secret_key)?,
             #[cfg(feature = "oauth")]
