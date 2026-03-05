@@ -8,6 +8,9 @@
 //! integration of _real_ identity-providers, most likely based on `OpenID` Connect.
 
 #[cfg(not(target_arch = "wasm32"))]
+mod crypto_provider;
+
+#[cfg(not(target_arch = "wasm32"))]
 mod error;
 
 #[cfg(not(target_arch = "wasm32"))]
