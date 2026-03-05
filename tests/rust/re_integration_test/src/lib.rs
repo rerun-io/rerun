@@ -54,6 +54,7 @@ impl TestServer {
             host: Host::Domain("localhost".to_owned()),
             port: self.port,
             scheme: re_uri::Scheme::RerunHttp,
+            path_prefix: None,
         };
         ConnectionRegistry::new_without_stored_credentials()
             .client(origin)

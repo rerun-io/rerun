@@ -118,7 +118,7 @@ impl ServerModal {
                 }
             }
             ServerModalMode::Edit(edit) => {
-                let re_uri::Origin { scheme, host, port } = edit.origin.clone();
+                let re_uri::Origin { scheme, host, port, .. } = edit.origin.clone();
 
                 let credentials = connection_registry.credentials(&edit.origin);
                 let auth = match credentials {
@@ -311,6 +311,7 @@ impl ServerModal {
                     scheme: self.scheme,
                     host,
                     port: self.port,
+                    path_prefix: None,
                 });
 
                 let credentials = match &self.auth.kind {

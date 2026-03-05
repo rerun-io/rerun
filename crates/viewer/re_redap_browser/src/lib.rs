@@ -23,6 +23,7 @@ pub static LOCAL_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::Ori
     scheme: Scheme::RerunHttps,
     host: url::Host::Domain(String::from("_local_recordings.rerun.io")),
     port: 443,
+    path_prefix: None,
 });
 
 /// Utility function to switch to the examples screen.

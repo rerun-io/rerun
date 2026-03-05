@@ -77,16 +77,41 @@ impl std::str::FromStr for RedapUri {
 
         let (origin, http_url) = Origin::replace_and_parse(input, Some(default_localhost_port))?;
 
-        // :warning: We limit the amount of segments, which might need to be
-        // adjusted when adding additional resources.
-        let segments = http_url
+        // Collect all path segments (no limit - we need to find the endpoint keyword)
+        let all_segments: Vec<_> = http_url
             .path_segments()
             .ok_or_else(|| Error::UnexpectedBaseUrl(input.to_owned()))?
-            .take(2)
             .filter(|s| !s.is_empty()) // handle trailing slashes
-            .collect::<Vec<_>>();
+            .collect();
 
-        match segments.as_slice() {
+        // Find the endpoint keyword and split prefix from it.
+        // Supported endpoints: proxy, catalog, entry, dataset
+        let endpoint_pos = all_segments
+            .iter()
+            .position(|s| *s == "proxy" || *s == "catalog" || *s == "entry" || *s == "dataset");
+
+        let (prefix, endpoint_segments): (Vec<String>, Vec<&str>) = match endpoint_pos {
+            Some(pos) => {
+                let prefix: Vec<String> =
+                    all_segments[..pos].iter().map(|s| (*s).to_owned()).collect();
+                // Take at most 2 segments from the endpoint onwards (matching original behavior)
+                let endpoint: Vec<&str> = all_segments[pos..].iter().take(2).copied().collect();
+                (prefix, endpoint)
+            }
+            None => (Vec::new(), all_segments),
+        };
+
+        // Store path prefix in origin so all endpoints automatically get it
+        let origin = if prefix.is_empty() {
+            origin
+        } else {
+            Origin {
+                path_prefix: Some(prefix.join("/")),
+                ..origin
+            }
+        };
+
+        match endpoint_segments.as_slice() {
             ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
 
             ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
@@ -154,6 +179,7 @@ mod tests {
             scheme: Scheme::Rerun,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
+            path_prefix: None,
         };
         assert_eq!(origin.as_url(), "https://127.0.0.1:1234");
 
@@ -161,6 +187,7 @@ mod tests {
             scheme: Scheme::RerunHttp,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
+            path_prefix: None,
         };
         assert_eq!(origin.as_url(), "http://127.0.0.1:1234");
 
@@ -168,6 +195,7 @@ mod tests {
             scheme: Scheme::RerunHttps,
             host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
             port: 1234,
+            path_prefix: None,
         };
         assert_eq!(origin.as_url(), "https://127.0.0.1:1234");
     }
@@ -320,7 +348,8 @@ mod tests {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
-                    port: 50051
+                    port: 50051,
+                    path_prefix: None,
                 },
             })
         ));
@@ -337,7 +366,8 @@ mod tests {
                 origin: Origin {
                     scheme: Scheme::RerunHttps,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
-                    port: 50051
+                    port: 50051,
+                    path_prefix: None,
                 }
             })
         ));
@@ -354,7 +384,8 @@ mod tests {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::<String>::Domain("localhost".to_owned()),
-                    port: 51234
+                    port: 51234,
+                    path_prefix: None,
                 }
             })
         );
@@ -389,7 +420,9 @@ mod tests {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
+                path_prefix: None,
             },
+
         });
 
         assert_eq!(address.unwrap(), expected);
@@ -410,10 +443,72 @@ mod tests {
                 scheme: Scheme::RerunHttp,
                 host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                 port: 9876,
+                path_prefix: None,
             },
         });
 
         assert_eq!(address.unwrap(), expected);
+    }
+
+    #[test]
+    fn resolved_endpoints_with_prefix() {
+        let cases = [
+            // HTTP
+            (
+                "rerun+http://localhost/a/b/proxy",
+                "http://localhost:9876/a/b",
+            ),
+            (
+                "rerun+http://localhost/a/b/catalog",
+                "http://localhost:51234/a/b",
+            ),
+            (
+                "rerun+http://localhost/a/b/entry/1830B33B45B963E7774455beb91701ae",
+                "http://localhost:51234/a/b",
+            ),
+            (
+                "rerun+http://localhost/a/b/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+                "http://localhost:51234/a/b",
+            ),
+            // HTTPS
+            (
+                "rerun://example.com/foo/bar/proxy",
+                "https://example.com:443/foo/bar",
+            ),
+            (
+                "rerun://example.com/foo/bar/catalog",
+                "https://example.com:443/foo/bar",
+            ),
+            (
+                "rerun://example.com/foo/bar/entry/1830B33B45B963E7774455beb91701ae",
+                "https://example.com:443/foo/bar",
+            ),
+            (
+                "rerun://example.com/foo/bar/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+                "https://example.com:443/foo/bar",
+            ),
+        ];
+
+        for (url, expected) in cases {
+            let result: RedapUri = url.parse().expect("failed to parse proxy URL");
+            assert_eq!(
+                expected,
+                result.origin().as_url(),
+                "failed to resolve {url}"
+            );
+        }
+
+        // Round-trip: Display should produce a parseable URI that resolves the same way
+        for (url, expected) in cases {
+            let result: RedapUri = url.parse().expect("failed to parse URL");
+            let displayed = result.to_string();
+            let reparsed: RedapUri = displayed.parse().expect("failed to re-parse displayed URL");
+            assert_eq!(
+                expected,
+                reparsed.origin().as_url(),
+                "round-trip failed for {url} (displayed as {displayed})"
+            );
+        }
     }
 
     #[test]
@@ -426,6 +521,7 @@ mod tests {
                         scheme: Scheme::Rerun,
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_REDAP_PORT,
+                        path_prefix: None,
                     },
                 }),
             ),
@@ -436,6 +532,7 @@ mod tests {
                         scheme: Scheme::RerunHttp,
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_REDAP_PORT,
+                        path_prefix: None,
                     },
                 }),
             ),
@@ -446,7 +543,9 @@ mod tests {
                         scheme: Scheme::RerunHttp,
                         host: url::Host::Domain("localhost".to_owned()),
                         port: DEFAULT_PROXY_PORT,
+                        path_prefix: None,
                     },
+        
                 }),
             ),
             (
@@ -456,7 +555,9 @@ mod tests {
                         scheme: Scheme::RerunHttp,
                         host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
                         port: DEFAULT_PROXY_PORT,
+                        path_prefix: None,
                     },
+        
                 }),
             ),
             (
@@ -466,6 +567,7 @@ mod tests {
                         scheme: Scheme::RerunHttp,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 80,
+                        path_prefix: None,
                     },
                 }),
             ),
@@ -476,6 +578,7 @@ mod tests {
                         scheme: Scheme::RerunHttps,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 443,
+                        path_prefix: None,
                     },
                 }),
             ),
@@ -486,6 +589,7 @@ mod tests {
                         scheme: Scheme::Rerun,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 443,
+                        path_prefix: None,
                     },
                 }),
             ),
@@ -496,6 +600,7 @@ mod tests {
                         scheme: Scheme::Rerun,
                         host: url::Host::Domain("example.com".to_owned()),
                         port: 420,
+                        path_prefix: None,
                     },
                 }),
             ),
@@ -521,6 +626,7 @@ mod tests {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
+                path_prefix: None,
             },
         });
 
@@ -541,6 +647,7 @@ mod tests {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 123,
+                path_prefix: None,
             },
         });
 

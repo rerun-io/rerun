@@ -28,6 +28,7 @@ pub static EXAMPLES_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::
     scheme: Scheme::RerunHttps,
     host: url::Host::Domain(String::from("_examples.rerun.io")),
     port: 443,
+    path_prefix: None,
 });
 
 /// Types of URLs that can be opened directly in the viewer.

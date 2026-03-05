@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use crate::{Error, Scheme};
 
-/// `scheme://hostname:port`
+/// `scheme://hostname:port[/path_prefix]`
 #[derive(
     Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
@@ -10,6 +10,13 @@ pub struct Origin {
     pub scheme: Scheme,
     pub host: url::Host<String>,
     pub port: u16,
+
+    /// Optional path prefix for reverse proxy setups.
+    ///
+    /// For example, `rerun+http://host/my/prefix/proxy` will have
+    /// `path_prefix = Some("my/prefix".to_owned())`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path_prefix: Option<String>,
 }
 
 impl Origin {
@@ -21,6 +28,7 @@ impl Origin {
                 std::net::IpAddr::V6(ipv6_addr) => url::Host::Ipv6(ipv6_addr),
             },
             port: socket_addr.port(),
+            path_prefix: None,
         }
     }
 
@@ -32,9 +40,13 @@ impl Origin {
     ///
     /// This is the URL to connect to. An ip of "0.0.0.0" will be shown as "127.0.0.1".
     pub fn as_url(&self) -> String {
-        let Self { scheme, host, port } = self;
+        let Self { scheme, host, port, path_prefix } = self;
         let host = format_host(host);
-        format!("{}://{host}:{port}", scheme.as_http_scheme())
+        let base = format!("{}://{host}:{port}", scheme.as_http_scheme());
+        match path_prefix {
+            Some(prefix) => format!("{base}/{prefix}"),
+            None => base,
+        }
     }
 
     pub fn format_host(&self) -> String {
@@ -49,9 +61,14 @@ impl Origin {
             scheme: _,
             host,
             port,
+            path_prefix,
         } = self;
         let host = format_host(host);
-        format!("http://{host}:{port}")
+        let base = format!("http://{host}:{port}");
+        match path_prefix {
+            Some(prefix) => format!("{base}/{prefix}"),
+            None => base,
+        }
     }
 
     /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
@@ -109,7 +126,7 @@ impl Origin {
             return Err(Error::UnexpectedOpaqueOrigin(input.to_owned()));
         };
 
-        let origin = Self { scheme, host, port };
+        let origin = Self { scheme, host, port, path_prefix: None };
 
         Ok((origin, http_url))
     }
@@ -125,9 +142,13 @@ impl std::str::FromStr for Origin {
 
 impl std::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { scheme, host, port } = self;
+        let Self { scheme, host, port, path_prefix } = self;
         let host = format_host(host);
-        write!(f, "{scheme}://{host}:{port}")
+        write!(f, "{scheme}://{host}:{port}")?;
+        if let Some(prefix) = path_prefix {
+            write!(f, "/{prefix}")?;
+        }
+        Ok(())
     }
 }
 
