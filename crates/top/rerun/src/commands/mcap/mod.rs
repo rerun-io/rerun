@@ -5,9 +5,17 @@ use std::io::BufWriter;
 use clap::Subcommand;
 use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId};
-use re_mcap::{LayerIdentifier, SelectedLayers};
+use re_mcap::{LayerIdentifier, LayerRegistry, SelectedLayers};
 use re_sdk::external::re_data_loader::McapLoader;
 use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
+
+fn possible_layers() -> clap::builder::PossibleValuesParser {
+    static LAYER_IDS: std::sync::LazyLock<Vec<String>> =
+        std::sync::LazyLock::new(|| LayerRegistry::all_builtin(true).all_identifiers());
+    clap::builder::PossibleValuesParser::new(
+        LAYER_IDS.iter().map(String::as_str).collect::<Vec<_>>(),
+    )
+}
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct ConvertCommand {
@@ -23,7 +31,7 @@ pub struct ConvertCommand {
     application_id: Option<String>,
 
     /// Specifies which layers to apply during conversion.
-    #[clap(short = 'l', long = "layer")]
+    #[clap(short = 'l', long = "layer", value_parser = possible_layers())]
     selected_layers: Vec<String>,
 
     /// Disable using the raw layer as a fallback for unsupported channels.
