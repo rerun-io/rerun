@@ -11,7 +11,7 @@
 //! Expr    → Term ( ( '|' | ε ) Term )*
 //! Term    → Segment+
 //!         | DOT
-//! Segment → Primary '?'?
+//! Segment → Primary ( '?' | '!' )*
 //! Primary → FIELD
 //!         | '[' INTEGER ']'
 //!         | '[' ']'
@@ -50,7 +50,12 @@ impl std::fmt::Display for SegmentKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Segment {
     pub kind: SegmentKind,
+
+    /// When `true`, errors from this segment are suppressed (the `?` operator).
     pub suppressed: bool,
+
+    /// When `true`, rows where all inner values are null will not produce output (the `!` operator).
+    pub assert_non_null: bool,
 }
 
 impl std::fmt::Display for Segment {
@@ -58,6 +63,9 @@ impl std::fmt::Display for Segment {
         write!(f, "{}", self.kind)?;
         if self.suppressed {
             write!(f, "?")?;
+        }
+        if self.assert_non_null {
+            write!(f, "!")?;
         }
         Ok(())
     }
@@ -177,20 +185,28 @@ where
         )
     }
 
-    fn peek_question_mark(&mut self) -> bool {
-        if let Some(token) = self.tokens.peek()
-            && token.typ == TokenType::QuestionMark
-        {
-            self.tokens.next();
-            return true;
-        }
-        false
-    }
-
     fn segment(&mut self) -> Result<Segment> {
         let kind = self.primary()?;
-        let suppressed = self.peek_question_mark();
-        Ok(Segment { kind, suppressed })
+        let mut suppressed = false;
+        let mut assert_non_null = false;
+        while let Some(token) = self.tokens.peek() {
+            match token.typ {
+                TokenType::QuestionMark => {
+                    self.tokens.next();
+                    suppressed = true;
+                }
+                TokenType::ExclamationMark => {
+                    self.tokens.next();
+                    assert_non_null = true;
+                }
+                _ => break,
+            }
+        }
+        Ok(Segment {
+            kind,
+            suppressed,
+            assert_non_null,
+        })
     }
 
     fn primary(&mut self) -> Result<SegmentKind> {
@@ -260,6 +276,7 @@ mod test {
         Segment {
             kind: SegmentKind::Field(name.into()),
             suppressed: false,
+            assert_non_null: false,
         }
     }
 
@@ -267,6 +284,15 @@ mod test {
         Segment {
             kind: SegmentKind::Field(name.into()),
             suppressed: true,
+            assert_non_null: false,
+        }
+    }
+
+    fn field_nn(name: &str) -> Segment {
+        Segment {
+            kind: SegmentKind::Field(name.into()),
+            suppressed: false,
+            assert_non_null: true,
         }
     }
 
@@ -274,6 +300,7 @@ mod test {
         Segment {
             kind: SegmentKind::Index(n),
             suppressed: false,
+            assert_non_null: false,
         }
     }
 
@@ -281,6 +308,15 @@ mod test {
         Segment {
             kind: SegmentKind::Index(n),
             suppressed: true,
+            assert_non_null: false,
+        }
+    }
+
+    fn index_nn(n: u64) -> Segment {
+        Segment {
+            kind: SegmentKind::Index(n),
+            suppressed: false,
+            assert_non_null: true,
         }
     }
 
@@ -288,6 +324,7 @@ mod test {
         Segment {
             kind: SegmentKind::Each,
             suppressed: false,
+            assert_non_null: false,
         }
     }
 
@@ -295,6 +332,7 @@ mod test {
         Segment {
             kind: SegmentKind::Each,
             suppressed: true,
+            assert_non_null: false,
         }
     }
 
@@ -451,5 +489,56 @@ mod test {
 
         let expr = parse(".[]?").unwrap();
         assert_eq!(expr.to_string(), "[]?");
+    }
+
+    #[test]
+    fn non_null_field() {
+        assert_eq!(parse(".foo!"), Ok(path(vec![field_nn("foo")])));
+        assert_eq!(
+            parse(".foo!.bar"),
+            Ok(path(vec![field_nn("foo"), field("bar")]))
+        );
+    }
+
+    #[test]
+    fn non_null_index() {
+        assert_eq!(parse(".[0]!"), Ok(path(vec![index_nn(0)])));
+    }
+
+    #[test]
+    fn non_null_combined_with_optional() {
+        // Both `?` and `!` on the same segment
+        assert_eq!(
+            parse(".foo?!"),
+            Ok(path(vec![Segment {
+                kind: SegmentKind::Field("foo".into()),
+                suppressed: true,
+                assert_non_null: true,
+            }]))
+        );
+        assert_eq!(
+            parse(".foo!?"),
+            Ok(path(vec![Segment {
+                kind: SegmentKind::Field("foo".into()),
+                suppressed: true,
+                assert_non_null: true,
+            }]))
+        );
+    }
+
+    #[test]
+    fn test_display_non_null() {
+        let expr = parse(".foo!").unwrap();
+        assert_eq!(expr.to_string(), ".foo!");
+
+        let expr = parse(".foo!.bar").unwrap();
+        assert_eq!(expr.to_string(), ".foo!.bar");
+
+        let expr = parse(".[0]!").unwrap();
+        assert_eq!(expr.to_string(), "[0]!");
+
+        // Combined: `?` is displayed before `!`
+        let expr = parse(".foo?!").unwrap();
+        assert_eq!(expr.to_string(), ".foo?!");
     }
 }

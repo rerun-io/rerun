@@ -7,13 +7,14 @@
 //!
 //! The selector syntax is a subset of `jq`:
 //!
-//! | Syntax      | Meaning                                          | Example        |
-//! |-------------|--------------------------------------------------|----------------|
-//! | `.field`    | Access a named field in a struct                 | `.location`    |
-//! | `[]`        | Iterate over every element of a list             | `.poses[]`     |
-//! | `[N]`       | Index into a list by position                    | `.[0]`         |
-//! | `?`         | Error suppression / optional operator            | `.field?`      |
-//! | `\|`        | Pipe the output of one expression to another     | `.foo \| .bar` |
+//! | Syntax      | Meaning                                                    | Example        |
+//! |-------------|------------------------------------------------------------|----------------|
+//! | `.field`    | Access a named field in a struct                           | `.location`    |
+//! | `[]`        | Iterate over every element of a list                       | `.poses[]`     |
+//! | `[N]`       | Index into a list by position                              | `.[0]`         |
+//! | `?`         | Error suppression / optional operator                      | `.field?`      |
+//! | `!`         | Assert non-null (promotes all-null rows to outer nulls)    | `.field!`      |
+//! | `\|`        | Pipe the output of one expression to another               | `.foo \| .bar` |
 //!
 //! Segments can be chained without an explicit pipe: `.poses[].x` is equivalent to `.poses[] | .x`.
 //!
@@ -23,6 +24,19 @@
 //! * **No filters, arithmetic, or built-in functions** — only path navigation and iteration are supported.
 //! * **No quoted field names or string interpolation** — field names must be bare identifiers
 //!   (alphanumeric, `-`, `_`).
+//!
+//! # Protobuf and null handling
+//!
+//! The `?` and `!` operators exist primarily to handle Arrow columns produced from protobuf
+//! messages. Proto3 `optional` fields have **presence tracking**: when a field is unset the
+//! corresponding Arrow column contains `null` rather than the type's default value. Navigating
+//! into a struct with optional sub-fields can therefore yield lists whose inner values are all
+//! null (e.g. `[null]` instead of a top-level `null`).
+//!
+//! * `?` suppresses errors when a field is entirely absent from the schema, which happens
+//!   during schema evolution or when optional columns are omitted.
+//! * `!` promotes rows where **all** inner values are null to an outer null, collapsing
+//!   `[null]` → `null` so downstream consumers see clean nullability.
 
 mod lexer;
 mod parser;
@@ -136,6 +150,7 @@ fn process_datatype<'a, P>(
             path.push(Segment {
                 kind: SegmentKind::Each,
                 suppressed: false,
+                assert_non_null: false,
             });
             match inner.data_type() {
                 DataType::Struct(nested_fields) => {
@@ -147,6 +162,7 @@ fn process_datatype<'a, P>(
                         path.push(Segment {
                             kind: SegmentKind::Each,
                             suppressed: false,
+                            assert_non_null: false,
                         });
                         result.push((Selector(Expr::Path(path)), dt.clone()));
                     }
@@ -191,6 +207,7 @@ where
             field_path.push(Segment {
                 kind: SegmentKind::Field(field.name().clone()),
                 suppressed: false,
+                assert_non_null: false,
             });
             process_datatype(
                 field_path,

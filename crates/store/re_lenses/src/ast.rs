@@ -144,9 +144,6 @@ pub enum Op {
     /// Converts timestamp structs with `seconds`/`nanos` or `sec`/`nsec` fields to total nanoseconds.
     TimeSpecToNanos,
 
-    /// Promotes lists where all inner values are null to outer nulls.
-    PromoteInnerNulls,
-
     /// A user-defined arbitrary function to convert a component column.
     Func(CustomFn),
 }
@@ -167,7 +164,6 @@ impl std::fmt::Debug for Op {
                 f.debug_tuple("StringSuffixNonEmpty").field(suffix).finish()
             }
             Self::TimeSpecToNanos => f.debug_struct("TimeSpecToNanos").finish(),
-            Self::PromoteInnerNulls => f.debug_struct("PromoteInnerNulls").finish(),
             Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
         }
     }
@@ -245,11 +241,6 @@ impl Op {
         Self::TimeSpecToNanos
     }
 
-    /// Promotes lists where all inner values are null to outer nulls.
-    pub fn promote_inner_nulls() -> Self {
-        Self::PromoteInnerNulls
-    }
-
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
@@ -298,10 +289,6 @@ impl Op {
             .map_err(Into::into)
             .map(Some),
             Self::TimeSpecToNanos => map::MapList::new(semantic::TimeSpecToNanos::default())
-                .transform(list_array)
-                .map_err(Into::into)
-                .map(Some),
-            Self::PromoteInnerNulls => reshape::PromoteInnerNulls
                 .transform(list_array)
                 .map_err(Into::into)
                 .map(Some),

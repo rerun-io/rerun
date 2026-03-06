@@ -401,6 +401,132 @@ fn execute_optional_each_suppressed() -> Result<(), Error> {
     Ok(())
 }
 
+#[test]
+fn execute_non_null_field() -> Result<(), Error> {
+    let array = fixtures::nested_struct_column();
+
+    // Without `!`, row 1 is `[null]` (inner null within a list)
+    let without = ".location"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(without)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, null]                                   │
+    └────────────────────────────────────────────────┘
+    "#);
+
+    // With `!`, all-null rows ([null] and [null, null]) are promoted to outer nulls
+    let result = ".location!"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    └────────────────────────────────────────────────┘
+    "#);
+
+    Ok(())
+}
+
+#[test]
+fn execute_non_null_nested() -> Result<(), Error> {
+    let array = fixtures::nested_struct_column();
+
+    // Without `!`, row 1 is `[null]` (inner null within a list)
+    let without = ".location"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(without)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, null]                                   │
+    └────────────────────────────────────────────────┘
+    "#);
+
+    // With `!` on the intermediate field, null locations are promoted before accessing `.x`
+    let result = ".location!.x"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
+    ┌─────────────────────┐
+    │ col                 │
+    │ ---                 │
+    │ type: List(Float64) │
+    ╞═════════════════════╡
+    │ [1.0]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                  │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [3.0, 5.0]          │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, 7.0]         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    └─────────────────────┘
+    ");
+
+    Ok(())
+}
+
 fn formatted(pair: impl IntoIterator<Item = (Selector, DataType)>) -> String {
     pair.into_iter()
         .map(|(sel, dt)| format!("{sel} ({dt})"))

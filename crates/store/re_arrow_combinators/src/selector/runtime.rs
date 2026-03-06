@@ -8,7 +8,7 @@ use crate::{
     Transform as _,
     index::GetIndexList,
     map::MapList,
-    reshape::{Flatten, GetField},
+    reshape::{Flatten, GetField, PromoteInnerNulls},
 };
 
 use super::parser::{Expr, Segment, SegmentKind};
@@ -66,14 +66,20 @@ impl SegmentKind {
 
 impl Segment {
     fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
-        match self.kind.execute(source) {
-            Ok(result) => Ok(Some(result)),
+        let result = match self.kind.execute(source) {
+            Ok(result) => result,
             // TODO(RR-3435): FixedSizeListArray errors must be suppressed via `?`, but ListArray should not need it.
             Err(err) if self.suppressed => {
                 re_log::trace!("Suppressed segment `{self}` suppressed error: {err}");
-                Ok(None)
+                return Ok(None);
             }
-            Err(err) => Err(err),
+            Err(err) => return Err(err),
+        };
+
+        if self.assert_non_null {
+            Ok(Some(PromoteInnerNulls.transform(&result)?))
+        } else {
+            Ok(Some(result))
         }
     }
 }

@@ -338,7 +338,7 @@ impl Transform for StructToFixedList {
 }
 
 /// Promotes lists with all inner `nulls` to outer `nulls`.
-pub struct PromoteInnerNulls;
+pub(crate) struct PromoteInnerNulls;
 
 impl Transform for PromoteInnerNulls {
     type Source = ListArray;
