@@ -1,3 +1,4 @@
+mod metadata;
 mod protobuf;
 mod raw;
 mod recording_info;
@@ -11,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{Chunk, EntityPath};
 
+pub use self::metadata::McapMetadataLayer;
 pub use self::protobuf::McapProtobufLayer;
 pub use self::raw::McapRawLayer;
 pub use self::recording_info::McapRecordingInfoLayer;
@@ -319,6 +321,7 @@ impl LayerRegistry {
         let mut registry = Self::empty()
             // file layers:
             .register_file_layer::<McapRecordingInfoLayer>()
+            .register_file_layer::<McapMetadataLayer>()
             .register_file_layer::<McapSchemaLayer>()
             .register_file_layer::<McapStatisticLayer>()
             // message layers (priority order):
