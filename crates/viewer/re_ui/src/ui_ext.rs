@@ -952,21 +952,30 @@ pub trait UiExt {
         x: f32,
         y: Rangef,
     ) {
-        let ui = self.ui();
-        let stroke = if let Some(response) = response {
-            ui.visuals().widgets.style(response).fg_stroke
+        let style = if let Some(response) = response {
+            self.ui().visuals().widgets.style(response)
         } else {
-            ui.visuals().widgets.inactive.fg_stroke
+            &self.ui().visuals().widgets.inactive
         };
+        self.paint_time_cursor_with_style(painter, style, x, y);
+    }
 
+    /// Like [`Self::paint_time_cursor`], but with an explicit widget style.
+    fn paint_time_cursor_with_style(
+        &self,
+        painter: &egui::Painter,
+        style: &egui::style::WidgetVisuals,
+        x: f32,
+        y: Rangef,
+    ) {
         let Rangef {
             min: y_min,
             max: y_max,
         } = y;
 
         let stroke = egui::Stroke {
-            width: 1.5 * stroke.width,
-            color: stroke.color,
+            width: 1.5 * style.fg_stroke.width,
+            color: style.fg_stroke.color,
         };
 
         let w = 10.0;
