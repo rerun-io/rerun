@@ -37,7 +37,7 @@ fn values_downcasts_to<T: 'static>(array: &ListArray) -> bool {
 }
 
 impl SegmentKind {
-    fn execute(&self, source: &ListArray) -> Result<ListArray, crate::Error> {
+    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
         match self {
             Self::Field(field_name) => {
                 MapList::new(GetField::new(field_name.clone())).transform(source)
@@ -76,8 +76,12 @@ impl Segment {
             Err(err) => return Err(err),
         };
 
+        let Some(result) = result else {
+            return Ok(None);
+        };
+
         if self.assert_non_null {
-            Ok(Some(PromoteInnerNulls.transform(&result)?))
+            PromoteInnerNulls.transform(&result)
         } else {
             Ok(Some(result))
         }

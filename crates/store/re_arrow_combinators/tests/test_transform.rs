@@ -13,15 +13,14 @@ use util::DisplayRB;
 use crate::util::fixtures;
 
 #[test]
-fn simple() {
+fn simple() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
-        .then(MapList::new(StructToFixedList::new(["x", "y"])));
+    let pipeline =
+        Selector::from_str(".poses[]")?.then(MapList::new(StructToFixedList::new(["x", "y"])));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌────────────────────────────────────────┐
@@ -42,15 +41,16 @@ fn simple() {
     │ [[7.0, null], [9.0, 10.0]]             │
     └────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn add_one_to_leaves() {
+fn add_one_to_leaves() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
+    let pipeline = Selector::from_str(".poses[]")?
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(MapPrimitive::<
             arrow::datatypes::Float64Type,
@@ -59,7 +59,7 @@ fn add_one_to_leaves() {
             x + 1.0
         }))));
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(
         format!("{}", DisplayRB(result.clone()))
@@ -83,22 +83,23 @@ fn add_one_to_leaves() {
     └────────────────────────────────────────┘
     "
     );
+
+    Ok(())
 }
 
 #[test]
-fn convert_to_f32() {
+fn convert_to_f32() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
+    let pipeline = Selector::from_str(".poses[]")?
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(PrimitiveCast::<
             Float64Array,
             Float32Array,
         >::new())));
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result.clone()), @r"
     ┌────────────────────────────────────────┐
@@ -119,21 +120,22 @@ fn convert_to_f32() {
     │ [[7.0, null], [9.0, 10.0]]             │
     └────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn replace_nulls() {
+fn replace_nulls() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
+    let pipeline = Selector::from_str(".poses[]")?
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(ReplaceNull::<
             arrow::datatypes::Float64Type,
         >::new(1337.0))));
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌─────────────────────────────────────────────────┐
@@ -154,16 +156,18 @@ fn replace_nulls() {
     │ [[7.0, 1337.0], [9.0, 10.0]]                    │
     └─────────────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_flatten_single_element() {
+fn test_flatten_single_element() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]").unwrap();
+    let pipeline = Selector::from_str(".poses[]")?;
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(
         format!("{}", DisplayRB(result.clone())), @r#"
@@ -186,10 +190,12 @@ fn test_flatten_single_element() {
     └────────────────────────────────────────────────┘
     "#
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_flatten_multiple_elements() {
+fn test_flatten_multiple_elements() -> Result<(), Box<dyn std::error::Error>> {
     let inner_builder = ListBuilder::new(arrow::array::Int32Builder::new());
     let mut outer_builder = ListBuilder::new(inner_builder);
 
@@ -245,9 +251,8 @@ fn test_flatten_multiple_elements() {
 
     println!("{}", DisplayRB(list_of_lists.clone()));
 
-    let result = Selector::from_str(".[]")
-        .unwrap()
-        .transform(&list_of_lists)
+    let result = Selector::from_str(".[]")?
+        .transform(&list_of_lists)?
         .unwrap();
 
     insta::assert_snapshot!(
@@ -273,10 +278,12 @@ fn test_flatten_multiple_elements() {
     └────────────────────┘
     "
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_row_major_to_col_major() {
+fn test_row_major_to_col_major() -> Result<(), Box<dyn std::error::Error>> {
     let inner_builder = Int32Builder::new();
     let mut outer_builder = ListBuilder::new(inner_builder);
 
@@ -330,10 +337,10 @@ fn test_row_major_to_col_major() {
 
     // Cast to `FixedSizeListArray` and convert to column-major order.
     let fixed_size_list_array = ListToFixedSizeList::new(12)
-        .transform(&input_array)
+        .transform(&input_array)?
         .unwrap();
     let result = RowMajorToColumnMajor::new(4, 3)
-        .transform(&fixed_size_list_array)
+        .transform(&fixed_size_list_array)?
         .unwrap();
 
     insta::assert_snapshot!(
@@ -351,18 +358,19 @@ fn test_row_major_to_col_major() {
     └──────────────────────────────────────────────────┘
     "
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_map_list_nullability() {
+fn test_map_list_nullability() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
-        .then(MapList::new(StructToFixedList::new(["x", "y"])));
+    let pipeline =
+        Selector::from_str(".poses[]")?.then(MapList::new(StructToFixedList::new(["x", "y"])));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌────────────────────────────────────────┐
@@ -383,16 +391,18 @@ fn test_map_list_nullability() {
     │ [[7.0, null], [9.0, 10.0]]             │
     └────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_map_list_outer_nullability() {
+fn test_map_list_outer_nullability() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::list_not_nullable();
     println!("{}", DisplayRB(array.clone()));
 
     let pipeline = MapList::new(PrimitiveCast::<UInt8Array, Float32Array>::new());
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌──────────────────────────────┐
@@ -409,7 +419,7 @@ fn test_map_list_outer_nullability() {
     let array = fixtures::list_with_nulls();
     println!("{}", DisplayRB(array.clone()));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌─────────────────────┐
     │ col                 │
@@ -421,16 +431,18 @@ fn test_map_list_outer_nullability() {
     │ null                │
     └─────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_map_list_outer_nullability_identity() {
+fn test_map_list_outer_nullability_identity() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::list_not_nullable();
     println!("{}", DisplayRB(array.clone()));
 
     let pipeline = MapList::new(MapPrimitive::<arrow::datatypes::UInt8Type, _>::new(|x| x));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
     ┌────────────────────────────┐
@@ -443,17 +455,18 @@ fn test_map_list_outer_nullability_identity() {
     │ [3, 4, 5]                  │
     └────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_flatten_fixed_size_list() {
+fn test_flatten_fixed_size_list() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
 
-    // Produces List<FixedSizeList<f64, 2>> instead of creating a new test case from scratch.
-    let source: ListArray = Selector::from_str(".poses[]")
-        .unwrap()
+    // Produces List(FixedSizeList(2 x Float64)) instead of creating a new test case from scratch.
+    let source: ListArray = Selector::from_str(".poses[]")?
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
-        .transform(&array)
+        .transform(&array)?
         .unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(source.clone())), @"
@@ -476,7 +489,7 @@ fn test_flatten_fixed_size_list() {
     └────────────────────────────────────────┘
     ");
 
-    let result = Flatten::new().transform(&source).unwrap();
+    let result = Flatten::new().transform(&source)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
     ┌────────────────────────┐
@@ -497,4 +510,6 @@ fn test_flatten_fixed_size_list() {
     │ [7.0, null, 9.0, 10.0] │
     └────────────────────────┘
     ");
+
+    Ok(())
 }

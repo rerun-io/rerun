@@ -1,11 +1,13 @@
 //! Builder API for constructing lenses.
 
+use arrow::array::ListArray;
+use re_arrow_combinators::Transform;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::ComponentDescriptor;
 
 use crate::ast::{OneToMany, OneToOne, Static};
-use crate::{LensError, Op, ast};
+use crate::{LensError, ast};
 
 /// Builder for lenses with support for multiple output modes.
 #[must_use]
@@ -28,6 +30,10 @@ impl LensBuilder {
         }
     }
 
+    // TODO(RR-3962): Remove the `Result` return values from the closures again, by
+    // introducing a proxy object to `Selector` that holds a string internally and
+    // therefore is infallible.
+
     /// Adds a temporal output with 1:1 row mapping.
     ///
     /// Each input row produces exactly one output row. Outputs inherit time columns from
@@ -36,10 +42,10 @@ impl LensBuilder {
     /// The output will use the same entity path as the input.
     pub fn output_columns(
         mut self,
-        builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
+        builder: impl FnOnce(ColumnsBuilder) -> Result<ColumnsBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build(&self.input)?;
+        let output = builder(output_builder)?.build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -51,10 +57,10 @@ impl LensBuilder {
     pub fn output_columns_at(
         mut self,
         entity_path: impl Into<EntityPath>,
-        builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
+        builder: impl FnOnce(ColumnsBuilder) -> Result<ColumnsBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build(&self.input)?;
+        let output = builder(output_builder)?.build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -66,10 +72,10 @@ impl LensBuilder {
     /// The output will use the same entity path as the input.
     pub fn output_static_columns(
         mut self,
-        builder: impl FnOnce(StaticColumnsBuilder) -> StaticColumnsBuilder,
+        builder: impl FnOnce(StaticColumnsBuilder) -> Result<StaticColumnsBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder = StaticColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build(&self.input)?;
+        let output = builder(output_builder)?.build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -80,11 +86,11 @@ impl LensBuilder {
     pub fn output_static_columns_at(
         mut self,
         entity_path: impl Into<EntityPath>,
-        builder: impl FnOnce(StaticColumnsBuilder) -> StaticColumnsBuilder,
+        builder: impl FnOnce(StaticColumnsBuilder) -> Result<StaticColumnsBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder =
             StaticColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build(&self.input)?;
+        let output = builder(output_builder)?.build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -98,10 +104,10 @@ impl LensBuilder {
     /// The output will use the same entity path as the input.
     pub fn output_scatter_columns(
         mut self,
-        builder: impl FnOnce(ScatterColumnsBuilder) -> ScatterColumnsBuilder,
+        builder: impl FnOnce(ScatterColumnsBuilder) -> Result<ScatterColumnsBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder = ScatterColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build(&self.input)?;
+        let output = builder(output_builder)?.build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -114,11 +120,11 @@ impl LensBuilder {
     pub fn output_scatter_columns_at(
         mut self,
         entity_path: impl Into<EntityPath>,
-        builder: impl FnOnce(ScatterColumnsBuilder) -> ScatterColumnsBuilder,
+        builder: impl FnOnce(ScatterColumnsBuilder) -> Result<ScatterColumnsBuilder, LensError>,
     ) -> Result<Self, LensError> {
         let output_builder =
             ScatterColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build(&self.input)?;
+        let output = builder(output_builder)?.build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -145,6 +151,11 @@ pub struct ColumnsBuilder {
     time_outputs: Vec<ast::TimeOutput>,
 }
 
+// TODO(RR-3962): Get rid of the `unnecessary_wraps`.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "Result return enables `?` chaining in builder closures"
+)]
 impl ColumnsBuilder {
     fn new(target_entity: ast::TargetEntity) -> Self {
         Self {
@@ -158,17 +169,17 @@ impl ColumnsBuilder {
     ///
     /// # Arguments
     /// * `component_descr` - The descriptor for the output component
-    /// * `ops` - Sequence of operations to apply to transform the input column
+    /// * `selector` - Selector to apply to the input column
     pub fn component(
         mut self,
         component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
+        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+    ) -> Result<Self, LensError> {
         self.components.push(ast::ComponentOutput {
             component_descr,
-            ops: ops.into_iter().collect(),
+            selector: Box::new(selector),
         });
-        self
+        Ok(self)
     }
 
     /// Adds a time extraction.
@@ -178,19 +189,19 @@ impl ColumnsBuilder {
     /// # Arguments
     /// * `timeline_name` - Name of the timeline to create
     /// * `timeline_type` - Type of timeline (Sequence or Time)
-    /// * `ops` - Sequence of operations to extract time values (must produce [`arrow::array::Int64Array`])
+    /// * `selector` - Selector to extract time values (must produce [`arrow::array::Int64Array`])
     pub fn time(
         mut self,
         timeline_name: impl Into<TimelineName>,
         timeline_type: TimeType,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
+        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+    ) -> Result<Self, LensError> {
         self.time_outputs.push(ast::TimeOutput {
             timeline_name: timeline_name.into(),
             timeline_type,
-            ops: ops.into_iter().collect(),
+            selector: Box::new(selector),
         });
-        self
+        Ok(self)
     }
 
     /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
@@ -217,6 +228,11 @@ pub struct StaticColumnsBuilder {
     components: Vec<ast::ComponentOutput>,
 }
 
+// TODO(RR-3962): Get rid of the `unnecessary_wraps`.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "Result return enables `?` chaining in builder closures"
+)]
 impl StaticColumnsBuilder {
     fn new(target_entity: ast::TargetEntity) -> Self {
         Self {
@@ -229,17 +245,17 @@ impl StaticColumnsBuilder {
     ///
     /// # Arguments
     /// * `component_descr` - The descriptor for the output component
-    /// * `ops` - Sequence of operations to apply to transform the input column
+    /// * `selector` - Selector to apply to the input column
     pub fn component(
         mut self,
         component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
+        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+    ) -> Result<Self, LensError> {
         self.components.push(ast::ComponentOutput {
             component_descr,
-            ops: ops.into_iter().collect(),
+            selector: Box::new(selector),
         });
-        self
+        Ok(self)
     }
 
     /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
@@ -268,6 +284,11 @@ pub struct ScatterColumnsBuilder {
     time_outputs: Vec<ast::TimeOutput>,
 }
 
+// TODO(RR-3962): Get rid of the `unnecessary_wraps`.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "Result return enables `?` chaining in builder closures"
+)]
 impl ScatterColumnsBuilder {
     fn new(target_entity: ast::TargetEntity) -> Self {
         Self {
@@ -281,17 +302,17 @@ impl ScatterColumnsBuilder {
     ///
     /// # Arguments
     /// * `component_descr` - The descriptor for the output component
-    /// * `ops` - Sequence of operations to apply to transform the input column
+    /// * `selector` - Selector to apply to the input column
     pub fn component(
         mut self,
         component_descr: ComponentDescriptor,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
+        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+    ) -> Result<Self, LensError> {
         self.components.push(ast::ComponentOutput {
             component_descr,
-            ops: ops.into_iter().collect(),
+            selector: Box::new(selector),
         });
-        self
+        Ok(self)
     }
 
     /// Adds a time extraction.
@@ -301,19 +322,19 @@ impl ScatterColumnsBuilder {
     /// # Arguments
     /// * `timeline_name` - Name of the timeline to create
     /// * `timeline_type` - Type of timeline (Sequence or Time)
-    /// * `ops` - Sequence of operations to extract time values (must produce [`arrow::array::Int64Array`])
+    /// * `selector` - Selector to extract time values (must produce [`arrow::array::Int64Array`])
     pub fn time(
         mut self,
         timeline_name: impl Into<TimelineName>,
         timeline_type: TimeType,
-        ops: impl IntoIterator<Item = Op>,
-    ) -> Self {
+        selector: impl Transform<Source = ListArray, Target = ListArray> + Send + Sync + 'static,
+    ) -> Result<Self, LensError> {
         self.time_outputs.push(ast::TimeOutput {
             timeline_name: timeline_name.into(),
             timeline_type,
-            ops: ops.into_iter().collect(),
+            selector: Box::new(selector),
         });
-        self
+        Ok(self)
     }
 
     /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.

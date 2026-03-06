@@ -4,31 +4,13 @@
 //! [`PackedElementField`]: https://docs.foxglove.dev/docs/sdk/schemas/packed-element-field
 //! [`foxglove.PointCloud`]: https://docs.foxglove.dev/docs/sdk/schemas/point-cloud
 
+use crate::loader_mcap::lenses::helpers::get_field_as;
 use arrow::array::builder::{FixedSizeListBuilder, Float32Builder, ListBuilder, UInt32Builder};
 use arrow::array::{
     Array as _, BinaryArray, Int32Array, ListArray, StringArray, StructArray, UInt32Array,
 };
 use arrow::datatypes::{DataType, Field};
 use re_arrow_combinators::Transform;
-use re_arrow_combinators::map::MapList;
-use re_arrow_combinators::reshape::Flatten;
-use re_lenses::OpError;
-
-use crate::loader_mcap::lenses::helpers::get_field_as;
-
-/// Extracts position data from point cloud messages as a `List<FixedSizeList<f32, 3>>`.
-pub fn extract_positions(list_array: &ListArray) -> Result<ListArray, OpError> {
-    Ok(MapList::new(ExtractPositions)
-        .then(Flatten::new())
-        .transform(list_array)?)
-}
-
-/// Extracts RGBA color data from point cloud messages as a `List<u32>`.
-pub fn extract_colors(list_array: &ListArray) -> Result<ListArray, OpError> {
-    Ok(MapList::new(ExtractColors)
-        .then(Flatten::new())
-        .transform(list_array)?)
-}
 
 /// Foxglove [`NumericType`] enum.
 ///
@@ -173,13 +155,17 @@ fn find_field_descriptors(
         .collect()
 }
 
-struct ExtractPositions;
+/// Extracts position data from point cloud messages as a `List<FixedSizeList<f32, 3>>`.
+pub(crate) struct ExtractPositions;
 
 impl Transform for ExtractPositions {
     type Source = StructArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &StructArray) -> Result<ListArray, re_arrow_combinators::Error> {
+    fn transform(
+        &self,
+        source: &StructArray,
+    ) -> Result<Option<ListArray>, re_arrow_combinators::Error> {
         re_tracing::profile_function!();
 
         let point_stride_array = get_field_as::<UInt32Array>(source, "point_stride")?;
@@ -244,17 +230,21 @@ impl Transform for ExtractPositions {
             }
         }
 
-        Ok(builder.finish())
+        Ok(Some(builder.finish()))
     }
 }
 
-struct ExtractColors;
+/// Extracts RGBA color data from point cloud messages as a `List<u32>`.
+pub(crate) struct ExtractColors;
 
 impl Transform for ExtractColors {
     type Source = StructArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &StructArray) -> Result<ListArray, re_arrow_combinators::Error> {
+    fn transform(
+        &self,
+        source: &StructArray,
+    ) -> Result<Option<ListArray>, re_arrow_combinators::Error> {
         re_tracing::profile_function!();
 
         let point_stride_array = get_field_as::<UInt32Array>(source, "point_stride")?;
@@ -315,6 +305,6 @@ impl Transform for ExtractColors {
             }
         }
 
-        Ok(builder.finish())
+        Ok(Some(builder.finish()))
     }
 }

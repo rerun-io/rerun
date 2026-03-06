@@ -243,14 +243,10 @@ fn execute_missing_field() {
     let result = ".nonexistent"
         .parse::<Selector>()
         .unwrap()
-        .execute_per_row(&array);
+        .execute_per_row(&array)
+        .expect("should not error");
 
-    assert!(matches!(
-        result,
-        Err(Error::Runtime(
-            re_arrow_combinators::Error::FieldNotFound { .. }
-        ))
-    ));
+    assert!(result.is_none(), "missing field should return None");
 }
 
 #[test]
@@ -349,21 +345,12 @@ fn execute_each_on_fixed_size_list() -> Result<(), Error> {
 fn execute_optional_field() -> Result<(), Error> {
     let array = fixtures::nested_struct_column();
 
-    // Without `?`, accessing a field that doesn't exist errors.
-    let err = ".location.z".parse::<Selector>()?.execute_per_row(&array);
-    assert!(matches!(
-        err,
-        Err(Error::Runtime(
-            re_arrow_combinators::Error::FieldNotFound { .. }
-        ))
-    ));
-    let err = ".foo.x".parse::<Selector>()?.execute_per_row(&array);
-    assert!(matches!(
-        err,
-        Err(Error::Runtime(
-            re_arrow_combinators::Error::FieldNotFound { .. }
-        ))
-    ),);
+    // Accessing a field that doesn't exist returns `None`.
+    let result = ".location.z".parse::<Selector>()?.execute_per_row(&array)?;
+    assert!(result.is_none(), "missing field should return None");
+
+    let result = ".foo.x".parse::<Selector>()?.execute_per_row(&array)?;
+    assert!(result.is_none(), "missing field should return None");
 
     // With `?`, the missing field is suppressed and we get `None` instead.
     let result = ".location.z?"

@@ -1,10 +1,9 @@
-use re_lenses::{Lens, LensError, Op};
+use re_arrow_combinators::{Selector, Transform as _, map::MapList};
+use re_lenses::{Lens, LensError, op};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::{CoordinateFrame, InstancePoses3D};
 
-use crate::loader_mcap::lenses::helpers::{
-    list_xyz_struct_to_list_fixed, list_xyzw_struct_to_list_fixed,
-};
+use crate::loader_mcap::lenses::helpers::{xyz_struct_to_fixed, xyzw_struct_to_fixed};
 
 use super::FOXGLOVE_TIMESTAMP;
 
@@ -18,25 +17,20 @@ pub fn pose_in_frame() -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     TimeType::TimestampNs,
-                    [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
-                )
+                    Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
+                )?
                 .component(
                     CoordinateFrame::descriptor_frame(),
-                    [Op::selector(".frame_id")],
-                )
+                    Selector::parse(".frame_id")?,
+                )?
                 .component(
                     InstancePoses3D::descriptor_translations(),
-                    [
-                        Op::selector(".pose.position"),
-                        Op::func(list_xyz_struct_to_list_fixed),
-                    ],
-                )
+                    Selector::parse(".pose.position")?.then(MapList::new(xyz_struct_to_fixed())),
+                )?
                 .component(
                     InstancePoses3D::descriptor_quaternions(),
-                    [
-                        Op::selector(".pose.orientation"),
-                        Op::func(list_xyzw_struct_to_list_fixed),
-                    ],
+                    Selector::parse(".pose.orientation")?
+                        .then(MapList::new(xyzw_struct_to_fixed())),
                 )
             })?
             .build(),

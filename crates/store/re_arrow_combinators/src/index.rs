@@ -31,16 +31,16 @@ impl Transform for GetIndexList {
     type Source = ListArray;
     type Target = ArrayRef;
 
-    fn transform(&self, source: &ListArray) -> Result<ArrayRef, Error> {
+    fn transform(&self, source: &ListArray) -> Result<Option<ArrayRef>, Error> {
         let offsets = source.offsets();
         let values = source.values();
 
         // If values is empty, all lists are empty, so all results are null.
         if values.is_empty() {
-            return Ok(arrow::array::new_null_array(
+            return Ok(Some(arrow::array::new_null_array(
                 values.data_type(),
                 source.len(),
-            ));
+            )));
         }
 
         // Collect indices to extract from the values array
@@ -93,7 +93,7 @@ impl Transform for GetIndexList {
         let new_data = result_data.into_builder().nulls(combined_nulls).build()?;
         result = arrow::array::make_array(new_data);
 
-        Ok(result)
+        Ok(Some(result))
     }
 }
 
@@ -104,39 +104,43 @@ mod tests {
     use arrow::datatypes::Int32Type;
 
     #[test]
-    fn test_get_index_basic() {
+    fn test_get_index_basic() -> Result<(), Box<dyn std::error::Error>> {
         let input = ListArray::from_iter_primitive::<Int32Type, _, _>(vec![
             Some(vec![Some(1), Some(2), Some(3)]),
             Some(vec![Some(4), Some(5)]),
         ]);
 
-        let result = GetIndexList::new(0).transform(&input).unwrap();
+        let result = GetIndexList::new(0).transform(&input)?.unwrap();
         let result_i32 = result.as_primitive::<Int32Type>();
 
         assert_eq!(result_i32.len(), 2);
         assert_eq!(result_i32.value(0), 1);
         assert_eq!(result_i32.value(1), 4);
+
+        Ok(())
     }
 
     #[test]
-    fn test_get_index_out_of_bounds() {
+    fn test_get_index_out_of_bounds() -> Result<(), Box<dyn std::error::Error>> {
         let input = ListArray::from_iter_primitive::<Int32Type, _, _>(vec![
             Some(vec![Some(1), Some(2)]),
             Some(vec![Some(3)]),
             Some(vec![]),
         ]);
 
-        let result = GetIndexList::new(5).transform(&input).unwrap();
+        let result = GetIndexList::new(5).transform(&input)?.unwrap();
         let result_i32 = result.as_primitive::<Int32Type>();
 
         assert_eq!(result_i32.len(), 3);
         assert!(result_i32.is_null(0)); // Out of bounds
         assert!(result_i32.is_null(1)); // Out of bounds
         assert!(result_i32.is_null(2)); // Empty list
+
+        Ok(())
     }
 
     #[test]
-    fn test_get_index_with_nulls() {
+    fn test_get_index_with_nulls() -> Result<(), Box<dyn std::error::Error>> {
         let input = ListArray::from_iter_primitive::<Int32Type, _, _>(vec![
             Some(vec![Some(1), Some(2)]),
             None,
@@ -144,7 +148,7 @@ mod tests {
             Some(vec![]),
         ]);
 
-        let result = GetIndexList::new(1).transform(&input).unwrap();
+        let result = GetIndexList::new(1).transform(&input)?.unwrap();
         let result_i32 = result.as_primitive::<Int32Type>();
 
         assert_eq!(result_i32.len(), 4);
@@ -152,5 +156,7 @@ mod tests {
         assert!(result_i32.is_null(1)); // Null row
         assert!(result_i32.is_null(2)); // Null element at index 1
         assert!(result_i32.is_null(3)); // Out of bounds (empty list)
+
+        Ok(())
     }
 }

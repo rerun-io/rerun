@@ -16,7 +16,7 @@ use crate::{Error, Transform};
 
 /// Extracts a field from a struct array.
 ///
-/// Returns the field's array if it exists, otherwise returns an error.
+/// Returns `None` if the field does not exist in the struct.
 #[derive(Clone)]
 pub struct GetField {
     field_name: String,
@@ -35,17 +35,10 @@ impl Transform for GetField {
     type Source = StructArray;
     type Target = ArrayRef;
 
-    fn transform(&self, source: &StructArray) -> Result<ArrayRef, Error> {
-        let field_array = source
-            .column_by_name(&self.field_name)
-            .ok_or_else(|| {
-                let available_fields = source.fields().iter().map(|f| f.name().clone()).collect();
-                Error::FieldNotFound {
-                    field_name: self.field_name.clone(),
-                    available_fields,
-                }
-            })?
-            .clone();
+    fn transform(&self, source: &StructArray) -> Result<Option<ArrayRef>, Error> {
+        let Some(field_array) = source.column_by_name(&self.field_name).cloned() else {
+            return Ok(None);
+        };
 
         // If the struct has nulls, we need to combine them with the field's nulls
         // because in Arrow, when a struct is null, its fields should also be null
@@ -68,10 +61,10 @@ impl Transform for GetField {
                 .into_builder()
                 .nulls(Some(combined_nulls))
                 .build()?;
-            Ok(arrow::array::make_array(new_data))
+            Ok(Some(arrow::array::make_array(new_data)))
         } else {
             // No struct nulls - just return the field as-is
-            Ok(field_array)
+            Ok(Some(field_array))
         }
     }
 }
@@ -117,7 +110,7 @@ impl Transform for Flatten {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
+    fn transform(&self, source: &ListArray) -> Result<Option<ListArray>, Error> {
         let values = source.values();
 
         // The values should be a ListArray (or FixedSizeListArray) that we want to flatten
@@ -170,12 +163,12 @@ impl Transform for Flatten {
             ));
             let offsets = arrow::buffer::OffsetBuffer::new(new_offsets.into());
 
-            return Ok(ListArray::new(
+            return Ok(Some(ListArray::new(
                 field,
                 offsets,
                 inner_values.clone(),
                 source.nulls().cloned(),
-            ));
+            )));
         }
 
         // General case: build new offsets and collect value ranges
@@ -245,12 +238,12 @@ impl Transform for Flatten {
         ));
         let offsets = arrow::buffer::OffsetBuffer::new(new_offsets.into());
 
-        Ok(ListArray::new(
+        Ok(Some(ListArray::new(
             field,
             offsets,
             flattened_values,
             source.nulls().cloned(),
-        ))
+        )))
     }
 }
 
@@ -282,14 +275,19 @@ impl Transform for StructToFixedList {
     type Source = StructArray;
     type Target = FixedSizeListArray;
 
-    fn transform(&self, source: &StructArray) -> Result<FixedSizeListArray, Error> {
+    fn transform(&self, source: &StructArray) -> Result<Option<FixedSizeListArray>, Error> {
         if self.field_names.is_empty() {
             return Err(Error::NoFieldNames);
         }
 
         // Get the first field to determine the element type
         let first_field_name = &self.field_names[0];
-        let first_array = GetField::new(first_field_name).transform(source)?;
+        let first_array = GetField::new(first_field_name)
+            .transform(source)?
+            .ok_or_else(|| Error::FieldNotFound {
+                field_name: first_field_name.clone(),
+                available_fields: source.fields().iter().map(|f| f.name().clone()).collect(),
+            })?;
         let element_type = first_array.data_type().clone();
 
         // Collect all field arrays, ensuring they all have the same type
@@ -297,7 +295,12 @@ impl Transform for StructToFixedList {
         field_arrays.push(first_array);
 
         for field_name in &self.field_names[1..] {
-            let array = GetField::new(field_name).transform(source)?;
+            let array = GetField::new(field_name)
+                .transform(source)?
+                .ok_or_else(|| Error::FieldNotFound {
+                    field_name: field_name.clone(),
+                    available_fields: source.fields().iter().map(|f| f.name().clone()).collect(),
+                })?;
 
             // Verify type consistency
             if array.data_type() != &element_type {
@@ -331,9 +334,9 @@ impl Transform for StructToFixedList {
             actual: list_size,
             err,
         })?;
-        Ok(FixedSizeListArray::new(
+        Ok(Some(FixedSizeListArray::new(
             field, list_size, values, None, // No outer nulls
-        ))
+        )))
     }
 }
 
@@ -344,7 +347,7 @@ impl Transform for PromoteInnerNulls {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &ListArray) -> Result<Self::Target, Error> {
+    fn transform(&self, source: &ListArray) -> Result<Option<Self::Target>, Error> {
         let (field, offsets, values, nulls) = source.clone().into_parts();
         let inner_nulls = values.logical_nulls();
 
@@ -367,12 +370,12 @@ impl Transform for PromoteInnerNulls {
             null_buf.append(valid);
         }
 
-        Ok(ListArray::new(
+        Ok(Some(ListArray::new(
             field,
             offsets,
             values,
             Some(NullBuffer::from(null_buf.finish())),
-        ))
+        )))
     }
 }
 
@@ -392,7 +395,7 @@ impl Transform for Explode {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, Error> {
         let values_array = source.values();
         let offsets = source.offsets();
 
@@ -467,12 +470,12 @@ impl Transform for Explode {
         };
 
         let field = Arc::new(Field::new_list_field(source.value_type(), true));
-        Ok(ListArray::new(
+        Ok(Some(ListArray::new(
             field,
             OffsetBuffer::new(new_offsets.into()),
             values,
             Some(NullBuffer::from(new_validity)),
-        ))
+        )))
     }
 }
 
@@ -509,7 +512,7 @@ impl Transform for RowMajorToColumnMajor {
     type Source = FixedSizeListArray;
     type Target = FixedSizeListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, Error> {
         // First, check that the input array has the expected value length.
         let expected_list_size = self.output_rows * self.output_columns;
         let value_length = source.value_length() as usize;
@@ -541,11 +544,11 @@ impl Transform for RowMajorToColumnMajor {
             source.value_type().clone(),
             source.is_nullable(),
         ));
-        Ok(FixedSizeListArray::new(
+        Ok(Some(FixedSizeListArray::new(
             field,
             source.value_length(),
             reordered_values,
             source.nulls().cloned(),
-        ))
+        )))
     }
 }

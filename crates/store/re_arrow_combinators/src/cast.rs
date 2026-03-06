@@ -43,7 +43,7 @@ where
     type Source = PrimitiveArray<S>;
     type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &PrimitiveArray<S>) -> Result<PrimitiveArray<T>, Error> {
+    fn transform(&self, source: &PrimitiveArray<S>) -> Result<Option<PrimitiveArray<T>>, Error> {
         let source_ref: &dyn Array = source;
         let target_type = T::DATA_TYPE;
         let casted = cast(source_ref, &target_type)?;
@@ -74,7 +74,7 @@ where
     type Source = ArrayRef;
     type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &ArrayRef) -> Result<PrimitiveArray<T>, Error> {
+    fn transform(&self, source: &ArrayRef) -> Result<Option<PrimitiveArray<T>>, Error> {
         source
             .as_any()
             .downcast_ref::<PrimitiveArray<T>>()
@@ -84,6 +84,7 @@ where
                 context: "downcast_ref".to_owned(),
             })
             .cloned()
+            .map(Some)
     }
 }
 
@@ -106,7 +107,7 @@ impl Transform for ListToFixedSizeList {
     type Source = arrow::array::ListArray;
     type Target = arrow::array::FixedSizeListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, Error> {
         // Check that each list has exactly the expected length (or is null).
         let offsets = source.value_offsets();
         let expected_length = self.value_length as usize;
@@ -129,11 +130,11 @@ impl Transform for ListToFixedSizeList {
             source.value_type().clone(),
             source.is_nullable(),
         ));
-        Ok(arrow::array::FixedSizeListArray::try_new(
+        Ok(Some(arrow::array::FixedSizeListArray::try_new(
             field,
             self.value_length,
             source.values().clone(),
             source.nulls().cloned(),
-        )?)
+        )?))
     }
 }

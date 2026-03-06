@@ -1,10 +1,9 @@
-use re_lenses::{Lens, LensError, Op};
+use re_arrow_combinators::{Selector, Transform as _, map::MapList};
+use re_lenses::{Lens, LensError, op};
 use re_log_types::{EntityPathFilter, TimeType};
-use re_sdk_types::archetypes::Pinhole;
+use re_sdk_types::archetypes::{CoordinateFrame, Pinhole};
 
-use crate::loader_mcap::lenses::helpers::{
-    list_3x3_row_major_to_column_major, width_height_to_resolution,
-};
+use crate::loader_mcap::lenses::helpers::row_major_3x3_to_column_major;
 
 use super::{FOXGLOVE_TIMESTAMP, IMAGE_PLANE_SUFFIX};
 
@@ -20,29 +19,20 @@ pub fn camera_calibration() -> Result<Lens, LensError> {
         out.time(
             FOXGLOVE_TIMESTAMP,
             TimeType::TimestampNs,
-            [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
-        )
+            Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
+        )?
         .component(
-            Pinhole::descriptor_child_frame(),
-            [
-                Op::selector(".frame_id"),
-                Op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX),
-            ],
-        )
-        .component(
-            Pinhole::descriptor_resolution(),
-            [Op::func(width_height_to_resolution)],
-        )
+            CoordinateFrame::descriptor_frame(),
+            Selector::parse(".frame_id")?
+                .then(MapList::new(op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX))),
+        )?
         .component(
             Pinhole::descriptor_image_from_camera(),
-            [
-                Op::selector(".K"),
-                Op::func(list_3x3_row_major_to_column_major),
-            ],
-        )
+            Selector::parse(".K")?.then(MapList::new(row_major_3x3_to_column_major())),
+        )?
         .component(
-            Pinhole::descriptor_parent_frame(),
-            [Op::selector(".frame_id")],
+            CoordinateFrame::descriptor_frame(),
+            Selector::parse(".frame_id")?,
         )
     })?
     .build())

@@ -43,8 +43,8 @@ mod parser;
 mod runtime;
 
 use arrow::{
-    array::{Array as _, ListArray},
-    datatypes::{DataType, Field, Fields},
+    array::ListArray,
+    datatypes::{DataType, Fields},
 };
 use vec1::Vec1;
 
@@ -61,6 +61,13 @@ impl std::fmt::Display for Selector {
 }
 
 impl Selector {
+    /// Parse a selector from a query string.
+    ///
+    /// This is a convenience wrapper around [`FromStr`](std::str::FromStr).
+    pub fn parse(query: &str) -> Result<Self, Error> {
+        query.parse()
+    }
+
     /// Execute this selector against each row of a [`ListArray`].
     ///
     /// Performs implicit iteration over the inner list array, and reconstructs the array at the end.
@@ -92,9 +99,8 @@ impl crate::Transform for Selector {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
-        let result = self.execute_per_row(source).map_err(crate::Error::from)?;
-        Ok(result.unwrap_or_else(|| null_list_like(source)))
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, crate::Error> {
+        self.execute_per_row(source).map_err(crate::Error::from)
     }
 }
 
@@ -102,18 +108,9 @@ impl crate::Transform for &Selector {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
-        let result = self.execute_per_row(source).map_err(crate::Error::from)?;
-        Ok(result.unwrap_or_else(|| null_list_like(source)))
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, crate::Error> {
+        self.execute_per_row(source).map_err(crate::Error::from)
     }
-}
-
-/// Creates an all-null [`ListArray`] with the same type and length as `source`.
-fn null_list_like(source: &ListArray) -> ListArray {
-    ListArray::new_null(
-        Field::new_list_field(source.value_type(), true).into(),
-        source.len(),
-    )
 }
 
 /// Errors that can occur during selector parsing or execution.

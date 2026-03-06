@@ -10,7 +10,7 @@ use re_arrow_combinators::reshape::Explode;
 use util::DisplayRB;
 
 #[test]
-fn test_explode_primitives() {
+fn test_explode_primitives() -> Result<(), Box<dyn std::error::Error>> {
     let input = ListArray::from_iter_primitive::<Int32Type, _, _>(vec![
         Some(vec![Some(1), Some(2), Some(3)]),
         Some(vec![Some(4), Some(5)]),
@@ -32,7 +32,7 @@ fn test_explode_primitives() {
     ");
 
     let explode = Explode;
-    let result = explode.transform(&input).unwrap();
+    let result = explode.transform(&input)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
     ┌───────────────────┐
@@ -53,10 +53,12 @@ fn test_explode_primitives() {
     │ [6]               │
     └───────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_explode_with_nulls_and_empty() {
+fn test_explode_with_nulls_and_empty() -> Result<(), Box<dyn std::error::Error>> {
     let input = ListArray::from_iter_primitive::<Int32Type, _, _>(vec![
         Some(vec![Some(1), Some(2)]),
         None,
@@ -81,7 +83,7 @@ fn test_explode_with_nulls_and_empty() {
     ");
 
     let explode = Explode;
-    let result = explode.transform(&input).unwrap();
+    let result = explode.transform(&input)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
     ┌───────────────────┐
@@ -100,10 +102,12 @@ fn test_explode_with_nulls_and_empty() {
     │ [3]               │
     └───────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_explode_nested_lists() {
+fn test_explode_nested_lists() -> Result<(), Box<dyn std::error::Error>> {
     let inner_values = Int32Array::from(vec![1, 2, 3, 4, 5, 6]);
     let inner_offsets = OffsetBuffer::new(vec![0, 2, 3, 6].into());
     let inner_field = Arc::new(Field::new_list_field(DataType::Int32, true));
@@ -131,7 +135,7 @@ fn test_explode_nested_lists() {
     ");
 
     let explode = Explode;
-    let result = explode.transform(&input).unwrap();
+    let result = explode.transform(&input)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
     ┌─────────────────────────┐
@@ -146,17 +150,19 @@ fn test_explode_nested_lists() {
     │ [[4, 5, 6]]             │
     └─────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_explode_empty_input() {
+fn test_explode_empty_input() -> Result<(), Box<dyn std::error::Error>> {
     // Test exploding an empty list
     let input = ListArray::from_iter_primitive::<arrow::datatypes::Int32Type, _, _>(Vec::<
         Option<Vec<Option<i32>>>,
     >::new());
 
     let explode = Explode;
-    let result = explode.transform(&input).unwrap();
+    let result = explode.transform(&input)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
     ┌───────────────────┐
@@ -166,10 +172,12 @@ fn test_explode_empty_input() {
     ╞═══════════════════╡
     └───────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_explode_with_skips_in_offset_buffer() {
+fn test_explode_with_skips_in_offset_buffer() -> Result<(), Box<dyn std::error::Error>> {
     let values = Int32Array::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     let offsets = OffsetBuffer::new(vec![0, 2, 7, 10].into());
     let validity = arrow::buffer::NullBuffer::from(vec![true, false, true]);
@@ -192,7 +200,7 @@ fn test_explode_with_skips_in_offset_buffer() {
     ");
 
     let explode = Explode;
-    let result = explode.transform(&input).unwrap();
+    let result = explode.transform(&input)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
     ┌───────────────────┐
@@ -213,4 +221,6 @@ fn test_explode_with_skips_in_offset_buffer() {
     │ [9]               │
     └───────────────────┘
     ");
+
+    Ok(())
 }

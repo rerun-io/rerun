@@ -7,9 +7,7 @@ use arrow::array::{
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field};
-use re_arrow_combinators::Transform;
-use re_arrow_combinators::map::MapList;
-use re_lenses::OpError;
+use re_arrow_combinators::{Error, Transform};
 use re_sdk_types::Loggable as _;
 use re_sdk_types::datatypes::ImageFormat;
 
@@ -17,24 +15,13 @@ use super::helpers::get_field_as;
 
 /// Converts a struct with `width`, `height`, and `encoding` fields into a Rerun
 /// [`ImageFormat`] struct array, using [`re_mcap::ImageEncoding`].
-pub fn encoding_to_image_format(list_array: &ListArray) -> Result<ListArray, OpError> {
-    Ok(MapList::new(EncodingToImageFormat).transform(list_array)?)
-}
-
-/// Extracts image buffer data from a struct with `width`, `height`, `step`, `encoding`,
-/// and `data` fields. Strips row padding when the data is larger than expected for the
-/// given encoding.
-pub fn extract_image_buffer(list_array: &ListArray) -> Result<ListArray, OpError> {
-    Ok(MapList::new(ExtractImageBuffer).transform(list_array)?)
-}
-
-struct EncodingToImageFormat;
+pub(crate) struct EncodingToImageFormat;
 
 impl Transform for EncodingToImageFormat {
     type Source = StructArray;
     type Target = StructArray;
 
-    fn transform(&self, source: &StructArray) -> Result<StructArray, re_arrow_combinators::Error> {
+    fn transform(&self, source: &StructArray) -> Result<Option<StructArray>, Error> {
         let width_array = get_field_as::<UInt32Array>(source, "width")?;
         let height_array = get_field_as::<UInt32Array>(source, "height")?;
         let encoding_array = get_field_as::<StringArray>(source, "encoding")?;
@@ -50,30 +37,34 @@ impl Transform for EncodingToImageFormat {
                     height_array.value(i),
                 ])))
             })
-            .collect::<Result<_, re_arrow_combinators::Error>>()?;
+            .collect::<Result<_, Error>>()?;
 
         let array_ref = ImageFormat::to_arrow_opt(formats.iter().map(|f| f.as_ref()))
-            .map_err(|err| re_arrow_combinators::Error::Other(err.to_string()))?;
+            .map_err(|err| Error::Other(err.to_string()))?;
 
         array_ref
             .as_any()
             .downcast_ref::<StructArray>()
             .cloned()
-            .ok_or_else(|| re_arrow_combinators::Error::TypeMismatch {
+            .ok_or_else(|| Error::TypeMismatch {
                 expected: "StructArray".to_owned(),
                 actual: array_ref.data_type().clone(),
                 context: "ImageFormat serialization".to_owned(),
             })
+            .map(Some)
     }
 }
 
-struct ExtractImageBuffer;
+/// Extracts image buffer data from a struct with `width`, `height`, `step`, `encoding`,
+/// and `data` fields. Strips row padding when the data is larger than expected for the
+/// given encoding.
+pub(crate) struct ExtractImageBuffer;
 
 impl Transform for ExtractImageBuffer {
     type Source = StructArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &StructArray) -> Result<ListArray, re_arrow_combinators::Error> {
+    fn transform(&self, source: &StructArray) -> Result<Option<ListArray>, Error> {
         re_tracing::profile_function!();
 
         let width_array = get_field_as::<UInt32Array>(source, "width")?;
@@ -139,31 +130,30 @@ impl Transform for ExtractImageBuffer {
         let values = UInt8Array::from(buffer);
         let field = Arc::new(Field::new_list_field(DataType::UInt8, false));
 
-        Ok(ListArray::new(
+        Ok(Some(ListArray::new(
             field,
             OffsetBuffer::new(offsets.into()),
             Arc::new(values),
             source.nulls().cloned(),
-        ))
+        )))
     }
 }
 
 /// Appends the current buffer length as the next offset for building a `ListArray`.
-fn push_offset(buffer: &[u8], offsets: &mut Vec<i32>) -> Result<(), re_arrow_combinators::Error> {
-    offsets.push(i32::try_from(buffer.len()).map_err(|_err| {
-        re_arrow_combinators::Error::OffsetOverflow {
+fn push_offset(buffer: &[u8], offsets: &mut Vec<i32>) -> Result<(), Error> {
+    offsets.push(
+        i32::try_from(buffer.len()).map_err(|_err| Error::OffsetOverflow {
             actual: buffer.len(),
             expected_type: "i32",
-        }
-    })?);
+        })?,
+    );
     Ok(())
 }
 
 /// Parses an encoding string into an [`re_mcap::ImageEncoding`], mapping the error for use in transforms.
-fn parse_encoding(s: &str) -> Result<re_mcap::ImageEncoding, re_arrow_combinators::Error> {
-    s.parse()
-        .map_err(|_err| re_arrow_combinators::Error::UnexpectedValue {
-            expected: re_mcap::ImageEncoding::NAMES,
-            actual: s.to_owned(),
-        })
+fn parse_encoding(s: &str) -> Result<re_mcap::ImageEncoding, Error> {
+    s.parse().map_err(|_err| Error::UnexpectedValue {
+        expected: re_mcap::ImageEncoding::NAMES,
+        actual: s.to_owned(),
+    })
 }

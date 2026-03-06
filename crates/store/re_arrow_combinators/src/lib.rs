@@ -19,4 +19,4 @@ mod selector;
 pub use crate::cast::{DowncastRef, ListToFixedSizeList, PrimitiveCast};
 pub use crate::error::Error;
 pub use crate::selector::{Error as SelectorError, Selector, extract_nested_fields};
-pub use crate::transform::{Compose, Transform};
+pub use crate::transform::Transform;

@@ -1,4 +1,5 @@
-use re_lenses::{Lens, LensError, Op};
+use re_arrow_combinators::{Selector, Transform as _, map::MapList};
+use re_lenses::{Lens, LensError, op};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::{CoordinateFrame, VideoStream};
 
@@ -14,22 +15,20 @@ pub fn compressed_video() -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     TimeType::TimestampNs,
-                    [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
-                )
+                    Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
+                )?
                 .component(
                     CoordinateFrame::descriptor_frame(),
-                    [
-                        Op::selector(".frame_id"),
-                        Op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX),
-                    ],
-                )
+                    Selector::parse(".frame_id")?
+                        .then(MapList::new(op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX))),
+                )?
                 .component(
                     VideoStream::descriptor_codec(),
-                    [Op::selector(".format"), Op::string_to_video_codec()],
-                )
+                    Selector::parse(".format")?.then(MapList::new(op::string_to_video_codec())),
+                )?
                 .component(
                     VideoStream::descriptor_sample(),
-                    [Op::selector(".data"), Op::binary_to_list_uint8()],
+                    Selector::parse(".data")?.then(MapList::new(op::binary_to_list_uint8())),
                 )
             })?
             .build(),

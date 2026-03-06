@@ -1,6 +1,6 @@
-use arrow::array::{ListArray, StringArray};
-use re_arrow_combinators::{Transform, map::MapList};
-use re_lenses::{Lens, LensError, Op, OpError};
+use arrow::array::StringArray;
+use re_arrow_combinators::{Selector, Transform, map::MapList};
+use re_lenses::{Lens, LensError, op};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::TextLog;
 
@@ -16,24 +16,16 @@ pub fn log() -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     TimeType::TimestampNs,
-                    [Op::selector(".timestamp"), Op::time_spec_to_nanos()],
-                )
-                .component(TextLog::descriptor_text(), [Op::selector(".message")])
+                    Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
+                )?
+                .component(TextLog::descriptor_text(), Selector::parse(".message")?)?
                 .component(
                     TextLog::descriptor_level(),
-                    [
-                        Op::selector(".level.name"),
-                        Op::func(foxglove_level_to_rerun),
-                    ],
+                    Selector::parse(".level.name")?.then(MapList::new(FoxgloveToRerunLogLevel)),
                 )
             })?
             .build(),
     )
-}
-
-/// Maps Foxglove log level names to Rerun [`re_sdk_types::components::TextLogLevel`] names.
-fn foxglove_level_to_rerun(list_array: &ListArray) -> Result<ListArray, OpError> {
-    Ok(MapList::new(FoxgloveToRerunLogLevel).transform(list_array)?)
 }
 
 /// Maps Foxglove log level strings to Rerun [`re_sdk_types::components::TextLogLevel`] strings.
@@ -43,17 +35,22 @@ impl Transform for FoxgloveToRerunLogLevel {
     type Source = StringArray;
     type Target = StringArray;
 
-    fn transform(&self, source: &StringArray) -> Result<StringArray, re_arrow_combinators::Error> {
-        Ok(source
-            .iter()
-            .map(|level| match level {
-                Some("WARNING") => Some("WARN"),
-                Some("FATAL") => Some("CRITICAL"),
-                // Rerun has no UNKNOWN level.
-                Some("UNKNOWN") | None => None,
-                // DEBUG, INFO, ERROR can be passed through as-is.
-                other => other,
-            })
-            .collect())
+    fn transform(
+        &self,
+        source: &StringArray,
+    ) -> Result<Option<StringArray>, re_arrow_combinators::Error> {
+        Ok(Some(
+            source
+                .iter()
+                .map(|level| match level {
+                    Some("WARNING") => Some("WARN"),
+                    Some("FATAL") => Some("CRITICAL"),
+                    // Rerun has no UNKNOWN level.
+                    Some("UNKNOWN") | None => None,
+                    // DEBUG, INFO, ERROR can be passed through as-is.
+                    other => other,
+                })
+                .collect(),
+        ))
     }
 }

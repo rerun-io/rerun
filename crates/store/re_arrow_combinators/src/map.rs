@@ -34,7 +34,7 @@ where
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
+    fn transform(&self, source: &ListArray) -> Result<Option<ListArray>, Error> {
         let (field, offsets, values, nulls) = source.clone().into_parts();
         let downcast =
             values
@@ -45,18 +45,23 @@ where
                     actual: values.data_type().clone(),
                 })?;
 
-        let transformed = self.transform.transform(downcast)?;
+        let inner = self.transform.transform(downcast)?;
 
-        let new_field = field
-            .as_ref()
-            .clone()
-            .with_data_type(transformed.data_type().clone());
-        Ok(ListArray::new(
-            new_field.into(),
-            offsets,
-            Arc::new(transformed),
-            nulls,
-        ))
+        match inner {
+            Some(transformed) => {
+                let new_field = field
+                    .as_ref()
+                    .clone()
+                    .with_data_type(transformed.data_type().clone());
+                Ok(Some(ListArray::new(
+                    new_field.into(),
+                    offsets,
+                    Arc::new(transformed),
+                    nulls,
+                )))
+            }
+            None => Ok(None),
+        }
     }
 }
 
@@ -85,7 +90,7 @@ where
     type Source = FixedSizeListArray;
     type Target = FixedSizeListArray;
 
-    fn transform(&self, source: &FixedSizeListArray) -> Result<FixedSizeListArray, Error> {
+    fn transform(&self, source: &FixedSizeListArray) -> Result<Option<FixedSizeListArray>, Error> {
         let values = source.values();
         let downcast = values.as_any().downcast_ref::<S>().ok_or_else(|| {
             Error::UnexpectedFixedSizeListValueType {
@@ -94,20 +99,25 @@ where
             }
         })?;
 
-        let transformed = self.transform.transform(downcast)?;
-        let field = Arc::new(Field::new_list_field(
-            transformed.data_type().clone(),
-            transformed.is_nullable(),
-        ));
+        let inner = self.transform.transform(downcast)?;
         let size = source.value_length();
         let nulls = source.nulls().cloned();
 
-        Ok(FixedSizeListArray::new(
-            field,
-            size,
-            Arc::new(transformed),
-            nulls,
-        ))
+        match inner {
+            Some(transformed) => {
+                let field = Arc::new(Field::new_list_field(
+                    transformed.data_type().clone(),
+                    transformed.is_nullable(),
+                ));
+                Ok(Some(FixedSizeListArray::new(
+                    field,
+                    size,
+                    Arc::new(transformed),
+                    nulls,
+                )))
+            }
+            None => Ok(None),
+        }
     }
 }
 
@@ -152,9 +162,9 @@ where
     type Source = PrimitiveArray<S>;
     type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &PrimitiveArray<S>) -> Result<PrimitiveArray<T>, Error> {
+    fn transform(&self, source: &PrimitiveArray<S>) -> Result<Option<PrimitiveArray<T>>, Error> {
         let result: PrimitiveArray<T> = source.iter().map(|opt| opt.map(|v| (self.f)(v))).collect();
-        Ok(result)
+        Ok(Some(result))
     }
 }
 
@@ -191,12 +201,12 @@ where
     type Source = PrimitiveArray<T>;
     type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &PrimitiveArray<T>) -> Result<PrimitiveArray<T>, Error> {
+    fn transform(&self, source: &PrimitiveArray<T>) -> Result<Option<PrimitiveArray<T>>, Error> {
         let result: PrimitiveArray<T> = source
             .iter()
             .map(|opt| Some(opt.unwrap_or(self.default_value)))
             .collect();
-        Ok(result)
+        Ok(Some(result))
     }
 }
 
@@ -232,7 +242,7 @@ impl Transform for StringPrefix {
     type Source = StringArray;
     type Target = StringArray;
 
-    fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
+    fn transform(&self, source: &StringArray) -> Result<Option<StringArray>, Error> {
         let result: StringArray = source
             .iter()
             .map(|opt| {
@@ -246,7 +256,7 @@ impl Transform for StringPrefix {
                 })
             })
             .collect();
-        Ok(result)
+        Ok(Some(result))
     }
 }
 
@@ -282,7 +292,7 @@ impl Transform for StringSuffix {
     type Source = StringArray;
     type Target = StringArray;
 
-    fn transform(&self, source: &StringArray) -> Result<StringArray, Error> {
+    fn transform(&self, source: &StringArray) -> Result<Option<StringArray>, Error> {
         let result: StringArray = source
             .iter()
             .map(|opt| {
@@ -296,6 +306,26 @@ impl Transform for StringSuffix {
                 })
             })
             .collect();
-        Ok(result)
+        Ok(Some(result))
     }
+}
+
+/// Prepends a prefix to each string value, including empty strings.
+pub fn string_prefix(prefix: impl Into<String>) -> StringPrefix {
+    StringPrefix::new(prefix)
+}
+
+/// Prepends a prefix to each non-empty string value, leaving empty strings unchanged.
+pub fn string_prefix_nonempty(prefix: impl Into<String>) -> StringPrefix {
+    StringPrefix::new(prefix).with_prefix_empty_string(false)
+}
+
+/// Appends a suffix to each string value, including empty strings.
+pub fn string_suffix(suffix: impl Into<String>) -> StringSuffix {
+    StringSuffix::new(suffix)
+}
+
+/// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
+pub fn string_suffix_nonempty(suffix: impl Into<String>) -> StringSuffix {
+    StringSuffix::new(suffix).with_suffix_empty_string(false)
 }
