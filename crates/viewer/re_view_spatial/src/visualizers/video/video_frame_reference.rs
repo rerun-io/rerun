@@ -3,24 +3,24 @@ use std::sync::Arc;
 use re_log_types::EntityPath;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::video::Video;
-use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
+use re_sdk_types::Archetype as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
-    ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem, typed_fallback_for,
+    typed_fallback_for, IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::PickableTexturedRect;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::entity_iterator::process_archetype;
 use crate::visualizers::video::{
-    VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
+    AT_TIME_CURSOR_SALT, VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
     visualize_video_frame_texture,
 };
+use crate::visualizers::SpatialViewVisualizerData;
+use crate::PickableTexturedRect;
 
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -108,7 +108,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                                 )
                             }),
                         entity_path,
-                        view_query.view_id,
                     );
                 }
 
@@ -128,7 +127,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
 }
 
 impl VideoFrameReferenceVisualizer {
-    #[expect(clippy::too_many_arguments)]
     fn process_video_frame(
         &mut self,
         ctx: &re_viewer_context::QueryContext<'_>,
@@ -137,11 +135,14 @@ impl VideoFrameReferenceVisualizer {
         video_references: Option<Vec<re_sdk_types::ArrowString>>,
         opacity: Opacity,
         entity_path: &EntityPath,
-        view_id: ViewId,
     ) {
         re_tracing::profile_function!();
 
-        let player_stream_id = video_stream_id(entity_path, view_id, Self::identifier());
+        let player_stream_id = video_stream_id(
+            entity_path,
+            VideoFrameReference::descriptor_video_reference().component,
+            AT_TIME_CURSOR_SALT,
+        );
 
         // Follow the reference to the video asset.
         let video_reference: EntityPath = video_references
