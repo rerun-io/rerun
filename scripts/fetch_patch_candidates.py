@@ -12,7 +12,7 @@ from typing import Any
 
 from colorama import Fore, Style
 import pandas as pd
-from tabulate import tabulate
+from tabulate import tabulate  # type: ignore[import-untyped]
 from tqdm import tqdm
 
 DOC = """

@@ -1232,7 +1232,7 @@ fn paint_time_cursor(
     let time_drag_id = ui.id().with("time_drag");
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_near = ui.rect_contains_pointer(line_rect);
-    let is_being_dragged = ui.is_being_dragged(time_drag_id);
+    let is_being_dragged = ui.ctx().is_being_dragged(time_drag_id);
 
     if is_near || is_being_dragged {
         ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
@@ -1242,7 +1242,7 @@ fn paint_time_cursor(
         && !is_being_dragged
         && ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary))
     {
-        ui.set_dragged_id(time_drag_id);
+        ui.ctx().set_dragged_id(time_drag_id);
     }
 
     if is_being_dragged && let Some(pointer_pos) = pointer_pos {
