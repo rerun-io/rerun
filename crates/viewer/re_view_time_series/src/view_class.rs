@@ -925,13 +925,7 @@ fn visualizers_section_ui(ui: &mut egui::Ui, ctx: &re_viewer_context::ViewContex
 
                 ui.add_space(10.0);
 
-                visualizer_ui_element(
-                    ui,
-                    ctx,
-                    node,
-                    pill_margin,
-                    instruction,
-                );
+                visualizer_ui_element(ui, ctx, node, pill_margin, instruction);
             }
         }
     });
