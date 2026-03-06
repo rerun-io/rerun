@@ -1,12 +1,13 @@
 //! Transforms that extract and reshape arrays.
 
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use arrow::array::{
     Array, ArrayRef, BooleanBufferBuilder, FixedSizeListArray, ListArray, StructArray, UInt32Array,
     UInt64Array,
 };
-use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::buffer::{NullBuffer, OffsetBuffer, ScalarBuffer};
 use arrow::datatypes::{ArrowNativeType as _, Field};
 
 use re_log::debug_assert_eq;
@@ -75,10 +76,26 @@ impl Transform for GetField {
     }
 }
 
+/// Converts a `FixedSizeListArray` to a `ListArray` by synthesizing offsets.
+fn fixed_size_list_to_list(fixed: &FixedSizeListArray) -> Result<ListArray, Error> {
+    let (field, size, values, nulls) = fixed.clone().into_parts();
+    let len = i32::try_from(fixed.len()).map_err(|_err| Error::OffsetOverflow {
+        actual: fixed.len(),
+        expected_type: "i32",
+    })?;
+    let offsets: Vec<i32> = (0..=len).map(|i| i * size).collect();
+    Ok(ListArray::new(
+        field,
+        OffsetBuffer::new(ScalarBuffer::from(offsets)),
+        values,
+        nulls,
+    ))
+}
+
 /// Flattens a nested list array by one level.
 ///
-/// Takes `List<List<T>>` and flattens it to `List<T>` by concatenating all inner lists
-/// within each outer list row.
+/// Takes `List<List<T>>` or `List<FixedSizeList<T>>` and flattens it to `List<T>` by
+/// concatenating all inner lists within each outer list row.
 ///
 /// # Example
 ///
@@ -103,16 +120,19 @@ impl Transform for Flatten {
     fn transform(&self, source: &ListArray) -> Result<ListArray, Error> {
         let values = source.values();
 
-        // The values should be a ListArray that we want to flatten
-        let inner_list =
-            values
-                .as_any()
-                .downcast_ref::<ListArray>()
-                .ok_or_else(|| Error::TypeMismatch {
-                    expected: "List".to_owned(),
+        // The values should be a ListArray (or FixedSizeListArray) that we want to flatten
+        let inner_list: Cow<'_, ListArray> =
+            if let Some(list) = values.as_any().downcast_ref::<ListArray>() {
+                Cow::Borrowed(list)
+            } else if let Some(fixed) = values.as_any().downcast_ref::<FixedSizeListArray>() {
+                Cow::Owned(fixed_size_list_to_list(fixed)?)
+            } else {
+                return Err(Error::TypeMismatch {
+                    expected: "List or FixedSizeList".to_owned(),
                     actual: values.data_type().clone(),
-                    context: "Flatten expects List<List<T>>".to_owned(),
-                })?;
+                    context: "Flatten expects List<List<T>> or List<FixedSizeList<T>>".to_owned(),
+                });
+            };
 
         let outer_offsets = source.offsets();
         let inner_offsets = inner_list.offsets();

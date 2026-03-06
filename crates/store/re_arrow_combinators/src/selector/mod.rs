@@ -30,7 +30,7 @@ mod runtime;
 
 use arrow::{
     array::{Array as _, ListArray},
-    datatypes::{DataType, Field},
+    datatypes::{DataType, Field, Fields},
 };
 use vec1::Vec1;
 
@@ -118,6 +118,52 @@ pub enum Error {
     Runtime(#[from] crate::Error),
 }
 
+/// Dispatch a single datatype: enqueue structs, unwrap lists, or check the predicate.
+fn process_datatype<'a, P>(
+    mut path: Vec<Segment>,
+    datatype: &'a DataType,
+    predicate: &P,
+    result: &mut Vec<(Selector, DataType)>,
+    queue: &mut std::collections::VecDeque<(Vec<Segment>, &'a Fields)>,
+) where
+    P: Fn(&DataType) -> bool,
+{
+    match datatype {
+        DataType::Struct(fields) => {
+            queue.push_back((path, fields));
+        }
+        DataType::List(inner) | DataType::FixedSizeList(inner, ..) => {
+            path.push(Segment {
+                kind: SegmentKind::Each,
+                suppressed: false,
+            });
+            match inner.data_type() {
+                DataType::Struct(nested_fields) => {
+                    queue.push_back((path, nested_fields));
+                }
+                DataType::FixedSizeList(field, ..) => {
+                    let dt = field.data_type();
+                    if predicate(dt) {
+                        path.push(Segment {
+                            kind: SegmentKind::Each,
+                            suppressed: false,
+                        });
+                        result.push((Selector(Expr::Path(path)), dt.clone()));
+                    }
+                }
+                dt if predicate(dt) => {
+                    result.push((Selector(Expr::Path(path)), dt.clone()));
+                }
+                _ => {}
+            }
+        }
+        dt if predicate(dt) => {
+            result.push((Selector(Expr::Path(path)), dt.clone()));
+        }
+        _ => {}
+    }
+}
+
 /// Extract nested fields from a struct array that match a predicate.
 ///
 /// Returns `None` if no fields match the predicate, or if `datatype` is not a `DataType::Struct`.
@@ -128,15 +174,15 @@ pub fn extract_nested_fields<P>(
 where
     P: Fn(&DataType) -> bool,
 {
-    let DataType::Struct(fields) = datatype else {
-        return None;
-    };
-
     let mut result = Vec::new();
     let mut queue = std::collections::VecDeque::new();
 
-    // Initialize queue with root fields
-    queue.push_back((Vec::new(), fields));
+    match datatype {
+        DataType::Struct(_) | DataType::List(_) | DataType::FixedSizeList(..) => {
+            process_datatype(Vec::new(), datatype, &predicate, &mut result, &mut queue);
+        }
+        _ => return None,
+    }
 
     // Breadth-first traversal
     while let Some((path, fields)) = queue.pop_front() {
@@ -146,37 +192,13 @@ where
                 kind: SegmentKind::Field(field.name().clone()),
                 suppressed: false,
             });
-
-            match field.data_type() {
-                DataType::Struct(nested_fields) => {
-                    // Queue nested struct for later processing
-                    queue.push_back((field_path, nested_fields));
-                }
-                DataType::List(inner) => {
-                    // Add the Each segment to unwrap the list
-                    field_path.push(Segment {
-                        kind: SegmentKind::Each,
-                        suppressed: false,
-                    });
-
-                    match inner.data_type() {
-                        DataType::Struct(nested_fields) => {
-                            // Queue nested struct within list for later processing
-                            queue.push_back((field_path, nested_fields));
-                        }
-                        dt if predicate(dt) => {
-                            // Direct match on list inner type
-                            result.push((Selector(Expr::Path(field_path)), dt.clone()));
-                        }
-                        _ => {}
-                    }
-                }
-                dt if predicate(dt) => {
-                    // Direct match on field type
-                    result.push((Selector(Expr::Path(field_path)), dt.clone()));
-                }
-                _ => {}
-            }
+            process_datatype(
+                field_path,
+                field.data_type(),
+                &predicate,
+                &mut result,
+                &mut queue,
+            );
         }
     }
 

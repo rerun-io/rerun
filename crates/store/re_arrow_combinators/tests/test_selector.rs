@@ -315,6 +315,37 @@ fn execute_index_on_fixed_size_list() -> Result<(), Error> {
 }
 
 #[test]
+fn execute_each_on_fixed_size_list() -> Result<(), Error> {
+    // Build List<FixedSizeList<Int32, 3>>
+    //   Row 0: [[1,2,3], [4,5,6]]  -> flatten to [1,2,3,4,5,6]
+    //   Row 1: [[7,8,9]]           -> flatten to [7,8,9]
+
+    let values = Int32Array::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let fixed_field = Arc::new(Field::new("item", DataType::Int32, true));
+    let fixed_list = FixedSizeListArray::new(fixed_field, 3, Arc::new(values), None);
+
+    let offsets = OffsetBuffer::new(vec![0, 2, 3].into());
+    let list_field = Arc::new(Field::new_list_field(fixed_list.data_type().clone(), true));
+    let array = ListArray::new(list_field, offsets, Arc::new(fixed_list), None);
+
+    let result = ".[]".parse::<Selector>()?.execute_per_row(&array)?.unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
+    ┌────────────────────┐
+    │ col                │
+    │ ---                │
+    │ type: List(Int32)  │
+    ╞════════════════════╡
+    │ [1, 2, 3, 4, 5, 6] │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [7, 8, 9]          │
+    └────────────────────┘
+    ");
+
+    Ok(())
+}
+
+#[test]
 fn execute_optional_field() -> Result<(), Error> {
     let array = fixtures::nested_struct_column();
 
@@ -390,20 +421,24 @@ fn extract_scalar_fields_from_nested_struct() {
         Field::new("c", DataType::Int32, true),
     ]);
 
+    let e_field = Field::new_list_field(DataType::Float32, false);
+
     let root_fields = Fields::from(vec![
         Field::new("a", DataType::Struct(bc_fields), true),
         Field::new("d", DataType::Int32, true),
+        Field::new("e", DataType::FixedSizeList(e_field.into(), 3), true),
     ]);
 
     let datatype = DataType::Struct(root_fields);
 
     let result = re_arrow_combinators::extract_nested_fields(&datatype, |dt| {
-        matches!(dt, DataType::Float64 | DataType::Int32)
+        matches!(dt, DataType::Float64 | DataType::Float32 | DataType::Int32)
     })
     .expect("Should find nested fields");
 
     insta::assert_snapshot!(formatted(result), @"
     .d (Int32)
+    .e[] (Float32)
     .a.b (Float64)
     .a.c (Int32)
     ");
@@ -417,28 +452,37 @@ fn extract_scalar_fields_from_nested_list_struct() {
     //   │  └─ c: [Int32]
     //   └─ d: [Float64]
 
-    let b_list = DataType::List(Arc::new(Field::new_list_field(DataType::Float64, true)));
-    let c_list = DataType::List(Arc::new(Field::new_list_field(DataType::Int32, true)));
+    let b_list = DataType::List(Field::new_list_field(DataType::Float64, true).into());
+    let c_list = DataType::List(Field::new_list_field(DataType::Int32, true).into());
     let bc_fields = Fields::from(vec![
         Field::new("b", b_list, true),
         Field::new("c", c_list, true),
     ]);
 
-    let d_list = DataType::List(Arc::new(Field::new_list_field(DataType::Float64, true)));
+    let d_list = DataType::List(Field::new_list_field(DataType::Float64, true).into());
+    let e_list = DataType::List(
+        Field::new_list_field(
+            DataType::FixedSizeList(Field::new_list_field(DataType::Float32, false).into(), 3),
+            true,
+        )
+        .into(),
+    );
     let root_fields = Fields::from(vec![
         Field::new("a", DataType::Struct(bc_fields), true),
         Field::new("d", d_list, true),
+        Field::new("e", e_list, true),
     ]);
 
     let datatype = DataType::Struct(root_fields);
 
     let result = re_arrow_combinators::extract_nested_fields(&datatype, |dt| {
-        matches!(dt, DataType::Float64 | DataType::Int32)
+        matches!(dt, DataType::Float64 | DataType::Float32 | DataType::Int32)
     })
     .expect("Should find nested fields");
 
     insta::assert_snapshot!(formatted(result), @"
     .d[] (Float64)
+    .e[][] (Float32)
     .a.b[] (Float64)
     .a.c[] (Int32)
     ");

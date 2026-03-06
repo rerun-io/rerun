@@ -2,7 +2,7 @@
 //!
 //! This module implements execution of expressions against Arrow [`ListArray`]s.
 
-use arrow::array::{Array as _, ListArray};
+use arrow::array::{Array as _, FixedSizeListArray, ListArray};
 
 use crate::{
     Transform as _,
@@ -32,6 +32,10 @@ pub fn execute_per_row(expr: &Expr, source: &ListArray) -> Result<Option<ListArr
     Ok(result)
 }
 
+fn values_downcasts_to<T: 'static>(array: &ListArray) -> bool {
+    array.values().as_any().downcast_ref::<T>().is_some()
+}
+
 impl SegmentKind {
     fn execute(&self, source: &ListArray) -> Result<ListArray, crate::Error> {
         match self {
@@ -43,11 +47,8 @@ impl SegmentKind {
                 // In Arrow's columnar context, [] flattens one level of list nesting
                 // while preserving row count, rather than exploding to create new rows.
                 // This reinterprets jq's streaming iteration as structural unwrapping.
-                if source
-                    .values()
-                    .as_any()
-                    .downcast_ref::<ListArray>()
-                    .is_some()
+                if values_downcasts_to::<ListArray>(source)
+                    || values_downcasts_to::<FixedSizeListArray>(source)
                 {
                     // Flatten nested lists: List<List<T>> -> List<T>
                     Flatten::new().transform(source)

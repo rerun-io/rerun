@@ -7,7 +7,9 @@ use re_arrow_combinators::Selector;
 use re_arrow_combinators::Transform as _;
 use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
 use re_arrow_combinators::map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull};
-use re_arrow_combinators::reshape::{PromoteInnerNulls, RowMajorToColumnMajor, StructToFixedList};
+use re_arrow_combinators::reshape::{
+    Flatten, PromoteInnerNulls, RowMajorToColumnMajor, StructToFixedList,
+};
 use util::DisplayRB;
 
 use crate::util::fixtures;
@@ -501,4 +503,58 @@ fn test_promote_inner_nulls_nested_struct() {
     │ null                                           │
     └────────────────────────────────────────────────┘
     "#);
+}
+
+#[test]
+fn test_flatten_fixed_size_list() {
+    let array = fixtures::nested_list_struct_column();
+
+    // Produces List<FixedSizeList<f64, 2>> instead of creating a new test case from scratch.
+    let source: ListArray = Selector::from_str(".poses[]")
+        .unwrap()
+        .then(MapList::new(StructToFixedList::new(["x", "y"])))
+        .transform(&array)
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(source.clone())), @"
+    ┌────────────────────────────────────────┐
+    │ col                                    │
+    │ ---                                    │
+    │ type: List(FixedSizeList(2 x Float64)) │
+    ╞════════════════════════════════════════╡
+    │ [[1.0, 2.0], [3.0, 4.0]]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[5.0, 6.0]]                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[7.0, null], [9.0, 10.0]]             │
+    └────────────────────────────────────────┘
+    ");
+
+    let result = Flatten::new().transform(&source).unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
+    ┌────────────────────────┐
+    │ col                    │
+    │ ---                    │
+    │ type: List(Float64)    │
+    ╞════════════════════════╡
+    │ [1.0, 2.0, 3.0, 4.0]   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [5.0, 6.0]             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [7.0, null, 9.0, 10.0] │
+    └────────────────────────┘
+    ");
 }
