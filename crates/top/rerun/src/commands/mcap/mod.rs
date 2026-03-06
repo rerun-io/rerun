@@ -47,6 +47,15 @@ pub struct ConvertCommand {
     /// output.
     #[clap(long = "recording-id")]
     recording_id: Option<String>,
+
+    /// If set, an offset in nanoseconds to add to all timestamp timelines.
+    ///
+    /// This can be used to shift all timestamps of the MCAP file if they are not yet
+    /// relative to the UNIX epoch.
+    ///
+    /// Duration and sequence timelines are not affected by this offset.
+    #[clap(long = "timestamp-offset-ns")]
+    timestamp_offset_ns: Option<i64>,
 }
 
 impl ConvertCommand {
@@ -58,6 +67,7 @@ impl ConvertCommand {
             recording_id,
             selected_layers,
             disable_raw_fallback,
+            timestamp_offset_ns,
         } = self;
 
         let start_time = std::time::Instant::now();
@@ -92,6 +102,7 @@ impl ConvertCommand {
         loader.load_from_path(
             &DataLoaderSettings {
                 application_id: Some(application_id),
+                timestamp_offset_ns: *timestamp_offset_ns,
                 ..DataLoaderSettings::recommended(recording_id)
             },
             path_to_input_mcap.into(),

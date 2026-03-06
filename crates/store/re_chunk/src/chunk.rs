@@ -1481,6 +1481,23 @@ impl TimeColumn {
                 .map(|&t| TimeInt::new_temporal(t))
         }
     }
+
+    /// Returns a new [`TimeColumn`] with all time values offset by `offset_ns` nanoseconds.
+    ///
+    /// Uses saturating arithmetic.
+    pub fn offset_by_nanos(&self, offset_ns: i64) -> Self {
+        let new_times: Vec<i64> = self
+            .times
+            .iter()
+            .map(|&t| NonMinI64::saturating_from_i64(t.saturating_add(offset_ns)).get())
+            .collect();
+
+        Self::new(
+            Some(self.is_sorted),
+            self.timeline,
+            ArrowScalarBuffer::from(new_times),
+        )
+    }
 }
 
 impl Chunk {
