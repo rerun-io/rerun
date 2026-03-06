@@ -35,7 +35,7 @@ use crate::time_control_ui::TimeControlUi;
 use crate::time_ranges_ui::{self, TimeRangesUi};
 use crate::{MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks, time_selection_ui};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct TimePanelItem {
     pub entity_path: EntityPath,
     pub component: Option<ComponentIdentifier>,
@@ -1193,7 +1193,7 @@ impl TimePanel {
                 egui::Tooltip::always_open(
                     ui.ctx().clone(),
                     ui.layer_id(),
-                    egui::Id::new("data_tooltip"),
+                    egui::Id::new((item, "data_tooltip")), // give each item a unique tooltip id
                     egui::PopupAnchor::Pointer,
                 )
                 .gap(12.0)
