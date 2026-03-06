@@ -2,7 +2,7 @@ use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_sdk_types::archetypes::LineStrips2D;
-use re_sdk_types::components::{ClassId, Color, Radius, ShowLabels};
+use re_sdk_types::components::{ClassId, Color, LineStrip2D, Radius, ShowLabels};
 use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
@@ -162,7 +162,10 @@ impl VisualizerSystem for Lines2DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<LineStrips2D>()
+        VisualizerQueryInfo::single_required_component::<LineStrip2D>(
+            &LineStrips2D::descriptor_strips(),
+            &LineStrips2D::all_components(),
+        )
     }
 
     fn execute(

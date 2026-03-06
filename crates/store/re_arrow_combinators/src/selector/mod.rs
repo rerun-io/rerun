@@ -143,6 +143,9 @@ fn process_datatype<'a, P>(
     P: Fn(&DataType) -> bool,
 {
     match datatype {
+        dt if predicate(dt) => {
+            result.push((Selector(Expr::Path(path)), dt.clone()));
+        }
         DataType::Struct(fields) => {
             queue.push_back((path, fields));
         }
@@ -153,6 +156,9 @@ fn process_datatype<'a, P>(
                 assert_non_null: false,
             });
             match inner.data_type() {
+                dt if predicate(dt) => {
+                    result.push((Selector(Expr::Path(path)), dt.clone()));
+                }
                 DataType::Struct(nested_fields) => {
                     queue.push_back((path, nested_fields));
                 }
@@ -167,14 +173,8 @@ fn process_datatype<'a, P>(
                         result.push((Selector(Expr::Path(path)), dt.clone()));
                     }
                 }
-                dt if predicate(dt) => {
-                    result.push((Selector(Expr::Path(path)), dt.clone()));
-                }
                 _ => {}
             }
-        }
-        dt if predicate(dt) => {
-            result.push((Selector(Expr::Path(path)), dt.clone()));
         }
         _ => {}
     }

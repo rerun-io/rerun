@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
-use re_sdk_types::components::Opacity;
+use re_sdk_types::components::{Opacity, VideoCodec};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
     IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
@@ -44,7 +44,10 @@ impl VisualizerSystem for VideoStreamVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<VideoStream>()
+        VisualizerQueryInfo::single_required_component::<VideoCodec>(
+            &VideoStream::descriptor_codec(),
+            &VideoStream::all_components(),
+        )
     }
 
     fn execute(

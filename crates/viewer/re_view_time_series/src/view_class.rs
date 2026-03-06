@@ -21,11 +21,11 @@ use re_view::view_property_ui;
 use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
     IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
-    VisualizerComponentSource,
+    RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
+    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -350,10 +350,12 @@ impl ViewClass for TimeSeriesView {
                 // For the "add visualizer" menu, offer a SeriesLine for every possible scalar mapping.
                 // Unlike `recommended_visualizers_for_entity` / `all_scalar_mappings`, we don't filter
                 // by indication or recommended datatypes — we show everything that could be visualized.
-                let VisualizableReason::DatatypeMatchAny {
-                    target_component: _,
-                    matches,
-                } = visualizable_entities?.get(&data_result.entity_path)?
+                let VisualizableReason::SingleRequiredComponentMatch(
+                    SingleRequiredComponentMatch {
+                        target_component: _,
+                        matches,
+                    },
+                ) = visualizable_entities?.get(&data_result.entity_path)?
                 else {
                     return None;
                 };
@@ -956,13 +958,10 @@ const RECOMMENDED_DATATYPES: &[DataType] =
 fn all_scalar_mappings(
     reason: &VisualizableReason,
 ) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
-    let re_viewer_context::VisualizableReason::DatatypeMatchAny {
-        target_component: _,
-        matches,
-    } = reason
-    else {
+    let re_viewer_context::VisualizableReason::SingleRequiredComponentMatch(m) = reason else {
         return Either::Left(std::iter::empty());
     };
+    let matches = &m.matches;
 
     let target = Scalars::descriptor_scalars();
 
@@ -1477,6 +1476,7 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use re_viewer_context::SingleRequiredComponentMatch;
 
     #[test]
     fn test_help_view() {
@@ -1504,7 +1504,7 @@ mod tests {
         let entity_path = EntityPath::from("sensor/data");
         let viz = build_visualizable_entities(
             &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1515,7 +1515,7 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
+            }),
         );
         let indicated = PerVisualizerType::default();
         let result =
@@ -1530,7 +1530,7 @@ mod tests {
         let entity_path = EntityPath::from("sensor/data");
         let viz = build_visualizable_entities(
             &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1540,7 +1540,7 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
+            }),
         );
         let indicated = PerVisualizerType::default();
         let result =

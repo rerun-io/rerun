@@ -1,6 +1,7 @@
 use std::iter;
 
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Boxes3D;
 use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
 use re_sdk_types::{ArrowString, components};
@@ -103,7 +104,10 @@ impl VisualizerSystem for Boxes3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Boxes3D>()
+        VisualizerQueryInfo::single_required_component::<HalfSize3D>(
+            &Boxes3D::descriptor_half_sizes(),
+            &Boxes3D::all_components(),
+        )
     }
 
     fn execute(

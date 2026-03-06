@@ -2,9 +2,10 @@ use re_chunk_store::RowId;
 use re_log_types::hash::Hash64;
 use re_log_types::{Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Asset3D;
-use re_sdk_types::components::AlbedoFactor;
+use re_sdk_types::components::{AlbedoFactor, Blob};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -115,7 +116,10 @@ impl VisualizerSystem for Asset3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Asset3D>()
+        VisualizerQueryInfo::single_required_component::<Blob>(
+            &Asset3D::descriptor_blob(),
+            &Asset3D::all_components(),
+        )
     }
 
     fn execute(

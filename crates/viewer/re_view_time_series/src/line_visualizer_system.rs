@@ -2,13 +2,12 @@ use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_sdk_types::components::{AggregationPolicy, InterpolationMode, StrokeWidth};
+use re_sdk_types::components::{self, AggregationPolicy, InterpolationMode, StrokeWidth};
 use re_sdk_types::{Archetype as _, archetypes};
-use re_sdk_types::{Component as _, components};
 use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
+    IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
@@ -38,12 +37,11 @@ impl VisualizerSystem for SeriesLinesSystem {
     ) -> VisualizerQueryInfo {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesLines::name().into(),
-            required: AnyPhysicalDatatypeRequirement {
-                target_component: archetypes::Scalars::descriptor_scalars().component,
-                semantic_type: components::Scalar::name(),
-                physical_types: util::series_supported_datatypes().into_iter().collect(),
-                allow_static_data: false,
-            }
+            constraints: SingleRequiredComponentConstraint::new::<components::Scalar>(
+                &archetypes::Scalars::descriptor_scalars(),
+            )
+            .with_additional_physical_types(util::series_supported_datatypes())
+            .with_allow_static_data(false)
             .into(),
 
             queried: archetypes::Scalars::all_components()

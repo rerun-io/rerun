@@ -175,7 +175,10 @@ impl VisualizerSystem for Arrows2DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Arrows2D>()
+        VisualizerQueryInfo::single_required_component::<Vector2D>(
+            &Arrows2D::descriptor_vectors(),
+            &Arrows2D::all_components(),
+        )
     }
 
     fn execute(

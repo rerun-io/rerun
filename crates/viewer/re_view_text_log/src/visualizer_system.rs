@@ -39,7 +39,10 @@ impl VisualizerSystem for TextLogSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<TextLog>()
+        VisualizerQueryInfo::single_required_component::<Text>(
+            &TextLog::descriptor_text(),
+            &TextLog::all_components(),
+        )
     }
 
     fn execute(

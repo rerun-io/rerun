@@ -45,7 +45,10 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<VideoFrameReference>()
+        VisualizerQueryInfo::single_required_component::<VideoTimestamp>(
+            &VideoFrameReference::descriptor_timestamp(),
+            &VideoFrameReference::all_components(),
+        )
     }
 
     fn execute(
