@@ -8436,6 +8436,7 @@ dependencies = [
  "rand 0.9.2",
  "re_analytics",
  "re_log",
+ "ring",
  "saturating_cast",
  "serde",
  "serde_json",

@@ -85,9 +85,4 @@ pub const ERROR_MESSAGE_MALFORMED_CREDENTIALS: &str = "malformed auth token";
 /// The associated status code will always be `Unauthenticated`.
 pub const ERROR_MESSAGE_MISSING_CREDENTIALS: &str = "missing credentials";
 
-/// The error message in Tonic's gRPC status when a _valid token_ did not have the required permissions.
-///
-/// The associated status code will always be `Unauthenticated`.
-pub const ERROR_MESSAGE_INVALID_CREDENTIALS: &str = "invalid credentials";
-
 mod wasm_compat;
