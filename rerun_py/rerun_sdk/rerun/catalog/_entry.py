@@ -128,7 +128,7 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         Parameters
         ----------
-        name : str
+        name:
             New name for the entry
 
         """
@@ -144,7 +144,7 @@ class Entry(ABC, Generic[InternalEntryT]):
 
         Parameters
         ----------
-        name : str | None
+        name:
             New name for the entry
 
         """
@@ -565,7 +565,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        exprs : str | Sequence[str]
+        exprs:
             Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
             contents.
 
@@ -808,7 +808,7 @@ class DatasetView:
 
         Parameters
         ----------
-        internal : DatasetViewInternal
+        internal:
             The internal Rust-side DatasetView object.
 
         """
@@ -1050,7 +1050,7 @@ class DatasetView:
 
         Parameters
         ----------
-        exprs : str | Sequence[str]
+        exprs:
             Entity path expression or list of entity path expressions. Passing `[]` results in filtering out all
             contents.
 

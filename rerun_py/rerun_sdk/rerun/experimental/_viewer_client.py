@@ -27,7 +27,7 @@ class ViewerClient:
 
         Parameters
         ----------
-        addr : str
+        addr:
             The address of the viewer to connect to, in the format "host:port".
             Defaults to "127.0.0.1:9876" for a local viewer.
 
