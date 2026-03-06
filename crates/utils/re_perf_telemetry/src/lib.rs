@@ -150,10 +150,8 @@ impl opentelemetry::propagation::Injector for TraceHeaders {
     fn set(&mut self, key: &str, value: String) {
         match key {
             Self::TRACEPARENT_KEY => self.traceparent = value,
-            Self::TRACESTATE_KEY => {
-                if !value.is_empty() {
-                    self.tracestate = Some(value);
-                }
+            Self::TRACESTATE_KEY if !value.is_empty() => {
+                self.tracestate = Some(value);
             }
             _ => {}
         }

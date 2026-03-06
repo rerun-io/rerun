@@ -355,8 +355,7 @@ impl PointCloudDrawData {
                 .into_iter();
 
             let mut start_point_for_next_batch = 0;
-            for (batch_info, uniform_buffer_binding) in
-                batches.iter().zip(uniform_buffer_bindings.into_iter())
+            for (batch_info, uniform_buffer_binding) in batches.iter().zip(uniform_buffer_bindings)
             {
                 let point_vertex_range_end = start_point_for_next_batch + batch_info.point_count;
                 let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];

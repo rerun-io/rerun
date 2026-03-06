@@ -732,11 +732,7 @@ impl<T: Default> VideoPlayer<T> {
         let max_last_sample_idx =
             requested_sample_idx + self.sample_decoder.max_num_samples_to_enqueue_ahead();
 
-        loop {
-            let Some(last_enqueued) = self.last_enqueued else {
-                break;
-            };
-
+        while let Some(last_enqueued) = self.last_enqueued {
             // Enqueued enough samples as described above?
             let enqueued_min_amount = last_enqueued >= min_last_sample_idx;
             let enqueued_max_amount = last_enqueued + 1 >= max_last_sample_idx;

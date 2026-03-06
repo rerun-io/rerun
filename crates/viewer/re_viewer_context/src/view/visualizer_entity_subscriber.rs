@@ -189,13 +189,11 @@ fn process_entity_components(
     }: re_chunk_store::ChunkMeta,
 ) {
     // Update indicated_entities.
-    if relevant_archetype.is_none()
-        || relevant_archetype.is_some_and(|archetype| {
-            components
-                .iter()
-                .any(|c| c.descriptor.archetype == Some(archetype))
-        })
-    {
+    if relevant_archetype.is_none_or(|archetype| {
+        components
+            .iter()
+            .any(|c| c.descriptor.archetype == Some(archetype))
+    }) {
         store_mapping
             .indicated_entities
             .0

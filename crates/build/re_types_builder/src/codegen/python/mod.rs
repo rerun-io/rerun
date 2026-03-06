@@ -716,7 +716,7 @@ fn write_init_file(
 
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
-    let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+    let manifest = quote_manifest(mods.values().flat_map(|names| names.iter()));
     code.push_indented(0, format!("# {}", autogen_warning!()), 2);
     code.push_unindented(
         "
@@ -1437,7 +1437,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
-        lines.extend(example.lines.into_iter());
+        lines.extend(example.lines);
         lines.push("```".into());
         if let Some(image) = &image {
             lines.extend(

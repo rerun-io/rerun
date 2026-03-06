@@ -291,8 +291,8 @@ impl ChunkStore {
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
-                    .iter()
-                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
+                    .values()
+                    .flat_map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component.keys().copied()
                     })
                     .collect()
@@ -330,8 +330,8 @@ impl ChunkStore {
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
-                    .iter()
-                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
+                    .values()
+                    .flat_map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component.keys().copied()
                     })
                     .collect()

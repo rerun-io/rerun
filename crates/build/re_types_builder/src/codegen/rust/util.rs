@@ -350,7 +350,7 @@ pub fn doc_as_lines(
             }
 
             lines.push("```ignore".into());
-            lines.extend(example.lines.into_iter());
+            lines.extend(example.lines);
             lines.push("```".into());
 
             if let Some(image) = &image {

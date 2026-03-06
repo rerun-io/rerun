@@ -570,7 +570,7 @@ pub fn test_builtin_enum_not_visualizable_as_scalar() {
         data_result_tree.lookup_result_by_path(EntityPath::from("plots/markers_only").hash());
 
     assert!(
-        result.is_none() || result.is_some_and(|r| r.visualizer_instructions.is_empty()),
+        result.is_none_or(|r| r.visualizer_instructions.is_empty()),
         "Entity with only a builtin enum component (MarkerShape/UInt8) should not have any \
          active visualizers, even when explicitly configured in the blueprint, but got: {result:?}",
     );
