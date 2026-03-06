@@ -24,7 +24,7 @@ workspace = true
 [features]
 cli = ["dep:indicatif", "dep:webbrowser", "oauth"]
 
-oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:tiny_http", "dep:uuid"]
+oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:ring", "dep:tiny_http", "dep:uuid"]
 
 [package.metadata.cargo-shear]
 ignored = [
@@ -42,6 +42,7 @@ http.workspace = true
 jiff = { workspace = true, features = ["serde"] }
 hmac.workspace = true
 jsonwebtoken.workspace = true
+ring = { workspace = true, optional = true }
 parking_lot.workspace = true
 sha2.workspace = true
 signature.workspace = true

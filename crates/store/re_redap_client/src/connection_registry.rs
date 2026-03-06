@@ -420,18 +420,19 @@ impl ConnectionRegistryHandle {
         match request_result {
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
+                let message = err.message().to_owned();
                 if let Some(credentials) = credentials {
                     Err(ApiError::credentials_with_source(
                         ClientCredentialsError::UnauthenticatedBadToken {
                             status: err.into(),
                             credentials,
                         },
-                        "verifying connection to server",
+                        message,
                     ))
                 } else {
                     Err(ApiError::credentials_with_source(
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
-                        "verifying connection to server",
+                        message,
                     ))
                 }
             }
