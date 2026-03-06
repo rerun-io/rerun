@@ -3,6 +3,32 @@
 
 ## 0.31.0 - (UNRELEASED)
 
+
+## [0.30.2](https://github.com/rerun-io/rerun/compare/0.30.11...0.30.2) - 2026-03-09
+
+### ✨ Overview
+
+Among other things, this patch addresses a security advisory ([SNYK-RUST-JSONWEBTOKEN-15189005](https://security.snyk.io/vuln/SNYK-RUST-JSONWEBTOKEN-15189005)) and adds a [new example](https://rerun.io/examples/robotics/any_scalar)!
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Handle `?url=rerun+http://…` in web viewer [5f2d65d](https://github.com/rerun-io/rerun/commit/5f2d65da30c83e8de0d2129feaff57f9461c3806)
+- Fix weird tooltip sizes in streams view [92403bb](https://github.com/rerun-io/rerun/commit/92403bbac8a9fbfed94753929a9cf0633088dd00)
+
+#### 🧑‍🏫 Examples
+- Add any scalar example [3f58058](https://github.com/rerun-io/rerun/commit/3f580585a08c301dc304051dc9ee6f769fd8e819)
+
+#### 🖼 UI improvements
+- Show tooltip even when hovering play head in the time series view [e44fbf0](https://github.com/rerun-io/rerun/commit/e44fbf0336c01bf7454a8edfd8ffa32c02f5d11e)
+
+#### 🧢 MCAP
+- Add a list of available layers to mcap convert cli [89f18dc](https://github.com/rerun-io/rerun/commit/89f18dc6fc2953cf24c5449127bffae9e4cd06d2)
+- Decode MCAP metadata records into `__properties` [cc8f1c2](https://github.com/rerun-io/rerun/commit/cc8f1c23e21a863f805759decf41febd2655f756)
+
+#### 📦 Dependencies
+- Upgrade `jsonwebtoken` to 10.3 [312c3b8](https://github.com/rerun-io/rerun/commit/312c3b88e63ebd96411442dfd6ba7c30d5026059)
+
 ## [0.30.1](https://github.com/rerun-io/rerun/compare/0.30.0...0.30.1)  - 2026-03-04
 
 ### ✨ Overview & highlights
