@@ -35,12 +35,18 @@ namespace rerun::archetypes {
         archetype.class_ids =
             ComponentBatch::empty<rerun::components::ClassId>(Descriptor_class_ids)
                 .value_or_throw();
+        archetype.shader_source =
+            ComponentBatch::empty<rerun::components::ShaderSource>(Descriptor_shader_source)
+                .value_or_throw();
+        archetype.shader_parameters =
+            ComponentBatch::empty<rerun::components::ShaderParameters>(Descriptor_shader_parameters)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> Mesh3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(9);
+        columns.reserve(11);
         if (vertex_positions.has_value()) {
             columns.push_back(vertex_positions.value().partitioned(lengths_).value_or_throw());
         }
@@ -67,6 +73,12 @@ namespace rerun::archetypes {
         }
         if (class_ids.has_value()) {
             columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
+        }
+        if (shader_source.has_value()) {
+            columns.push_back(shader_source.value().partitioned(lengths_).value_or_throw());
+        }
+        if (shader_parameters.has_value()) {
+            columns.push_back(shader_parameters.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -99,6 +111,12 @@ namespace rerun::archetypes {
         if (class_ids.has_value()) {
             return columns(std::vector<uint32_t>(class_ids.value().length(), 1));
         }
+        if (shader_source.has_value()) {
+            return columns(std::vector<uint32_t>(shader_source.value().length(), 1));
+        }
+        if (shader_parameters.has_value()) {
+            return columns(std::vector<uint32_t>(shader_parameters.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -110,7 +128,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(9);
+        cells.reserve(11);
 
         if (archetype.vertex_positions.has_value()) {
             cells.push_back(archetype.vertex_positions.value());
@@ -138,6 +156,12 @@ namespace rerun {
         }
         if (archetype.class_ids.has_value()) {
             cells.push_back(archetype.class_ids.value());
+        }
+        if (archetype.shader_source.has_value()) {
+            cells.push_back(archetype.shader_source.value());
+        }
+        if (archetype.shader_parameters.has_value()) {
+            cells.push_back(archetype.shader_parameters.value());
         }
 
         return rerun::take_ownership(std::move(cells));

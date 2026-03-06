@@ -1,0 +1,22 @@
+namespace rerun.components;
+
+// ---
+
+/// JSON-encoded shader parameter metadata for custom rendering.
+///
+/// Describes uniform parameters, their types, and source entity paths for
+/// data binding. Used alongside [components.ShaderSource] to configure custom shaders.
+///
+/// The JSON schema supports `uniforms` (scalar/vector values) and `textures`
+/// (2D/3D texture bindings), each with a `source` field pointing to the entity
+/// path where the data should be queried.
+table ShaderParameters (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  value: rerun.datatypes.Utf8 (order: 100);
+}

@@ -81,6 +81,8 @@ from .rotation_quat import RotationQuat, RotationQuatBatch
 from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
 from .schema_id import SchemaId, SchemaIdBatch
+from .shader_parameters import ShaderParameters, ShaderParametersBatch
+from .shader_source import ShaderSource, ShaderSourceBatch
 from .show_labels import ShowLabels, ShowLabelsBatch
 from .stroke_width import StrokeWidth, StrokeWidthBatch
 from .tensor_data import TensorData, TensorDataBatch
@@ -245,6 +247,10 @@ __all__ = [
     "Scale3DBatch",
     "SchemaId",
     "SchemaIdBatch",
+    "ShaderParameters",
+    "ShaderParametersBatch",
+    "ShaderSource",
+    "ShaderSourceBatch",
     "ShowLabels",
     "ShowLabelsBatch",
     "StrokeWidth",

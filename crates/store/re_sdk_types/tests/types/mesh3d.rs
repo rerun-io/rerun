@@ -47,6 +47,8 @@ fn roundtrip() {
             ClassId::from(127), //
         ]
         .serialized(Mesh3D::descriptor_class_ids()),
+        shader_source: None,
+        shader_parameters: None,
     };
 
     let arch = Mesh3D::new([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])

@@ -55,6 +55,8 @@ class Mesh3DExt:
         albedo_texture: ImageLike | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
+        shader_source: str | None = None,
+        shader_parameters: str | None = None,
     ) -> None:
         """
         Create a new instance of the Mesh3D archetype.
@@ -83,6 +85,12 @@ class Mesh3DExt:
         class_ids:
             Optional class Ids for the vertices.
             The class ID provides colors and labels if not specified explicitly.
+        shader_source:
+            Optional WGSL shader source code for custom fragment rendering.
+            The shader's fragment entry point must be named `fs_main`.
+        shader_parameters:
+            Optional JSON-encoded shader parameter metadata describing uniform
+            parameters, their types, and source entity paths for data binding.
 
         """
 
@@ -127,6 +135,8 @@ class Mesh3DExt:
                 albedo_texture_format=albedo_texture_format,
                 albedo_factor=albedo_factor,
                 class_ids=class_ids,
+                shader_source=shader_source,
+                shader_parameters=shader_parameters,
             )
             return
 

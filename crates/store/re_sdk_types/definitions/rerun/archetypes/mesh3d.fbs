@@ -69,4 +69,16 @@ table Mesh3D (
   ///
   /// The [components.ClassId] provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3500);
+
+  /// Optional WGSL shader source code for custom fragment rendering.
+  ///
+  /// When provided, replaces the default Phong lighting fragment shader.
+  /// The shader's fragment entry point must be named `fs_main`.
+  shader_source: rerun.components.ShaderSource ("attr.rerun.component_optional", nullable, order: 3600);
+
+  /// Optional JSON-encoded shader parameter metadata.
+  ///
+  /// Describes uniform parameters, their types, and source entity paths
+  /// for data binding with the custom shader.
+  shader_parameters: rerun.components.ShaderParameters ("attr.rerun.component_optional", nullable, order: 3700);
 }

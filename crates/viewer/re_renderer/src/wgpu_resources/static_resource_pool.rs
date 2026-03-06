@@ -97,6 +97,21 @@ where
     pub fn num_resources(&self) -> usize {
         self.resources.read().len()
     }
+
+    /// Insert a pre-created resource directly into the pool without a descriptor.
+    ///
+    /// This is useful for resources created outside the normal pool flow
+    /// (e.g., inline shader modules that manage their own caching).
+    /// The returned handle can be used with `resources().get()` as usual.
+    pub fn insert_resource(&self, resource: Res) -> Handle {
+        self.resources.write().insert(StoredResource {
+            resource,
+            statistics: ResourceStatistics {
+                frame_created: self.current_frame_index,
+                last_frame_used: self.current_frame_index.into(),
+            },
+        })
+    }
 }
 
 fn to_pool_error<T>(get_result: Option<T>, handle: impl Key) -> Result<T, PoolError> {

@@ -12,6 +12,8 @@
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
 #include "../components/position3d.hpp"
+#include "../components/shader_parameters.hpp"
+#include "../components/shader_source.hpp"
 #include "../components/texcoord2d.hpp"
 #include "../components/triangle_indices.hpp"
 #include "../components/vector3d.hpp"
@@ -152,6 +154,18 @@ namespace rerun::archetypes {
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
         std::optional<ComponentBatch> class_ids;
 
+        /// Optional WGSL shader source code for custom fragment rendering.
+        ///
+        /// When provided, replaces the default Phong lighting fragment shader.
+        /// The shader's fragment entry point must be named `fs_main`.
+        std::optional<ComponentBatch> shader_source;
+
+        /// Optional JSON-encoded shader parameter metadata.
+        ///
+        /// Describes uniform parameters, their types, and source entity paths
+        /// for data binding with the custom shader.
+        std::optional<ComponentBatch> shader_parameters;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Mesh3D";
@@ -198,6 +212,16 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
             ArchetypeName, "Mesh3D:class_ids", Loggable<rerun::components::ClassId>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `shader_source` field.
+        static constexpr auto Descriptor_shader_source = ComponentDescriptor(
+            ArchetypeName, "Mesh3D:shader_source",
+            Loggable<rerun::components::ShaderSource>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `shader_parameters` field.
+        static constexpr auto Descriptor_shader_parameters = ComponentDescriptor(
+            ArchetypeName, "Mesh3D:shader_parameters",
+            Loggable<rerun::components::ShaderParameters>::ComponentType
         );
 
       public:
@@ -359,6 +383,53 @@ namespace rerun::archetypes {
         Mesh3D with_class_ids(const Collection<rerun::components::ClassId>& _class_ids) && {
             class_ids =
                 ComponentBatch::from_loggable(_class_ids, Descriptor_class_ids).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional WGSL shader source code for custom fragment rendering.
+        ///
+        /// When provided, replaces the default Phong lighting fragment shader.
+        /// The shader's fragment entry point must be named `fs_main`.
+        Mesh3D with_shader_source(const rerun::components::ShaderSource& _shader_source) && {
+            shader_source = ComponentBatch::from_loggable(_shader_source, Descriptor_shader_source)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `shader_source` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_shader_source` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_shader_source(
+            const Collection<rerun::components::ShaderSource>& _shader_source
+        ) && {
+            shader_source = ComponentBatch::from_loggable(_shader_source, Descriptor_shader_source)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional JSON-encoded shader parameter metadata.
+        ///
+        /// Describes uniform parameters, their types, and source entity paths
+        /// for data binding with the custom shader.
+        Mesh3D with_shader_parameters(const rerun::components::ShaderParameters& _shader_parameters
+        ) && {
+            shader_parameters =
+                ComponentBatch::from_loggable(_shader_parameters, Descriptor_shader_parameters)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `shader_parameters` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_shader_parameters` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_shader_parameters(
+            const Collection<rerun::components::ShaderParameters>& _shader_parameters
+        ) && {
+            shader_parameters =
+                ComponentBatch::from_loggable(_shader_parameters, Descriptor_shader_parameters)
+                    .value_or_throw();
             return std::move(*this);
         }
 

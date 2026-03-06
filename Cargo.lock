@@ -10385,6 +10385,7 @@ dependencies = [
  "re_viewport_blueprint",
  "saturating_cast",
  "serde",
+ "serde_json",
  "smallvec",
  "thiserror 2.0.18",
  "vec1",
