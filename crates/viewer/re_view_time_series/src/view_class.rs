@@ -788,7 +788,7 @@ impl ViewClass for TimeSeriesView {
                 .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
             if let Some(time_x) = time_x {
-                draw_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
+                paint_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
             }
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
@@ -1217,26 +1217,35 @@ fn all_scalar_mappings(
     )
 }
 
-fn draw_time_cursor(
+fn paint_time_cursor(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     response: &egui::Response,
     transform: &egui_plot::PlotTransform,
     time_offset: i64,
     mut time_x: f32,
-) -> egui::Response {
+) {
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
     let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
         .expand(interact_radius);
 
     let time_drag_id = ui.id().with("time_drag");
-    let time_cursor_response = ui
-        .interact(line_rect, time_drag_id, egui::Sense::drag())
-        .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+    let is_near = ui.rect_contains_pointer(line_rect);
+    let is_being_dragged = ui.is_being_dragged(time_drag_id);
 
-    if time_cursor_response.dragged()
-        && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+    if is_near || is_being_dragged {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+    }
+
+    if is_near
+        && !is_being_dragged
+        && ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary))
     {
+        ui.set_dragged_id(time_drag_id);
+    }
+
+    if is_being_dragged && let Some(pointer_pos) = pointer_pos {
         let aim_radius = ui.input(|i| i.aim_radius());
         let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
             transform
@@ -1257,13 +1266,16 @@ fn draw_time_cursor(
         ]);
     }
 
-    ui.paint_time_cursor(
-        ui.painter(),
-        Some(&time_cursor_response),
-        time_x,
-        time_cursor_response.rect.y_range(),
-    );
-    time_cursor_response
+    let highlighted = is_near || is_being_dragged;
+    let style = if is_being_dragged {
+        &ui.visuals().widgets.active
+    } else if highlighted {
+        &ui.visuals().widgets.hovered
+    } else {
+        &ui.visuals().widgets.inactive
+    };
+
+    ui.paint_time_cursor_with_style(ui.painter(), style, time_x, response.rect.y_range());
 }
 
 fn reset_view(ctx: &ViewerContext<'_>, time_axis: &ViewProperty, scalar_axis: &ViewProperty) {
