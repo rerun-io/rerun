@@ -50,6 +50,7 @@ examples = [
   "mcap",
   "eye_control",
   "ros_tf",
+  "any_scalar",
 ]
 
 [categories.generative-vision]
@@ -168,6 +169,7 @@ examples = [
   "imu_signals",
   "eye_control",
   "webpage",
+  "any_scalar",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included
