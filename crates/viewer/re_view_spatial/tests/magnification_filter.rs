@@ -31,8 +31,12 @@ fn run_magnification_filter_test(
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_sdk_types::archetypes::Image::from_elements(&pixels, size, re_sdk_types::datatypes::ColorModel::RGB)
-                .with_magnification_filter(filter),
+            &re_sdk_types::archetypes::Image::from_elements(
+                &pixels,
+                size,
+                re_sdk_types::datatypes::ColorModel::RGB,
+            )
+            .with_magnification_filter(filter),
         )
     });
 
