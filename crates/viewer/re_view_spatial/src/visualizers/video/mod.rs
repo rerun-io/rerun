@@ -8,21 +8,28 @@ use re_renderer::resource_managers::ImageDataDesc;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_video::player::{VideoPlaybackIssueSeverity, VideoPlayerError};
-use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
+use re_viewer_context::{ViewClass as _, ViewContext};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
 use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView2D};
 
+pub const AT_TIME_CURSOR_SALT: u64 = 0x12356;
+
 /// Identify a video stream for a given video.
+///
+/// `time_track_salt` refers to a unique identifier for a certain way to play through time.
+///
+/// For things following the given entity & component at the play head, use [`AT_TIME_CURSOR_SALT`]
 fn video_stream_id(
     entity_path: &EntityPath,
-    view_id: ViewId,
-    visualizer_name: ViewSystemIdentifier,
+    sample_component: re_sdk_types::ComponentIdentifier,
+    time_track_salt: u64,
 ) -> re_video::player::VideoPlayerStreamId {
     re_video::player::VideoPlayerStreamId(
-        re_log_types::hash::Hash64::hash((entity_path.hash(), view_id, visualizer_name)).hash64(),
+        re_log_types::hash::Hash64::hash((entity_path.hash(), sample_component, time_track_salt))
+            .hash64(),
     )
 }
 

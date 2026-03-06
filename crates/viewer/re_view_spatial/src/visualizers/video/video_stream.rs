@@ -16,8 +16,8 @@ use crate::visualizers::utilities::{
     spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
 };
 use crate::visualizers::video::{
-    VideoFrameRenderInfo, VideoPlaybackIssue, VideoPlaybackIssueSeverity, show_video_frame,
-    video_stream_id,
+    AT_TIME_CURSOR_SALT, VideoFrameRenderInfo, VideoPlaybackIssue, VideoPlaybackIssueSeverity,
+    show_video_frame, video_stream_id,
 };
 use crate::{PickableTexturedRect, SpatialView2D};
 
@@ -196,7 +196,11 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
-                    video_stream_id(entity_path, ctx.view_id, Self::identifier()),
+                    video_stream_id(
+                        entity_path,
+                        VideoStream::descriptor_sample().component,
+                        AT_TIME_CURSOR_SALT,
+                    ),
                     video_stream_time_from_query(&query_context.query),
                     &|id| {
                         let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
