@@ -1,4 +1,17 @@
-# This file is read in `compare_snippet_output.py` and the `snippets` command in `re_dev_tools`/`build_examples`.
+# This file controls snippet testing and documentation indexing.
+# It is read in `compare_snippet_output.py` and the `snippets` command in `re_dev_tools`/`build_examples`.
+#
+# Sections:
+#   [snippets_ref.snippets.opt_out]  — snippets excluded from the documentation index
+#   [snippets_ref.archetypes.opt_out] — archetypes that ignore associated snippets in the index
+#   [snippets_ref.components.opt_out] — components that ignore associated snippets in the index
+#   [snippets_ref.features]          — groups snippets by feature for documentation
+#   [opt_out.run]                    — snippets that won't be executed for certain SDKs
+#   [opt_out.compare]                — snippets that run but whose output isn't compared across
+#                                      languages (e.g. different RNG implementations)
+#   [extra_args]                     — extra arguments passed to snippets when running them
+#
+# Items within each section are in alphabetical order.
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]

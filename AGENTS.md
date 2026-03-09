@@ -130,6 +130,10 @@ Each view type (Spatial3D, TimeSeries, etc.) has registered visualizers:
 
 The viewer uses **immediate mode**: every frame, query the store and re-render from scratch.
 
+## Documentation snippets
+
+See [`docs/snippets/README.md`](docs/snippets/README.md) for how to run, build, and find snippets. Configuration for testing and indexing is in [`docs/snippets/snippets.toml`](docs/snippets/snippets.toml).
+
 ## Python development workflow
 
 Python uses a separate uv-managed .venv (not pixi's conda env):
