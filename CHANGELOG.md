@@ -10,11 +10,12 @@
 
 Among other things, this patch addresses a security advisory ([SNYK-RUST-JSONWEBTOKEN-15189005](https://security.snyk.io/vuln/SNYK-RUST-JSONWEBTOKEN-15189005)) and adds a [new example](https://rerun.io/examples/robotics/any_scalar)!
 
-### 🔎 Details
-
 #### 🪳 Bug fixes
 - Handle `?url=rerun+http://…` in web viewer [5f2d65d](https://github.com/rerun-io/rerun/commit/5f2d65da30c83e8de0d2129feaff57f9461c3806)
 - Fix weird tooltip sizes in streams view [92403bb](https://github.com/rerun-io/rerun/commit/92403bbac8a9fbfed94753929a9cf0633088dd00)
+
+#### 🚀 Performance improvements
+- Share video players between views, de-duplicating video decoding work between pinholes and 2d views [ed236da](https://github.com/rerun-io/rerun/commit/ed236dadfc72a824d6abd34afa76a39bac1c518c)
 
 #### 🧑‍🏫 Examples
 - Add any scalar example [3f58058](https://github.com/rerun-io/rerun/commit/3f580585a08c301dc304051dc9ee6f769fd8e819)
