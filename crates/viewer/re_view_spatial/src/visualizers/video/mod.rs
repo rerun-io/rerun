@@ -28,7 +28,8 @@ fn video_stream_id(
     time_track_salt: u64,
 ) -> re_video::player::VideoPlayerStreamId {
     re_video::player::VideoPlayerStreamId(
-        re_log_types::hash::Hash64::hash((entity_path.hash(), sample_component, time_track_salt)).hash64(),
+        re_log_types::hash::Hash64::hash((entity_path.hash(), sample_component, time_track_salt))
+            .hash64(),
     )
 }
 

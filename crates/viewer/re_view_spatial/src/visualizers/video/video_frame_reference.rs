@@ -3,24 +3,24 @@ use std::sync::Arc;
 use re_log_types::EntityPath;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::video::Video;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
-use re_sdk_types::Archetype as _;
 use re_viewer_context::{
-    typed_fallback_for, IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
+use crate::PickableTexturedRect;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::view_kind::SpatialViewKind;
+use crate::visualizers::SpatialViewVisualizerData;
 use crate::visualizers::entity_iterator::process_archetype;
 use crate::visualizers::video::{
     AT_TIME_CURSOR_SALT, VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
     visualize_video_frame_texture,
 };
-use crate::visualizers::SpatialViewVisualizerData;
-use crate::PickableTexturedRect;
 
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
