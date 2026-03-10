@@ -92,6 +92,7 @@ examples = [
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
+  "any_scalar",
   "arkit_scenes",
   "blueprint",
   "blueprint_stocks",
@@ -165,6 +166,7 @@ rerun-dev-fixup = { path = "rerun_py/rerun_dev_fixup", editable = false }
 # Example packages
 air_traffic_data = { workspace = true }
 animated_urdf = { workspace = true }
+any_scalar = { workspace = true }
 arkit_scenes = { workspace = true }
 blueprint = { workspace = true }
 blueprint_stocks = { workspace = true }
@@ -216,9 +218,10 @@ members = [
   # Examples
   "examples/python/air_traffic_data",
   "examples/python/animated_urdf",
+  "examples/python/any_scalar",
   "examples/python/arkit_scenes",
-  "examples/python/blueprint",
   "examples/python/blueprint_stocks",
+  "examples/python/blueprint",
   "examples/python/camera_video_stream",
   "examples/python/clock",
   "examples/python/controlnet",
