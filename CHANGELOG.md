@@ -4,11 +4,16 @@
 ## 0.31.0 - (UNRELEASED)
 
 
-## [0.30.2](https://github.com/rerun-io/rerun/compare/0.30.11...0.30.2) - 2026-03-09
+## [0.30.2](https://github.com/rerun-io/rerun/compare/0.30.11...0.30.2) - 2026-03-11
 
 ### ✨ Overview
 
-Among other things, this patch addresses a security advisory ([SNYK-RUST-JSONWEBTOKEN-15189005](https://security.snyk.io/vuln/SNYK-RUST-JSONWEBTOKEN-15189005)) and adds a [new example](https://rerun.io/examples/robotics/any_scalar)!
+Among many other things, this patch addresses a security advisory ([SNYK-RUST-JSONWEBTOKEN-15189005](https://security.snyk.io/vuln/SNYK-RUST-JSONWEBTOKEN-15189005)) and adds a [new example](https://rerun.io/examples/robotics/any_scalar)!
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Expose executable_name and executable_path in Python spawn() [#12685](https://github.com/rerun-io/rerun/pull/12685)
 
 #### 🪳 Bug fixes
 - Handle `?url=rerun+http://…` in web viewer [5f2d65d](https://github.com/rerun-io/rerun/commit/5f2d65da30c83e8de0d2129feaff57f9461c3806)
