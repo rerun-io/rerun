@@ -49,6 +49,7 @@ ellipsis_reference = re.compile(r"&\.\.\.")
 ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
+tonic_result = re.compile(r"Result<.*?,\s*tonic::Status\s*,?\s*>", re.DOTALL)
 pyclass_start = re.compile(r"#\[pyclass\(")
 pymethods_start = re.compile(r"#\[pymethods\]")
 
@@ -1424,6 +1425,12 @@ def lint_file(filepath: str, args: Any) -> int:
     if filepath.endswith(".hpp"):
         if not any(line.startswith("#pragma once") for line in source.lines):
             print(source.error("Missing `#pragma once` in C++ header file"))
+            num_errors += 1
+
+    if filepath.endswith(".rs"):
+        for match in tonic_result.finditer(source.content):
+            line_nr = _index_to_line_nr(source.content, match.start())
+            print(source.error("Prefer using tonic::Result<>", line_nr=line_nr))
             num_errors += 1
 
     if filepath.endswith((".rs", ".fbs")):

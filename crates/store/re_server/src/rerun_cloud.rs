@@ -1877,7 +1877,7 @@ impl RerunCloudService for RerunCloudHandler {
 ///
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
-fn load_store_ids(rrd_path: &std::path::Path) -> Result<BTreeSet<StoreId>, tonic::Status> {
+fn load_store_ids(rrd_path: &std::path::Path) -> tonic::Result<BTreeSet<StoreId>> {
     let reader = std::io::BufReader::new(
         std::fs::File::open(rrd_path)
             .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?,
@@ -1898,7 +1898,7 @@ fn load_store_ids(rrd_path: &std::path::Path) -> Result<BTreeSet<StoreId>, tonic
 }
 
 /// Parses a `memory:///store/{store_slot_id}` URL and returns the [`StoreSlotId`].
-fn parse_memory_url(url: &url::Url) -> Result<StoreSlotId, tonic::Status> {
+fn parse_memory_url(url: &url::Url) -> tonic::Result<StoreSlotId> {
     let path = url.path();
     let slot_id_str = path.strip_prefix("/store/").ok_or_else(|| {
         tonic::Status::invalid_argument(format!(
