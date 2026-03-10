@@ -10,34 +10,36 @@ use re_types_core::{Component as _, ComponentDescriptor, RowId};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::gpu_bridge::{self, image_data_range_heuristic, image_to_gpu};
-use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext};
+use re_viewer_context::{
+    AppContext, ColormapWithRange, ImageInfo, ImageStatsCache, StoreViewContext, UiLayout,
+};
 
 use crate::find_and_deserialize_archetype_mono_component;
 
 /// Show the given image with an appropriate size.
 ///
-/// For segmentation images, the annotation context is looked up.
+/// For segmentation images, the annotation context is looked up in `store_ctx`.
 pub fn image_preview_ui(
-    ctx: &ViewerContext<'_>,
+    app_ctx: &StoreViewContext<'_>,
+    store_ctx: Option<&StoreViewContext<'_>>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
-    query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
     image: &ImageInfo,
     colormap_with_range: Option<&ColormapWithRange>,
 ) -> Option<()> {
-    let image_stats = ctx
-        .store_context
+    let image_stats = app_ctx
         .caches
         .entry(|c: &mut ImageStatsCache| c.entry(image));
-    let annotations = crate::annotations(ctx.recording(), query, entity_path);
+    let annotations = store_ctx.map(|store_ctx| crate::annotations(store_ctx, entity_path));
     let debug_name = entity_path.to_string();
+
     let texture = image_to_gpu(
-        ctx.render_ctx(),
+        app_ctx.render_ctx,
         &debug_name,
         image,
         &image_stats,
-        &annotations,
+        annotations.as_deref(),
         colormap_with_range,
     )
     .ok()?;
@@ -45,13 +47,22 @@ pub fn image_preview_ui(
     let [w, h] = texture.width_height();
     let preview_size = texture_preview_size(ui, ui_layout, [w, h]);
 
+    let main_thread_token = MainThreadToken::from_egui_ui(ui);
+
     texture_preview_ui(
-        ctx.render_ctx(),
+        app_ctx.render_ctx,
         ui,
         ui_layout,
         &debug_name,
-        texture,
+        &texture,
         preview_size,
+        &|| {
+            ImageUi::new(app_ctx, image.clone()).download_image(
+                app_ctx,
+                main_thread_token,
+                entity_path,
+            );
+        },
     );
 
     Some(())
@@ -89,8 +100,9 @@ pub fn texture_preview_ui(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     debug_name: &str,
-    texture: ColormappedTexture,
+    texture: &ColormappedTexture,
     preview_size: Vec2,
+    download_image: &dyn Fn(),
 ) -> egui::Response {
     if ui_layout.is_single_line() {
         ui.allocate_ui_with_layout(
@@ -99,12 +111,26 @@ pub fn texture_preview_ui(
             |ui| {
                 ui.set_min_size(preview_size);
 
-                match show_image_preview(render_ctx, ui, texture.clone(), debug_name, preview_size)
-                {
+                match show_image_preview(
+                    render_ctx,
+                    ui,
+                    texture,
+                    debug_name,
+                    preview_size,
+                    download_image,
+                ) {
                     Ok(response) => response.on_hover_ui(|ui| {
                         // Show larger image on hover.
                         let hover_size = Vec2::splat(400.0);
-                        show_image_preview(render_ctx, ui, texture, debug_name, hover_size).ok();
+                        show_image_preview(
+                            render_ctx,
+                            ui,
+                            texture,
+                            debug_name,
+                            hover_size,
+                            download_image,
+                        )
+                        .ok();
                     }),
                     Err((response, err)) => response.on_hover_text(err.to_string()),
                 }
@@ -112,12 +138,18 @@ pub fn texture_preview_ui(
         )
         .inner
     } else {
-        show_image_preview(render_ctx, ui, texture, debug_name, preview_size).unwrap_or_else(
-            |(response, err)| {
-                re_log::warn_once!("Failed to show texture {debug_name}: {err}");
-                response
-            },
+        show_image_preview(
+            render_ctx,
+            ui,
+            texture,
+            debug_name,
+            preview_size,
+            download_image,
         )
+        .unwrap_or_else(|(response, err)| {
+            re_log::warn_once!("Failed to show texture {debug_name}: {err}");
+            response
+        })
     }
 }
 
@@ -132,9 +164,10 @@ pub fn texture_preview_ui(
 fn show_image_preview(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    colormapped_texture: ColormappedTexture,
+    colormapped_texture: &ColormappedTexture,
     debug_name: &str,
     desired_size: egui::Vec2,
+    download_image: &dyn Fn(),
 ) -> Result<egui::Response, (egui::Response, anyhow::Error)> {
     fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
         let [w, h] = colormapped_texture.width_height();
@@ -143,7 +176,7 @@ fn show_image_preview(
 
     const MIN_SIZE: f32 = 2.0;
 
-    let texture_size = texture_size(&colormapped_texture);
+    let texture_size = texture_size(colormapped_texture);
 
     let scaled_size = largest_size_that_fits_in(texture_size.x / texture_size.y, desired_size);
 
@@ -155,11 +188,11 @@ fn show_image_preview(
     // Place it in the center:
     let texture_rect_on_screen = egui::Rect::from_center_size(response.rect.center(), scaled_size);
 
-    if let Err(err) = gpu_bridge::render_image(
+    let res = if let Err(err) = gpu_bridge::render_image(
         render_ctx,
         &painter,
         texture_rect_on_screen,
-        colormapped_texture,
+        colormapped_texture.clone(),
         egui::TextureOptions {
             magnification: egui::TextureFilter::Nearest,
             minification: egui::TextureFilter::Linear,
@@ -178,7 +211,47 @@ fn show_image_preview(
         Err((response, err))
     } else {
         Ok(response)
+    };
+
+    let (Ok(response) | Err((response, _))) = &res;
+
+    if response.contains_pointer() {
+        let button = ui.small_icon_button_widget(&re_ui::icons::DOWNLOAD, "Download image");
+        let max =
+            response.rect.right_bottom() - egui::Vec2::splat(ui.tokens().view_padding() as f32);
+
+        let rect = egui::Rect::from_min_max(max - ui.tokens().small_icon_size, max);
+
+        let shape_idx = ui.painter().add(egui::Shape::Noop);
+
+        let download_response = ui
+            .place(rect, button)
+            .on_hover_text("Save preview texture…");
+
+        if download_response.clicked() {
+            download_image();
+        }
+
+        let visuals = ui.style().interact(response);
+        let hovered_visuals = &ui.style().visuals.widgets.hovered;
+
+        let color = if !download_response.contains_pointer() {
+            visuals.weak_bg_fill.linear_multiply(0.7)
+        } else {
+            hovered_visuals.weak_bg_fill
+        };
+
+        ui.painter().set(
+            shape_idx,
+            egui::Shape::rect_filled(
+                rect.expand(hovered_visuals.expansion),
+                visuals.corner_radius,
+                color,
+            ),
+        );
     }
+
+    res
 }
 
 fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
@@ -258,11 +331,8 @@ pub struct ImageUi {
 }
 
 impl ImageUi {
-    pub fn new(ctx: &ViewerContext<'_>, image: ImageInfo) -> Self {
-        let image_stats = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut ImageStatsCache| c.entry(&image));
+    pub fn new(ctx: &StoreViewContext<'_>, image: ImageInfo) -> Self {
+        let image_stats = ctx.caches.entry(|c: &mut ImageStatsCache| c.entry(&image));
         let data_range = image_data_range_heuristic(&image_stats, &image.format);
         Self {
             image,
@@ -272,14 +342,13 @@ impl ImageUi {
     }
 
     pub fn from_blob(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
         blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
     ) -> Option<Self> {
-        ctx.store_context
-            .caches
+        ctx.caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
                 c.entry_encoded_color(
                     blob_row_id,
@@ -293,7 +362,7 @@ impl ImageUi {
     }
 
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         image_buffer_descr: &ComponentDescriptor,
         image_buffer_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
@@ -324,10 +393,7 @@ impl ImageUi {
             image_format.0,
             kind,
         );
-        let image_stats = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut ImageStatsCache| c.entry(&image));
+        let image_stats = ctx.caches.entry(|c: &mut ImageStatsCache| c.entry(&image));
 
         let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
             entity_components,
@@ -366,7 +432,7 @@ impl ImageUi {
 
     pub fn inline_copy_button<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'_>,
+        ctx: &'a AppContext<'_>,
         property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
         property_content.with_action_button(&icons::COPY, "Copy image", move || {
@@ -375,7 +441,7 @@ impl ImageUi {
                     [rgba.width() as _, rgba.height() as _],
                     bytemuck::cast_slice(rgba.as_raw()),
                 );
-                ctx.egui_ctx().copy_image(egui_image);
+                ctx.egui_ctx.copy_image(egui_image);
                 re_log::info!("Copied image to clipboard");
             } else {
                 re_log::error!("Invalid image");
@@ -385,41 +451,49 @@ impl ImageUi {
 
     pub fn inline_download_button<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'_>,
+        ctx: &'a AppContext<'_>,
         main_thread_token: MainThreadToken,
         entity_path: &'a re_log_types::EntityPath,
         property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
         property_content.with_action_button(&icons::DOWNLOAD, "Save image", move || {
-            match self.image.to_png(self.data_range.into()) {
-                Ok(png_bytes) => {
-                    let file_name = format!(
-                        "{}.png",
-                        entity_path
-                            .last()
-                            .map_or("image", |name| name.unescaped_str())
-                            .to_owned()
-                    );
-                    ctx.command_sender().save_file_dialog(
-                        main_thread_token,
-                        &file_name,
-                        "Save image".to_owned(),
-                        png_bytes,
-                    );
-                }
-                Err(err) => {
-                    re_log::error!("{err}");
-                }
-            }
+            self.download_image(ctx, main_thread_token, entity_path);
         })
+    }
+
+    fn download_image(
+        &self,
+        ctx: &AppContext<'_>,
+        main_thread_token: MainThreadToken,
+        entity_path: &re_log_types::EntityPath,
+    ) {
+        match self.image.to_png(self.data_range.into()) {
+            Ok(png_bytes) => {
+                let file_name = format!(
+                    "{}.png",
+                    entity_path
+                        .last()
+                        .map_or("image", |name| name.unescaped_str())
+                        .to_owned()
+                );
+                ctx.command_sender.save_file_dialog(
+                    main_thread_token,
+                    &file_name,
+                    "Save image".to_owned(),
+                    png_bytes,
+                );
+            }
+            Err(err) => {
+                re_log::error!("{err}");
+            }
+        }
     }
 
     pub fn data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
         entity_path: &re_log_types::EntityPath,
     ) {
         let Self {
@@ -430,9 +504,9 @@ impl ImageUi {
 
         image_preview_ui(
             ctx,
+            Some(ctx),
             ui,
             ui_layout,
-            query,
             entity_path,
             image,
             colormap_with_range.as_ref(),

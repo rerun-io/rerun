@@ -4,7 +4,7 @@ use re_log_types::EntityPathHash;
 use re_sdk_types::{
     Archetype as _,
     archetypes::EncodedDepthImage,
-    components::{Colormap, MediaType},
+    components::{Blob, Colormap, MediaType},
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, ViewContext, ViewContextCollection, ViewQuery,
@@ -53,7 +53,10 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<EncodedDepthImage>()
+        VisualizerQueryInfo::single_required_component::<Blob>(
+            &EncodedDepthImage::descriptor_blob(),
+            &EncodedDepthImage::all_components(),
+        )
     }
 
     fn execute(

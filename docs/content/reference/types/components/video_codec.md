@@ -51,7 +51,7 @@ Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec)
 
 ## Arrow datatype
 ```
-uint32
+UInt32
 ```
 
 ## API reference links

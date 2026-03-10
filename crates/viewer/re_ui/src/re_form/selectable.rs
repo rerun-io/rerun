@@ -18,6 +18,21 @@ impl<'a> SelectableStrip<'a> {
         let mut fields = Self::same(ui, 1);
         fields.add(widget)
     }
+
+    pub fn selectable_value<Value: PartialEq>(
+        mut self,
+        current_value: &mut Value,
+        selected_value: Value,
+        atoms: impl IntoAtoms<'a>,
+    ) -> Self {
+        let toggle = SelectableToggle::new(atoms, *current_value == selected_value);
+        let mut response = self.strip.add(toggle);
+        if response.clicked() {
+            *current_value = selected_value;
+            response.mark_changed();
+        }
+        self
+    }
 }
 
 impl<'a> ConstructFormStrip<'a> for SelectableStrip<'a> {
@@ -83,15 +98,25 @@ impl<'a> SelectableToggle<'a> {
 
 impl Widget for SelectableToggle<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let mut frame = Frame::new();
+        // Allocate widget space and observe interactions.
+        let mut atom_layout = AtomLayout::new(self.atoms)
+            .frame(Frame::new().corner_radius(4.0))
+            .sense(egui::Sense::click())
+            .allocate(ui);
+
+        // Set selected style.
         if self.selected {
-            let tokens = ui.tokens();
-            // TODO(RR-3885): Add interactivity / hover styles
-            frame = frame
-                .fill(tokens.form_selectable_bg_color)
-                .stroke(Stroke::new(1.0, tokens.form_selectable_stroke_color))
-                .corner_radius(4.0);
+            atom_layout.frame = atom_layout
+                .frame
+                .stroke(Stroke::new(1.0, ui.tokens().form_selectable_stroke_color))
+                .fill(ui.tokens().form_selectable_bg_color);
         }
-        AtomLayout::new(self.atoms).frame(frame).show(ui).response
+
+        if atom_layout.response.hovered() {
+            let hover_fill = ui.style().visuals.widgets.hovered.bg_fill;
+            atom_layout.frame = atom_layout.frame.fill(hover_fill);
+        }
+
+        atom_layout.paint(ui).response
     }
 }

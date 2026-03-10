@@ -11,7 +11,7 @@ Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/typ
 
 ## Arrow datatype
 ```
-int64
+Int64
 ```
 
 ## API reference links

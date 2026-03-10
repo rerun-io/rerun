@@ -240,26 +240,33 @@ pub fn load_mcap(
         return Ok(());
     }
 
+    let timestamp_offset_ns = settings.timestamp_offset_ns;
+
     let mut send_chunk = |chunk: re_chunk::Chunk| {
         // Apply lenses if configured, otherwise forward the chunk directly.
         if let Some(lenses) = lenses {
             for result in lenses.apply(&chunk) {
                 match result {
                     Ok(transformed_chunk) => {
-                        send_chunk_to_channel(tx, &store_id, transformed_chunk);
+                        send_chunk_to_channel(
+                            tx,
+                            &store_id,
+                            transformed_chunk,
+                            timestamp_offset_ns,
+                        );
                     }
                     Err(partial_chunk) => {
                         for error in partial_chunk.errors() {
                             re_log::error_once!("Lens error: {error}");
                         }
                         if let Some(chunk) = partial_chunk.take() {
-                            send_chunk_to_channel(tx, &store_id, chunk);
+                            send_chunk_to_channel(tx, &store_id, chunk, timestamp_offset_ns);
                         }
                     }
                 }
             }
         } else {
-            send_chunk_to_channel(tx, &store_id, chunk);
+            send_chunk_to_channel(tx, &store_id, chunk, timestamp_offset_ns);
         }
     };
 
@@ -277,7 +284,24 @@ pub fn load_mcap(
     Ok(())
 }
 
-fn send_chunk_to_channel(tx: &Sender<LoadedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
+fn send_chunk_to_channel(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    mut chunk: re_chunk::Chunk,
+    timestamp_offset_ns: Option<i64>,
+) {
+    if let Some(offset_ns) = timestamp_offset_ns {
+        let offset_timelines: Vec<_> = chunk
+            .timelines()
+            .values()
+            .filter(|time_col| time_col.timeline().typ() == re_log_types::TimeType::TimestampNs)
+            .map(|time_col| time_col.offset_by_nanos(offset_ns))
+            .collect();
+        for time_col in offset_timelines {
+            chunk.add_timeline(time_col).ok();
+        }
+    }
+
     if send_crossbeam(
         tx,
         LoadedData::Chunk(MCAP_LOADER_NAME.to_owned(), store_id.clone(), chunk),

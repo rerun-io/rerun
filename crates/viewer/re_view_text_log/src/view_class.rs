@@ -372,7 +372,7 @@ fn table_ui(
                 }
 
                 header.col(|ui| {
-                    timeline_button(ctx, ui, &TimelineName::new(&col.timeline));
+                    timeline_button(&ctx.app_ctx, ui, &TimelineName::new(&col.timeline));
                 });
             }
             for col in columns {
@@ -388,8 +388,6 @@ fn table_ui(
             tokens.setup_table_body(&mut body, table_style);
 
             body_clip_rect = Some(body.max_rect());
-
-            let query = ctx.current_query();
 
             let row_heights = entries
                 .iter()
@@ -438,9 +436,7 @@ fn table_ui(
                     row.col(|ui| match col.kind {
                         bp_datatypes::TextLogColumnKind::EntityPath => {
                             item_ui::entity_path_button(
-                                ctx,
-                                &query,
-                                ctx.recording(),
+                                &ctx.active_recording_store_view_context(),
                                 ui,
                                 None,
                                 &entry.entity_path,

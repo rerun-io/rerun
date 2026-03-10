@@ -52,7 +52,7 @@ def send_recording_name(name: str, recording: RecordingStream | None = None) -> 
 
     Parameters
     ----------
-    name : str
+    name:
         The name of the recording.
 
     recording:
@@ -73,7 +73,7 @@ def send_recording_start_time_nanos(nanos: int, recording: RecordingStream | Non
 
     Parameters
     ----------
-    nanos : int
+    nanos:
         The start time of the recording in nanoseconds since UNIX epoch.
 
     recording:

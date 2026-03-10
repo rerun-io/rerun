@@ -1,15 +1,13 @@
 use std::error::Error;
 
-use re_log_types::TimelineName;
 use re_sdk_types::components::MediaType;
 use re_types_core::{ComponentIdentifier, Loggable as _, RowId};
 use re_ui::UiLayout;
-use re_viewer_context::ViewerContext;
-use re_viewer_context::external::re_chunk_store::LatestAtQuery;
+use re_viewer_context::StoreViewContext;
 
 /// Display a thumbnail that takes all the available space.
 pub fn redap_thumbnail(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     component: ComponentIdentifier,
     row_id: Option<RowId>,
@@ -25,7 +23,6 @@ pub fn redap_thumbnail(
     let media_type = MediaType::guess_from_data(slice);
 
     let image = ctx
-        .store_context
         .caches
         .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
             c.entry_encoded_color(row_id, component, slice, media_type.as_ref())
@@ -33,9 +30,9 @@ pub fn redap_thumbnail(
 
     re_data_ui::image_preview_ui(
         ctx,
+        None, // Can't look up annotations for segmentation images
         ui,
         UiLayout::List,
-        &LatestAtQuery::latest(TimelineName::new("unknown")),
         &re_log_types::EntityPath::from("redap_thumbnail"),
         &image,
         None,

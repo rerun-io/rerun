@@ -15,6 +15,7 @@ mod view_context;
 mod view_context_system;
 mod view_query;
 mod view_states;
+mod visualizability_constraints;
 mod visualizer_entity_subscriber;
 mod visualizer_system;
 
@@ -28,7 +29,7 @@ pub use system_execution_output::{
 };
 pub use view_class::{
     RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
-    ViewStateExt,
+    ViewStateExt, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
@@ -41,10 +42,12 @@ pub use view_query::{
     VisualizerComponentSource, VisualizerInstruction, VisualizerInstructionsPerType,
 };
 pub use view_states::ViewStates;
+pub use visualizability_constraints::{
+    BufferAndFormatConstraint, SingleRequiredComponentConstraint, VisualizabilityConstraints,
+};
 pub use visualizer_system::{
-    AnyPhysicalDatatypeRequirement, RequiredComponents, VisualizerCollection,
-    VisualizerExecutionOutput, VisualizerInstructionReport, VisualizerQueryInfo,
-    VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
+    VisualizerCollection, VisualizerExecutionOutput, VisualizerInstructionReport,
+    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
 };
 
 // ---------------------------------------------------------------------------

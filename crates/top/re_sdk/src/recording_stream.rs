@@ -1417,6 +1417,7 @@ impl RecordingStream {
                 })
                 .unwrap_or_default()
             }),
+            timestamp_offset_ns: None,
         };
 
         if prefer_current_recording {

@@ -94,6 +94,9 @@ pub struct DataLoaderSettings {
     ///
     /// Defaults to `false`.
     pub follow: bool,
+
+    /// If set, an offset in nanoseconds to add to all `TimestampNs` time columns.
+    pub timestamp_offset_ns: Option<i64>,
 }
 
 impl DataLoaderSettings {
@@ -107,6 +110,7 @@ impl DataLoaderSettings {
             entity_path_prefix: None,
             timepoint: None,
             follow: false,
+            timestamp_offset_ns: None,
         }
     }
 
@@ -138,6 +142,7 @@ impl DataLoaderSettings {
             entity_path_prefix,
             timepoint,
             follow: _,
+            timestamp_offset_ns: _,
         } = self;
 
         let mut args = Vec::new();

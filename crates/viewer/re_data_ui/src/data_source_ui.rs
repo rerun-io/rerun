@@ -1,19 +1,12 @@
 use re_log_types::StoreKind;
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::Timestamp;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, UiLayout};
 
 use crate::item_ui::entity_db_button_ui;
 
-impl crate::DataUi for re_log_channel::LogSource {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
+impl crate::AppUi for re_log_channel::LogSource {
+    fn app_ui(&self, ctx: &AppContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         ui.label(self.to_string());
 
         if ui_layout.is_single_line() {
@@ -62,16 +55,16 @@ impl crate::DataUi for re_log_channel::LogSource {
             if !recordings.is_empty() {
                 ui.add_space(8.0);
                 ui.strong("Recordings from this data source");
-                for entity_db in recordings {
-                    entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
+                for db in recordings {
+                    entity_db_button_ui(ctx, db, ui, ui_layout, true);
                 }
             }
 
             if !blueprints.is_empty() {
                 ui.add_space(8.0);
                 ui.strong("Blueprints from this data source");
-                for entity_db in blueprints {
-                    entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
+                for db in blueprints {
+                    entity_db_button_ui(ctx, db, ui, ui_layout, true);
                 }
             }
         });

@@ -263,10 +263,9 @@ impl ComponentColumnDescriptor {
 
             dt => {
                 re_log::warn_once!(
-                    "Component '{}' on entity '{}' has unexpected non-list-array type: {}",
+                    "Component '{}' on entity '{}' has unexpected non-list-array type: {dt}",
                     self.component,
                     self.entity_path,
-                    re_arrow_util::format_data_type(&dt),
                 );
                 dt
             }

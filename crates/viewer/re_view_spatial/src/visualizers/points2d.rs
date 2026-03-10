@@ -180,7 +180,10 @@ impl VisualizerSystem for Points2DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Points2D>()
+        VisualizerQueryInfo::single_required_component::<Position2D>(
+            &Points2D::descriptor_positions(),
+            &Points2D::all_components(),
+        )
     }
 
     fn execute(

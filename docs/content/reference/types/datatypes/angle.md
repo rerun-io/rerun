@@ -8,7 +8,7 @@ Angle in radians.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

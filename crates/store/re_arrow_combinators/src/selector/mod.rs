@@ -7,13 +7,14 @@
 //!
 //! The selector syntax is a subset of `jq`:
 //!
-//! | Syntax      | Meaning                                          | Example        |
-//! |-------------|--------------------------------------------------|----------------|
-//! | `.field`    | Access a named field in a struct                 | `.location`    |
-//! | `[]`        | Iterate over every element of a list             | `.poses[]`     |
-//! | `[N]`       | Index into a list by position                    | `.[0]`         |
-//! | `?`         | Error suppression / optional operator            | `.field?`      |
-//! | `\|`        | Pipe the output of one expression to another     | `.foo \| .bar` |
+//! | Syntax      | Meaning                                                    | Example        |
+//! |-------------|------------------------------------------------------------|----------------|
+//! | `.field`    | Access a named field in a struct                           | `.location`    |
+//! | `[]`        | Iterate over every element of a list                       | `.poses[]`     |
+//! | `[N]`       | Index into a list by position                              | `.[0]`         |
+//! | `?`         | Error suppression / optional operator                      | `.field?`      |
+//! | `!`         | Assert non-null (promotes all-null rows to outer nulls)    | `.field!`      |
+//! | `\|`        | Pipe the output of one expression to another               | `.foo \| .bar` |
 //!
 //! Segments can be chained without an explicit pipe: `.poses[].x` is equivalent to `.poses[] | .x`.
 //!
@@ -23,14 +24,27 @@
 //! * **No filters, arithmetic, or built-in functions** — only path navigation and iteration are supported.
 //! * **No quoted field names or string interpolation** — field names must be bare identifiers
 //!   (alphanumeric, `-`, `_`).
+//!
+//! # Protobuf and null handling
+//!
+//! The `?` and `!` operators exist primarily to handle Arrow columns produced from protobuf
+//! messages. Proto3 `optional` fields have **presence tracking**: when a field is unset the
+//! corresponding Arrow column contains `null` rather than the type's default value. Navigating
+//! into a struct with optional sub-fields can therefore yield lists whose inner values are all
+//! null (e.g. `[null]` instead of a top-level `null`).
+//!
+//! * `?` suppresses errors when a field is entirely absent from the schema, which happens
+//!   during schema evolution or when optional columns are omitted.
+//! * `!` promotes rows where **all** inner values are null to an outer null, collapsing
+//!   `[null]` → `null` so downstream consumers see clean nullability.
 
 mod lexer;
 mod parser;
 mod runtime;
 
 use arrow::{
-    array::{Array as _, ListArray},
-    datatypes::{DataType, Field},
+    array::ListArray,
+    datatypes::{DataType, Fields},
 };
 use vec1::Vec1;
 
@@ -47,6 +61,13 @@ impl std::fmt::Display for Selector {
 }
 
 impl Selector {
+    /// Parse a selector from a query string.
+    ///
+    /// This is a convenience wrapper around [`FromStr`](std::str::FromStr).
+    pub fn parse(query: &str) -> Result<Self, Error> {
+        query.parse()
+    }
+
     /// Execute this selector against each row of a [`ListArray`].
     ///
     /// Performs implicit iteration over the inner list array, and reconstructs the array at the end.
@@ -78,9 +99,8 @@ impl crate::Transform for Selector {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
-        let result = self.execute_per_row(source).map_err(crate::Error::from)?;
-        Ok(result.unwrap_or_else(|| null_list_like(source)))
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, crate::Error> {
+        self.execute_per_row(source).map_err(crate::Error::from)
     }
 }
 
@@ -88,18 +108,9 @@ impl crate::Transform for &Selector {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Self::Target, crate::Error> {
-        let result = self.execute_per_row(source).map_err(crate::Error::from)?;
-        Ok(result.unwrap_or_else(|| null_list_like(source)))
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, crate::Error> {
+        self.execute_per_row(source).map_err(crate::Error::from)
     }
-}
-
-/// Creates an all-null [`ListArray`] with the same type and length as `source`.
-fn null_list_like(source: &ListArray) -> ListArray {
-    ListArray::new_null(
-        Field::new_list_field(source.value_type(), true).into(),
-        source.len(),
-    )
 }
 
 /// Errors that can occur during selector parsing or execution.
@@ -118,6 +129,54 @@ pub enum Error {
     Runtime(#[from] crate::Error),
 }
 
+/// Dispatch a single datatype: enqueue structs, unwrap lists, or check the predicate.
+fn process_datatype<'a, P>(
+    mut path: Vec<Segment>,
+    datatype: &'a DataType,
+    predicate: &P,
+    result: &mut Vec<(Selector, DataType)>,
+    queue: &mut std::collections::VecDeque<(Vec<Segment>, &'a Fields)>,
+) where
+    P: Fn(&DataType) -> bool,
+{
+    match datatype {
+        dt if predicate(dt) => {
+            result.push((Selector(Expr::Path(path)), dt.clone()));
+        }
+        DataType::Struct(fields) => {
+            queue.push_back((path, fields));
+        }
+        DataType::List(inner) | DataType::FixedSizeList(inner, ..) => {
+            path.push(Segment {
+                kind: SegmentKind::Each,
+                suppressed: false,
+                assert_non_null: false,
+            });
+            match inner.data_type() {
+                dt if predicate(dt) => {
+                    result.push((Selector(Expr::Path(path)), dt.clone()));
+                }
+                DataType::Struct(nested_fields) => {
+                    queue.push_back((path, nested_fields));
+                }
+                DataType::FixedSizeList(field, ..) => {
+                    let dt = field.data_type();
+                    if predicate(dt) {
+                        path.push(Segment {
+                            kind: SegmentKind::Each,
+                            suppressed: false,
+                            assert_non_null: false,
+                        });
+                        result.push((Selector(Expr::Path(path)), dt.clone()));
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Extract nested fields from a struct array that match a predicate.
 ///
 /// Returns `None` if no fields match the predicate, or if `datatype` is not a `DataType::Struct`.
@@ -128,15 +187,15 @@ pub fn extract_nested_fields<P>(
 where
     P: Fn(&DataType) -> bool,
 {
-    let DataType::Struct(fields) = datatype else {
-        return None;
-    };
-
     let mut result = Vec::new();
     let mut queue = std::collections::VecDeque::new();
 
-    // Initialize queue with root fields
-    queue.push_back((Vec::new(), fields));
+    match datatype {
+        DataType::Struct(_) | DataType::List(_) | DataType::FixedSizeList(..) => {
+            process_datatype(Vec::new(), datatype, &predicate, &mut result, &mut queue);
+        }
+        _ => return None,
+    }
 
     // Breadth-first traversal
     while let Some((path, fields)) = queue.pop_front() {
@@ -145,38 +204,15 @@ where
             field_path.push(Segment {
                 kind: SegmentKind::Field(field.name().clone()),
                 suppressed: false,
+                assert_non_null: false,
             });
-
-            match field.data_type() {
-                DataType::Struct(nested_fields) => {
-                    // Queue nested struct for later processing
-                    queue.push_back((field_path, nested_fields));
-                }
-                DataType::List(inner) => {
-                    // Add the Each segment to unwrap the list
-                    field_path.push(Segment {
-                        kind: SegmentKind::Each,
-                        suppressed: false,
-                    });
-
-                    match inner.data_type() {
-                        DataType::Struct(nested_fields) => {
-                            // Queue nested struct within list for later processing
-                            queue.push_back((field_path, nested_fields));
-                        }
-                        dt if predicate(dt) => {
-                            // Direct match on list inner type
-                            result.push((Selector(Expr::Path(field_path)), dt.clone()));
-                        }
-                        _ => {}
-                    }
-                }
-                dt if predicate(dt) => {
-                    // Direct match on field type
-                    result.push((Selector(Expr::Path(field_path)), dt.clone()));
-                }
-                _ => {}
-            }
+            process_datatype(
+                field_path,
+                field.data_type(),
+                &predicate,
+                &mut result,
+                &mut queue,
+            );
         }
     }
 

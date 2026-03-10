@@ -2,7 +2,7 @@
 
 use arrow::array::{ListBuilder, StringBuilder};
 use re_chunk::{Chunk, ChunkId, TimeColumn, TimelineName};
-use re_sdk::lenses::{Lens, Lenses, OutputMode};
+use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector};
 use re_sdk_types::ComponentDescriptor;
 
 /// Helper to create a simple chunk with string data for testing
@@ -39,7 +39,10 @@ fn test_output_mode_forward_all() {
         "test_component",
     )
     .output_columns_at("matched/output", |out| {
-        out.component(ComponentDescriptor::partial("transformed"), [])
+        out.component(
+            ComponentDescriptor::partial("transformed"),
+            Selector::parse(".")?,
+        )
     })
     .unwrap()
     .build();
@@ -87,7 +90,10 @@ fn test_output_mode_forward_unmatched() {
         "test_component",
     )
     .output_columns_at("matched/output", |out| {
-        out.component(ComponentDescriptor::partial("transformed"), [])
+        out.component(
+            ComponentDescriptor::partial("transformed"),
+            Selector::parse(".")?,
+        )
     })
     .unwrap()
     .build();
@@ -131,7 +137,10 @@ fn test_output_mode_drop_unmatched() {
         "test_component",
     )
     .output_columns_at("matched/output", |out| {
-        out.component(ComponentDescriptor::partial("transformed"), [])
+        out.component(
+            ComponentDescriptor::partial("transformed"),
+            Selector::parse(".")?,
+        )
     })
     .unwrap()
     .build();

@@ -31,7 +31,10 @@ impl VisualizerSystem for TensorSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Tensor>()
+        VisualizerQueryInfo::single_required_component::<TensorData>(
+            &Tensor::descriptor_data(),
+            &Tensor::all_components(),
+        )
     }
 
     fn execute(

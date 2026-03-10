@@ -18,8 +18,8 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
 use crate::{
-    BlueprintUndoState, Caches, RecordingOrTable, Route, StorageContext, StoreContext, TableStore,
-    TableStores,
+    ActiveStoreContext, BlueprintUndoState, Caches, RecordingOrTable, Route, StorageContext,
+    TableStore, TableStores,
 };
 
 /// Interface for accessing all blueprints and recordings.
@@ -211,11 +211,11 @@ impl StoreHub {
         &mut self.store_bundle
     }
 
-    /// Get a read-only [`StorageContext`] and [`StoreContext`] from the [`StoreHub`].
+    /// Get a read-only [`StorageContext`] and [`ActiveStoreContext`] from the [`StoreHub`].
     ///
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
-    pub fn read_context(&mut self, route: &Route) -> (StorageContext<'_>, StoreContext<'_>) {
+    pub fn read_context(&mut self, route: &Route) -> (StorageContext<'_>, ActiveStoreContext<'_>) {
         static EMPTY_RECORDING: LazyLock<EntityDb> =
             LazyLock::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
         static EMPTY_BLUEPRINT: LazyLock<EntityDb> = LazyLock::new(|| {
@@ -295,7 +295,7 @@ impl StoreHub {
                 &EMPTY_CACHES
             });
 
-            Some(StoreContext {
+            Some(ActiveStoreContext {
                 blueprint: active_blueprint,
                 default_blueprint,
                 recording: recording.unwrap_or(&EMPTY_RECORDING),
@@ -306,7 +306,7 @@ impl StoreHub {
 
         // TODO(RR-3033): the viewer should be robust to not having a `StoreContext`.
         // We should only have one if we are currently looking at a blueprint.
-        let store_context = store_context.unwrap_or(StoreContext {
+        let store_context = store_context.unwrap_or(ActiveStoreContext {
             blueprint: &EMPTY_BLUEPRINT,
             default_blueprint: None,
             recording: &EMPTY_RECORDING,

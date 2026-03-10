@@ -128,7 +128,7 @@ impl<'a> ArrayUi<'a> {
     /// This will create a list item that might have some nested children.
     /// The list item will _not_ display the index.
     pub fn show_value(&self, idx: usize, ui: &mut Ui) {
-        self.show_index.show(idx, ui);
+        self.show_index.show(idx, ui, UiLayout::List);
     }
 
     /// Show a `list_item` based tree view of the data.
@@ -283,7 +283,7 @@ pub(crate) trait ShowIndex {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult;
 
     /// Show the item at `idx` as a rerun `list_item`.
-    fn show(&self, idx: usize, ui: &mut Ui) {
+    fn show(&self, idx: usize, ui: &mut Ui, ui_layout: UiLayout) {
         let mut highlighted = SyntaxHighlightedBuilder::new();
         let result = self.write(idx, &mut highlighted);
         match result {
@@ -291,7 +291,7 @@ pub(crate) trait ShowIndex {
                 ui.list_item().show_hierarchical(
                     ui,
                     CustomContent::new(|ui, _context| {
-                        UiLayout::List.data_label(ui, highlighted);
+                        ui_layout.data_label(ui, highlighted);
                     }),
                 );
             }
@@ -364,7 +364,7 @@ impl<'a, T: ShowIndex> ShowIndexState<'a> for T {
     }
 
     fn show(&self, _state: &Self::State, idx: usize, ui: &mut Ui) {
-        ShowIndex::show(self, idx, ui);
+        ShowIndex::show(self, idx, ui, UiLayout::List);
     }
 
     fn is_item_nested(&self) -> bool {
@@ -404,7 +404,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
         ShowIndexState::write(&self.array, &self.state, idx, f)
     }
 
-    fn show(&self, idx: usize, ui: &mut Ui) {
+    fn show(&self, idx: usize, ui: &mut Ui, _layout: UiLayout) {
         ShowIndexState::show(&self.array, &self.state, idx, ui);
     }
 

@@ -15,12 +15,12 @@ use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
-    AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext,
-    BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry, DragAndDropManager,
-    FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass, Route, SelectionChange,
-    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
-    TimeControl, TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline,
+    ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle,
+    AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
+    DragAndDropManager, FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass, Route,
+    SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -183,7 +183,7 @@ impl AppState {
     /// Currently selected section of time, if any.
     pub fn loop_selection(
         &self,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
     ) -> Option<(TimelineName, AbsoluteTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
         let time_ctrl = self.time_controls.get(rec_id)?;
@@ -204,7 +204,7 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         // TODO(RR-3033): the viewer should be robust to not having a `StoreContext`.
         // We should only have one if we are currently looking at a blueprint.
-        store_context: &StoreContext<'_>,
+        store_context: &ActiveStoreContext<'_>,
         storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
@@ -237,9 +237,12 @@ impl AppState {
             }
 
             Route::ChunkStoreBrowser { previous, .. } => {
-                let should_datastore_ui_remain_active =
-                    self.datastore_ui
-                        .ui(store_context, ui, self.app_options.timestamp_format);
+                let should_datastore_ui_remain_active = self.datastore_ui.ui(
+                    store_context,
+                    storage_context,
+                    ui,
+                    self.app_options.timestamp_format,
+                );
                 if !should_datastore_ui_remain_active {
                     self.navigation.replace((**previous).clone());
                 }
@@ -248,6 +251,7 @@ impl AppState {
             // TODO(RR-3033): This needs to be further cleaned up and split into separately handled routes.
             _ => {
                 let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
+                let route = self.navigation.current();
 
                 let Self {
                     app_options,
@@ -298,9 +302,10 @@ impl AppState {
                             return false;
                         }
 
-                        viewport_ui.blueprint.is_item_valid(storage_context, item)
+                        item.is_compatible_with_route(route)
+                            && viewport_ui.blueprint.is_item_valid(storage_context, item)
                     },
-                    Some(Item::StoreId(store_context.recording.store_id().clone())),
+                    route.item(),
                 );
 
                 if let SelectionChange::SelectionChanged(selection) = selection_change
@@ -404,7 +409,6 @@ impl AppState {
                 };
 
                 let egui_ctx = ui.ctx().clone();
-                let route = self.navigation.current();
                 let ctx = ViewerContext {
                     app_ctx: AppContext {
                         is_test: app_env.is_test(),
@@ -419,11 +423,15 @@ impl AppState {
 
                         connection_registry,
                         storage_context,
+                        active_store_context: Some(store_context),
+
                         component_ui_registry,
                         route,
                         selection_state,
                         focused_item,
                         drag_and_drop_manager: &drag_and_drop_manager,
+                        active_time_ctrl: Some(time_ctrl),
+                        connected_receivers: rx_log,
                         auth_context: auth_state.as_ref(),
                     },
                     component_fallback_registry,
@@ -486,9 +494,8 @@ impl AppState {
 
                     blueprint_time_panel.show_panel(
                         &ctx,
+                        &ctx.blueprint_store_view_ctx(),
                         &viewport_ui.blueprint,
-                        blueprint_db,
-                        blueprint_time_control,
                         ui,
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
@@ -517,9 +524,8 @@ impl AppState {
                 if route.has_time_panel() {
                     time_panel.show_panel(
                         &ctx,
+                        &ctx.active_recording_store_view_context(),
                         &viewport_ui.blueprint,
-                        ctx.recording(),
-                        ctx.time_ctrl,
                         ui,
                         app_blueprint.time_panel_state(),
                         ui.tokens().bottom_panel_frame(),
@@ -640,7 +646,13 @@ impl AppState {
                         match route {
                             Route::LocalTable(table_id) => {
                                 if let Some(store) = ctx.table_stores().get(table_id) {
-                                    table_ui(&ctx, runtime, ui, table_id, store);
+                                    table_ui(
+                                        &ctx.active_recording_store_view_context(),
+                                        runtime,
+                                        ui,
+                                        table_id,
+                                        store,
+                                    );
                                 } else {
                                     re_log::error_once!(
                                         "Could not find batch store for table id {}",
@@ -663,7 +675,11 @@ impl AppState {
                             }
 
                             Route::RedapEntry(entry) => {
-                                redap_servers.entry_ui(&ctx, ui, entry.entry_id);
+                                redap_servers.entry_ui(
+                                    &ctx.active_recording_store_view_context(), // TODO(RR-1127): this makes no sense
+                                    ui,
+                                    entry.entry_id,
+                                );
                             }
 
                             Route::RedapServer(origin) => {
@@ -698,7 +714,11 @@ impl AppState {
                                         &login_state,
                                     );
                                 } else {
-                                    redap_servers.server_central_panel_ui(&ctx, ui, origin);
+                                    redap_servers.server_central_panel_ui(
+                                        &ctx.active_recording_store_view_context(), // TODO(RR-3033): server_central_panel_ui should not know about any recording/blueprint
+                                        ui,
+                                        origin,
+                                    );
                                 }
                             }
 
@@ -788,6 +808,7 @@ impl AppState {
         create_time_control_for(&mut self.time_controls, entity_db, blueprint_ctx)
     }
 
+    /// Remove dangling state
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
 
@@ -844,7 +865,7 @@ impl AppState {
 }
 
 fn table_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     runtime: &AsyncRuntimeHandle,
     ui: &mut Ui,
     table_id: &TableId,
@@ -891,11 +912,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
 
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
-        time_ctrl.set_play_state(
-            Some(entity_db.timeline_histograms()),
-            play_state,
-            Some(blueprint_ctx),
-        );
+        time_ctrl.set_play_state(Some(entity_db), play_state, Some(blueprint_ctx));
 
         time_ctrl
     }

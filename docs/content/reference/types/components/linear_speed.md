@@ -11,7 +11,7 @@ Linear speed, used for translation speed for example.
 
 ## Arrow datatype
 ```
-float64
+Float64
 ```
 
 ## API reference links

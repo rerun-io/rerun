@@ -1,8 +1,6 @@
-use re_arrow_util::DisplayDataType;
+use arrow::datatypes::DataType;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::EntityPathFilter;
-
-use crate::op::OpError;
 
 /// Different variants of errors that can happen when executing lenses.
 #[expect(missing_docs)]
@@ -36,7 +34,7 @@ pub enum LensError {
         input_component: ComponentIdentifier,
         component: ComponentIdentifier,
         #[source]
-        source: Box<OpError>, // Box because of size.
+        source: Box<re_arrow_combinators::Error>,
     },
 
     #[error(
@@ -47,7 +45,7 @@ pub enum LensError {
         input_component: ComponentIdentifier,
         timeline_name: TimelineName,
         #[source]
-        source: Box<OpError>, // Box because of size.
+        source: Box<re_arrow_combinators::Error>,
     },
 
     #[error(
@@ -55,8 +53,11 @@ pub enum LensError {
     )]
     InvalidTimeColumn {
         timeline_name: TimelineName,
-        actual_type: DisplayDataType,
+        actual_type: DataType,
     },
+
+    #[error(transparent)]
+    SelectorParseFailed(#[from] re_arrow_combinators::SelectorError),
 
     #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]
     ScatterExistingTimeFailed {

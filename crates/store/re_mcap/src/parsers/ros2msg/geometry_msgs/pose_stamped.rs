@@ -88,7 +88,7 @@ impl MessageParser for PoseStampedMessageParser {
             timelines.clone(),
             pose_components
                 .into_iter()
-                .chain(frame_components.into_iter())
+                .chain(frame_components)
                 .collect(),
         )?;
 

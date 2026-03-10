@@ -22,9 +22,9 @@ use re_ui::Help;
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
     CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, Item,
-    ItemCollection, NeedsRepaint, Route, StoreHub, SystemCommand, SystemCommandSender as _,
-    TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext, blueprint_timeline, command_channel,
+    ItemCollection, NeedsRepaint, Route, StoreHub, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext, blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -141,8 +141,7 @@ pub trait VisualizerBlueprintContext: BlueprintContext {
             let mut visualizer = visualizer.into();
 
             // Generate a deterministic ID based on entity path hash and visualizer index
-            visualizer.id =
-                VisualizerInstructionId::new_deterministic(entity_path.hash().hash64(), i);
+            visualizer.id = VisualizerInstructionId::new_deterministic(entity_path, i);
 
             ids.push(visualizer.id);
             let visualizer_path = base_override_path
@@ -584,6 +583,20 @@ impl TestContext {
             .expect("registering a class should succeed");
     }
 
+    /// Run the provided closure with a [`StoreViewContext`] produced by the [`Self`].
+    ///
+    /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
+    /// relies on system commands.
+    pub fn run_recording(
+        &self,
+        egui_ctx: &egui::Context,
+        func: impl FnOnce(&StoreViewContext<'_>),
+    ) {
+        self.run(egui_ctx, |viewer_ctx| {
+            func(&viewer_ctx.active_recording_store_view_context());
+        });
+    }
+
     /// Run the provided closure with a [`ViewerContext`] produced by the [`Self`].
     ///
     /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
@@ -655,6 +668,8 @@ impl TestContext {
                 connection_registry: &self.connection_registry,
 
                 storage_context: &storage_context,
+                active_store_context: Some(&store_context), // TODO(RR-3033): should sometimes be `None`
+
                 component_ui_registry: &self.component_ui_registry,
 
                 route: &Route::LocalRecording {
@@ -664,6 +679,8 @@ impl TestContext {
                 selection_state: &selection_state,
                 focused_item: &focused_item,
                 drag_and_drop_manager: &drag_and_drop_manager,
+                active_time_ctrl: Some(&self.time_ctrl.read()),
+                connected_receivers: &Default::default(),
                 auth_context: None,
             },
             component_fallback_registry: &self.component_fallback_registry,
@@ -872,11 +889,10 @@ impl TestContext {
                 } => {
                     self.with_blueprint_ctx(|blueprint_ctx, hub| {
                         let mut time_ctrl = self.time_ctrl.write();
-                        let timeline_histograms = hub
+                        let entity_db = hub
                             .store_bundle()
                             .get(&store_id)
-                            .expect("Invalid store id in `SystemCommand::TimeControlCommands`")
-                            .timeline_histograms();
+                            .expect("Invalid store id in `SystemCommand::TimeControlCommands`");
 
                         let blueprint_ctx =
                             Some(&blueprint_ctx).filter(|_| store_id.is_recording());
@@ -884,7 +900,7 @@ impl TestContext {
                         // We can ignore the response in the test context.
                         let res = time_ctrl.handle_time_commands(
                             blueprint_ctx,
-                            timeline_histograms,
+                            entity_db,
                             &time_commands,
                         );
 
@@ -916,7 +932,8 @@ impl TestContext {
                 | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::Logout
                 | SystemCommand::SaveScreenshot { .. }
-                | SystemCommand::ShowNotification { .. } => handled = false,
+                | SystemCommand::ShowNotification { .. }
+                | SystemCommand::ReadbackAndSaveTexture(_) => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,

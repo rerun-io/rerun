@@ -1,6 +1,6 @@
 use egui::WidgetText;
 use re_chunk::EntityPath;
-use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
+use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
 use re_sdk_types::archetypes::RecordingInfo;
@@ -20,8 +20,9 @@ pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPa
         entity_path,
         component,
     } = component_path;
-    let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-    db.storage_engine()
+    ctx.guess_store_view_context_for_entity(entity_path)
+        .db
+        .storage_engine()
         .store()
         .entity_has_static_component(entity_path, *component)
 }

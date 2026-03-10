@@ -54,7 +54,6 @@ re_video = { workspace = true, features = ["serde"] }
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-bit-vec.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
 camino.workspace = true

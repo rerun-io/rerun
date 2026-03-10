@@ -52,11 +52,10 @@ function re_viewer_js() {
   // this is HIGHLY sensitive to the exact output of `wasm-bindgen`, so if
   // the output changes, this will need to be updated.
 
-  const start = `let wasm_bindgen;
-(function() {`;
-  const end = `wasm_bindgen = Object.assign(__wbg_init, { initSync }, __exports);
+  const start = `let wasm_bindgen = (function(exports) {`;
+  const end = `return Object.assign(__wbg_init, { initSync }, exports);
+})({ __proto__: null });`;
 
-})();`;
   if (code.indexOf(start) === -1) {
     throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find replace start marker");
   }
@@ -67,19 +66,24 @@ function re_viewer_js() {
 
   code = `
 export default function() {
+const exports = { __proto__: null };
 ${code}
 
 function deinit() {
   __wbg_init.__wbindgen_wasm_module = null;
+  wasmModule = null;
   wasm = null;
-  cachedUint8ArrayMemory0 = null;
-  cachedFloat32ArrayMemory0 = null;
-  cachedInt32ArrayMemory0 = null;
-  cachedUint32ArrayMemory0 = null;
   cachedDataViewMemory0 = null;
+  cachedFloat32ArrayMemory0 = null;
+  cachedInt16ArrayMemory0 = null;
+  cachedInt32ArrayMemory0 = null;
+  cachedInt8ArrayMemory0 = null;
+  cachedUint16ArrayMemory0 = null;
+  cachedUint32ArrayMemory0 = null;
+  cachedUint8ArrayMemory0 = null;
 }
 
-return Object.assign(__wbg_init, { initSync, deinit }, __exports);
+return Object.assign(__wbg_init, { initSync, deinit }, exports);
 }
 `;
 
@@ -87,32 +91,24 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   // Otherwise we end up with an exceptioon during closure destruction which prevents the references from all being
   // cleaned up properly.
   // TODO(jprochazk): Can we force these to run before we null `wasm` instead?
-  const closure_dtors_start_marker = "const CLOSURE_DTORS";
-  const closure_dtors_end_marker = "});";
-
-  const closure_dtors_start = code.indexOf(closure_dtors_start_marker);
-  if (closure_dtors_start === -1) {
-    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find CLOSURE_DTORS start");
-  }
-  const closure_dtors_end = code.indexOf(closure_dtors_end_marker, closure_dtors_start);
-  if (closure_dtors_end === -1) {
-    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find CLOSURE_DTORS end");
-  }
-
-  let m = code.substring(closure_dtors_start, closure_dtors_end).match(/__wbindgen_export_\d+/);
-  if (!m) {
-    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find __wbindgen_export within CLOSURE_DTORS");
-  }
-
-  let wbindgen_export = m[0];
+  // Patch CLOSURE_DTORS to guard against null `wasm` during deinit.
+  // The FinalizationRegistry callback may fire after we've nulled `wasm`,
+  // so we need to check that wasm is still alive before calling the destructor.
+  const closure_dtors_original = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
+        ? { register: () => {}, unregister: () => {} }
+        : new FinalizationRegistry(state => state.dtor(state.a, state.b));`;
 
   const closure_dtors_patch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
         ? { register: () => {}, unregister: () => {} }
         : new FinalizationRegistry(state => {
-        wasm?.${wbindgen_export}.get(state.dtor)(state.a, state.b)
+        if (wasm) state.dtor(state.a, state.b);
     });`;
 
-  code = code.substring(0, closure_dtors_start) + closure_dtors_patch + code.slice(closure_dtors_end + closure_dtors_end_marker.length);
+  if (code.indexOf(closure_dtors_original) === -1) {
+    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find CLOSURE_DTORS block");
+  }
+
+  code = code.replace(closure_dtors_original, closure_dtors_patch);
 
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }

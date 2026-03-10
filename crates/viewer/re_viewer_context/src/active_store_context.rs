@@ -4,7 +4,7 @@ use re_log_types::{ApplicationId, StoreId};
 use crate::Caches;
 
 /// The current Blueprint and Recording being displayed by the viewer
-pub struct StoreContext<'a> {
+pub struct ActiveStoreContext<'a> {
     /// The current active blueprint.
     pub blueprint: &'a EntityDb,
 
@@ -23,7 +23,7 @@ pub struct StoreContext<'a> {
     pub should_enable_heuristics: bool,
 }
 
-impl StoreContext<'_> {
+impl ActiveStoreContext<'_> {
     pub fn is_active(&self, store_id: &StoreId) -> bool {
         self.recording.store_id() == store_id || self.blueprint.store_id() == store_id
     }

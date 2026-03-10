@@ -357,6 +357,13 @@ Convert an .mcap file to an .rrd.
 >
 > When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
 
+* `--timestamp-offset-ns <TIMESTAMP_OFFSET_NS>`
+> If set, an offset in nanoseconds to add to all timestamp timelines.
+>
+> This can be used to shift all timestamps of the MCAP file if they are not yet relative to the UNIX epoch.
+>
+> Duration and sequence timelines are not affected by this offset.
+
 ## rerun rrd
 
 Manipulate the contents of .rrd and .rbl files.

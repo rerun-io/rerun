@@ -2,13 +2,13 @@
 //!
 //! This module implements execution of expressions against Arrow [`ListArray`]s.
 
-use arrow::array::{Array as _, ListArray};
+use arrow::array::{Array as _, FixedSizeListArray, ListArray};
 
 use crate::{
     Transform as _,
     index::GetIndexList,
     map::MapList,
-    reshape::{Flatten, GetField},
+    reshape::{Flatten, GetField, PromoteInnerNulls},
 };
 
 use super::parser::{Expr, Segment, SegmentKind};
@@ -32,8 +32,12 @@ pub fn execute_per_row(expr: &Expr, source: &ListArray) -> Result<Option<ListArr
     Ok(result)
 }
 
+fn values_downcasts_to<T: 'static>(array: &ListArray) -> bool {
+    array.values().as_any().downcast_ref::<T>().is_some()
+}
+
 impl SegmentKind {
-    fn execute(&self, source: &ListArray) -> Result<ListArray, crate::Error> {
+    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
         match self {
             Self::Field(field_name) => {
                 MapList::new(GetField::new(field_name.clone())).transform(source)
@@ -43,11 +47,8 @@ impl SegmentKind {
                 // In Arrow's columnar context, [] flattens one level of list nesting
                 // while preserving row count, rather than exploding to create new rows.
                 // This reinterprets jq's streaming iteration as structural unwrapping.
-                if source
-                    .values()
-                    .as_any()
-                    .downcast_ref::<ListArray>()
-                    .is_some()
+                if values_downcasts_to::<ListArray>(source)
+                    || values_downcasts_to::<FixedSizeListArray>(source)
                 {
                     // Flatten nested lists: List<List<T>> -> List<T>
                     Flatten::new().transform(source)
@@ -65,14 +66,24 @@ impl SegmentKind {
 
 impl Segment {
     fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
-        match self.kind.execute(source) {
-            Ok(result) => Ok(Some(result)),
+        let result = match self.kind.execute(source) {
+            Ok(result) => result,
             // TODO(RR-3435): FixedSizeListArray errors must be suppressed via `?`, but ListArray should not need it.
             Err(err) if self.suppressed => {
                 re_log::trace!("Suppressed segment `{self}` suppressed error: {err}");
-                Ok(None)
+                return Ok(None);
             }
-            Err(err) => Err(err),
+            Err(err) => return Err(err),
+        };
+
+        let Some(result) = result else {
+            return Ok(None);
+        };
+
+        if self.assert_non_null {
+            PromoteInnerNulls.transform(&result)
+        } else {
+            Ok(Some(result))
         }
     }
 }

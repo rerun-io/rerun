@@ -28,7 +28,7 @@ pub fn textured_rect_from_image(
         &debug_name,
         image,
         &image_stats,
-        &ent_context.annotations,
+        Some(&ent_context.annotations),
         colormap,
     )
     .map(|colormapped_texture| {

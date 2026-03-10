@@ -13,7 +13,7 @@ Used for time series plots.
 
 ## Arrow datatype
 ```
-float64
+Float64
 ```
 
 ## API reference links

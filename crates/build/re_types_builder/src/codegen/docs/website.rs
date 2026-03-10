@@ -401,20 +401,20 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
             Type::Unit => unreachable!("Should be handled elsewhere"),
 
             // We use explicit, arrow-like names:
-            Type::UInt8 => atomic("uint8"),
-            Type::UInt16 => atomic("uint16"),
-            Type::UInt32 => atomic("uint32"),
-            Type::UInt64 => atomic("uint64"),
-            Type::Int8 => atomic("int8"),
-            Type::Int16 => atomic("int16"),
-            Type::Int32 => atomic("int32"),
-            Type::Int64 => atomic("int64"),
-            Type::Bool => atomic("boolean"),
-            Type::Float16 => atomic("float16"),
-            Type::Float32 => atomic("float32"),
-            Type::Float64 => atomic("float64"),
-            Type::Binary => atomic("binary"),
-            Type::String => atomic("utf8"),
+            Type::UInt8 => atomic("UInt8"),
+            Type::UInt16 => atomic("UInt16"),
+            Type::UInt32 => atomic("UInt32"),
+            Type::UInt64 => atomic("UInt64"),
+            Type::Int8 => atomic("Int8"),
+            Type::Int16 => atomic("Int16"),
+            Type::Int32 => atomic("Int32"),
+            Type::Int64 => atomic("Int64"),
+            Type::Bool => atomic("Boolean"),
+            Type::Float16 => atomic("Float16"),
+            Type::Float32 => atomic("Float32"),
+            Type::Float64 => atomic("Float64"),
+            Type::Binary => atomic("Binary"),
+            Type::String => atomic("Utf8"),
 
             Type::Array { elem_type, length } => {
                 format!(
@@ -475,8 +475,11 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
             if field.typ == Type::Unit {
                 field_string.push_str("`null`");
             } else {
-                if field.is_nullable {
-                    field_string.push_str("nullable ");
+                if !field.is_nullable {
+                    // This follows the notation set by arrow-rs.
+                    // If we change this, we should probably change
+                    // arrow-rs and datafusion to match.
+                    field_string.push_str("non-null ");
                 }
                 field_string.push_str(&type_info(objects, &field.typ));
             }

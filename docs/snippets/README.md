@@ -1,33 +1,42 @@
-# API examples
+# Documentation snippets
 
-These examples showcase common usage of each individual Rerun `Archetype`s.
+Small, self-contained examples in `all/`, organized by category (`archetypes/`, `howto/`, `tutorials/`, `views/`, etc.). Most snippets have `.py`, `.rs`, and `.cpp` versions with the same base name, and are automatically used as docstrings for the `Archetype` APIs and the [Archetypes](https://www.rerun.io/docs/reference/types) documentation.
 
-Most of these examples are automatically used as docstrings for the `Archetype` APIs in their respective SDKs, as well as the [Archetypes](https://www.rerun.io/docs/reference/types) section of the high-level documentation.
+## Running snippets
 
-## Usage
+Rust and C++ snippets compile into a single dispatcher binary that takes the snippet name (without path/extension) as first argument.
 
-You can run each example individually using the following:
+- **C++**: `pixi run -e cpp cpp-build-snippets`, then `./build/debug/docs/snippets/all/<name>`
+- **Python**: `pixi run py-build && pixi run uvpy <name>.py`
+- **Rust**: `cargo run -p snippets -- <name> [args]`
 
-- **C++**:
-  - `pixi run -e cpp cpp-build-snippets` to compile all examples
-  - `./build/debug/docs/snippets/all/<example_name>` to run, e.g. `./build/debug/docs/snippets/all/point3d_random`
-- **Python**: `pixi run py-build && pixi run uvpy <example_name>.py`, e.g. `pixi run uvpy point3d_random.py`.
-- **Rust**: `cargo run -p snippets -- <example_name> [args]`, e.g. `cargo run -p snippets -- point3d_random`.
+## Build system
 
-## Comparison test
+Both `build.rs` (Rust) and `CMakeLists.txt` (C++) auto-copy snippet sources from `all/`, rename `main` to a per-snippet function, and generate a dispatcher. Don't edit files in `src/snippets/` directly.
 
-The script `compare_snippet_output.py` execute the same logging commands from all 3 SDKs, save the results to distinct rrd files, and finally compare these rrd files.
-These tests are then automatically run by the CI, which will loudly complain if the resulting rrd files don't match.
+## Finding existing snippets
 
-These tests check that A) all of our SDKs yield the exact same data when used the same way and B) act as regression tests, relying on the fact that it is extremely unlikely that all supported languages break in the exact same way at the exact same time.
+`INDEX.md` is an auto-generated index (by codegen) mapping features/archetypes to snippets with per-language links. Check it before writing new snippets.
 
-### Usage
+## Snippet configuration
 
-To run the comparison tests, check out `pixi run uvpy docs/snippets/compare_snippet_output.py --help`.
-`pixi run uvpy docs/snippets/compare_snippet_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
+`snippets.toml` controls snippet testing and documentation indexing. See the comments in that file for details.
+
+## Comparison tests
+
+`compare_snippet_output.py` runs the same logging commands from all 3 SDKs, saves to distinct rrd files, and compares them. CI runs these automatically.
+
+These tests verify:
+- All SDKs yield identical data when used the same way
+- Act as regression tests (extremely unlikely all languages break identically)
+
+### Running comparison tests
+
+- `pixi run uvpy docs/snippets/compare_snippet_output.py --help` for options
+- `pixi run uvpy docs/snippets/compare_snippet_output.py` builds all 3 SDKs and runs all tests
 
 ### Implementing new tests
 
-Just pick a name for your test, and look at existing examples to get started. The `app_id` must be `rerun_example_<test_name>`.
-
-The comparison process is driven by file names, so make sure all 3 tests use the same name: `<test_name>.rs`, `<test_name>.cpp`, `<test_name>.py`.
+- Pick a name, look at existing examples to get started
+- Use the same name across languages: `<name>.rs`, `<name>.cpp`, `<name>.py`
+- Set `app_id` to `rerun_example_<name>`

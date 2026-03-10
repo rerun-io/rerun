@@ -27,9 +27,9 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry, Item,
-    MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext, StoreContext,
+    ActiveStoreContext, AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver,
+    CommandSender, ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry,
+    Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext,
     SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
@@ -77,6 +77,7 @@ pub struct App {
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
+    texture_readback: crate::texture_readback::TextureReadbacks,
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
@@ -409,6 +410,7 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
             screenshotter,
+            texture_readback: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,
@@ -604,7 +606,7 @@ impl App {
                 // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
                 // we want to diff state changes.
                 let response = time_ctrl.update(
-                    recording.timeline_histograms(),
+                    recording,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in,
@@ -630,7 +632,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.timeline_histograms(),
+                    bp_ctx.current_blueprint,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in: true,
@@ -706,7 +708,7 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
@@ -871,7 +873,7 @@ impl App {
 
                         let response = time_ctrl.handle_time_commands(
                             Some(&blueprint_ctx),
-                            store_ctx.recording.timeline_histograms(),
+                            store_ctx.recording,
                             &time_commands,
                         );
 
@@ -890,7 +892,7 @@ impl App {
                             let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
                             let response = self.state.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
-                                target_store.timeline_histograms(),
+                                target_store,
                                 &time_commands,
                             );
 
@@ -1246,6 +1248,10 @@ impl App {
                 self.notifications.add(notification);
             }
 
+            SystemCommand::ReadbackAndSaveTexture(texture_readback_id) => {
+                self.texture_readback.push(texture_readback_id);
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::FileSaver(file_saver) => {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
@@ -1581,7 +1587,7 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
         cmd: UICommand,
     ) {
@@ -2254,7 +2260,7 @@ impl App {
     fn copy_entity_hierarchy_to_clipboard(
         &mut self,
         egui_ctx: &egui::Context,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
     ) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             re_log::warn!("Could not copy entity hierarchy: No active recording");
@@ -2350,7 +2356,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: &StoreContext<'_>,
+        store_context: &ActiveStoreContext<'_>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -2407,6 +2413,12 @@ impl App {
                     }
 
                     let mut startup_options = self.startup_options.clone();
+
+                    self.texture_readback.poll_and_save_texture_readbacks(
+                        render_ctx,
+                        ui,
+                        &self.command_sender,
+                    );
 
                     self.state.show(
                         &self.app_env,
@@ -2632,8 +2644,8 @@ impl App {
                                         .replace(Route::LocalRecording { recording_id });
                                 } else {
                                     // TODO(RR-3713): show a blueprint for it anyway
-                                    re_log::warn_once!(
-                                        "Can't show {app_id} at this time - we have no recording for it"
+                                    re_log::debug_once!(
+                                        "Received BlueprintActivationCommand for app '{app_id}', but we have no recording for it"
                                     );
                                 }
                             }
@@ -3006,6 +3018,8 @@ impl App {
         if dropped_files.is_empty() {
             return;
         }
+
+        egui_ctx.request_repaint();
 
         let mut force_store_info = false;
 
@@ -3620,6 +3634,43 @@ impl eframe::App for App {
         }
     }
 
+    /// Called before each call to `ui`, but ALSO when the app is
+    /// hidden (occluded, minimized, …) if something has called `request_repaint`.
+    ///
+    /// We put things here that are unrelated to the UI,
+    /// and that we still want to happen if the application is hidden.
+    fn logic(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
+        let mut store_hub = self
+            .store_hub
+            .take()
+            .expect("Failed to take store hub from the Viewer");
+
+        {
+            // Respect memory budget:
+            self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
+
+            if self.app_options().blueprint_gc {
+                store_hub.gc_blueprints(&self.state.blueprint_undo_state);
+            }
+        }
+
+        {
+            // Download/ingest data:
+            self.receive_messages(&mut store_hub, egui_ctx);
+            self.receive_fetched_chunks(&mut store_hub);
+            self.prefetch_chunks(&mut store_hub);
+        }
+
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        self.state.cleanup(&store_hub);
+
+        // Return the `StoreHub` to the Viewer so we have it on the next frame
+        self.store_hub = Some(store_hub);
+    }
+
+    /// Called when application need to be repainted
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
@@ -3740,14 +3791,6 @@ impl eframe::App for App {
             store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
         }
 
-        self.receive_messages(&mut store_hub, ui);
-
-        if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
-        }
-
-        self.state.cleanup(&store_hub);
-
         file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver
 
         // Make sure some app is active
@@ -3791,9 +3834,6 @@ impl eframe::App for App {
                 }
             }
         }
-
-        self.receive_fetched_chunks(&mut store_hub);
-        self.prefetch_chunks(&mut store_hub);
 
         {
             let (storage_context, store_context) =
@@ -4076,7 +4116,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 
 fn save_active_recording(
     app: &mut App,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
@@ -4121,7 +4161,10 @@ fn save_recording(
     )
 }
 
-fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
+fn save_blueprint(
+    app: &mut App,
+    store_context: Option<&ActiveStoreContext<'_>>,
+) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
         anyhow::bail!("No blueprint to save");
     };

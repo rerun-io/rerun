@@ -7,22 +7,22 @@ A pair representing a channel ID and its associated message count.
 
 ## Fields
 #### `channel_id`
-Type: [`UInt16`](../datatypes/uint16.md)
+Type: non-null [`UInt16`](../datatypes/uint16.md)
 
 The channel ID.
 
 #### `message_count`
-Type: [`UInt64`](../datatypes/uint64.md)
+Type: non-null [`UInt64`](../datatypes/uint64.md)
 
 The message count for this channel.
 
 
 ## Arrow datatype
 ```
-Struct {
-    channel_id: uint16
-    message_count: uint64
-}
+Struct(
+    "channel_id": non-null UInt16
+    "message_count": non-null UInt64
+)
 ```
 
 ## API reference links

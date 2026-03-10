@@ -44,6 +44,7 @@ mod prefetch_chunks;
 mod saving;
 mod screenshotter;
 mod startup_options;
+mod texture_readback;
 mod ui;
 
 #[cfg(feature = "analytics")]

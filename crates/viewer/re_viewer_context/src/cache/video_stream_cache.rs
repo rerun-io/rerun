@@ -4,9 +4,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
+use arrow::datatypes::DataType;
 use egui::NumExt as _;
 use parking_lot::RwLock;
-use re_arrow_util::DisplayDataType;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, Timeline, TimelineName};
 use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent};
@@ -96,10 +96,13 @@ pub enum VideoStreamProcessingError {
     NoVideoSamplesFound,
 
     #[error("Unexpected arrow type for video sample {0}")]
-    InvalidVideoSampleType(DisplayDataType),
+    InvalidVideoSampleType(DataType),
 
     #[error("No codec specified.")]
     MissingCodec,
+
+    #[error("Codec not loaded yet.")]
+    UnloadedCodec,
 
     #[error("Failed to read codec - {0}")]
     FailedReadingCodec(Box<re_chunk::ChunkError>),
@@ -744,7 +747,17 @@ fn load_video_data_from_chunks(
     let sample_chunks = query_results.get_required(sample_component).unwrap_or(&[]);
     let codec_chunks = query_results
         .get_required(codec_component)
-        .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+        .map_err(|_err| {
+            if store
+                .storage_engine()
+                .store()
+                .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
+            {
+                VideoStreamProcessingError::UnloadedCodec
+            } else {
+                VideoStreamProcessingError::MissingCodec
+            }
+        })?;
 
     // Translate codec by looking at the last codec.
     // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
@@ -931,7 +944,7 @@ fn read_samples_from_known_chunk(
     };
 
     let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
-        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone().into()),
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
     )?;
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
@@ -1201,7 +1214,7 @@ fn read_samples_from_new_chunk(
     }
 
     let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
-        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone().into()),
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
     )?;
 
     let lengths = offsets.lengths().collect::<Vec<_>>();

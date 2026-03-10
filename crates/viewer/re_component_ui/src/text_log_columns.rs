@@ -1,10 +1,10 @@
 use re_sdk_types::blueprint::components::TextLogColumn;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 use crate::visible_dnd::visible_dnd;
 
 pub fn edit_or_view_columns_singleline(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TextLogColumn>>,
 ) -> egui::Response {
@@ -28,7 +28,7 @@ pub fn edit_or_view_columns_singleline(
 }
 
 pub fn edit_or_view_columns_multiline(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TextLogColumn>>,
 ) -> egui::Response {

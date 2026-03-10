@@ -1,8 +1,8 @@
-use crate::ViewerContext;
+use crate::TimeControl;
 
 /// Convert a video timestamp from component to a video time.
 pub fn video_timestamp_component_to_video_time(
-    ctx: &ViewerContext<'_>,
+    time_ctrl: Option<&TimeControl>,
     video_timestamp: re_sdk_types::components::VideoTimestamp,
     timescale: Option<re_video::Timescale>,
 ) -> re_video::Time {
@@ -10,7 +10,8 @@ pub fn video_timestamp_component_to_video_time(
         re_video::Time::from_nanos(video_timestamp.as_nanos(), timescale)
     } else {
         // If there's no timescale, assume that timestamps are frames and use our currently set fps.
-        let fps = ctx.time_ctrl.fps().unwrap_or(1.0);
+        const DEFAULT_FPS: f32 = 30.0;
+        let fps = time_ctrl.and_then(|tc| tc.fps()).unwrap_or(DEFAULT_FPS);
         re_video::Time((video_timestamp.0.0 as f64 * fps as f64) as i64)
     }
 }

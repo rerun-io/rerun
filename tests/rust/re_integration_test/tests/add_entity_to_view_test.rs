@@ -197,7 +197,9 @@ pub async fn test_add_entity_to_view_bar_chart() {
     harness.right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    harness.blueprint_tree().right_click_label("bar_chart");
+    harness
+        .blueprint_tree()
+        .right_click_nth_label("bar_chart", 0);
     harness.snapshot_app("add_entity_to_view_bar_chart_1");
 
     harness.hover_label_contains("Add to new view");
@@ -212,7 +214,7 @@ pub async fn test_add_entity_to_view_bar_chart() {
 
     harness
         .blueprint_tree()
-        .right_click_nth_label("bar_chart", 1);
+        .right_click_nth_label("bar_chart", 3);
     harness.snapshot_app("add_entity_to_view_bar_chart_4");
 
     harness.click_label("Remove");
@@ -259,7 +261,7 @@ pub async fn test_add_entity_to_view_tensor() {
     harness.right_click_label("Viewport (Grid container)");
     harness.click_label("Expand all");
 
-    harness.blueprint_tree().right_click_label("tensor");
+    harness.blueprint_tree().right_click_nth_label("tensor", 2);
     harness.snapshot_app("add_entity_to_view_tensor_1");
 
     harness.hover_label_contains("Add to new view");
@@ -268,11 +270,11 @@ pub async fn test_add_entity_to_view_tensor() {
     harness.click_nth_label("Tensor", 2);
     harness.snapshot_app("add_entity_to_view_tensor_3");
 
-    // When adding a text log, to a new view, the origin is set to the entity path
+    // When adding a tensor, to a new view, the origin is set to the entity path
     assert_eq!(get_origin(&mut harness), "/tensor");
     assert_eq!(get_entity_path_filter(&mut harness), "+ /tensor/**");
 
-    harness.blueprint_tree().right_click_nth_label("tensor", 1);
+    harness.blueprint_tree().right_click_nth_label("tensor", 3);
     harness.snapshot_app("add_entity_to_view_tensor_4");
 
     harness.click_label("Remove");

@@ -1,6 +1,4 @@
 //! Semantic array transforms for concrete applications.
-//!
-//! Note: These should not be exposed as part of the public API, but rather wrapped in [`crate::Op`].
 
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -40,7 +38,7 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
     type Source = GenericBinaryArray<O1>;
     type Target = GenericListArray<O2>;
 
-    fn transform(&self, source: &GenericBinaryArray<O1>) -> Result<Self::Target, Error> {
+    fn transform(&self, source: &GenericBinaryArray<O1>) -> Result<Option<Self::Target>, Error> {
         use arrow::array::UInt8Array;
         use arrow::buffer::ScalarBuffer;
 
@@ -71,28 +69,55 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
             source.nulls().cloned(),
         );
 
-        Ok(list)
+        Ok(Some(list))
     }
 }
 
-/// Converts `StructArray` of timestamps with `seconds` (i64) and `nanos` (i32) fields
+/// Converts `StructArray` of timestamps with `seconds`/`nanos` or `sec`/`nsec` fields (i64/i32)
 /// to `Int64Array` containing the corresponding total nanoseconds timestamps.
 #[derive(Default)]
 pub struct TimeSpecToNanos {}
+
+impl TimeSpecToNanos {
+    /// Extracts a struct field from different possible field name variants,
+    /// by trying each name in order. Casts to the target primitive type.
+    fn get_field_from_variants<TargetType: arrow::array::ArrowPrimitiveType>(
+        source: &StructArray,
+        field_names: &[&str],
+    ) -> Result<Option<arrow::array::PrimitiveArray<TargetType>>, Error> {
+        for &name in field_names {
+            if let Ok(Some(array_ref)) = reshape::GetField::new(name).transform(source) {
+                let casted = arrow::compute::cast(&array_ref, &TargetType::DATA_TYPE)?;
+                let downcasted = DowncastRef::<TargetType>::new().transform(&casted)?;
+
+                re_log::debug_assert!(
+                    downcasted.is_some(),
+                    "downcasting directly after casting should not fail"
+                );
+
+                return Ok(downcasted);
+            }
+        }
+        Err(Error::FieldNotFound {
+            field_name: field_names.join(" | "),
+            available_fields: source.fields().iter().map(|f| f.name().clone()).collect(),
+        })
+    }
+}
 
 impl Transform for TimeSpecToNanos {
     type Source = StructArray;
     type Target = Int64Array;
 
-    fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
-        let seconds_array = reshape::GetField::new("seconds")
-            .then(DowncastRef::<Int64Type>::new())
-            .transform(source)?;
-        let nanos_array = reshape::GetField::new("nanos")
-            .then(DowncastRef::<Int32Type>::new())
-            .transform(source)?;
+    fn transform(&self, source: &StructArray) -> Result<Option<Self::Target>, Error> {
+        let (Some(seconds_array), Some(nanos_array)) = (
+            Self::get_field_from_variants::<Int64Type>(source, &["seconds", "sec"])?,
+            Self::get_field_from_variants::<Int32Type>(source, &["nanos", "nsec"])?,
+        ) else {
+            return Ok(None);
+        };
 
-        Ok(arrow::compute::try_binary(
+        Ok(Some(arrow::compute::try_binary(
             &seconds_array,
             &nanos_array,
             |seconds: i64, nanos: i32| -> Result<i64, ArrowError> {
@@ -100,7 +125,7 @@ impl Transform for TimeSpecToNanos {
                     .mul_checked(1_000_000_000)?
                     .add_checked(nanos as i64)
             },
-        )?)
+        )?))
     }
 }
 
@@ -113,33 +138,50 @@ impl Transform for StringToVideoCodecUInt32 {
     type Source = StringArray;
     type Target = UInt32Array;
 
-    fn transform(&self, source: &StringArray) -> Result<Self::Target, Error> {
-        Ok(source
-            .iter()
-            .try_fold(
-                UInt32Builder::with_capacity(source.len()),
-                |mut builder, maybe_str| {
-                    if let Some(codec_str) = maybe_str {
-                        let codec = match codec_str.to_lowercase().as_str() {
-                            "h264" => VideoCodec::H264,
-                            "h265" => VideoCodec::H265,
-                            "av1" => VideoCodec::AV1,
-                            _ => {
-                                return Err(Error::UnexpectedValue {
-                                    expected: &["h264", "h265", "av1"],
-                                    actual: codec_str.to_owned(),
-                                });
-                            }
-                        };
-                        builder.append_value(codec as u32);
-                    } else {
-                        builder.append_null();
-                    }
-                    Ok(builder)
-                },
-            )?
-            .finish())
+    fn transform(&self, source: &StringArray) -> Result<Option<Self::Target>, Error> {
+        Ok(Some(
+            source
+                .iter()
+                .try_fold(
+                    UInt32Builder::with_capacity(source.len()),
+                    |mut builder, maybe_str| {
+                        if let Some(codec_str) = maybe_str {
+                            let codec = match codec_str.to_lowercase().as_str() {
+                                "h264" => VideoCodec::H264,
+                                "h265" => VideoCodec::H265,
+                                "av1" => VideoCodec::AV1,
+                                _ => {
+                                    return Err(Error::UnexpectedValue {
+                                        expected: &["h264", "h265", "av1"],
+                                        actual: codec_str.to_owned(),
+                                    });
+                                }
+                            };
+                            builder.append_value(codec as u32);
+                        } else {
+                            builder.append_null();
+                        }
+                        Ok(builder)
+                    },
+                )?
+                .finish(),
+        ))
     }
+}
+
+/// Converts binary data (i32 offsets) to a list of `u8` values.
+pub fn binary_to_list_uint8() -> BinaryToListUInt8<i32> {
+    BinaryToListUInt8::new()
+}
+
+/// Converts a timestamp struct (`seconds`/`nanos`) to nanoseconds.
+pub fn timespec_to_nanos() -> TimeSpecToNanos {
+    TimeSpecToNanos::default()
+}
+
+/// Converts video codec name strings to `VideoCodec` enum values.
+pub fn string_to_video_codec() -> StringToVideoCodecUInt32 {
+    StringToVideoCodecUInt32::default()
 }
 
 #[cfg(test)]
@@ -158,7 +200,7 @@ mod tests {
     use super::*;
 
     // Generic test for binary arrays where the offset is the same.
-    fn impl_binary_test<O1: OffsetSizeTrait, O2: OffsetSizeTrait>() {
+    fn impl_binary_test<O1: OffsetSizeTrait, O2: OffsetSizeTrait>() -> Result<(), Error> {
         let mut builder = GenericByteBuilder::<GenericBinaryType<O1>>::new();
         builder.append_value(b"hello");
         builder.append_value(b"world");
@@ -168,7 +210,7 @@ mod tests {
         let binary_array = builder.finish();
 
         let result = BinaryToListUInt8::<O1, O2>::new()
-            .transform(&binary_array)
+            .transform(&binary_array)?
             .unwrap();
 
         // Verify structure
@@ -229,15 +271,19 @@ mod tests {
             assert_eq!(uint8.value(1), 0xFF);
             assert_eq!(uint8.value(2), 0x42);
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_binary_to_list_uint8() {
+    fn test_binary_to_list_uint8() -> Result<(), Error> {
         // We test the different offset combinations.
-        impl_binary_test::<i32, i32>();
-        impl_binary_test::<i64, i32>();
-        impl_binary_test::<i32, i64>();
-        impl_binary_test::<i64, i64>();
+        impl_binary_test::<i32, i32>()?;
+        impl_binary_test::<i64, i32>()?;
+        impl_binary_test::<i32, i64>()?;
+        impl_binary_test::<i64, i64>()?;
+
+        Ok(())
     }
 
     #[test]
@@ -275,7 +321,7 @@ mod tests {
 
     /// Tests that timespec structs are correctly converted to nanoseconds, including (mixed) null handling.
     #[test]
-    fn test_timespec_to_nanos() {
+    fn test_timespec_to_nanos() -> Result<(), Error> {
         let seconds_field = Arc::new(Field::new("seconds", DataType::Int64, true));
         let nanos_field = Arc::new(Field::new("nanos", DataType::Int32, true));
 
@@ -300,8 +346,8 @@ mod tests {
             None,
         );
         let output_array = TimeSpecToNanos::default()
-            .transform(&struct_array)
-            .expect("transformation failed");
+            .transform(&struct_array)?
+            .unwrap();
         let expected_array = Int64Array::from(vec![
             Some(1_500_000_000),
             None,
@@ -310,11 +356,59 @@ mod tests {
             None,
         ]);
         assert_eq!(output_array, expected_array);
+
+        Ok(())
+    }
+
+    /// Tests that timespec structs with `sec`/`nsec` field names work too.
+    #[test]
+    fn test_timespec_to_nanos_sec_nsec() -> Result<(), Error> {
+        let seconds_field = Arc::new(Field::new("sec", DataType::Int64, true));
+        let nanos_field = Arc::new(Field::new("nsec", DataType::Int32, true));
+
+        let seconds_array = Arc::new(Int64Array::from(vec![Some(1), Some(2)]));
+        let nanos_array = Arc::new(Int32Array::from(vec![Some(500_000_000), Some(0)]));
+
+        let struct_array = StructArray::new(
+            vec![seconds_field, nanos_field].into(),
+            vec![seconds_array, nanos_array],
+            None,
+        );
+        let output_array = TimeSpecToNanos::default()
+            .transform(&struct_array)?
+            .unwrap();
+        let expected_array = Int64Array::from(vec![Some(1_500_000_000), Some(2_000_000_000)]);
+        assert_eq!(output_array, expected_array);
+
+        Ok(())
+    }
+
+    /// Tests that timespec with uint32 seconds and nanos fields are cast correctly.
+    #[test]
+    fn test_timespec_to_nanos_uint32() -> Result<(), Error> {
+        let seconds_field = Arc::new(Field::new("sec", DataType::UInt32, false));
+        let nanos_field = Arc::new(Field::new("nsec", DataType::UInt32, false));
+
+        let seconds_array = Arc::new(UInt32Array::from(vec![1u32, 2]));
+        let nanos_array = Arc::new(UInt32Array::from(vec![500_000_000u32, 0]));
+
+        let struct_array = StructArray::new(
+            vec![seconds_field, nanos_field].into(),
+            vec![seconds_array, nanos_array],
+            None,
+        );
+        let output_array = TimeSpecToNanos::default()
+            .transform(&struct_array)?
+            .unwrap();
+        let expected_array = Int64Array::from(vec![1_500_000_000i64, 2_000_000_000]);
+        assert_eq!(output_array, expected_array);
+
+        Ok(())
     }
 
     /// Tests that supported codecs are correctly converted, and checks case-insensitivity and null handling.
     #[test]
-    fn test_string_to_codec_uint32() {
+    fn test_string_to_codec_uint32() -> Result<(), Error> {
         // Note: mixed codecs normally don't make sense, but should be fine from a pure conversion perspective.
         let input_array = StringArray::from(vec![
             Some("H264"),
@@ -325,8 +419,8 @@ mod tests {
         ]);
         assert_eq!(input_array.null_count(), 1);
         let output_array = StringToVideoCodecUInt32::default()
-            .transform(&input_array)
-            .expect("transformation failed");
+            .transform(&input_array)?
+            .unwrap();
         assert_eq!(output_array.null_count(), 1);
         let expected_array = UInt32Array::from(vec![
             Some(VideoCodec::H264 as u32),
@@ -336,6 +430,8 @@ mod tests {
             Some(VideoCodec::AV1 as u32),
         ]);
         assert_eq!(output_array, expected_array);
+
+        Ok(())
     }
 
     /// Tests that we return the correct error when an unsupported codec is in the data.
@@ -355,7 +451,7 @@ mod tests {
 
     /// Tests that all codecs defined in `VideoCodec` are accepted.
     #[test]
-    fn test_string_to_codec_uint32_all_supported() {
+    fn test_string_to_codec_uint32_all_supported() -> Result<(), Error> {
         let variants = VideoCodec::variants();
         let variant_names = variants
             .iter()
@@ -368,8 +464,8 @@ mod tests {
                 .collect::<Vec<Option<&str>>>(),
         );
         let output_array = StringToVideoCodecUInt32::default()
-            .transform(&input_array)
-            .expect("transformation failed - are all variants of VideoCodec supported?");
+            .transform(&input_array)?
+            .unwrap();
         let expected_array = UInt32Array::from(
             variants
                 .iter()
@@ -377,5 +473,7 @@ mod tests {
                 .collect::<Vec<Option<u32>>>(),
         );
         assert_eq!(output_array, expected_array);
+
+        Ok(())
     }
 }

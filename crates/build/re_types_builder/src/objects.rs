@@ -669,8 +669,8 @@ impl Object {
                 class.is_enum()
                     || val
                         .union_type()
-                        .filter(|utype| utype.base_type() != FbsBaseType::None)
-                        .is_some()
+                        .as_ref()
+                        .is_some_and(|utype| utype.base_type() != FbsBaseType::None)
             })
             .map(|val| {
                 ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)

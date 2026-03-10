@@ -13,7 +13,7 @@ To interpret the contents of this buffer, see, [`components.ImageFormat`](https:
 
 ## Arrow datatype
 ```
-List<uint8>
+List(non-null UInt8)
 ```
 
 ## API reference links

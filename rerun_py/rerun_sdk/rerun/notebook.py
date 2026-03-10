@@ -60,9 +60,9 @@ def set_default_size(*, width: int | None, height: int | None) -> None:
 
     Parameters
     ----------
-    width : int
+    width:
         The width of the viewer in pixels.
-    height : int
+    height:
         The height of the viewer in pixels.
 
     """
@@ -207,11 +207,11 @@ class Viewer:
 
         Parameters
         ----------
-        recording : RecordingStream
+        recording:
             Specifies the [`rerun.RecordingStream`][] to use.
             If left unspecified, defaults to the current active data recording, if there is one.
             See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-        blueprint : BlueprintLike
+        blueprint:
             A blueprint object to send to the viewer.
             It will be made active and set as the default blueprint in the recording.
 
@@ -314,7 +314,7 @@ class Viewer:
 
         Parameters
         ----------
-        block_until_ready : bool
+        block_until_ready:
             Whether to block until the viewer is ready to receive data. If this is `False`, the viewer
             will still be displayed, but logged data will likely be queued until the viewer becomes ready
             at the end of cell execution.

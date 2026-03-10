@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
+use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Points3D;
 use re_sdk_types::components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels};
@@ -178,7 +179,10 @@ impl VisualizerSystem for Points3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Points3D>()
+        VisualizerQueryInfo::single_required_component::<Position3D>(
+            &Points3D::descriptor_positions(),
+            &Points3D::all_components(),
+        )
     }
 
     fn execute(

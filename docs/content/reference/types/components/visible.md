@@ -11,7 +11,7 @@ Whether the container, view, entity or instance is currently visible.
 
 ## Arrow datatype
 ```
-boolean
+Boolean
 ```
 
 ## API reference links

@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.30.0-alpha.1+dev"
-__version_info__ = (0, 30, 0, "alpha.1")
+__version__ = "0.31.0-alpha.1+dev"
+__version_info__ = (0, 31, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -282,7 +282,7 @@ def init(
 
     Parameters
     ----------
-    application_id : str
+    application_id:
         Your Rerun recordings will be categorized by this application id, so
         try to pick a unique one for each application that uses the Rerun SDK.
 
@@ -294,7 +294,7 @@ def init(
         and will be treated specially by the Rerun Viewer.
         In particular, it will opt-in to more analytics, and will also
         seed the global random number generator deterministically.
-    recording_id : Optional[str]
+    recording_id:
         Set the recording ID that this process is logging to, as a UUIDv4.
 
         The default recording_id is based on `multiprocessing.current_process().authkey`
@@ -305,7 +305,7 @@ def init(
         processes to log to the same Rerun instance (and be part of the same recording),
         you will need to manually assign them all the same recording_id.
         Any random UUIDv4 will work, or copy the recording id for the parent process.
-    spawn : bool
+    spawn:
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
@@ -480,11 +480,11 @@ def notebook_show(
 
     Parameters
     ----------
-    width : int
+    width:
         The width of the viewer in pixels.
-    height : int
+    height:
         The height of the viewer in pixels.
-    blueprint : BlueprintLike
+    blueprint:
         A blueprint object to send to the viewer.
         It will be made active and set as the default blueprint in the recording.
 

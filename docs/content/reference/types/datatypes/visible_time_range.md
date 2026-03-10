@@ -7,35 +7,35 @@ Visible time range bounds for a specific timeline.
 
 ## Fields
 #### `timeline`
-Type: [`Utf8`](../datatypes/utf8.md)
+Type: non-null [`Utf8`](../datatypes/utf8.md)
 
 Name of the timeline this applies to.
 
 #### `range`
-Type: [`TimeRange`](../datatypes/time_range.md)
+Type: non-null [`TimeRange`](../datatypes/time_range.md)
 
 Time range to use for this timeline.
 
 
 ## Arrow datatype
 ```
-Struct {
-    timeline: utf8
-    range: Struct {
-        start: DenseUnion {
-            0 = "_null_markers": nullable null
-            1 = "CursorRelative": int64
-            2 = "Absolute": int64
-            3 = "Infinite": nullable null
-        }
-        end: DenseUnion {
-            0 = "_null_markers": nullable null
-            1 = "CursorRelative": int64
-            2 = "Absolute": int64
-            3 = "Infinite": nullable null
-        }
-    }
-}
+Struct(
+    "timeline": non-null Utf8
+    "range": non-null Struct(
+        "start": non-null Union(Dense,
+            0: ("_null_markers": Null)
+            1: ("CursorRelative": non-null Int64)
+            2: ("Absolute": non-null Int64)
+            3: ("Infinite": Null)
+        )
+        "end": non-null Union(Dense,
+            0: ("_null_markers": Null)
+            1: ("CursorRelative": non-null Int64)
+            2: ("Absolute": non-null Int64)
+            3: ("Infinite": Null)
+        )
+    )
+)
 ```
 
 ## API reference links

@@ -14,12 +14,12 @@ which stores a contiguous array of typed values.
 
 ## Fields
 #### `shape`
-Type: List of `uint64`
+Type: non-null List of `UInt64`
 
 The shape of the tensor, i.e. the length of each dimension.
 
 #### `names`
-Type: nullable List of `utf8`
+Type: List of `Utf8`
 
 The names of the dimensions of the tensor (optional).
 
@@ -30,31 +30,31 @@ and some constructors may produce a warning or even an error.
 Example: `["height", "width", "channel", "batch"]`.
 
 #### `buffer`
-Type: [`TensorBuffer`](../datatypes/tensor_buffer.md)
+Type: non-null [`TensorBuffer`](../datatypes/tensor_buffer.md)
 
 The content/data.
 
 
 ## Arrow datatype
 ```
-Struct {
-    shape: List<uint64>
-    names: nullable List<utf8>
-    buffer: DenseUnion {
-        0 = "_null_markers": nullable null
-        1 = "U8": List<uint8>
-        2 = "U16": List<uint16>
-        3 = "U32": List<uint32>
-        4 = "U64": List<uint64>
-        5 = "I8": List<int8>
-        6 = "I16": List<int16>
-        7 = "I32": List<int32>
-        8 = "I64": List<int64>
-        9 = "F16": List<float16>
-        10 = "F32": List<float32>
-        11 = "F64": List<float64>
-    }
-}
+Struct(
+    "shape": non-null List(non-null UInt64)
+    "names": List(non-null Utf8)
+    "buffer": non-null Union(Dense,
+        0: ("_null_markers": Null)
+        1: ("U8": non-null List(non-null UInt8))
+        2: ("U16": non-null List(non-null UInt16))
+        3: ("U32": non-null List(non-null UInt32))
+        4: ("U64": non-null List(non-null UInt64))
+        5: ("I8": non-null List(non-null Int8))
+        6: ("I16": non-null List(non-null Int16))
+        7: ("I32": non-null List(non-null Int32))
+        8: ("I64": non-null List(non-null Int64))
+        9: ("F16": non-null List(non-null Float16))
+        10: ("F32": non-null List(non-null Float32))
+        11: ("F64": non-null List(non-null Float64))
+    )
+)
 ```
 
 ## API reference links

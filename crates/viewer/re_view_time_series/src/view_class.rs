@@ -2,7 +2,7 @@ use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
@@ -21,11 +21,11 @@ use re_view::view_property_ui;
 use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
     IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableReason,
-    VisualizerComponentSource,
+    RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
+    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -327,6 +327,57 @@ impl ViewClass for TimeSeriesView {
         }
 
         recommended
+    }
+
+    fn visualizers_section<'a>(
+        &'a self,
+        ctx: &'a re_viewer_context::ViewContext<'a>,
+    ) -> Option<re_viewer_context::VisualizersSectionOutput<'a>> {
+        let visualizable_entities_per_visualizer = ctx
+            .viewer_ctx
+            .collect_visualizable_entities_for_view_class(Self::identifier());
+
+        let series_line_id = SeriesLinesSystem::identifier();
+        let visualizable_entities = visualizable_entities_per_visualizer.get(&series_line_id);
+
+        let data_results = ctx.query_result.tree.iter_data_results();
+        let add_options = data_results
+            .filter_map(|data_result| {
+                if data_result.tree_prefix_only {
+                    return None;
+                }
+
+                // For the "add visualizer" menu, offer a SeriesLine for every possible scalar mapping.
+                // Unlike `recommended_visualizers_for_entity` / `all_scalar_mappings`, we don't filter
+                // by indication or recommended datatypes — we show everything that could be visualized.
+                let VisualizableReason::SingleRequiredComponentMatch(
+                    SingleRequiredComponentMatch {
+                        target_component: _,
+                        matches,
+                    },
+                ) = visualizable_entities?.get(&data_result.entity_path)?
+                else {
+                    return None;
+                };
+
+                let recommended = if let Ok(mappings) =
+                    vec1::Vec1::try_from_vec(all_scalar_mappings_for(matches))
+                {
+                    RecommendedVisualizers(std::iter::once((series_line_id, mappings)).collect())
+                } else {
+                    return None;
+                };
+
+                Some((data_result.entity_path.clone(), recommended))
+            })
+            .collect();
+
+        Some(re_viewer_context::VisualizersSectionOutput {
+            ui: Box::new(move |ui, ctx| {
+                visualizers_section_ui(ui, ctx);
+            }),
+            add_options,
+        })
     }
 
     fn ui(
@@ -730,7 +781,7 @@ impl ViewClass for TimeSeriesView {
                 .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
             if let Some(time_x) = time_x {
-                draw_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
+                paint_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
             }
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
@@ -802,49 +853,81 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
+}
 
-    fn visualizers_ui<'a>(
-        &'a self,
-        viewer_ctx: &'a re_viewer_context::ViewerContext<'a>,
-        view_id: ViewId,
-        state: &'a mut dyn ViewState,
-        space_origin: &'a EntityPath,
-    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
-        let state = state.downcast_mut::<TimeSeriesViewState>().ok()?;
+fn all_scalar_mappings_for(
+    matches: &IntMap<ComponentIdentifier, DatatypeMatch>,
+) -> Vec<RecommendedMappings> {
+    let target = Scalars::descriptor_scalars().component;
 
-        let visualizer_body = move |ui: &mut egui::Ui| {
-            list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
-                let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-                re_tracing::profile_function!();
-                let query_result = ctx.query_result;
+    matches
+        .iter()
+        .sorted_by_key(|(k, _)| **k)
+        .flat_map(|(source_component, match_info)| match match_info {
+            DatatypeMatch::NativeSemantics { .. } => {
+                Either::Left(std::iter::once(RecommendedMappings::new(
+                    target,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: *source_component,
+                        selector: String::new(),
+                    },
+                )))
+            }
 
-                let handles = query_result.tree.data_results_by_path.values().sorted();
-                for handle in handles {
-                    let Some(node) = query_result.tree.data_results.get(*handle) else {
-                        continue;
-                    };
-                    let pill_margin = egui::Margin::symmetric(8, 6);
-                    for instruction in &node.data_result.visualizer_instructions {
-                        if !node.data_result.visible {
-                            continue;
-                        }
-
-                        ui.add_space(10.0);
-
-                        crate::visualizer_ui::visualizer_ui_element(
-                            ui,
-                            &ctx,
-                            node,
-                            pill_margin,
-                            instruction,
-                        );
-                    }
+            DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } => {
+                if selectors.is_empty() {
+                    Either::Left(std::iter::once(RecommendedMappings::new(
+                        target,
+                        VisualizerComponentSource::SourceComponent {
+                            source_component: *source_component,
+                            selector: String::new(),
+                        },
+                    )))
+                } else {
+                    Either::Right(selectors.iter().map(|(selector, _datatype)| {
+                        RecommendedMappings::new(
+                            target,
+                            VisualizerComponentSource::SourceComponent {
+                                source_component: *source_component,
+                                selector: selector.to_string(),
+                            },
+                        )
+                    }))
                 }
-            });
-        };
+            }
+        })
+        .collect()
+}
 
-        Some(Box::new(visualizer_body))
-    }
+/// Renders the active visualizer pills for the "Visualizers" section in the selection panel.
+fn visualizers_section_ui(ui: &mut egui::Ui, ctx: &re_viewer_context::ViewContext<'_>) {
+    list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
+        re_tracing::profile_function!();
+        let query_result = ctx.query_result;
+
+        let handles = query_result.tree.data_results_by_path.values().sorted();
+        for handle in handles {
+            let Some(node) = query_result.tree.data_results.get(*handle) else {
+                continue;
+            };
+            let pill_margin = egui::Margin::symmetric(8, 6);
+            for instruction in &node.data_result.visualizer_instructions {
+                if !node.data_result.visible {
+                    continue;
+                }
+
+                ui.add_space(10.0);
+
+                crate::visualizer_ui::visualizer_ui_element(
+                    ui,
+                    ctx,
+                    node,
+                    pill_margin,
+                    instruction,
+                );
+            }
+        }
+    });
 }
 
 /// Returns a priority score for a given Arrow datatype.
@@ -875,13 +958,10 @@ const RECOMMENDED_DATATYPES: &[DataType] =
 fn all_scalar_mappings(
     reason: &VisualizableReason,
 ) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
-    let re_viewer_context::VisualizableReason::DatatypeMatchAny {
-        target_component: _,
-        matches,
-    } = reason
-    else {
+    let re_viewer_context::VisualizableReason::SingleRequiredComponentMatch(m) = reason else {
         return Either::Left(std::iter::empty());
     };
+    let matches = &m.matches;
 
     let target = Scalars::descriptor_scalars();
 
@@ -993,26 +1073,35 @@ fn all_scalar_mappings(
     )
 }
 
-fn draw_time_cursor(
+fn paint_time_cursor(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     response: &egui::Response,
     transform: &egui_plot::PlotTransform,
     time_offset: i64,
     mut time_x: f32,
-) -> egui::Response {
+) {
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
     let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
         .expand(interact_radius);
 
     let time_drag_id = ui.id().with("time_drag");
-    let time_cursor_response = ui
-        .interact(line_rect, time_drag_id, egui::Sense::drag())
-        .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+    let is_near = ui.rect_contains_pointer(line_rect);
+    let is_being_dragged = ui.is_being_dragged(time_drag_id);
 
-    if time_cursor_response.dragged()
-        && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+    if is_near || is_being_dragged {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+    }
+
+    if is_near
+        && !is_being_dragged
+        && ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary))
     {
+        ui.set_dragged_id(time_drag_id);
+    }
+
+    if is_being_dragged && let Some(pointer_pos) = pointer_pos {
         let aim_radius = ui.input(|i| i.aim_radius());
         let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
             transform
@@ -1033,13 +1122,16 @@ fn draw_time_cursor(
         ]);
     }
 
-    ui.paint_time_cursor(
-        ui.painter(),
-        Some(&time_cursor_response),
-        time_x,
-        time_cursor_response.rect.y_range(),
-    );
-    time_cursor_response
+    let highlighted = is_near || is_being_dragged;
+    let style = if is_being_dragged {
+        &ui.visuals().widgets.active
+    } else if highlighted {
+        &ui.visuals().widgets.hovered
+    } else {
+        &ui.visuals().widgets.inactive
+    };
+
+    ui.paint_time_cursor_with_style(ui.painter(), style, time_x, response.rect.y_range());
 }
 
 fn reset_view(ctx: &ViewerContext<'_>, time_axis: &ViewProperty, scalar_axis: &ViewProperty) {
@@ -1384,6 +1476,7 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use re_viewer_context::SingleRequiredComponentMatch;
 
     #[test]
     fn test_help_view() {
@@ -1411,7 +1504,7 @@ mod tests {
         let entity_path = EntityPath::from("sensor/data");
         let viz = build_visualizable_entities(
             &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1422,7 +1515,7 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
+            }),
         );
         let indicated = PerVisualizerType::default();
         let result =
@@ -1437,7 +1530,7 @@ mod tests {
         let entity_path = EntityPath::from("sensor/data");
         let viz = build_visualizable_entities(
             &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1447,7 +1540,7 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
+            }),
         );
         let indicated = PerVisualizerType::default();
         let result =

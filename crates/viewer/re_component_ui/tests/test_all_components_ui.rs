@@ -11,7 +11,7 @@ use egui_kittest::{OsThreshold, SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
-use re_log_types::{EntityPath, TimelineName};
+use re_log_types::EntityPath;
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::blueprint::components::{ComponentColumnSelector, QueryExpression};
 use re_sdk_types::components::{self, GraphEdge, GraphNode, ImageFormat, Text};
@@ -20,7 +20,6 @@ use re_test_context::TestContext;
 use re_types_core::reflection::Reflection;
 use re_types_core::{Component, ComponentBatch, ComponentType};
 use re_ui::{UiExt as _, list_item};
-use re_viewer_context::external::re_chunk_store::LatestAtQuery;
 use re_viewer_context::external::re_chunk_store::external::re_chunk;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -264,13 +263,9 @@ fn test_single_component_ui_as_list_item(
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("ComponentName").value_fn(|ui, _| {
                 ctx.component_ui_registry().component_ui_raw(
-                    ctx,
+                    &ctx.active_recording_store_view_context(),
                     ui,
                     UiLayout::List,
-                    // Note: recording and queries are only used for tooltips,
-                    // which we are not testing here.
-                    &LatestAtQuery::latest(TimelineName::log_time()),
-                    ctx.recording(),
                     &EntityPath::root(),
                     // As of writing, `ComponentDescriptor` the descriptor part is only used for
                     // caching and actual lookup of uis is only done via `ComponentType`.

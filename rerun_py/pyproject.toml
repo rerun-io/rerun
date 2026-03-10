@@ -47,7 +47,7 @@ tests = [
   "torch>=2.5", # Needs numpy 2 support
   "datafusion==51.0.0",
 ]
-notebook = ["rerun-notebook==0.30.0-alpha.1+dev"]
+notebook = ["rerun-notebook==0.31.0-alpha.1+dev"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
 datafusion = ["datafusion==51.0.0", "pandas>=2"] # deprecated, replaced by `dataplatform` (NOLINT)
 dataplatform = [ # NOLINT
@@ -56,7 +56,8 @@ dataplatform = [ # NOLINT
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
-all = ["rerun-notebook==0.28.0-alpha.1+dev", "datafusion==51.0.0"]
+# TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
+all = ["rerun-notebook==0.31.0-alpha.1+dev", "datafusion==51.0.0", "pandas>=2"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -105,7 +106,7 @@ lint.ignore = [
   # No blank lines allowed after function docstring.
   "D202",
 
-  # npydocstyle: http://www.pydocstyle.org/en/stable/error_codes.html
+  # npydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
   # numpy convention with a few additional lints
   "D107",
   "D203",
@@ -161,7 +162,7 @@ lint.select = [
   "B", # flake8-bugbear lints
   "C4", # Comprehension-related rules
   "COM", # Trailing-comma-related rules
-  "D", # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
+  "D", # pydocstyle codes https://docs.astral.sh/ruff/rules/#pydocstyle-d
   "E", # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "F", # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
   "FA", # Force from __future__ import annotations

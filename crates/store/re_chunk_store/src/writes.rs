@@ -86,8 +86,8 @@ impl ChunkStore {
                     "Component '{}' on entity '{}' changed type from {} to {}",
                     descr.component,
                     descr.entity_path,
-                    re_arrow_util::format_data_type(&previous.2),
-                    re_arrow_util::format_data_type(&inner_datatype)
+                    previous.2,
+                    inner_datatype
                 );
             }
         }

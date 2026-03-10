@@ -260,7 +260,7 @@ impl ViewContents {
     #[expect(clippy::too_many_arguments)]
     pub fn build_data_result_tree(
         &self,
-        ctx: &re_viewer_context::StoreContext<'_>,
+        ctx: &re_viewer_context::ActiveStoreContext<'_>,
         active_timeline: Option<&Timeline>,
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
@@ -535,7 +535,41 @@ impl DataQueryPropertyResolver<'_> {
                     })
                     .collect();
             } else {
-                // Otherwise ask the `ViewClass` to choose.
+                // We don't have explicit visualizer instruction ids stored on the override base path.
+                // Recover existing ids from override children - this is important because at some
+                // point we changed the algorithm to generate IDs for recommendations!
+                // We fall back to new deterministic ids for any that don't have one.
+                //
+                // We use UUIDs created via
+                // `VisualizerInstructionId::new_deterministic(hash, index)` which stores
+                // the index in the low 64 bits of the UUID. We extract that index to
+                // build a map from index → existing instruction id.
+                let mut known_ids: IntMap<u64, VisualizerInstructionId> = Default::default();
+                if let Some(subtree) = blueprint
+                    .tree()
+                    .subtree(&node.data_result.override_base_path)
+                {
+                    for child_tree in subtree.children.values() {
+                        let Some(last) = child_tree.path.last() else {
+                            continue;
+                        };
+
+                        let Ok(uuid) = last
+                            .unescaped_str()
+                            .parse::<re_sdk_types::external::uuid::Uuid>()
+                        else {
+                            continue;
+                        };
+
+                        let (_high, low) = uuid.as_u64_pair();
+                        let id = VisualizerInstructionId::from(
+                            re_sdk_types::datatypes::Uuid::from(uuid),
+                        );
+                        known_ids.insert(low, id);
+                    }
+                }
+
+                // Ask the `ViewClass` to choose visualizers heuristically.
                 let recommended_visualizers = self.view_class.recommended_visualizers_for_entity(
                     &node.data_result.entity_path,
                     self.visualizable_entities_per_visualizer,
@@ -551,10 +585,12 @@ impl DataQueryPropertyResolver<'_> {
                     })
                     .enumerate()
                     .map(|(index, (visualizer_type, component_mappings))| {
-                        let id = VisualizerInstructionId::new_deterministic(
-                            node.data_result.entity_path.hash64(),
-                            index,
-                        );
+                        let id = known_ids.remove(&(index as u64)).unwrap_or_else(|| {
+                            VisualizerInstructionId::new_deterministic(
+                                &node.data_result.entity_path,
+                                index,
+                            )
+                        });
                         component_mappings.into_visualizer_instruction(
                             id,
                             visualizer_type,
@@ -729,7 +765,7 @@ mod tests {
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_viewer_context::{
-        Caches, StoreContext, ViewClassRegistry, VisualizableReason, blueprint_timeline,
+        ActiveStoreContext, Caches, ViewClassRegistry, VisualizableReason, blueprint_timeline,
     };
 
     use super::*;
@@ -788,7 +824,7 @@ mod tests {
                 )
             });
 
-        let ctx = StoreContext {
+        let ctx = ActiveStoreContext {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,

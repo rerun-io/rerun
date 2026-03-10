@@ -60,6 +60,7 @@ Decoding:
 - **`raw`**: Preserve original message bytes
 - **`schema`**: Extract metadata and schema information
 - **`stats`**: Compute file and channel statistics
+- **`metadata`**: Extract metadata records into RRD `__properties`, if present
 - **`protobuf`**: Decode protobuf messages using into generic Arrow data without Rerun visualization components
 - **`recording_info`**: Extract recording session metadata
 
@@ -80,6 +81,7 @@ rerun mcap convert input.mcap \
     -l raw \
     -l schema \
     -l stats \
+    -l metadata \
     -l protobuf \
     -l ros2msg \
     -l foxglove \

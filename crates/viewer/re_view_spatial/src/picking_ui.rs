@@ -126,7 +126,7 @@ pub fn picking(
                     ui.set_max_width(320.0);
                     ui.vertical(|ui| {
                         textured_rect_hover_ui(
-                            ctx,
+                            &ctx.active_recording_store_view_context(),
                             ui,
                             &instance_path,
                             query,
@@ -144,14 +144,16 @@ pub fn picking(
                 list_item_scope(ui, "spatial_hover", |ui| {
                     hit_ui(ui, hit);
                     item_ui::instance_path_button(
-                        ctx,
-                        &query.latest_at_query(),
-                        ctx.recording(),
+                        &ctx.active_recording_store_view_context(),
                         ui,
                         Some(query.view_id),
                         &instance_path,
                     );
-                    instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    instance_path.data_ui(
+                        &ctx.active_recording_store_view_context(),
+                        ui,
+                        UiLayout::Tooltip,
+                    );
                 });
             })
         };

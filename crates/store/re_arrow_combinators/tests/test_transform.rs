@@ -7,50 +7,50 @@ use re_arrow_combinators::Selector;
 use re_arrow_combinators::Transform as _;
 use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
 use re_arrow_combinators::map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull};
-use re_arrow_combinators::reshape::{PromoteInnerNulls, RowMajorToColumnMajor, StructToFixedList};
+use re_arrow_combinators::reshape::{Flatten, RowMajorToColumnMajor, StructToFixedList};
 use util::DisplayRB;
 
 use crate::util::fixtures;
 
 #[test]
-fn simple() {
+fn simple() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
-        .then(MapList::new(StructToFixedList::new(["x", "y"])));
+    let pipeline =
+        Selector::from_str(".poses[]")?.then(MapList::new(StructToFixedList::new(["x", "y"])));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
-    ┌──────────────────────────────────────────────────────────────┐
-    │ col                                                          │
-    │ ---                                                          │
-    │ type: nullable List[nullable FixedSizeList[nullable f64; 2]] │
-    ╞══════════════════════════════════════════════════════════════╡
-    │ [[1.0, 2.0], [3.0, 4.0]]                                     │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[5.0, 6.0]]                                                 │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                                         │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[7.0, null], [9.0, 10.0]]                                   │
-    └──────────────────────────────────────────────────────────────┘
+    ┌────────────────────────────────────────┐
+    │ col                                    │
+    │ ---                                    │
+    │ type: List(FixedSizeList(2 x Float64)) │
+    ╞════════════════════════════════════════╡
+    │ [[1.0, 2.0], [3.0, 4.0]]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[5.0, 6.0]]                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[7.0, null], [9.0, 10.0]]             │
+    └────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn add_one_to_leaves() {
+fn add_one_to_leaves() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
+    let pipeline = Selector::from_str(".poses[]")?
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(MapPrimitive::<
             arrow::datatypes::Float64Type,
@@ -59,137 +59,143 @@ fn add_one_to_leaves() {
             x + 1.0
         }))));
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(
         format!("{}", DisplayRB(result.clone()))
         , @r"
-    ┌──────────────────────────────────────────────────────────────┐
-    │ col                                                          │
-    │ ---                                                          │
-    │ type: nullable List[nullable FixedSizeList[nullable f64; 2]] │
-    ╞══════════════════════════════════════════════════════════════╡
-    │ [[2.0, 3.0], [4.0, 5.0]]                                     │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[6.0, 7.0]]                                                 │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                                         │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[8.0, null], [10.0, 11.0]]                                  │
-    └──────────────────────────────────────────────────────────────┘
+    ┌────────────────────────────────────────┐
+    │ col                                    │
+    │ ---                                    │
+    │ type: List(FixedSizeList(2 x Float64)) │
+    ╞════════════════════════════════════════╡
+    │ [[2.0, 3.0], [4.0, 5.0]]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[6.0, 7.0]]                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[8.0, null], [10.0, 11.0]]            │
+    └────────────────────────────────────────┘
     "
     );
+
+    Ok(())
 }
 
 #[test]
-fn convert_to_f32() {
+fn convert_to_f32() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
+    let pipeline = Selector::from_str(".poses[]")?
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(PrimitiveCast::<
             Float64Array,
             Float32Array,
         >::new())));
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(DisplayRB(result.clone()), @r"
-    ┌──────────────────────────────────────────────────────────────┐
-    │ col                                                          │
-    │ ---                                                          │
-    │ type: nullable List[nullable FixedSizeList[nullable f32; 2]] │
-    ╞══════════════════════════════════════════════════════════════╡
-    │ [[1.0, 2.0], [3.0, 4.0]]                                     │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[5.0, 6.0]]                                                 │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                                         │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[7.0, null], [9.0, 10.0]]                                   │
-    └──────────────────────────────────────────────────────────────┘
+    ┌────────────────────────────────────────┐
+    │ col                                    │
+    │ ---                                    │
+    │ type: List(FixedSizeList(2 x Float32)) │
+    ╞════════════════════════════════════════╡
+    │ [[1.0, 2.0], [3.0, 4.0]]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[5.0, 6.0]]                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[7.0, null], [9.0, 10.0]]             │
+    └────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn replace_nulls() {
+fn replace_nulls() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
+    let pipeline = Selector::from_str(".poses[]")?
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
         .then(MapList::new(MapFixedSizeList::new(ReplaceNull::<
             arrow::datatypes::Float64Type,
         >::new(1337.0))));
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
-    ┌─────────────────────────────────────────────────────┐
-    │ col                                                 │
-    │ ---                                                 │
-    │ type: nullable List[nullable FixedSizeList[f64; 2]] │
-    ╞═════════════════════════════════════════════════════╡
-    │ [[1.0, 2.0], [3.0, 4.0]]                            │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[5.0, 6.0]]                                        │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[7.0, 1337.0], [9.0, 10.0]]                        │
-    └─────────────────────────────────────────────────────┘
+    ┌─────────────────────────────────────────────────┐
+    │ col                                             │
+    │ ---                                             │
+    │ type: List(FixedSizeList(2 x non-null Float64)) │
+    ╞═════════════════════════════════════════════════╡
+    │ [[1.0, 2.0], [3.0, 4.0]]                        │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[5.0, 6.0]]                                    │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                              │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                              │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                            │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[7.0, 1337.0], [9.0, 10.0]]                    │
+    └─────────────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_flatten_single_element() {
+fn test_flatten_single_element() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]").unwrap();
+    let pipeline = Selector::from_str(".poses[]")?;
 
-    let result = pipeline.transform(&array).unwrap();
+    let result = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(
-        format!("{}", DisplayRB(result.clone())), @"
-    ┌─────────────────────────────────────────┐
-    │ col                                     │
-    │ ---                                     │
-    │ type: nullable List[nullable Struct[2]] │
-    ╞═════════════════════════════════════════╡
-    │ [{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 5.0, y: 6.0}]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 7.0, y: null}, {x: 9.0, y: 10.0}]  │
-    └─────────────────────────────────────────┘
-    "
+        format!("{}", DisplayRB(result.clone())), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 5.0, y: 6.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 7.0, y: null}, {x: 9.0, y: 10.0}]         │
+    └────────────────────────────────────────────────┘
+    "#
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_flatten_multiple_elements() {
+fn test_flatten_multiple_elements() -> Result<(), Box<dyn std::error::Error>> {
     let inner_builder = ListBuilder::new(arrow::array::Int32Builder::new());
     let mut outer_builder = ListBuilder::new(inner_builder);
 
@@ -245,38 +251,39 @@ fn test_flatten_multiple_elements() {
 
     println!("{}", DisplayRB(list_of_lists.clone()));
 
-    let result = Selector::from_str(".[]")
-        .unwrap()
-        .transform(&list_of_lists)
+    let result = Selector::from_str(".[]")?
+        .transform(&list_of_lists)?
         .unwrap();
 
     insta::assert_snapshot!(
-        format!("{}", DisplayRB(result.clone())), @"
-    ┌───────────────────────────────────┐
-    │ col                               │
-    │ ---                               │
-    │ type: nullable List[nullable i32] │
-    ╞═══════════════════════════════════╡
-    │ [1, 2, 3, 4]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [5, null, 6, 7, 8]                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [9]                               │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                              │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [10, 11]                          │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [32, 33, 34]                      │
-    └───────────────────────────────────┘
+        format!("{}", DisplayRB(result.clone())), @r"
+    ┌────────────────────┐
+    │ col                │
+    │ ---                │
+    │ type: List(Int32)  │
+    ╞════════════════════╡
+    │ [1, 2, 3, 4]       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [5, null, 6, 7, 8] │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                 │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [9]                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [10, 11]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [32, 33, 34]       │
+    └────────────────────┘
     "
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_row_major_to_col_major() {
+fn test_row_major_to_col_major() -> Result<(), Box<dyn std::error::Error>> {
     let inner_builder = Int32Builder::new();
     let mut outer_builder = ListBuilder::new(inner_builder);
 
@@ -330,18 +337,18 @@ fn test_row_major_to_col_major() {
 
     // Cast to `FixedSizeListArray` and convert to column-major order.
     let fixed_size_list_array = ListToFixedSizeList::new(12)
-        .transform(&input_array)
+        .transform(&input_array)?
         .unwrap();
     let result = RowMajorToColumnMajor::new(4, 3)
-        .transform(&fixed_size_list_array)
+        .transform(&fixed_size_list_array)?
         .unwrap();
 
     insta::assert_snapshot!(
-        format!("{}", DisplayRB(result.clone())), @"
+        format!("{}", DisplayRB(result.clone())), @r"
     ┌──────────────────────────────────────────────────┐
     │ col                                              │
     │ ---                                              │
-    │ type: nullable FixedSizeList[nullable i32; 12]   │
+    │ type: FixedSizeList(12 x Int32)                  │
     ╞══════════════════════════════════════════════════╡
     │ [1, 4, 7, 10, null, 5, 8, 11, 3, 6, null, 12]    │
     ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -351,154 +358,158 @@ fn test_row_major_to_col_major() {
     └──────────────────────────────────────────────────┘
     "
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_map_list_nullability() {
+fn test_map_list_nullability() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::nested_list_struct_column();
     println!("{}", DisplayRB(array.clone()));
 
-    let pipeline = Selector::from_str(".poses[]")
-        .unwrap()
-        .then(MapList::new(StructToFixedList::new(["x", "y"])));
+    let pipeline =
+        Selector::from_str(".poses[]")?.then(MapList::new(StructToFixedList::new(["x", "y"])));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
-    ┌──────────────────────────────────────────────────────────────┐
-    │ col                                                          │
-    │ ---                                                          │
-    │ type: nullable List[nullable FixedSizeList[nullable f64; 2]] │
-    ╞══════════════════════════════════════════════════════════════╡
-    │ [[1.0, 2.0], [3.0, 4.0]]                                     │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[5.0, 6.0]]                                                 │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                           │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                                         │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[7.0, null], [9.0, 10.0]]                                   │
-    └──────────────────────────────────────────────────────────────┘
+    ┌────────────────────────────────────────┐
+    │ col                                    │
+    │ ---                                    │
+    │ type: List(FixedSizeList(2 x Float64)) │
+    ╞════════════════════════════════════════╡
+    │ [[1.0, 2.0], [3.0, 4.0]]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[5.0, 6.0]]                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[7.0, null], [9.0, 10.0]]             │
+    └────────────────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_map_list_outer_nullability() {
+fn test_map_list_outer_nullability() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::list_not_nullable();
     println!("{}", DisplayRB(array.clone()));
 
     let pipeline = MapList::new(PrimitiveCast::<UInt8Array, Float32Array>::new());
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @"
-    ┌──────────────────────────┐
-    │ col                      │
-    │ ---                      │
-    │ type: nullable List[f32] │
-    ╞══════════════════════════╡
-    │ [1.0, 2.0]               │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [3.0, 4.0, 5.0]          │
-    └──────────────────────────┘
+    insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
+    ┌──────────────────────────────┐
+    │ col                          │
+    │ ---                          │
+    │ type: List(non-null Float32) │
+    ╞══════════════════════════════╡
+    │ [1.0, 2.0]                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [3.0, 4.0, 5.0]              │
+    └──────────────────────────────┘
     ");
 
     let array = fixtures::list_with_nulls();
     println!("{}", DisplayRB(array.clone()));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
-    ┌───────────────────────────────────┐
-    │ col                               │
-    │ ---                               │
-    │ type: nullable List[nullable f32] │
-    ╞═══════════════════════════════════╡
-    │ [1.0, 2.0]                        │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                              │
-    └───────────────────────────────────┘
+    ┌─────────────────────┐
+    │ col                 │
+    │ ---                 │
+    │ type: List(Float32) │
+    ╞═════════════════════╡
+    │ [1.0, 2.0]          │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    └─────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_map_list_outer_nullability_identity() {
+fn test_map_list_outer_nullability_identity() -> Result<(), Box<dyn std::error::Error>> {
     let array = fixtures::list_not_nullable();
     println!("{}", DisplayRB(array.clone()));
 
     let pipeline = MapList::new(MapPrimitive::<arrow::datatypes::UInt8Type, _>::new(|x| x));
 
-    let result: ListArray = pipeline.transform(&array).unwrap();
+    let result: ListArray = pipeline.transform(&array)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result.clone())), @r"
-    ┌─────────────────────────┐
-    │ col                     │
-    │ ---                     │
-    │ type: nullable List[u8] │
-    ╞═════════════════════════╡
-    │ [1, 2]                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [3, 4, 5]               │
-    └─────────────────────────┘
+    ┌────────────────────────────┐
+    │ col                        │
+    │ ---                        │
+    │ type: List(non-null UInt8) │
+    ╞════════════════════════════╡
+    │ [1, 2]                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [3, 4, 5]                  │
+    └────────────────────────────┘
     ");
+
+    Ok(())
 }
 
 #[test]
-fn test_promote_inner_nulls_nested_struct() {
-    let array = fixtures::nested_struct_column();
+fn test_flatten_fixed_size_list() -> Result<(), Box<dyn std::error::Error>> {
+    let array = fixtures::nested_list_struct_column();
 
-    let location = Selector::from_str(".location")
-        .unwrap()
-        .transform(&array)
+    // Produces List(FixedSizeList(2 x Float64)) instead of creating a new test case from scratch.
+    let source: ListArray = Selector::from_str(".poses[]")?
+        .then(MapList::new(StructToFixedList::new(["x", "y"])))
+        .transform(&array)?
         .unwrap();
 
-    // Before: row 1 is `[null]` and row 5 is `[null, null]`
-    insta::assert_snapshot!(format!("{}", DisplayRB(location.clone())), @"
-    ┌─────────────────────────────────────────┐
-    │ col                                     │
-    │ ---                                     │
-    │ type: nullable List[nullable Struct[2]] │
-    ╞═════════════════════════════════════════╡
-    │ [{x: 1.0, y: 2.0}]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null, {x: 7.0, y: 8.0}]                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null, null]                            │
-    └─────────────────────────────────────────┘
+    insta::assert_snapshot!(format!("{}", DisplayRB(source.clone())), @"
+    ┌────────────────────────────────────────┐
+    │ col                                    │
+    │ ---                                    │
+    │ type: List(FixedSizeList(2 x Float64)) │
+    ╞════════════════════════════════════════╡
+    │ [[1.0, 2.0], [3.0, 4.0]]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[5.0, 6.0]]                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[7.0, null], [9.0, 10.0]]             │
+    └────────────────────────────────────────┘
     ");
 
-    // After: row 1 `[null]` and row 6 `[null, null]` are promoted to outer `null`s
-    let result = PromoteInnerNulls.transform(&location).unwrap();
+    let result = Flatten::new().transform(&source)?.unwrap();
 
     insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌─────────────────────────────────────────┐
-    │ col                                     │
-    │ ---                                     │
-    │ type: nullable List[nullable Struct[2]] │
-    ╞═════════════════════════════════════════╡
-    │ [{x: 1.0, y: 2.0}]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null, {x: 7.0, y: 8.0}]                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    └─────────────────────────────────────────┘
+    ┌────────────────────────┐
+    │ col                    │
+    │ ---                    │
+    │ type: List(Float64)    │
+    ╞════════════════════════╡
+    │ [1.0, 2.0, 3.0, 4.0]   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [5.0, 6.0]             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                     │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                   │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [7.0, null, 9.0, 10.0] │
+    └────────────────────────┘
     ");
+
+    Ok(())
 }

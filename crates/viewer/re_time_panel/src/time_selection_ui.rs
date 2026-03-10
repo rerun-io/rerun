@@ -341,7 +341,7 @@ fn selection_context_menu(
             .send_ui(UICommand::SaveRecordingSelection);
     }
 
-    let mut url = ViewerOpenUrl::from_context(ctx);
+    let mut url = ViewerOpenUrl::from_context(&ctx.app_ctx);
     let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
     let copy_command = url.and_then(|url| url.copy_url_command());
     if ui

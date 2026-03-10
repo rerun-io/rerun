@@ -81,6 +81,13 @@ pub enum WebViewerServerError {
 /// Typed port for use with [`WebViewerServer`]
 pub struct WebViewerServerPort(pub u16);
 
+impl From<u16> for WebViewerServerPort {
+    #[inline]
+    fn from(port: u16) -> Self {
+        Self(port)
+    }
+}
+
 impl WebViewerServerPort {
     /// Port to use with [`WebViewerServer::new`] when you want the OS to pick a port for you.
     ///

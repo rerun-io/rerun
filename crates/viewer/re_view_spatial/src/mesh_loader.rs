@@ -89,16 +89,11 @@ impl LoadedMesh {
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
 
-        // Overwriting albedo_factor of CpuMesh if specified in the Asset3D
         if let Some(albedo_factor) = albedo_factor {
-            for instance in &cpu_model.instances {
-                for material in &mut cpu_model.meshes[instance.mesh].materials {
-                    material.albedo_factor = albedo_factor;
-                }
-            }
+            cpu_model.override_albedo_factor(albedo_factor);
         }
 
-        let bbox = cpu_model.bbox;
+        let bbox = cpu_model.bbox();
         let mesh_instances = cpu_model.into_gpu_meshes(render_ctx)?;
 
         Ok(Self {

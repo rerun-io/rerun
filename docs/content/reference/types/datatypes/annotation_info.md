@@ -10,28 +10,28 @@ The id refers either to a class or key-point id
 
 ## Fields
 #### `id`
-Type: `uint16`
+Type: non-null `UInt16`
 
 [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id) or [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id) to which this annotation info belongs.
 
 #### `label`
-Type: nullable [`Utf8`](../datatypes/utf8.md)
+Type: [`Utf8`](../datatypes/utf8.md)
 
 The label that will be shown in the UI.
 
 #### `color`
-Type: nullable [`Rgba32`](../datatypes/rgba32.md)
+Type: [`Rgba32`](../datatypes/rgba32.md)
 
 The color that will be applied to the annotated entity.
 
 
 ## Arrow datatype
 ```
-Struct {
-    id: uint16
-    label: nullable utf8
-    color: nullable uint32
-}
+Struct(
+    "id": non-null UInt16
+    "label": Utf8
+    "color": UInt32
+)
 ```
 
 ## API reference links

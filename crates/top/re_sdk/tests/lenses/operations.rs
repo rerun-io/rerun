@@ -5,8 +5,9 @@ use std::sync::Arc;
 
 use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBuilder};
 use arrow::datatypes::{DataType, Field};
+use re_arrow_combinators::Transform as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
-use re_sdk::lenses::{Lens, Lenses, Op, OutputMode};
+use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector, op};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::Scalars;
 
@@ -138,7 +139,7 @@ fn test_destructure_cast() {
     .output_columns_at("nullability/a", |out| {
         out.component(
             Scalars::descriptor_scalars(),
-            [Op::selector(".a"), Op::cast(DataType::Float64)],
+            Selector::parse(".a")?.then(op::cast(DataType::Float64)),
         )
     })
     .unwrap()
@@ -168,7 +169,7 @@ fn test_destructure() {
         "structs",
     )
     .output_columns_at("nullability/b", |out| {
-        out.component(Scalars::descriptor_scalars(), [Op::selector(".b")])
+        out.component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
     })
     .unwrap()
     .build();
@@ -188,36 +189,41 @@ fn test_destructure() {
 
 #[test]
 fn test_inner_count() {
-    use re_sdk::lenses::OpError;
-
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let count_fn = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        let mut builder = ListBuilder::new(Int32Builder::new());
+    let count_fn =
+        |list_array: &ListArray| -> Result<Option<ListArray>, re_arrow_combinators::Error> {
+            let mut builder = ListBuilder::new(Int32Builder::new());
 
-        for maybe_array in list_array.iter() {
-            match maybe_array {
-                None => builder.append_null(),
-                Some(component_batch_array) => {
-                    builder
-                        .values()
-                        .append_value(component_batch_array.len() as i32);
-                    builder.append(true);
+            for maybe_array in list_array.iter() {
+                match maybe_array {
+                    None => builder.append_null(),
+                    Some(component_batch_array) => {
+                        builder
+                            .values()
+                            .append_value(component_batch_array.len() as i32);
+                        builder.append(true);
+                    }
                 }
             }
-        }
 
-        Ok(builder.finish())
-    };
+            Ok(Some(builder.finish()))
+        };
 
     let count = Lens::for_input_column(
         re_log_types::EntityPathFilter::parse_forgiving("nullability"),
         "strings",
     )
     .output_columns(|out| {
-        out.component(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
-            .component(ComponentDescriptor::partial("original"), [])
+        out.component(
+            ComponentDescriptor::partial("counts"),
+            Selector::parse(".")?.then(count_fn),
+        )?
+        .component(
+            ComponentDescriptor::partial("original"),
+            Selector::parse(".")?,
+        )
     })
     .unwrap()
     .build();
@@ -258,11 +264,11 @@ fn test_static_chunk_creation() {
     .output_static_columns_at("nullability/static", |out| {
         out.component(
             ComponentDescriptor::partial("static_metadata_a"),
-            [Op::constant(metadata_builder_a.finish())],
-        )
+            Selector::parse(".")?.then(op::constant(metadata_builder_a.finish())),
+        )?
         .component(
             ComponentDescriptor::partial("static_metadata_b"),
-            [Op::constant(metadata_builder_b.finish())],
+            Selector::parse(".")?.then(op::constant(metadata_builder_b.finish())),
         )
     })
     .unwrap()
@@ -329,8 +335,11 @@ fn test_time_column_extraction() {
         "my_timestamp",
     )
     .output_columns(|out| {
-        out.time("my_timeline", TimeType::Sequence, [])
-            .component(ComponentDescriptor::partial("extracted_time"), [])
+        out.time("my_timeline", TimeType::Sequence, Selector::parse(".")?)?
+            .component(
+                ComponentDescriptor::partial("extracted_time"),
+                Selector::parse(".")?,
+            )
     })
     .unwrap()
     .build();
@@ -418,10 +427,7 @@ fn create_test_struct_list() -> arrow::array::ListArray {
 
 #[test]
 fn test_scatter_columns() {
-    use re_arrow_combinators::{Selector, Transform as _};
     use re_log_types::TimeType;
-    use re_sdk::lenses::OpError;
-    use std::str::FromStr as _;
 
     // Create a chunk with list of structs that should be exploded/scattered
     // Each element is a struct with {timestamp: i64, value: String}
@@ -442,27 +448,17 @@ fn test_scatter_columns() {
     println!("Original chunk:");
     println!("{original_chunk}");
 
-    // Helper to extract value field from structs: List<Struct> -> List<String>
-    let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        Ok(Selector::from_str(".value")?.transform(list_array)?)
-    };
-
-    // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
-    let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        Ok(Selector::from_str(".timestamp")?.transform(list_array)?)
-    };
-
     // Create a scatter lens that explodes the nested lists
     let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
         .output_scatter_columns_at("scatter_test/exploded", |out| {
             out.component(
                 ComponentDescriptor::partial("exploded_strings"),
-                [Op::func(extract_value)],
-            )
+                Selector::parse(".value")?,
+            )?
             .time(
                 "my_timestamp",
                 TimeType::Sequence,
-                [Op::func(extract_timestamp)],
+                Selector::parse(".timestamp")?,
             )
         })
         .unwrap()
@@ -519,10 +515,7 @@ fn test_scatter_columns() {
 
 #[test]
 fn test_scatter_columns_static() {
-    use re_arrow_combinators::{Selector, Transform as _};
     use re_log_types::TimeType;
-    use re_sdk::lenses::OpError;
-    use std::str::FromStr as _;
 
     // Test scatter with no existing timelines - only exploded timeline outputs
     let struct_list = create_test_struct_list();
@@ -541,27 +534,17 @@ fn test_scatter_columns_static() {
     println!("Original chunk (no timelines):");
     println!("{original_chunk}");
 
-    // Helper to extract value field from structs: List<Struct> -> List<String>
-    let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        Ok(Selector::from_str(".value")?.transform(list_array)?)
-    };
-
-    // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
-    let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        Ok(Selector::from_str(".timestamp")?.transform(list_array)?)
-    };
-
     // Create a scatter lens that explodes the nested lists
     let scatter_lens = Lens::for_input_column(re_log_types::EntityPathFilter::all(), "nested_data")
         .output_scatter_columns_at("scatter_test/exploded", |out| {
             out.component(
                 ComponentDescriptor::partial("exploded_strings"),
-                [Op::func(extract_value)],
-            )
+                Selector::parse(".value")?,
+            )?
             .time(
                 "my_timestamp",
                 TimeType::Sequence,
-                [Op::func(extract_timestamp)],
+                Selector::parse(".timestamp")?,
             )
         })
         .unwrap()

@@ -4,7 +4,7 @@ use re_log_types::hash::Hash64;
 use re_sdk_types::datatypes::TensorData;
 use re_sdk_types::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
-use re_viewer_context::{TensorStats, TensorStatsCache, UiLayout, ViewerContext};
+use re_viewer_context::{StoreViewContext, TensorStats, TensorStatsCache, UiLayout};
 
 use super::EntityDataUi;
 
@@ -35,14 +35,12 @@ fn format_tensor_shape_single_line(tensor: &TensorData) -> String {
 impl EntityDataUi for re_sdk_types::components::TensorData {
     fn entity_data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _entity_path: &EntityPath,
         _component_descriptor: &ComponentDescriptor,
         row_id: Option<RowId>,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!();
         // RowId is enough for cache keying the tensor stats right now since you can't have more than one per row.
@@ -52,7 +50,7 @@ impl EntityDataUi for re_sdk_types::components::TensorData {
 }
 
 pub fn tensor_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     tensor_cache_key: Hash64,
@@ -61,7 +59,6 @@ pub fn tensor_ui(
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
     let tensor_stats = ctx
-        .store_context
         .caches
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_cache_key, tensor));
 

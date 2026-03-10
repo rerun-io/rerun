@@ -16,7 +16,7 @@ Draw order for entities with the same draw order is generally undefined.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

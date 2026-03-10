@@ -21,26 +21,26 @@ fn execute_nested_struct() -> Result<(), Error> {
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌───────────────────────────────────┐
-    │ col                               │
-    │ ---                               │
-    │ type: nullable List[nullable f64] │
-    ╞═══════════════════════════════════╡
-    │ [1.0]                             │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                            │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                              │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [3.0, 5.0]                        │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null, 7.0]                       │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null, null]                      │
-    └───────────────────────────────────┘
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
+    ┌─────────────────────┐
+    │ col                 │
+    │ ---                 │
+    │ type: List(Float64) │
+    ╞═════════════════════╡
+    │ [1.0]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]              │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                  │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [3.0, 5.0]          │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, 7.0]         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, null]        │
+    └─────────────────────┘
     ");
 
     Ok(())
@@ -52,25 +52,25 @@ fn execute_identity() -> Result<(), Error> {
 
     let result = ".".parse::<Selector>()?.execute_per_row(&array)?.unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌───────────────────────────────────────────────────┐
-    │ col                                               │
-    │ ---                                               │
-    │ type: nullable List[nullable Struct[1]]           │
-    ╞═══════════════════════════════════════════════════╡
-    │ [{poses: [{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]}]   │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{poses: [{x: 5.0, y: 6.0}]}]                     │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{poses: []}]                                     │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                              │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{poses: [{x: 7.0, y: null}, {x: 9.0, y: 10.0}]}] │
-    └───────────────────────────────────────────────────┘
-    ");
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌─────────────────────────────────────────────────────────────────────────────────────────┐
+    │ col                                                                                     │
+    │ ---                                                                                     │
+    │ type: List(Struct("poses": non-null List(non-null Struct("x": Float64, "y": Float64)))) │
+    ╞═════════════════════════════════════════════════════════════════════════════════════════╡
+    │ [{poses: [{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]}]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{poses: [{x: 5.0, y: 6.0}]}]                                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{poses: []}]                                                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                                                                      │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                                                                    │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{poses: [{x: 7.0, y: null}, {x: 9.0, y: 10.0}]}]                                       │
+    └─────────────────────────────────────────────────────────────────────────────────────────┘
+    "#);
     Ok(())
 }
 
@@ -83,25 +83,25 @@ fn execute_simple_field() -> Result<(), Error> {
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
-    ┌───────────────────────────────────────────────┐
-    │ col                                           │
-    │ ---                                           │
-    │ type: nullable List[nullable List[Struct[2]]] │
-    ╞═══════════════════════════════════════════════╡
-    │ [[{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]]        │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[{x: 5.0, y: 6.0}]]                          │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[]]                                          │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                            │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                          │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[{x: 7.0, y: null}, {x: 9.0, y: 10.0}]]      │
-    └───────────────────────────────────────────────┘
-    ");
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌───────────────────────────────────────────────────────────────┐
+    │ col                                                           │
+    │ ---                                                           │
+    │ type: List(List(non-null Struct("x": Float64, "y": Float64))) │
+    ╞═══════════════════════════════════════════════════════════════╡
+    │ [[{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]]                        │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[{x: 5.0, y: 6.0}]]                                          │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[]]                                                          │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                                            │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                                          │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[{x: 7.0, y: null}, {x: 9.0, y: 10.0}]]                      │
+    └───────────────────────────────────────────────────────────────┘
+    "#);
     Ok(())
 }
 
@@ -114,25 +114,25 @@ fn execute_index() -> Result<(), Error> {
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌─────────────────────────────────────────┐
-    │ col                                     │
-    │ ---                                     │
-    │ type: nullable List[nullable Struct[2]] │
-    ╞═════════════════════════════════════════╡
-    │ [{x: 1.0, y: 2.0}]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 5.0, y: 6.0}]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 7.0, y: null}]                     │
-    └─────────────────────────────────────────┘
-    ");
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 5.0, y: 6.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 7.0, y: null}]                            │
+    └────────────────────────────────────────────────┘
+    "#);
     Ok(())
 }
 
@@ -145,24 +145,24 @@ fn execute_index_chained() -> Result<(), Error> {
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌───────────────────────────────────┐
-    │ col                               │
-    │ ---                               │
-    │ type: nullable List[nullable f64] │
-    ╞═══════════════════════════════════╡
-    │ [1.0]                             │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [5.0]                             │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                            │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                              │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [7.0]                             │
-    └───────────────────────────────────┘
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
+    ┌─────────────────────┐
+    │ col                 │
+    │ ---                 │
+    │ type: List(Float64) │
+    ╞═════════════════════╡
+    │ [1.0]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [5.0]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]              │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                  │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [7.0]               │
+    └─────────────────────┘
     ");
     Ok(())
 }
@@ -176,25 +176,25 @@ fn execute_index_to_extract_second_element() -> Result<(), Error> {
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌─────────────────────────────────────────┐
-    │ col                                     │
-    │ ---                                     │
-    │ type: nullable List[nullable Struct[2]] │
-    ╞═════════════════════════════════════════╡
-    │ [{x: 3.0, y: 4.0}]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 9.0, y: 10.0}]                     │
-    └─────────────────────────────────────────┘
-    ");
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 3.0, y: 4.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 9.0, y: 10.0}]                            │
+    └────────────────────────────────────────────────┘
+    "#);
     Ok(())
 }
 
@@ -207,25 +207,25 @@ fn execute_array_each() -> Result<(), Error> {
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌─────────────────────────────────────────┐
-    │ col                                     │
-    │ ---                                     │
-    │ type: nullable List[nullable Struct[2]] │
-    ╞═════════════════════════════════════════╡
-    │ [{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 5.0, y: 6.0}]                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [{x: 7.0, y: null}, {x: 9.0, y: 10.0}]  │
-    └─────────────────────────────────────────┘
-    ");
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}, {x: 3.0, y: 4.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 5.0, y: 6.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 7.0, y: null}, {x: 9.0, y: 10.0}]         │
+    └────────────────────────────────────────────────┘
+    "#);
     Ok(())
 }
 
@@ -243,14 +243,10 @@ fn execute_missing_field() {
     let result = ".nonexistent"
         .parse::<Selector>()
         .unwrap()
-        .execute_per_row(&array);
+        .execute_per_row(&array)
+        .expect("should not error");
 
-    assert!(matches!(
-        result,
-        Err(Error::Runtime(
-            re_arrow_combinators::Error::FieldNotFound { .. }
-        ))
-    ));
+    assert!(result.is_none(), "missing field should return None");
 }
 
 #[test]
@@ -262,25 +258,25 @@ fn execute_index_out_of_bounds() -> Result<(), Error> {
         .execute_per_row(&array)?
         .unwrap();
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
-    ┌─────────────────────────────────────────┐
-    │ col                                     │
-    │ ---                                     │
-    │ type: nullable List[nullable Struct[2]] │
-    ╞═════════════════════════════════════════╡
-    │ [null]                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                                  │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ []                                      │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ null                                    │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [null]                                  │
-    └─────────────────────────────────────────┘
-    ");
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    └────────────────────────────────────────────────┘
+    "#);
     Ok(())
 }
 
@@ -295,16 +291,16 @@ fn execute_index_on_fixed_size_list() -> Result<(), Error> {
     let list_field = Arc::new(Field::new_list_field(fixed_list.data_type().clone(), true));
     let array = ListArray::new(list_field, offsets, Arc::new(fixed_list), None);
 
-    insta::assert_snapshot!(format!("{}", DisplayRB(array.clone())), @"
-    ┌──────────────────────────────────────────────────────────────┐
-    │ col                                                          │
-    │ ---                                                          │
-    │ type: nullable List[nullable FixedSizeList[nullable i32; 3]] │
-    ╞══════════════════════════════════════════════════════════════╡
-    │ [[1, 2, 3], [4, 5, 6]]                                       │
-    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    │ [[7, 8, 9]]                                                  │
-    └──────────────────────────────────────────────────────────────┘
+    insta::assert_snapshot!(format!("{}", DisplayRB(array.clone())), @r"
+    ┌──────────────────────────────────────┐
+    │ col                                  │
+    │ ---                                  │
+    │ type: List(FixedSizeList(3 x Int32)) │
+    ╞══════════════════════════════════════╡
+    │ [[1, 2, 3], [4, 5, 6]]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [[7, 8, 9]]                          │
+    └──────────────────────────────────────┘
     ");
 
     let result = ".[0][1]".parse::<Selector>()?.execute_per_row(&array);
@@ -315,24 +311,46 @@ fn execute_index_on_fixed_size_list() -> Result<(), Error> {
 }
 
 #[test]
+fn execute_each_on_fixed_size_list() -> Result<(), Error> {
+    // Build List<FixedSizeList<Int32, 3>>
+    //   Row 0: [[1,2,3], [4,5,6]]  -> flatten to [1,2,3,4,5,6]
+    //   Row 1: [[7,8,9]]           -> flatten to [7,8,9]
+
+    let values = Int32Array::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let fixed_field = Arc::new(Field::new("item", DataType::Int32, true));
+    let fixed_list = FixedSizeListArray::new(fixed_field, 3, Arc::new(values), None);
+
+    let offsets = OffsetBuffer::new(vec![0, 2, 3].into());
+    let list_field = Arc::new(Field::new_list_field(fixed_list.data_type().clone(), true));
+    let array = ListArray::new(list_field, offsets, Arc::new(fixed_list), None);
+
+    let result = ".[]".parse::<Selector>()?.execute_per_row(&array)?.unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @"
+    ┌────────────────────┐
+    │ col                │
+    │ ---                │
+    │ type: List(Int32)  │
+    ╞════════════════════╡
+    │ [1, 2, 3, 4, 5, 6] │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [7, 8, 9]          │
+    └────────────────────┘
+    ");
+
+    Ok(())
+}
+
+#[test]
 fn execute_optional_field() -> Result<(), Error> {
     let array = fixtures::nested_struct_column();
 
-    // Without `?`, accessing a field that doesn't exist errors.
-    let err = ".location.z".parse::<Selector>()?.execute_per_row(&array);
-    assert!(matches!(
-        err,
-        Err(Error::Runtime(
-            re_arrow_combinators::Error::FieldNotFound { .. }
-        ))
-    ));
-    let err = ".foo.x".parse::<Selector>()?.execute_per_row(&array);
-    assert!(matches!(
-        err,
-        Err(Error::Runtime(
-            re_arrow_combinators::Error::FieldNotFound { .. }
-        ))
-    ),);
+    // Accessing a field that doesn't exist returns `None`.
+    let result = ".location.z".parse::<Selector>()?.execute_per_row(&array)?;
+    assert!(result.is_none(), "missing field should return None");
+
+    let result = ".foo.x".parse::<Selector>()?.execute_per_row(&array)?;
+    assert!(result.is_none(), "missing field should return None");
 
     // With `?`, the missing field is suppressed and we get `None` instead.
     let result = ".location.z?"
@@ -370,6 +388,132 @@ fn execute_optional_each_suppressed() -> Result<(), Error> {
     Ok(())
 }
 
+#[test]
+fn execute_non_null_field() -> Result<(), Error> {
+    let array = fixtures::nested_struct_column();
+
+    // Without `!`, row 1 is `[null]` (inner null within a list)
+    let without = ".location"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(without)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, null]                                   │
+    └────────────────────────────────────────────────┘
+    "#);
+
+    // With `!`, all-null rows ([null] and [null, null]) are promoted to outer nulls
+    let result = ".location!"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    └────────────────────────────────────────────────┘
+    "#);
+
+    Ok(())
+}
+
+#[test]
+fn execute_non_null_nested() -> Result<(), Error> {
+    let array = fixtures::nested_struct_column();
+
+    // Without `!`, row 1 is `[null]` (inner null within a list)
+    let without = ".location"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(without)), @r#"
+    ┌────────────────────────────────────────────────┐
+    │ col                                            │
+    │ ---                                            │
+    │ type: List(Struct("x": Float64, "y": Float64)) │
+    ╞════════════════════════════════════════════════╡
+    │ [{x: 1.0, y: 2.0}]                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null]                                         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                                             │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                                           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [{x: 3.0, y: 4.0}, {x: 5.0, y: 6.0}]           │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, {x: 7.0, y: 8.0}]                       │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, null]                                   │
+    └────────────────────────────────────────────────┘
+    "#);
+
+    // With `!` on the intermediate field, null locations are promoted before accessing `.x`
+    let result = ".location!.x"
+        .parse::<Selector>()?
+        .execute_per_row(&array)?
+        .unwrap();
+
+    insta::assert_snapshot!(format!("{}", DisplayRB(result)), @r"
+    ┌─────────────────────┐
+    │ col                 │
+    │ ---                 │
+    │ type: List(Float64) │
+    ╞═════════════════════╡
+    │ [1.0]               │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ []                  │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [3.0, 5.0]          │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ [null, 7.0]         │
+    ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    │ null                │
+    └─────────────────────┘
+    ");
+
+    Ok(())
+}
+
 fn formatted(pair: impl IntoIterator<Item = (Selector, DataType)>) -> String {
     pair.into_iter()
         .map(|(sel, dt)| format!("{sel} ({dt})"))
@@ -390,20 +534,24 @@ fn extract_scalar_fields_from_nested_struct() {
         Field::new("c", DataType::Int32, true),
     ]);
 
+    let e_field = Field::new_list_field(DataType::Float32, false);
+
     let root_fields = Fields::from(vec![
         Field::new("a", DataType::Struct(bc_fields), true),
         Field::new("d", DataType::Int32, true),
+        Field::new("e", DataType::FixedSizeList(e_field.into(), 3), true),
     ]);
 
     let datatype = DataType::Struct(root_fields);
 
     let result = re_arrow_combinators::extract_nested_fields(&datatype, |dt| {
-        matches!(dt, DataType::Float64 | DataType::Int32)
+        matches!(dt, DataType::Float64 | DataType::Float32 | DataType::Int32)
     })
     .expect("Should find nested fields");
 
     insta::assert_snapshot!(formatted(result), @"
     .d (Int32)
+    .e[] (Float32)
     .a.b (Float64)
     .a.c (Int32)
     ");
@@ -417,28 +565,37 @@ fn extract_scalar_fields_from_nested_list_struct() {
     //   │  └─ c: [Int32]
     //   └─ d: [Float64]
 
-    let b_list = DataType::List(Arc::new(Field::new_list_field(DataType::Float64, true)));
-    let c_list = DataType::List(Arc::new(Field::new_list_field(DataType::Int32, true)));
+    let b_list = DataType::List(Field::new_list_field(DataType::Float64, true).into());
+    let c_list = DataType::List(Field::new_list_field(DataType::Int32, true).into());
     let bc_fields = Fields::from(vec![
         Field::new("b", b_list, true),
         Field::new("c", c_list, true),
     ]);
 
-    let d_list = DataType::List(Arc::new(Field::new_list_field(DataType::Float64, true)));
+    let d_list = DataType::List(Field::new_list_field(DataType::Float64, true).into());
+    let e_list = DataType::List(
+        Field::new_list_field(
+            DataType::FixedSizeList(Field::new_list_field(DataType::Float32, false).into(), 3),
+            true,
+        )
+        .into(),
+    );
     let root_fields = Fields::from(vec![
         Field::new("a", DataType::Struct(bc_fields), true),
         Field::new("d", d_list, true),
+        Field::new("e", e_list, true),
     ]);
 
     let datatype = DataType::Struct(root_fields);
 
     let result = re_arrow_combinators::extract_nested_fields(&datatype, |dt| {
-        matches!(dt, DataType::Float64 | DataType::Int32)
+        matches!(dt, DataType::Float64 | DataType::Float32 | DataType::Int32)
     })
     .expect("Should find nested fields");
 
     insta::assert_snapshot!(formatted(result), @"
     .d[] (Float64)
+    .e[][] (Float32)
     .a.b[] (Float64)
     .a.c[] (Int32)
     ");

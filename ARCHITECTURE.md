@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/2854537b29f799fb0b5bdbb6d139af5401b348f6/1200w.png">
+  <img src="https://static.rerun.io/crates/7a67344c87234510372454560bf3f6b0cf29a2d9/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/7a67344c87234510372454560bf3f6b0cf29a2d9/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/7a67344c87234510372454560bf3f6b0cf29a2d9/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/7a67344c87234510372454560bf3f6b0cf29a2d9/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/7a67344c87234510372454560bf3f6b0cf29a2d9/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -232,7 +232,6 @@ Update instructions:
 | re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error             | Helpers for handling errors.                                                         |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
-| re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_lenses            | Lenses are an API for extracting, transforming, and restructuring component data.    |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
 | re_log_channel       | An in-memory channel of Rerun data messages                                          |

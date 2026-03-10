@@ -8,7 +8,7 @@ A double-precision vector in 2D space.
 
 ## Arrow datatype
 ```
-FixedSizeList<2, float64>
+FixedSizeList(2 x non-null Float64)
 ```
 
 ## API reference links

@@ -3,8 +3,9 @@ use re_log_types::hash::Hash64;
 use re_log_types::{Instance, TimeInt};
 use re_renderer::RenderContext;
 use re_renderer::renderer::GpuMeshInstance;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Mesh3D;
-use re_sdk_types::components::ImageFormat;
+use re_sdk_types::components::{ImageFormat, Position3D};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -116,7 +117,10 @@ impl VisualizerSystem for Mesh3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Mesh3D>()
+        VisualizerQueryInfo::single_required_component::<Position3D>(
+            &Mesh3D::descriptor_vertex_positions(),
+            &Mesh3D::all_components(),
+        )
     }
 
     fn execute(

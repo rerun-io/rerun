@@ -1,18 +1,14 @@
 //! Private module with the AST-like definitions of lenses.
 //!
-//! **Note**: Apart from high-level entry points (like [`Op`] and [`Lens`],
+//! **Note**: Apart from high-level entry points (like [`Lens`]),
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use std::str::FromStr as _;
-
 use arrow::array::{AsArray as _, Int64Array, ListArray};
 use arrow::compute::take;
-use arrow::datatypes::DataType;
 use itertools::Either;
 use nohash_hasher::IntMap;
-use re_arrow_combinators::{Selector, Transform as _};
-use re_arrow_combinators::{map, reshape};
+use re_arrow_combinators::{Transform, reshape};
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
@@ -21,11 +17,8 @@ use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
 
-use crate::semantic;
-
 use crate::LensError;
 use crate::builder::LensBuilder;
-use crate::op::{self, OpError};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
@@ -43,22 +36,43 @@ pub enum TargetEntity {
     Explicit(EntityPath),
 }
 
+// TODO(RR-3968): Switch over to `Selector` once it is expressive enough.
+/// A boxed, type-erased transform from `ListArray` to `Option<ListArray>`.
+pub type BoxedTransform = Box<dyn Transform<Source = ListArray, Target = ListArray> + Send + Sync>;
+
 /// A component output.
 ///
 /// Depending on the context in which this output is used, the result from
-/// applying the `ops` should be a list array (1:1) or a list array of list arrays (1:N).
-#[derive(Debug)]
+/// applying the transform should be a list array (1:1) or a list array of list arrays (1:N).
 pub struct ComponentOutput {
     pub component_descr: ComponentDescriptor,
-    pub ops: Vec<Op>,
+    pub selector: BoxedTransform,
+}
+
+// TODO(RR-3968): Switch over to `Selector` means we can derive this again.
+impl std::fmt::Debug for ComponentOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ComponentOutput")
+            .field("component_descr", &self.component_descr)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A time extraction output.
-#[derive(Debug)]
 pub struct TimeOutput {
     pub timeline_name: TimelineName,
     pub timeline_type: TimeType,
-    pub ops: Vec<Op>,
+    pub selector: BoxedTransform,
+}
+
+// TODO(RR-3968): Switch over to `Selector` means we can derive this again.
+impl std::fmt::Debug for TimeOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TimeOutput")
+            .field("timeline_name", &self.timeline_name)
+            .field("timeline_type", &self.timeline_type)
+            .finish_non_exhaustive()
+    }
 }
 
 #[derive(Debug)]
@@ -106,208 +120,6 @@ pub enum LensKind {
     Columns(OneToOne),
     ScatterColumns(OneToMany),
     StaticColumns(Static),
-}
-
-type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, OpError> + Sync + Send>;
-
-/// Provides commonly used transformations of component columns.
-///
-/// Individual operations are wrapped to hide their implementation details.
-#[non_exhaustive]
-pub enum Op {
-    /// Selector operation using jq-like syntax for navigating and transforming Arrow data.
-    ///
-    /// The selector query string is parsed at execution time.
-    Selector(String),
-
-    /// Converts binary arrays to list arrays of `u8`.
-    BinaryToListUInt8,
-
-    /// Efficiently casts a component to a new `DataType`.
-    Cast(op::Cast),
-
-    /// Converts video codec strings to Rerun `VideoCodec` enum values (as `u32`).
-    StringToVideoCodecUInt32,
-
-    /// Prepends a prefix to each string value, including empty strings.
-    StringPrefix(String),
-
-    /// Prepends a prefix to each non-empty string value, leaving empty strings unchanged.
-    StringPrefixNonEmpty(String),
-
-    /// Appends a suffix to each string value, including empty strings.
-    StringSuffix(String),
-
-    /// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
-    StringSuffixNonEmpty(String),
-
-    /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
-    TimeSpecToNanos,
-
-    /// Promotes lists where all inner values are null to outer nulls.
-    PromoteInnerNulls,
-
-    /// A user-defined arbitrary function to convert a component column.
-    Func(CustomFn),
-}
-
-impl std::fmt::Debug for Op {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Selector(query) => f.debug_tuple("Selector").field(query).finish(),
-            Self::BinaryToListUInt8 => f.debug_struct("BinaryToListUInt8").finish(),
-            Self::Cast(inner) => f.debug_tuple("Cast").field(inner).finish(),
-            Self::StringToVideoCodecUInt32 => f.debug_struct("StringToVideoCodecUInt32").finish(),
-            Self::StringPrefix(prefix) => f.debug_tuple("StringPrefix").field(prefix).finish(),
-            Self::StringPrefixNonEmpty(prefix) => {
-                f.debug_tuple("StringPrefixNonEmpty").field(prefix).finish()
-            }
-            Self::StringSuffix(suffix) => f.debug_tuple("StringSuffix").field(suffix).finish(),
-            Self::StringSuffixNonEmpty(suffix) => {
-                f.debug_tuple("StringSuffixNonEmpty").field(suffix).finish()
-            }
-            Self::TimeSpecToNanos => f.debug_struct("TimeSpecToNanos").finish(),
-            Self::PromoteInnerNulls => f.debug_struct("PromoteInnerNulls").finish(),
-            Self::Func(_) => f.debug_tuple("Func").field(&"<function>").finish(),
-        }
-    }
-}
-
-impl From<&str> for Op {
-    fn from(value: &str) -> Self {
-        Self::Selector(value.to_owned())
-    }
-}
-
-impl Op {
-    /// Creates a selector operation from a query string.
-    ///
-    /// The selector uses jq-like syntax for navigating and transforming Arrow data.
-    /// The query string is parsed at execution time.
-    ///
-    /// # Examples
-    ///
-    /// - `.field` - Access a field in a struct
-    /// - `.parent.child` - Access nested fields
-    /// - `.array[]` - Explode/flatten an array into multiple rows
-    /// - `.array[].field` - Explode array and access a field in each element
-    pub fn selector(query: impl Into<String>) -> Self {
-        Self::Selector(query.into())
-    }
-
-    /// Converts binary arrays to list arrays of `u8`.
-    pub fn binary_to_list_uint8() -> Self {
-        Self::BinaryToListUInt8
-    }
-
-    /// Efficiently casts a component to a new `DataType`.
-    pub fn cast(data_type: DataType) -> Self {
-        Self::Cast(op::Cast {
-            to_inner_type: data_type,
-        })
-    }
-
-    /// Ignores any input and returns a constant `ListArray`.
-    ///
-    /// Commonly used with [`LensBuilder::output_static_columns`].
-    /// When used in non-static columns this function will _not_ guarantee the correct amount of rows.
-    pub fn constant(value: ListArray) -> Self {
-        Self::func(move |_| Ok(value.clone()))
-    }
-
-    /// Converts video codec strings to Rerun `VideoCodec` enum values (as `u32`).
-    pub fn string_to_video_codec() -> Self {
-        Self::StringToVideoCodecUInt32
-    }
-
-    /// Prepends a prefix to each string value, including empty strings.
-    pub fn string_prefix(prefix: impl Into<String>) -> Self {
-        Self::StringPrefix(prefix.into())
-    }
-
-    /// Prepends a prefix to each non-empty string value, leaving empty strings unchanged.
-    pub fn string_prefix_nonempty(prefix: impl Into<String>) -> Self {
-        Self::StringPrefixNonEmpty(prefix.into())
-    }
-
-    /// Appends a suffix to each string value, including empty strings.
-    pub fn string_suffix(suffix: impl Into<String>) -> Self {
-        Self::StringSuffix(suffix.into())
-    }
-
-    /// Appends a suffix to each non-empty string value, leaving empty strings unchanged.
-    pub fn string_suffix_nonempty(suffix: impl Into<String>) -> Self {
-        Self::StringSuffixNonEmpty(suffix.into())
-    }
-
-    /// Converts timestamp structs with `seconds` and `nanos` fields to total nanoseconds.
-    pub fn time_spec_to_nanos() -> Self {
-        Self::TimeSpecToNanos
-    }
-
-    /// Promotes lists where all inner values are null to outer nulls.
-    pub fn promote_inner_nulls() -> Self {
-        Self::PromoteInnerNulls
-    }
-
-    /// A user-defined arbitrary function to convert a component column.
-    pub fn func<F>(func: F) -> Self
-    where
-        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, OpError> + Send + Sync + 'static,
-    {
-        Self::Func(Box::new(func))
-    }
-}
-
-impl Op {
-    fn call(&self, list_array: &ListArray) -> Result<Option<ListArray>, OpError> {
-        match self {
-            Self::Selector(query) => {
-                let selector = Selector::from_str(query)?;
-                Ok(selector.execute_per_row(list_array)?)
-            }
-            Self::Cast(op) => op.call(list_array).map(Some),
-            Self::BinaryToListUInt8 => map::MapList::new(semantic::BinaryToListUInt8::<i32>::new())
-                .transform(list_array)
-                .map_err(Into::into)
-                .map(Some),
-            Self::StringToVideoCodecUInt32 => {
-                map::MapList::new(semantic::StringToVideoCodecUInt32::default())
-                    .transform(list_array)
-                    .map_err(Into::into)
-                    .map(Some)
-            }
-            Self::StringPrefix(prefix) => map::MapList::new(map::StringPrefix::new(prefix.clone()))
-                .transform(list_array)
-                .map_err(Into::into)
-                .map(Some),
-            Self::StringPrefixNonEmpty(prefix) => map::MapList::new(
-                map::StringPrefix::new(prefix.clone()).with_prefix_empty_string(false),
-            )
-            .transform(list_array)
-            .map_err(Into::into)
-            .map(Some),
-            Self::StringSuffix(suffix) => map::MapList::new(map::StringSuffix::new(suffix.clone()))
-                .transform(list_array)
-                .map_err(Into::into)
-                .map(Some),
-            Self::StringSuffixNonEmpty(suffix) => map::MapList::new(
-                map::StringSuffix::new(suffix.clone()).with_suffix_empty_string(false),
-            )
-            .transform(list_array)
-            .map_err(Into::into)
-            .map(Some),
-            Self::TimeSpecToNanos => map::MapList::new(semantic::TimeSpecToNanos::default())
-                .transform(list_array)
-                .map_err(Into::into)
-                .map(Some),
-            Self::PromoteInnerNulls => reshape::PromoteInnerNulls
-                .transform(list_array)
-                .map_err(Into::into)
-                .map(Some),
-            Self::Func(func) => func(list_array).map(Some),
-        }
-    }
 }
 
 /// A lens that transforms component data from one form to another.
@@ -386,27 +198,13 @@ impl PartialChunk {
     }
 }
 
-/// Sequentially applies a list of [`Op`]s to a list array.
-///
-/// Exits early if an evaluation of an [`Op`] yields `None`, skipping subsequent ops.
-fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<Option<ListArray>, OpError> {
-    let mut current = initial;
-    for op in ops {
-        match op.call(&current)? {
-            Some(next) => current = next,
-            None => return Ok(None),
-        }
-    }
-    Ok(Some(current))
-}
-
 fn collect_output_components_iter<'a>(
     input: &'a SerializedComponentColumn,
     components: &'a [ComponentOutput],
     entity_path: &'a EntityPath,
 ) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensError>> + 'a {
-    components.iter().filter_map(move |output| {
-        match apply_ops(input.list_array.clone(), &output.ops) {
+    components.iter().filter_map(
+        move |output| match output.selector.transform(&input.list_array) {
             Ok(Some(list_array)) => Some(Ok((output.component_descr.clone(), list_array))),
             Ok(None) => {
                 re_log::debug_once!(
@@ -421,8 +219,8 @@ fn collect_output_components_iter<'a>(
                 component: output.component_descr.component,
                 source: Box::new(source),
             })),
-        }
-    })
+        },
+    )
 }
 
 fn collect_output_times_iter<'a>(
@@ -431,7 +229,7 @@ fn collect_output_times_iter<'a>(
     entity_path: &'a EntityPath,
 ) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensError>> + 'a {
     timelines.iter().filter_map(
-        move |time| match apply_ops(input.list_array.clone(), &time.ops) {
+        move |time| match time.selector.transform(&input.list_array) {
             Ok(Some(list_array)) => Some(Ok((time.timeline_name, time.timeline_type, list_array))),
             Ok(None) => {
                 re_log::debug_once!(
@@ -468,7 +266,7 @@ fn try_convert_time_column(
     } else {
         Err(LensError::InvalidTimeColumn {
             timeline_name,
-            actual_type: list_array.values().data_type().clone().into(),
+            actual_type: list_array.values().data_type().clone(),
         })
     }
 }
@@ -712,7 +510,7 @@ impl OneToMany {
                 match result {
                     Ok((timeline_name, timeline_type, list_array)) => {
                         match reshape::Explode.transform(&list_array) {
-                            Ok(exploded) => {
+                            Ok(Some(exploded)) => {
                                 match try_convert_time_column(
                                     timeline_name,
                                     timeline_type,
@@ -725,12 +523,13 @@ impl OneToMany {
                                     }
                                 }
                             }
+                            Ok(None) => None,
                             Err(err) => {
                                 errors.push(LensError::TimeOperationFailed {
                                     entity_path: entity_path.clone(),
                                     input_component: input.descriptor.component,
                                     timeline_name,
-                                    source: Box::new(err.into()),
+                                    source: Box::new(err),
                                 });
                                 None
                             }
@@ -749,15 +548,16 @@ impl OneToMany {
             .filter_map(|result| match result {
                 Ok((component_descr, list_array)) => {
                     match reshape::Explode.transform(&list_array) {
-                        Ok(exploded) => {
+                        Ok(Some(exploded)) => {
                             Some(SerializedComponentColumn::new(exploded, component_descr))
                         }
+                        Ok(None) => None,
                         Err(err) => {
                             errors.push(LensError::ComponentOperationFailed {
                                 entity_path: entity_path.clone(),
                                 input_component: input.descriptor.component,
                                 component: component_descr.component,
-                                source: Box::new(err.into()),
+                                source: Box::new(err),
                             });
                             None
                         }

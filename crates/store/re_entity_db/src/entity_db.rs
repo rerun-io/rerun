@@ -28,9 +28,9 @@ use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
 
+use crate::Error;
 use crate::ingestion_statistics::IngestionStatistics;
 use crate::rrd_manifest_index::RrdManifestIndex;
-use crate::{Error, TimeHistogramPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -139,8 +139,11 @@ pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
-    /// A time histogram of all entities, for every timeline.
-    time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
+    /// Keeps track of meta per timeline.
+    ///
+    /// This includes:
+    /// - Row count.
+    data_meta_per_timeline: crate::data_meta_per_timeline::DataMetaPerTimeline,
 
     /// The [`StorageEngine`] that backs this [`EntityDb`].
     ///
@@ -216,7 +219,7 @@ impl EntityDb {
             latest_row_id: None,
             entity_paths: Default::default(),
             entity_path_from_hash: Default::default(),
-            time_histogram_per_timeline: Default::default(),
+            data_meta_per_timeline: Default::default(),
             storage_engine,
             store_size_bytes: StoreSizeBytes(Mutex::new(None)),
             estimated_application_overhead_bytes: None,
@@ -253,10 +256,7 @@ impl EntityDb {
                 {
                     let name = component_type
                         .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
-                    text.push_str(&format!(
-                        "{component_indent}{name}: {}\n",
-                        re_arrow_util::format_data_type(&datatype)
-                    ));
+                    text.push_str(&format!("{component_indent}{name}: {datatype}\n"));
                 } else {
                     // Fallback to component identifier
                     text.push_str(&format!("{component_indent}{component}\n"));
@@ -631,19 +631,36 @@ impl EntityDb {
         self.storage_engine().store().timelines()
     }
 
-    /// When do we have data on each timeline?
-    pub fn timeline_histograms(&self) -> &TimeHistogramPerTimeline {
-        &self.time_histogram_per_timeline
-    }
-
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
-        self.storage_engine().store().time_range(timeline)
+        self.storage_engine.read().store().time_range(timeline)
     }
 
-    /// Histogram of all events on the timeeline, of all entities.
-    pub fn time_histogram(&self, timeline: &TimelineName) -> Option<&crate::TimeHistogram> {
-        self.time_histogram_per_timeline.get(timeline)
+    /// Returns the total number of temporal rows on the given timeline across all entities.
+    pub fn num_temporal_rows_on_timeline(&self, timeline: &TimelineName) -> u64 {
+        self.data_meta_per_timeline.row_count_for_timeline(timeline)
+    }
+
+    /// Returns the next time with data on the given timeline, strictly after `after`.
+    pub fn next_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        after: TimeInt,
+    ) -> Option<TimeInt> {
+        self.storage_engine()
+            .store()
+            .next_time_on_timeline(timeline, after)
+    }
+
+    /// Returns the previous time with data on the given timeline, strictly before `before`.
+    pub fn prev_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        before: TimeInt,
+    ) -> Option<TimeInt> {
+        self.storage_engine()
+            .store()
+            .prev_time_on_timeline(timeline, before)
     }
 
     /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
@@ -714,9 +731,6 @@ impl EntityDb {
         }
 
         self.rrd_manifest_index.append(rrd_manifest);
-
-        self.time_histogram_per_timeline
-            .on_rrd_manifest(&self.rrd_manifest_index);
     }
 
     /// Insert new data into the store.
@@ -816,11 +830,12 @@ impl EntityDb {
             .on_events(engine.store(), store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.time_histogram_per_timeline.on_events(
-            engine.store(),
+        self.data_meta_per_timeline.on_events(
             &self.rrd_manifest_index,
+            engine.store(),
             store_events,
         );
+
         self.rrd_manifest_index
             .entity_tree
             .on_store_additions(store_events.iter().filter_map(|e| e.to_addition()));
@@ -1258,7 +1273,7 @@ impl re_byte_size::SizeBytes for EntityDb {
             latest_row_id: _,
             entity_paths,
             entity_path_from_hash,
-            time_histogram_per_timeline,
+            data_meta_per_timeline,
             storage_engine,
             store_size_bytes,
             estimated_application_overhead_bytes: _,
@@ -1282,7 +1297,7 @@ impl re_byte_size::SizeBytes for EntityDb {
             + set_store_info.heap_size_bytes()
             + entity_paths.heap_size_bytes()
             + entity_path_from_hash.heap_size_bytes()
-            + time_histogram_per_timeline.heap_size_bytes()
+            + data_meta_per_timeline.heap_size_bytes()
             + storage_engine_size
     }
 }
@@ -1293,7 +1308,7 @@ impl MemUsageTreeCapture for EntityDb {
 
         let Self {
             rrd_manifest_index,
-            time_histogram_per_timeline,
+            data_meta_per_timeline,
             storage_engine,
             entity_paths,
             entity_path_from_hash,
@@ -1328,8 +1343,8 @@ impl MemUsageTreeCapture for EntityDb {
         );
 
         node.add(
-            "time_histogram_per_timeline",
-            time_histogram_per_timeline.capture_mem_usage_tree(),
+            "data_meta_per_timeline",
+            data_meta_per_timeline.total_size_bytes(),
         );
         node.add(
             "rrd_manifest_index",
@@ -1377,10 +1392,12 @@ mod tests {
             db.add_chunk(&Arc::new(chunk))?;
         }
 
-        assert_eq!(
-            db.format_with_components(),
-            "/parent\n  /parent/child1\n    /parent/child1/grandchild\n      example.MyPoint: Struct[2]\n"
-        );
+        insta::assert_snapshot!(db.format_with_components(), @r###"
+        /parent
+          /parent/child1
+            /parent/child1/grandchild
+              example.MyPoint: Struct("x": non-null Float32, "y": non-null Float32)
+        "###);
 
         Ok(())
     }

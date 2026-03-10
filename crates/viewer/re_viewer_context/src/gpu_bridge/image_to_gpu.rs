@@ -47,7 +47,7 @@ pub fn image_to_gpu(
     debug_name: &str,
     image: &ImageInfo,
     image_stats: &ImageStats,
-    annotations: &Annotations,
+    annotations: Option<&Annotations>,
     colormap: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
@@ -66,14 +66,20 @@ pub fn image_to_gpu(
             image_stats,
             colormap,
         ),
-        ImageKind::Segmentation => segmentation_image_to_gpu(
-            render_ctx,
-            debug_name,
-            texture_key,
-            image,
-            image_stats,
-            annotations,
-        ),
+        ImageKind::Segmentation => {
+            if let Some(annotations) = annotations {
+                segmentation_image_to_gpu(
+                    render_ctx,
+                    debug_name,
+                    texture_key,
+                    image,
+                    image_stats,
+                    annotations,
+                )
+            } else {
+                anyhow::bail!("Missing annotations for segmentation image")
+            }
+        }
     }
 }
 

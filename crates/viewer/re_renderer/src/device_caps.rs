@@ -541,8 +541,7 @@ pub fn default_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
-    } else if is_safari_browser() || is_firefox_browser() {
-        // TODO(#10609): Fix WebGPU on Safari
+    } else if is_firefox_browser() {
         // TODO(#11009): Fix videos on WebGPU firefox
         wgpu::Backends::GL
     } else {
@@ -617,23 +616,6 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
         }
     }
     Ok(())
-}
-
-/// Are we running inside the Safari browser?
-pub fn is_safari_browser() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    fn is_safari_browser_inner() -> Option<bool> {
-        use web_sys::wasm_bindgen::JsValue;
-        let window = web_sys::window()?;
-        Some(window.has_own_property(&JsValue::from("safari")))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn is_safari_browser_inner() -> Option<bool> {
-        None
-    }
-
-    is_safari_browser_inner().unwrap_or(false)
 }
 
 /// Are we running inside the Firefox browser?

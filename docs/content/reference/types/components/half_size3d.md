@@ -16,7 +16,7 @@ Negative sizes indicate that the box is flipped along the respective axis, but t
 
 ## Arrow datatype
 ```
-FixedSizeList<3, float32>
+FixedSizeList(3 x non-null Float32)
 ```
 
 ## API reference links

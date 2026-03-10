@@ -177,7 +177,10 @@ impl VisualizerSystem for Arrows3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Arrows3D>()
+        VisualizerQueryInfo::single_required_component::<Vector3D>(
+            &Arrows3D::descriptor_vectors(),
+            &Arrows3D::all_components(),
+        )
     }
 
     fn execute(

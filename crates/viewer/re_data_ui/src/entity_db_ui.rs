@@ -11,19 +11,12 @@ use re_format::{format_bytes, format_uint};
 use re_log_channel::LogSource;
 use re_log_types::{EntityPath, StoreKind};
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, UiLayout};
 
 use crate::item_ui::{app_id_button_ui, data_source_button_ui};
 
-impl crate::DataUi for EntityDb {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
+impl crate::AppUi for EntityDb {
+    fn app_ui(&self, ctx: &AppContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         re_tracing::profile_function!();
 
         if ui_layout.is_single_line() {
@@ -41,7 +34,7 @@ impl crate::DataUi for EntityDb {
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
-            grid_content_ui(self, ctx, ui, ui_layout);
+            grid_content_ui(ctx, self, ui, ui_layout);
         });
 
         let hub = ctx.store_hub();
@@ -50,50 +43,56 @@ impl crate::DataUi for EntityDb {
             StoreKind::Recording => {}
 
             StoreKind::Blueprint => {
-                let active_app_id = ctx.store_context.application_id();
-                let is_active_app_id = self.application_id() == active_app_id;
+                if let Some(active_app_id) = ctx.active_store_context.map(|sc| sc.application_id())
+                {
+                    let is_active_app_id = self.application_id() == active_app_id;
 
-                if is_active_app_id {
-                    let is_default =
-                        hub.default_blueprint_id_for_app(active_app_id) == Some(self.store_id());
-                    let is_active =
-                        hub.active_blueprint_id_for_app(active_app_id) == Some(self.store_id());
+                    if is_active_app_id {
+                        let is_default = hub.default_blueprint_id_for_app(active_app_id)
+                            == Some(self.store_id());
+                        let is_active =
+                            hub.active_blueprint_id_for_app(active_app_id) == Some(self.store_id());
 
-                    match (is_default, is_active) {
-                        (false, false) => {}
-                        (true, false) => {
-                            ui.add_space(8.0);
-                            ui.label("This is the default blueprint for the current application.");
+                        match (is_default, is_active) {
+                            (false, false) => {}
+                            (true, false) => {
+                                ui.add_space(8.0);
+                                ui.label(
+                                    "This is the default blueprint for the current application.",
+                                );
 
-                            if let Some(active_blueprint) =
-                                hub.active_blueprint_for_app(active_app_id)
-                                && active_blueprint.cloned_from() == Some(self.store_id())
-                            {
-                                // The active blueprint is a clone of the selected blueprint.
-                                if self.latest_row_id() == active_blueprint.latest_row_id() {
-                                    ui.label("The active blueprint is a clone of this blueprint.");
-                                } else {
-                                    ui.label("The active blueprint is a modified clone of this blueprint.");
+                                if let Some(active_blueprint) =
+                                    hub.active_blueprint_for_app(active_app_id)
+                                    && active_blueprint.cloned_from() == Some(self.store_id())
+                                {
+                                    // The active blueprint is a clone of the selected blueprint.
+                                    if self.latest_row_id() == active_blueprint.latest_row_id() {
+                                        ui.label(
+                                            "The active blueprint is a clone of this blueprint.",
+                                        );
+                                    } else {
+                                        ui.label("The active blueprint is a modified clone of this blueprint.");
+                                    }
                                 }
                             }
+                            (false, true) => {
+                                ui.add_space(8.0);
+                                ui.label(format!("This is the active blueprint for the current application, '{active_app_id}'"));
+                            }
+                            (true, true) => {
+                                ui.add_space(8.0);
+                                ui.label(format!("This is both the active and default blueprint for the current application, '{active_app_id}'"));
+                            }
                         }
-                        (false, true) => {
-                            ui.add_space(8.0);
-                            ui.label(format!("This is the active blueprint for the current application, '{active_app_id}'"));
-                        }
-                        (true, true) => {
-                            ui.add_space(8.0);
-                            ui.label(format!("This is both the active and default blueprint for the current application, '{active_app_id}'"));
-                        }
+                    } else {
+                        ui.add_space(8.0);
+                        ui.label("This blueprint is not for the active application");
                     }
-                } else {
-                    ui.add_space(8.0);
-                    ui.label("This blueprint is not for the active application");
                 }
             }
         }
 
-        if ctx.app_options().show_metrics
+        if ctx.app_options.show_metrics
             && self.can_fetch_chunks_from_redap()
             && ui_layout.is_selection_panel()
         {
@@ -103,7 +102,7 @@ impl crate::DataUi for EntityDb {
             });
         }
 
-        if cfg!(debug_assertions) && !ctx.app_ctx.is_test {
+        if cfg!(debug_assertions) && !ctx.is_test {
             ui.collapsing_header("Debug info", true, |ui| {
                 debug_ui(ui, self);
             });
@@ -111,7 +110,7 @@ impl crate::DataUi for EntityDb {
     }
 }
 
-fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_layout: UiLayout) {
     {
         ui.grid_left_hand_label(&format!("{} ID", db.store_id().kind()));
         ui.label(db.store_id().recording_id().to_string());
@@ -165,7 +164,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
         ui.end_row();
     }
 
-    let show_last_modified_time = !ctx.app_ctx.is_test;
+    let show_last_modified_time = !ctx.is_test;
     // Hide in tests because it is non-deterministic (it's based on `RowId`).
     if show_last_modified_time
         && let Some(latest_row_id) = db.latest_row_id()
@@ -173,7 +172,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
     {
         let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
         ui.grid_left_hand_label("Modified");
-        ui.label(time.format(ctx.app_options().timestamp_format));
+        ui.label(time.format(ctx.app_options.timestamp_format));
         ui.end_row();
     }
 
@@ -221,7 +220,7 @@ fn grid_content_ui(db: &EntityDb, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui
         if db.rrd_manifest_index().has_manifest() {
             ui.grid_left_hand_label("Downloaded");
 
-            let memory_limit = ctx.app_ctx.memory_limit;
+            let memory_limit = ctx.memory_limit;
             let max_downloaded_bytes = if db.rrd_manifest_index().is_fully_loaded() {
                 full_size_bytes
             } else {

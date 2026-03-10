@@ -1,10 +1,9 @@
-use re_lenses::{Lens, LensError, Op};
+use re_arrow_combinators::{Selector, Transform as _, map::MapList};
+use re_lenses::{Lens, LensError, op};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::Transform3D;
 
-use crate::loader_mcap::lenses::helpers::{
-    list_xyz_struct_to_list_fixed, list_xyzw_struct_to_list_fixed,
-};
+use crate::loader_mcap::lenses::helpers::{xyz_struct_to_fixed, xyzw_struct_to_fixed};
 
 use super::FOXGLOVE_TIMESTAMP;
 
@@ -18,32 +17,26 @@ pub fn frame_transforms() -> Result<Lens, LensError> {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
                     TimeType::TimestampNs,
-                    [
-                        Op::selector(".transforms[].timestamp"),
-                        Op::time_spec_to_nanos(),
-                    ],
-                )
+                    Selector::parse(".transforms[].timestamp")?
+                        .then(MapList::new(op::timespec_to_nanos())),
+                )?
                 .component(
                     Transform3D::descriptor_parent_frame(),
-                    [Op::selector(".transforms[].parent_frame_id")],
-                )
+                    Selector::parse(".transforms[].parent_frame_id")?,
+                )?
                 .component(
                     Transform3D::descriptor_child_frame(),
-                    [Op::selector(".transforms[].child_frame_id")],
-                )
+                    Selector::parse(".transforms[].child_frame_id")?,
+                )?
                 .component(
                     Transform3D::descriptor_translation(),
-                    [
-                        Op::selector(".transforms[].translation"),
-                        Op::func(list_xyz_struct_to_list_fixed),
-                    ],
-                )
+                    Selector::parse(".transforms[].translation")?
+                        .then(MapList::new(xyz_struct_to_fixed())),
+                )?
                 .component(
                     Transform3D::descriptor_quaternion(),
-                    [
-                        Op::selector(".transforms[].rotation"),
-                        Op::func(list_xyzw_struct_to_list_fixed),
-                    ],
+                    Selector::parse(".transforms[].rotation")?
+                        .then(MapList::new(xyzw_struct_to_fixed())),
                 )
             })?
             .build(),

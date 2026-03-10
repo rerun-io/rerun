@@ -7,7 +7,7 @@ use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{
     Color, {self},
 };
-use re_sdk_types::{self, ArrowString, archetypes};
+use re_sdk_types::{self, Archetype as _, ArrowString, archetypes};
 use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -63,7 +63,10 @@ impl VisualizerSystem for NodeVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<archetypes::GraphNodes>()
+        VisualizerQueryInfo::single_required_component::<components::GraphNode>(
+            &archetypes::GraphNodes::descriptor_node_ids(),
+            &archetypes::GraphNodes::all_components(),
+        )
     }
 
     /// Populates the visualizer with data from the store.

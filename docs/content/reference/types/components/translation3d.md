@@ -11,7 +11,7 @@ A translation vector in 3D space.
 
 ## Arrow datatype
 ```
-FixedSizeList<3, float32>
+FixedSizeList(3 x non-null Float32)
 ```
 
 ## API reference links

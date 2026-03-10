@@ -1,7 +1,7 @@
 use crate::{drag_and_drop, hierarchical_drag_and_drop};
 use egui::{Atom, Button, DragValue, RichText, TextEdit, Ui};
 use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
-use re_ui::re_form::{ConstructFormStrip as _, FormFields, SelectableStrip, SelectableToggle};
+use re_ui::re_form::{ConstructFormStrip as _, FormFields, SelectableStrip};
 use re_ui::{UiExt as _, icons, list_item};
 
 pub struct RightPanel {
@@ -67,7 +67,7 @@ impl RightPanel {
 
         ui.panel_content(|ui| {
             list_item::list_item_scope(ui, "list_item_api", |ui| {
-                Self::new_form_fields_demo(ui);
+                self.new_form_fields_demo(ui);
 
                 ui.section_collapsing_header("List item api")
                     .show(ui, |ui| {
@@ -354,7 +354,7 @@ impl RightPanel {
         );
     }
 
-    fn new_form_fields_demo(ui: &mut Ui) {
+    fn new_form_fields_demo(&mut self, ui: &mut Ui) {
         list_item::list_item_scope(ui, "form_fields", |ui| {
             ui.section_collapsing_header("New form fields").show(ui, |ui| {
                 ui.small("SeriesLines");
@@ -469,8 +469,8 @@ impl RightPanel {
                     PropertyContent::new("visibility")
                         .value_fn(|ui, _vis| {
                             SelectableStrip::same(ui, 2)
-                                .and(SelectableToggle::new("Show", true))
-                                .and(SelectableToggle::new("Hide", false));
+                                .selectable_value(&mut self.boolean, true, "Show")
+                                .selectable_value(&mut self.boolean, false, "Hide");
                         }),
                 );
 

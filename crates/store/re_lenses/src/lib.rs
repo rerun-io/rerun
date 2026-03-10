@@ -7,12 +7,10 @@
 mod ast;
 mod builder;
 mod error;
-mod op;
-mod semantic;
+pub mod op;
 
 pub use self::{
-    ast::{Lens, Lenses, Op, OutputMode, PartialChunk},
+    ast::{Lens, Lenses, OutputMode, PartialChunk},
     builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder, StaticColumnsBuilder},
     error::LensError,
-    op::OpError,
 };

@@ -366,25 +366,26 @@ impl RenderContext {
             .len()
             .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
 
-        if let Some(newest_submission_to_wait_for) = self
+        if let Some(_newest_submission_to_wait_for) = self
             .inflight_queue_submissions
             .drain(0..num_submissions_to_wait_for)
             .next_back()
         {
             // Disable error reporting on Web:
-            // * On WebGPU poll is a no-op and we don't get here.
-            // * On WebGL we'll just immediately timeout since we can't actually wait for frames.
-            if !cfg!(target_arch = "wasm32")
-                && let Err(err) = self.device.poll(wgpu::PollType::Wait {
-                    submission_index: Some(newest_submission_to_wait_for),
-                    timeout: None,
-                })
+            // * On WebGPU poll is a no-op.
+            // * On WebGL we'd just immediately timeout since we can't actually wait for frames.
+            #[cfg(not(target_arch = "wasm32"))]
             {
-                re_log::warn_once!(
-                    "Failed to limit number of in-flight GPU frames to {}: {:?}",
-                    Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
-                    err
-                );
+                if let Err(err) = self.device.poll(wgpu::PollType::Wait {
+                    submission_index: Some(_newest_submission_to_wait_for),
+                    timeout: None,
+                }) {
+                    re_log::warn_once!(
+                        "Failed to limit number of in-flight GPU frames to {}: {:?}",
+                        Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
+                        err
+                    );
+                }
             }
         }
     }

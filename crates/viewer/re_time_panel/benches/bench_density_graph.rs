@@ -52,12 +52,12 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
 
             b.iter(|| {
                 black_box(build_density_graph(
+                    &db,
+                    timeline.name(),
                     ui,
                     &time_ranges_ui,
                     row_rect,
-                    &db,
                     &item,
-                    timeline.name(),
                     config,
                 ));
             });

@@ -5,7 +5,7 @@ use re_format::format_plural_s;
 use re_log_types::{EntityPath, Instance, TimePoint};
 use re_sdk_types::ComponentIdentifier;
 use re_ui::{SyntaxHighlighting as _, UiExt as _};
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{StoreViewContext, UiLayout};
 
 use crate::item_ui;
 
@@ -27,14 +27,7 @@ pub struct LatestAtInstanceResult<'a> {
 }
 
 impl DataUi for LatestAtInstanceResult<'_> {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
-    ) {
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         let Self {
             entity_path,
             component,
@@ -48,7 +41,7 @@ impl DataUi for LatestAtInstanceResult<'_> {
 
         let tokens = ui.tokens();
 
-        let engine = db.storage_engine();
+        let engine = ctx.db.storage_engine();
 
         let Some(component_descriptor) = engine
             .store()
@@ -98,11 +91,11 @@ impl DataUi for LatestAtInstanceResult<'_> {
             if num_instances == 1
                 && entity_path.starts_with(&EntityPath::properties())
                 && let Some(array) = unit.component_batch_raw(component)
-                && ctx.component_ui_registry().try_show_edit_ui(
+                && ctx.app_ctx.component_ui_registry.try_show_edit_ui(
                     ctx,
                     ui,
                     re_viewer_context::EditTarget {
-                        store_id: db.store_id().clone(),
+                        store_id: ctx.db.store_id().clone(),
                         timepoint: TimePoint::STATIC,
                         entity_path: entity_path.clone(),
                     },
@@ -114,12 +107,10 @@ impl DataUi for LatestAtInstanceResult<'_> {
                 return;
             }
 
-            ctx.component_ui_registry().component_ui(
+            ctx.app_ctx.component_ui_registry.component_ui(
                 ctx,
                 ui,
                 ui_layout,
-                query,
-                db,
                 &entity_path,
                 &component_descriptor,
                 unit,
@@ -160,8 +151,6 @@ impl DataUi for LatestAtInstanceResult<'_> {
                                     InstancePath::instance(entity_path.clone(), instance);
                                 item_ui::instance_path_button_to(
                                     ctx,
-                                    query,
-                                    db,
                                     ui,
                                     None,
                                     &instance_path,
@@ -170,12 +159,10 @@ impl DataUi for LatestAtInstanceResult<'_> {
                             }
                         });
                         row.col(|ui| {
-                            ctx.component_ui_registry().component_ui(
+                            ctx.app_ctx.component_ui_registry.component_ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,
-                                query,
-                                db,
                                 &entity_path,
                                 &component_descriptor,
                                 unit,

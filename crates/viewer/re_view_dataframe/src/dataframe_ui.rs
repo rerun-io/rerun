@@ -5,7 +5,7 @@ use anyhow::Context as _;
 use arrow::array::ArrayRef;
 use egui::{NumExt as _, RichText};
 use itertools::Itertools as _;
-use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
+use re_chunk_store::ColumnDescriptor;
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe_ui::re_table_utils::{apply_table_style_fixes, cell_ui, header_ui};
@@ -14,7 +14,7 @@ use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
-use re_viewer_context::{TimeControlCommand, ViewId, ViewerContext};
+use re_viewer_context::{StoreViewContext, TimeControlCommand, ViewId};
 
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
@@ -34,7 +34,7 @@ pub(crate) enum HideColumnAction {
 
 /// Display a dataframe table for the provided query.
 pub(crate) fn dataframe_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     query_handle: &re_dataframe::QueryHandle<StorageEngineArcReadGuard>,
     expanded_rows_cache: &mut ExpandedRowsCache,
@@ -210,7 +210,7 @@ impl RowsDisplayData {
 
 /// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
 struct DataframeTableDelegate<'a> {
-    ctx: &'a ViewerContext<'a>,
+    ctx: &'a StoreViewContext<'a>,
     table_style: re_ui::TableStyle,
     query_handle: &'a QueryHandle<StorageEngineArcReadGuard>,
     selected_columns: &'a [ColumnDescriptor],
@@ -385,7 +385,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         ColumnDescriptor::RowId(_) => {}
                         ColumnDescriptor::Time(descr) => {
                             if response.clicked() {
-                                self.ctx.send_time_commands([
+                                self.ctx.send_time_commands_to_active_recording([
                                     TimeControlCommand::SetActiveTimeline(*descr.timeline().name()),
                                 ]);
                             }
@@ -474,7 +474,10 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
             .query()
             .filtered_index
             .unwrap_or_else(|| TimelineName::new(""));
-        let latest_at_query = LatestAtQuery::new(filtered_index, timestamp);
+
+        let mut time_ctrl_at_time = self.ctx.time_ctrl.clone();
+        time_ctrl_at_time.set_time_cursor_ad_hoc(filtered_index, timestamp.into());
+        let ctx_at_time = self.ctx.with_time_ctrl(&time_ctrl_at_time);
 
         ui.set_truncate_style();
 
@@ -506,13 +509,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 // This is called when data actually needs to be drawn (as opposed to summaries like
                 // "N instances" or "N more…").
                 let data_content = |ui: &mut egui::Ui| {
-                    column.data_ui(
-                        self.ctx,
-                        ui,
-                        &latest_at_query,
-                        batch_row_idx,
-                        instance_index,
-                    );
+                    column.data_ui(&ctx_at_time, ui, batch_row_idx, instance_index);
                 };
 
                 // Draw the cell content with some margin.

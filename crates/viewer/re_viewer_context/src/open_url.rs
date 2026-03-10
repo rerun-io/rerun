@@ -7,8 +7,8 @@ use re_uri::external::url::{self, Url};
 use vec1::{Vec1, vec1};
 
 use crate::{
-    CommandSender, Item, ItemCollection, Route, StoreHub, SystemCommand, SystemCommandSender as _,
-    ViewerContext,
+    AppContext, CommandSender, Item, ItemCollection, Route, StoreHub, SystemCommand,
+    SystemCommandSender as _,
 };
 
 /// A URL that points to a selection (typically an entity) within the currently active recording.
@@ -244,11 +244,11 @@ pub struct OpenUrlOptions {
 }
 
 impl ViewerOpenUrl {
-    pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
+    pub fn from_context(ctx: &AppContext<'_>) -> anyhow::Result<Self> {
         Self::from_context_expanded(
             ctx.store_hub(),
-            ctx.route(),
-            Some(ctx.time_ctrl),
+            ctx.route,
+            ctx.active_time_ctrl(),
             ctx.selection(),
         )
     }
@@ -763,13 +763,19 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr as _;
+    use std::{
+        net::{Ipv4Addr, SocketAddrV4},
+        str::FromStr as _,
+    };
 
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_channel::LogSource;
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
-    use re_uri::external::url::{self, Url};
-    use re_uri::{CatalogUri, DatasetSegmentUri, Fragment};
+    use re_uri::{CatalogUri, DatasetSegmentUri, Fragment, Scheme};
+    use re_uri::{
+        Origin,
+        external::url::{self, Url},
+    };
 
     use super::ViewerOpenUrl;
     use crate::{Item, Route, StoreHub};
@@ -781,6 +787,15 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::from_str(url).unwrap(),
             ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun http://127.0.0.1:9876/proxy";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapProxy(re_uri::ProxyUri::new(Origin::from_scheme_and_socket_addr(
+                Scheme::RerunHttp,
+                SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9876).into()
+            )))
         );
 
         // RedapEntry
