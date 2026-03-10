@@ -392,8 +392,10 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 
 py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "uv sync --package rerun-notebook", depends-on = ["js-build-base"] }
-py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook" }
+py-build-notebook = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk", depends-on = [
+  "js-build-base",
+] }
+py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk" }
 # Create a wheel for the `rerun-sdk` package.
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",

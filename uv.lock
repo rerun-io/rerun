@@ -16,6 +16,7 @@ resolution-markers = [
 members = [
     "air-traffic-data",
     "animated-urdf",
+    "any-scalar",
     "arkit-scenes",
     "blueprint",
     "blueprint-stocks",
@@ -127,6 +128,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89", size = 16081, upload-time = "2024-05-20T21:33:25.928Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53", size = 13643, upload-time = "2024-05-20T21:33:24.1Z" },
+]
+
+[[package]]
+name = "any-scalar"
+version = "0.1.0"
+source = { editable = "examples/python/any_scalar" }
+dependencies = [
+    { name = "psutil" },
+    { name = "pyarrow" },
+    { name = "rerun-sdk" },
+    { name = "yfinance" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "psutil" },
+    { name = "pyarrow" },
+    { name = "rerun-sdk", editable = "rerun_py" },
+    { name = "yfinance" },
 ]
 
 [[package]]
@@ -4795,6 +4815,7 @@ docs = [
 examples = [
     { name = "air-traffic-data" },
     { name = "animated-urdf" },
+    { name = "any-scalar" },
     { name = "arkit-scenes" },
     { name = "blueprint" },
     { name = "blueprint-stocks" },
@@ -4911,6 +4932,7 @@ docs = [
 examples = [
     { name = "air-traffic-data", editable = "examples/python/air_traffic_data" },
     { name = "animated-urdf", editable = "examples/python/animated_urdf" },
+    { name = "any-scalar", editable = "examples/python/any_scalar" },
     { name = "arkit-scenes", editable = "examples/python/arkit_scenes" },
     { name = "blueprint", editable = "examples/python/blueprint" },
     { name = "blueprint-stocks", editable = "examples/python/blueprint_stocks" },

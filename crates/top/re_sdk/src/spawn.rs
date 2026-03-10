@@ -44,7 +44,7 @@ pub struct SpawnOptions {
     /// Defaults to `rerun`.
     pub executable_name: String,
 
-    /// Enforce a specific executable to use instead of searching though PATH
+    /// Enforce a specific executable to use instead of searching through PATH
     /// for [`Self::executable_name`].
     ///
     /// Unspecified by default.
