@@ -287,7 +287,7 @@ impl std::error::Error for ApiError {
 }
 
 /// Helper function for executing requests or connection attempts with retries.
-#[tracing::instrument(skip(f), level = "debug")]
+#[tracing::instrument(skip(f), level = "trace")]
 pub async fn with_retry<T, F, Fut>(req_name: &str, f: F) -> ApiResult<T>
 where
     F: Fn() -> Fut,
@@ -322,7 +322,7 @@ where
                 last_retryable_err = Some(err);
                 let backoff = backoff_gen.gen_next();
 
-                tracing::debug!(
+                tracing::trace!(
                     attempts,
                     max_attempts = MAX_ATTEMPTS,
                     ?backoff,
@@ -332,8 +332,8 @@ where
                 backoff.sleep().await;
             }
             Err(err) => {
-                // logging at the debug level to avoid having these spam in the viewer
-                tracing::debug!(
+                // logging at the trace level to avoid having these spam in debug builds of the viewer
+                tracing::trace!(
                     attempts,
                     "{req_name} failed with non-retryable error: {err}"
                 );
@@ -341,7 +341,7 @@ where
             }
 
             Ok(value) => {
-                tracing::debug!(attempts, "{req_name} succeeded");
+                tracing::trace!(attempts, "{req_name} succeeded");
                 return Ok(value);
             }
         }
@@ -349,7 +349,7 @@ where
         attempts += 1;
     }
 
-    tracing::debug!(
+    tracing::trace!(
         attempts,
         max_attempts = MAX_ATTEMPTS,
         "{req_name} failed after max retries, giving up"
