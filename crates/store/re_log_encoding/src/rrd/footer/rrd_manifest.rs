@@ -7,7 +7,7 @@ use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
 
 use super::{RawRrdManifest, RrdManifestSha256, RrdManifestStaticMap, RrdManifestTemporalMap};
-use crate::CodecResult;
+use crate::{CodecError, CodecResult};
 
 /// A pre-validated and parsed [`RawRrdManifest`].
 ///
@@ -164,6 +164,16 @@ impl RrdManifest {
             static_data_map,
             temporal_data_map,
         })
+    }
+
+    pub fn concat(a: &Self, b: &Self) -> CodecResult<Self> {
+        re_tracing::profile_function!();
+        let a = a.raw.clone();
+        let b = b.raw.clone();
+        let combined = a.concat(b).map_err(|err| {
+            CodecError::FrameDecoding(format!("Failed to concatenate RRD manifests: {err}"))
+        })?;
+        Self::try_new(combined)
     }
 
     /// Builds an [`RrdManifest`] for in-memory chunks (useful for tests).

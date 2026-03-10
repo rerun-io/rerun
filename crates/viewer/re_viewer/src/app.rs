@@ -2508,6 +2508,11 @@ impl App {
                     }
                 }
 
+                DataSourceMessage::RrdManifestComplete(store_id) => {
+                    let entity_db = store_hub.entity_db_entry(&store_id);
+                    entity_db.mark_rrd_manifest_complete();
+                }
+
                 DataSourceMessage::LogMsg(msg) => {
                     self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
                 }
@@ -3386,7 +3391,9 @@ impl App {
         });
 
         let mut memory_limit = if let Some(active_recording) = active_recording {
-            if active_recording.is_currently_downloading_manifest() {
+            if active_recording.is_downloading_first_part_of_manifest() {
+                // We need at least ONE part of the manifest, but
+                // as soon as we have one part we start prefetching chunks
                 return;
             }
 
@@ -3459,7 +3466,7 @@ impl App {
 
             // Subtract all already loaded physical chunks from the memory limit.
             for recording in store_hub.store_bundle().recordings() {
-                if recording.is_currently_downloading_manifest() {
+                if recording.is_downloading_first_part_of_manifest() {
                     // If any are downloading manifest, don't prefetch background recordings.
                     memory_limit = re_memory::MemoryLimit::ZERO;
                     break;

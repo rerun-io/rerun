@@ -432,13 +432,12 @@ impl re_byte_size::SizeBytes for ChunkPrioritizer {
 }
 
 impl ChunkPrioritizer {
-    pub fn on_rrd_manifest(&mut self, manifest: &RrdManifest) {
-        self.update_static_chunks(manifest);
-        self.update_chunk_intervals(manifest);
-        self.update_high_priority_chunks(manifest);
+    pub fn on_rrd_manifest(&mut self, delta: &RrdManifest) {
+        self.update_static_chunks(delta);
+        self.update_chunk_intervals(delta);
+        self.update_high_priority_chunks(delta);
 
-        self.component_paths_from_root_id.clear();
-        for (entity, per_component) in manifest.static_map() {
+        for (entity, per_component) in delta.static_map() {
             for (component, chunk) in per_component {
                 self.component_paths_from_root_id
                     .entry(*chunk)
@@ -450,7 +449,7 @@ impl ChunkPrioritizer {
             }
         }
 
-        for (entity, per_timeline) in manifest.temporal_map() {
+        for (entity, per_timeline) in delta.temporal_map() {
             for per_component in per_timeline.values() {
                 for (component, chunks) in per_component {
                     for chunk in chunks.keys() {
@@ -510,10 +509,19 @@ impl ChunkPrioritizer {
         // parts of a hierarchy, and not all of the transform are required to be
         // available at each time point.
         // More here: https://linear.app/rerun/issue/RR-3441/required-transform-frames-arent-always-loaded
-        self.high_priority_chunks = Self::find_chunks_with_component_prefix(
+        let new_chunks = Self::find_chunks_with_component_prefix(
             manifest,
             "Transform3D:", // Hard-coding this here is VERY hacky, but I want to ship MVP
         );
+        for (timeline, mut chunks) in new_chunks.temporal_chunks {
+            let existing = self
+                .high_priority_chunks
+                .temporal_chunks
+                .entry(timeline)
+                .or_default();
+            existing.append(&mut chunks);
+            existing.sort_by_key(|chunk| chunk.time_range.min);
+        }
     }
 
     fn update_static_chunks(&mut self, manifest: &RrdManifest) {
@@ -539,10 +547,11 @@ impl ChunkPrioritizer {
             }
         }
 
-        self.root_chunk_intervals.clear();
         for (timeline, chunks) in per_timeline_chunks {
             self.root_chunk_intervals
-                .insert(timeline, SortedRangeMap::new(chunks));
+                .entry(timeline)
+                .or_default()
+                .extend(chunks);
         }
     }
 

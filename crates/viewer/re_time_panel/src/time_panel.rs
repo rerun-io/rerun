@@ -349,7 +349,7 @@ impl TimePanel {
         let time_ctrl = store_ctx.time_ctrl;
         let entity_db = store_ctx.db;
 
-        let loading_text = if entity_db.is_currently_downloading_manifest() {
+        let loading_text = if entity_db.is_downloading_first_part_of_manifest() {
             Some("Downloading meta-data")
         } else if time_ctrl.is_pending() {
             Some("Waiting for timeline")
@@ -427,7 +427,7 @@ impl TimePanel {
     ) {
         re_tracing::profile_function!();
 
-        if store_ctx.db.is_currently_downloading_manifest() {
+        if store_ctx.db.is_downloading_first_part_of_manifest() {
             ui.loading_screen_ui("Downloading meta-data", |ui| {
                 let text = "Downloading meta-data";
                 ui.label(egui::RichText::from(text).heading().strong());

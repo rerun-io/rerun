@@ -679,7 +679,9 @@ fn handle_split_chunk_addition(
 
                 idx
             } else {
-                debug_panic!("Split chunks ended up with more samples than the original chunk?");
+                re_log::debug_warn_once!(
+                    "Split chunks ended up with more samples than the original chunk?"
+                );
 
                 old_known_range.last_sample
             }

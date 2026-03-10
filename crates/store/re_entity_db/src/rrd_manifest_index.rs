@@ -8,7 +8,7 @@ use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_chunk::{ChunkId, EntityPath, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 use re_log::debug_assert;
-use re_log_encoding::RrdManifest;
+use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind, TimelinePoint};
 use re_mutex::Mutex;
 
@@ -137,15 +137,17 @@ impl re_byte_size::SizeBytes for LoadedRanges {
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
 /// This is constructed from an [`RrdManifest`], which is what the server sends to the client/viewer.
-//
-// TODO(RR-3383): support multiple manifests per index.
+/// The manifest may be received in parts and concatenated together.
 #[derive(Default)]
 #[cfg_attr(feature = "testing", derive(Clone))]
 pub struct RrdManifestIndex {
-    /// The raw manifest.
+    /// The raw manifest (accumulated from possibly multiple parts).
     ///
     /// This is known ahead-of-time for _some_ data sources.
     manifest: Option<Arc<RrdManifest>>,
+
+    /// True once all parts of the manifest have been received.
+    manifest_complete: bool,
 
     /// These are the chunks known to exist in the data source (e.g. remote server).
     ///
@@ -181,33 +183,33 @@ impl std::fmt::Debug for RrdManifestIndex {
 }
 
 impl RrdManifestIndex {
-    pub fn append(&mut self, manifest: Arc<RrdManifest>) {
+    pub fn append(&mut self, delta: Arc<RrdManifest>) -> CodecResult<()> {
         re_tracing::profile_function!();
 
-        if self.manifest.is_some() {
-            re_log::warn!(
-                "Received a second RRD manifest schema for the same recording. This is not yet supported."
+        self.update_timeline_stats(&delta);
+        self.update_entity_tree(&delta);
+        self.update_entity_static_data(&delta);
+        self.chunk_prioritizer.on_rrd_manifest(&delta);
+
+        self.full_uncompressed_size += delta.col_chunk_byte_size_uncompressed().iter().sum::<u64>();
+
+        self.loaded_ranges = None; // invalidate and recompute
+
+        let row_offset = self
+            .manifest
+            .as_ref()
+            .map_or(0, |manifest| manifest.data().num_rows());
+
+        for (delta_row_idx, (&root_chunk_id, entity_path)) in
+            izip!(delta.col_chunk_ids(), delta.col_chunk_entity_path()).enumerate()
+        {
+            self.root_chunks.insert(
+                root_chunk_id,
+                RootChunkInfo::new(entity_path, row_offset + delta_row_idx),
             );
         }
 
-        self.full_uncompressed_size = manifest.col_chunk_byte_size_uncompressed().iter().sum();
-
-        self.update_timeline_stats(&manifest);
-        self.update_entity_tree(&manifest);
-        self.update_entity_static_data(&manifest);
-        self.chunk_prioritizer.on_rrd_manifest(&manifest);
-
-        self.sorted_chunks
-            .update(&self.entity_tree, manifest.temporal_map());
-
-        for (row_idx, (&root_chunk_id, entity_path)) in
-            izip!(manifest.col_chunk_ids(), manifest.col_chunk_entity_path()).enumerate()
-        {
-            self.root_chunks
-                .insert(root_chunk_id, RootChunkInfo::new(entity_path, row_idx));
-        }
-
-        for timelines in manifest.temporal_map().values() {
+        for timelines in delta.temporal_map().values() {
             for (&timeline, comps) in timelines {
                 for chunks in comps.values() {
                     for (&chunk_id, entry) in chunks {
@@ -232,7 +234,18 @@ impl RrdManifestIndex {
             }
         }
 
-        self.manifest = Some(manifest);
+        let new_full_manifest = if let Some(existing) = self.manifest.take() {
+            Arc::new(RrdManifest::concat(&existing, &delta)?)
+        } else {
+            delta
+        };
+
+        self.sorted_chunks =
+            SortedTemporalChunks::new(&self.entity_tree, new_full_manifest.temporal_map());
+
+        self.manifest = Some(new_full_manifest);
+
+        Ok(())
     }
 
     /// Iterate over all chunks in the manifest.
@@ -384,11 +397,25 @@ impl RrdManifestIndex {
     }
 
     /// False for recordings streamed from SDK via proxy
+    ///
+    /// This is true as soon as the first piece of the manifest is available.
     pub fn has_manifest(&self) -> bool {
         self.manifest.is_some()
     }
 
-    /// The full manifest, if known.
+    /// Have all parts of the manifest been received?
+    pub fn is_manifest_complete(&self) -> bool {
+        self.manifest_complete
+    }
+
+    /// Mark the manifest as complete (all parts have been received).
+    pub fn set_manifest_complete(&mut self) {
+        self.manifest_complete = true;
+    }
+
+    /// The manifest as it currently stands.
+    ///
+    /// More pieces of it may still arrive unless [`Self::is_manifest_complete`] is true.
     pub fn manifest(&self) -> Option<&RrdManifest> {
         self.manifest.as_deref()
     }
@@ -671,6 +698,7 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
             chunk_prioritizer,
             timelines,
             full_uncompressed_size: _,
+            manifest_complete: _,
         } = self;
 
         entity_has_static_data.heap_size_bytes()
@@ -700,6 +728,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             chunk_prioritizer,
             timelines,
             full_uncompressed_size: _,
+            manifest_complete: _,
         } = self;
 
         let mut node = re_byte_size::MemUsageNode::new();

@@ -11,10 +11,14 @@ use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
 /// May contain limited UI commands for instrumenting the state of the receiving end.
 #[derive(Clone, Debug)]
 pub enum DataSourceMessage {
-    /// The index of all the chunks in a recording.
+    /// A piece of the index of all the chunks in a recording.
     ///
     /// Some sources may send this, others may not.
+    /// There may be one or more of these, followed by [`Self::RrdManifestComplete`].
     RrdManifest(StoreId, Arc<RrdManifest>),
+
+    /// All parts of the RRD manifest have been sent.
+    RrdManifestComplete(StoreId),
 
     /// See [`LogMsg`].
     LogMsg(LogMsg),
@@ -34,7 +38,7 @@ impl re_byte_size::SizeBytes for DataSourceMessage {
             Self::RrdManifest(_, manifest) => manifest.heap_size_bytes(),
             Self::LogMsg(log_msg) => log_msg.heap_size_bytes(),
             Self::TableMsg(table_msg) => table_msg.heap_size_bytes(),
-            Self::UiCommand(_) => 0,
+            Self::RrdManifestComplete(_) | Self::UiCommand(_) => 0,
         }
     }
 }
@@ -48,6 +52,7 @@ impl DataSourceMessage {
     pub fn variant_name(&self) -> &'static str {
         match self {
             Self::RrdManifest { .. } => "RrdManifest",
+            Self::RrdManifestComplete(_) => "RrdManifestComplete",
             Self::LogMsg(_) => "LogMsg",
             Self::TableMsg(_) => "TableMsg",
             Self::UiCommand(_) => "UiCommand",
@@ -59,7 +64,7 @@ impl DataSourceMessage {
         match self {
             Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
             Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
-            Self::RrdManifest { .. } | Self::UiCommand(_) => {
+            Self::RrdManifest { .. } | Self::RrdManifestComplete(_) | Self::UiCommand(_) => {
                 // Not everything needs latency tracking
             }
         }

@@ -104,7 +104,12 @@ impl ChunkStore {
                     )
                 }),
         );
-        *static_chunk_ids_per_entity = native_static_map.clone();
+        for (entity_path, per_component) in native_static_map {
+            static_chunk_ids_per_entity
+                .entry(entity_path.clone())
+                .or_default()
+                .extend(per_component.iter().map(|(&k, &v)| (k, v)));
+        }
 
         let native_temporal_map = rrd_manifest.temporal_map();
         chunks_lineage.extend(
@@ -261,7 +266,9 @@ impl ChunkStore {
                         chunk.id()
                     );
                 } else {
-                    re_log::warn_once!("The same chunk was inserted twice (this has no effect)");
+                    re_log::warn_once!(
+                        "[DEBUG] The same chunk was inserted twice (this has no effect)"
+                    );
                 }
             } else {
                 re_log::debug_once!("The same chunk was inserted twice (this has no effect)");

@@ -469,29 +469,61 @@ async fn stream_segment_from_server(
     // See the attached issues for more information.
 
     let start_time = web_time::Instant::now();
-    let manifest_result = client
-        .get_rrd_manifest(dataset_id, segment_id.clone())
+    let manifest_stream_result = client
+        .get_rrd_manifest_stream(dataset_id, segment_id.clone())
         .await;
-    match manifest_result {
-        Ok(raw_rrd_manifest) => {
-            re_log::debug_once!(
-                "The server supports larger-than-RAM. RRD manifest ({} deflated) loaded in {:.1}s",
-                re_format::format_bytes(raw_rrd_manifest.total_size_bytes() as _),
+    match manifest_stream_result {
+        Ok(manifest_stream) => {
+            let mut manifest_stream = std::pin::pin!(manifest_stream);
+
+            let mut last_rrd_manifest: Option<Arc<re_log_encoding::RrdManifest>> = None;
+            let mut part_nr: usize = 0;
+
+            while let Some(part_result) = manifest_stream.next().await {
+                let raw_rrd_manifest_part = part_result?;
+
+                part_nr += 1;
+                re_log::debug!(
+                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
+                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
+                    start_time.elapsed().as_secs_f32(),
+                );
+
+                let rrd_manifest = re_log_encoding::RrdManifest::try_new(raw_rrd_manifest_part)
+                    .map_err(|err| {
+                        ApiError::invalid_arguments_with_source(err, "Invalid RRD manifest part")
+                    })?;
+
+                let rrd_manifest = Arc::new(rrd_manifest);
+
+                if tx
+                    .send(DataSourceMessage::RrdManifest(
+                        store_id.clone(),
+                        rrd_manifest.clone(),
+                    ))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                last_rrd_manifest = Some(rrd_manifest);
+            }
+
+            let Some(rrd_manifest) = last_rrd_manifest else {
+                return Err(ApiError::serialization(
+                    "failed to parse the response for /GetRrdManifest (no data)",
+                ));
+            };
+
+            re_log::debug!(
+                "The server supports on-demand streaming. Full RRD manifest loaded in {:.1}s in {}",
                 start_time.elapsed().as_secs_f32(),
+                re_format::format_plural_s(part_nr, "part")
             );
 
-            let rrd_manifest =
-                re_log_encoding::RrdManifest::try_new(raw_rrd_manifest).map_err(|err| {
-                    ApiError::invalid_arguments_with_source(err, "Invalid RRD manifest")
-                })?;
-
-            let rrd_manifest = Arc::new(rrd_manifest);
-
             if tx
-                .send(DataSourceMessage::RrdManifest(
-                    store_id.clone(),
-                    rrd_manifest.clone(),
-                ))
+                .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
@@ -514,7 +546,7 @@ async fn stream_segment_from_server(
         }
         Err(err) => {
             if err.kind == ApiErrorKind::Unimplemented {
-                re_log::debug_once!("The server does not support larger-than-RAM"); // Legacy server
+                re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
             } else {
                 re_log::warn!("Failed to load RRD manifest: {err}");
             }
