@@ -92,15 +92,9 @@ impl BinaryStreamSink {
             storage,
         )
     }
-}
 
-impl From<&BinaryStreamStorage> for BinaryStreamSink {
     /// Create a [`BinaryStreamSink`] that shares the storage's buffer.
-    ///
-    /// This is useful when using [`BinaryStreamStorage`] with
-    /// [`set_sinks`][crate::RecordingStream::set_sinks] — data logged through
-    /// the multi-sink can be read from the original storage.
-    fn from(storage: &BinaryStreamStorage) -> Self {
+    pub fn with_shared_storage(storage: &BinaryStreamStorage) -> Self {
         Self {
             buffer: storage.inner.clone(),
         }

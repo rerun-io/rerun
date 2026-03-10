@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 import rerun_bindings as bindings
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
@@ -29,7 +29,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
-LogSinkLike: TypeAlias = GrpcSink | FileSink | BinaryStream
+LogSinkLike = GrpcSink | FileSink | BinaryStream
 
 
 def set_sinks(
