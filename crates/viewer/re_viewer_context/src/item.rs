@@ -147,8 +147,10 @@ impl Item {
         }
 
         if let Some(origin) = self.redap_origin()
-            && let Some(route_origin) =
-                display_mode.item().as_ref().and_then(|item| item.redap_origin())
+            && let Some(route_origin) = display_mode
+                .item()
+                .as_ref()
+                .and_then(|item| item.redap_origin())
             && origin != route_origin
         {
             return false;
