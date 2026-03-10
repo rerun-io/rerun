@@ -101,6 +101,7 @@ impl ApplicationSelectionState {
         if self.selection.is_empty()
             && let Some(fallback_selection) = fallback_selection
         {
+            re_log::trace!("Current selection invalid in this context; switching to fallback");
             self.selection = ItemCollection::from(fallback_selection);
         }
 

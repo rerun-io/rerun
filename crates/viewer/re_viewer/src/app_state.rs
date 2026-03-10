@@ -251,6 +251,7 @@ impl AppState {
             // TODO(RR-3033): This needs to be further cleaned up and split into separately handled routes.
             _ => {
                 let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
+                let route = self.navigation.current();
 
                 let Self {
                     app_options,
@@ -301,9 +302,10 @@ impl AppState {
                             return false;
                         }
 
-                        viewport_ui.blueprint.is_item_valid(storage_context, item)
+                        item.is_compatible_with_route(route)
+                            && viewport_ui.blueprint.is_item_valid(storage_context, item)
                     },
-                    Some(Item::StoreId(store_context.recording.store_id().clone())),
+                    route.item(),
                 );
 
                 if let SelectionChange::SelectionChanged(selection) = selection_change
@@ -407,7 +409,6 @@ impl AppState {
                 };
 
                 let egui_ctx = ui.ctx().clone();
-                let route = self.navigation.current();
                 let ctx = ViewerContext {
                     app_ctx: AppContext {
                         is_test: app_env.is_test(),
