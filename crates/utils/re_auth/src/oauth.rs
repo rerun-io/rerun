@@ -39,10 +39,10 @@ pub struct CredentialsLoadError(#[from] storage::LoadError);
 /// Load credentials from storage.
 pub fn load_credentials() -> Result<Option<Credentials>, CredentialsLoadError> {
     if let Some(credentials) = storage::load()? {
-        re_log::debug!("found credentials");
+        re_log::debug_once!("Found credentials for {}", credentials.user.email);
         Ok(Some(credentials))
     } else {
-        re_log::debug!("no credentials stored locally");
+        re_log::debug_once!("No credentials stored locally");
         Ok(None)
     }
 }
@@ -373,7 +373,11 @@ impl Credentials {
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct User {
+    /// Opaque user identifier from the auth provider (e.g. `"user_01JZ…"`).
+    ///
+    /// This is NOT a human-readable name; use [`Self::email`] for display purposes.
     pub id: String,
+
     pub email: String,
 }
 

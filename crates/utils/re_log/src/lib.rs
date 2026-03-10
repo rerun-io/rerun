@@ -135,6 +135,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "datafusion",
     "h2",
     "hyper",
+    "opentelemetry", // Spams about NoopMeterProvider
     "prost_build",
     "reqwest", // Spams "starting new connection: …"
     "sqlparser",

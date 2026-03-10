@@ -141,8 +141,7 @@ pub trait VisualizerBlueprintContext: BlueprintContext {
             let mut visualizer = visualizer.into();
 
             // Generate a deterministic ID based on entity path hash and visualizer index
-            visualizer.id =
-                VisualizerInstructionId::new_deterministic(entity_path.hash().hash64(), i);
+            visualizer.id = VisualizerInstructionId::new_deterministic(entity_path, i);
 
             ids.push(visualizer.id);
             let visualizer_path = base_override_path
