@@ -47,6 +47,150 @@ pub struct PointCloud2MessageParser {
 
 impl PointCloud2MessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.PointCloud2";
+
+    fn append_point_cloud(
+        &mut self,
+        ctx: &mut ParserContext,
+        point_cloud: sensor_msgs::PointCloud2,
+    ) -> anyhow::Result<()> {
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
+            point_cloud.header.stamp.as_nanos() as u64,
+        ));
+
+        let Self {
+            num_rows,
+
+            frame_id,
+
+            height,
+            width,
+            fields,
+            is_bigendian,
+            point_step,
+            row_step,
+            data,
+            is_dense,
+
+            extracted_fields,
+
+            points_3ds,
+        } = self;
+
+        frame_id.values().append_value(point_cloud.header.frame_id);
+        frame_id.append(true);
+
+        height.values().append_slice(&[point_cloud.height]);
+        width.values().append_slice(&[point_cloud.width]);
+
+        let has_point_size = point_cloud.point_step != 0;
+        let position_iter = has_point_size.then(|| {
+            Position3DIter::try_new(
+                &point_cloud.data,
+                point_cloud.point_step as usize,
+                point_cloud.is_bigendian,
+                &point_cloud.fields,
+            )
+        });
+
+        // `PointCloud2` occasionally shows up as an empty placeholder message
+        // with `point_step == 0` and no payload. Skip per-point extraction in
+        // that case instead of panicking when chunking the blob.
+        // We lazily initialize the builders that store the extracted fields from
+        // the blob when we receive the first message.
+        if extracted_fields.len() != point_cloud.fields.len() {
+            *extracted_fields = point_cloud
+                .fields
+                .iter()
+                .map(|field| {
+                    (
+                        field.name.clone(),
+                        ListBuilder::new(builder_from_datatype(field.datatype)),
+                    )
+                })
+                .collect();
+        }
+
+        if has_point_size {
+            for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
+                for (field, (_name, builder)) in
+                    point_cloud.fields.iter().zip(extracted_fields.iter_mut())
+                {
+                    let field_builder = builder.values();
+                    add_field_value(field_builder, field, point_cloud.is_bigendian, point)?;
+                }
+            }
+        }
+
+        for (_name, builder) in extracted_fields {
+            builder.append(true);
+        }
+
+        if let Some(position_iter) = position_iter.flatten() {
+            points_3ds
+                .get_or_insert_with(|| Vec::with_capacity(*num_rows))
+                .push(archetypes::Points3D::new(position_iter));
+        }
+
+        {
+            let struct_builder = fields.values();
+
+            for point_field in point_cloud.fields {
+                {
+                    let name_builder = struct_builder
+                        .values()
+                        .field_builder::<StringBuilder>(0)
+                        .expect("has to exist");
+                    name_builder.append_value(point_field.name);
+                }
+                {
+                    let offset_builder = struct_builder
+                        .values()
+                        .field_builder::<UInt32Builder>(1)
+                        .expect("has to exist");
+                    offset_builder.append_value(point_field.offset);
+                }
+                {
+                    let datatype_builder = struct_builder
+                        .values()
+                        .field_builder::<UInt8Builder>(2)
+                        .expect("has to exist");
+                    datatype_builder.append_value(point_field.datatype as u8);
+                }
+                {
+                    let count_builder = struct_builder
+                        .values()
+                        .field_builder::<UInt32Builder>(3)
+                        .expect("has to exist");
+                    count_builder.append_value(point_field.count);
+                }
+                struct_builder.values().append(true);
+            }
+
+            struct_builder.append(true);
+            fields.append(true);
+        }
+
+        is_bigendian
+            .values()
+            .append_slice(&[point_cloud.is_bigendian]);
+        point_step.values().append_slice(&[point_cloud.point_step]);
+        row_step.values().append_slice(&[point_cloud.row_step]);
+
+        data.values().values().append_slice(&point_cloud.data);
+        is_dense.values().append_slice(&[point_cloud.is_dense]);
+
+        height.append(true);
+        width.append(true);
+        is_bigendian.append(true);
+        point_step.append(true);
+        row_step.append(true);
+        is_dense.append(true);
+
+        data.values().append(true);
+        data.append(true);
+
+        Ok(())
+    }
 }
 
 impl Ros2MessageParser for PointCloud2MessageParser {
@@ -154,6 +298,10 @@ impl<'a> Position3DIter<'a> {
         is_big_endian: bool,
         fields: &[PointField],
     ) -> Option<Self> {
+        if step == 0 {
+            return None;
+        }
+
         let mut x_accessor: Option<(usize, PointFieldDatatype)> = None;
         let mut y_accessor: Option<(usize, PointFieldDatatype)> = None;
         let mut z_accessor: Option<(usize, PointFieldDatatype)> = None;
@@ -331,135 +479,7 @@ impl MessageParser for PointCloud2MessageParser {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
-        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
-            point_cloud.header.stamp.as_nanos() as u64,
-        ));
-
-        let Self {
-            num_rows,
-
-            frame_id,
-
-            height,
-            width,
-            fields,
-            is_bigendian,
-            point_step,
-            row_step,
-            data,
-            is_dense,
-
-            extracted_fields,
-
-            points_3ds,
-        } = self;
-
-        frame_id.values().append_value(point_cloud.header.frame_id);
-        frame_id.append(true);
-
-        height.values().append_slice(&[point_cloud.height]);
-        width.values().append_slice(&[point_cloud.width]);
-
-        let position_iter = Position3DIter::try_new(
-            &point_cloud.data,
-            point_cloud.point_step as usize,
-            point_cloud.is_bigendian,
-            &point_cloud.fields,
-        );
-
-        // We lazily initialize the builders that store the extracted fields from
-        // the blob when we receive the first message.
-        if extracted_fields.len() != point_cloud.fields.len() {
-            *extracted_fields = point_cloud
-                .fields
-                .iter()
-                .map(|field| {
-                    (
-                        field.name.clone(),
-                        ListBuilder::new(builder_from_datatype(field.datatype)),
-                    )
-                })
-                .collect();
-        }
-
-        for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
-            for (field, (_name, builder)) in
-                point_cloud.fields.iter().zip(extracted_fields.iter_mut())
-            {
-                let field_builder = builder.values();
-                add_field_value(field_builder, field, point_cloud.is_bigendian, point)?;
-            }
-        }
-
-        for (_name, builder) in extracted_fields {
-            builder.append(true);
-        }
-
-        if let Some(position_iter) = position_iter {
-            points_3ds
-                .get_or_insert_with(|| Vec::with_capacity(*num_rows))
-                .push(archetypes::Points3D::new(position_iter));
-        }
-
-        {
-            let struct_builder = fields.values();
-
-            for point_field in point_cloud.fields {
-                {
-                    let name_builder = struct_builder
-                        .values()
-                        .field_builder::<StringBuilder>(0)
-                        .expect("has to exist");
-                    name_builder.append_value(point_field.name);
-                }
-                {
-                    let offset_builder = struct_builder
-                        .values()
-                        .field_builder::<UInt32Builder>(1)
-                        .expect("has to exist");
-                    offset_builder.append_value(point_field.offset);
-                }
-                {
-                    let datatype_builder = struct_builder
-                        .values()
-                        .field_builder::<UInt8Builder>(2)
-                        .expect("has to exist");
-                    datatype_builder.append_value(point_field.datatype as u8);
-                }
-                {
-                    let count_builder = struct_builder
-                        .values()
-                        .field_builder::<UInt32Builder>(3)
-                        .expect("has to exist");
-                    count_builder.append_value(point_field.count);
-                }
-                struct_builder.values().append(true);
-            }
-
-            struct_builder.append(true);
-            fields.append(true);
-        }
-
-        is_bigendian
-            .values()
-            .append_slice(&[point_cloud.is_bigendian]);
-        point_step.values().append_slice(&[point_cloud.point_step]);
-        row_step.values().append_slice(&[point_cloud.row_step]);
-
-        data.values().values().append_slice(&point_cloud.data);
-        is_dense.values().append_slice(&[point_cloud.is_dense]);
-
-        height.append(true);
-        width.append(true);
-        is_bigendian.append(true);
-        point_step.append(true);
-        row_step.append(true);
-        is_dense.append(true);
-
-        data.values().append(true);
-        data.append(true);
-
-        Ok(())
+        self.append_point_cloud(ctx, point_cloud)
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
@@ -588,5 +608,118 @@ impl MessageParser for PointCloud2MessageParser {
         chunks.push(data_chunk);
 
         Ok(chunks)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parsers::decode::ParserContext;
+    use crate::parsers::ros2msg::definitions::{builtin_interfaces, std_msgs};
+    use re_chunk::EntityPath;
+
+    #[test]
+    fn ignores_zero_point_step_after_valid_message() {
+        let mut parser = PointCloud2MessageParser::new(2);
+        let mut ctx = ParserContext::new(EntityPath::from("/nav2_percep_cloud"));
+
+        parser
+            .append_point_cloud(
+                &mut ctx,
+                sensor_msgs::PointCloud2 {
+                    header: std_msgs::Header {
+                        stamp: builtin_interfaces::Time { sec: 1, nanosec: 0 },
+                        frame_id: "map".to_owned(),
+                    },
+                    height: 1,
+                    width: 1,
+                    fields: vec![
+                        PointField {
+                            name: "x".to_owned(),
+                            offset: 0,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                        PointField {
+                            name: "y".to_owned(),
+                            offset: 4,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                        PointField {
+                            name: "z".to_owned(),
+                            offset: 8,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                        PointField {
+                            name: "intensity".to_owned(),
+                            offset: 12,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                    ],
+                    is_bigendian: false,
+                    point_step: 16,
+                    row_step: 16,
+                    data: [1.0_f32, 2.0, 3.0, 4.0]
+                        .into_iter()
+                        .flat_map(f32::to_le_bytes)
+                        .collect(),
+                    is_dense: true,
+                },
+            )
+            .unwrap();
+
+        parser
+            .append_point_cloud(
+                &mut ctx,
+                sensor_msgs::PointCloud2 {
+                    header: std_msgs::Header {
+                        stamp: builtin_interfaces::Time { sec: 2, nanosec: 0 },
+                        frame_id: "map".to_owned(),
+                    },
+                    height: 0,
+                    width: 0,
+                    fields: vec![
+                        PointField {
+                            name: "x".to_owned(),
+                            offset: 0,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                        PointField {
+                            name: "y".to_owned(),
+                            offset: 4,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                        PointField {
+                            name: "z".to_owned(),
+                            offset: 8,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                        PointField {
+                            name: "intensity".to_owned(),
+                            offset: 12,
+                            datatype: PointFieldDatatype::Float32,
+                            count: 1,
+                        },
+                    ],
+                    is_bigendian: false,
+                    point_step: 0,
+                    row_step: 0,
+                    data: Vec::new(),
+                    is_dense: false,
+                },
+            )
+            .unwrap();
+
+        let chunks = Box::new(parser).finalize(ctx).unwrap();
+        let row_counts = chunks.iter().map(Chunk::num_rows).collect::<Vec<_>>();
+
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(row_counts, vec![2, 1, 2]);
     }
 }
