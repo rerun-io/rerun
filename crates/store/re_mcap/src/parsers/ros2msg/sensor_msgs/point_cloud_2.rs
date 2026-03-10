@@ -371,10 +371,6 @@ impl MessageParser for PointCloud2MessageParser {
             &point_cloud.fields,
         );
 
-        // `PointCloud2` occasionally shows up as an empty placeholder message
-        // with `point_step == 0` and no payload. Skip per-point extraction in
-        // that case instead of panicking when chunking the blob.
-
         // We lazily initialize the builders that store the extracted fields from
         // the blob when we receive the first message.
         if extracted_fields.len() != point_cloud.fields.len() {
@@ -390,6 +386,9 @@ impl MessageParser for PointCloud2MessageParser {
                 .collect();
         }
 
+        // `PointCloud2` occasionally shows up as an empty placeholder message
+        // with `point_step == 0` and no payload. Skip per-point extraction in
+        // that case instead of panicking when chunking the blob.
         if point_cloud.point_step != 0 {
             for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
                 for (field, (_name, builder)) in
