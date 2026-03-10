@@ -140,7 +140,15 @@ impl VisualizerSystem for VideoStreamVisualizer {
                             format!("No video samples available for {entity_path:?}"),
                             VideoPlaybackIssueSeverity::Informational,
                         ),
-                        _ => (
+                        VideoStreamProcessingError::UnloadedCodec => (
+                            "Codec not loaded yet".to_owned(),
+                            VideoPlaybackIssueSeverity::Loading,
+                        ),
+                        VideoStreamProcessingError::InvalidVideoSampleType(_)
+                        | VideoStreamProcessingError::MissingCodec
+                        | VideoStreamProcessingError::FailedReadingCodec(_)
+                        | VideoStreamProcessingError::OutOfOrderSamples
+                        | VideoStreamProcessingError::UnexpectedChunkChanges => (
                             format!("Failed to play video at {entity_path:?}: {err}"),
                             VideoPlaybackIssueSeverity::Error,
                         ),

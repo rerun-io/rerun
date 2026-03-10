@@ -101,6 +101,9 @@ pub enum VideoStreamProcessingError {
     #[error("No codec specified.")]
     MissingCodec,
 
+    #[error("Codec not loaded yet.")]
+    UnloadedCodec,
+
     #[error("Failed to read codec - {0}")]
     FailedReadingCodec(Box<re_chunk::ChunkError>),
 
@@ -744,7 +747,17 @@ fn load_video_data_from_chunks(
     let sample_chunks = query_results.get_required(sample_component).unwrap_or(&[]);
     let codec_chunks = query_results
         .get_required(codec_component)
-        .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+        .map_err(|_err| {
+            if store
+                .storage_engine()
+                .store()
+                .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
+            {
+                VideoStreamProcessingError::UnloadedCodec
+            } else {
+                VideoStreamProcessingError::MissingCodec
+            }
+        })?;
 
     // Translate codec by looking at the last codec.
     // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
