@@ -96,7 +96,7 @@ pub use texture_readback::{TextureReadback, poll_read_texture, schedule_read_tex
 // Re-export used color types directly.
 pub use ecolor::{Color32, Hsva, Rgba};
 pub use global_bindings::GlobalBindings;
-pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
+pub use importer::{CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;

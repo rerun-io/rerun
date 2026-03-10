@@ -45,6 +45,7 @@ pub struct View3DState {
     eye_interact_fade_change_time: f64,
 
     pub show_smoothed_bbox: bool,
+    pub show_per_entity_bbox: bool,
 }
 
 impl Default for View3DState {
@@ -55,6 +56,7 @@ impl Default for View3DState {
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
             show_smoothed_bbox: false,
+            show_per_entity_bbox: false,
         }
     }
 }
@@ -386,6 +388,14 @@ impl SpatialView3D {
                         .radius(box_line_radius)
                         .color(ctx.tokens().frustum_color)
                 });
+        }
+        if state.state_3d.show_per_entity_bbox {
+            let mut batch = line_builder.batch("per_entity_bboxes");
+            for bbox in state.bounding_boxes.per_entity.values() {
+                batch
+                    .add_box_outline(bbox)
+                    .map(|lines| lines.radius(box_line_radius).color(egui::Color32::YELLOW));
+            }
         }
 
         show_orbit_eye_center(

@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use crate::mesh::{CpuMesh, Material, MeshError};
 use crate::resource_managers::{AlphaChannelUsage, GpuTexture2D, ImageDataDesc, TextureManager2D};
-use crate::{CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul};
+use crate::{CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul};
 
 #[derive(thiserror::Error, Debug)]
 pub enum GltfImportError {
@@ -109,18 +109,13 @@ pub fn load_gltf_from_buffer(
         re_tracing::profile_scope!("mesh");
 
         let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, &ctx.texture_manager_2d)?;
-        let re_mesh_key = re_model.meshes.insert(re_mesh);
+        let re_mesh_key = re_model.add_mesh(re_mesh);
         mesh_keys.insert(mesh.index(), re_mesh_key);
     }
 
     for scene in doc.scenes() {
         for node in scene.nodes() {
-            gather_instances_recursive(
-                &mut re_model.instances,
-                &node,
-                &glam::Affine3A::IDENTITY,
-                &mesh_keys,
-            );
+            gather_instances_recursive(&mut re_model, &node, &glam::Affine3A::IDENTITY, &mesh_keys);
         }
     }
 
@@ -298,7 +293,7 @@ fn import_mesh(
 }
 
 fn gather_instances_recursive(
-    instances: &mut Vec<CpuMeshInstance>,
+    model: &mut CpuModel,
     node: &gltf::Node<'_>,
     transform: &glam::Affine3A,
     meshes: &HashMap<usize, CpuModelMeshKey>,
@@ -325,15 +320,12 @@ fn gather_instances_recursive(
     let transform = *transform * node_transform;
 
     for child in node.children() {
-        gather_instances_recursive(instances, &child, &transform, meshes);
+        gather_instances_recursive(model, &child, &transform, meshes);
     }
 
     if let Some(mesh) = node.mesh()
-        && let Some(mesh_key) = meshes.get(&mesh.index())
+        && let Some(&mesh_key) = meshes.get(&mesh.index())
     {
-        instances.push(CpuMeshInstance {
-            mesh: *mesh_key,
-            world_from_mesh: transform,
-        });
+        model.add_instance(mesh_key, transform);
     }
 }
