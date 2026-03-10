@@ -293,7 +293,7 @@ impl AppState {
                             return false;
                         }
 
-                        item.is_compatible_with_route(route)
+                        item.is_compatible_with_display_mode(route)
                             && viewport_ui.blueprint.is_item_valid(storage_context, item)
                     },
                     route.item(),

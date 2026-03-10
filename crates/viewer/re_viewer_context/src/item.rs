@@ -3,6 +3,7 @@ use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 
 use crate::blueprint_id::ViewIdRegistry;
+use crate::open_url::EXAMPLES_ORIGIN;
 use crate::{BlueprintId, ContainerId, Contents, ViewId};
 
 /// `Item` state for a dataresult interaction, i.e. when hovering or selecting an item in a view's data results.
@@ -133,20 +134,21 @@ impl Item {
         }
     }
 
-    /// Is this item compatible with the given [`crate::Route`]?
+    /// Is this item compatible with the given [`crate::DisplayMode`]?
     ///
     /// For example, a recording or redap entry that belongs to a different
-    /// route than the currently active one is incompatible.
-    pub fn is_compatible_with_route(&self, route: &crate::Route) -> bool {
+    /// display mode than the currently active one is incompatible.
+    pub fn is_compatible_with_display_mode(&self, display_mode: &crate::DisplayMode) -> bool {
         if let Self::StoreId(store_id) = self
-            && let Some(route_recording_id) = route.recording_id()
-            && store_id != route_recording_id
+            && let crate::DisplayMode::LocalRecordings(mode_store_id) = display_mode
+            && store_id != mode_store_id
         {
             return false;
         }
 
         if let Some(origin) = self.redap_origin()
-            && let Some(route_origin) = route.item().as_ref().and_then(|item| item.redap_origin())
+            && let Some(route_origin) =
+                display_mode.item().as_ref().and_then(|item| item.redap_origin())
             && origin != route_origin
         {
             return false;
