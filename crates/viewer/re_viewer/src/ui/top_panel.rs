@@ -1,4 +1,7 @@
-use egui::{Atom, Button, Color32, Id, Image, NumExt as _, Popup, RichText, Sense, include_image};
+use egui::{
+    Align, Atom, Button, Color32, Id, Image, Layout, NumExt as _, Popup, RichText, Sense,
+    include_image,
+};
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
@@ -471,14 +474,23 @@ fn panel_buttons_r2l(
                     ui.vertical(|ui| {
                         ui.spacing_mut().item_spacing.y = 2.0;
                         ui.label(RichText::new(&auth.email).color(ui.tokens().text_default));
+                        if let Some(org_name) = &auth.org_name {
+                            ui.label(RichText::new(org_name).color(ui.tokens().text_subdued));
+                        }
+                    })
+                });
+
+                // Avoid increasing the width of the popup, ignore this button when egui calculates the size.
+                if !ui.is_sizing_pass() {
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
-                            .link(RichText::new("Log out").color(ui.tokens().text_subdued))
+                            .add(re_ui::ReButton::new("Log out").small().primary())
                             .clicked()
                         {
                             app.command_sender.send_system(SystemCommand::Logout);
                         }
-                    })
-                });
+                    });
+                }
             });
     }
 }

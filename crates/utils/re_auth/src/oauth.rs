@@ -231,6 +231,10 @@ pub struct RerunCloudClaims {
     /// Subject's email address.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
+
+    /// Organization name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_name: Option<String>,
 }
 
 impl RerunCloudClaims {
@@ -325,8 +329,10 @@ impl Credentials {
         let jwt = Jwt(res.access_token);
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
+        let mut user: User = res.user;
+        user.org_name = claims.org_name.clone();
         Ok(InMemoryCredentials(Self {
-            user: res.user,
+            user,
             refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
             claims,
@@ -346,6 +352,7 @@ impl Credentials {
         let user = User {
             id: claims.sub.clone(),
             email,
+            org_name: claims.org_name.clone(),
         };
         let access_token = AccessToken {
             token: access_token,
@@ -379,6 +386,7 @@ pub struct User {
     pub id: String,
 
     pub email: String,
+    pub org_name: Option<String>,
 }
 
 /// An access token which was valid at some point in the past.

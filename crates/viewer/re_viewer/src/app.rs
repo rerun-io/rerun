@@ -197,9 +197,12 @@ impl App {
         if connection_registry.should_use_stored_credentials() {
             let command_sender = command_channel.0.clone();
             re_auth::credentials::subscribe_auth_changes(move |user| {
-                command_sender.send_system(SystemCommand::OnAuthChanged(
-                    user.map(|user| AuthContext { email: user.email }),
-                ));
+                command_sender.send_system(SystemCommand::OnAuthChanged(user.map(|user| {
+                    AuthContext {
+                        email: user.email,
+                        org_name: user.org_name,
+                    }
+                })));
             });
 
             // Call get_token once so the auth state is initialized.
