@@ -86,6 +86,19 @@ pub enum Item {
 }
 
 impl Item {
+    /// The example page / welcome screen
+    pub fn welcome_page() -> Self {
+        Self::RedapServer(EXAMPLES_ORIGIN.clone())
+    }
+
+    pub fn redap_origin(&self) -> Option<&re_uri::Origin> {
+        match self {
+            Self::RedapServer(origin) => Some(origin),
+            Self::RedapEntry(entry_uri) => Some(&entry_uri.origin),
+            _ => None,
+        }
+    }
+
     pub fn view_id(&self) -> Option<BlueprintId<ViewIdRegistry>> {
         match self {
             Self::AppId(_)
@@ -118,6 +131,28 @@ impl Item {
             Self::InstancePath(instance_path) => Some(&instance_path.entity_path),
             Self::DataResult(data_result) => Some(&data_result.instance_path.entity_path),
         }
+    }
+
+    /// Is this item compatible with the given [`crate::Route`]?
+    ///
+    /// For example, a recording or redap entry that belongs to a different
+    /// route than the currently active one is incompatible.
+    pub fn is_compatible_with_route(&self, route: &crate::Route) -> bool {
+        if let Self::StoreId(store_id) = self
+            && let Some(route_recording_id) = route.recording_id()
+            && store_id != route_recording_id
+        {
+            return false;
+        }
+
+        if let Some(origin) = self.redap_origin()
+            && let Some(route_origin) = route.item().as_ref().and_then(|item| item.redap_origin())
+            && origin != route_origin
+        {
+            return false;
+        }
+
+        true
     }
 
     /// Converts this item to a data path if possible.

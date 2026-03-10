@@ -260,8 +260,12 @@ pub struct RecordingData<'a> {
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct ServerData<'a> {
     pub origin: re_uri::Origin,
-    pub is_active: bool,
+
+    /// This is what is selected
     pub is_selected: bool,
+
+    /// What is selected is a subset of this thing
+    pub is_active: bool,
 
     pub entries_data: ServerEntriesData<'a>,
 }

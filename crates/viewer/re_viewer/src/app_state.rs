@@ -242,6 +242,7 @@ impl AppState {
             // display modes. See https://www.notion.so/rerunio/Major-refactor-of-re_viewer-1d8b24554b198085a02dfe441db330b4
             _ => {
                 let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
+                let route = self.navigation.current();
 
                 let Self {
                     app_options,
@@ -292,9 +293,10 @@ impl AppState {
                             return false;
                         }
 
-                        viewport_ui.blueprint.is_item_valid(storage_context, item)
+                        item.is_compatible_with_route(route)
+                            && viewport_ui.blueprint.is_item_valid(storage_context, item)
                     },
-                    Some(Item::StoreId(store_context.recording.store_id().clone())),
+                    route.item(),
                 );
 
                 if let SelectionChange::SelectionChanged(selection) = selection_change
