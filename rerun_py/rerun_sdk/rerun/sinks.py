@@ -462,6 +462,8 @@ def spawn(
     server_memory_limit: str = "1GiB",
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
+    executable_name: str = "rerun",
+    executable_path: str | None = None,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -494,6 +496,16 @@ def spawn(
         Hide the normal Rerun welcome screen.
     detach_process:
         Detach Rerun Viewer process from the application process.
+    executable_name:
+        Specifies the name of the Rerun executable.
+        You can omit the `.exe` suffix on Windows.
+
+        Defaults to `rerun`.
+    executable_path:
+        Enforce a specific executable to use instead of searching
+        through PATH for `executable_name`.
+
+        Unspecified by default.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -516,6 +528,8 @@ def spawn(
         server_memory_limit=server_memory_limit,
         hide_welcome_screen=hide_welcome_screen,
         detach_process=detach_process,
+        executable_name=executable_name,
+        executable_path=executable_path,
     )
 
     if connect:
