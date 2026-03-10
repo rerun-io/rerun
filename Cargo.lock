@@ -9268,6 +9268,7 @@ dependencies = [
  "typenum",
  "uuid",
  "web-time",
+ "xxhash-rust",
 ]
 
 [[package]]
