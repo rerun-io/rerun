@@ -100,7 +100,7 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: true },
                     )
                 }),
         );
@@ -121,7 +121,7 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: false },
                     )
                 }),
         );
@@ -301,7 +301,7 @@ impl ChunkStore {
 
         if matches!(
             self.direct_lineage(&chunk.id()),
-            Some(&ChunkDirectLineage::ReferencedFrom(_))
+            Some(&ChunkDirectLineage::RootFromManifest { .. })
         ) {
             // If we reach here, then a chunk that was previously virtually inserted using `insert_rrd_manifest`
             // is about to be physically inserted for real.
