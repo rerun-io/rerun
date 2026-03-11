@@ -42,6 +42,8 @@ mod lexer;
 mod parser;
 mod runtime;
 
+pub use parser::Literal;
+
 use arrow::{
     array::ListArray,
     datatypes::{DataType, Fields},

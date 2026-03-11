@@ -72,6 +72,19 @@ impl std::fmt::Display for Segment {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Literal {
+    String(String),
+}
+
+impl std::fmt::Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::String(v) => write!(f, "{v:?}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Identity,
     Path(Vec<Segment>),

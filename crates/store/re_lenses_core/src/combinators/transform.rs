@@ -41,6 +41,13 @@ where
     }
 }
 
+/// A function is a [`Transform`] with a name.
+pub trait Function: Transform<Source = ListArray, Target = ListArray> {
+    fn name(&self) -> String;
+
+    fn arguments(&self) -> Vec<crate::selector::Literal>;
+}
+
 /// Composed transformation created by calling [`.then()`](Transform::then).
 #[derive(Clone)]
 pub struct Then<T1, T2> {
