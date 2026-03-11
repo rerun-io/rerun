@@ -40,9 +40,9 @@ use datatype_uis::{
     view_timestamp, view_uuid, view_view_id,
 };
 use re_sdk_types::blueprint::components::{
-    AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
-    ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
-    RootContainer, ViewFit, ViewMaximized,
+    AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, Eye3DProjection, ForceDistance,
+    ForceIterations, ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider,
+    NearClipPlane, RootContainer, ViewFit, ViewMaximized,
 };
 use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
@@ -130,6 +130,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MeshFaceRendering>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Eye3DKind>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<Eye3DProjection>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
     registry.add_singleline_edit_or_view::<InterpolationMode>(edit_view_enum);

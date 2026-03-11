@@ -206,6 +206,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Eye3DProjection as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The projection type of the eye for the spatial 3D view.",
+                deprecation_summary: None,
+                custom_placeholder: Some(Eye3DProjection::default().to_arrow()?),
+                datatype: Eye3DProjection::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: Eye3DProjection::verify_arrow_array,
+            },
+        ),
+        (
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3801,10 +3812,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
+                        name: "projection",
+                        display_name: "Projection",
+                        component_type: "rerun.blueprint.components.Eye3DProjection".into(),
+                        docstring_md: "The projection type of the eye for the spatial 3D view (perspective or orthographic).\n\nDefaults to perspective.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
                         name: "position",
                         display_name: "Position",
                         component_type: "rerun.components.Position3D".into(),
                         docstring_md: "The cameras current position.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "vertical_world_size",
+                        display_name: "Vertical world size",
+                        component_type: "rerun.components.Length".into(),
+                        docstring_md: "The vertical size of the orthographic projection plane in world units, i.e. the zoom level.\n\nNot used when the projection is perspective.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

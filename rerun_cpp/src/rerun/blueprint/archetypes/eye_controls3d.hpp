@@ -5,10 +5,12 @@
 
 #include "../../blueprint/components/angular_speed.hpp"
 #include "../../blueprint/components/eye3d_kind.hpp"
+#include "../../blueprint/components/eye3d_projection.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
 #include "../../components/entity_path.hpp"
+#include "../../components/length.hpp"
 #include "../../components/linear_speed.hpp"
 #include "../../components/position3d.hpp"
 #include "../../components/vector3d.hpp"
@@ -33,8 +35,18 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to orbital.
         std::optional<ComponentBatch> kind;
 
+        /// The projection type of the eye for the spatial 3D view (perspective or orthographic).
+        ///
+        /// Defaults to perspective.
+        std::optional<ComponentBatch> projection;
+
         /// The cameras current position.
         std::optional<ComponentBatch> position;
+
+        /// The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+        ///
+        /// Not used when the projection is perspective.
+        std::optional<ComponentBatch> vertical_world_size;
 
         /// The position the camera is currently looking at.
         ///
@@ -75,10 +87,20 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "EyeControls3D:kind",
             Loggable<rerun::blueprint::components::Eye3DKind>::ComponentType
         );
+        /// `ComponentDescriptor` for the `projection` field.
+        static constexpr auto Descriptor_projection = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:projection",
+            Loggable<rerun::blueprint::components::Eye3DProjection>::ComponentType
+        );
         /// `ComponentDescriptor` for the `position` field.
         static constexpr auto Descriptor_position = ComponentDescriptor(
             ArchetypeName, "EyeControls3D:position",
             Loggable<rerun::components::Position3D>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `vertical_world_size` field.
+        static constexpr auto Descriptor_vertical_world_size = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:vertical_world_size",
+            Loggable<rerun::components::Length>::ComponentType
         );
         /// `ComponentDescriptor` for the `look_target` field.
         static constexpr auto Descriptor_look_target = ComponentDescriptor(
@@ -130,10 +152,32 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
+        /// The projection type of the eye for the spatial 3D view (perspective or orthographic).
+        ///
+        /// Defaults to perspective.
+        EyeControls3D with_projection(
+            const rerun::blueprint::components::Eye3DProjection& _projection
+        ) && {
+            projection =
+                ComponentBatch::from_loggable(_projection, Descriptor_projection).value_or_throw();
+            return std::move(*this);
+        }
+
         /// The cameras current position.
         EyeControls3D with_position(const rerun::components::Position3D& _position) && {
             position =
                 ComponentBatch::from_loggable(_position, Descriptor_position).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+        ///
+        /// Not used when the projection is perspective.
+        EyeControls3D with_vertical_world_size(const rerun::components::Length& _vertical_world_size
+        ) && {
+            vertical_world_size =
+                ComponentBatch::from_loggable(_vertical_world_size, Descriptor_vertical_world_size)
+                    .value_or_throw();
             return std::move(*this);
         }
 

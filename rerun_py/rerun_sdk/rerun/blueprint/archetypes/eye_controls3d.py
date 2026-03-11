@@ -33,7 +33,9 @@ class EyeControls3D(Archetype):
         self: Any,
         *,
         kind: blueprint_components.Eye3DKindLike | None = None,
+        projection: blueprint_components.Eye3DProjectionLike | None = None,
         position: datatypes.Vec3DLike | None = None,
+        vertical_world_size: datatypes.Float32Like | None = None,
         look_target: datatypes.Vec3DLike | None = None,
         eye_up: datatypes.Vec3DLike | None = None,
         speed: datatypes.Float64Like | None = None,
@@ -50,8 +52,16 @@ class EyeControls3D(Archetype):
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
+        projection:
+            The projection type of the eye for the spatial 3D view (perspective or orthographic).
+
+            Defaults to perspective.
         position:
             The cameras current position.
+        vertical_world_size:
+            The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+
+            Not used when the projection is perspective.
         look_target:
             The position the camera is currently looking at.
 
@@ -84,7 +94,9 @@ class EyeControls3D(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 kind=kind,
+                projection=projection,
                 position=position,
+                vertical_world_size=vertical_world_size,
                 look_target=look_target,
                 eye_up=eye_up,
                 speed=speed,
@@ -98,7 +110,9 @@ class EyeControls3D(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             kind=None,
+            projection=None,
             position=None,
+            vertical_world_size=None,
             look_target=None,
             eye_up=None,
             speed=None,
@@ -119,7 +133,9 @@ class EyeControls3D(Archetype):
         *,
         clear_unset: bool = False,
         kind: blueprint_components.Eye3DKindLike | None = None,
+        projection: blueprint_components.Eye3DProjectionLike | None = None,
         position: datatypes.Vec3DLike | None = None,
+        vertical_world_size: datatypes.Float32Like | None = None,
         look_target: datatypes.Vec3DLike | None = None,
         eye_up: datatypes.Vec3DLike | None = None,
         speed: datatypes.Float64Like | None = None,
@@ -138,8 +154,16 @@ class EyeControls3D(Archetype):
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
+        projection:
+            The projection type of the eye for the spatial 3D view (perspective or orthographic).
+
+            Defaults to perspective.
         position:
             The cameras current position.
+        vertical_world_size:
+            The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+
+            Not used when the projection is perspective.
         look_target:
             The position the camera is currently looking at.
 
@@ -172,7 +196,9 @@ class EyeControls3D(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "kind": kind,
+                "projection": projection,
                 "position": position,
+                "vertical_world_size": vertical_world_size,
                 "look_target": look_target,
                 "eye_up": eye_up,
                 "speed": speed,
@@ -206,12 +232,34 @@ class EyeControls3D(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    projection: blueprint_components.Eye3DProjectionBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.Eye3DProjectionBatch._converter,  # type: ignore[misc]
+    )
+    # The projection type of the eye for the spatial 3D view (perspective or orthographic).
+    #
+    # Defaults to perspective.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     position: components.Position3DBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=components.Position3DBatch._converter,  # type: ignore[misc]
     )
     # The cameras current position.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    vertical_world_size: components.LengthBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.LengthBatch._converter,  # type: ignore[misc]
+    )
+    # The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+    #
+    # Not used when the projection is perspective.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
