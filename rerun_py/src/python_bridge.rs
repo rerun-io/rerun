@@ -945,9 +945,12 @@ fn spawn(
         executable_path,
         extra_args,
         extra_env,
+        new: false,
     };
 
-    re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    re_sdk::spawn(&spawn_opts)
+        .map(|_| ())
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
 #[pyclass(

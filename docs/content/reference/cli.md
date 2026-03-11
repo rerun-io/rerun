@@ -77,7 +77,16 @@ The Rerun command-line interface:
 * `--port <PORT>`
 > What port do we listen to for SDKs to connect to over gRPC.
 >
+> Use `auto` to always start a new viewer with a free port if the default is taken.
+>
 > [Default: `9876`]
+
+* `--new <NEW>`
+> Alias for `--port auto`. Always start a new viewer.
+>
+> If the port is already in use, a free port will be picked automatically.
+>
+> [Default: `false`]
 
 * `--profile <PROFILE>`
 > Start with the puffin profiler running.
