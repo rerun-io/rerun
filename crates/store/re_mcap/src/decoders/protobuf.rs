@@ -13,7 +13,7 @@ use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 
 use crate::parsers::{MessageParser, ParserContext};
-use crate::{Error, LayerIdentifier, MessageLayer};
+use crate::{DecoderIdentifier, Error, MessageDecoder};
 
 /// Returns `true` if the field belongs to a real (non-synthetic) `oneof`.
 ///
@@ -433,16 +433,16 @@ fn has_real_oneofs(descriptor: &MessageDescriptor) -> bool {
 
 /// Provides reflection-based conversion of protobuf-encoded MCAP messages.
 ///
-/// Applying this layer will result in a direct Arrow representation of the fields.
+/// Applying this decoder will result in a direct Arrow representation of the fields.
 /// This is useful for querying certain fields from an MCAP file, but wont result
 /// in semantic types that can be picked up by the Rerun viewer.
 #[derive(Debug, Default)]
-pub struct McapProtobufLayer {
+pub struct McapProtobufDecoder {
     descrs_per_topic: ahash::HashMap<String, MessageDescriptor>,
 }
 
-impl MessageLayer for McapProtobufLayer {
-    fn identifier() -> LayerIdentifier {
+impl MessageDecoder for McapProtobufDecoder {
+    fn identifier() -> DecoderIdentifier {
         "protobuf".into()
     }
 
@@ -559,8 +559,8 @@ mod integration_tests {
     use re_chunk::Chunk;
     use re_log::LogMsg;
 
-    use crate::LayerRegistry;
-    use crate::layers::McapProtobufLayer;
+    use crate::DecoderRegistry;
+    use crate::decoders::McapProtobufDecoder;
 
     /// Helper to mark fields as proto3 optional with proper synthetic oneof declarations.
     ///
@@ -763,19 +763,19 @@ mod integration_tests {
         Ok(())
     }
 
-    fn run_layer(summary: &mcap::Summary, buffer: &[u8]) -> Vec<Chunk> {
+    fn run_decoder(summary: &mcap::Summary, buffer: &[u8]) -> Vec<Chunk> {
         let mut chunks = Vec::new();
 
         let mut send_chunk = |chunk| {
             chunks.push(chunk);
         };
 
-        let registry = LayerRegistry::empty().register_message_layer::<McapProtobufLayer>();
+        let registry = DecoderRegistry::empty().register_message_decoder::<McapProtobufDecoder>();
         registry
             .plan(summary)
             .expect("failed to plan")
             .run(buffer, summary, &mut send_chunk)
-            .expect("failed to run layer");
+            .expect("failed to run decoder");
 
         chunks
     }
@@ -848,7 +848,7 @@ mod integration_tests {
             "there should be only one chunk"
         );
 
-        let chunks = run_layer(&summary, buffer.as_slice());
+        let chunks = run_decoder(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
 
         insta::assert_snapshot!(snapshot_name, format!("{:-240}", &chunks[0]));
@@ -918,7 +918,7 @@ mod integration_tests {
             (summary, writer.into_inner().into_inner())
         };
 
-        let chunks = run_layer(&summary, buffer.as_slice());
+        let chunks = run_decoder(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
         // We wrote 10 messages (5 valid, 5 invalid), so we should get 5 rows.
         assert_eq!(chunks[0].num_rows(), 5);
@@ -1105,7 +1105,7 @@ mod integration_tests {
         let summary = writer.finish().expect("finishing writer failed");
         let buffer = writer.into_inner().into_inner();
 
-        let chunks = run_layer(&summary, buffer.as_slice());
+        let chunks = run_decoder(&summary, buffer.as_slice());
 
         check_single_warning(&log_rx, "color_topic");
 
@@ -1146,7 +1146,7 @@ mod integration_tests {
         let summary = writer.finish().expect("finishing writer failed");
         let buffer = writer.into_inner().into_inner();
 
-        let chunks = run_layer(&summary, buffer.as_slice());
+        let chunks = run_decoder(&summary, buffer.as_slice());
 
         check_single_warning(&log_rx, "color_topic");
 
@@ -1188,7 +1188,7 @@ mod integration_tests {
         let summary = writer.finish().expect("finishing writer failed");
         let buffer = writer.into_inner().into_inner();
 
-        let chunks = run_layer(&summary, buffer.as_slice());
+        let chunks = run_decoder(&summary, buffer.as_slice());
 
         check_single_warning(&log_rx, "scene_topic");
 

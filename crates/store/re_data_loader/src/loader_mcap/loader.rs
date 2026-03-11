@@ -8,7 +8,7 @@ use crossbeam::channel::Sender;
 use re_chunk::RowId;
 use re_lenses::Lenses;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
-use re_mcap::{LayerIdentifier, LayerRegistry, SelectedLayers};
+use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
 use re_quota_channel::send_crossbeam;
 
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
@@ -20,18 +20,18 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// There are many different ways to extract and interpret information from MCAP files.
 /// For example, it might be interesting to query for particular fields of messages,
 /// or show information directly in the Rerun viewer. Because use-cases can vary, the
-/// [`McapLoader`] is made up of [`re_mcap::Layer`]s, each representing different views of the
+/// [`McapLoader`] is made up of [`re_mcap::Decoder`]s, each representing different views of the
 /// underlying data.
 ///
-/// These layers can be specified in the CLI wen converting an MCAP file
+/// These decoders can be specified in the CLI when converting an MCAP file
 /// to an .rrd. Here are a few examples:
-/// - [`re_mcap::layers::McapProtobufLayer`]
-/// - [`re_mcap::layers::McapRawLayer`]
+/// - [`re_mcap::decoders::McapProtobufDecoder`]
+/// - [`re_mcap::decoders::McapRawDecoder`]
 ///
 /// Optionally, [`Lenses`] can be configured via [`Self::with_lenses`] to transform
 /// chunks as they are loaded (e.g., converting raw protobuf data into semantic Rerun components).
 pub struct McapLoader {
-    selected_layers: SelectedLayers,
+    selected_decoders: SelectedDecoders,
     // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
     raw_fallback_enabled: bool,
     lenses: Option<Arc<Lenses>>,
@@ -39,22 +39,22 @@ pub struct McapLoader {
 
 impl Default for McapLoader {
     fn default() -> Self {
-        Self::new(SelectedLayers::All)
+        Self::new(SelectedDecoders::All)
     }
 }
 
 impl McapLoader {
-    /// Creates a new [`McapLoader`] that extracts the specified `layers`.
-    pub fn new(selected_layers: SelectedLayers) -> Self {
-        let lenses = Self::build_lenses(&selected_layers);
+    /// Creates a new [`McapLoader`] that extracts the specified `decoders`.
+    pub fn new(selected_decoders: SelectedDecoders) -> Self {
+        let lenses = Self::build_lenses(&selected_decoders);
         Self {
-            selected_layers,
+            selected_decoders,
             raw_fallback_enabled: true,
             lenses,
         }
     }
 
-    /// Configures whether the raw layer is used as a fallback for unsupported channels.
+    /// Configures whether the raw decoder is used as a fallback for unsupported channels.
     pub fn with_raw_fallback(mut self, raw_fallback_enabled: bool) -> Self {
         self.raw_fallback_enabled = raw_fallback_enabled;
         self
@@ -66,8 +66,8 @@ impl McapLoader {
         self
     }
 
-    fn build_lenses(selected_layers: &SelectedLayers) -> Option<Arc<Lenses>> {
-        if !selected_layers.contains(&LayerIdentifier::from(
+    fn build_lenses(selected_decoders: &SelectedDecoders) -> Option<Arc<Lenses>> {
+        if !selected_decoders.contains(&DecoderIdentifier::from(
             super::lenses::FOXGLOVE_LENSES_IDENTIFIER,
         )) {
             return None;
@@ -109,7 +109,7 @@ impl DataLoader for McapLoader {
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
         let settings = settings.clone();
-        let selected_layers = self.selected_layers.clone();
+        let selected_decoders = self.selected_decoders.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
         let lenses = self.lenses.clone();
         std::thread::Builder::new()
@@ -119,7 +119,7 @@ impl DataLoader for McapLoader {
                     &path,
                     &settings,
                     &tx,
-                    &selected_layers,
+                    &selected_decoders,
                     raw_fallback_enabled,
                     lenses.as_deref(),
                 ) {
@@ -146,7 +146,7 @@ impl DataLoader for McapLoader {
 
         let contents = contents.into_owned();
         let settings = settings.clone();
-        let selected_layers = self.selected_layers.clone();
+        let selected_decoders = self.selected_decoders.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
         let lenses = self.lenses.clone();
 
@@ -160,7 +160,7 @@ impl DataLoader for McapLoader {
                     &contents,
                     &settings,
                     &tx,
-                    &selected_layers,
+                    &selected_decoders,
                     raw_fallback_enabled,
                     lenses.as_deref(),
                 )?;
@@ -172,7 +172,7 @@ impl DataLoader for McapLoader {
                             &contents,
                             &settings,
                             &tx,
-                            &selected_layers,
+                            &selected_decoders,
                             raw_fallback_enabled,
                             lenses.as_deref(),
                         ) {
@@ -192,7 +192,7 @@ fn load_mcap_mmap(
     filepath: &std::path::PathBuf,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: &SelectedLayers,
+    selected_decoders: &SelectedDecoders,
     raw_fallback_enabled: bool,
     lenses: Option<&Lenses>,
 ) -> Result<(), DataLoaderError> {
@@ -207,7 +207,7 @@ fn load_mcap_mmap(
         &mmap,
         settings,
         tx,
-        selected_layers,
+        selected_decoders,
         raw_fallback_enabled,
         lenses,
     )
@@ -217,7 +217,7 @@ pub fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: &SelectedLayers,
+    selected_decoders: &SelectedDecoders,
     raw_fallback_enabled: bool,
     lenses: Option<&Lenses>,
 ) -> Result<(), DataLoaderError> {
@@ -276,8 +276,8 @@ pub fn load_mcap(
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     // TODO(#10862): Add warning for channel that miss semantic information.
-    LayerRegistry::all_builtin(raw_fallback_enabled)
-        .select(selected_layers)
+    DecoderRegistry::all_builtin(raw_fallback_enabled)
+        .select(selected_decoders)
         .plan(&summary)?
         .run(mcap, &summary, &mut send_chunk)?;
 

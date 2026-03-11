@@ -2,15 +2,15 @@ use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_sdk_types::archetypes::RecordingInfo;
 use saturating_cast::SaturatingCast as _;
 
-use super::Layer;
+use super::Decoder;
 use crate::Error;
 
 /// Build the [`RecordingInfo`] chunk using the message statistics from a [`mcap::Summary`].
 #[derive(Debug, Default)]
-pub struct McapRecordingInfoLayer;
+pub struct McapRecordingInfoDecoder;
 
-impl Layer for McapRecordingInfoLayer {
-    fn identifier() -> super::LayerIdentifier {
+impl Decoder for McapRecordingInfoDecoder {
+    fn identifier() -> super::DecoderIdentifier {
         "recording_info".into()
     }
 

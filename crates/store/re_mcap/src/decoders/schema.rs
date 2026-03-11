@@ -4,17 +4,17 @@ use re_chunk::{Chunk, RowId, TimePoint};
 use re_sdk_types::archetypes::{McapChannel, McapSchema};
 use re_sdk_types::{AsComponents as _, components};
 
-use super::{Layer, LayerIdentifier};
+use super::{Decoder, DecoderIdentifier};
 use crate::Error;
 
 /// Extracts a static summary of channel and schema information.
 ///
 /// Can be used to get an overview over the contents of an MCAP file.
 #[derive(Debug, Default)]
-pub struct McapSchemaLayer;
+pub struct McapSchemaDecoder;
 
-impl Layer for McapSchemaLayer {
-    fn identifier() -> LayerIdentifier {
+impl Decoder for McapSchemaDecoder {
+    fn identifier() -> DecoderIdentifier {
         "schema".into()
     }
 

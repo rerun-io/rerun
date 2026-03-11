@@ -5,7 +5,7 @@ use re_sdk_types::archetypes::McapMessage;
 
 use crate::parsers::util::blob_list_builder;
 use crate::parsers::{MessageParser, ParserContext};
-use crate::{Error, LayerIdentifier, MessageLayer};
+use crate::{DecoderIdentifier, Error, MessageDecoder};
 
 struct RawMcapMessageParser {
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
@@ -57,10 +57,10 @@ impl MessageParser for RawMcapMessageParser {
 /// The result will be verbatim copies of the original messages without decoding
 /// or imposing any semantic meaning on the data.
 #[derive(Default, Debug)]
-pub struct McapRawLayer;
+pub struct McapRawDecoder;
 
-impl MessageLayer for McapRawLayer {
-    fn identifier() -> LayerIdentifier {
+impl MessageDecoder for McapRawDecoder {
+    fn identifier() -> DecoderIdentifier {
         "raw".into()
     }
 

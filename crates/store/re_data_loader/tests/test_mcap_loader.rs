@@ -7,7 +7,7 @@ mod tests {
     use re_data_loader::loader_mcap::load_mcap;
     use re_data_loader::{DataLoaderSettings, LoadedData};
     use re_log_types::StoreId;
-    use re_mcap::layers::SelectedLayers;
+    use re_mcap::decoders::SelectedDecoders;
 
     // Load an MCAP file into a list of chunks.
     fn load_mcap_chunks(path: impl AsRef<std::path::Path>) -> Vec<Chunk> {
@@ -20,7 +20,7 @@ mod tests {
             &mcap_data,
             &settings,
             &tx,
-            &SelectedLayers::All,
+            &SelectedDecoders::All,
             false,
             None,
         )

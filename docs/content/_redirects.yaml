@@ -63,7 +63,8 @@ reference/data-loaders/rust: concepts/logging-and-ingestion/data-loaders/rust
 reference/entity-queries: concepts/visualization/entity-queries
 reference/mcap: concepts/logging-and-ingestion/mcap/message-formats
 reference/mcap/cli-reference: concepts/logging-and-ingestion/mcap/cli-reference
-reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/layers-explained
+reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/decoders-explained
+reference/mcap/decoders-explained: concepts/logging-and-ingestion/mcap/decoders-explained
 reference/mcap/message-formats: concepts/logging-and-ingestion/mcap/message-formats
 reference/migration-0-9: reference/migration/migration-0-9
 reference/sdk: reference/sdk/logging-controls

@@ -4,7 +4,7 @@ use std::sync::{Arc, LazyLock};
 
 use re_chunk::{Chunk, ChunkResult};
 use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
-use re_mcap::SelectedLayers;
+use re_mcap::SelectedDecoders;
 
 // ----------------------------------------------------------------------------
 
@@ -432,7 +432,7 @@ static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        Arc::new(McapLoader::new(SelectedLayers::All)),
+        Arc::new(McapLoader::new(SelectedDecoders::All)),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]

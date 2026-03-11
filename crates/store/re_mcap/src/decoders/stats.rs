@@ -3,17 +3,17 @@ use re_sdk_types::archetypes::McapStatistics;
 use re_sdk_types::{components, datatypes};
 use saturating_cast::SaturatingCast as _;
 
-use super::{Layer, LayerIdentifier};
+use super::{Decoder, DecoderIdentifier};
 use crate::Error;
 
 /// Extracts [`mcap::records::Statistics`], such as message count, from an MCAP file.
 ///
 /// The results will be stored as recording properties.
 #[derive(Debug, Default)]
-pub struct McapStatisticLayer;
+pub struct McapStatisticDecoder;
 
-impl Layer for McapStatisticLayer {
-    fn identifier() -> LayerIdentifier {
+impl Decoder for McapStatisticDecoder {
+    fn identifier() -> DecoderIdentifier {
         "stats".into()
     }
 

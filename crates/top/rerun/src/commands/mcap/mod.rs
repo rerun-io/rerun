@@ -5,15 +5,15 @@ use std::io::BufWriter;
 use clap::Subcommand;
 use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId};
-use re_mcap::{LayerIdentifier, LayerRegistry, SelectedLayers};
+use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
 use re_sdk::external::re_data_loader::McapLoader;
 use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
 
-fn possible_layers() -> clap::builder::PossibleValuesParser {
-    static LAYER_IDS: std::sync::LazyLock<Vec<String>> =
-        std::sync::LazyLock::new(|| LayerRegistry::all_builtin(true).all_identifiers());
+fn possible_decoders() -> clap::builder::PossibleValuesParser {
+    static DECODER_IDS: std::sync::LazyLock<Vec<String>> =
+        std::sync::LazyLock::new(|| DecoderRegistry::all_builtin(true).all_identifiers());
     clap::builder::PossibleValuesParser::new(
-        LAYER_IDS.iter().map(String::as_str).collect::<Vec<_>>(),
+        DECODER_IDS.iter().map(String::as_str).collect::<Vec<_>>(),
     )
 }
 
@@ -30,13 +30,13 @@ pub struct ConvertCommand {
     #[clap(long = "application-id")]
     application_id: Option<String>,
 
-    /// Specifies which layers to apply during conversion.
-    #[clap(short = 'l', long = "layer", value_parser = possible_layers())]
-    selected_layers: Vec<String>,
+    /// Specifies which decoders to apply during conversion.
+    #[clap(short = 'd', long = "decoder", value_parser = possible_decoders())]
+    selected_decoders: Vec<String>,
 
-    /// Disable using the raw layer as a fallback for unsupported channels.
-    /// By default, channels that cannot be handled by semantic layers (protobuf, ROS2)
-    /// will be processed by the raw layer.
+    /// Disable using the raw decoder as a fallback for unsupported channels.
+    /// By default, channels that cannot be handled by semantic decoders (protobuf, ROS2)
+    /// will be processed by the raw decoder.
     #[clap(long = "disable-raw-fallback")]
     disable_raw_fallback: bool,
 
@@ -65,7 +65,7 @@ impl ConvertCommand {
             path_to_output_rrd,
             application_id,
             recording_id,
-            selected_layers,
+            selected_decoders,
             disable_raw_fallback,
             timestamp_offset_ns,
         } = self;
@@ -82,20 +82,20 @@ impl ConvertCommand {
             .map(RecordingId::from)
             .unwrap_or_else(RecordingId::random);
 
-        let selected_layers = if selected_layers.is_empty() {
-            SelectedLayers::All
+        let selected_decoders = if selected_decoders.is_empty() {
+            SelectedDecoders::All
         } else {
-            SelectedLayers::Subset(
-                selected_layers
+            SelectedDecoders::Subset(
+                selected_decoders
                     .iter()
                     .cloned()
-                    .map(LayerIdentifier::from)
+                    .map(DecoderIdentifier::from)
                     .collect(),
             )
         };
 
         let loader: &dyn DataLoader =
-            &McapLoader::new(selected_layers).with_raw_fallback(!*disable_raw_fallback);
+            &McapLoader::new(selected_decoders).with_raw_fallback(!*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = crossbeam::channel::bounded::<LoadedData>(1024);

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::MessageLayer;
+use super::MessageDecoder;
 use crate::parsers::MessageParser;
 use crate::parsers::ros2msg::Ros2MessageParser;
 use crate::parsers::ros2msg::geometry_msgs::PoseStampedMessageParser;
@@ -20,11 +20,11 @@ use crate::parsers::ros2msg::tf2_msgs::tf_message::TfMessageParser;
 type ParserFactory = fn(usize) -> Box<dyn MessageParser>;
 
 #[derive(Debug)]
-pub struct McapRos2Layer {
+pub struct McapRos2Decoder {
     registry: BTreeMap<String, ParserFactory>,
 }
 
-impl McapRos2Layer {
+impl McapRos2Decoder {
     const ENCODING: &str = "ros2msg";
 
     fn empty() -> Self {
@@ -33,7 +33,7 @@ impl McapRos2Layer {
         }
     }
 
-    /// Creates a new [`McapRos2Layer`] with all supported message types pre-registered
+    /// Creates a new [`McapRos2Decoder`] with all supported message types pre-registered
     pub fn new() -> Self {
         Self::empty()
             // geometry_msgs
@@ -81,20 +81,20 @@ impl McapRos2Layer {
         self
     }
 
-    /// Returns true if the given schema is supported by this layer
+    /// Returns true if the given schema is supported by this decoder
     pub fn supports_schema(&self, schema_name: &str) -> bool {
         self.registry.contains_key(schema_name)
     }
 }
 
-impl Default for McapRos2Layer {
+impl Default for McapRos2Decoder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MessageLayer for McapRos2Layer {
-    fn identifier() -> super::LayerIdentifier {
+impl MessageDecoder for McapRos2Decoder {
+    fn identifier() -> super::DecoderIdentifier {
         "ros2msg".into()
     }
 

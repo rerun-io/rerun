@@ -67,20 +67,20 @@ Each layer extracts different types of information from the MCAP source and each
 - **`ros2_reflection`**: Automatically decodes ROS2 messages using reflection
 - **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information
 
-By default, Rerun analyzes an MCAP file to determine which layers are active to provide the most comprehensive view of your data, while avoiding duplication.
-You can also choose to activate only specific layers that are relevant to your use case.
+By default, Rerun analyzes an MCAP file to determine which decoders are active to provide the most comprehensive view of your data, while avoiding duplication.
+You can also choose to activate only specific decoders that are relevant to your use case.
 
-The following shows how to select specific layers:
+The following shows how to select specific decoders:
 
 ```sh
-# Use only specific layers
-rerun mcap convert input.mcap -l protobuf -l stats -o output.rrd
+# Use only specific decoders
+rerun mcap convert input.mcap -d protobuf -d stats -o output.rrd
 
-# Use multiple layers for different perspectives
-rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
+# Use multiple decoders for different perspectives
+rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
 ```
 
-For a detailed explanation of how each layer works and when to use them, see [Layers Explained](../../concepts/logging-and-ingestion/mcap/layers-explained.md).
+For a detailed explanation of how each decoder works and when to use them, see [Decoders Explained](../../concepts/logging-and-ingestion/mcap/decoders-explained.md).
 
 ## Advanced usage
 

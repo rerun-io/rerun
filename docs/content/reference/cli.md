@@ -344,11 +344,11 @@ Convert an .mcap file to an .rrd.
 * `--application-id <APPLICATION_ID>`
 > If set, specifies the application id of the output.
 
-* `-l, --layer <SELECTED_LAYERS>`
-> Specifies which layers to apply during conversion.
+* `-d, --decoder <SELECTED_DECODERS>`
+> Specifies which decoders to apply during conversion.
 
 * `--disable-raw-fallback <DISABLE_RAW_FALLBACK>`
-> Disable using the raw layer as a fallback for unsupported channels. By default, channels that cannot be handled by semantic layers (protobuf, ROS2) will be processed by the raw layer.
+> Disable using the raw decoder as a fallback for unsupported channels. By default, channels that cannot be handled by semantic decoders (protobuf, ROS2) will be processed by the raw decoder.
 >
 > [Default: `false`]
 

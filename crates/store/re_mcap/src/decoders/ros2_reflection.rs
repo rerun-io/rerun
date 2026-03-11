@@ -22,7 +22,7 @@ use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use serde::de::DeserializeSeed as _;
 
 use crate::parsers::{MessageParser, ParserContext, dds};
-use crate::{Error, LayerIdentifier, MessageLayer};
+use crate::{DecoderIdentifier, Error, MessageDecoder};
 
 pub fn decode_bytes(top: &MessageSchema, buf: &[u8]) -> anyhow::Result<Value> {
     // 4-byte encapsulation header
@@ -419,15 +419,15 @@ fn resolve_complex_type<'a>(
 
 /// Provides reflection-based conversion of ROS2-encoded MCAP messages.
 ///
-/// This layer dynamically parses ROS2 messages at runtime, allowing for
-/// a direct arrow representation of the messages fields, similar to the protobuf layer.
+/// This decoder dynamically parses ROS2 messages at runtime, allowing for
+/// a direct arrow representation of the messages fields, similar to the protobuf decoder.
 #[derive(Debug, Default)]
-pub struct McapRos2ReflectionLayer {
+pub struct McapRos2ReflectionDecoder {
     schemas_per_topic: ahash::HashMap<String, MessageSchema>,
 }
 
-impl MessageLayer for McapRos2ReflectionLayer {
-    fn identifier() -> LayerIdentifier {
+impl MessageDecoder for McapRos2ReflectionDecoder {
+    fn identifier() -> DecoderIdentifier {
         "ros2_reflection".into()
     }
 
@@ -474,15 +474,15 @@ impl MessageLayer for McapRos2ReflectionLayer {
             return false;
         }
 
-        // Only support channels if the semantic layer doesn't support them
+        // Only support channels if the semantic decoder doesn't support them
         // First check if we have parsed the schema successfully
         if !self.schemas_per_topic.contains_key(&channel.topic) {
             return false;
         }
 
-        // Check if the semantic layer would handle this message type
-        let semantic_layer = super::McapRos2Layer::new();
-        !semantic_layer.supports_schema(&schema.name)
+        // Check if the semantic decoder would handle this message type
+        let semantic_decoder = super::McapRos2Decoder::new();
+        !semantic_decoder.supports_schema(&schema.name)
     }
 
     fn message_parser(

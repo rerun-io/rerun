@@ -3,6 +3,11 @@
 
 ## 0.31.0 - (UNRELEASED)
 
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-31?speculative-link
+
+#### 🧢 MCAP
+- MCAP "layers" have been renamed to "decoders". The CLI flag `-l`/`--layer` is now `-d`/`--decoder`.
+
 ## [0.30.1](https://github.com/rerun-io/rerun/compare/0.30.0...0.30.1)  - 2026-03-04
 
 ### ✨ Overview & highlights

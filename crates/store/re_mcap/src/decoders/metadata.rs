@@ -6,7 +6,7 @@ use re_sdk_types::{
     datatypes,
 };
 
-use super::{Layer, LayerIdentifier};
+use super::{Decoder, DecoderIdentifier};
 use crate::Error;
 
 /// Extracts [`mcap::records::Metadata`] records from an MCAP file as a single static chunk.
@@ -14,12 +14,12 @@ use crate::Error;
 /// Outputs a single `McapMetadata` archetype at [`EntityPath::properties()`],
 /// with one [`components::KeyValuePairs`] component per metadata record.
 #[derive(Debug, Default)]
-pub struct McapMetadataLayer;
+pub struct McapMetadataDecoder;
 
 const ARCHETYPE_NAME: &str = "McapMetadata";
 
-impl Layer for McapMetadataLayer {
-    fn identifier() -> LayerIdentifier {
+impl Decoder for McapMetadataDecoder {
+    fn identifier() -> DecoderIdentifier {
         "metadata".into()
     }
 
@@ -101,24 +101,24 @@ mod tests {
 
     use re_chunk::Chunk;
 
-    use crate::LayerRegistry;
+    use crate::DecoderRegistry;
 
     use super::*;
 
-    /// Helper function to run the metadata layer and collect emitted chunks.
-    fn run_metadata_layer(buffer: &[u8]) -> Vec<Chunk> {
+    /// Helper function to run the metadata decoder and collect emitted chunks.
+    fn run_metadata_decoder(buffer: &[u8]) -> Vec<Chunk> {
         let reader = io::Cursor::new(buffer);
         let summary = crate::read_summary(reader)
             .expect("failed to read summary")
             .expect("no summary found");
 
         let mut chunks = Vec::new();
-        let registry = LayerRegistry::empty().register_file_layer::<McapMetadataLayer>();
+        let registry = DecoderRegistry::empty().register_file_decoder::<McapMetadataDecoder>();
         registry
             .plan(&summary)
             .expect("failed to plan")
             .run(buffer, &summary, &mut |chunk| chunks.push(chunk))
-            .expect("failed to run layer");
+            .expect("failed to run decoder");
         chunks
     }
 
@@ -144,7 +144,7 @@ mod tests {
             writer.into_inner().into_inner()
         };
 
-        let chunks = run_metadata_layer(&buffer);
+        let chunks = run_metadata_decoder(&buffer);
         assert_eq!(chunks.len(), 1, "all metadata in a single chunk");
 
         let chunk = &chunks[0];
@@ -183,7 +183,7 @@ mod tests {
             writer.into_inner().into_inner()
         };
 
-        let chunks = run_metadata_layer(&buffer);
+        let chunks = run_metadata_decoder(&buffer);
         assert_eq!(chunks.len(), 1);
 
         let chunk = &chunks[0];

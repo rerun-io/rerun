@@ -4,5 +4,5 @@ mod image_helpers;
 
 pub use foxglove::foxglove_lenses;
 
-/// The identifier used to enable/disable Foxglove lenses via [`re_mcap::SelectedLayers`].
+/// The identifier used to enable/disable Foxglove lenses via [`re_mcap::SelectedDecoders`].
 pub const FOXGLOVE_LENSES_IDENTIFIER: &str = "foxglove";
