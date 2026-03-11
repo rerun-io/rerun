@@ -85,6 +85,9 @@ def is_valid_todo_part(part: str) -> bool:
     if re.match(r"^[\w/-]*#\d+$", part):
         return True  # org/repo#42 or #42
 
+    if part.lower() in ("agent", "claude", "codex", "llm"):
+        return False  # coding agent, not a person
+
     if re.match(r"^[a-z][a-z0-9_]+$", part):
         return True  # user-name
 
@@ -471,6 +474,10 @@ def test_lint_line() -> None:
         "TODO(https://github.com/rerun-io/rerun/issues/42)",
         "TODO(bob/alice)",
         "TODO(bob|alice)",
+        "TODO(agent)",  # TODOs left for a coding agent
+        "TODO(Claude)",  # TODOs left for a coding agent
+        "TODO(codex)",  # TODOs left for a coding agent
+        "TODO(llm)",  # TODOs left for a coding agent
         "todo!()",
         'eprintln!("{err:?}")',
         'eprintln!("{err:#?}")',
