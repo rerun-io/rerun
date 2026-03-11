@@ -105,7 +105,7 @@ impl SingleRequiredComponentConstraint {
         incoming_component_type: Option<ComponentType>,
         incoming_component: ComponentIdentifier,
     ) -> Option<DatatypeMatch> {
-        use re_arrow_combinators::extract_nested_fields;
+        use re_lenses_core::extract_nested_fields;
 
         let is_physical_match = self.physical_types.contains(incoming_arrow_datatype);
         let is_semantic_match = incoming_component_type == Some(self.semantic_type);
@@ -258,7 +258,7 @@ impl BufferAndFormatConstraint {
         incoming_arrow_datatype: &arrow::datatypes::DataType,
         descriptor: &re_sdk_types::ComponentDescriptor,
     ) -> Option<DatatypeMatch> {
-        use re_arrow_combinators::extract_nested_fields;
+        use re_lenses_core::extract_nested_fields;
 
         let is_physical_match = *incoming_arrow_datatype == Self::buffer_arrow_datatype();
         let is_semantic = descriptor.component_type == Some(self.buffer_semantic_type);

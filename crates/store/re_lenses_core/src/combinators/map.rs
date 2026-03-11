@@ -7,7 +7,7 @@ use arrow::array::{
 };
 use arrow::datatypes::Field;
 
-use crate::{Error, Transform};
+use super::{error::Error, transform::Transform};
 
 /// Maps a transformation over the elements within a list array.
 ///

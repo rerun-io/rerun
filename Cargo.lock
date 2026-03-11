@@ -8442,18 +8442,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_arrow_combinators"
-version = "0.31.0-alpha.1+dev"
-dependencies = [
- "arrow",
- "insta",
- "re_arrow_util",
- "re_log",
- "thiserror 2.0.18",
- "vec1",
-]
-
-[[package]]
 name = "re_arrow_ui"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
@@ -8790,7 +8778,6 @@ dependencies = [
  "parking_lot",
  "parquet",
  "rayon",
- "re_arrow_combinators",
  "re_arrow_util",
  "re_build_info",
  "re_chunk",
@@ -8798,6 +8785,7 @@ dependencies = [
  "re_crash_handler",
  "re_error",
  "re_lenses",
+ "re_lenses_core",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9149,9 +9137,20 @@ name = "re_lenses"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "re_lenses_core",
+ "re_log",
+ "re_sdk_types",
+]
+
+[[package]]
+name = "re_lenses_core"
+version = "0.31.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "insta",
  "itertools 0.14.0",
  "nohash-hasher",
- "re_arrow_combinators",
+ "re_arrow_util",
  "re_chunk",
  "re_log",
  "re_log_types",
@@ -9725,7 +9724,6 @@ dependencies = [
  "nohash-hasher",
  "parking_lot",
  "percent-encoding",
- "re_arrow_combinators",
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
@@ -9734,6 +9732,7 @@ dependencies = [
  "re_grpc_client",
  "re_grpc_server",
  "re_lenses",
+ "re_lenses_core",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9805,7 +9804,6 @@ dependencies = [
  "egui_tiles",
  "itertools 0.14.0",
  "nohash-hasher",
- "re_arrow_combinators",
  "re_case",
  "re_chunk",
  "re_chunk_store",
@@ -9814,6 +9812,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
+ "re_lenses_core",
  "re_log",
  "re_log_types",
  "re_sdk_types",
@@ -10223,9 +10222,9 @@ dependencies = [
  "glam",
  "itertools 0.14.0",
  "nohash-hasher",
- "re_arrow_combinators",
  "re_chunk_store",
  "re_entity_db",
+ "re_lenses_core",
  "re_log",
  "re_log_types",
  "re_query",
@@ -10618,7 +10617,6 @@ dependencies = [
  "parking_lot",
  "rand 0.9.2",
  "rayon",
- "re_arrow_combinators",
  "re_arrow_ui",
  "re_arrow_util",
  "re_byte_size",
@@ -10629,6 +10627,7 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
+ "re_lenses_core",
  "re_log",
  "re_log_channel",
  "re_log_encoding",

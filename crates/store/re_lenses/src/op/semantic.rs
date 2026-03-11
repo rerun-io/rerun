@@ -11,8 +11,7 @@ use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
 use arrow::error::ArrowError;
 use re_sdk_types::components::VideoCodec;
 
-use re_arrow_combinators::cast::DowncastRef;
-use re_arrow_combinators::{Error, Transform, reshape};
+use re_lenses_core::combinators::{DowncastRef, Error, GetField, Transform};
 
 /// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
@@ -86,7 +85,7 @@ impl TimeSpecToNanos {
         field_names: &[&str],
     ) -> Result<Option<arrow::array::PrimitiveArray<TargetType>>, Error> {
         for &name in field_names {
-            if let Ok(Some(array_ref)) = reshape::GetField::new(name).transform(source) {
+            if let Ok(Some(array_ref)) = GetField::new(name).transform(source) {
                 let casted = arrow::compute::cast(&array_ref, &TargetType::DATA_TYPE)?;
                 let downcasted = DowncastRef::<TargetType>::new().transform(&casted)?;
 
@@ -193,7 +192,7 @@ mod tests {
         UInt32Array,
     };
     use arrow::datatypes::{DataType, Field, GenericBinaryType};
-    use re_arrow_combinators::{Error, Transform as _};
+    use re_lenses_core::combinators::{Error, Transform as _};
     use re_sdk_types::components::VideoCodec;
     use re_sdk_types::reflection::Enum as _;
 

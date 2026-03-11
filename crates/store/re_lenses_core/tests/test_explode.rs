@@ -5,8 +5,7 @@ use std::sync::Arc;
 use arrow::array::{Array as _, Int32Array, ListArray};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Int32Type};
-use re_arrow_combinators::Transform as _;
-use re_arrow_combinators::reshape::Explode;
+use re_lenses_core::combinators::{Explode, Transform as _};
 use util::DisplayRB;
 
 #[test]

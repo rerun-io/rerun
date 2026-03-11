@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBuilder};
 use arrow::datatypes::{DataType, Field};
-use re_arrow_combinators::Transform as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
+use re_lenses_core::combinators::Transform as _;
 use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector, op};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::Scalars;
@@ -193,7 +193,7 @@ fn test_inner_count() {
     println!("{original_chunk}");
 
     let count_fn =
-        |list_array: &ListArray| -> Result<Option<ListArray>, re_arrow_combinators::Error> {
+        |list_array: &ListArray| -> Result<Option<ListArray>, re_lenses_core::combinators::Error> {
             let mut builder = ListBuilder::new(Int32Builder::new());
 
             for maybe_array in list_array.iter() {

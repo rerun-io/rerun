@@ -1,10 +1,10 @@
 //! Common helper functions for transforming Arrow data in lenses.
 
 use arrow::array::{Array, FixedSizeListArray, Float32Array, Float64Array, ListArray, StructArray};
-use re_arrow_combinators::Transform;
-use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
-use re_arrow_combinators::map::MapFixedSizeList;
-use re_arrow_combinators::reshape::{GetField, RowMajorToColumnMajor, StructToFixedList};
+use re_lenses_core::combinators::{
+    GetField, ListToFixedSizeList, MapFixedSizeList, PrimitiveCast, RowMajorToColumnMajor,
+    StructToFixedList, Transform,
+};
 
 /// Returns a transform that converts a struct with `x`, `y`, `z` fields to a fixed-size list of 3 f32 values.
 pub fn xyz_struct_to_fixed() -> impl Transform<Source = StructArray, Target = FixedSizeListArray> {
@@ -37,9 +37,9 @@ pub fn row_major_3x3_to_column_major()
 pub fn get_field_as<T: Array + Clone + 'static>(
     source: &StructArray,
     name: &str,
-) -> Result<T, re_arrow_combinators::Error> {
+) -> Result<T, re_lenses_core::combinators::Error> {
     let array_ref = GetField::new(name).transform(source)?.ok_or_else(|| {
-        re_arrow_combinators::Error::FieldNotFound {
+        re_lenses_core::combinators::Error::FieldNotFound {
             field_name: name.to_owned(),
             available_fields: source.fields().iter().map(|f| f.name().clone()).collect(),
         }
@@ -48,7 +48,7 @@ pub fn get_field_as<T: Array + Clone + 'static>(
         .as_any()
         .downcast_ref::<T>()
         .cloned()
-        .ok_or_else(|| re_arrow_combinators::Error::TypeMismatch {
+        .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
             expected: std::any::type_name::<T>().to_owned(),
             actual: array_ref.data_type().clone(),
             context: name.to_owned(),

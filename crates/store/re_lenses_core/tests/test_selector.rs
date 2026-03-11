@@ -7,7 +7,7 @@ use arrow::{
     buffer::OffsetBuffer,
     datatypes::{DataType, Field, Fields},
 };
-use re_arrow_combinators::{Selector, SelectorError as Error};
+use re_lenses_core::{Selector, SelectorError as Error};
 use util::DisplayRB;
 
 use crate::util::fixtures;
@@ -374,7 +374,7 @@ fn execute_optional_each_suppressed() -> Result<(), Error> {
     assert!(matches!(
         err,
         Err(Error::Runtime(
-            re_arrow_combinators::Error::TypeMismatch { .. }
+            re_lenses_core::combinators::Error::TypeMismatch { .. }
         ))
     ));
 
@@ -544,7 +544,7 @@ fn extract_scalar_fields_from_nested_struct() {
 
     let datatype = DataType::Struct(root_fields);
 
-    let result = re_arrow_combinators::extract_nested_fields(&datatype, |dt| {
+    let result = re_lenses_core::extract_nested_fields(&datatype, |dt| {
         matches!(dt, DataType::Float64 | DataType::Float32 | DataType::Int32)
     })
     .expect("Should find nested fields");
@@ -588,7 +588,7 @@ fn extract_scalar_fields_from_nested_list_struct() {
 
     let datatype = DataType::Struct(root_fields);
 
-    let result = re_arrow_combinators::extract_nested_fields(&datatype, |dt| {
+    let result = re_lenses_core::extract_nested_fields(&datatype, |dt| {
         matches!(dt, DataType::Float64 | DataType::Float32 | DataType::Int32)
     })
     .expect("Should find nested fields");
@@ -604,7 +604,7 @@ fn extract_scalar_fields_from_nested_list_struct() {
 #[test]
 fn extract_nested_fields_fixtures() {
     let array = fixtures::nested_struct_column();
-    let result = re_arrow_combinators::extract_nested_fields(&array.value_type(), |dt| {
+    let result = re_lenses_core::extract_nested_fields(&array.value_type(), |dt| {
         matches!(dt, DataType::Float64)
     })
     .expect("Should find nested fields");
@@ -615,7 +615,7 @@ fn extract_nested_fields_fixtures() {
     ");
 
     let array = fixtures::nested_list_struct_column();
-    let result = re_arrow_combinators::extract_nested_fields(&array.value_type(), |dt| {
+    let result = re_lenses_core::extract_nested_fields(&array.value_type(), |dt| {
         matches!(dt, DataType::Float64)
     })
     .expect("Should find nested fields");

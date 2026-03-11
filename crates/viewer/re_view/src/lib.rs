@@ -54,11 +54,11 @@ pub mod external {
 pub enum ComponentMappingError {
     /// Failed to parse a selector.
     #[error("Failed to parse selector: {0}")]
-    SelectorParseFailed(re_arrow_combinators::SelectorError),
+    SelectorParseFailed(re_lenses_core::SelectorError),
 
     /// Failed to execute a selector.
     #[error("Failed to select data: {0}")]
-    SelectorExecutionFailed(re_arrow_combinators::SelectorError),
+    SelectorExecutionFailed(re_lenses_core::SelectorError),
 
     /// Failed to cast component data to target datatype.
     #[error("Failed to cast from {source_datatype} to {target_datatype}: {err}")]

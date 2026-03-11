@@ -1,7 +1,7 @@
 //! Builder API for constructing lenses.
 
+use crate::combinators::Transform;
 use arrow::array::ListArray;
-use re_arrow_combinators::Transform;
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::ComponentDescriptor;

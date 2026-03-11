@@ -1,6 +1,7 @@
 use arrow::array::StringArray;
-use re_arrow_combinators::{Selector, Transform, map::MapList};
 use re_lenses::{Lens, LensError, op};
+use re_lenses_core::Selector;
+use re_lenses_core::combinators::{MapList, Transform};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::TextLog;
 
@@ -38,7 +39,7 @@ impl Transform for FoxgloveToRerunLogLevel {
     fn transform(
         &self,
         source: &StringArray,
-    ) -> Result<Option<StringArray>, re_arrow_combinators::Error> {
+    ) -> Result<Option<StringArray>, re_lenses_core::combinators::Error> {
         Ok(Some(
             source
                 .iter()

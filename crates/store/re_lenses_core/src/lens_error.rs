@@ -34,7 +34,7 @@ pub enum LensError {
         input_component: ComponentIdentifier,
         component: ComponentIdentifier,
         #[source]
-        source: Box<re_arrow_combinators::Error>,
+        source: Box<crate::combinators::Error>,
     },
 
     #[error(
@@ -45,7 +45,7 @@ pub enum LensError {
         input_component: ComponentIdentifier,
         timeline_name: TimelineName,
         #[source]
-        source: Box<re_arrow_combinators::Error>,
+        source: Box<crate::combinators::Error>,
     },
 
     #[error(
@@ -57,7 +57,7 @@ pub enum LensError {
     },
 
     #[error(transparent)]
-    SelectorParseFailed(#[from] re_arrow_combinators::SelectorError),
+    SelectorParseFailed(#[from] crate::SelectorError),
 
     #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]
     ScatterExistingTimeFailed {

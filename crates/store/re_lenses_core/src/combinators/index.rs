@@ -3,7 +3,7 @@
 use arrow::array::{Array as _, ArrayRef, ListArray, UInt64Array};
 use arrow::buffer::NullBuffer;
 
-use crate::{Error, Transform};
+use super::{error::Error, transform::Transform};
 
 /// Extracts a single element at a specific index from a list array.
 ///

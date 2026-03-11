@@ -4,11 +4,11 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
+use crate::combinators::{Explode, Transform};
 use arrow::array::{AsArray as _, Int64Array, ListArray};
 use arrow::compute::take;
 use itertools::Either;
 use nohash_hasher::IntMap;
-use re_arrow_combinators::{Transform, reshape};
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
@@ -509,7 +509,7 @@ impl OneToMany {
             collect_output_times_iter(input, &self.times, entity_path).filter_map(|result| {
                 match result {
                     Ok((timeline_name, timeline_type, list_array)) => {
-                        match reshape::Explode.transform(&list_array) {
+                        match Explode.transform(&list_array) {
                             Ok(Some(exploded)) => {
                                 match try_convert_time_column(
                                     timeline_name,
@@ -546,23 +546,21 @@ impl OneToMany {
         // Explode all component outputs and collect errors
         let chunk_components: re_chunk::ChunkComponents = output_components
             .filter_map(|result| match result {
-                Ok((component_descr, list_array)) => {
-                    match reshape::Explode.transform(&list_array) {
-                        Ok(Some(exploded)) => {
-                            Some(SerializedComponentColumn::new(exploded, component_descr))
-                        }
-                        Ok(None) => None,
-                        Err(err) => {
-                            errors.push(LensError::ComponentOperationFailed {
-                                entity_path: entity_path.clone(),
-                                input_component: input.descriptor.component,
-                                component: component_descr.component,
-                                source: Box::new(err),
-                            });
-                            None
-                        }
+                Ok((component_descr, list_array)) => match Explode.transform(&list_array) {
+                    Ok(Some(exploded)) => {
+                        Some(SerializedComponentColumn::new(exploded, component_descr))
                     }
-                }
+                    Ok(None) => None,
+                    Err(err) => {
+                        errors.push(LensError::ComponentOperationFailed {
+                            entity_path: entity_path.clone(),
+                            input_component: input.descriptor.component,
+                            component: component_descr.component,
+                            source: Box::new(err),
+                        });
+                        None
+                    }
+                },
                 Err(err) => {
                     errors.push(err);
                     None

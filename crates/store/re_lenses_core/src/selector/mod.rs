@@ -95,21 +95,29 @@ impl std::str::FromStr for Selector {
     }
 }
 
-impl crate::Transform for Selector {
+impl crate::combinators::Transform for Selector {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, crate::Error> {
-        self.execute_per_row(source).map_err(crate::Error::from)
+    fn transform(
+        &self,
+        source: &Self::Source,
+    ) -> Result<Option<Self::Target>, crate::combinators::Error> {
+        self.execute_per_row(source)
+            .map_err(crate::combinators::Error::from)
     }
 }
 
-impl crate::Transform for &Selector {
+impl crate::combinators::Transform for &Selector {
     type Source = ListArray;
     type Target = ListArray;
 
-    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, crate::Error> {
-        self.execute_per_row(source).map_err(crate::Error::from)
+    fn transform(
+        &self,
+        source: &Self::Source,
+    ) -> Result<Option<Self::Target>, crate::combinators::Error> {
+        self.execute_per_row(source)
+            .map_err(crate::combinators::Error::from)
     }
 }
 
@@ -126,7 +134,7 @@ pub enum Error {
 
     /// Error during runtime execution.
     #[error(transparent)]
-    Runtime(#[from] crate::Error),
+    Runtime(#[from] crate::combinators::Error),
 }
 
 /// Dispatch a single datatype: enqueue structs, unwrap lists, or check the predicate.

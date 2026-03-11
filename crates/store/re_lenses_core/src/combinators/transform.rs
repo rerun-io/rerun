@@ -1,6 +1,6 @@
 use arrow::array::{Array, ListArray};
 
-use crate::Error;
+use super::error::Error;
 
 /// A fallible transformation from one Arrow array to another.
 ///

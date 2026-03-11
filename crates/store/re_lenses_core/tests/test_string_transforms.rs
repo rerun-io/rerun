@@ -1,8 +1,6 @@
 mod util;
 
-use re_arrow_combinators::Transform as _;
-use re_arrow_combinators::map::{MapList, StringPrefix, StringSuffix};
-use re_arrow_combinators::reshape::GetField;
+use re_lenses_core::combinators::{GetField, MapList, StringPrefix, StringSuffix, Transform as _};
 
 use crate::util::{DisplayRB, fixtures::nested_string_struct_column};
 

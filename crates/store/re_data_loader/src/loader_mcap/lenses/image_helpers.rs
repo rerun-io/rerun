@@ -7,7 +7,7 @@ use arrow::array::{
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field};
-use re_arrow_combinators::{Error, Transform};
+use re_lenses_core::combinators::{Error, Transform};
 use re_sdk_types::Loggable as _;
 use re_sdk_types::datatypes::ImageFormat;
 

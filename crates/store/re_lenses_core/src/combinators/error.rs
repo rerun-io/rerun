@@ -1,4 +1,4 @@
-//! Error types used in the `re_arrow_combinators` crate.
+//! Error types used in the `re_lenses_core` crate.
 
 use std::num::TryFromIntError;
 use std::sync::Arc;

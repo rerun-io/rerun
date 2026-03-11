@@ -16,7 +16,7 @@ include.workspace = true
 workspace = true
 
 [dependencies]
-re_arrow_combinators.workspace = true
+re_lenses_core.workspace = true
 re_case.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true

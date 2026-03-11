@@ -542,11 +542,9 @@ fn collect_source_component_options(
                 )))
             }
             // Match fields in the struct?
-            else if let Some(selectors) =
-                re_arrow_combinators::extract_nested_fields(datatype, |dt| {
-                    allowed_physical_types.contains(dt)
-                })
-            {
+            else if let Some(selectors) = re_lenses_core::extract_nested_fields(datatype, |dt| {
+                allowed_physical_types.contains(dt)
+            }) {
                 Either::Left(Either::Right(selectors.into_iter().map(move |(sel, _)| {
                     VisualizerComponentSource::SourceComponent {
                         source_component,

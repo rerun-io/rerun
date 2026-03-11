@@ -6,7 +6,7 @@ use arrow::array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray};
 use arrow::compute::cast;
 use arrow::datatypes::Field;
 
-use crate::{Error, Transform};
+use super::{error::Error, transform::Transform};
 
 /// Casts a primitive array from one type to another using Arrow's type casting.
 ///

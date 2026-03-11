@@ -4,11 +4,8 @@
 
 use arrow::array::{Array as _, FixedSizeListArray, ListArray};
 
-use crate::{
-    Transform as _,
-    index::GetIndexList,
-    map::MapList,
-    reshape::{Flatten, GetField, PromoteInnerNulls},
+use crate::combinators::{
+    Flatten, GetField, GetIndexList, MapList, PromoteInnerNulls, Transform as _,
 };
 
 use super::parser::{Expr, Segment, SegmentKind};
@@ -17,7 +14,10 @@ use super::parser::{Expr, Segment, SegmentKind};
 ///
 /// Returns `None` if the expression was suppressed (e.g. `.field?`).
 /// The caller decides how to handle the absent result.
-pub fn execute_per_row(expr: &Expr, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
+pub fn execute_per_row(
+    expr: &Expr,
+    source: &ListArray,
+) -> Result<Option<ListArray>, crate::combinators::Error> {
     // TODO(grtlr): It would be much cleaner if `MapList` (or equivalent would be called on this level).
     let result = expr.execute(source)?;
 
@@ -37,7 +37,7 @@ fn values_downcasts_to<T: 'static>(array: &ListArray) -> bool {
 }
 
 impl SegmentKind {
-    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
+    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::combinators::Error> {
         match self {
             Self::Field(field_name) => {
                 MapList::new(GetField::new(field_name.clone())).transform(source)
@@ -53,7 +53,7 @@ impl SegmentKind {
                     // Flatten nested lists: List<List<T>> -> List<T>
                     Flatten::new().transform(source)
                 } else {
-                    Err(crate::Error::TypeMismatch {
+                    Err(crate::combinators::Error::TypeMismatch {
                         expected: "ListArray".into(),
                         actual: source.value_type(),
                         context: "Each ([]) operator requires nested lists".into(),
@@ -65,7 +65,7 @@ impl SegmentKind {
 }
 
 impl Segment {
-    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
+    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::combinators::Error> {
         let result = match self.kind.execute(source) {
             Ok(result) => result,
             // TODO(RR-3435): FixedSizeListArray errors must be suppressed via `?`, but ListArray should not need it.
@@ -89,7 +89,7 @@ impl Segment {
 }
 
 impl Expr {
-    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::Error> {
+    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::combinators::Error> {
         match self {
             Self::Identity => Ok(Some(source.clone())),
             Self::Path(segments) => {

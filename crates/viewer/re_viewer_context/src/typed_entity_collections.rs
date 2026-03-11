@@ -2,8 +2,8 @@
 
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
-use re_arrow_combinators::Selector;
 use re_chunk::ComponentIdentifier;
+use re_lenses_core::Selector;
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_types_core::ViewClassIdentifier;

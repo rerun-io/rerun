@@ -5,7 +5,7 @@ use std::sync::Arc;
 use arrow::array::ListArray;
 use arrow::datatypes::{DataType, Field};
 
-use re_arrow_combinators::{Error, Transform};
+use re_lenses_core::combinators::{Error, Transform};
 
 /// Casts the inner values of a [`ListArray`] to a new [`DataType`].
 pub struct Cast {

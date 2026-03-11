@@ -50,7 +50,7 @@ fn cast_list_array(
 fn transform_chunk(
     target: &ComponentIdentifier,
     source: &ComponentIdentifier,
-    selector: &Option<re_arrow_combinators::Selector>,
+    selector: &Option<re_lenses_core::Selector>,
     target_datatype: Option<&arrow::datatypes::DataType>,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
@@ -91,12 +91,12 @@ fn transform_chunk(
 
 /// All information required to rewrite a source component into a target component.
 ///
-/// Also applies a [`re_arrow_combinators::Selector`], if specified.
+/// Also applies a [`re_lenses_core::Selector`], if specified.
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct ActiveRemapping {
     target: ComponentIdentifier,
     source: ComponentIdentifier,
-    selector: Option<re_arrow_combinators::Selector>,
+    selector: Option<re_lenses_core::Selector>,
 }
 
 /// Determines the exact reason why a component was not found.
@@ -206,7 +206,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
                     });
                     Ok(source.source_kind())
                 } else {
-                    match selector.parse::<re_arrow_combinators::Selector>() {
+                    match selector.parse::<re_lenses_core::Selector>() {
                         Ok(selector) => {
                             active_remappings.push(ActiveRemapping {
                                 target: *target_component,
@@ -377,7 +377,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                         });
                         Ok(source.source_kind())
                     } else {
-                        match selector.parse::<re_arrow_combinators::Selector>() {
+                        match selector.parse::<re_lenses_core::Selector>() {
                             Ok(selector) => {
                                 active_remappings.push(ActiveRemapping {
                                     target: *target_component,

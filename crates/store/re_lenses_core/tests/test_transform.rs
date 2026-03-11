@@ -3,11 +3,11 @@ mod util;
 use std::str::FromStr as _;
 
 use arrow::array::{Float32Array, Float64Array, Int32Builder, ListArray, ListBuilder, UInt8Array};
-use re_arrow_combinators::Selector;
-use re_arrow_combinators::Transform as _;
-use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
-use re_arrow_combinators::map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull};
-use re_arrow_combinators::reshape::{Flatten, RowMajorToColumnMajor, StructToFixedList};
+use re_lenses_core::Selector;
+use re_lenses_core::combinators::{
+    Flatten, ListToFixedSizeList, MapFixedSizeList, MapList, MapPrimitive, PrimitiveCast,
+    ReplaceNull, RowMajorToColumnMajor, StructToFixedList, Transform as _,
+};
 use util::DisplayRB;
 
 use crate::util::fixtures;

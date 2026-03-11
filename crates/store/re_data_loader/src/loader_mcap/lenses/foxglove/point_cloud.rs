@@ -1,6 +1,6 @@
-use re_arrow_combinators::reshape::Flatten;
-use re_arrow_combinators::{Selector, Transform as _, map::MapList};
 use re_lenses::{Lens, LensError, op};
+use re_lenses_core::Selector;
+use re_lenses_core::combinators::{Flatten, MapList, Transform as _};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_sdk_types::archetypes::{CoordinateFrame, Points3D};
 

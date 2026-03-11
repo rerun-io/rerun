@@ -64,7 +64,7 @@ re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.31.
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.31.0-alpha.1", default-features = false }
 
 # crates/store:
-re_arrow_combinators = { path = "crates/store/re_arrow_combinators", version = "=0.31.0-alpha.1", default-features = false }
+re_lenses_core = { path = "crates/store/re_lenses_core", version = "=0.31.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.31.0-alpha.1", default-features = false }
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.31.0-alpha.1", default-features = false }
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.31.0-alpha.1", default-features = false }

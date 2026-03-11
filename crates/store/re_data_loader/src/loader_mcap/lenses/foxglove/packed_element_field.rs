@@ -10,7 +10,7 @@ use arrow::array::{
     Array as _, BinaryArray, Int32Array, ListArray, StringArray, StructArray, UInt32Array,
 };
 use arrow::datatypes::{DataType, Field};
-use re_arrow_combinators::Transform;
+use re_lenses_core::combinators::Transform;
 
 /// Foxglove [`NumericType`] enum.
 ///
@@ -29,7 +29,7 @@ enum NumericType {
 }
 
 impl TryFrom<i32> for NumericType {
-    type Error = re_arrow_combinators::Error;
+    type Error = re_lenses_core::combinators::Error;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
@@ -41,7 +41,7 @@ impl TryFrom<i32> for NumericType {
             6 => Ok(Self::Int32),
             7 => Ok(Self::Float32),
             8 => Ok(Self::Float64),
-            _ => Err(re_arrow_combinators::Error::Other(format!(
+            _ => Err(re_lenses_core::combinators::Error::Other(format!(
                 "unknown NumericType value: {value}"
             ))),
         }
@@ -119,7 +119,7 @@ struct FieldDescriptor {
 fn find_field_descriptors(
     fields_struct: &StructArray,
     names: &[&str],
-) -> Result<Vec<Option<FieldDescriptor>>, re_arrow_combinators::Error> {
+) -> Result<Vec<Option<FieldDescriptor>>, re_lenses_core::combinators::Error> {
     let name_array = fields_struct
         .column_by_name("name")
         .and_then(|a| a.as_any().downcast_ref::<StringArray>().cloned());
@@ -165,7 +165,7 @@ impl Transform for ExtractPositions {
     fn transform(
         &self,
         source: &StructArray,
-    ) -> Result<Option<ListArray>, re_arrow_combinators::Error> {
+    ) -> Result<Option<ListArray>, re_lenses_core::combinators::Error> {
         re_tracing::profile_function!();
 
         let point_stride_array = get_field_as::<UInt32Array>(source, "point_stride")?;
@@ -192,7 +192,7 @@ impl Transform for ExtractPositions {
             let fields_struct = fields_value
                 .as_any()
                 .downcast_ref::<StructArray>()
-                .ok_or_else(|| re_arrow_combinators::Error::TypeMismatch {
+                .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
                     expected: "StructArray".to_owned(),
                     actual: fields_value.data_type().clone(),
                     context: "fields element".to_owned(),
@@ -244,7 +244,7 @@ impl Transform for ExtractColors {
     fn transform(
         &self,
         source: &StructArray,
-    ) -> Result<Option<ListArray>, re_arrow_combinators::Error> {
+    ) -> Result<Option<ListArray>, re_lenses_core::combinators::Error> {
         re_tracing::profile_function!();
 
         let point_stride_array = get_field_as::<UInt32Array>(source, "point_stride")?;
@@ -265,7 +265,7 @@ impl Transform for ExtractColors {
             let fields_struct = fields_value
                 .as_any()
                 .downcast_ref::<StructArray>()
-                .ok_or_else(|| re_arrow_combinators::Error::TypeMismatch {
+                .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
                     expected: "StructArray".to_owned(),
                     actual: fields_value.data_type().clone(),
                     context: "fields element".to_owned(),

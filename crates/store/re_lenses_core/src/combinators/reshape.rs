@@ -12,7 +12,7 @@ use arrow::datatypes::{ArrowNativeType as _, Field};
 
 use re_log::debug_assert_eq;
 
-use crate::{Error, Transform};
+use super::{error::Error, transform::Transform};
 
 /// Extracts a field from a struct array.
 ///
