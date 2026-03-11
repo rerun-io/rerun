@@ -430,7 +430,7 @@ impl ViewBlueprint {
         let class = ctx
             .view_class_registry()
             .get_class_or_log_error(self.class_identifier());
-        let view_state = view_states.get_mut_or_create(self.id, class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), self.id, class);
         self.bundle_context_with_state(ctx, view_state)
     }
 
@@ -679,6 +679,7 @@ mod tests {
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {
             let mut view_states = ViewStates::default();
             let view_state = view_states.get_mut_or_create(
+                ctx.store_id(),
                 view.id,
                 ctx.view_class_registry
                     .class(view.class_identifier())

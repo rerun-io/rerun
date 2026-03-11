@@ -734,7 +734,7 @@ mod tests {
 
         let view_class = SpatialView3D;
         let mut view_states = test_context.view_states.lock();
-        let view_state = view_states.get_mut_or_create(view_id, &view_class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, &view_class);
 
         let view_ctx =
             view_class.view_context(ctx, view_id, view_state, &view_blueprint.space_origin);

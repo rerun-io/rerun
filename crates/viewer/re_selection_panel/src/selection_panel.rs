@@ -484,7 +484,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             let view_class = view.class(ctx.view_class_registry());
-            let view_state = view_states.get_mut_or_create(view.id, view_class);
+            let view_state = view_states.get_mut_or_create(ctx.store_id(), view.id, view_class);
 
             // Try the new `visualizers_section` first, fall back to deprecated `visualizers_ui`.
             // These live in separate scopes because `visualizers_section` borrows `view_state`
@@ -932,15 +932,16 @@ fn entity_selection_ui(
 
     if let Some(view) = viewport.view(view_id) {
         let class = view.class(ctx.view_class_registry());
-        view_states.ensure_state_exists(*view_id, class);
+        let store_id = ctx.store_id();
+        view_states.ensure_state_exists(store_id, *view_id, class);
         let view_state = view_states
-            .get(*view_id)
+            .get(store_id, *view_id)
             .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
         let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
         let empty_errors = VisualizerViewReport::default();
         let visualizer_errors = view_states
-            .per_visualizer_type_reports(*view_id)
+            .per_visualizer_type_reports(store_id, *view_id)
             .unwrap_or(&empty_errors);
 
         visualizer_ui(&view_ctx, view, visualizer_errors, entity_path, ui);

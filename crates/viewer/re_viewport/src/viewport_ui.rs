@@ -93,7 +93,7 @@ impl ViewportUi {
         // Memorize new error states.
         #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
         for (view_id, (_, system_output)) in &executed_systems_per_view {
-            view_states.add_visualizer_reports_from_output(*view_id, system_output);
+            view_states.add_visualizer_reports_from_output(ctx.store_id(), *view_id, system_output);
         }
 
         let contents_per_tile_id = blueprint
@@ -391,11 +391,13 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 ctx,
                 std::iter::once(view.class_identifier())
             );
-            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class), &context_system_once_per_frame_results)
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(ctx.store_id(), *view_id, class), &context_system_once_per_frame_results)
         });
 
         let class = view_blueprint.class(self.ctx.view_class_registry());
-        let view_state = self.view_states.get_mut_or_create(*view_id, class);
+        let view_state = self
+            .view_states
+            .get_mut_or_create(self.ctx.store_id(), *view_id, class);
 
         let missing_chunk_reporter = MissingChunkReporter::new(system_output.any_missing_chunks());
 
@@ -646,7 +648,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let view_class = view_blueprint.class(self.ctx.view_class_registry());
 
         // give the view a chance to display some extra UI in the top bar.
-        let view_state = self.view_states.get_mut_or_create(view_id, view_class);
+        let view_state =
+            self.view_states
+                .get_mut_or_create(self.ctx.store_id(), view_id, view_class);
         view_class
             .extra_title_bar_ui(
                 self.ctx,
@@ -730,8 +734,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
 impl TilesDelegate<'_, '_> {
     fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
-        let Some(per_visualizer_type_reports) =
-            self.view_states.per_visualizer_type_reports(view_id)
+        let Some(per_visualizer_type_reports) = self
+            .view_states
+            .per_visualizer_type_reports(self.ctx.store_id(), view_id)
         else {
             return;
         };

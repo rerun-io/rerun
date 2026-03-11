@@ -100,7 +100,7 @@ impl TestContextExt for TestContext {
                                 ctx.blueprint_query,
                                 ctx.time_ctrl.timeline(),
                                 class_registry,
-                                self.view_states.lock().get_mut_or_create(*view_id, class),
+                                self.view_states.lock().get_mut_or_create(ctx.store_id(), *view_id, class),
                             );
 
                             let data_query_result = view_blueprint.contents.build_data_result_tree(
@@ -140,7 +140,7 @@ impl TestContextExt for TestContext {
 
         let mut view_states = self.view_states.lock();
         view_states.reset_visualizer_reports();
-        let view_state = view_states.get_mut_or_create(view_id, view_class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, view_class);
 
         let context_system_once_per_frame_results = class_registry
             .run_once_per_frame_context_systems(ctx, std::iter::once(class_identifier));
@@ -150,12 +150,16 @@ impl TestContextExt for TestContext {
             view_state,
             &context_system_once_per_frame_results,
         );
-        view_states.add_visualizer_reports_from_output(view_id, &system_execution_output);
+        view_states.add_visualizer_reports_from_output(
+            ctx.store_id(),
+            view_id,
+            &system_execution_output,
+        );
 
         let missing_chunk_reporter =
             MissingChunkReporter::new(system_execution_output.any_missing_chunks());
 
-        let view_state = view_states.get_mut_or_create(view_id, view_class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, view_class);
         view_class
             .ui(
                 ctx,

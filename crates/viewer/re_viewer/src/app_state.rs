@@ -346,7 +346,11 @@ impl AppState {
                     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 
                     for view in viewport_ui.blueprint.views.values() {
-                        view_states.ensure_state_exists(view.id, view.class(view_class_registry));
+                        view_states.ensure_state_exists(
+                            recording.store_id(),
+                            view.id,
+                            view.class(view_class_registry),
+                        );
                     }
 
                     viewport_ui
@@ -381,7 +385,7 @@ impl AppState {
                             };
 
                             let view_state = view_states
-                                .get(view.id)
+                                .get(recording.store_id(), view.id)
                                 .expect("View state should exist, we just called ensure_state_exists on it.");
 
                             let query_range = view.query_range(

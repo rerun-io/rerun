@@ -211,7 +211,7 @@ fn test_topology_errors() {
         let visualizer_errors = test_context
             .view_states
             .lock()
-            .per_visualizer_type_reports(view_id)
+            .per_visualizer_type_reports(&test_context.recording_store_id, view_id)
             .cloned()
             .unwrap_or_default();
 

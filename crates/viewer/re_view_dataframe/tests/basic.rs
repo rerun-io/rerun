@@ -118,7 +118,8 @@ fn run_view_selection_panel_ui_and_save_snapshot(
                     ui.spacing_mut().item_spacing = spacing;
 
                     let mut view_states = test_context.view_states.lock();
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
+                    let view_state =
+                        view_states.get_mut_or_create(ctx.store_id(), view_id, view_class);
 
                     view_class
                         .selection_ui(ctx, ui, view_state, &view_blueprint.space_origin, view_id)

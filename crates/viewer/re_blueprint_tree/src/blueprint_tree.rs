@@ -305,7 +305,7 @@ impl BlueprintTree {
                     ui,
                     view_data,
                     parent_visible,
-                    view_states.per_visualizer_type_reports(view_data.id),
+                    view_states.per_visualizer_type_reports(ctx.store_id(), view_data.id),
                 );
             }
         }
