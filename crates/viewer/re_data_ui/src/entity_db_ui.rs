@@ -111,6 +111,8 @@ impl crate::AppUi for EntityDb {
 }
 
 fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_layout: UiLayout) {
+    re_tracing::profile_function!();
+
     {
         ui.grid_left_hand_label(&format!("{} ID", db.store_id().kind()));
         ui.label(db.store_id().recording_id().to_string());
@@ -270,6 +272,31 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
 
             ui.end_row();
         }
+    }
+
+    {
+        // Stats like number of columns, rows, etc
+
+        let storage_engine = db.storage_engine();
+        let store = storage_engine.store();
+        let schema = store.schema();
+
+        ui.grid_left_hand_label("Entities")
+            .on_hover_text("In the ChunkStore");
+        ui.label(re_format::format_uint(store.all_entities().len()));
+        ui.end_row();
+
+        ui.grid_left_hand_label("Timeline columns");
+        ui.label(re_format::format_uint(schema.indices.len()));
+        ui.end_row();
+
+        ui.grid_left_hand_label("Data columns");
+        ui.label(re_format::format_uint(schema.components.len()));
+        ui.end_row();
+
+        ui.grid_left_hand_label("Rows");
+        ui.label(re_format::format_uint(store.stats().total().num_rows));
+        ui.end_row();
     }
 
     if ui_layout.is_selection_panel() {

@@ -2906,7 +2906,7 @@ impl App {
                             }
                         }
                     } else {
-                        re_log::debug_once!("Unknown archetype: {archetype_name}");
+                        re_log::trace_once!("Unknown archetype: {archetype_name}");
                     }
                 }
             }
