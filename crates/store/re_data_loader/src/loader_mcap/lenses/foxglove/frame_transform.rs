@@ -11,13 +11,13 @@ use super::FOXGLOVE_TIMESTAMP;
 /// Creates a lens for [`foxglove.FrameTransform`] messages.
 ///
 /// [`foxglove.FrameTransform`]: https://docs.foxglove.dev/docs/sdk/schemas/frame-transform
-pub fn frame_transform() -> Result<Lens, LensError> {
+pub fn frame_transform(time_type: TimeType) -> Result<Lens, LensError> {
     Ok(
         Lens::for_input_column(EntityPathFilter::all(), "foxglove.FrameTransform:message")
             .output_scatter_columns(|out| {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
-                    TimeType::TimestampNs,
+                    time_type,
                     Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
                 )?
                 .component(

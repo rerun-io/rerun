@@ -101,6 +101,8 @@ mod tests {
 
     use re_chunk::Chunk;
 
+    use re_log_types::TimeType;
+
     use crate::DecoderRegistry;
 
     use super::*;
@@ -117,7 +119,9 @@ mod tests {
         registry
             .plan(&summary)
             .expect("failed to plan")
-            .run(buffer, &summary, &mut |chunk| chunks.push(chunk))
+            .run(buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
+                chunks.push(chunk);
+            })
             .expect("failed to run decoder");
         chunks
     }

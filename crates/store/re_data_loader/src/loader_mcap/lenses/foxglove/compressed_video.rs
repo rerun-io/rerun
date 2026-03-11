@@ -9,13 +9,13 @@ use super::{FOXGLOVE_TIMESTAMP, IMAGE_PLANE_SUFFIX};
 /// Creates a lens for [`foxglove.CompressedVideo`] messages.
 ///
 /// [`foxglove.CompressedVideo`]: https://docs.foxglove.dev/docs/sdk/schemas/compressed-video
-pub fn compressed_video() -> Result<Lens, LensError> {
+pub fn compressed_video(time_type: TimeType) -> Result<Lens, LensError> {
     Ok(
         Lens::for_input_column(EntityPathFilter::all(), "foxglove.CompressedVideo:message")
             .output_columns(|out| {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
-                    TimeType::TimestampNs,
+                    time_type,
                     Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
                 )?
                 .component(

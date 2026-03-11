@@ -1418,6 +1418,7 @@ impl RecordingStream {
                 .unwrap_or_default()
             }),
             timestamp_offset_ns: None,
+            timeline_type: re_log_types::TimeType::TimestampNs,
         };
 
         if prefer_current_recording {

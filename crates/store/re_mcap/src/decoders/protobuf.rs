@@ -559,6 +559,8 @@ mod integration_tests {
     use re_chunk::Chunk;
     use re_log::LogMsg;
 
+    use re_log_types::TimeType;
+
     use crate::DecoderRegistry;
     use crate::decoders::McapProtobufDecoder;
 
@@ -774,7 +776,7 @@ mod integration_tests {
         registry
             .plan(summary)
             .expect("failed to plan")
-            .run(buffer, summary, &mut send_chunk)
+            .run(buffer, summary, TimeType::TimestampNs, &mut send_chunk)
             .expect("failed to run decoder");
 
         chunks

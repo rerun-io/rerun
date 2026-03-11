@@ -10,14 +10,14 @@ use super::packed_element_field::{ExtractColors, ExtractPositions};
 /// Creates a lens for [`foxglove.PointCloud`] messages.
 ///
 /// [`foxglove.PointCloud`]: https://docs.foxglove.dev/docs/sdk/schemas/point-cloud
-pub fn point_cloud() -> Result<Lens, LensError> {
+pub fn point_cloud(time_type: TimeType) -> Result<Lens, LensError> {
     Ok(
         // TODO(michael): support optional pose field (RR-3766).
         Lens::for_input_column(EntityPathFilter::all(), "foxglove.PointCloud:message")
             .output_columns(|out| {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
-                    TimeType::TimestampNs,
+                    time_type,
                     Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
                 )?
                 .component(

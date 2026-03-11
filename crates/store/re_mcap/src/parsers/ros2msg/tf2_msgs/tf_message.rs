@@ -38,12 +38,13 @@ impl MessageParser for TfMessageParser {
     fn get_log_and_publish_timepoints(
         &self,
         msg: &mcap::Message<'_>,
+        time_type: re_log_types::TimeType,
     ) -> anyhow::Result<Vec<re_chunk::TimePoint>> {
         // We need a custom implementation of this method because we have a 1-to-N relationship between input messages and output rows.
         // Assign each output row the same log and publish time as the input message.
         let TFMessage { transforms } = cdr::try_decode_message::<TFMessage>(&msg.data)?;
         Ok(vec![
-            log_and_publish_timepoint_from_msg(msg);
+            log_and_publish_timepoint_from_msg(msg, time_type);
             transforms.len()
         ])
     }
@@ -62,7 +63,10 @@ impl MessageParser for TfMessageParser {
             // Add the header timestamp to the context.
             // `log_time` and `publish_time` are added via `log_and_publish_time_from_msg`.
             let Header { stamp, frame_id } = header;
-            ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(stamp.as_nanos() as u64));
+            ctx.add_timestamp_cell(TimestampCell::from_nanos_ros2(
+                stamp.as_nanos() as u64,
+                ctx.time_type(),
+            ));
 
             self.parent_frame_ids.push(frame_id);
             self.child_frame_ids.push(child_frame_id);

@@ -11,7 +11,7 @@ use super::{FOXGLOVE_TIMESTAMP, IMAGE_PLANE_SUFFIX};
 /// Creates a lens for [`foxglove.CameraCalibration`] messages.
 ///
 /// [`foxglove.CameraCalibration`]: https://docs.foxglove.dev/docs/sdk/schemas/camera-calibration
-pub fn camera_calibration() -> Result<Lens, LensError> {
+pub fn camera_calibration(time_type: TimeType) -> Result<Lens, LensError> {
     Ok(Lens::for_input_column(
         EntityPathFilter::all(),
         "foxglove.CameraCalibration:message",
@@ -19,7 +19,7 @@ pub fn camera_calibration() -> Result<Lens, LensError> {
     .output_columns(|out| {
         out.time(
             FOXGLOVE_TIMESTAMP,
-            TimeType::TimestampNs,
+            time_type,
             Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
         )?
         .component(

@@ -11,6 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{Chunk, EntityPath};
+use re_log_types::TimeType;
 
 pub use self::metadata::McapMetadataDecoder;
 pub use self::protobuf::McapProtobufDecoder;
@@ -110,11 +111,12 @@ type Parser = (ParserContext, Box<dyn MessageParser>);
 /// Decodes batches of messages from an MCAP into Rerun chunks using previously registered parsers.
 struct McapChunkDecoder {
     parsers: IntMap<ChannelId, Parser>,
+    time_type: TimeType,
 }
 
 impl McapChunkDecoder {
-    pub fn new(parsers: IntMap<ChannelId, Parser>) -> Self {
-        Self { parsers }
+    pub fn new(parsers: IntMap<ChannelId, Parser>, time_type: TimeType) -> Self {
+        Self { parsers, time_type }
     }
 
     /// Decode the next message in the chunk
@@ -127,7 +129,7 @@ impl McapChunkDecoder {
         if let Some((ctx, parser)) = self.parsers.get_mut(&channel_id) {
             // If the parser fails, we should _not_ append the timepoint
             parser.append(ctx, msg)?;
-            for timepoint in parser.get_log_and_publish_timepoints(msg)? {
+            for timepoint in parser.get_log_and_publish_timepoints(msg, self.time_type)? {
                 ctx.add_timepoint(timepoint);
             }
         } else {
@@ -188,21 +190,12 @@ impl MessageDecoderRunner {
     fn new(inner: Box<dyn MessageDecoder>, allowed: BTreeSet<ChannelId>) -> Self {
         Self { inner, allowed }
     }
-}
-
-impl Decoder for MessageDecoderRunner {
-    fn identifier() -> DecoderIdentifier
-    where
-        Self: Sized,
-    {
-        // static identifier isn't used for trait objects; unreachable in practice.
-        "message_decoder_runner".into()
-    }
 
     fn process(
         &mut self,
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
+        time_type: TimeType,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
         self.inner.init(summary)?;
@@ -219,12 +212,12 @@ impl Decoder for MessageDecoderRunner {
 
                     let parser = self.inner.message_parser(channel, msg_offsets.len())?;
                     let entity_path = EntityPath::from(channel.topic.as_str());
-                    let ctx = ParserContext::new(entity_path);
+                    let ctx = ParserContext::new(entity_path, time_type);
                     Some((channel_id, (ctx, parser)))
                 })
                 .collect::<IntMap<_, _>>();
 
-            let mut decoder = McapChunkDecoder::new(parsers);
+            let mut decoder = McapChunkDecoder::new(parsers, time_type);
 
             for msg in summary.stream_chunk(mcap_bytes, chunk)? {
                 match msg {
@@ -274,6 +267,7 @@ impl ExecutionPlan {
         mut self,
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
+        time_type: TimeType,
         emit: &mut dyn FnMut(Chunk),
     ) -> anyhow::Result<()> {
         for mut decoder in self.file_decoders {
@@ -281,7 +275,7 @@ impl ExecutionPlan {
         }
 
         for runner in &mut self.runners {
-            runner.process(mcap_bytes, summary, emit)?;
+            runner.process(mcap_bytes, summary, time_type, emit)?;
         }
         Ok(())
     }

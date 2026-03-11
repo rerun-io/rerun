@@ -364,6 +364,13 @@ Convert an .mcap file to an .rrd.
 >
 > Duration and sequence timelines are not affected by this offset.
 
+* `--timeline-type <TIMELINE_TYPE>`
+> The timeline type to use for timestamp timelines.
+>
+> "timestamp" (default) creates `TimestampNs` timelines (nanoseconds since Unix epoch). "duration" creates `DurationNs` timelines (nanosecond durations).
+>
+> [Default: `timestamp`]
+
 ## rerun rrd
 
 Manipulate the contents of .rrd and .rbl files.

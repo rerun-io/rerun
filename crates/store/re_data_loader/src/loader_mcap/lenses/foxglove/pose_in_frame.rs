@@ -11,13 +11,13 @@ use super::FOXGLOVE_TIMESTAMP;
 /// Creates a lens for [`foxglove.PoseInFrame`] messages.
 ///
 /// [`foxglove.PoseInFrame`]: https://docs.foxglove.dev/docs/sdk/schemas/pose-in-frame
-pub fn pose_in_frame() -> Result<Lens, LensError> {
+pub fn pose_in_frame(time_type: TimeType) -> Result<Lens, LensError> {
     Ok(
         Lens::for_input_column(EntityPathFilter::all(), "foxglove.PoseInFrame:message")
             .output_columns(|out| {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
-                    TimeType::TimestampNs,
+                    time_type,
                     Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
                 )?
                 .component(

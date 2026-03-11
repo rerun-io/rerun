@@ -1,5 +1,6 @@
 //! MCAP file loader implementation.
 
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
@@ -27,30 +28,36 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// to an .rrd. Here are a few examples:
 /// - [`re_mcap::decoders::McapProtobufDecoder`]
 /// - [`re_mcap::decoders::McapRawDecoder`]
-///
-/// Optionally, [`Lenses`] can be configured via [`Self::with_lenses`] to transform
-/// chunks as they are loaded (e.g., converting raw protobuf data into semantic Rerun components).
 pub struct McapLoader {
     selected_decoders: SelectedDecoders,
     // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
     raw_fallback_enabled: bool,
-    lenses: Option<Arc<Lenses>>,
+    lenses_by_time_type: HashMap<re_log_types::TimeType, Arc<Lenses>>,
 }
 
 impl Default for McapLoader {
     fn default() -> Self {
-        Self::new(SelectedDecoders::All)
+        Self::new(&SelectedDecoders::All)
     }
 }
 
 impl McapLoader {
-    /// Creates a new [`McapLoader`] that extracts the specified `decoders`.
-    pub fn new(selected_decoders: SelectedDecoders) -> Self {
-        let lenses = Self::build_lenses(&selected_decoders);
+    /// Creates a new [`McapLoader`] that uses the specified decoders.
+    pub fn new(selected_decoders: &SelectedDecoders) -> Self {
+        // Cache lenses for each supported timeline type.
+        let mut lenses_by_time_type = HashMap::new();
+        for time_type in [
+            re_log_types::TimeType::TimestampNs,
+            re_log_types::TimeType::DurationNs,
+        ] {
+            if let Some(lenses) = Self::build_lenses(selected_decoders, time_type) {
+                lenses_by_time_type.insert(time_type, lenses);
+            }
+        }
         Self {
-            selected_decoders,
+            selected_decoders: selected_decoders.clone(),
             raw_fallback_enabled: true,
-            lenses,
+            lenses_by_time_type,
         }
     }
 
@@ -60,20 +67,26 @@ impl McapLoader {
         self
     }
 
-    /// Configures lenses to apply to chunks as they are loaded.
-    pub fn with_lenses(mut self, lenses: Lenses) -> Self {
-        self.lenses = Some(Arc::new(lenses));
-        self
+    /// Returns the cached lenses for the given [`re_log_types::TimeType`].
+    fn lenses_for(&self, time_type: re_log_types::TimeType) -> Option<Arc<Lenses>> {
+        if time_type == re_log_types::TimeType::Sequence {
+            re_log::error_once!("Sequence is not a supported timeline type for MCAP lenses");
+            return None;
+        }
+        self.lenses_by_time_type.get(&time_type).cloned()
     }
 
-    fn build_lenses(selected_decoders: &SelectedDecoders) -> Option<Arc<Lenses>> {
+    fn build_lenses(
+        selected_decoders: &SelectedDecoders,
+        time_type: re_log_types::TimeType,
+    ) -> Option<Arc<Lenses>> {
         if !selected_decoders.contains(&DecoderIdentifier::from(
             super::lenses::FOXGLOVE_LENSES_IDENTIFIER,
         )) {
             return None;
         }
 
-        match super::lenses::foxglove_lenses() {
+        match super::lenses::foxglove_lenses(time_type) {
             Ok(lenses) => Some(Arc::new(lenses)),
             Err(err) => {
                 re_log::error_once!(
@@ -111,7 +124,7 @@ impl DataLoader for McapLoader {
         let settings = settings.clone();
         let selected_decoders = self.selected_decoders.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
-        let lenses = self.lenses.clone();
+        let lenses = self.lenses_for(settings.timeline_type);
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
             .spawn(move || {
@@ -148,7 +161,7 @@ impl DataLoader for McapLoader {
         let settings = settings.clone();
         let selected_decoders = self.selected_decoders.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
-        let lenses = self.lenses.clone();
+        let lenses = self.lenses_for(settings.timeline_type);
 
         // NOTE: this must be spawned on a dedicated thread to avoid a deadlock!
         // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
@@ -222,6 +235,10 @@ pub fn load_mcap(
     lenses: Option<&Lenses>,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
+    re_log::debug!(
+        "Loading MCAP with timeline type {:?}",
+        settings.timeline_type
+    );
     let store_id = settings.recommended_store_id();
 
     if send_crossbeam(
@@ -241,6 +258,7 @@ pub fn load_mcap(
     }
 
     let timestamp_offset_ns = settings.timestamp_offset_ns;
+    let time_type = settings.timeline_type;
 
     let mut send_chunk = |chunk: re_chunk::Chunk| {
         // Apply lenses if configured, otherwise forward the chunk directly.
@@ -279,7 +297,7 @@ pub fn load_mcap(
     DecoderRegistry::all_builtin(raw_fallback_enabled)
         .select(selected_decoders)
         .plan(&summary)?
-        .run(mcap, &summary, &mut send_chunk)?;
+        .run(mcap, &summary, time_type, &mut send_chunk)?;
 
     Ok(())
 }

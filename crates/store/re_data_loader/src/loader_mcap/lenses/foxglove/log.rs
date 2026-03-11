@@ -10,13 +10,13 @@ use super::FOXGLOVE_TIMESTAMP;
 /// Creates a lens for converting [`foxglove.Log`] messages to Rerun's [`TextLog`] archetype.
 ///
 /// [`foxglove.Log`]: https://docs.foxglove.dev/docs/sdk/schemas/log
-pub fn log() -> Result<Lens, LensError> {
+pub fn log(time_type: TimeType) -> Result<Lens, LensError> {
     Ok(
         Lens::for_input_column(EntityPathFilter::all(), "foxglove.Log:message")
             .output_columns(|out| {
                 out.time(
                     FOXGLOVE_TIMESTAMP,
-                    TimeType::TimestampNs,
+                    time_type,
                     Selector::parse(".timestamp")?.then(MapList::new(op::timespec_to_nanos())),
                 )?
                 .component(TextLog::descriptor_text(), Selector::parse(".message")?)?
