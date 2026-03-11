@@ -10,7 +10,8 @@ use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 
 use crate::shared_reader::SharedManualReader;
-use crate::{LogFormat, TelemetryArgs, TraceIdLayer};
+use crate::trace_id_format::TraceIdFormat;
+use crate::{BenchmarkIdLayer, LogFormat, TelemetryArgs};
 
 // ---
 
@@ -268,8 +269,10 @@ impl Telemetry {
 
             // Everything is generically typed, which is why this is such a nightmare to do.
             macro_rules! handle_format {
-                ($format:ident) => {{
-                    let layer = layer.$format();
+                ($format:ident, $is_json:expr) => {{
+                    let layer = layer
+                        .$format()
+                        .map_event_format(|f| TraceIdFormat::new(f, $is_json));
                     if log_test_output {
                         layer.with_test_writer().boxed()
                     } else {
@@ -278,9 +281,9 @@ impl Telemetry {
                 }};
             }
             let layer = match log_format {
-                LogFormat::Pretty => handle_format!(pretty),
-                LogFormat::Compact => handle_format!(compact),
-                LogFormat::Json => handle_format!(json),
+                LogFormat::Pretty => handle_format!(pretty, false),
+                LogFormat::Compact => handle_format!(compact, false),
+                LogFormat::Json => handle_format!(json, true),
             };
 
             layer.with_filter(create_filter(&log_filter, "warn")?)
@@ -432,7 +435,7 @@ impl Telemetry {
                     .with(layer_logs_otlp)
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
-                    .with(TraceIdLayer::default())
+                    .with(BenchmarkIdLayer::default())
                     .with(self::tracy::tracy_layer())
                     .try_init()?;
             }
@@ -446,7 +449,7 @@ impl Telemetry {
                 .with(layer_logs_otlp)
                 .with(layer_logs_and_traces_stdio)
                 .with(layer_traces_otlp)
-                .with(TraceIdLayer::default())
+                .with(BenchmarkIdLayer::default())
                 .try_init()?;
         }
 
