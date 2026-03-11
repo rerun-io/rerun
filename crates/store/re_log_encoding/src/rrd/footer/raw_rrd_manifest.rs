@@ -1,8 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
 
-use arrow::array::{BinaryArray, BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array};
 use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
+use arrow::{
+    array::{BinaryArray, BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array},
+    error::ArrowError,
+};
 use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
@@ -11,7 +14,7 @@ use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType};
 use re_types_core::ComponentDescriptor;
 
-use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
+use crate::{CodecError, CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
 
 /// The payload found in [`super::RrdFooter`]s.
 ///
@@ -233,6 +236,44 @@ impl std::fmt::Display for RrdManifestSha256 {
 }
 
 impl RawRrdManifest {
+    /// Concatenate two manifests by appending the rows of `other` onto `self`.
+    ///
+    /// Both manifests must be for the same recording (same `store_id`).
+    /// The sorbet schemas are merged, and the data `RecordBatch`es are concatenated.
+    ///
+    /// This is used when the server sends a manifest in multiple parts.
+    pub fn concat(self, other: Self) -> Result<Self, ArrowError> {
+        re_tracing::profile_function!();
+
+        re_log::debug_assert_eq!(self.store_id, other.store_id);
+
+        let (sorbet_schema, sorbet_schema_sha256) =
+            if self.sorbet_schema_sha256 == other.sorbet_schema_sha256 {
+                (self.sorbet_schema, self.sorbet_schema_sha256)
+            } else {
+                return Err(ArrowError::SchemaError(
+                    "Mismatching sorbet recording schemas in RawRrdManifest::concat".to_owned(),
+                ));
+            };
+
+        if self.data.schema() != other.data.schema() {
+            re_log::debug!(
+                "Different schemas in the RrdManifest ({} columns in existing, {} in the new part)",
+                self.data.num_columns(),
+                other.data.num_columns(),
+            );
+        }
+
+        let data = arrow::compute::concat_batches(&self.data.schema(), &[self.data, other.data])?;
+
+        Ok(Self {
+            store_id: self.store_id,
+            sorbet_schema,
+            sorbet_schema_sha256,
+            data,
+        })
+    }
+
     /// High-level helper to parse [`RawRrdManifest`]s from raw RRD bytes.
     ///
     /// This does not decode all the data, but rather goes straight to the RRD footer (if any).
@@ -253,7 +294,7 @@ impl RawRrdManifest {
             Ok(footer) => footer,
 
             // That was in fact _not_ a footer.
-            Err(crate::CodecError::FrameDecoding(_)) => return Ok(vec![]),
+            Err(CodecError::FrameDecoding(_)) => return Ok(vec![]),
 
             err @ Err(_) => err?,
         };
@@ -271,7 +312,7 @@ impl RawRrdManifest {
             let rrd_footer_byte_span = rrd_footer_byte_span
                 .try_cast::<usize>()
                 .ok_or_else(|| {
-                    crate::CodecError::FrameDecoding(
+                    CodecError::FrameDecoding(
                         "RRD footer too large for native bit width".to_owned(),
                     )
                 })?
@@ -281,7 +322,7 @@ impl RawRrdManifest {
 
             let crc = crate::StreamFooter::compute_crc(rrd_footer_bytes);
             if crc != crc_excluding_header {
-                return Err(crate::CodecError::CrcMismatch {
+                return Err(CodecError::CrcMismatch {
                     expected: crc_excluding_header,
                     got: crc,
                 });
@@ -345,7 +386,7 @@ impl RawRrdManifest {
     /// Computes the sha256 hash of the manifest's data, which can be used as a unique ID.
     //
     // TODO(cmc): very expensive, should be cached somewhere.
-    pub fn compute_sha256(&self) -> Result<RrdManifestSha256, arrow::error::ArrowError> {
+    pub fn compute_sha256(&self) -> Result<RrdManifestSha256, ArrowError> {
         re_tracing::profile_function!();
 
         let data_ipc = {
@@ -385,13 +426,11 @@ impl RawRrdManifest {
                 .map(|(f, c)| {
                     c.downcast_array_ref::<arrow::array::BooleanArray>()
                         .ok_or_else(|| {
-                            crate::CodecError::ArrowDeserialization(
-                                arrow::error::ArrowError::SchemaError(format!(
-                                    "'{}' should be a BooleanArray, but it's a {} instead",
-                                    f.name(),
-                                    c.data_type(),
-                                )),
-                            )
+                            CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                                "'{}' should be a BooleanArray, but it's a {} instead",
+                                f.name(),
+                                c.data_type(),
+                            )))
                         })
                         .map(|c| (f, c))
                 })
@@ -411,7 +450,7 @@ impl RawRrdManifest {
                 }
 
                 let Some(component) = f.metadata().get("rerun:component") else {
-                    return Err(crate::CodecError::from(ChunkError::Malformed {
+                    return Err(CodecError::from(ChunkError::Malformed {
                         reason: format!(
                             "column '{}' is missing rerun:component metadata",
                             f.name()
@@ -492,7 +531,7 @@ impl RawRrdManifest {
                     && f.name().ends_with(":start")
                     && f.metadata().get("rerun:component") == Some(component)
             }) else {
-                return Err(crate::CodecError::from(ChunkError::Malformed {
+                return Err(CodecError::from(ChunkError::Malformed {
                     reason: format!("start index is missing for {component}"),
                 }));
             };
@@ -501,7 +540,7 @@ impl RawRrdManifest {
                     && f.name().ends_with(":end")
                     && f.metadata().get("rerun:component") == Some(component)
             }) else {
-                return Err(crate::CodecError::from(ChunkError::Malformed {
+                return Err(CodecError::from(ChunkError::Malformed {
                     reason: format!("end index is missing for {component}"),
                 }));
             };
@@ -512,25 +551,23 @@ impl RawRrdManifest {
                         && f.metadata().get("rerun:component") == Some(component)
                 })
             else {
-                return Err(crate::CodecError::from(ChunkError::Malformed {
+                return Err(CodecError::from(ChunkError::Malformed {
                     reason: format!("num_rows index is missing for {component}"),
                 }));
             };
 
-            let (time_type, col_start_raw) = TimeType::from_arrow_array(col_start)
-                .map_err(crate::CodecError::ArrowDeserialization)?;
-            let (_, col_end_raw) = TimeType::from_arrow_array(col_end)
-                .map_err(crate::CodecError::ArrowDeserialization)?;
+            let (time_type, col_start_raw) =
+                TimeType::from_arrow_array(col_start).map_err(CodecError::ArrowDeserialization)?;
+            let (_, col_end_raw) =
+                TimeType::from_arrow_array(col_end).map_err(CodecError::ArrowDeserialization)?;
             let col_num_rows_raw: &[u64] = col_num_rows
                 .downcast_array_ref::<UInt64Array>()
                 .ok_or_else(|| {
-                    crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                        format!(
-                            "'{}' should be a BooleanArray, but it's a {} instead",
-                            field_num_rows.name(),
-                            col_num_rows.data_type(),
-                        ),
-                    ))
+                    CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                        "'{}' should be a BooleanArray, but it's a {} instead",
+                        field_num_rows.name(),
+                        col_num_rows.data_type(),
+                    )))
                 })?
                 .values();
 
@@ -639,7 +676,7 @@ impl PartialEq for RawRrdManifest {
 impl RawRrdManifest {
     pub fn compute_sorbet_schema_sha256(
         schema: &arrow::datatypes::Schema,
-    ) -> Result<[u8; 32], arrow::error::ArrowError> {
+    ) -> Result<[u8; 32], ArrowError> {
         let schema = {
             // Sort and remove top-level metadata before hashing.
             let mut fields = schema.fields().to_vec();
@@ -775,7 +812,7 @@ impl RawRrdManifest {
 
                         "has_static_data" => {
                             if field.data_type() != Self::field_chunk_is_static().data_type() {
-                                return Err(crate::CodecError::from(ChunkError::Malformed {
+                                return Err(CodecError::from(ChunkError::Malformed {
                                     reason: format!(
                                         "field '{}' should be {} but is actually {}",
                                         field.name(),
@@ -788,7 +825,7 @@ impl RawRrdManifest {
 
                         "num_rows" => {
                             if field.data_type() != Self::field_chunk_num_rows().data_type() {
-                                return Err(crate::CodecError::from(ChunkError::Malformed {
+                                return Err(CodecError::from(ChunkError::Malformed {
                                     reason: format!(
                                         "field '{}' should be {} but is actually {}",
                                         field.name(),
@@ -800,7 +837,7 @@ impl RawRrdManifest {
                         }
 
                         suffix => {
-                            return Err(crate::CodecError::from(ChunkError::Malformed {
+                            return Err(CodecError::from(ChunkError::Malformed {
                                 reason: format!(
                                     "field '{}' has invalid suffix '{suffix}'",
                                     field.name(),
@@ -823,7 +860,7 @@ impl RawRrdManifest {
                         name if Self::COMMON_IMPL_SPECIFIC_FIELDS.contains(&name) => {}
 
                         name => {
-                            return Err(crate::CodecError::from(ChunkError::Malformed {
+                            return Err(CodecError::from(ChunkError::Malformed {
                                 reason: format!(
                                     "unexpected field '{name}' should not be present in an RRD manifest",
                                 ),
@@ -850,7 +887,7 @@ impl RawRrdManifest {
                         .schema_ref()
                         .field_with_name(&format!("{prefix}:{counterpart}"))
                         .map_err(|_err| {
-                            crate::CodecError::from(ChunkError::Malformed {
+                            CodecError::from(ChunkError::Malformed {
                                 reason: format!(
                                     "field '{}' does not have matching `:{counterpart}` field",
                                     field.name()
@@ -864,7 +901,7 @@ impl RawRrdManifest {
                         | arrow::datatypes::DataType::Duration(_) => {}
 
                         datatype => {
-                            return Err(crate::CodecError::from(ChunkError::Malformed {
+                            return Err(CodecError::from(ChunkError::Malformed {
                                 reason: format!(
                                     "field '{}' is {datatype} which is not a supported index datatype",
                                     field.name(),
@@ -874,7 +911,7 @@ impl RawRrdManifest {
                     }
 
                     if field.data_type() != field_counterpart.data_type() {
-                        return Err(crate::CodecError::from(ChunkError::Malformed {
+                        return Err(CodecError::from(ChunkError::Malformed {
                             reason: format!(
                                 "field '{}' is {} but field '{}' is {}",
                                 field.name(),
@@ -897,7 +934,7 @@ impl RawRrdManifest {
                         .schema_ref()
                         .field_with_name(&format!("{prefix}:num_rows"))
                         .map_err(|_err| {
-                            crate::CodecError::from(ChunkError::Malformed {
+                            CodecError::from(ChunkError::Malformed {
                                 reason: format!(
                                     "field '{}' does not have matching `:num_rows` field",
                                     field.name()
@@ -908,7 +945,7 @@ impl RawRrdManifest {
                     match field_num_rows.data_type() {
                         arrow::datatypes::DataType::UInt64 => {}
                         datatype => {
-                            return Err(crate::CodecError::from(ChunkError::Malformed {
+                            return Err(CodecError::from(ChunkError::Malformed {
                                 reason: format!(
                                     "field '{}' is {datatype} while it should be UInt64Array",
                                     field_num_rows.name(),
@@ -953,7 +990,7 @@ impl RawRrdManifest {
             for column in &sorbet_columns {
                 let md = column.metadata();
                 let Some(component) = md.get("rerun:component") else {
-                    return Err(crate::CodecError::from(ChunkError::Malformed {
+                    return Err(CodecError::from(ChunkError::Malformed {
                         reason: format!(
                             "column '{}' is missing rerun:component metadata",
                             column.name()
@@ -979,7 +1016,7 @@ impl RawRrdManifest {
                     .schema_ref()
                     .field_with_name(&column_name)
                     .map_err(|_err| {
-                        crate::CodecError::from(ChunkError::Malformed {
+                        CodecError::from(ChunkError::Malformed {
                             reason: format!("static index '{column_name}' is missing"),
                         })
                     })?;
@@ -1004,7 +1041,7 @@ impl RawRrdManifest {
             for suffix in ["start", "end"] {
                 let field = rrd_manifest_fields.remove(&format!("{sorbet_index_name_normalized}:{suffix}"))
                     .ok_or_else(|| {
-                        crate::CodecError::from(ChunkError::Malformed {
+                        CodecError::from(ChunkError::Malformed {
                             reason: format!(
                                 "global index '{sorbet_index}' does not have matching `:{suffix}` field"
                             ),
@@ -1012,7 +1049,7 @@ impl RawRrdManifest {
                     })?;
 
                 if sorbet_index.data_type() != field.data_type() {
-                    return Err(crate::CodecError::from(ChunkError::Malformed {
+                    return Err(CodecError::from(ChunkError::Malformed {
                         reason: format!(
                             "global index '{}' is {} but '{}' is {}",
                             sorbet_index.name(),
@@ -1029,7 +1066,7 @@ impl RawRrdManifest {
                 let md = sorbet_column.metadata();
 
                 let Some(component) = md.get("rerun:component") else {
-                    return Err(crate::CodecError::from(ChunkError::Malformed {
+                    return Err(CodecError::from(ChunkError::Malformed {
                         reason: format!(
                             "column '{}' is missing rerun:component metadata",
                             sorbet_column.name()
@@ -1069,7 +1106,7 @@ impl RawRrdManifest {
                     };
 
                     if sorbet_index.data_type() != field.data_type() {
-                        return Err(crate::CodecError::from(ChunkError::Malformed {
+                        return Err(CodecError::from(ChunkError::Malformed {
                             reason: format!(
                                 "local index '{}' is {} but '{}' is {}",
                                 sorbet_index.name(),
@@ -1084,7 +1121,7 @@ impl RawRrdManifest {
         }
 
         if !rrd_manifest_fields.is_empty() {
-            return Err(crate::CodecError::from(ChunkError::Malformed {
+            return Err(CodecError::from(ChunkError::Malformed {
                 reason: format!(
                     "detected dangling indexes (present in manifest but not in Sorbet schema): {:?}",
                     rrd_manifest_fields.keys()
@@ -1098,11 +1135,11 @@ impl RawRrdManifest {
     /// Costly.
     fn check_sorbet_schema_sha256_is_correct(&self) -> CodecResult<()> {
         let expected_sorbet_schema_sha256 = Self::compute_sorbet_schema_sha256(&self.sorbet_schema)
-            .map_err(crate::CodecError::ArrowDeserialization)?;
+            .map_err(CodecError::ArrowDeserialization)?;
 
         if self.sorbet_schema_sha256 != expected_sorbet_schema_sha256 {
-            return Err(crate::CodecError::ArrowDeserialization(
-                arrow::error::ArrowError::SchemaError(format!(
+            return Err(CodecError::ArrowDeserialization(ArrowError::SchemaError(
+                format!(
                     "invalid schema hash: expected {} but got {}",
                     expected_sorbet_schema_sha256
                         .iter()
@@ -1112,8 +1149,8 @@ impl RawRrdManifest {
                         .iter()
                         .map(|b| format!("{b:02x}"))
                         .collect::<String>(),
-                )),
-            ));
+                ),
+            )));
         }
         Ok(())
     }
@@ -1306,15 +1343,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<StringArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a StringArray",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a StringArray",
+                )))
             })
     }
 
@@ -1334,15 +1371,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<FixedSizeBinaryArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a FixedSizeBinaryArray",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a FixedSizeBinaryArray",
+                )))
             })
     }
 
@@ -1376,15 +1413,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<BooleanArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a BooleanArray",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a BooleanArray",
+                )))
             })
     }
 
@@ -1402,15 +1439,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<UInt64Array>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a UInt64Array",
+                )))
             })
     }
 
@@ -1428,15 +1465,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<UInt64Array>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a UInt64Array",
+                )))
             })
     }
 
@@ -1456,15 +1493,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<UInt64Array>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a UInt64Array",
+                )))
             })
     }
 
@@ -1486,15 +1523,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<UInt64Array>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a UInt64Array",
+                )))
             })
     }
 
@@ -1517,15 +1554,15 @@ impl RawRrdManifest {
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot read column: '{name}' is missing from batch",),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot read column: '{name}' is missing from batch",
+                )))
             })?
             .downcast_array_ref::<BinaryArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
-                    format!("cannot downcast column: '{name}' is not a BinaryArray"),
-                ))
+                CodecError::ArrowDeserialization(ArrowError::SchemaError(format!(
+                    "cannot downcast column: '{name}' is not a BinaryArray"
+                )))
             })
     }
 }

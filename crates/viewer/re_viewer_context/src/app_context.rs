@@ -84,6 +84,7 @@ pub struct AppContext<'a> {
 
 pub struct AuthContext {
     pub email: String,
+    pub org_name: Option<String>,
 }
 
 impl AppContext<'_> {

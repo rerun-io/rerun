@@ -1252,6 +1252,21 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                             mut_db.add_rrd_manifest_message(rrd_manifest);
                         }
 
+                        DataSourceMessage::RrdManifestComplete(store_id) => {
+                            let mut_db = match store_id.kind() {
+                                re_log_types::StoreKind::Recording => {
+                                    rec.get_or_insert_with(|| {
+                                        re_entity_db::EntityDb::new(store_id.clone())
+                                    })
+                                }
+                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                    re_entity_db::EntityDb::new(store_id.clone())
+                                }),
+                            };
+
+                            mut_db.mark_rrd_manifest_complete();
+                        }
+
                         DataSourceMessage::LogMsg(msg) => {
                             let mut_db = match msg.store_id().kind() {
                                 re_log_types::StoreKind::Recording => {

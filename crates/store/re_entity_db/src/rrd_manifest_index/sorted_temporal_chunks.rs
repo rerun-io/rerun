@@ -121,10 +121,21 @@ impl re_byte_size::SizeBytes for SortedTemporalChunks {
 }
 
 impl SortedTemporalChunks {
+    pub fn new(
+        entity_tree: &crate::EntityTree,
+        native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
+    ) -> Self {
+        re_tracing::profile_function!();
+        let mut slf = Self::default();
+        slf.update(entity_tree, native_temporal_map);
+        slf
+    }
+
     /// Update the cache from the manifest's temporal map and entity tree.
     ///
     /// Should be called when a new rrd manifest is appended.
-    pub fn update(
+    // TODO(emilk): handle incremental ingestion
+    fn update(
         &mut self,
         entity_tree: &crate::EntityTree,
         native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,

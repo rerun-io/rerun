@@ -341,6 +341,7 @@ impl From<User> for crate::oauth::User {
         Self {
             id: value.id,
             email: value.email,
+            org_name: None,
         }
     }
 }

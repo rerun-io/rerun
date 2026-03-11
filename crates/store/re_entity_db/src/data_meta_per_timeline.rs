@@ -76,7 +76,7 @@ impl DataMetaPerTimeline {
                 // then don't count it since we've already counted that with a virtual
                 // addition.
                 if store
-                    .find_root_rrd_manifests(&addition.delta_chunk().id())
+                    .find_root_manifest_chunks(&addition.delta_chunk().id())
                     .is_empty()
                 {
                     for (timeline, col) in addition.delta_chunk().timelines() {
@@ -111,9 +111,9 @@ impl DataMetaPerTimeline {
                 // So we collect the count of all root chunks in the rrd manifest
                 // for the deleted chunk.
                 let rrd_manifest_row_counts_iter = store
-                    .find_root_rrd_manifests(&deletion.chunk.id())
+                    .find_root_manifest_chunks(&deletion.chunk.id())
                     .into_iter()
-                    .filter_map(|(c, _)| manifest_index.root_chunk_info(&c))
+                    .filter_map(|c| manifest_index.root_chunk_info(&c))
                     .flat_map(|info| {
                         info.temporals.iter().map(|(timeline, info)| {
                             (*timeline, info.num_rows_for_all_entities_all_components)
@@ -374,7 +374,7 @@ mod tests {
 
         // Insert the manifest virtually.
         let event = store.insert_rrd_manifest(rrd_manifest.clone()).unwrap();
-        manifest_index.append(rrd_manifest);
+        manifest_index.append(rrd_manifest).unwrap();
         meta.on_events(&manifest_index, &store, &[event]);
 
         // Virtual rows should be counted.
@@ -395,7 +395,7 @@ mod tests {
 
         // Load virtually first.
         let event = store.insert_rrd_manifest(rrd_manifest.clone()).unwrap();
-        manifest_index.append(rrd_manifest);
+        manifest_index.append(rrd_manifest).unwrap();
         manifest_index.on_events(&store, std::slice::from_ref(&event));
         meta.on_events(&manifest_index, &store, std::slice::from_ref(&event));
 
@@ -456,7 +456,7 @@ mod tests {
         .unwrap();
 
         let event = store.insert_rrd_manifest(rrd_manifest.clone()).unwrap();
-        manifest_index.append(rrd_manifest);
+        manifest_index.append(rrd_manifest).unwrap();
         meta.on_events(&manifest_index, &store, &[event]);
 
         assert_eq!(meta.row_count_for_timeline(tl.name()), 4);

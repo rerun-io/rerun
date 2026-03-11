@@ -100,11 +100,16 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: true },
                     )
                 }),
         );
-        *static_chunk_ids_per_entity = native_static_map.clone();
+        for (entity_path, per_component) in native_static_map {
+            static_chunk_ids_per_entity
+                .entry(entity_path.clone())
+                .or_default()
+                .extend(per_component.iter().map(|(&k, &v)| (k, v)));
+        }
 
         let native_temporal_map = rrd_manifest.temporal_map();
         chunks_lineage.extend(
@@ -116,7 +121,7 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: false },
                     )
                 }),
         );
@@ -261,7 +266,9 @@ impl ChunkStore {
                         chunk.id()
                     );
                 } else {
-                    re_log::warn_once!("The same chunk was inserted twice (this has no effect)");
+                    re_log::warn_once!(
+                        "[DEBUG] The same chunk was inserted twice (this has no effect)"
+                    );
                 }
             } else {
                 re_log::debug_once!("The same chunk was inserted twice (this has no effect)");
@@ -294,7 +301,7 @@ impl ChunkStore {
 
         if matches!(
             self.direct_lineage(&chunk.id()),
-            Some(&ChunkDirectLineage::ReferencedFrom(_))
+            Some(&ChunkDirectLineage::RootFromManifest { .. })
         ) {
             // If we reach here, then a chunk that was previously virtually inserted using `insert_rrd_manifest`
             // is about to be physically inserted for real.

@@ -6,7 +6,7 @@ use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::Chunk;
 use re_chunk_store::ChunkStoreConfig;
-use re_entity_db::{EntityDb, RrdManifestIndex};
+use re_entity_db::{EntityDb, RrdManifestIndex, entity_db::RedapConnectionState};
 use re_format::{format_bytes, format_uint};
 use re_log_channel::LogSource;
 use re_log_types::{EntityPath, StoreKind};
@@ -240,7 +240,11 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
                     }
                 }
 
-                if num_fully_loaded == num_root_chunks {
+                if db.redap_connection_state() == RedapConnectionState::PartialManifest {
+                    ui.label(format!("{current_size} / ?"));
+                    ui.label(format!("({} / ? chunks)", format_uint(num_fully_loaded)));
+                    ui.end_row();
+                } else if num_fully_loaded == num_root_chunks {
                     ui.label("100%");
                 } else {
                     ui.label(format!("{current_size} / {max_downloaded}"));
@@ -408,6 +412,10 @@ fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
     egui::Grid::new("debug-info").show(ui, |ui| {
         ui.label("is_buffering");
         ui.label(db.is_buffering().to_string());
+        ui.end_row();
+
+        ui.label("Connection");
+        ui.label(format!("{:?}", db.redap_connection_state()));
         ui.end_row();
 
         ui.label("Physical chunks");

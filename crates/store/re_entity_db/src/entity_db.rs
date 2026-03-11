@@ -72,10 +72,16 @@ pub enum RedapConnectionState {
     /// We are not connected to redap
     NotConnected,
 
-    DownloadingManifest,
+    /// We are downloading the manifest (no parts received yet).
+    DownloadingFirstManifestPart,
 
+    /// Connected but manifest is missing or failed to download.
     MissingManifest,
 
+    /// We have some manifest data, but more parts are still arriving.
+    PartialManifest,
+
+    /// The full manifest has been received and we are ready to fetch chunks.
     Ready,
 }
 
@@ -335,7 +341,7 @@ impl EntityDb {
         &mut self.rrd_manifest_index
     }
 
-    fn redap_connection_state(&self) -> RedapConnectionState {
+    pub fn redap_connection_state(&self) -> RedapConnectionState {
         // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
         let is_connected_to_redap = self
             .data_source
@@ -344,9 +350,13 @@ impl EntityDb {
 
         if is_connected_to_redap {
             if self.rrd_manifest_index.has_manifest() {
-                RedapConnectionState::Ready
+                if self.rrd_manifest_index.is_manifest_complete() {
+                    RedapConnectionState::Ready
+                } else {
+                    RedapConnectionState::PartialManifest
+                }
             } else if self.num_physical_chunks() == 0 {
-                RedapConnectionState::DownloadingManifest
+                RedapConnectionState::DownloadingFirstManifestPart
             } else {
                 // This handles the case where we tried and failed to download the manifest,
                 // but managed to download the data anyhow.
@@ -361,13 +371,15 @@ impl EntityDb {
     pub fn can_fetch_chunks_from_redap(&self) -> bool {
         match self.redap_connection_state() {
             RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
-            RedapConnectionState::DownloadingManifest | RedapConnectionState::Ready => true,
+            RedapConnectionState::DownloadingFirstManifestPart
+            | RedapConnectionState::PartialManifest
+            | RedapConnectionState::Ready => true,
         }
     }
 
     /// Are we currently in the process of downloading the RRD Manifest?
-    pub fn is_currently_downloading_manifest(&self) -> bool {
-        self.redap_connection_state() == RedapConnectionState::DownloadingManifest
+    pub fn is_downloading_first_part_of_manifest(&self) -> bool {
+        self.redap_connection_state() == RedapConnectionState::DownloadingFirstManifestPart
     }
 
     /// True if we're are currently waiting for necessary
@@ -375,7 +387,8 @@ impl EntityDb {
     pub fn is_buffering(&self) -> bool {
         match self.redap_connection_state() {
             RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
-            RedapConnectionState::DownloadingManifest => true,
+            RedapConnectionState::DownloadingFirstManifestPart
+            | RedapConnectionState::PartialManifest => true,
 
             RedapConnectionState::Ready => {
                 if let Some(state) = self
@@ -713,7 +726,6 @@ impl EntityDb {
 
     pub fn add_rrd_manifest_message(&mut self, rrd_manifest: Arc<RrdManifest>) {
         re_tracing::profile_function!();
-        re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
         let event = self
             .storage_engine
@@ -730,7 +742,14 @@ impl EntityDb {
             }
         }
 
-        self.rrd_manifest_index.append(rrd_manifest);
+        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
+            re_log::error!("Failed to append RRD manifest: {err}");
+        }
+    }
+
+    /// Mark the RRD manifest as complete (all parts have been received).
+    pub fn mark_rrd_manifest_complete(&mut self) {
+        self.rrd_manifest_index.set_manifest_complete();
     }
 
     /// Insert new data into the store.
