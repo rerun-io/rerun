@@ -994,7 +994,7 @@ fn entity_path_filter_ui(
             let is_exclusion = line.trim_start().starts_with('-');
 
             let color = if is_exclusion {
-                style.visuals.error_fg_color
+                tokens.text_subdued
             } else {
                 tokens.info_log_text_color
             };
