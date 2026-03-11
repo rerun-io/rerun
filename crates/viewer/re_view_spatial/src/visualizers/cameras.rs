@@ -78,9 +78,15 @@ impl CamerasVisualizer {
         else {
             // This implies that the transform context didn't see the pinhole transform.
             // This can happen with various frame id mismatches. TODO(andreas): When exactly does this happen? Can we add a unit test and improve the message?
+            let frame = if let Some(frame_id) =
+                transforms.format_frame_or_debug_panic(pinhole_frame_id, ctx.target_entity_path)
+            {
+                format!("child frame {frame_id:?}")
+            } else {
+                "child frame".to_owned()
+            };
             return Err(format!(
-                "The pinhole's child frame {:?} does not form the root of a 2D subspace. Ensure you're transform tree is valid.",
-                transforms.format_frame(pinhole_frame_id)
+                "The pinhole's {frame} does not form the root of a 2D subspace. Ensure your transform tree is valid.",
             ));
         };
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;

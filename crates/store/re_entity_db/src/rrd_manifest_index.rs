@@ -281,11 +281,7 @@ impl RrdManifestIndex {
     }
 
     fn update_entity_tree(&mut self, manifest: &RrdManifest) {
-        for entity in manifest
-            .static_map()
-            .keys()
-            .chain(manifest.temporal_map().keys())
-        {
+        for entity in manifest.recording_schema().all_entities() {
             self.entity_tree.on_new_entity(entity);
         }
     }

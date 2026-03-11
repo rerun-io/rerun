@@ -115,7 +115,7 @@ impl FrameIdRegistry {
     }
 
     /// Registers entity path derived frame id and all its parents.
-    fn register_frame_id_from_entity_path(&mut self, entity_path: &EntityPath) {
+    pub fn register_frame_id_from_entity_path(&mut self, entity_path: &EntityPath) {
         // Ensure all implicit frames from this entity all the way up to the root are known.
         // Note that in-between entities may never be mentioned in any chunk, but we want to make sure they're known to the system.
         let mut entity_path = entity_path; // Have to redeclare to make borrow-checker happy.

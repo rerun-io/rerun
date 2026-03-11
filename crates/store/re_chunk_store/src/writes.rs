@@ -24,10 +24,7 @@ impl ChunkStore {
     ///
     /// All queries will return partial results until the missing physical data gets loaded in.
     #[must_use = "The chunk store events should be handled"]
-    pub fn insert_rrd_manifest(
-        &mut self,
-        rrd_manifest: Arc<RrdManifest>,
-    ) -> ChunkStoreResult<ChunkStoreEvent> {
+    pub fn insert_rrd_manifest(&mut self, rrd_manifest: Arc<RrdManifest>) -> ChunkStoreEvent {
         re_tracing::profile_function!();
 
         let Self {
@@ -52,9 +49,7 @@ impl ChunkStore {
             event_id: _,
         } = self;
 
-        let sorbet_schema = re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::new(
-            rrd_manifest.sorbet_schema().clone(),
-        ))?;
+        let sorbet_schema = &rrd_manifest.recording_schema();
 
         time_type_registry.extend(
             sorbet_schema
@@ -195,7 +190,7 @@ impl ChunkStore {
             Self::on_events(std::slice::from_ref(&event));
         }
 
-        Ok(event)
+        event
     }
 
     /// Inserts a [`Chunk`] in the store.

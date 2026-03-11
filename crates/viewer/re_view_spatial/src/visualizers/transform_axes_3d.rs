@@ -148,9 +148,11 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         && src.as_entity_path_hash() == entity_path.hash() => {}
 
                 _ => {
-                    if let Err(err_msg) =
-                        format_transform_info_result(transforms, coordinate_frame_transform_result)
-                    {
+                    if let Err(err_msg) = format_transform_info_result(
+                        entity_path,
+                        transforms,
+                        coordinate_frame_transform_result,
+                    ) {
                         output.report_unspecified_source(
                             instruction.id,
                             VisualizerReportSeverity::Error,

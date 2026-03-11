@@ -410,6 +410,14 @@ fn chunk_requests_ui(ui: &mut egui::Ui, rrd_manifest_index: &RrdManifestIndex) {
 fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
     ui.weak("(only visible in debug builds)");
     egui::Grid::new("debug-info").show(ui, |ui| {
+        if let Some(manifest) = db.rrd_manifest_index().manifest() {
+            ui.label("Entities");
+            ui.label(format_uint(
+                manifest.recording_schema().all_entities().len(),
+            ));
+            ui.end_row();
+        }
+
         ui.label("is_buffering");
         ui.label(db.is_buffering().to_string());
         ui.end_row();

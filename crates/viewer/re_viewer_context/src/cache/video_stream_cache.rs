@@ -1332,11 +1332,6 @@ impl Cache for VideoStreamCache {
             .retain(|_, entry| entry.used_this_frame.load(Ordering::Acquire));
     }
 
-    fn on_rrd_manifest(&mut self, _entity_db: &EntityDb) {
-        // Reset everything when we receive an rrd manifest.
-        self.0.clear();
-    }
-
     /// Keep existing cache entries up to date with new and removed video data.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         re_tracing::profile_function!();
@@ -1344,6 +1339,12 @@ impl Cache for VideoStreamCache {
         let sample_component = VideoStream::descriptor_sample().component;
 
         for event in events {
+            if event.is_virtual_addition() {
+                // Reset everything when we receive an rrd manifest.
+                self.0.clear();
+                continue;
+            }
+
             let Some(delta_chunk) = event.delta_chunk() else {
                 continue;
             };

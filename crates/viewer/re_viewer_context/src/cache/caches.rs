@@ -115,23 +115,6 @@ impl Caches {
     /// React to the chunk store's changelog, if needed.
     ///
     /// Useful to e.g. invalidate unreachable data.
-    pub fn on_rrd_manifest(&self, entity_db: &EntityDb) {
-        re_tracing::profile_function!();
-
-        if self.store_id != *entity_db.store_id() {
-            return;
-        }
-
-        #[expect(clippy::iter_over_hash_type)] // order doesn't matter here
-        for cache in self.caches.lock().values() {
-            re_tracing::profile_scope!(cache.name);
-            cache.lock().on_rrd_manifest(entity_db);
-        }
-    }
-
-    /// React to the chunk store's changelog, if needed.
-    ///
-    /// Useful to e.g. invalidate unreachable data.
     pub fn on_store_events(&self, events: &[ChunkStoreEvent], entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
@@ -207,13 +190,6 @@ pub trait Cache: std::any::Any + Send + Sync + re_byte_size::MemUsageTreeCapture
     /// Since caches are created per store, each cache consistently receives events only for the same store.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         _ = events;
-        _ = entity_db;
-    }
-
-    /// React to receiving an rrd manifest, if needed.
-    ///
-    /// Useful for creating data that may be based on the information we get in the rrd manifest.
-    fn on_rrd_manifest(&mut self, entity_db: &EntityDb) {
         _ = entity_db;
     }
 }

@@ -363,6 +363,7 @@ impl AppState {
                             let visualizable_entities = if let Some(view_class) =
                                 view_class_registry.class_entry(view.class_identifier())
                             {
+                                re_tracing::profile_scope!("visualizable_entities_per_visualizer");
                                 PerVisualizerTypeInViewClass {
                                     view_class_identifier: view.class_identifier(),
                                     per_visualizer: visualizable_entities_per_visualizer

@@ -539,13 +539,21 @@ impl TransformTreeContext {
 
     /// Formats a frame ID hash as a human-readable string.
     ///
-    /// Returns the frame name if known, `<unknown frame>` otherwise.
-    /// (Showing the hash is practically never useful for users!)
-    #[inline]
-    pub fn format_frame(&self, frame_id_hash: TransformFrameIdHash) -> String {
-        self.lookup_frame_id(frame_id_hash)
-            .map(ToString::to_string)
-            .unwrap_or_else(|| "<unknown>".to_owned())
+    /// Returns the frame name if known, otherwise triggers a [`re_log::debug_panic`]
+    /// and returns `None`.
+    pub fn format_frame_or_debug_panic(
+        &self,
+        frame_id_hash: TransformFrameIdHash,
+        debug_location: &EntityPath,
+    ) -> Option<String> {
+        if let Some(frame_id) = self.lookup_frame_id(frame_id_hash) {
+            Some(frame_id.to_string())
+        } else {
+            re_log::debug_panic!(
+                "Failed to resolve frame id hash {frame_id_hash:?} which was referenced at {debug_location:?}"
+            );
+            None
+        }
     }
 }
 
@@ -927,7 +935,7 @@ mod tests {
                     tree_context.target_frame(),
                     TransformFrameIdHash::new(&expected_target),
                     "View expected target frame {expected_target:?}, got {:?}",
-                    tree_context.format_frame(tree_context.target_frame())
+                    tree_context.lookup_frame_id(tree_context.target_frame())
                 );
             }
         });

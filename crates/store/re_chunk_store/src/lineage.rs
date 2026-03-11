@@ -660,7 +660,7 @@ mod tests {
         );
 
         // Load it virtually.
-        store.insert_rrd_manifest(rrd_manifest.clone()).unwrap();
+        let _ignored_events = store.insert_rrd_manifest(rrd_manifest.clone());
 
         // Load it physically.
         for chunk in &chunks {
