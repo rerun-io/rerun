@@ -92,6 +92,13 @@ impl BinaryStreamSink {
             storage,
         )
     }
+
+    /// Create a [`BinaryStreamSink`] that shares the storage's buffer.
+    pub fn with_shared_storage(storage: &BinaryStreamStorage) -> Self {
+        Self {
+            buffer: storage.inner.clone(),
+        }
+    }
 }
 
 impl LogSink for BinaryStreamSink {

@@ -1048,10 +1048,23 @@ fn set_sinks<'py>(
             let sink = re_sdk::sink::FileSink::new(sink.path.clone())
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             resolved_sinks.push(Box::new(sink));
+        } else if let Ok(storage) = sink.downcast::<PyBinarySinkStorage>() {
+            // Direct PyBinarySinkStorage
+            let binary_sink =
+                re_sdk::sink::BinaryStreamSink::with_shared_storage(&storage.get().inner);
+            resolved_sinks.push(Box::new(binary_sink));
+        } else if let Ok(storage) = sink.getattr("storage").and_then(|attr| {
+            attr.downcast_into::<PyBinarySinkStorage>()
+                .map_err(Into::into)
+        }) {
+            // Python BinaryStream wrapper — extract .storage
+            let binary_sink =
+                re_sdk::sink::BinaryStreamSink::with_shared_storage(&storage.get().inner);
+            resolved_sinks.push(Box::new(binary_sink));
         } else {
             let type_name = sink.get_type().name()?;
             return Err(PyRuntimeError::new_err(format!(
-                "{type_name} is not a valid LogSink, must be one of: GrpcSink, FileSink"
+                "{type_name} is not a valid LogSink, must be one of: GrpcSink, FileSink, BinaryStream"
             )));
         }
     }

@@ -552,7 +552,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "thread_local_stream",
             "recording_stream_generator_ctx",
         ],
-        class_list=["LoggingHandler", "MemoryRecording", "GrpcSink", "FileSink"],
+        class_list=["LoggingHandler", "MemoryRecording", "BinaryStream", "GrpcSink", "FileSink"],
     ),
 ]
 
