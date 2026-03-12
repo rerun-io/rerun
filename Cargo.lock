@@ -3145,7 +3145,7 @@ dependencies = [
 [[package]]
 name = "ecolor"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3162,7 +3162,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3200,7 +3200,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3220,7 +3220,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3239,7 +3239,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3307,7 +3307,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "ahash",
  "egui",
@@ -3324,7 +3324,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3340,7 +3340,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "dify",
  "eframe",
@@ -3419,7 +3419,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "emath"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3545,13 +3545,14 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 dependencies = [
  "ahash",
  "bytemuck",
  "ecolor",
  "emath",
  "epaint_default_fonts",
+ "font-types",
  "log",
  "nohash-hasher",
  "parking_lot",
@@ -3560,13 +3561,14 @@ dependencies = [
  "self_cell",
  "serde",
  "skrifa",
+ "smallvec",
  "vello_cpu",
 ]
 
 [[package]]
 name = "epaint_default_fonts"
 version = "0.33.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#9276778181619be4065715ab03d36ca0b318667d"
+source = "git+https://github.com/emilk/egui.git?branch=main#14afefa2521d1baaf4fd02105eec2d3727a7ac36"
 
 [[package]]
 name = "equivalent"
@@ -3789,6 +3791,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1e4d2d0cf79d38430cc9dc9aadec84774bff2e1ba30ae2bf6c16cfce9385a23"
 dependencies = [
  "bytemuck",
+ "serde",
 ]
 
 [[package]]
