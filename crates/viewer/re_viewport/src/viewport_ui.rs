@@ -805,7 +805,7 @@ impl TilesDelegate<'_, '_> {
             let response = ui
                 .add(egui::Button::image(report_image))
                 .on_hover_text(format!(
-                    "Show {report_count} {}",
+                    "Show {}",
                     re_format::format_plural_s(report_count, "visualizer report")
                 ));
 
