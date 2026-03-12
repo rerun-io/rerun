@@ -10,10 +10,10 @@ use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass,
-    RecommendedVisualizers, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, suggest_view_for_each_entity,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, RecommendedVisualizers,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableReason, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -103,8 +103,8 @@ impl ViewClass for BarChartView {
 
     fn recommended_visualizers_for_entity(
         &self,
-        entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _entity_path: &EntityPath,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
         _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
@@ -112,9 +112,9 @@ impl ViewClass for BarChartView {
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
 
         // Keeping this implementation simple: We know there's only a single visualizer here.
-        if visualizable_entities_per_visualizer
-            .get(&BarChartVisualizerSystem::identifier())
-            .is_some_and(|entities| entities.contains_key(entity_path))
+        if visualizers_with_reason
+            .iter()
+            .any(|(viz, _)| *viz == BarChartVisualizerSystem::identifier())
         {
             RecommendedVisualizers::default(BarChartVisualizerSystem::identifier())
         } else {

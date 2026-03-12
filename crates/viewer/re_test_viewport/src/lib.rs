@@ -93,8 +93,6 @@ impl TestContextExt for TestContext {
                             let class_identifier = view_blueprint.class_identifier();
                             let class = class_registry.class(class_identifier).unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"));
 
-                            let visualizable_entities_for_view = ctx.collect_visualizable_entities_for_view_class(class_identifier);
-
                             let query_range = view_blueprint.query_range(
                                 ctx.blueprint_db(),
                                 ctx.blueprint_query,
@@ -109,7 +107,7 @@ impl TestContextExt for TestContext {
                                 class_registry,
                                 ctx.blueprint_query,
                                 &query_range,
-                                &visualizable_entities_for_view,
+                                ctx.visualizable_entities_per_visualizer,
                                 ctx.indicated_entities_per_visualizer,
                                 ctx.app_options(),
                             );

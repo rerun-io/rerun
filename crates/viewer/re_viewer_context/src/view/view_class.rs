@@ -8,10 +8,9 @@ use vec1::Vec1;
 
 use super::ViewContext;
 use crate::{
-    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
-    ViewerContext, VisualizableEntities,
+    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, SystemExecutionOutput,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableReason,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -155,27 +154,20 @@ pub trait ViewClass: Send + Sync {
     /// Will only be called for entities where the selected visualizers have not
     /// been overridden by the blueprint.
     ///
+    /// `visualizers_with_reason` contains the visualizers that are visualizable for this entity,
+    /// along with the reason why they are visualizable.
+    ///
     /// This interface provides a default implementation which will return all visualizers
     /// which are both visualizable and indicated for the given entity.
     fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
         indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        let available_visualizers =
-            visualizable_entities_per_visualizer
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains_key(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
-                });
-
-        let recommended = available_visualizers
-            .filter_map(|visualizer| {
+        let recommended = visualizers_with_reason
+            .iter()
+            .filter_map(|(visualizer, _reason)| {
                 if indicated_entities_per_visualizer
                     .get(visualizer)
                     .is_some_and(|matching_list| matching_list.contains(entity_path))
@@ -197,21 +189,6 @@ pub trait ViewClass: Send + Sync {
         &'a self,
         _ctx: &'a ViewContext<'a>,
     ) -> Option<VisualizersSectionOutput<'a>> {
-        None
-    }
-
-    /// Ui for quickly navigating the (active) visualizers for a view.
-    ///
-    /// Each view can opt-in to using this feature.
-    #[deprecated(note = "Implement `visualizers_section` instead.", since = "0.30.1")]
-    #[expect(clippy::type_complexity)]
-    fn visualizers_ui<'a>(
-        &'a self,
-        _ctx: &'a ViewerContext<'a>,
-        _view_id: ViewId,
-        _state: &'a mut dyn ViewState,
-        _space_origin: &'a EntityPath,
-    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
         None
     }
 

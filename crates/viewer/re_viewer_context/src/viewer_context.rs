@@ -14,8 +14,8 @@ use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, IndicatedEntities, Item, ItemCollection,
-    PerVisualizerType, PerVisualizerTypeInViewClass, StoreHub, StoreViewContext, SystemCommand,
-    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
+    PerVisualizerType, StoreHub, StoreViewContext, SystemCommand, SystemCommandSender as _,
+    TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
 
 /// The most powerful context, when you need to know the active blueprint and views.
@@ -366,21 +366,5 @@ impl<'a> ViewerContext<'a> {
                 })
                 .map(|(viz_id, entities)| (*viz_id, entities)),
         )
-    }
-
-    /// Like [`Self::iter_visualizable_entities_for_view_class`], but collects into a [`PerVisualizerTypeInViewClass`].
-    pub fn collect_visualizable_entities_for_view_class(
-        &self,
-        view_class_identifier: ViewClassIdentifier,
-    ) -> PerVisualizerTypeInViewClass<VisualizableEntities> {
-        re_tracing::profile_function!();
-
-        PerVisualizerTypeInViewClass {
-            view_class_identifier,
-            per_visualizer: self
-                .iter_visualizable_entities_for_view_class(view_class_identifier)
-                .map(|(viz_id, entities)| (viz_id, entities.clone()))
-                .collect(),
-        }
     }
 }

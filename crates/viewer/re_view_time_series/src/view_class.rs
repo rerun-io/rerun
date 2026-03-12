@@ -20,12 +20,11 @@ use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
-    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
-    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableReason, VisualizerComponentSource,
+    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, RecommendedView,
+    RecommendedVisualizers, SingleRequiredComponentMatch, SystemExecutionOutput,
+    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -276,15 +275,13 @@ impl ViewClass for TimeSeriesView {
     fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
         indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let available_visualizers: HashMap<ViewSystemIdentifier, &VisualizableReason> =
-            visualizable_entities_per_visualizer
+            visualizers_with_reason
                 .iter()
-                .filter_map(|(visualizer, ents)| {
-                    ents.get(entity_path).map(|reason| (*visualizer, reason))
-                })
+                .map(|(visualizer, reason)| (*visualizer, *reason))
                 .collect();
 
         let mut recommended = RecommendedVisualizers(
@@ -333,12 +330,12 @@ impl ViewClass for TimeSeriesView {
         &'a self,
         ctx: &'a re_viewer_context::ViewContext<'a>,
     ) -> Option<re_viewer_context::VisualizersSectionOutput<'a>> {
-        let visualizable_entities_per_visualizer = ctx
-            .viewer_ctx
-            .collect_visualizable_entities_for_view_class(Self::identifier());
-
         let series_line_id = SeriesLinesSystem::identifier();
-        let visualizable_entities = visualizable_entities_per_visualizer.get(&series_line_id);
+        let visualizable_entities = ctx
+            .viewer_ctx
+            .iter_visualizable_entities_for_view_class(Self::identifier())
+            .find(|(viz, _)| *viz == series_line_id)
+            .map(|(_, ents)| ents);
 
         let data_results = ctx.query_result.tree.iter_data_results();
         let add_options = data_results
@@ -1483,27 +1480,12 @@ mod tests {
         re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
     }
 
-    fn build_visualizable_entities(
-        entity_path: &EntityPath,
-        reason: VisualizableReason,
-    ) -> PerVisualizerTypeInViewClass<VisualizableEntities> {
-        PerVisualizerTypeInViewClass {
-            view_class_identifier: TimeSeriesView::identifier(),
-            per_visualizer: std::iter::once((
-                SeriesLinesSystem::identifier(),
-                VisualizableEntities(std::iter::once((entity_path.clone(), reason)).collect()),
-            ))
-            .collect(),
-        }
-    }
-
     /// Regression: non-recommended physical datatype (`Int32`) must not cause
     /// `SeriesLinesSystem` to be recommended with an empty mapping.
     #[test]
     fn test_no_recommendation_for_non_recommended_datatype() {
         let entity_path = EntityPath::from("sensor/data");
-        let viz = build_visualizable_entities(
-            &entity_path,
+        let reason =
             VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
@@ -1515,11 +1497,14 @@ mod tests {
                     },
                 ))
                 .collect(),
-            }),
-        );
+            });
+        let visualizers = [(SeriesLinesSystem::identifier(), &reason)];
         let indicated = PerVisualizerType::default();
-        let result =
-            TimeSeriesView.recommended_visualizers_for_entity(&entity_path, &viz, &indicated);
+        let result = TimeSeriesView.recommended_visualizers_for_entity(
+            &entity_path,
+            &visualizers,
+            &indicated,
+        );
 
         assert!(result.0.is_empty());
     }
@@ -1528,8 +1513,7 @@ mod tests {
     #[test]
     fn test_recommendation_for_recommended_datatype() {
         let entity_path = EntityPath::from("sensor/data");
-        let viz = build_visualizable_entities(
-            &entity_path,
+        let reason =
             VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
@@ -1540,11 +1524,14 @@ mod tests {
                     },
                 ))
                 .collect(),
-            }),
-        );
+            });
+        let visualizers = [(SeriesLinesSystem::identifier(), &reason)];
         let indicated = PerVisualizerType::default();
-        let result =
-            TimeSeriesView.recommended_visualizers_for_entity(&entity_path, &viz, &indicated);
+        let result = TimeSeriesView.recommended_visualizers_for_entity(
+            &entity_path,
+            &visualizers,
+            &indicated,
+        );
 
         assert!(result.0.contains_key(&SeriesLinesSystem::identifier()));
         let mappings = &result.0[&SeriesLinesSystem::identifier()];

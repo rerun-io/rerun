@@ -17,14 +17,12 @@ use re_tf::query_view_coordinates;
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass,
-    QueryContext, RecommendedView, RecommendedVisualizers, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryContext, RecommendedView,
+    RecommendedVisualizers, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableReason,
 };
 use re_viewport_blueprint::ViewProperty;
-use smallvec::SmallVec;
 
 use crate::contexts::register_spatial_contexts;
 use crate::heuristics::IndicatedVisualizableEntities;
@@ -325,16 +323,11 @@ impl ViewClass for SpatialView3D {
     fn recommended_visualizers_for_entity(
         &self,
         entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
         indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();
-
-        let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
-            .iter()
-            .filter_map(|(visualizer, ents)| ents.contains_key(entity_path).then_some(visualizer))
-            .collect();
 
         let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
             .iter()
@@ -348,14 +341,15 @@ impl ViewClass for SpatialView3D {
             .collect();
 
         // Start with all the entities which are both indicated and visualizable.
-        let mut enabled_visualizers: SmallVec<[ViewSystemIdentifier; 4]> = indicated
-            .intersection(&visualizable)
-            .copied()
-            .copied()
+        let mut enabled_visualizers: Vec<_> = visualizers_with_reason
+            .iter()
+            .filter_map(|(viz, _reason)| indicated.contains(viz).then_some(*viz))
             .collect();
 
         // Arrow visualizer is not enabled yet but we could…
-        if !enabled_visualizers.contains(&axes_viz) && visualizable.contains(&axes_viz) {
+        if !enabled_visualizers.contains(&axes_viz)
+            && visualizers_with_reason.iter().any(|(v, _)| *v == axes_viz)
+        {
             // …if we already have the [`CamerasVisualizer`] active.
             if enabled_visualizers.contains(&camera_viz) {
                 enabled_visualizers.push(axes_viz);

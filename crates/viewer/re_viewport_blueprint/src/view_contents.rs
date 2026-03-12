@@ -17,14 +17,17 @@ use re_sdk_types::blueprint::{
 use re_sdk_types::{Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, ViewId,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizerComponentMappings,
-    VisualizerInstruction,
+    IndicatedEntities, PerVisualizerType, QueryRange, ViewId, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableReason, VisualizerComponentMappings, VisualizerInstruction,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{ViewBlueprint, ViewProperty};
+
+/// All the visualizable entities in a view mapped to visualizer+reason.
+type VisualizableEntitiesPerVisualizerInView<'a> =
+    IntMap<EntityPathHash, Vec<(ViewSystemIdentifier, &'a VisualizableReason)>>;
 
 /// Data to be added to a view, built from a [`blueprint_archetypes::ViewContents`].
 ///
@@ -265,7 +268,7 @@ impl ViewContents {
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
         query_range: &QueryRange,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerType<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
         app_options: &re_viewer_context::AppOptions,
     ) -> DataQueryResult {
@@ -273,11 +276,36 @@ impl ViewContents {
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let visualizers_per_entity =
-            Self::visualizers_per_entity(visualizable_entities_per_visualizer);
+        let view_class = view_class_registry.get_class_or_log_error(self.view_class_identifier);
+        let visualizer_collection =
+            view_class_registry.new_visualizer_collection(self.view_class_identifier);
+
+        // TODO(andreas): Build this only once for every type of view.
+        let visualizable_entities_per_visualizer_in_view: VisualizableEntitiesPerVisualizerInView<
+            '_,
+        > = {
+            re_tracing::profile_scope!("visualizable_entities_per_visualizer_in_view");
+
+            let mut visualizable_entities_per_visualizer_in_view = IntMap::default();
+            for (visualizer, visualizable_entities) in visualizable_entities_per_visualizer.iter() {
+                // Skip over visualizers that aren't used in this view.
+                if !visualizer_collection.contains_visualizer_type(*visualizer) {
+                    continue;
+                }
+
+                for (entity_path, reason) in visualizable_entities.iter() {
+                    visualizable_entities_per_visualizer_in_view
+                        .entry(entity_path.hash())
+                        .or_insert_with(Vec::new)
+                        .push((*visualizer, reason));
+                }
+            }
+            visualizable_entities_per_visualizer_in_view
+        };
 
         let executor = QueryExpressionEvaluator {
-            visualizers_per_entity: &visualizers_per_entity,
+            visualizable_entities_per_visualizer_in_view:
+                &visualizable_entities_per_visualizer_in_view,
             entity_path_filter: &self.entity_path_filter,
             view_id: self.view_id,
         };
@@ -297,9 +325,6 @@ impl ViewContents {
         // Query defaults for all the components that any visualizer in this view is interested in.
         let component_defaults = {
             re_tracing::profile_scope!("component_defaults");
-
-            let visualizer_collection =
-                view_class_registry.new_visualizer_collection(self.view_class_identifier);
 
             // Figure out which components are relevant.
             let mut components_for_defaults = IntSet::default();
@@ -335,8 +360,9 @@ impl ViewContents {
         // TODO(andreas): integrate with `add_entity_tree_to_data_results_recursive` above.
         let resolver = DataQueryPropertyResolver {
             view_query_range: query_range,
-            view_class: view_class_registry.get_class_or_log_error(self.view_class_identifier),
-            visualizable_entities_per_visualizer,
+            view_class,
+            visualizable_entities_per_visualizer_in_view:
+                &visualizable_entities_per_visualizer_in_view,
             indicated_entities_per_visualizer,
         };
 
@@ -349,27 +375,6 @@ impl ViewContents {
 
         query_result
     }
-
-    fn visualizers_per_entity(
-        visualizable_entities_for_visualizer_systems: &PerVisualizerTypeInViewClass<
-            VisualizableEntities,
-        >,
-    ) -> IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>> {
-        re_tracing::profile_function!();
-
-        let mut visualizers_per_entity = IntMap::default();
-        for (visualizer, visualizable_entities) in
-            visualizable_entities_for_visualizer_systems.iter()
-        {
-            for entity_path in visualizable_entities.keys() {
-                visualizers_per_entity
-                    .entry(entity_path.hash())
-                    .or_insert_with(SmallVec::new)
-                    .push(*visualizer);
-            }
-        }
-        visualizers_per_entity
-    }
 }
 
 /// Helper struct for executing the query from [`ViewContents`]
@@ -378,7 +383,7 @@ impl ViewContents {
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
-    visualizers_per_entity: &'a IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>>,
+    visualizable_entities_per_visualizer_in_view: &'a VisualizableEntitiesPerVisualizerInView<'a>,
     entity_path_filter: &'a ResolvedEntityPathFilter,
     view_id: ViewId,
 }
@@ -407,7 +412,7 @@ impl QueryExpressionEvaluator<'_> {
         // Also, it's nice to inform the UI about how many entities we could show.
         let any_visualizers_available = matches_filter
             && self
-                .visualizers_per_entity
+                .visualizable_entities_per_visualizer_in_view
                 .get(&entity_path.hash())
                 .is_some_and(|visualizer| !visualizer.is_empty());
         *num_visualized_entities += any_visualizers_available as usize;
@@ -455,7 +460,7 @@ impl QueryExpressionEvaluator<'_> {
 struct DataQueryPropertyResolver<'a> {
     view_query_range: &'a QueryRange,
     view_class: &'a dyn re_viewer_context::ViewClass,
-    visualizable_entities_per_visualizer: &'a PerVisualizerTypeInViewClass<VisualizableEntities>,
+    visualizable_entities_per_visualizer_in_view: &'a VisualizableEntitiesPerVisualizerInView<'a>,
     indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
 }
 
@@ -570,9 +575,16 @@ impl DataQueryPropertyResolver<'_> {
                 }
 
                 // Ask the `ViewClass` to choose visualizers heuristically.
+                let visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)] = self
+                    .visualizable_entities_per_visualizer_in_view
+                    .get(&node.data_result.entity_path.hash())
+                    .map_or(&[], |visualizers_with_reason| {
+                        visualizers_with_reason.as_slice()
+                    });
+
                 let recommended_visualizers = self.view_class.recommended_visualizers_for_entity(
                     &node.data_result.entity_path,
-                    self.visualizable_entities_per_visualizer,
+                    visualizers_with_reason,
                     self.indicated_entities_per_visualizer,
                 );
                 node.data_result.visualizer_instructions = recommended_visualizers
@@ -760,15 +772,18 @@ impl DataQueryPropertyResolver<'_> {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{Chunk, RowId};
+    use re_chunk::{Chunk, EntityPath, RowId};
     use re_entity_db::EntityDb;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{StoreId, TimePoint, Timeline};
+    use re_types_core::reflection::Reflection;
     use re_viewer_context::{
-        ActiveStoreContext, Caches, ViewClassRegistry, VisualizableReason, blueprint_timeline,
+        ActiveStoreContext, Caches, FallbackProviderRegistry, IdentifiedViewSystem as _,
+        ViewClass as _, ViewClassRegistry, VisualizableReason, blueprint_timeline,
     };
 
     use super::*;
+    use crate::test_view_class::{TestViewClass, TestVisualizer};
 
     #[test]
     fn test_query_results() {
@@ -782,11 +797,20 @@ mod tests {
             re_log_types::StoreKind::Blueprint,
             "test_app",
         ));
-        let view_class_identifier = "3D".into();
+        let view_class_identifier = TestViewClass::identifier();
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
-        let view_class_registry = ViewClassRegistry::default();
+
+        let mut view_class_registry = ViewClassRegistry::default();
+        let mut fallback_registry = FallbackProviderRegistry::default();
+        view_class_registry
+            .add_class::<TestViewClass>(
+                &Reflection::default(),
+                &re_viewer_context::AppOptions::default(),
+                &mut fallback_registry,
+            )
+            .expect("registering test view class should succeed");
 
         // Set up a store DB with some entities
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
@@ -805,11 +829,11 @@ mod tests {
         }
 
         let mut visualizable_entities_for_visualizer_systems =
-            PerVisualizerTypeInViewClass::<VisualizableEntities>::empty(view_class_identifier);
+            PerVisualizerType::<VisualizableEntities>::default();
 
         visualizable_entities_for_visualizer_systems
-            .per_visualizer
-            .entry("Points3D".into())
+            .0
+            .entry(TestVisualizer::identifier())
             .or_insert_with(|| {
                 VisualizableEntities(
                     [

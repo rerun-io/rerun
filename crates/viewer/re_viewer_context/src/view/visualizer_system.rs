@@ -380,4 +380,8 @@ impl VisualizerCollection {
         self.iter()
             .filter_map(|visualizer| visualizer.data()?.downcast_ref::<SpecificData>())
     }
+
+    pub fn contains_visualizer_type(&self, name: ViewSystemIdentifier) -> bool {
+        self.systems.contains_key(&name)
+    }
 }

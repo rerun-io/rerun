@@ -17,10 +17,9 @@ use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle,
     AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass, Route,
-    SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
-    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
-    ViewStates, ViewerContext, blueprint_timeline,
+    DragAndDropManager, FallbackProviderRegistry, Item, Route, SelectionChange, StorageContext,
+    StoreHub, StoreViewContext, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
+    TimeControlCommand, ViewClassRegistry, ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -362,28 +361,6 @@ impl AppState {
                         .map(|view| {
                             re_tracing::profile_scope!("view", view.display_name_or_default().to_string().as_str());
 
-                            // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
-                            // but we don't have access to `ViewerContext` just yet.
-                            let visualizable_entities = if let Some(view_class) =
-                                view_class_registry.class_entry(view.class_identifier())
-                            {
-                                re_tracing::profile_scope!("visualizable_entities_per_visualizer");
-                                PerVisualizerTypeInViewClass {
-                                    view_class_identifier: view.class_identifier(),
-                                    per_visualizer: visualizable_entities_per_visualizer
-                                        .iter()
-                                        .filter_map(|(vis, ents)| {
-                                            view_class
-                                                .visualizer_system_ids
-                                                .contains(vis)
-                                                .then_some((*vis, ents.clone()))
-                                        })
-                                        .collect(),
-                                }
-                            } else {
-                                PerVisualizerTypeInViewClass::empty(view.class_identifier())
-                            };
-
                             let view_state = view_states
                                 .get(recording.store_id(), view.id)
                                 .expect("View state should exist, we just called ensure_state_exists on it.");
@@ -404,7 +381,7 @@ impl AppState {
                                     view_class_registry,
                                     app_blueprint_ctx.blueprint_query(),
                                     &query_range,
-                                    &visualizable_entities,
+                                    &visualizable_entities_per_visualizer,
                                     &indicated_entities_per_visualizer,
                                     app_options,
                                 ),

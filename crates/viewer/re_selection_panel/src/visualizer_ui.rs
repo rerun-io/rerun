@@ -7,6 +7,7 @@ use re_chunk::ComponentIdentifier;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::EntityPath;
 use re_sdk_types::Archetype as _;
+use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::blueprint::datatypes::ComponentSourceKind;
@@ -20,13 +21,25 @@ use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    BlueprintContext as _, DataResult, DatatypeMatch, PerVisualizerTypeInViewClass,
-    TryShowEditUiResult, UiLayout, ViewContext, ViewSystemIdentifier, VisualizableEntities,
-    VisualizableReason, VisualizerCollection, VisualizerComponentMappings,
+    BlueprintContext as _, DataResult, DatatypeMatch, TryShowEditUiResult, UiLayout, ViewContext,
+    ViewSystemIdentifier, VisualizableReason, VisualizerCollection, VisualizerComponentMappings,
     VisualizerComponentSource, VisualizerInstruction, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, VisualizerViewReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
+
+/// Extracts the list of visualizers (with their reasons) for a specific entity
+/// from the viewer context, without cloning.
+fn visualizers_for_entity<'a>(
+    viewer_ctx: &'a re_viewer_context::ViewerContext<'a>,
+    view_class_identifier: ViewClassIdentifier,
+    entity_path: &EntityPath,
+) -> Vec<(ViewSystemIdentifier, &'a VisualizableReason)> {
+    viewer_ctx
+        .iter_visualizable_entities_for_view_class(view_class_identifier)
+        .filter_map(|(visualizer, ents)| ents.get(entity_path).map(|reason| (visualizer, reason)))
+        .collect()
+}
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
@@ -753,11 +766,14 @@ fn extract_recommended_source_options(
     // Rule 2: View-recommended mappings are recommended.
     let view_ctx = mapping_ctx.view_ctx();
     let viewer_ctx = mapping_ctx.viewer_ctx();
-    let visualizable_entities_per_visualizer =
-        viewer_ctx.collect_visualizable_entities_for_view_class(view_ctx.view_class_identifier);
+    let visualizers_with_reason = visualizers_for_entity(
+        viewer_ctx,
+        view_ctx.view_class_identifier,
+        &mapping_ctx.data_result.entity_path,
+    );
     let recommended_visualizers = view_ctx.view_class().recommended_visualizers_for_entity(
         &mapping_ctx.data_result.entity_path,
-        &visualizable_entities_per_visualizer,
+        &visualizers_with_reason,
         viewer_ctx.indicated_entities_per_visualizer,
     );
     if let Some(recommended_mappings) = recommended_visualizers
@@ -998,12 +1014,14 @@ fn menu_add_new_visualizer(
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
     // Determine which visualizers are recommended.
-    let visualizable_entities_per_visualizer = ctx
-        .viewer_ctx
-        .collect_visualizable_entities_for_view_class(ctx.view_class_identifier);
+    let visualizers_with_reason = visualizers_for_entity(
+        ctx.viewer_ctx,
+        ctx.view_class_identifier,
+        &data_result.entity_path,
+    );
     let recommended_visualizers = ctx.view_class().recommended_visualizers_for_entity(
         &data_result.entity_path,
-        &visualizable_entities_per_visualizer,
+        &visualizers_with_reason,
         ctx.viewer_ctx.indicated_entities_per_visualizer,
     );
 
@@ -1117,26 +1135,29 @@ fn component_mappings_for_new_visualizer(
 ) -> VisualizerComponentMappings {
     // Get recommended visualizers with their component mappings so we can use them
     // when the user adds a new visualizer.
-    let visualizable_entities_per_visualizer = ctx
-        .viewer_ctx
-        .collect_visualizable_entities_for_view_class(ctx.view_class_identifier);
+    let entity_visualizers =
+        visualizers_for_entity(ctx.viewer_ctx, ctx.view_class_identifier, entity_path);
     let recommended_visualizers = ctx.view_class().recommended_visualizers_for_entity(
         entity_path,
-        &visualizable_entities_per_visualizer,
+        &entity_visualizers,
         ctx.viewer_ctx.indicated_entities_per_visualizer,
     );
     let component_mapping_recommendations = recommended_visualizers.0.get(visualizer_type).cloned();
 
     // Chain in all possible mappings.
+    let visualizable_reason = entity_visualizers
+        .iter()
+        .find(|(viz, _)| viz == visualizer_type)
+        .map(|(_, reason)| *reason);
     let all_mapping_candidates = component_mapping_recommendations
         .into_iter()
         .flatten()
         .map(re_viewer_context::RecommendedMappings::into_mappings)
         .chain(
             component_mappings_for_required_components_from_visualizability(
-                *visualizer_type,
                 entity_path,
-                &visualizable_entities_per_visualizer,
+                visualizer_type,
+                visualizable_reason,
             ),
         );
 
@@ -1160,15 +1181,10 @@ fn component_mappings_for_new_visualizer(
 
 /// Derives component mappings from the visualizability reason when no explicit recommendation exists.
 fn component_mappings_for_required_components_from_visualizability(
-    visualizer_type: ViewSystemIdentifier,
     entity_path: &EntityPath,
-    visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+    visualizer_type: &ViewSystemIdentifier,
+    reason: Option<&VisualizableReason>,
 ) -> Vec<VisualizerComponentMappings> {
-    // Look up why this entity is visualizable for this visualizer type.
-    let reason = visualizable_entities_per_visualizer
-        .get(&visualizer_type)
-        .and_then(|entities| entities.get(entity_path));
-
     match reason {
         Some(VisualizableReason::SingleRequiredComponentMatch(matches)) => matches
             .matches

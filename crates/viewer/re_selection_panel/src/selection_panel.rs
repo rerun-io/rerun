@@ -486,36 +486,12 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             let view_class = view.class(ctx.view_class_registry());
             let view_state = view_states.get_mut_or_create(ctx.store_id(), view.id, view_class);
 
-            // Try the new `visualizers_section` first, fall back to deprecated `visualizers_ui`.
-            // These live in separate scopes because `visualizers_section` borrows `view_state`
-            // immutably (via `ViewContext`), while the legacy `visualizers_ui` borrows it mutably.
-            let showed_visualizers_section = {
-                let view_ctx = view.bundle_context_with_state(ctx, view_state);
-                if let Some(section) = view_class.visualizers_section(&view_ctx) {
-                    show_visualizers_section(ctx, ui, *view_id, section.add_options, &|ui| {
-                        let view_ctx = view.bundle_context_with_state(ctx, view_state);
-                        (section.ui)(ui, &view_ctx);
-                    });
-                    true
-                } else {
-                    false
-                }
-            };
-            if !showed_visualizers_section {
-                #[expect(deprecated)]
-                let legacy_ui =
-                    view_class.visualizers_ui(ctx, *view_id, view_state, &view.space_origin);
-                if let Some(legacy_ui) = legacy_ui {
-                    let add_options = legacy_collect_add_visualizer_options_from_recommended(
-                        ctx,
-                        *view_id,
-                        view_class,
-                        view.class_identifier(),
-                    );
-                    show_visualizers_section(ctx, ui, *view_id, add_options, &|ui| {
-                        legacy_ui(ui);
-                    });
-                }
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
+            if let Some(section) = view_class.visualizers_section(&view_ctx) {
+                show_visualizers_section(ctx, ui, *view_id, section.add_options, &|ui| {
+                    let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                    (section.ui)(ui, &view_ctx);
+                });
             }
 
             ui.section_collapsing_header("View properties")
@@ -571,39 +547,6 @@ fn show_visualizers_section(
 
             body(ui);
         });
-}
-
-/// Collect add-visualizer options via [`re_viewer_context::ViewClass::recommended_visualizers_for_entity`].
-fn legacy_collect_add_visualizer_options_from_recommended(
-    viewer_ctx: &ViewerContext<'_>,
-    view_id: ViewId,
-    view_class: &dyn re_viewer_context::ViewClass,
-    view_class_identifier: re_sdk_types::ViewClassIdentifier,
-) -> Vec<(EntityPath, RecommendedVisualizers)> {
-    profile_function!();
-
-    let query_result = viewer_ctx.lookup_query_result(view_id);
-    let visualizable_entities_per_visualizer =
-        viewer_ctx.collect_visualizable_entities_for_view_class(view_class_identifier);
-
-    query_result
-        .tree
-        .iter_data_results()
-        .filter(|data_result| !data_result.tree_prefix_only)
-        .filter_map(|data_result| {
-            let entity_path = &data_result.entity_path;
-            let recommended = view_class.recommended_visualizers_for_entity(
-                entity_path,
-                &visualizable_entities_per_visualizer,
-                viewer_ctx.indicated_entities_per_visualizer,
-            );
-            if recommended.0.is_empty() {
-                None
-            } else {
-                Some((entity_path.clone(), recommended))
-            }
-        })
-        .collect()
 }
 
 fn visualizer_section_plus_button(

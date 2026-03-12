@@ -8,11 +8,10 @@ use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
 use rerun::external::re_viewer_context::{
     DataResultInteractionAddress, HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities,
-    Item, MissingChunkReporter, PerVisualizerType, PerVisualizerTypeInViewClass,
-    RecommendedVisualizers, SelectionHighlight, SystemExecutionOutput, UiLayout, ViewClass,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
-    VisualizableEntities,
+    Item, MissingChunkReporter, PerVisualizerType, RecommendedVisualizers, SelectionHighlight,
+    SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
+    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext, VisualizableReason,
 };
 
 use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
@@ -132,13 +131,13 @@ impl ViewClass for ColorCoordinatesView {
     /// We want to enable the visualizer here though for any visualizable entity instead!
     fn recommended_visualizers_for_entity(
         &self,
-        entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _entity_path: &EntityPath,
+        visualizers: &[(ViewSystemIdentifier, &VisualizableReason)],
         _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        if visualizable_entities_per_visualizer
-            .get(&Points3DColorVisualizer::identifier())
-            .is_some_and(|entities| entities.contains_key(entity_path))
+        if visualizers
+            .iter()
+            .any(|(viz, _)| *viz == Points3DColorVisualizer::identifier())
         {
             RecommendedVisualizers::default(Points3DColorVisualizer::identifier())
         } else {

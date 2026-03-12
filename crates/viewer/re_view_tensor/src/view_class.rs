@@ -15,10 +15,10 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
-    PerVisualizerTypeInViewClass, RecommendedVisualizers, SystemCommand, SystemCommandSender as _,
-    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
+    RecommendedVisualizers, SystemCommand, SystemCommandSender as _, TensorStatsCache, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableReason, gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -98,8 +98,8 @@ Set the displayed dimensions in a selection panel.",
 
     fn recommended_visualizers_for_entity(
         &self,
-        entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        _entity_path: &EntityPath,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
         _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
     ) -> RecommendedVisualizers {
         // Default implementation would not suggest the Tensor visualizer for images,
@@ -107,9 +107,9 @@ Set the displayed dimensions in a selection panel.",
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
 
         // Keeping this implementation simple: We know there's only a single visualizer here.
-        if visualizable_entities_per_visualizer
-            .get(&TensorSystem::identifier())
-            .is_some_and(|entities| entities.contains_key(entity_path))
+        if visualizers_with_reason
+            .iter()
+            .any(|(viz, _)| *viz == TensorSystem::identifier())
         {
             RecommendedVisualizers::default(TensorSystem::identifier())
         } else {

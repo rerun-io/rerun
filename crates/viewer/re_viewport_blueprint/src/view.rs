@@ -461,8 +461,7 @@ mod tests {
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        PerVisualizerType, PerVisualizerTypeInViewClass, ViewClassPlaceholder,
-        VisualizableEntities, VisualizableReason,
+        PerVisualizerType, ViewClassPlaceholder, VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -505,11 +504,6 @@ mod tests {
                     )
                 });
         }
-
-        let visualizable_entities = PerVisualizerTypeInViewClass::<VisualizableEntities> {
-            view_class_identifier: ViewClassPlaceholder::identifier(),
-            per_visualizer: visualizable_entities.0.clone(),
-        };
 
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
@@ -672,7 +666,7 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizerTypeInViewClass<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerType<VisualizableEntities>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 

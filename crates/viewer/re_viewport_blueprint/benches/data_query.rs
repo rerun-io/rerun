@@ -12,8 +12,8 @@ use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::components::Position2D;
 use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
-    ActiveStoreContext, Caches, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    ViewClassRegistry, VisualizableEntities, VisualizableReason, blueprint_timeline,
+    ActiveStoreContext, Caches, PerVisualizerType, QueryRange, ViewClassRegistry,
+    VisualizableEntities, VisualizableReason, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewContents;
 
@@ -58,7 +58,7 @@ fn query_tree_many_entities(c: &mut Criterion) {
     let indicated_entities = PerVisualizerType(
         // Indicate everything.
         visualizable_entities
-            .per_visualizer
+            .0
             .iter()
             .map(|(v, e)| {
                 (
@@ -151,8 +151,8 @@ fn query_tree_many_entities(c: &mut Criterion) {
 // --- Helpers ---
 
 fn build_entity_tree(
-    view_class_id: ViewClassIdentifier,
-) -> (EntityDb, PerVisualizerTypeInViewClass<VisualizableEntities>) {
+    _view_class_id: ViewClassIdentifier,
+) -> (EntityDb, PerVisualizerType<VisualizableEntities>) {
     use rand::{Rng as _, SeedableRng as _};
     // Use a fixed seed for deterministic, reproducible benchmarks
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -203,8 +203,7 @@ fn build_entity_tree(
     }
 
     // Set up visualizable entities - make most entities visualizable
-    let mut visualizable_entities =
-        PerVisualizerTypeInViewClass::<VisualizableEntities>::empty(view_class_id);
+    let mut visualizable_entities = PerVisualizerType::<VisualizableEntities>::default();
     let visualizable_set = all_entities
         .iter()
         .filter(|_| rng.random_bool(0.7)) // 70% of entities are visualizable
@@ -213,7 +212,7 @@ fn build_entity_tree(
         .collect();
 
     visualizable_entities
-        .per_visualizer
+        .0
         .insert("Points3D".into(), VisualizableEntities(visualizable_set));
 
     (recording, visualizable_entities)
