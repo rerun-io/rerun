@@ -1,34 +1,27 @@
-use arrayvec::ArrayVec;
 use egui::ahash::HashMap;
 use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use itertools::{Either, Itertools as _};
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
-use re_component_ui::color_swatch::ColorSwatch;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
-use re_sdk_types::blueprint::archetypes::{
-    ActiveVisualizers, PlotBackground, PlotLegend, ScalarAxis, TimeAxis,
-};
+use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{
     Corner2D, Enabled, LinkAxis, LockRangeDuringZoom, VisualizerInstructionId,
 };
-use re_sdk_types::components::{AggregationPolicy, Color, Name, Range1D, Visible};
+use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
 use re_sdk_types::datatypes::TimeRange;
-use re_sdk_types::{
-    ComponentBatch as _, ComponentIdentifier, Loggable as _, View as _, ViewClassIdentifier,
-};
+use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
-use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
-    IndicatedEntities, Item, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SystemCommandSender as _,
+    IndicatedEntities, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
+    RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
     SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
@@ -45,9 +38,6 @@ use crate::point_visualizer_system::SeriesPointsSystem;
 use crate::util::data_result_time_range;
 
 // ---
-
-/// We only show this many colors directly.
-const NUM_SHOWN_VISUALIZER_COLORS: usize = 2;
 
 #[derive(Clone)]
 pub struct TimeSeriesViewState {
@@ -337,6 +327,57 @@ impl ViewClass for TimeSeriesView {
         }
 
         recommended
+    }
+
+    fn visualizers_section<'a>(
+        &'a self,
+        ctx: &'a re_viewer_context::ViewContext<'a>,
+    ) -> Option<re_viewer_context::VisualizersSectionOutput<'a>> {
+        let visualizable_entities_per_visualizer = ctx
+            .viewer_ctx
+            .collect_visualizable_entities_for_view_class(Self::identifier());
+
+        let series_line_id = SeriesLinesSystem::identifier();
+        let visualizable_entities = visualizable_entities_per_visualizer.get(&series_line_id);
+
+        let data_results = ctx.query_result.tree.iter_data_results();
+        let add_options = data_results
+            .filter_map(|data_result| {
+                if data_result.tree_prefix_only {
+                    return None;
+                }
+
+                // For the "add visualizer" menu, offer a SeriesLine for every possible scalar mapping.
+                // Unlike `recommended_visualizers_for_entity` / `all_scalar_mappings`, we don't filter
+                // by indication or recommended datatypes — we show everything that could be visualized.
+                let VisualizableReason::SingleRequiredComponentMatch(
+                    SingleRequiredComponentMatch {
+                        target_component: _,
+                        matches,
+                    },
+                ) = visualizable_entities?.get(&data_result.entity_path)?
+                else {
+                    return None;
+                };
+
+                let recommended = if let Ok(mappings) =
+                    vec1::Vec1::try_from_vec(all_scalar_mappings_for(matches))
+                {
+                    RecommendedVisualizers(std::iter::once((series_line_id, mappings)).collect())
+                } else {
+                    return None;
+                };
+
+                Some((data_result.entity_path.clone(), recommended))
+            })
+            .collect();
+
+        Some(re_viewer_context::VisualizersSectionOutput {
+            ui: Box::new(move |ui, ctx| {
+                visualizers_section_ui(ui, ctx);
+            }),
+            add_options,
+        })
     }
 
     fn ui(
@@ -740,7 +781,7 @@ impl ViewClass for TimeSeriesView {
                 .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
             if let Some(time_x) = time_x {
-                draw_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
+                paint_time_cursor(ctx, ui, &response, &transform, time_offset, time_x);
             }
 
             // Can determine whether we're resetting only now since we need to know whether there's a plot item hovered.
@@ -749,7 +790,7 @@ impl ViewClass for TimeSeriesView {
             if is_resetting {
                 reset_view(ctx, time_range_property, &scalar_axis);
 
-                ui.ctx().request_repaint(); // Make sure we get another frame with the view reset.
+                ui.request_repaint(); // Make sure we get another frame with the view reset.
             } else {
                 let unchanged_bounds = egui_plot::PlotBounds::from_min_max(
                     [x_range.start(), y_range.start()],
@@ -782,7 +823,7 @@ impl ViewClass for TimeSeriesView {
                             &TimeAxis::descriptor_view_range(),
                             &new_view_time_range,
                         );
-                        ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
+                        ui.request_repaint(); // Make sure we get another frame with this new range applied.
                     }
 
                     let new_y_range = transform_axis_range(transform, 1);
@@ -794,7 +835,7 @@ impl ViewClass for TimeSeriesView {
                             &ScalarAxis::descriptor_range(),
                             &new_y_range,
                         );
-                        ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
+                        ui.request_repaint(); // Make sure we get another frame with this new range applied.
                     }
                 }
             }
@@ -812,176 +853,80 @@ impl ViewClass for TimeSeriesView {
         })
         .inner
     }
-
-    fn visualizers_ui<'a>(
-        &'a self,
-        viewer_ctx: &'a re_viewer_context::ViewerContext<'a>,
-        view_id: ViewId,
-        state: &'a mut dyn ViewState,
-        space_origin: &'a EntityPath,
-    ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
-        let state = state.downcast_mut::<TimeSeriesViewState>().ok()?;
-
-        let visualizer_body = move |ui: &mut egui::Ui| {
-            list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
-                let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-                re_tracing::profile_function!();
-                let query_result = ctx.query_result;
-
-                let handles = query_result.tree.data_results_by_path.values().sorted();
-                for handle in handles {
-                    let Some(node) = query_result.tree.data_results.get(*handle) else {
-                        continue;
-                    };
-                    let pill_margin = egui::Margin::symmetric(8, 6);
-                    for instruction in &node.data_result.visualizer_instructions {
-                        if !node.data_result.visible {
-                            continue;
-                        }
-
-                        ui.add_space(10.0);
-
-                        visualizer_ui_element(ui, &ctx, node, pill_margin, instruction);
-                    }
-                }
-            });
-        };
-
-        Some(Box::new(visualizer_body))
-    }
 }
 
-fn visualizer_ui_element(
-    ui: &mut egui::Ui,
-    ctx: &re_viewer_context::ViewContext<'_>,
-    node: &re_viewer_context::DataResultNode,
-    pill_margin: egui::Margin,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) {
-    let entity_path = &node.data_result.entity_path;
+fn all_scalar_mappings_for(
+    matches: &IntMap<ComponentIdentifier, DatatypeMatch>,
+) -> Vec<RecommendedMappings> {
+    let target = Scalars::descriptor_scalars().component;
 
-    let full_path = entity_path.ui_string().trim_start_matches('/').to_owned();
+    matches
+        .iter()
+        .sorted_by_key(|(k, _)| **k)
+        .flat_map(|(source_component, match_info)| match match_info {
+            DatatypeMatch::NativeSemantics { .. } => {
+                Either::Left(std::iter::once(RecommendedMappings::new(
+                    target,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: *source_component,
+                        selector: String::new(),
+                    },
+                )))
+            }
 
-    let series_color = get_time_series_color(ctx, &node.data_result, instruction);
-    let display_name = get_time_series_name(ctx, &node.data_result, instruction);
-
-    ui.scope(|ui| {
-        // Time travel: retrieve the height of the previous frame so we can set it to the right side of egui::Sides.
-        // In case of `shrink_left`, egui::Sides will render the right side first, and the content can't be centered
-        // vertically since the height of the left side is unknown at that point. By setting the height explicitly,
-        // we can vertically center the right side. It works since the height doesn't change.
-        let previous_frame_height = ui.response().rect.height();
-
-        egui::Sides::new().shrink_left().show(
-            ui,
-            |ui| {
-                let mut frame = egui::Frame::default()
-                    .fill(ui.tokens().visualizer_list_pill_bg_color)
-                    .corner_radius(4.0)
-                    .inner_margin(pill_margin)
-                    .begin(ui);
-                {
-                    let ui = &mut frame.content_ui;
-                    let previous_frame_height = ui.response().rect.height();
-
-                    // Disable text selection so hovering the text only hovers the pill
-                    ui.style_mut().interaction.selectable_labels = false;
-                    egui::Sides::new().shrink_left().show(
-                        ui,
-                        |ui| {
-                            // Visualizer name and entity path
-                            ui.vertical(|ui| {
-                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                                ui.label(
-                                    egui::RichText::new(&display_name)
-                                        .color(ui.tokens().visualizer_list_title_text_color),
-                                );
-                                ui.label(
-                                    egui::RichText::new(&full_path)
-                                        .size(10.5)
-                                        .color(ui.tokens().visualizer_list_path_text_color),
-                                );
-                            });
+            DatatypeMatch::PhysicalDatatypeOnly { selectors, .. } => {
+                if selectors.is_empty() {
+                    Either::Left(std::iter::once(RecommendedMappings::new(
+                        target,
+                        VisualizerComponentSource::SourceComponent {
+                            source_component: *source_component,
+                            selector: String::new(),
                         },
-                        |ui| {
-                            if previous_frame_height.is_sign_positive() {
-                                ui.set_height(previous_frame_height);
-                            }
-                            // Color box(es) on the right, vertically centered on the labels.
-                            series_color.ui(ui);
-                        },
-                    );
+                    )))
+                } else {
+                    Either::Right(selectors.iter().map(|(selector, _datatype)| {
+                        RecommendedMappings::new(
+                            target,
+                            VisualizerComponentSource::SourceComponent {
+                                source_component: *source_component,
+                                selector: selector.to_string(),
+                            },
+                        )
+                    }))
                 }
-                let response = frame
-                    .allocate_space(ui)
-                    .interact(egui::Sense::click())
-                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+            }
+        })
+        .collect()
+}
 
-                let is_highlighted =
-                    ctx.viewer_ctx
-                        .hovered()
-                        .iter()
-                        .any(|(hovered, _hover_ctx)| {
-                            if let Item::DataResult(address) = hovered {
-                                address.view_id == ctx.view_id
-                            && address.instance_path.entity_path == *entity_path // Don't care about instance id here.
-                            && address.visualizer.is_none_or(|vid| vid == instruction.id)
-                            } else {
-                                false
-                            }
-                        });
-                if is_highlighted {
-                    frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                }
+/// Renders the active visualizer pills for the "Visualizers" section in the selection panel.
+fn visualizers_section_ui(ui: &mut egui::Ui, ctx: &re_viewer_context::ViewContext<'_>) {
+    list_item::list_item_scope(ui, "time_series_visualizers_ui", |ui| {
+        re_tracing::profile_function!();
+        let query_result = ctx.query_result;
 
-                let item = Item::DataResult(DataResultInteractionAddress {
-                    view_id: ctx.view_id,
-                    instance_path: InstancePath::from(entity_path.clone()),
-                    visualizer: Some(instruction.id),
-                });
-
-                if response.hovered() {
-                    frame.frame.fill = ui.tokens().visualizer_list_pill_bg_color_hovered;
-                    ctx.viewer_ctx.selection_state().set_hovered(item.clone());
-                }
-                if response.clicked() {
-                    ctx.viewer_ctx
-                        .command_sender()
-                        .send_system(re_viewer_context::SystemCommand::set_selection(item));
-                }
-                frame.paint(ui);
-            },
-            |ui| {
-                // Trashcan button to remove this visualizer.
-                if previous_frame_height.is_sign_positive() {
-                    ui.set_height(previous_frame_height);
+        let handles = query_result.tree.data_results_by_path.values().sorted();
+        for handle in handles {
+            let Some(node) = query_result.tree.data_results.get(*handle) else {
+                continue;
+            };
+            let pill_margin = egui::Margin::symmetric(8, 6);
+            for instruction in &node.data_result.visualizer_instructions {
+                if !node.data_result.visible {
+                    continue;
                 }
 
-                let remove_response =
-                    ui.small_icon_button(&re_ui::icons::TRASH, "Remove visualizer");
-                if remove_response.clicked() {
-                    let override_base_path = &node.data_result.override_base_path;
+                ui.add_space(10.0);
 
-                    let active_visualizers = node
-                        .data_result
-                        .visualizer_instructions
-                        .iter()
-                        .filter(|v| v.id != instruction.id)
-                        .collect::<Vec<_>>();
-
-                    let archetype =
-                        ActiveVisualizers::new(active_visualizers.iter().map(|v| v.id.0));
-
-                    ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
-
-                    // Ensure the remaining instructions are persisted so that their
-                    // types and mappings are available on the next frame.
-                    for visualizer_instruction in active_visualizers {
-                        visualizer_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
-                    }
-                }
-            },
-        );
+                crate::visualizer_ui::visualizer_ui_element(
+                    ui,
+                    ctx,
+                    node,
+                    pill_margin,
+                    instruction,
+                );
+            }
+        }
     });
 }
 
@@ -1013,13 +958,10 @@ const RECOMMENDED_DATATYPES: &[DataType] =
 fn all_scalar_mappings(
     reason: &VisualizableReason,
 ) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
-    let re_viewer_context::VisualizableReason::DatatypeMatchAny {
-        target_component: _,
-        matches,
-    } = reason
-    else {
+    let re_viewer_context::VisualizableReason::SingleRequiredComponentMatch(m) = reason else {
         return Either::Left(std::iter::empty());
     };
+    let matches = &m.matches;
 
     let target = Scalars::descriptor_scalars();
 
@@ -1131,26 +1073,35 @@ fn all_scalar_mappings(
     )
 }
 
-fn draw_time_cursor(
+fn paint_time_cursor(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     response: &egui::Response,
     transform: &egui_plot::PlotTransform,
     time_offset: i64,
     mut time_x: f32,
-) -> egui::Response {
+) {
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
     let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
         .expand(interact_radius);
 
     let time_drag_id = ui.id().with("time_drag");
-    let time_cursor_response = ui
-        .interact(line_rect, time_drag_id, egui::Sense::drag())
-        .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+    let is_near = ui.rect_contains_pointer(line_rect);
+    let is_being_dragged = ui.is_being_dragged(time_drag_id);
 
-    if time_cursor_response.dragged()
-        && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+    if is_near || is_being_dragged {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+    }
+
+    if is_near
+        && !is_being_dragged
+        && ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary))
     {
+        ui.set_dragged_id(time_drag_id);
+    }
+
+    if is_being_dragged && let Some(pointer_pos) = pointer_pos {
         let aim_radius = ui.input(|i| i.aim_radius());
         let new_offset_time = egui::emath::smart_aim::best_in_range_f64(
             transform
@@ -1171,13 +1122,16 @@ fn draw_time_cursor(
         ]);
     }
 
-    ui.paint_time_cursor(
-        ui.painter(),
-        Some(&time_cursor_response),
-        time_x,
-        time_cursor_response.rect.y_range(),
-    );
-    time_cursor_response
+    let highlighted = is_near || is_being_dragged;
+    let style = if is_being_dragged {
+        &ui.visuals().widgets.active
+    } else if highlighted {
+        &ui.visuals().widgets.hovered
+    } else {
+        &ui.visuals().widgets.inactive
+    };
+
+    ui.paint_time_cursor_with_style(ui.painter(), style, time_x, response.rect.y_range());
 }
 
 fn reset_view(ctx: &ViewerContext<'_>, time_axis: &ViewProperty, scalar_axis: &ViewProperty) {
@@ -1519,151 +1473,10 @@ pub fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 }
 
-fn strip_instance_number(str: &str) -> String {
-    if let Some(stripped) = str.strip_suffix(']').and_then(|s| {
-        let i = s.rfind('[')?;
-        s[i + 1..]
-            .bytes()
-            .all(|b| b.is_ascii_digit())
-            .then_some(&s[..i])
-    }) {
-        format!("{stripped}[]")
-    } else {
-        str.to_owned()
-    }
-}
-
-/// Returns the name for a time series visualizer.
-fn get_time_series_name(
-    ctx: &re_viewer_context::ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) -> String {
-    let component = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
-        SeriesLines::descriptor_names().component
-    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
-        SeriesPoints::descriptor_names().component
-    } else {
-        return instruction.visualizer_type.to_string();
-    };
-
-    let query_result = re_view::latest_at_with_blueprint_resolved_data(
-        ctx,
-        None,
-        &ctx.current_query(),
-        data_result,
-        [component],
-        Some(instruction),
-    );
-
-    let first_name = query_result.get_mono_with_fallback::<Name>(component);
-
-    // We might have already "injected" the instance number into the name of the series.
-    // So we re-normalize the series name again.
-    strip_instance_number(&first_name)
-}
-
-/// List of colors for a time series visualizer.
-#[derive(Default)]
-struct TimeSeriesColors {
-    instance_count: usize,
-    colors: ArrayVec<egui::Color32, NUM_SHOWN_VISUALIZER_COLORS>,
-}
-
-impl TimeSeriesColors {
-    /// Draws color boxes (and an optional "+N" badge) right-aligned and vertically centered on
-    /// the given `center_y`.
-    fn ui(&self, ui: &mut egui::Ui) {
-        if self.colors.is_empty() {
-            return;
-        }
-
-        ui.spacing_mut().item_spacing.x = 4.0;
-
-        let num_boxes = if self.instance_count > 2 {
-            1
-        } else {
-            self.colors.len()
-        };
-
-        // Draw "+N" badge when there are more than 2 instances
-        if self.instance_count > 2 {
-            let badge_text = format!("+{}", self.instance_count - 1);
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-            ui.label(
-                egui::RichText::new(&badge_text)
-                    .color(ui.tokens().visualizer_list_path_text_color)
-                    .size(10.5),
-            );
-        }
-
-        // Draw color boxes from right to left
-        for color in self.colors[..num_boxes].iter().rev() {
-            let rgba = re_sdk_types::datatypes::Rgba32::from(*color);
-            let mut color_ref = re_viewer_context::MaybeMutRef::Ref(&rgba);
-            ui.add(ColorSwatch::new(&mut color_ref));
-        }
-    }
-}
-
-/// Returns the colors of time series plots.
-fn get_time_series_color(
-    ctx: &re_viewer_context::ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    instruction: &re_viewer_context::VisualizerInstruction,
-) -> TimeSeriesColors {
-    let color_descr = if instruction.visualizer_type == SeriesLinesSystem::identifier() {
-        SeriesLines::descriptor_colors()
-    } else if instruction.visualizer_type == SeriesPointsSystem::identifier() {
-        SeriesPoints::descriptor_colors()
-    } else {
-        // Unkownn visualizer type, don't show any colors
-        return TimeSeriesColors::default();
-    };
-
-    // Get the colors for each instance
-    let query = ctx.current_query();
-    let color_result = re_view::latest_at_with_blueprint_resolved_data(
-        ctx,
-        None,
-        &query,
-        data_result,
-        [color_descr.component],
-        Some(instruction),
-    );
-
-    let raw_color_cell = if let Some(color_cells) = color_result.get_raw_cell(color_descr.component)
-    {
-        // We have color data either in the store or as overrides
-        color_cells
-    } else {
-        // No color data in the store or overrides, use the fallback
-        ctx.viewer_ctx.component_fallback_registry.fallback_for(
-            &color_descr,
-            &ctx.query_context(data_result, query, instruction.id),
-        )
-    };
-
-    let Ok(color_components) = Color::from_arrow(&raw_color_cell) else {
-        re_log::error_once!("Failed to cast color array to Color");
-        return TimeSeriesColors::default();
-    };
-
-    let colors = color_components
-        .iter()
-        .map(|&value| value.into()) // Color is ABGR, egui uses to RGBA, can't use bytemuck here.
-        .take(NUM_SHOWN_VISUALIZER_COLORS)
-        .collect();
-
-    TimeSeriesColors {
-        instance_count: color_components.len(),
-        colors,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use re_viewer_context::SingleRequiredComponentMatch;
 
     #[test]
     fn test_help_view() {
@@ -1691,7 +1504,7 @@ mod tests {
         let entity_path = EntityPath::from("sensor/data");
         let viz = build_visualizable_entities(
             &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1702,7 +1515,7 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
+            }),
         );
         let indicated = PerVisualizerType::default();
         let result =
@@ -1717,7 +1530,7 @@ mod tests {
         let entity_path = EntityPath::from("sensor/data");
         let viz = build_visualizable_entities(
             &entity_path,
-            VisualizableReason::DatatypeMatchAny {
+            VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
                 target_component: Scalars::descriptor_scalars().component,
                 matches: std::iter::once((
                     Scalars::descriptor_scalars().component,
@@ -1727,7 +1540,7 @@ mod tests {
                     },
                 ))
                 .collect(),
-            },
+            }),
         );
         let indicated = PerVisualizerType::default();
         let result =
@@ -1740,52 +1553,4 @@ mod tests {
             mappings[0].contains_mapping_for_component(&Scalars::descriptor_scalars().component)
         );
     }
-}
-
-#[test]
-fn test_strip_instance_number() {
-    // Empty string
-    assert_eq!(strip_instance_number(""), "");
-
-    // No brackets at all
-    assert_eq!(strip_instance_number("foo"), "foo");
-    assert_eq!(strip_instance_number("hello world"), "hello world");
-
-    // Valid instance numbers should be normalized to []
-    assert_eq!(strip_instance_number("foo[0]"), "foo[]");
-    assert_eq!(strip_instance_number("foo[1]"), "foo[]");
-    assert_eq!(strip_instance_number("foo[123]"), "foo[]");
-
-    // Empty brackets (no digits) should remain unchanged
-    assert_eq!(strip_instance_number("foo[]"), "foo[]");
-
-    // Non-digit content in brackets should remain unchanged
-    assert_eq!(strip_instance_number("foo[abc]"), "foo[abc]");
-    assert_eq!(strip_instance_number("foo[1a]"), "foo[1a]");
-    assert_eq!(strip_instance_number("foo[a1]"), "foo[a1]");
-    assert_eq!(strip_instance_number("foo[ ]"), "foo[ ]");
-    assert_eq!(strip_instance_number("foo[1 2]"), "foo[1 2]");
-
-    // Half-open brackets (only `[`) should remain unchanged
-    assert_eq!(strip_instance_number("foo["), "foo[");
-    assert_eq!(strip_instance_number("["), "[");
-    assert_eq!(strip_instance_number("foo[123"), "foo[123");
-
-    // Half-closed brackets (only `]`) should remain unchanged
-    assert_eq!(strip_instance_number("foo]"), "foo]");
-    assert_eq!(strip_instance_number("]"), "]");
-    assert_eq!(strip_instance_number("123]"), "123]");
-
-    // Multiple bracket pairs - only the last valid instance number is stripped
-    assert_eq!(strip_instance_number("foo[0][1]"), "foo[0][]");
-    assert_eq!(strip_instance_number("foo[abc][123]"), "foo[abc][]");
-
-    // Nested or malformed brackets
-    assert_eq!(strip_instance_number("foo[[0]]"), "foo[[0]]");
-    assert_eq!(strip_instance_number("foo[0]["), "foo[0][");
-    assert_eq!(strip_instance_number("foo][0]"), "foo][]");
-
-    // Edge cases with brackets in the middle
-    assert_eq!(strip_instance_number("foo[0]bar"), "foo[0]bar");
-    assert_eq!(strip_instance_number("foo[0]bar[1]"), "foo[0]bar[]");
 }

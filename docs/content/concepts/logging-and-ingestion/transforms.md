@@ -51,7 +51,7 @@ This is useful to specify "default" transforms without yet knowing what timeline
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
-* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../visualization/visualizers-and-overrides.md))
+* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../visualization/customize-views.md))
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
@@ -206,7 +206,6 @@ snippet: archetypes/mesh3d_instancing
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
   <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
 </picture>
 

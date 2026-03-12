@@ -11,7 +11,7 @@ The three indices of a triangle in a triangle mesh.
 
 ## Arrow datatype
 ```
-FixedSizeList<3, uint32>
+FixedSizeList(3 x non-null UInt32)
 ```
 
 ## API reference links

@@ -93,7 +93,7 @@ impl ViewportUi {
         // Memorize new error states.
         #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
         for (view_id, (_, system_output)) in &executed_systems_per_view {
-            view_states.add_visualizer_reports_from_output(*view_id, system_output);
+            view_states.add_visualizer_reports_from_output(ctx.store_id(), *view_id, system_output);
         }
 
         let contents_per_tile_id = blueprint
@@ -183,17 +183,17 @@ impl ViewportUi {
             // We want the rectangle to be on top of everything in the viewport,
             // including stuff in "zoom-pan areas", like we use in the graph view.
             let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
-            ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
+            ui.set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
             let painter = ui.painter().clone().with_layer_id(top_layer_id);
 
             // Draw selection outlines
-            let selection_stroke = ui.ctx().selection_stroke();
+            let selection_stroke = ui.selection_stroke();
             for rect in selection_rects {
                 painter.rect_stroke(rect, 0.0, selection_stroke, egui::StrokeKind::Inside);
             }
 
             // Draw hover outlines
-            let hover_stroke = ui.ctx().hover_stroke();
+            let hover_stroke = ui.hover_stroke();
             for rect in hover_rects {
                 painter.rect_stroke(rect, 0.0, hover_stroke, egui::StrokeKind::Inside);
             }
@@ -391,11 +391,13 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 ctx,
                 std::iter::once(view.class_identifier())
             );
-            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class), &context_system_once_per_frame_results)
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(ctx.store_id(), *view_id, class), &context_system_once_per_frame_results)
         });
 
         let class = view_blueprint.class(self.ctx.view_class_registry());
-        let view_state = self.view_states.get_mut_or_create(*view_id, class);
+        let view_state = self
+            .view_states
+            .get_mut_or_create(self.ctx.store_id(), *view_id, class);
 
         let missing_chunk_reporter = MissingChunkReporter::new(system_output.any_missing_chunks());
 
@@ -417,7 +419,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     );
                 });
 
-            ui.ctx().memory_mut(|mem| {
+            ui.memory_mut(|mem| {
                 mem.caches
                     .cache::<re_viewer_context::ViewRectPublisher>()
                     .set(
@@ -587,7 +589,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     Help::new_without_title()
                         .control(
                             "Restore - show all spaces",
-                            IconText::from_keyboard_shortcut(ui.ctx().os(), TOGGLE_MAXIMIZE_VIEW),
+                            IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                         )
                         .ui(ui);
                 })
@@ -610,10 +612,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         Help::new_without_title()
                             .control(
                                 "Maximize view",
-                                IconText::from_keyboard_shortcut(
-                                    ui.ctx().os(),
-                                    TOGGLE_MAXIMIZE_VIEW,
-                                ),
+                                IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                             )
                             .ui(ui);
                     } else {
@@ -649,7 +648,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let view_class = view_blueprint.class(self.ctx.view_class_registry());
 
         // give the view a chance to display some extra UI in the top bar.
-        let view_state = self.view_states.get_mut_or_create(view_id, view_class);
+        let view_state =
+            self.view_states
+                .get_mut_or_create(self.ctx.store_id(), view_id, view_class);
         view_class
             .extra_title_bar_ui(
                 self.ctx,
@@ -667,7 +668,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             });
 
         ui.help_button(|ui| {
-            view_class.help(ui.ctx().os()).ui(ui);
+            view_class.help(ui.os()).ui(ui);
         });
 
         self.visualizer_errors_button(ui, view_id);
@@ -733,8 +734,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
 impl TilesDelegate<'_, '_> {
     fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
-        let Some(per_visualizer_type_reports) =
-            self.view_states.per_visualizer_type_reports(view_id)
+        let Some(per_visualizer_type_reports) = self
+            .view_states
+            .per_visualizer_type_reports(self.ctx.store_id(), view_id)
         else {
             return;
         };
@@ -1208,7 +1210,7 @@ impl MaximizeAnimationState {
         egui_ctx: &egui::Context,
         viewport_rect: egui::Rect,
     ) -> (Option<ViewId>, egui::Rect) {
-        let animation_time = egui_ctx.style().animation_time;
+        let animation_time = egui_ctx.global_style().animation_time;
 
         let mut animating_view_id = None;
         let mut animated_rect = viewport_rect;

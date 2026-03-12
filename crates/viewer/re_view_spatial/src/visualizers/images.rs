@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Image;
-use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::components::{ImageBuffer, ImageFormat, Opacity};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -43,7 +43,11 @@ impl VisualizerSystem for ImageVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Image>()
+        VisualizerQueryInfo::buffer_and_format::<ImageBuffer, ImageFormat>(
+            &Image::descriptor_buffer(),
+            &Image::descriptor_format(),
+            &Image::all_components(),
+        )
     }
 
     fn execute(

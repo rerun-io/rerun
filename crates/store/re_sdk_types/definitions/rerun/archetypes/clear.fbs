@@ -24,5 +24,5 @@ table Clear (
   "attr.rust.derive": "PartialEq",
   "attr.rust.override_crate": "re_types_core"
 ) {
-  is_recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", order: 100);
+  is_recursive: rerun.components.ClearIsRecursive ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 100);
 }

@@ -2,15 +2,15 @@
 
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
-use re_arrow_combinators::Selector;
 use re_chunk::ComponentIdentifier;
+use re_lenses_core::Selector;
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_types_core::ViewClassIdentifier;
 
 use crate::ViewSystemIdentifier;
 
-/// Types of matches when matching [`crate::RequiredComponents::AnyPhysicalDatatype`].
+/// Types of matches when matching [`crate::VisualizabilityConstraints::SingleRequiredComponent`].
 #[derive(Clone, Debug)]
 pub enum DatatypeMatch {
     /// Only the physical datatype was matched, but semantics aren't the native ones.
@@ -58,39 +58,80 @@ impl DatatypeMatch {
     }
 }
 
+/// [`crate::VisualizabilityConstraints::SingleRequiredComponent`] matched for this entity with the given components.
+#[derive(Clone, Debug)]
+pub struct SingleRequiredComponentMatch {
+    /// The component that needs to be mapped to one of the matches.
+    pub target_component: ComponentIdentifier,
+
+    /// Matches that the target component should map to.
+    ///
+    /// Guaranteed to have at least one entry.
+    pub matches: IntMap<ComponentIdentifier, DatatypeMatch>,
+}
+
+/// [`crate::VisualizabilityConstraints::BufferAndFormat`] matched for this entity.
+///
+/// Both a buffer component (matched by arrow datatype) and a format component
+/// (matched by arrow datatype AND semantic type) were found on the entity.
+#[derive(Clone, Debug)]
+pub struct BufferAndFormatMatch {
+    /// The buffer slot on the visualizer that needs to be mapped.
+    pub buffer_target: ComponentIdentifier,
+
+    /// The format slot on the visualizer that needs to be mapped.
+    pub format_target: ComponentIdentifier,
+
+    /// All entity components whose arrow datatype matched the buffer's expected type.
+    ///
+    /// Guaranteed to have at least one entry.
+    pub buffer_matches: IntMap<ComponentIdentifier, DatatypeMatch>,
+
+    /// The entity components that matched the format (by arrow datatype AND semantic type).
+    ///
+    /// Guaranteed to have at least one entry.
+    pub format_matches: IntSet<ComponentIdentifier>,
+}
+
 /// Describes why a given entity was marked as visualizable.
 #[derive(Clone, Debug)]
 pub enum VisualizableReason {
     /// The entity is visualizable because all entities are visualizable for this type.
     Always,
 
-    /// [`crate::RequiredComponents::AllComponents`] matched for this entity.
-    ExactMatchAll,
-
-    /// [`crate::RequiredComponents::AnyComponent`] matched for this entity.
+    /// [`crate::VisualizabilityConstraints::AnyBuiltinComponent`] matched for this entity.
     ExactMatchAny,
 
-    /// [`crate::RequiredComponents::AnyPhysicalDatatype`] matched for this entity with the given components.
-    DatatypeMatchAny {
-        /// The component that needs to be mapped to one of the matches.
-        target_component: ComponentIdentifier,
+    /// See [`SingleRequiredComponentMatch`].
+    SingleRequiredComponentMatch(SingleRequiredComponentMatch),
 
-        /// Matches that the target component should map to.
-        ///
-        /// Guaranteed to have at least one entry.
-        matches: IntMap<ComponentIdentifier, DatatypeMatch>,
-    },
+    /// See [`BufferAndFormatMatch`].
+    BufferAndFormatMatch(BufferAndFormatMatch),
 }
 
 impl VisualizableReason {
     /// Returns true if this match reason is a perfect match for the given component identifier.
     pub fn full_native_match(&self, component_identifier: ComponentIdentifier) -> bool {
         match self {
-            Self::Always | Self::ExactMatchAll | Self::ExactMatchAny => true,
-            Self::DatatypeMatchAny { matches, .. } => matches
+            Self::Always | Self::ExactMatchAny => true,
+
+            Self::SingleRequiredComponentMatch(m) => m
+                .matches
                 .get(&component_identifier)
                 .map(|info| matches!(info, DatatypeMatch::NativeSemantics { .. }))
                 .unwrap_or(false),
+
+            Self::BufferAndFormatMatch(m) => {
+                // Format is always native by construction (semantic match required).
+                if m.format_matches.contains(&component_identifier) {
+                    return true;
+                }
+                // Check if the buffer has a native semantic match.
+                m.buffer_matches
+                    .get(&component_identifier)
+                    .map(|info| matches!(info, DatatypeMatch::NativeSemantics { .. }))
+                    .unwrap_or(false)
+            }
         }
     }
 }

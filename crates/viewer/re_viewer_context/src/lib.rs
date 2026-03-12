@@ -4,6 +4,7 @@
 
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
+mod active_store_context;
 mod annotations;
 mod app_context;
 mod app_options;
@@ -30,8 +31,8 @@ mod recording_or_table;
 mod route;
 mod selection_state;
 mod storage_context;
-mod store_context;
 pub mod store_hub;
+mod store_view_context;
 mod tables;
 mod tensor;
 mod time_control;
@@ -47,6 +48,7 @@ mod visitor_flow_control;
 
 pub use re_ui::UiLayout;
 
+pub use self::active_store_context::ActiveStoreContext;
 pub use self::annotations::{
     AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
     ResolvedAnnotationInfos,
@@ -99,8 +101,8 @@ pub use self::selection_state::{
     SelectionHighlight,
 };
 pub use self::storage_context::StorageContext;
-pub use self::store_context::StoreContext;
 pub use self::store_hub::StoreHub;
+pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
@@ -108,8 +110,9 @@ pub use self::time_control::{
     TimeControlResponse, TimeControlUpdateParams, TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    DatatypeMatch, IndicatedEntities, PerVisualizerInstruction, PerVisualizerType,
-    PerVisualizerTypeInViewClass, VisualizableEntities, VisualizableReason,
+    BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
+    PerVisualizerType, PerVisualizerTypeInViewClass, SingleRequiredComponentMatch,
+    VisualizableEntities, VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{
@@ -117,18 +120,18 @@ pub use self::utils::{
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    AnyPhysicalDatatypeRequirement, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
+    BufferAndFormatConstraint, DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight,
     PerSystemEntities, RecommendedMappings, RecommendedView, RecommendedVisualizers,
-    RequiredComponents, SystemExecutionOutput, ViewClass, ViewClassExt, ViewClassLayoutPriority,
-    ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError, ViewContext,
-    ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass, ViewClassExt,
+    ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
+    ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
     ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
     ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-    ViewSystemRegistrator, ViewSystemState, VisualizerCollection, VisualizerComponentMappings,
-    VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
-    VisualizerInstructionReport, VisualizerInstructionsPerType, VisualizerQueryInfo,
-    VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem, VisualizerTypeReport,
-    VisualizerViewReport,
+    ViewSystemRegistrator, ViewSystemState, VisualizabilityConstraints, VisualizerCollection,
+    VisualizerComponentMappings, VisualizerComponentSource, VisualizerExecutionOutput,
+    VisualizerInstruction, VisualizerInstructionReport, VisualizerInstructionsPerType,
+    VisualizerQueryInfo, VisualizerReportContext, VisualizerReportSeverity, VisualizerSystem,
+    VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

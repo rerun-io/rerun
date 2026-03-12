@@ -19,7 +19,7 @@ Recommended to be one of:
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links

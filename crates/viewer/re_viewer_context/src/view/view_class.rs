@@ -52,6 +52,19 @@ impl RecommendedVisualizers {
     }
 }
 
+/// Callback that renders the active visualizers in the selection panel.
+pub type VisualizersSectionUi<'a> = Box<dyn Fn(&mut egui::Ui, &ViewContext<'_>) + 'a>;
+
+/// Output of [`ViewClass::visualizers_section`].
+pub struct VisualizersSectionOutput<'a> {
+    /// Renders the active visualizers in the selection panel.
+    pub ui: VisualizersSectionUi<'a>,
+
+    /// Per-entity options for the "add visualizer" menu.
+    /// Recommended visualizers for an entity may or may not be identical to [`ViewClass::recommended_visualizers_for_entity`].
+    pub add_options: Vec<(EntityPath, RecommendedVisualizers)>,
+}
+
 /// Defines a class of view without any concrete types making it suitable for storage and interfacing.
 ///
 /// Each View in the viewer's viewport has a single class assigned immutable at its creation time.
@@ -177,20 +190,20 @@ pub trait ViewClass: Send + Sync {
         RecommendedVisualizers(recommended)
     }
 
-    /// Determines which views should be spawned by default for this class.
+    /// Custom UI and add-visualizer options for the "Visualizers" section in the selection panel.
     ///
-    /// Only entities matching `include_entity` should be considered,
-    /// though this is only a suggestion and may be
-    /// overwritten if a view decides to display more data.
-    fn spawn_heuristics(
-        &self,
-        ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
-    ) -> ViewSpawnHeuristics;
+    /// Returns `None` if the view doesn't provide a custom visualizers section (the default).
+    fn visualizers_section<'a>(
+        &'a self,
+        _ctx: &'a ViewContext<'a>,
+    ) -> Option<VisualizersSectionOutput<'a>> {
+        None
+    }
 
     /// Ui for quickly navigating the (active) visualizers for a view.
     ///
     /// Each view can opt-in to using this feature.
+    #[deprecated(note = "Implement `visualizers_section` instead.", since = "0.30.1")]
     #[expect(clippy::type_complexity)]
     fn visualizers_ui<'a>(
         &'a self,
@@ -201,6 +214,17 @@ pub trait ViewClass: Send + Sync {
     ) -> Option<Box<dyn Fn(&mut egui::Ui) + 'a>> {
         None
     }
+
+    /// Determines which views should be spawned by default for this class.
+    ///
+    /// Only entities matching `include_entity` should be considered,
+    /// though this is only a suggestion and may be
+    /// overwritten if a view decides to display more data.
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
+    ) -> ViewSpawnHeuristics;
 
     /// Ui shown when the user selects a view of this class.
     #[doc(alias = "settings_ui")]

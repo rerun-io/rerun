@@ -12,7 +12,7 @@ use re_sdk_types::archetypes::Points2D;
 use re_sdk_types::components::Position2D;
 use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
-    Caches, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange, StoreContext,
+    ActiveStoreContext, Caches, PerVisualizerType, PerVisualizerTypeInViewClass, QueryRange,
     ViewClassRegistry, VisualizableEntities, VisualizableReason, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewContents;
@@ -74,7 +74,7 @@ fn query_tree_many_entities(c: &mut Criterion) {
         "bench_app",
     ));
 
-    let ctx = StoreContext {
+    let ctx = ActiveStoreContext {
         blueprint: &blueprint,
         default_blueprint: None,
         recording: &recording,

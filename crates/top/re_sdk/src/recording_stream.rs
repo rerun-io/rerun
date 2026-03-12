@@ -579,18 +579,21 @@ impl RecordingStreamBuilder {
             return Ok(RecordingStream::disabled());
         }
 
-        let url = format!("rerun+http://{}/proxy", opts.connect_addr());
-
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
         if forced_sink_path().is_some() {
+            let url = format!("rerun+http://{}/proxy", opts.connect_addr());
             return self.connect_grpc_opts(url);
         }
 
-        // Spawn viewer and connect normally
-        crate::spawn(opts)?;
-
-        self.connect_grpc_opts(url)
+        // Spawn viewer and connect normally.
+        // spawn() returns the actual port used, which may differ from opts.port when --new picks a free port.
+        let actual_port = crate::spawn(opts)?;
+        let addr = std::net::SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            actual_port,
+        );
+        self.connect_grpc_opts(format!("rerun+http://{addr}/proxy"))
     }
 
     /// Returns whether or not logging is enabled, a [`StoreInfo`], the associated batcher
@@ -1417,6 +1420,8 @@ impl RecordingStream {
                 })
                 .unwrap_or_default()
             }),
+            timestamp_offset_ns: None,
+            timeline_type: re_log_types::TimeType::TimestampNs,
         };
 
         if prefer_current_recording {
@@ -2129,9 +2134,12 @@ impl RecordingStream {
             return Ok(());
         }
 
-        crate::spawn(opts)?;
-
-        self.connect_grpc_opts(format!("rerun+http://{}/proxy", opts.connect_addr()))?;
+        let actual_port = crate::spawn(opts)?;
+        let addr = std::net::SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            actual_port,
+        );
+        self.connect_grpc_opts(format!("rerun+http://{addr}/proxy"))?;
 
         Ok(())
     }

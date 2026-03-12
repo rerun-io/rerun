@@ -12,10 +12,9 @@ slotmap::new_key_type! {
 }
 
 /// Like [`GpuMeshInstance`], but for CPU sided usage in a [`CpuModel`] only.
-pub struct CpuMeshInstance {
-    pub mesh: CpuModelMeshKey,
-    pub world_from_mesh: glam::Affine3A,
-    // TODO(andreas): Expose other properties we have on [`GpuMeshInstance`].
+struct CpuMeshInstance {
+    mesh: CpuModelMeshKey,
+    world_from_mesh: glam::Affine3A,
 }
 
 /// A collection of meshes & mesh instances on the CPU.
@@ -29,30 +28,55 @@ pub struct CpuMeshInstance {
 /// This is meant as a useful intermediate structure for doing post-processing steps on the model prior to gpu upload.
 #[derive(Default)]
 pub struct CpuModel {
-    pub meshes: SlotMap<CpuModelMeshKey, CpuMesh>,
-    pub instances: Vec<CpuMeshInstance>,
-    pub bbox: macaw::BoundingBox,
+    meshes: SlotMap<CpuModelMeshKey, CpuMesh>,
+    instances: Vec<CpuMeshInstance>,
+    bbox: macaw::BoundingBox,
 }
 
 impl CpuModel {
     /// Creates a new [`CpuModel`] from a single [`CpuMesh`], creating a single instance with identity transform.
     pub fn from_single_mesh(mesh: CpuMesh) -> Self {
         let mut model = Self::default();
-        model.add_single_instance_mesh(mesh);
+        let key = model.add_mesh(mesh);
+        model.add_instance(key, glam::Affine3A::IDENTITY);
         model
     }
 
-    /// Adds a new [`CpuMesh`] to the model, creating a single instance with identity transform.
-    pub fn add_single_instance_mesh(&mut self, mesh: CpuMesh) {
-        self.bbox = self.bbox.union(mesh.bbox);
-        let mesh_key = self.meshes.insert(mesh);
+    /// Adds a [`CpuMesh`] to the model and returns its key.
+    ///
+    /// The mesh is not instantiated until [`Self::add_instance`] is called with the returned key.
+    pub fn add_mesh(&mut self, mesh: CpuMesh) -> CpuModelMeshKey {
+        self.meshes.insert(mesh)
+    }
+
+    /// Adds an instance of a mesh with the given transform, updating the model's bounding box.
+    pub fn add_instance(&mut self, mesh_key: CpuModelMeshKey, world_from_mesh: glam::Affine3A) {
+        if let Some(mesh) = self.meshes.get(mesh_key) {
+            self.bbox = self
+                .bbox
+                .union(mesh.bbox.transform_affine3(&world_from_mesh));
+        }
         self.instances.push(CpuMeshInstance {
             mesh: mesh_key,
-            world_from_mesh: glam::Affine3A::IDENTITY,
+            world_from_mesh,
         });
     }
 
-    /// Converts the entire model into a serious of mesh instances that can be rendered.
+    /// The bounding box of the model, accumulated from all instances and their transforms.
+    pub fn bbox(&self) -> macaw::BoundingBox {
+        self.bbox
+    }
+
+    /// Overrides the albedo factor on all materials of all meshes in the model.
+    pub fn override_albedo_factor(&mut self, albedo_factor: crate::Rgba) {
+        for (_key, mesh) in &mut self.meshes {
+            for material in &mut mesh.materials {
+                material.albedo_factor = albedo_factor;
+            }
+        }
+    }
+
+    /// Converts the entire model into a series of mesh instances that can be rendered.
     ///
     /// Silently ignores:
     /// * instances with invalid mesh keys

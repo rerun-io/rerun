@@ -96,9 +96,14 @@ impl ViewerOpenUrlDescription {
 }
 
 pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {
-    let Ok(open_url) = url.parse::<ViewerOpenUrl>() else {
-        return None;
-    };
+    let open_url = ViewerOpenUrl::parse_with_options(
+        url,
+        &re_data_source::FromUriOptions {
+            accept_extensionless_http: true,
+            ..Default::default()
+        },
+    )
+    .ok()?;
 
     Some(CommandPaletteUrl {
         url: url.to_owned(),

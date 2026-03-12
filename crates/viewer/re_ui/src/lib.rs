@@ -32,6 +32,7 @@ mod ui_layout;
 
 mod button;
 mod combo_item;
+pub mod re_form;
 #[cfg(feature = "testing")]
 pub mod testing;
 

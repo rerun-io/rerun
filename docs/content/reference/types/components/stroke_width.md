@@ -11,7 +11,7 @@ The width of a stroke specified in UI points.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

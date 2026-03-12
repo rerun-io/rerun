@@ -18,40 +18,39 @@ use crate::blueprint_resolved_results::{
 };
 use crate::{BlueprintResolvedResults, ComponentMappingError};
 
-/// Casts the values in a `ListArray` to the target datatype.
+/// Casts to a `ListArray` with values matching `target_value_datatype`.
 ///
-/// Returns the array unchanged if already the correct type (zero-copy).
-fn cast_list_array_values(
+/// Returns `source` unchanged if already the correct type (zero-copy).
+fn cast_list_array(
     source: &arrow::array::ListArray,
-    target_datatype: &arrow::datatypes::DataType,
+    target_list_datatype: &arrow::datatypes::DataType,
 ) -> Result<arrow::array::ListArray, arrow::error::ArrowError> {
-    let values = source.values();
-
-    // Happy path: already the right type
-    if values.data_type() == target_datatype {
+    // Happy path: already the right type.
+    if source.data_type() == target_list_datatype {
         return Ok(source.clone());
     }
 
-    // Cast the values
-    let casted_values = arrow::compute::cast(values, target_datatype)?;
+    // Cast the entire list array to the target type, handling both value type
+    // changes (e.g., Int32 → Float32) and structural changes (e.g., FixedSizeList → List).
+    let casted = arrow::compute::cast(source, target_list_datatype)?;
 
-    // Rebuild the ListArray with casted values
-    arrow::array::ListArray::try_new(
-        Arc::new(arrow::datatypes::Field::new_list_field(
-            target_datatype.clone(),
-            true,
-        )),
-        source.offsets().clone(),
-        casted_values,
-        source.nulls().cloned(),
-    )
+    casted
+        .as_any()
+        .downcast_ref::<arrow::array::ListArray>()
+        .cloned()
+        .ok_or_else(|| {
+            arrow::error::ArrowError::CastError(format!(
+                "Expected ListArray after cast, got {:?}",
+                casted.data_type()
+            ))
+        })
 }
 
 /// Applies a selector (if present) and casts the component for known datatypes (if required).
 fn transform_chunk(
     target: &ComponentIdentifier,
     source: &ComponentIdentifier,
-    selector: &Option<re_arrow_combinators::Selector>,
+    selector: &Option<re_lenses_core::Selector>,
     target_datatype: Option<&arrow::datatypes::DataType>,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
@@ -71,10 +70,16 @@ fn transform_chunk(
 
         // Apply casting if target datatype is known.
         if let Some(dt) = target_datatype {
-            cast_list_array_values(&transformed, dt).map_err(|err| {
+            let target_list_datatype = arrow::datatypes::DataType::List(Arc::new(
+                // TODO(grtlr): Ideally we'd make a more informed guess about nullability here.
+                // But in the context of components setting the `ListArray` to nullable is the safe choice.
+                arrow::datatypes::Field::new_list_field(dt.clone(), true),
+            ));
+
+            cast_list_array(&transformed, &target_list_datatype).map_err(|err| {
                 ComponentMappingError::CastFailed {
-                    source_datatype: transformed.data_type().clone().into(),
-                    target_datatype: dt.clone().into(),
+                    source_datatype: transformed.data_type().clone(),
+                    target_datatype: target_list_datatype,
                     err: Arc::new(err),
                 }
             })
@@ -86,12 +91,12 @@ fn transform_chunk(
 
 /// All information required to rewrite a source component into a target component.
 ///
-/// Also applies a [`re_arrow_combinators::Selector`], if specified.
+/// Also applies a [`re_lenses_core::Selector`], if specified.
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct ActiveRemapping {
     target: ComponentIdentifier,
     source: ComponentIdentifier,
-    selector: Option<re_arrow_combinators::Selector>,
+    selector: Option<re_lenses_core::Selector>,
 }
 
 /// Determines the exact reason why a component was not found.
@@ -159,10 +164,10 @@ fn component_not_found_error(
 /// Data should be accessed via the [`crate::BlueprintResolvedResultsExt`] trait which is implemented for
 /// [`crate::BlueprintResolvedResults`].
 pub fn range_with_blueprint_resolved_data<'a>(
-    ctx: &ViewContext<'a>,
+    ctx: &'a ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
-    data_result: &re_viewer_context::DataResult,
+    data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
 ) -> BlueprintResolvedRangeResults<'a> {
@@ -201,7 +206,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
                     });
                     Ok(source.source_kind())
                 } else {
-                    match selector.parse::<re_arrow_combinators::Selector>() {
+                    match selector.parse::<re_lenses_core::Selector>() {
                         Ok(selector) => {
                             active_remappings.push(ActiveRemapping {
                                 target: *target_component,
@@ -292,10 +297,19 @@ pub fn range_with_blueprint_resolved_data<'a>(
         }
     }
 
+    let query_context = QueryContext {
+        view_ctx: ctx,
+        target_entity_path: &data_result.entity_path,
+        instruction_id: Some(visualizer_instruction.id),
+        archetype_name: None,
+        // TODO(andreas): Rather strange to a have a latest-at query in here.
+        query: LatestAtQuery::new(range_query.timeline, range_query.range.min),
+    };
+
     BlueprintResolvedRangeResults {
         overrides,
         store_results,
-        _instruction_id: visualizer_instruction.id,
+        query_context,
         view_defaults: &ctx.query_result.view_defaults,
         component_sources,
         component_mappings_hash: Hash64::hash(&active_remappings),
@@ -363,7 +377,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
                         });
                         Ok(source.source_kind())
                     } else {
-                        match selector.parse::<re_arrow_combinators::Selector>() {
+                        match selector.parse::<re_lenses_core::Selector>() {
                             Ok(selector) => {
                                 active_remappings.push(ActiveRemapping {
                                     target: *target_component,

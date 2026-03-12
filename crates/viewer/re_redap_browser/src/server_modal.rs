@@ -423,6 +423,15 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
                 ui.horizontal(|ui| {
                     ui.label("Continue as");
                     ui.label(RichText::new(&logged_in.email).strong());
+
+                    ui.weak("or");
+
+                    if ui
+                        .link(RichText::new("log out").color(ui.tokens().text_subdued))
+                        .clicked()
+                    {
+                        ctx.command_sender.send_system(SystemCommand::Logout);
+                    }
                 });
             } else {
                 // User is not logged in - start the login flow to show buttons

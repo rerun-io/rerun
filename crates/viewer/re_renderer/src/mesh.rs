@@ -367,10 +367,8 @@ impl GpuMesh {
             // The bind group layout must be in sync with the mesh renderer.
             let mesh_bind_group_layout = ctx.renderer::<MeshRenderer>().bind_group_layout;
 
-            for (material, uniform_buffer_binding) in data
-                .materials
-                .iter()
-                .zip(uniform_buffer_bindings.into_iter())
+            for (material, uniform_buffer_binding) in
+                data.materials.iter().zip(uniform_buffer_bindings)
             {
                 let bind_group = pools.bind_groups.alloc(
                     device,

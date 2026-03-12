@@ -25,8 +25,7 @@ impl DebugContent {
 
 impl ListItemContent for DebugContent {
     fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>) {
-        ui.ctx()
-            .debug_painter()
+        ui.debug_painter()
             .debug_rect(context.rect, egui::Color32::DARK_GREEN, self.label);
     }
 

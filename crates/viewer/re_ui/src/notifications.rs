@@ -277,7 +277,7 @@ impl NotificationUi {
             .frame(ui.tokens().popup_frame(ui.style()))
             // Put the popup below the button, but all the way to the right of the screen:
             .anchor(egui::PopupAnchor::Position(egui::pos2(
-                ui.ctx().content_rect().right() - gap,
+                ui.content_rect().right() - gap,
                 ui.max_rect().bottom() + gap,
             )))
             .align(egui::RectAlign::BOTTOM_END)
@@ -308,7 +308,7 @@ impl NotificationUi {
         let notifications = &mut self.notifications;
 
         let panel_width = 356.0;
-        let panel_max_height = (ui.ctx().content_rect().height() - 100.0)
+        let panel_max_height = (ui.content_rect().height() - 100.0)
             .at_least(0.0)
             .at_most(640.0);
 
@@ -542,15 +542,15 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
     let age = Timestamp::now().duration_since(created_at).as_secs_f64();
 
     let formatted = if age < 10.0 {
-        ui.ctx().request_repaint_after(Duration::from_secs(1));
+        ui.request_repaint_after(Duration::from_secs(1));
 
         "now".to_owned()
     } else if age < 60.0 {
-        ui.ctx().request_repaint_after(Duration::from_secs(1));
+        ui.request_repaint_after(Duration::from_secs(1));
 
         format!("{age:.0}s")
     } else {
-        ui.ctx().request_repaint_after(Duration::from_secs(60));
+        ui.request_repaint_after(Duration::from_secs(60));
 
         created_at.strftime("%H:%M").to_string()
     };

@@ -77,7 +77,16 @@ The Rerun command-line interface:
 * `--port <PORT>`
 > What port do we listen to for SDKs to connect to over gRPC.
 >
+> Use `auto` to always start a new viewer with a free port if the default is taken.
+>
 > [Default: `9876`]
+
+* `--new <NEW>`
+> Alias for `--port auto`. Always start a new viewer.
+>
+> If the port is already in use, a free port will be picked automatically.
+>
+> [Default: `false`]
 
 * `--profile <PROFILE>`
 > Start with the puffin profiler running.
@@ -344,11 +353,11 @@ Convert an .mcap file to an .rrd.
 * `--application-id <APPLICATION_ID>`
 > If set, specifies the application id of the output.
 
-* `-l, --layer <SELECTED_LAYERS>`
-> Specifies which layers to apply during conversion.
+* `-d, --decoder <SELECTED_DECODERS>`
+> Specifies which decoders to apply during conversion.
 
 * `--disable-raw-fallback <DISABLE_RAW_FALLBACK>`
-> Disable using the raw layer as a fallback for unsupported channels. By default, channels that cannot be handled by semantic layers (protobuf, ROS2) will be processed by the raw layer.
+> Disable using the raw decoder as a fallback for unsupported channels. By default, channels that cannot be handled by semantic decoders (protobuf, ROS2) will be processed by the raw decoder.
 >
 > [Default: `false`]
 
@@ -356,6 +365,20 @@ Convert an .mcap file to an .rrd.
 > If set, specifies the recording id of the output.
 >
 > When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
+
+* `--timestamp-offset-ns <TIMESTAMP_OFFSET_NS>`
+> If set, an offset in nanoseconds to add to all timestamp timelines.
+>
+> This can be used to shift all timestamps of the MCAP file if they are not yet relative to the UNIX epoch.
+>
+> Duration and sequence timelines are not affected by this offset.
+
+* `--timeline-type <TIMELINE_TYPE>`
+> The timeline type to use for timestamp timelines.
+>
+> "timestamp" (default) creates `TimestampNs` timelines (nanoseconds since Unix epoch). "duration" creates `DurationNs` timelines (nanosecond durations).
+>
+> [Default: `timestamp`]
 
 ## rerun rrd
 

@@ -2,9 +2,7 @@ use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
-use re_data_ui::item_ui::{
-    self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity,
-};
+use re_data_ui::item_ui::{self, cursor_interact_with_selectable};
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
@@ -17,9 +15,9 @@ use re_ui::{
 };
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
-    DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, SystemCommand,
-    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
-    ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
+    DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, StoreViewContext,
+    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
+    ViewStates, ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
     contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
@@ -35,6 +33,7 @@ use crate::visible_time_range_ui::{
 use crate::visualizer_ui::visualizer_ui;
 
 // ---
+
 fn default_selection_panel_width(screen_width: f32) -> f32 {
     (0.45 * screen_width).min(300.0).round()
 }
@@ -57,12 +56,12 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         expanded: bool,
     ) {
-        let screen_width = ui.ctx().content_rect().width();
+        let screen_width = ui.content_rect().width();
 
-        let panel = egui::SidePanel::right("selection_view")
-            .min_width(120.0)
-            .default_width(default_selection_panel_width(screen_width))
-            .max_width((0.65 * screen_width).round())
+        let panel = egui::Panel::right("selection_view")
+            .min_size(120.0)
+            .default_size(default_selection_panel_width(screen_width))
+            .max_size((0.65 * screen_width).round())
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
@@ -188,8 +187,8 @@ impl SelectionPanel {
                     component,
                 } = component_path;
 
-                let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let engine = db.storage_engine();
+                let store_view_ctx = ctx.guess_store_view_context_for_entity(entity_path);
+                let engine = store_view_ctx.db.storage_engine();
                 let component_descriptor = engine
                     .store()
                     .entity_component_descriptor(entity_path, *component)
@@ -198,10 +197,9 @@ impl SelectionPanel {
                 let is_static = engine
                     .store()
                     .entity_has_static_component(entity_path, component_descriptor.component);
-
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {
-                        item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, entity_path);
+                        item_ui::entity_path_parts_buttons(&store_view_ctx, ui, None, entity_path);
                     },
                 ));
 
@@ -269,15 +267,13 @@ impl SelectionPanel {
             }
 
             Item::InstancePath(instance_path) => {
-                let (query, db) =
-                    guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+                let store_view_ctx =
+                    ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Entity path").value_fn(
                     |ui, _| {
                         item_ui::entity_path_parts_buttons(
-                            ctx,
-                            &query,
-                            db,
+                            &store_view_ctx,
                             ui,
                             None,
                             &instance_path.entity_path,
@@ -311,15 +307,12 @@ impl SelectionPanel {
                 instance_path,
                 visualizer: _,
             }) => {
+                let store_view_ctx =
+                    ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
                 ui.list_item_flat_noninteractive(PropertyContent::new("Stream entity").value_fn(
                     |ui, _| {
-                        let (query, db) =
-                            guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-
                         item_ui::entity_path_parts_buttons(
-                            ctx,
-                            &query,
-                            db,
+                            &store_view_ctx,
                             ui,
                             None,
                             &instance_path.entity_path,
@@ -332,7 +325,7 @@ impl SelectionPanel {
                         |ui, _| {
                             let response = ui.button(instance_path.instance.to_string());
                             cursor_interact_with_selectable(
-                                ctx,
+                                &ctx.app_ctx,
                                 response,
                                 Item::from(instance_path.clone()),
                             );
@@ -366,24 +359,24 @@ impl SelectionPanel {
             _ => {}
         }
 
-        let (query, db) = if let Some(entity_path) = item.entity_path() {
-            guess_query_and_db_for_selected_entity(ctx, entity_path)
+        let store_view_ctx = if let Some(entity_path) = item.entity_path() {
+            ctx.guess_store_view_context_for_entity(entity_path)
         } else {
-            (ctx.current_query(), ctx.recording())
+            ctx.active_recording_store_view_context()
         };
 
         if let Some(data_ui_item) = data_section_ui(item) {
             ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-                data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
+                ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
+                data_ui_item.data_ui(&store_view_ctx, ui, ui_layout);
             });
         }
 
         match item {
             Item::StoreId(_) => {
                 ui.section_collapsing_header("Properties").show(ui, |ui| {
-                    show_recording_properties(ctx, db, &query, ui, ui_layout);
+                    show_recording_properties(&store_view_ctx, ui, ui_layout);
                 });
             }
 
@@ -468,7 +461,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 .with_help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
                     if let Some(new_entity_path_filter) = entity_path_filter_ui(
                         ctx,
@@ -491,40 +484,44 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             let view_class = view.class(ctx.view_class_registry());
-            let view_state = view_states.get_mut_or_create(view.id, view_class);
+            let view_state = view_states.get_mut_or_create(ctx.store_id(), view.id, view_class);
 
-            if let Some(visualizers_output) =
-                view_class.visualizers_ui(ctx, *view_id, view_state, &view.space_origin)
-            {
-                let markdown = "# Visualizers
-
-This section lists all active visualizers in this view.";
-
-                let header = ui
-                    .section_collapsing_header("Visualizers")
-                    .with_button(move |ui: &mut egui::Ui| {
-                        visualizer_section_plus_button(
-                            ctx,
-                            *view_id,
-                            view_class,
-                            view.class_identifier(),
-                            ui,
-                        )
-                    })
-                    .with_help_markdown(markdown);
-
-                header.show(ui, |ui| {
-                    // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-
-                    visualizers_output(ui);
-                });
+            // Try the new `visualizers_section` first, fall back to deprecated `visualizers_ui`.
+            // These live in separate scopes because `visualizers_section` borrows `view_state`
+            // immutably (via `ViewContext`), while the legacy `visualizers_ui` borrows it mutably.
+            let showed_visualizers_section = {
+                let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                if let Some(section) = view_class.visualizers_section(&view_ctx) {
+                    show_visualizers_section(ctx, ui, *view_id, section.add_options, &|ui| {
+                        let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                        (section.ui)(ui, &view_ctx);
+                    });
+                    true
+                } else {
+                    false
+                }
+            };
+            if !showed_visualizers_section {
+                #[expect(deprecated)]
+                let legacy_ui =
+                    view_class.visualizers_ui(ctx, *view_id, view_state, &view.space_origin);
+                if let Some(legacy_ui) = legacy_ui {
+                    let add_options = legacy_collect_add_visualizer_options_from_recommended(
+                        ctx,
+                        *view_id,
+                        view_class,
+                        view.class_identifier(),
+                    );
+                    show_visualizers_section(ctx, ui, *view_id, add_options, &|ui| {
+                        legacy_ui(ui);
+                    });
+                }
             }
 
             ui.section_collapsing_header("View properties")
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
                     let cursor = ui.cursor();
 
@@ -552,15 +549,71 @@ This section lists all active visualizers in this view.";
     }
 }
 
-fn visualizer_section_plus_button(
+const VISUALIZERS_SECTION_HELP: &str = "# Visualizers
+
+This section lists all active visualizers in this view.";
+
+fn show_visualizers_section(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    view_id: ViewId,
+    add_options: Vec<(EntityPath, RecommendedVisualizers)>,
+    body: &dyn Fn(&mut egui::Ui),
+) {
+    ui.section_collapsing_header("Visualizers")
+        .with_button(move |ui: &mut egui::Ui| {
+            visualizer_section_plus_button(ctx, view_id, add_options, ui)
+        })
+        .with_help_markdown(VISUALIZERS_SECTION_HELP)
+        .show(ui, |ui| {
+            // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+            ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
+
+            body(ui);
+        });
+}
+
+/// Collect add-visualizer options via [`re_viewer_context::ViewClass::recommended_visualizers_for_entity`].
+fn legacy_collect_add_visualizer_options_from_recommended(
     viewer_ctx: &ViewerContext<'_>,
     view_id: ViewId,
     view_class: &dyn re_viewer_context::ViewClass,
     view_class_identifier: re_sdk_types::ViewClassIdentifier,
+) -> Vec<(EntityPath, RecommendedVisualizers)> {
+    profile_function!();
+
+    let query_result = viewer_ctx.lookup_query_result(view_id);
+    let visualizable_entities_per_visualizer =
+        viewer_ctx.collect_visualizable_entities_for_view_class(view_class_identifier);
+
+    query_result
+        .tree
+        .iter_data_results()
+        .filter(|data_result| !data_result.tree_prefix_only)
+        .filter_map(|data_result| {
+            let entity_path = &data_result.entity_path;
+            let recommended = view_class.recommended_visualizers_for_entity(
+                entity_path,
+                &visualizable_entities_per_visualizer,
+                viewer_ctx.indicated_entities_per_visualizer,
+            );
+            if recommended.0.is_empty() {
+                None
+            } else {
+                Some((entity_path.clone(), recommended))
+            }
+        })
+        .collect()
+}
+
+fn visualizer_section_plus_button(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    add_options: Vec<(EntityPath, RecommendedVisualizers)>,
     ui: &mut egui::Ui,
 ) -> egui::Response {
-    let options =
-        collect_add_visualizer_options(viewer_ctx, view_id, view_class, view_class_identifier);
+    let query_result = viewer_ctx.lookup_query_result(view_id);
+    let options = build_add_visualizer_menu_options(query_result, add_options);
 
     ui.spacing_mut().menu_margin = egui::Margin::same(0);
     ui.add(
@@ -573,7 +626,7 @@ fn visualizer_section_plus_button(
                 },
             )
             .on_hover_text("Add a new visualizer to the current view.")
-            .on_disabled_hover_text("There are no recommended visualizers for this view."),
+            .on_disabled_hover_text("There are no visualizers available to add to this view."),
     )
 }
 
@@ -588,7 +641,7 @@ fn menu_add_new_visualizer_for_view(
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
     ui.spacing_mut().item_spacing.y = 0.0;
 
-    let max_height = 0.85 * ui.ctx().content_rect().height();
+    let max_height = 0.85 * ui.content_rect().height();
     egui::ScrollArea::vertical()
         .max_height(max_height)
         .show(ui, |ui| {
@@ -630,37 +683,25 @@ struct AddVisualizerOptionPerEntity {
     pub is_already_visualized: bool,
 }
 
-fn collect_add_visualizer_options(
-    viewer_ctx: &re_viewer_context::ViewerContext<'_>,
-    view_id: ViewId,
-    view_class: &dyn re_viewer_context::ViewClass,
-    view_class_identifier: re_sdk_types::ViewClassIdentifier,
+/// Converts per-entity [`RecommendedVisualizers`] into the flat menu options used by the "+" button.
+fn build_add_visualizer_menu_options(
+    query_result: &DataQueryResult,
+    add_options: Vec<(EntityPath, RecommendedVisualizers)>,
 ) -> Vec<AddVisualizerOption> {
     profile_function!();
 
-    let query_result = viewer_ctx.lookup_query_result(view_id);
-    let visualizable_entities_per_visualizer =
-        viewer_ctx.collect_visualizable_entities_for_view_class(view_class_identifier);
-
-    // Traverse data results and build menu options.
     let mut result: Vec<AddVisualizerOption> = vec![];
-    for data_result in query_result.tree.iter_data_results() {
-        if data_result.tree_prefix_only {
+    for (entity_path, recommended_visualizers) in add_options {
+        let data_result = query_result.tree.lookup_result_by_path(entity_path.hash());
+        let Some(data_result) = data_result else {
             continue;
-        }
-
-        let entity_path = &data_result.entity_path;
-        let recommended_visualizers = view_class.recommended_visualizers_for_entity(
-            entity_path,
-            &visualizable_entities_per_visualizer,
-            viewer_ctx.indicated_entities_per_visualizer,
-        );
+        };
 
         let options =
             collect_add_visualizer_options_for_entity(data_result, recommended_visualizers);
         if !options.is_empty() {
             result.push(AddVisualizerOption {
-                entity_path: entity_path.clone(),
+                entity_path,
                 options,
             });
         }
@@ -834,15 +875,14 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
 }
 
 fn show_recording_properties(
-    ctx: &ViewerContext<'_>,
-    db: &re_entity_db::EntityDb,
-    query: &re_chunk::LatestAtQuery,
+    store_view_ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
     re_tracing::profile_function!();
 
-    let mut property_entities = db
+    let mut property_entities = store_view_ctx
+        .db
         .sorted_entity_paths()
         .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
@@ -870,7 +910,7 @@ fn show_recording_properties(
                         ui.label(entity_path.syntax_highlighted(ui.style()));
                     });
                 }
-                entity_path.data_ui(ctx, ui, ui_layout, query, db);
+                entity_path.data_ui(store_view_ctx, ui, ui_layout);
             }
         });
     }
@@ -892,15 +932,16 @@ fn entity_selection_ui(
 
     if let Some(view) = viewport.view(view_id) {
         let class = view.class(ctx.view_class_registry());
-        view_states.ensure_state_exists(*view_id, class);
+        let store_id = ctx.store_id();
+        view_states.ensure_state_exists(store_id, *view_id, class);
         let view_state = view_states
-            .get(*view_id)
+            .get(store_id, *view_id)
             .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
         let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
         let empty_errors = VisualizerViewReport::default();
         let visualizer_errors = view_states
-            .per_visualizer_type_reports(*view_id)
+            .per_visualizer_type_reports(store_id, *view_id)
             .unwrap_or(&empty_errors);
 
         visualizer_ui(&view_ctx, view, visualizer_errors, entity_path, ui);
@@ -954,7 +995,7 @@ fn entity_path_filter_ui(
             let is_exclusion = line.trim_start().starts_with('-');
 
             let color = if is_exclusion {
-                style.visuals.error_fg_color
+                tokens.text_subdued
             } else {
                 tokens.info_log_text_color
             };
@@ -1104,7 +1145,7 @@ fn view_button(
             contents_name_style(&view_name),
         )
         .on_hover_text(format!("{} view", class.display_name()));
-    item_ui::cursor_interact_with_selectable(ctx, response, item)
+    item_ui::cursor_interact_with_selectable(&ctx.app_ctx, response, item)
 }
 
 /// Display a list of all the views an entity appears in.
@@ -1117,7 +1158,7 @@ fn list_existing_data_blueprints(
     let views_with_path =
         viewport.views_containing_entity_path(ctx, instance_path.entity_path.hash());
 
-    let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+    let store_view_ctx = ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
 
     if views_with_path.is_empty() {
         ui.weak("(Not shown in any view)");
@@ -1140,9 +1181,7 @@ fn list_existing_data_blueprints(
                     let include_subtree = false;
                     item_ui::instance_hover_card_ui(
                         ui,
-                        ctx,
-                        &query,
-                        db,
+                        &store_view_ctx,
                         instance_path,
                         include_subtree,
                     );

@@ -732,11 +732,7 @@ impl<T: Default> VideoPlayer<T> {
         let max_last_sample_idx =
             requested_sample_idx + self.sample_decoder.max_num_samples_to_enqueue_ahead();
 
-        loop {
-            let Some(last_enqueued) = self.last_enqueued else {
-                break;
-            };
-
+        while let Some(last_enqueued) = self.last_enqueued {
             // Enqueued enough samples as described above?
             let enqueued_min_amount = last_enqueued >= min_last_sample_idx;
             let enqueued_max_amount = last_enqueued + 1 >= max_last_sample_idx;
@@ -986,12 +982,13 @@ impl<T: Default> VideoPlayer<T> {
         video_descr: &crate::VideoDataDescription,
     ) -> Result<(), VideoPlayerError> {
         self.sample_decoder.reset(video_descr)?;
-        self.output = None;
-        self.frame_info = None;
         self.last_requested = None;
         self.last_enqueued = None;
         self.signaled_end_of_video = false;
-        // Do *not* reset the error state. We want to keep track of the last error.
+        // Do *not* reset the error state or last output.
+        //
+        // We want to keep track of the last error, and also be able to display
+        // the last successfully decoded frame.
         Ok(())
     }
 

@@ -1,11 +1,12 @@
 // Tests for saving/loading blueprints to/from a file.
 use std::path::Path;
 
+use re_chunk::EntityPath;
 use re_chunk::{RowId, TimePoint};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{BlueprintContext as _, ViewClass as _};
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -158,5 +159,91 @@ fn test_blueprint_load_into_new_context() {
         &test_context_2,
         "blueprint_load_into_new_context_2",
         &mut snapshot_results,
+    );
+}
+
+/// When the entity path hash in a `VisualizerInstructionId` doesn't match the current hash
+/// (e.g. because the hash algorithm changed), overrides should still be loaded.
+/// The fallback path in `build_data_result_tree` recovers instruction IDs by scanning
+/// blueprint children and extracting the index from the UUID's low bits.
+#[test]
+fn test_blueprint_override_legacy_hash() {
+    use re_sdk_types::AsComponents;
+    use re_sdk_types::blueprint::archetypes as bp_archetypes;
+    use re_sdk_types::blueprint::components::VisualizerInstructionId;
+
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<re_view_bar_chart::BarChartView>();
+
+    let entity_path = re_chunk::EntityPath::from("vector");
+    let vector = (0..10).map(|i| i as f32).collect::<Vec<_>>();
+    test_context.log_entity("vector", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::STATIC,
+            &re_sdk_types::archetypes::BarChart::new(vector),
+        )
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view =
+            ViewBlueprint::new_with_root_wildcard(re_view_bar_chart::BarChartView::identifier());
+        let view_id = view.id;
+
+        let base_override_path =
+            bp_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
+                view_id.uuid(),
+                &entity_path,
+            );
+
+        // Use a nonsensical hash but a valid index (0).
+        // This simulates a legacy blueprint created with a different hash algorithm.
+        let legacy_id =
+            VisualizerInstructionId::new_deterministic(&EntityPath::from("wrong_path"), 0);
+
+        let visualizer_path =
+            base_override_path
+                .clone()
+                .join(&re_chunk::EntityPath::from_single_string(
+                    legacy_id.to_string(),
+                ));
+
+        // Store the VisualizerInstruction + color override at the legacy UUID path.
+        let instruction = bp_archetypes::VisualizerInstruction::new("BarChart");
+        let color_override = re_sdk_types::archetypes::BarChart::default().with_color([255, 0, 0]);
+        ctx.save_blueprint_archetypes(
+            visualizer_path,
+            [
+                &instruction as &dyn AsComponents,
+                &color_override as &dyn AsComponents,
+            ],
+        );
+
+        // Intentionally do NOT store ActiveVisualizers at the base path.
+        // This forces the fallback recovery path that scans children by UUID index.
+
+        blueprint.add_view_at_root(view)
+    });
+
+    // The query results are populated by setup_viewport_blueprint.
+    let query_result = test_context
+        .query_results
+        .get(&view_id)
+        .expect("query result for view should exist");
+
+    let data_result = query_result
+        .tree
+        .lookup_result_by_path(entity_path.hash())
+        .expect("data result for 'vector' entity should exist");
+
+    // The override should have been picked up via the legacy UUID recovery path.
+    let color_component = re_sdk_types::archetypes::BarChart::descriptor_color().component;
+    assert!(
+        data_result
+            .visualizer_instructions
+            .iter()
+            .any(|vi| vi.component_overrides.contains(&color_component)),
+        "Color override should be present despite the nonsensical entity path hash in the VisualizerInstructionId. \
+         The fallback recovery should match by index (low bits of UUID)."
     );
 }

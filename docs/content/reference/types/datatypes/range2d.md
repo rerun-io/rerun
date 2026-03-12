@@ -7,22 +7,22 @@ An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum
 
 ## Fields
 #### `x_range`
-Type: [`Range1D`](../datatypes/range1d.md)
+Type: non-null [`Range1D`](../datatypes/range1d.md)
 
 The range of the X-axis (usually left and right bounds).
 
 #### `y_range`
-Type: [`Range1D`](../datatypes/range1d.md)
+Type: non-null [`Range1D`](../datatypes/range1d.md)
 
 The range of the Y-axis (usually top and bottom bounds).
 
 
 ## Arrow datatype
 ```
-Struct {
-    x_range: FixedSizeList<2, float64>
-    y_range: FixedSizeList<2, float64>
-}
+Struct(
+    "x_range": non-null FixedSizeList(2 x non-null Float64)
+    "y_range": non-null FixedSizeList(2 x non-null Float64)
+)
 ```
 
 ## API reference links

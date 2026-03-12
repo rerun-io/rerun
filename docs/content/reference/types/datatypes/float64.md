@@ -8,7 +8,7 @@ A double-precision 64-bit IEEE 754 floating point number.
 
 ## Arrow datatype
 ```
-float64
+Float64
 ```
 
 ## API reference links

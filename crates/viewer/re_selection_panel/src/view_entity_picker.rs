@@ -48,7 +48,7 @@ impl ViewEntityPicker {
             },
             |ui| {
                 // 80%, never more than 500px
-                ui.set_max_height(f32::min(ui.ctx().content_rect().height() * 0.8, 500.0));
+                ui.set_max_height(f32::min(ui.content_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     ui.close();
                     return;
@@ -187,7 +187,6 @@ fn add_entities_line_ui(
 ) {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query();
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
@@ -216,10 +215,9 @@ fn add_entities_line_ui(
             widget_text = widget_text.strong();
         }
 
+        let store_view_ctx = ctx.active_recording_store_view_context();
         let response = item_ui::instance_path_button_to(
-            ctx,
-            &query,
-            ctx.recording(),
+            &store_view_ctx,
             ui,
             Some(view.id),
             &InstancePath::entity_all(entity_path.clone()),

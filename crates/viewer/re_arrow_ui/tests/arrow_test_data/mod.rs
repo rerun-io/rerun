@@ -147,7 +147,7 @@ pub fn create_union_array(step: i32) -> Arc<dyn Array> {
             ]),
         ]);
 
-    let union_fields = UnionFields::new(
+    let union_fields = UnionFields::try_new(
         vec![0, 1, 2, 3, 4],
         vec![
             Field::new("int_variant", DataType::Int32, false),
@@ -160,7 +160,8 @@ pub fn create_union_array(step: i32) -> Arc<dyn Array> {
                 false,
             ),
         ],
-    );
+    )
+    .expect("UnionFields should be infallible");
 
     let children = vec![
         Arc::new(int_values) as Arc<dyn Array>,

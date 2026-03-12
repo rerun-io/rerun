@@ -28,9 +28,9 @@ use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
 
+use crate::Error;
 use crate::ingestion_statistics::IngestionStatistics;
 use crate::rrd_manifest_index::RrdManifestIndex;
-use crate::{Error, TimeHistogramPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -63,6 +63,26 @@ impl EntityDbClass<'_> {
     pub fn is_example(&self) -> bool {
         matches!(self, EntityDbClass::ExampleRecording)
     }
+}
+
+// ---
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RedapConnectionState {
+    /// We are not connected to redap
+    NotConnected,
+
+    /// We are downloading the manifest (no parts received yet).
+    DownloadingFirstManifestPart,
+
+    /// Connected but manifest is missing or failed to download.
+    MissingManifest,
+
+    /// We have some manifest data, but more parts are still arriving.
+    PartialManifest,
+
+    /// The full manifest has been received and we are ready to fetch chunks.
+    Ready,
 }
 
 // ---
@@ -125,8 +145,11 @@ pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
-    /// A time histogram of all entities, for every timeline.
-    time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
+    /// Keeps track of meta per timeline.
+    ///
+    /// This includes:
+    /// - Row count.
+    data_meta_per_timeline: crate::data_meta_per_timeline::DataMetaPerTimeline,
 
     /// The [`StorageEngine`] that backs this [`EntityDb`].
     ///
@@ -202,7 +225,7 @@ impl EntityDb {
             latest_row_id: None,
             entity_paths: Default::default(),
             entity_path_from_hash: Default::default(),
-            time_histogram_per_timeline: Default::default(),
+            data_meta_per_timeline: Default::default(),
             storage_engine,
             store_size_bytes: StoreSizeBytes(Mutex::new(None)),
             estimated_application_overhead_bytes: None,
@@ -239,10 +262,7 @@ impl EntityDb {
                 {
                     let name = component_type
                         .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
-                    text.push_str(&format!(
-                        "{component_indent}{name}: {}\n",
-                        re_arrow_util::format_data_type(&datatype)
-                    ));
+                    text.push_str(&format!("{component_indent}{name}: {datatype}\n"));
                 } else {
                     // Fallback to component identifier
                     text.push_str(&format!("{component_indent}{component}\n"));
@@ -321,46 +341,66 @@ impl EntityDb {
         &mut self.rrd_manifest_index
     }
 
+    pub fn redap_connection_state(&self) -> RedapConnectionState {
+        // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
+        let is_connected_to_redap = self
+            .data_source
+            .as_ref()
+            .is_some_and(|source| source.is_redap());
+
+        if is_connected_to_redap {
+            if self.rrd_manifest_index.has_manifest() {
+                if self.rrd_manifest_index.is_manifest_complete() {
+                    RedapConnectionState::Ready
+                } else {
+                    RedapConnectionState::PartialManifest
+                }
+            } else if self.num_physical_chunks() == 0 {
+                RedapConnectionState::DownloadingFirstManifestPart
+            } else {
+                // This handles the case where we tried and failed to download the manifest,
+                // but managed to download the data anyhow.
+                RedapConnectionState::MissingManifest
+            }
+        } else {
+            RedapConnectionState::NotConnected
+        }
+    }
+
     /// Are we connected to redap, and can fetch missing chunks?
     pub fn can_fetch_chunks_from_redap(&self) -> bool {
-        // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
-        self.data_source
-            .as_ref()
-            .is_some_and(|source| source.is_redap())
+        match self.redap_connection_state() {
+            RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
+            RedapConnectionState::DownloadingFirstManifestPart
+            | RedapConnectionState::PartialManifest
+            | RedapConnectionState::Ready => true,
+        }
     }
 
     /// Are we currently in the process of downloading the RRD Manifest?
-    pub fn is_currently_downloading_manifest(&self) -> bool {
-        // The `num_physical_chunks == 0` check handles the case where we tried and failed to download the manifest,
-        // but managed to download the data anyhow.
-        self.num_physical_chunks() == 0
-            && !self.rrd_manifest_index.has_manifest()
-            && self.can_fetch_chunks_from_redap()
+    pub fn is_downloading_first_part_of_manifest(&self) -> bool {
+        self.redap_connection_state() == RedapConnectionState::DownloadingFirstManifestPart
     }
 
     /// True if we're are currently waiting for necessary
     /// data to be loaded before we can show it.
     pub fn is_buffering(&self) -> bool {
-        if self.is_currently_downloading_manifest() {
-            return true;
-        }
+        match self.redap_connection_state() {
+            RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
+            RedapConnectionState::DownloadingFirstManifestPart
+            | RedapConnectionState::PartialManifest => true,
 
-        if !self.can_fetch_chunks_from_redap() {
-            return false;
-        }
-
-        if self.num_physical_chunks() == 0 {
-            return true; // waiting for initial data
-        }
-
-        if let Some(state) = self
-            .rrd_manifest_index()
-            .chunk_prioritizer()
-            .latest_result()
-        {
-            !state.all_required_are_loaded
-        } else {
-            true // no prefetch done yet
+            RedapConnectionState::Ready => {
+                if let Some(state) = self
+                    .rrd_manifest_index()
+                    .chunk_prioritizer()
+                    .latest_result()
+                {
+                    !state.all_required_are_loaded
+                } else {
+                    true // no prefetch done yet
+                }
+            }
         }
     }
 
@@ -604,19 +644,36 @@ impl EntityDb {
         self.storage_engine().store().timelines()
     }
 
-    /// When do we have data on each timeline?
-    pub fn timeline_histograms(&self) -> &TimeHistogramPerTimeline {
-        &self.time_histogram_per_timeline
-    }
-
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
-        self.storage_engine().store().time_range(timeline)
+        self.storage_engine.read().store().time_range(timeline)
     }
 
-    /// Histogram of all events on the timeeline, of all entities.
-    pub fn time_histogram(&self, timeline: &TimelineName) -> Option<&crate::TimeHistogram> {
-        self.time_histogram_per_timeline.get(timeline)
+    /// Returns the total number of temporal rows on the given timeline across all entities.
+    pub fn num_temporal_rows_on_timeline(&self, timeline: &TimelineName) -> u64 {
+        self.data_meta_per_timeline.row_count_for_timeline(timeline)
+    }
+
+    /// Returns the next time with data on the given timeline, strictly after `after`.
+    pub fn next_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        after: TimeInt,
+    ) -> Option<TimeInt> {
+        self.storage_engine()
+            .store()
+            .next_time_on_timeline(timeline, after)
+    }
+
+    /// Returns the previous time with data on the given timeline, strictly before `before`.
+    pub fn prev_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        before: TimeInt,
+    ) -> Option<TimeInt> {
+        self.storage_engine()
+            .store()
+            .prev_time_on_timeline(timeline, before)
     }
 
     /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
@@ -667,9 +724,8 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: Arc<RrdManifest>) {
+    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: Arc<RrdManifest>) -> ChunkStoreEvent {
         re_tracing::profile_function!();
-        re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
         let event = self
             .storage_engine
@@ -677,19 +733,18 @@ impl EntityDb {
             .store()
             .insert_rrd_manifest(rrd_manifest.clone());
 
-        match event {
-            Ok(event) => {
-                self.on_store_events(&[event]);
-            }
-            Err(err) => {
-                re_log::error!("Failed to load RRD Manifest into store: {err}");
-            }
+        self.on_store_events(std::slice::from_ref(&event));
+
+        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
+            re_log::error!("Failed to append RRD manifest: {err}");
         }
 
-        self.rrd_manifest_index.append(rrd_manifest);
+        event
+    }
 
-        self.time_histogram_per_timeline
-            .on_rrd_manifest(&self.rrd_manifest_index);
+    /// Mark the RRD manifest as complete (all parts have been received).
+    pub fn mark_rrd_manifest_complete(&mut self) {
+        self.rrd_manifest_index.set_manifest_complete();
     }
 
     /// Insert new data into the store.
@@ -789,11 +844,12 @@ impl EntityDb {
             .on_events(engine.store(), store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.time_histogram_per_timeline.on_events(
-            engine.store(),
+        self.data_meta_per_timeline.on_events(
             &self.rrd_manifest_index,
+            engine.store(),
             store_events,
         );
+
         self.rrd_manifest_index
             .entity_tree
             .on_store_additions(store_events.iter().filter_map(|e| e.to_addition()));
@@ -1231,7 +1287,7 @@ impl re_byte_size::SizeBytes for EntityDb {
             latest_row_id: _,
             entity_paths,
             entity_path_from_hash,
-            time_histogram_per_timeline,
+            data_meta_per_timeline,
             storage_engine,
             store_size_bytes,
             estimated_application_overhead_bytes: _,
@@ -1255,7 +1311,7 @@ impl re_byte_size::SizeBytes for EntityDb {
             + set_store_info.heap_size_bytes()
             + entity_paths.heap_size_bytes()
             + entity_path_from_hash.heap_size_bytes()
-            + time_histogram_per_timeline.heap_size_bytes()
+            + data_meta_per_timeline.heap_size_bytes()
             + storage_engine_size
     }
 }
@@ -1266,7 +1322,7 @@ impl MemUsageTreeCapture for EntityDb {
 
         let Self {
             rrd_manifest_index,
-            time_histogram_per_timeline,
+            data_meta_per_timeline,
             storage_engine,
             entity_paths,
             entity_path_from_hash,
@@ -1301,8 +1357,8 @@ impl MemUsageTreeCapture for EntityDb {
         );
 
         node.add(
-            "time_histogram_per_timeline",
-            time_histogram_per_timeline.capture_mem_usage_tree(),
+            "data_meta_per_timeline",
+            data_meta_per_timeline.total_size_bytes(),
         );
         node.add(
             "rrd_manifest_index",
@@ -1350,10 +1406,12 @@ mod tests {
             db.add_chunk(&Arc::new(chunk))?;
         }
 
-        assert_eq!(
-            db.format_with_components(),
-            "/parent\n  /parent/child1\n    /parent/child1/grandchild\n      example.MyPoint: Struct[2]\n"
-        );
+        insta::assert_snapshot!(db.format_with_components(), @r###"
+        /parent
+          /parent/child1
+            /parent/child1/grandchild
+              example.MyPoint: Struct("x": non-null Float32, "y": non-null Float32)
+        "###);
 
         Ok(())
     }

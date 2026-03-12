@@ -397,7 +397,7 @@ pub fn start<E: Example + 'static>() {
         #[expect(deprecated)]
         let window = event_loop.create_window(window).unwrap();
 
-        use winit::platform::web::WindowExtWebSys;
+        use winit::platform::web::WindowExtWebSys as _;
         let canvas = window.canvas().expect("Couldn't get canvas");
         canvas.style().set_css_text("height: 100%; width: 100%;");
         web_sys::window()

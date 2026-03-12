@@ -313,7 +313,11 @@ def wasm(results: list[Result]) -> None:
     )
     # Check re_renderer examples for wasm32.
     results.append(
-        run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples"),
+        run_cargo(
+            "clippy",
+            "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer_examples",
+            clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
+        ),
     )
 
 

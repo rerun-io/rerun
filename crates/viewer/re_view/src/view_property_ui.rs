@@ -135,7 +135,7 @@ fn view_property_ui_impl(
 /// Use [`view_property_ui`] whenever possible to show the ui for all components of a view property archetype.
 /// This function is only useful if you want to show custom ui for some of the components.
 pub fn view_property_component_ui(
-    ctx: &QueryContext<'_>,
+    query_ctx: &QueryContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
     display_name: &str,
@@ -147,17 +147,17 @@ pub fn view_property_component_ui(
     let component_array = property.component_raw(component);
     let row_id = property.component_row_id(component);
 
-    let viewer_ctx = ctx.viewer_ctx();
+    let viewer_ctx = query_ctx.viewer_ctx();
     let ui_types = viewer_ctx
         .component_ui_registry()
         .registered_ui_types(field.component_type);
 
     let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
         viewer_ctx.component_ui_registry().singleline_edit_ui(
-            ctx,
+            query_ctx,
+            &viewer_ctx.blueprint_store_view_ctx(),
             ui,
-            viewer_ctx.blueprint_db(),
-            ctx.target_entity_path.clone(),
+            query_ctx.target_entity_path.clone(),
             &component_descr,
             row_id,
             component_array.as_deref(),
@@ -166,10 +166,10 @@ pub fn view_property_component_ui(
 
     let multiline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
         viewer_ctx.component_ui_registry().multiline_edit_ui(
-            ctx,
+            query_ctx,
+            &viewer_ctx.blueprint_store_view_ctx(),
             ui,
-            viewer_ctx.blueprint_db(),
-            ctx.target_entity_path.clone(),
+            query_ctx.target_entity_path.clone(),
             &component_descr,
             row_id,
             component_array.as_deref(),
@@ -184,7 +184,7 @@ pub fn view_property_component_ui(
         };
 
     view_property_component_ui_custom(
-        ctx,
+        query_ctx,
         ui,
         property,
         display_name,

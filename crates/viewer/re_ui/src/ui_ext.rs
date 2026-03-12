@@ -789,7 +789,7 @@ pub trait UiExt {
             let long_enough_text = raw_text.chars().count() >= MIN_COPY_LEN;
 
             let id = ui.next_auto_id();
-            let contains_pointer = ui.ctx().read_response(id).is_some_and(|last_response| {
+            let contains_pointer = ui.read_response(id).is_some_and(|last_response| {
                 ui.rect_contains_pointer(
                     last_response
                         .interact_rect
@@ -905,7 +905,7 @@ pub trait UiExt {
 
                 if copy_response.clicked() {
                     re_log::info!("Copied {raw_text:?}");
-                    ui.ctx().copy_text(raw_text);
+                    ui.copy_text(raw_text);
                 }
             }
         }
@@ -952,21 +952,30 @@ pub trait UiExt {
         x: f32,
         y: Rangef,
     ) {
-        let ui = self.ui();
-        let stroke = if let Some(response) = response {
-            ui.visuals().widgets.style(response).fg_stroke
+        let style = if let Some(response) = response {
+            self.ui().visuals().widgets.style(response)
         } else {
-            ui.visuals().widgets.inactive.fg_stroke
+            &self.ui().visuals().widgets.inactive
         };
+        self.paint_time_cursor_with_style(painter, style, x, y);
+    }
 
+    /// Like [`Self::paint_time_cursor`], but with an explicit widget style.
+    fn paint_time_cursor_with_style(
+        &self,
+        painter: &egui::Painter,
+        style: &egui::style::WidgetVisuals,
+        x: f32,
+        y: Rangef,
+    ) {
         let Rangef {
             min: y_min,
             max: y_max,
         } = y;
 
         let stroke = egui::Stroke {
-            width: 1.5 * stroke.width,
-            color: stroke.color,
+            width: 1.5 * style.fg_stroke.width,
+            color: style.fg_stroke.color,
         };
 
         let w = 10.0;
@@ -1069,7 +1078,7 @@ pub trait UiExt {
         });
 
         if ui.is_rect_visible(visual_rect) {
-            let how_on = ui.ctx().animate_bool(response.id, *on);
+            let how_on = ui.animate_bool(response.id, *on);
             let visuals = ui.style().interact(&response);
             let expanded_rect = visual_rect.expand(visuals.expansion);
             let fg_fill_off = visuals.bg_fill;
@@ -1125,9 +1134,9 @@ pub trait UiExt {
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url.into()));
+                ui.open_url(egui::OpenUrl::new_tab(url.into()));
             } else if response.clicked() {
-                ui.ctx().open_url(egui::OpenUrl {
+                ui.open_url(egui::OpenUrl {
                     url: url.into(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
@@ -1155,7 +1164,7 @@ pub trait UiExt {
             .add(Button::new(RichText::new("❌").size(button_height)))
             .on_hover_text("Close the window");
         if close_response.clicked() {
-            ui.ctx().send_viewport_cmd(ViewportCommand::Close);
+            ui.send_viewport_cmd(ViewportCommand::Close);
         }
 
         let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
@@ -1164,15 +1173,14 @@ pub trait UiExt {
                 .add(Button::new(RichText::new("🗗").size(button_height)))
                 .on_hover_text("Restore window");
             if maximized_response.clicked() {
-                ui.ctx()
-                    .send_viewport_cmd(ViewportCommand::Maximized(false));
+                ui.send_viewport_cmd(ViewportCommand::Maximized(false));
             }
         } else {
             let maximized_response = ui
                 .add(Button::new(RichText::new("🗗").size(button_height)))
                 .on_hover_text("Maximize window");
             if maximized_response.clicked() {
-                ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
+                ui.send_viewport_cmd(ViewportCommand::Maximized(true));
             }
         }
 
@@ -1180,7 +1188,7 @@ pub trait UiExt {
             .add(Button::new(RichText::new("🗕").size(button_height)))
             .on_hover_text("Minimize the window");
         if minimized_response.clicked() {
-            ui.ctx().send_viewport_cmd(ViewportCommand::Minimized(true));
+            ui.send_viewport_cmd(ViewportCommand::Minimized(true));
         }
     }
 
@@ -1410,7 +1418,7 @@ pub trait UiExt {
     fn with_optional_extras<R>(&mut self, content: impl FnOnce(&mut egui::Ui, bool) -> R) -> R {
         let ui = self.ui_mut();
 
-        let show_extras = ui.ctx().show_extras();
+        let show_extras = ui.show_extras();
 
         let content_changed = ui.data_mut(|data| {
             let stored_show_extras = data
@@ -1426,7 +1434,7 @@ pub trait UiExt {
         let mut builder = egui::UiBuilder::new();
         if content_changed {
             builder = builder.sizing_pass();
-            ui.ctx().request_repaint();
+            ui.request_repaint();
         }
 
         ui.scope_builder(builder, |ui| content(ui, show_extras))

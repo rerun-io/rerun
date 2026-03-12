@@ -4,7 +4,6 @@ use std::sync::{Arc, LazyLock};
 
 use re_chunk::{Chunk, ChunkResult};
 use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
-use re_mcap::SelectedLayers;
 
 // ----------------------------------------------------------------------------
 
@@ -94,6 +93,16 @@ pub struct DataLoaderSettings {
     ///
     /// Defaults to `false`.
     pub follow: bool,
+
+    /// If set, an offset in nanoseconds to add to all `TimestampNs` time columns.
+    pub timestamp_offset_ns: Option<i64>,
+
+    /// The timeline type to use for timestamp timelines.
+    ///
+    /// Defaults to [`re_log_types::TimeType::TimestampNs`].
+    /// When set to [`re_log_types::TimeType::DurationNs`], all timestamp timelines
+    /// will be created as duration timelines instead.
+    pub timeline_type: re_log_types::TimeType,
 }
 
 impl DataLoaderSettings {
@@ -107,6 +116,8 @@ impl DataLoaderSettings {
             entity_path_prefix: None,
             timepoint: None,
             follow: false,
+            timestamp_offset_ns: None,
+            timeline_type: re_log_types::TimeType::TimestampNs,
         }
     }
 
@@ -138,6 +149,8 @@ impl DataLoaderSettings {
             entity_path_prefix,
             timepoint,
             follow: _,
+            timestamp_offset_ns: _,
+            timeline_type: _,
         } = self;
 
         let mut args = Vec::new();
@@ -427,7 +440,7 @@ static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        Arc::new(McapLoader::new(SelectedLayers::All)),
+        Arc::new(McapLoader::default()),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]

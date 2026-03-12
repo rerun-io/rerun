@@ -10,7 +10,6 @@ use arrow::array::{
 use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use arrow::datatypes::DataType as ArrowDataType;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::LatestAtQuery;
 use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
@@ -20,7 +19,7 @@ use re_sdk_types::components::{Blob, MediaType};
 use re_sorbet::ColumnDescriptorRef;
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, VariantName, ViewerContext};
+use re_viewer_context::{StoreViewContext, UiLayout, VariantName};
 
 use crate::table_blueprint::ColumnBlueprint;
 
@@ -211,9 +210,8 @@ impl DisplayComponentColumn {
 
     fn data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
-        latest_at_query: &LatestAtQuery,
         row_index: usize,
         instance_index: Option<u64>,
     ) {
@@ -286,8 +284,6 @@ impl DisplayComponentColumn {
                     ctx,
                     ui,
                     UiLayout::List,
-                    latest_at_query,
-                    ctx.recording(),
                     &self.entity_path,
                     &self.component_descr,
                     row_id,
@@ -371,9 +367,8 @@ impl DisplayColumn {
     ///   [`Self::instance_count`]), nothing is displayed.
     pub fn data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
-        latest_at_query: &LatestAtQuery,
         row_index: usize,
         instance_index: Option<u64>,
     ) {
@@ -426,7 +421,7 @@ impl DisplayColumn {
             }
 
             Self::Component(component_column) => {
-                component_column.data_ui(ctx, ui, latest_at_query, row_index, instance_index);
+                component_column.data_ui(ctx, ui, row_index, instance_index);
             }
         }
     }

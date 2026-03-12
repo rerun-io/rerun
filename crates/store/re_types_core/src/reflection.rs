@@ -383,7 +383,7 @@ bitflags::bitflags! {
 
         /// The field should be editable through the UI.
         ///
-        /// By default, required components are non-editable and all other components are editable.
+        /// By default all components are editable.
         const UI_EDITABLE = 1 << 1;
     }
 }

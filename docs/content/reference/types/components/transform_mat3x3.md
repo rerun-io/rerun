@@ -23,7 +23,7 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 
 ## Arrow datatype
 ```
-FixedSizeList<9, float32>
+FixedSizeList(9 x non-null Float32)
 ```
 
 ## API reference links

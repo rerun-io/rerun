@@ -91,6 +91,11 @@ Do this once you have prepared your patch-release branch and it's ready for test
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
 
 In GitHub we have a `consider-patch` label that we put on PRs that we might want to include in the release.
+The fastest way to get an overview of all the patch candidate PRs from both repositories and their corresponding commit hashes is to run this script:
+
+```
+uv run scripts/fetch_patch_candidates.py
+```
 
 When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
 
@@ -176,3 +181,8 @@ Make sure the `consider-patch` label on GitHub is up-to-date. For a full release
 Summarize your experience with the release process to our [Release Postmortems](https://www.notion.so/rerunio/Release-Postmortems-271b24554b1980589770df810d2e4ed5) Notion page.
 
 Create tickets if you think we can improve the process, put them into the `Actionable items` section.
+
+### 10. Clean up PR labels
+
+`uv run scripts/fetch_patch_candidates.py` will show a warning for `consider-patch`-labeled PRs that have been merged before a release.
+Make sure to remove the label from PRs that are already part of a release.

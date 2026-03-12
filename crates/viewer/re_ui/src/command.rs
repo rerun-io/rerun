@@ -769,7 +769,7 @@ impl UICommand {
 
     /// Show name of command and how to activate it
     pub fn tooltip_ui(self, ui: &mut egui::Ui) {
-        let os = ui.ctx().os();
+        let os = ui.os();
 
         let (label, details) = self.text_and_tooltip();
 

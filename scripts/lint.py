@@ -22,6 +22,11 @@ from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
 
+# Path prefix from git root to the rerun directory.
+# "./rerun/" in the monorepo (reality), "./" in the standalone rerun repo.
+# Set in main().
+rerun_prefix = "./"
+
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
@@ -49,6 +54,7 @@ ellipsis_reference = re.compile(r"&\.\.\.")
 ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
+tonic_result = re.compile(r"Result<.*?,\s*tonic::Status\s*,?\s*>", re.DOTALL)
 pyclass_start = re.compile(r"#\[pyclass\(")
 pymethods_start = re.compile(r"#\[pymethods\]")
 
@@ -78,6 +84,9 @@ def is_valid_todo_part(part: str) -> bool:
 
     if re.match(r"^[\w/-]*#\d+$", part):
         return True  # org/repo#42 or #42
+
+    if part.lower() in ("agent", "claude", "codex", "llm"):
+        return False  # coding agent, not a person
 
     if re.match(r"^[a-z][a-z0-9_]+$", part):
         return True  # user-name
@@ -123,6 +132,7 @@ def lint_url(url: str) -> str | None:
         "https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml",
         "https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts",
         "https://github.com/rerun-io/landing/blob/main/src/lib/lang.ts",  # if this file moves we should check the linked code.
+        "https://github.com/rerun-io/platform-operator/blob/main/README-tech-overview.md",
         "https://github.com/rerun-io/rerun/blob/main/ARCHITECTURE.md",
         "https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md",
         "https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md",
@@ -154,6 +164,7 @@ def lint_line(
     prev_line: str | None,
     file_extension: str = "rs",
     is_in_docstring: bool = False,
+    is_in_oss_rerun_repo: bool = True,
 ) -> str | None:
     if line == "":
         return None
@@ -191,7 +202,7 @@ def lint_line(
         if err := lint_url(url):
             return err
 
-    if file_extension != "":
+    if file_extension != "" and is_in_oss_rerun_repo:
         # We lint against writing ellipsis using three dots for the sake of our UI:
         # * We want it consistent
         # * We want it beautiful (`…` looks different from `...`)
@@ -247,6 +258,9 @@ def lint_line(
     if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 
+    if re.search(r"\?err\b", line):
+        return "Use `%err` (Display) instead of `?err` (Debug) in tracing macros"
+
     if log_with_inline_sensitive_data.search(line):
         return 'URLs and paths should be passed as structured fields, not inline in log messages. Use e.g. `re_log::warn!(?url, "message: {err}")` instead of `re_log::warn!("message {url}: {err}")`'
 
@@ -287,11 +301,12 @@ def lint_line(
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
 
-    # Check for specific data platform phrases that should be capitalized
-    if re.search(r"(the\s+data\s+platform|Rerun\s+data\s+platform)", line) or re.search(
-        r"(?<!/)dataplatform(?!/)", line
-    ):
-        return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path)"
+    if is_in_oss_rerun_repo:
+        # Check for specific data platform phrases that should be capitalized
+        if re.search(r"(the\s+data\s+platform|Rerun\s+data\s+platform)", line) or re.search(
+            r"(?<!/)dataplatform(?!/)", line
+        ):
+            return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path)"
 
     if not is_in_docstring:
         if m := re.search(
@@ -420,6 +435,9 @@ def test_lint_line() -> None:
         "The https://example.com/dataplatform/api endpoint",
         "We need a data platform solution",
         "Building data platform infrastructure",
+        # %err (Display) in tracing macros is good
+        'tracing::warn!(%err, "something failed");',
+        're_log::error!(%err, "something failed");',
         # Structured logging with sensitive data as fields (good pattern)
         're_log::warn!(?url, "Failed to open URL: {err}");',
         're_log::error!(?path, "Failed to read file: {err}");',
@@ -450,11 +468,16 @@ def test_lint_line() -> None:
         "FIXME",
         "HACK",
         "TODO",
+        "# TODO make",
         "TODO:",
         "TODO(42)",
         "TODO(https://github.com/rerun-io/rerun/issues/42)",
         "TODO(bob/alice)",
         "TODO(bob|alice)",
+        "TODO(agent)",  # TODOs left for a coding agent
+        "TODO(Claude)",  # TODOs left for a coding agent
+        "TODO(codex)",  # TODOs left for a coding agent
+        "TODO(llm)",  # TODOs left for a coding agent
         "todo!()",
         'eprintln!("{err:?}")',
         'eprintln!("{err:#?}")',
@@ -511,6 +534,9 @@ def test_lint_line() -> None:
         # thiserror with multiple unnamed fields (bad)
         '#[error("Failed to do {0}: {1}")]',
         '#[error("{0} failed with {1} at {2}")]',
+        # ?err (Debug) in tracing macros (bad - use %err for Display)
+        'tracing::warn!(?err, "something failed");',
+        're_log::error!(?err, "something failed");',
     ]
 
     for test in should_pass:
@@ -1207,7 +1233,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
         if in_metadata and line.startswith("-->"):
             in_metadata = False
 
-        if not in_code_block and not source.should_ignore(line_nr):
+        if not in_code_block and not source.should_ignore(line_nr) and filepath.startswith(rerun_prefix):
             if not in_metadata:
                 # Check the casing on markdown headers
                 if m := re.match(r"(\#+ )(.*)", line):
@@ -1257,7 +1283,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
 def lint_example_description(filepath: str) -> list[str]:
     # only applies to examples' readme
 
-    if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
+    if not filepath.startswith(f"{rerun_prefix}examples/python") or not filepath.endswith("README.md"):
         return []
 
     return []
@@ -1403,6 +1429,7 @@ def lint_file(filepath: str, args: Any) -> int:
     error: str | None
 
     is_in_docstring = False
+    is_in_oss_rerun_repo = filepath.startswith(rerun_prefix)
 
     prev_line = None
     for line_nr, line in enumerate(source.lines):
@@ -1415,7 +1442,7 @@ def lint_file(filepath: str, args: Any) -> int:
             line = line[:-1]
             if line.strip() == '"""':
                 is_in_docstring = not is_in_docstring
-            error = lint_line(line, prev_line, source.ext, is_in_docstring)
+            error = lint_line(line, prev_line, source.ext, is_in_docstring, is_in_oss_rerun_repo)
             prev_line = line
         if error is not None:
             num_errors += 1
@@ -1426,6 +1453,12 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error("Missing `#pragma once` in C++ header file"))
             num_errors += 1
 
+    if filepath.endswith(".rs"):
+        for match in tonic_result.finditer(source.content):
+            line_nr = _index_to_line_nr(source.content, match.start())
+            print(source.error("Prefer using tonic::Result<>", line_nr=line_nr))
+            num_errors += 1
+
     if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
@@ -1433,7 +1466,7 @@ def lint_file(filepath: str, args: Any) -> int:
         num_errors += len(errors)
 
         # Check for pyclass requirements (eq and module) in rerun_py Rust files
-        if filepath.startswith("./rerun_py/") and filepath.endswith(".rs"):
+        if filepath.startswith(f"{rerun_prefix}rerun_py/") and filepath.endswith(".rs"):
             pyclass_errors, error_lines, error_codes = lint_pyclass_requirements(source.lines)
             valid_errors = 0
             for error, line_number, error_code in zip(pyclass_errors, error_lines, error_codes, strict=True):
@@ -1474,12 +1507,18 @@ def lint_file(filepath: str, args: Any) -> int:
         elif 0 < num_errors:
             print(f"Run with --fix to automatically fix {num_errors} errors.")
 
-    if not filepath.startswith("./examples/rust") and filepath != "./Cargo.toml" and filepath.endswith("Cargo.toml"):
-        error = lint_workspace_lints(source.content)
+    if (
+        filepath.endswith("Cargo.toml")
+        and not filepath.startswith(f"{rerun_prefix}examples/rust")
+        and filepath != "./dataplatform/crates/redap_protos/Cargo.toml"
+    ):
+        is_workspace = "[workspace]" in source.content
+        if not is_workspace:
+            error = lint_workspace_lints(source.content)
 
-        if error is not None:
-            print(source.error(error))
-            num_errors += 1
+            if error is not None:
+                print(source.error(error))
+                num_errors += 1
 
     # Markdown-specific lints
     if filepath.endswith(".md"):
@@ -1495,8 +1534,8 @@ def lint_file(filepath: str, args: Any) -> int:
 def lint_crate_docs() -> int:
     """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
-    crates_dir = Path("crates")
-    architecture_md_file = Path("ARCHITECTURE.md")
+    crates_dir = Path(f"{rerun_prefix}crates")
+    architecture_md_file = Path(f"{rerun_prefix}ARCHITECTURE.md")
 
     architecture_md = architecture_md_file.read_text("utf-8")
 
@@ -1579,57 +1618,78 @@ def main() -> None:
         "yml",
     ]
 
+    rerun_root = get_rerun_root()
+
+    # Find the git root. In the monorepo (reality), it's the parent of rerun_root.
+    # In the standalone rerun repo, it IS rerun_root.
+    repo = git.Repo(rerun_root, search_parent_directories=True)
+    assert repo.working_tree_dir is not None, "Expected a non-bare git repository"
+    repo_root = repo.working_tree_dir
+    os.chdir(repo_root)
+
+    # Path prefix from git root to the rerun directory.
+    # Monorepo: "./rerun/", Standalone: "./"
+    global rerun_prefix  # noqa: PLW0603
+    rerun_relative = Path(rerun_root).relative_to(repo_root)
+    rerun_prefix = str(rerun_relative).replace("\\", "/")
+    if rerun_prefix == ".":
+        rerun_prefix = "./"
+    else:
+        rerun_prefix = "./" + rerun_prefix + "/"
+
+    # Helper to build a path relative to the git root, inside the rerun directory.
+    def rerun(path: str) -> str:
+        return f"{rerun_prefix}{path}"
+
     exclude_paths = (
-        "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
-        "./.nox",
-        "./.pytest_cache",
-        "./CODE_STYLE.md",
-        "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
-        "./crates/store/re_protos/proto/schema_snapshot.yaml",  # auto-generated
-        "./crates/store/re_protos/src/v0",  # auto-generated
-        "./crates/store/re_protos/src/v1alpha1",  # auto-generated
-        "./crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js",  # auto-generated by wasm_bindgen
-        "./docs/content/concepts/app-model.md",  # this really needs custom letter casing
-        "./docs/content/reference/cli.md",  # auto-generated
-        "./docs/snippets/all/tutorials/custom-application-id.cpp",  # nuh-uh, I don't want rerun_example_ here
-        "./docs/snippets/all/tutorials/custom-application-id.py",  # nuh-uh, I don't want rerun_example_ here
-        "./docs/snippets/all/tutorials/custom-application-id.rs",  # nuh-uh, I don't want rerun_example_ here
-        "./examples/assets",
-        "./examples/python/detect_and_track_objects/cache/version.txt",
-        "./examples/python/objectron/objectron/proto/",  # auto-generated
-        "./examples/rust/objectron/src/objectron.rs",  # auto-generated
-        "./rerun_cpp/docs/doxygen-awesome/",  # copied from an external repository
-        "./rerun_cpp/docs/html",
-        "./rerun_cpp/src/rerun/c/arrow_c_data_interface.h",  # Not our code
-        "./rerun_cpp/src/rerun/third_party/cxxopts.hpp",  # vendored
-        "./rerun_js/docs/",  # auto-generated
-        "./rerun_js/node_modules",
-        "./rerun_js/web-viewer-react/node_modules",
-        "./rerun_js/web-viewer/index.js",
-        "./rerun_js/web-viewer/inlined.js",
-        "./rerun_js/web-viewer/node_modules",
-        "./rerun_js/web-viewer/re_viewer_bg.js",  # auto-generated by wasm_bindgen
-        "./rerun_js/web-viewer/re_viewer.js",
-        "./rerun_notebook/node_modules",
-        "./rerun_notebook/src/rerun_notebook/static",
-        "./rerun_py/.pytest_cache/",
-        "./rerun_py/site/",  # is in `.gitignore` which this script doesn't fully respect
-        "./run_wasm/README.md",  # Has a "2d" lowercase example in a code snippet
-        "./scripts/lint.py",  # we contain all the patterns we are linting against
-        "./scripts/zombie_todos.py",
-        "./tests/assets/lerobot/apple_storage/README.md",  # not ours
-        "./tests/python/gil_stress/main.py",
-        "./tests/python/release_checklist/main.py",
+        rerun(".github/workflows/reusable_checks.yml"),  # zombie TODO hunting job
+        rerun(".nox"),
+        rerun(".pytest_cache"),
+        rerun("CODE_STYLE.md"),
+        rerun("crates/build/re_types_builder/src/reflection.rs"),  # auto-generated
+        rerun("crates/store/re_protos/proto/schema_snapshot.yaml"),  # auto-generated
+        rerun("crates/store/re_protos/src/v0"),  # auto-generated
+        rerun("crates/store/re_protos/src/v1alpha1"),  # auto-generated
+        rerun("crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js"),  # auto-generated by wasm_bindgen
+        rerun("docs/content/concepts/app-model.md"),  # this really needs custom letter casing
+        rerun("docs/content/reference/cli.md"),  # auto-generated
+        rerun("docs/snippets/all/tutorials/custom-application-id.cpp"),  # nuh-uh, I don't want rerun_example_ here
+        rerun("docs/snippets/all/tutorials/custom-application-id.py"),  # nuh-uh, I don't want rerun_example_ here
+        rerun("docs/snippets/all/tutorials/custom-application-id.rs"),  # nuh-uh, I don't want rerun_example_ here
+        rerun("examples/assets"),
+        rerun("examples/python/detect_and_track_objects/cache/version.txt"),
+        rerun("examples/python/objectron/objectron/proto/"),  # auto-generated
+        rerun("examples/rust/objectron/src/objectron.rs"),  # auto-generated
+        rerun("rerun_cpp/docs/doxygen-awesome/"),  # copied from an external repository
+        rerun("rerun_cpp/docs/html"),
+        rerun("rerun_cpp/src/rerun/c/arrow_c_data_interface.h"),  # Not our code
+        rerun("rerun_cpp/src/rerun/third_party/cxxopts.hpp"),  # vendored
+        rerun("rerun_js/docs/"),  # auto-generated
+        rerun("rerun_js/node_modules"),
+        rerun("rerun_js/web-viewer-react/node_modules"),
+        rerun("rerun_js/web-viewer/index.js"),
+        rerun("rerun_js/web-viewer/inlined.js"),
+        rerun("rerun_js/web-viewer/node_modules"),
+        rerun("rerun_js/web-viewer/re_viewer_bg.js"),  # auto-generated by wasm_bindgen
+        rerun("rerun_js/web-viewer/re_viewer.js"),
+        rerun("rerun_notebook/node_modules"),
+        rerun("rerun_notebook/src/rerun_notebook/static"),
+        rerun("rerun_py/.pytest_cache/"),
+        rerun("rerun_py/site/"),  # is in `.gitignore` which this script doesn't fully respect
+        rerun("run_wasm/README.md"),  # Has a "2d" lowercase example in a code snippet
+        rerun("scripts/lint.py"),  # we contain all the patterns we are linting against
+        rerun("scripts/zombie_todos.py"),
+        rerun("tests/assets/lerobot/apple_storage/README.md"),  # not ours
+        rerun("tests/python/gil_stress/main.py"),
+        rerun("tests/python/release_checklist/main.py"),
+        "./dataplatform/crates/redap_protos/src/v1alpha1",  # auto-generated protobuf files
     )
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
 
-    rerun_root = get_rerun_root()
-    os.chdir(rerun_root)
-
     if args.files:
         for filepath in args.files:
-            filepath = os.path.join(".", os.path.relpath(filepath, rerun_root))
+            filepath = os.path.join(".", os.path.relpath(filepath, repo_root))
             filepath = str(filepath).replace("\\", "/")
             extension = filepath.split(".")[-1]
             if extension in extensions:
@@ -1637,17 +1697,9 @@ def main() -> None:
                     continue
                 num_errors += lint_file(filepath, args)
     else:
-        repo = git.Repo(".", search_parent_directories=True)
-        assert repo.working_tree_dir is not None, "Expected a non-bare git repository"
-        repo_root = Path(repo.working_tree_dir).resolve()
-
-        tracked_files = [item[1].path for item in repo.index.iter_blobs()]
+        tracked_files = [str(item[1].path) for item in repo.index.iter_blobs()]
         for filepath in tracked_files:
-            # Filter to only files under rerun_root (for monorepo support)
-            full_path = repo_root / filepath
-            if not full_path.is_relative_to(rerun_root):
-                continue
-            filepath = "./" + str(full_path.relative_to(rerun_root))
+            filepath = "./" + filepath
             filepath = filepath.replace("\\", "/")
             extension = filepath.split(".")[-1]
             if extension in extensions:

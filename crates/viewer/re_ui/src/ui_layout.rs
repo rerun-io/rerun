@@ -111,7 +111,7 @@ impl UiLayout {
         ui: &mut egui::Ui,
         data: impl Into<SyntaxHighlightedBuilder>,
     ) -> egui::Response {
-        self.data_label_impl(ui, data.into().into_job(ui.style()))
+        self.data_label_impl(ui, data.into().to_job(ui.style()))
     }
 
     fn decorate_url(ui: &mut egui::Ui, mut galley: Arc<egui::Galley>) -> egui::Response {

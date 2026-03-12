@@ -1,3 +1,5 @@
+#![cfg(all(feature = "encoder", feature = "decoder"))]
+
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_encoding::{DecoderApp, Encoder};
 use re_log_types::{LogMsg, StoreId};

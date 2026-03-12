@@ -1,5 +1,5 @@
 use re_ui::UiExt as _;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 use crate::response_utils::response_with_changes_of_inner;
 
@@ -19,7 +19,7 @@ pub enum VariantAvailable {
 /// Trait for a type that can provide information about whether a particular variant of an enum is
 /// available for selection.
 pub trait VariantAvailableProvider<EnumT: re_types_core::reflection::Enum> {
-    fn is_variant_enabled(ctx: &ViewerContext<'_>, variant: EnumT) -> VariantAvailable;
+    fn is_variant_enabled(ctx: &StoreViewContext<'_>, variant: EnumT) -> VariantAvailable;
 }
 
 /// A variant available provider that makes all variants available.
@@ -30,14 +30,14 @@ struct AllEnumVariantAvailable<EnumT: re_types_core::reflection::Enum> {
 impl<EnumT: re_types_core::reflection::Enum> VariantAvailableProvider<EnumT>
     for AllEnumVariantAvailable<EnumT>
 {
-    fn is_variant_enabled(_ctx: &ViewerContext<'_>, _variant: EnumT) -> VariantAvailable {
+    fn is_variant_enabled(_ctx: &StoreViewContext<'_>, _variant: EnumT) -> VariantAvailable {
         VariantAvailable::Yes
     }
 }
 
 /// Edit or view an enum value. All variants are available.
 pub fn edit_view_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Component>(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {
@@ -54,7 +54,7 @@ pub fn edit_view_enum_with_variant_available<
     EnumT: re_types_core::reflection::Enum + re_types_core::Component,
     VariantAvailT: VariantAvailableProvider<EnumT>,
 >(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {
@@ -66,7 +66,7 @@ fn edit_view_enum_impl<
     EnumT: re_types_core::reflection::Enum,
     VariantAvailT: VariantAvailableProvider<EnumT>,
 >(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     id_salt: &str,
     current_value: &mut MaybeMutRef<'_, EnumT>,

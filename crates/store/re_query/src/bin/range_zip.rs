@@ -320,14 +320,14 @@ fn generate_struct(params: &Params) -> String {
 ///         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
 ///             o0_data = Some(data);
 ///         }
-///         let o0_data = o0_data.or(o0_data_latest.take());
+///         let o0_data = o0_data.or_else(|| o0_data_latest.take());
 ///         o0_data_latest.clone_from(&o0_data);
 ///
 ///         let mut o1_data = None;
 ///         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
 ///             o1_data = Some(data);
 ///         }
-///         let o1_data = o1_data.or(o1_data_latest.take());
+///         let o1_data = o1_data.or_else(|| o1_data_latest.take());
 ///         o1_data_latest.clone_from(&o1_data);
 ///
 ///         Some((max_index, r0_data, r1_data, o0_data, o1_data))
@@ -419,7 +419,7 @@ fn generate_impl(params: &Params) -> String {
                 while let Some((_, data)) = {o}.next_if(|(index, _)| index <= &max_index) {{
                     {o}_data = Some(data);
                 }}
-                let {o}_data = {o}_data.or({o}_data_latest.take());
+                let {o}_data = {o}_data.or_else(|| {o}_data_latest.take());
                 {o}_data_latest.clone_from(&{o}_data);
                 "
             )
@@ -456,8 +456,8 @@ fn generate_impl(params: &Params) -> String {
 }
 
 fn main() {
-    let num_required = 1..3;
-    let num_optional = 1..10;
+    let num_required = 1..=2;
+    let num_optional = 1..=10;
 
     let output = num_required
         .flat_map(|num_required| {
@@ -482,7 +482,7 @@ fn main() {
 
     println!(
         "
-        // This file was generated using `cargo r -p re_query --all-features --bin range_zip`.
+        // This file was generated using `cargo r -p re_query --all-features --bin range_zip > crates/store/re_query/src/range_zip/generated.rs && cargo fmt`.
         // DO NOT EDIT.
 
         // ---

@@ -4,9 +4,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
+use arrow::datatypes::DataType;
 use egui::NumExt as _;
 use parking_lot::RwLock;
-use re_arrow_util::DisplayDataType;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, Timeline, TimelineName};
 use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent};
@@ -96,10 +96,13 @@ pub enum VideoStreamProcessingError {
     NoVideoSamplesFound,
 
     #[error("Unexpected arrow type for video sample {0}")]
-    InvalidVideoSampleType(DisplayDataType),
+    InvalidVideoSampleType(DataType),
 
     #[error("No codec specified.")]
     MissingCodec,
+
+    #[error("Codec not loaded yet.")]
+    UnloadedCodec,
 
     #[error("Failed to read codec - {0}")]
     FailedReadingCodec(Box<re_chunk::ChunkError>),
@@ -676,7 +679,9 @@ fn handle_split_chunk_addition(
 
                 idx
             } else {
-                debug_panic!("Split chunks ended up with more samples than the original chunk?");
+                re_log::debug_warn_once!(
+                    "Split chunks ended up with more samples than the original chunk?"
+                );
 
                 old_known_range.last_sample
             }
@@ -744,7 +749,17 @@ fn load_video_data_from_chunks(
     let sample_chunks = query_results.get_required(sample_component).unwrap_or(&[]);
     let codec_chunks = query_results
         .get_required(codec_component)
-        .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+        .map_err(|_err| {
+            if store
+                .storage_engine()
+                .store()
+                .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
+            {
+                VideoStreamProcessingError::UnloadedCodec
+            } else {
+                VideoStreamProcessingError::MissingCodec
+            }
+        })?;
 
     // Translate codec by looking at the last codec.
     // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
@@ -931,7 +946,7 @@ fn read_samples_from_known_chunk(
     };
 
     let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
-        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone().into()),
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
     )?;
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
@@ -1201,7 +1216,7 @@ fn read_samples_from_new_chunk(
     }
 
     let (offsets, values) = re_arrow_util::blob_arrays_offsets_and_buffer(&raw_array).ok_or(
-        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone().into()),
+        VideoStreamProcessingError::InvalidVideoSampleType(raw_array.data_type().clone()),
     )?;
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
@@ -1317,11 +1332,6 @@ impl Cache for VideoStreamCache {
             .retain(|_, entry| entry.used_this_frame.load(Ordering::Acquire));
     }
 
-    fn on_rrd_manifest(&mut self, _entity_db: &EntityDb) {
-        // Reset everything when we receive an rrd manifest.
-        self.0.clear();
-    }
-
     /// Keep existing cache entries up to date with new and removed video data.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         re_tracing::profile_function!();
@@ -1329,6 +1339,12 @@ impl Cache for VideoStreamCache {
         let sample_component = VideoStream::descriptor_sample().component;
 
         for event in events {
+            if event.is_virtual_addition() {
+                // Reset everything when we receive an rrd manifest.
+                self.0.clear();
+                continue;
+            }
+
             let Some(delta_chunk) = event.delta_chunk() else {
                 continue;
             };

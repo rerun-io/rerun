@@ -4,7 +4,7 @@ use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_sdk_types::archetypes::DepthImage;
-use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
+use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageBuffer, ImageFormat};
 use re_sdk_types::{Archetype as _, ArchetypeName, ComponentIdentifier};
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
@@ -233,7 +233,11 @@ impl VisualizerSystem for DepthImageVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<DepthImage>()
+        VisualizerQueryInfo::buffer_and_format::<ImageBuffer, ImageFormat>(
+            &DepthImage::descriptor_buffer(),
+            &DepthImage::descriptor_format(),
+            &DepthImage::all_components(),
+        )
     }
 
     fn execute(

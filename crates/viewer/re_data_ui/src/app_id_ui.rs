@@ -3,26 +3,22 @@ use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::Timestamp;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, UiLayout};
 
 use crate::item_ui::entity_db_button_ui;
 
-impl crate::DataUi for ApplicationId {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
+impl crate::AppUi for ApplicationId {
+    fn app_ui(&self, ctx: &AppContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         egui::Grid::new("application_id")
             .num_columns(2)
             .show(ui, |ui| {
                 ui.label("Application ID");
 
                 let mut label = self.to_string();
-                if self == ctx.store_context.application_id() {
+                if ctx
+                    .active_store_context
+                    .is_some_and(|sc| self == sc.application_id())
+                {
                     label.push_str(" (active)");
                 }
                 UiLayout::List.label(ui, label);
@@ -63,7 +59,7 @@ impl crate::DataUi for ApplicationId {
                         ui.add_space(8.0);
                         ui.strong("Loaded recordings for this app");
                         for entity_db in recordings {
-                            entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
+                            entity_db_button_ui(ctx, entity_db, ui, ui_layout, true);
                         }
                     });
                 }

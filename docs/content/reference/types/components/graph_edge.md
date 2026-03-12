@@ -11,10 +11,10 @@ An edge in a graph connecting two nodes.
 
 ## Arrow datatype
 ```
-Struct {
-    first: utf8
-    second: utf8
-}
+Struct(
+    "first": non-null Utf8
+    "second": non-null Utf8
+)
 ```
 
 ## API reference links

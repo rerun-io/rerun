@@ -24,10 +24,7 @@ impl ChunkStore {
     ///
     /// All queries will return partial results until the missing physical data gets loaded in.
     #[must_use = "The chunk store events should be handled"]
-    pub fn insert_rrd_manifest(
-        &mut self,
-        rrd_manifest: Arc<RrdManifest>,
-    ) -> ChunkStoreResult<ChunkStoreEvent> {
+    pub fn insert_rrd_manifest(&mut self, rrd_manifest: Arc<RrdManifest>) -> ChunkStoreEvent {
         re_tracing::profile_function!();
 
         let Self {
@@ -52,9 +49,7 @@ impl ChunkStore {
             event_id: _,
         } = self;
 
-        let sorbet_schema = re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::new(
-            rrd_manifest.sorbet_schema().clone(),
-        ))?;
+        let sorbet_schema = &rrd_manifest.recording_schema();
 
         time_type_registry.extend(
             sorbet_schema
@@ -86,8 +81,8 @@ impl ChunkStore {
                     "Component '{}' on entity '{}' changed type from {} to {}",
                     descr.component,
                     descr.entity_path,
-                    re_arrow_util::format_data_type(&previous.2),
-                    re_arrow_util::format_data_type(&inner_datatype)
+                    previous.2,
+                    inner_datatype
                 );
             }
         }
@@ -100,11 +95,16 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: true },
                     )
                 }),
         );
-        *static_chunk_ids_per_entity = native_static_map.clone();
+        for (entity_path, per_component) in native_static_map {
+            static_chunk_ids_per_entity
+                .entry(entity_path.clone())
+                .or_default()
+                .extend(per_component.iter().map(|(&k, &v)| (k, v)));
+        }
 
         let native_temporal_map = rrd_manifest.temporal_map();
         chunks_lineage.extend(
@@ -116,7 +116,7 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::ReferencedFrom(rrd_manifest.clone()),
+                        ChunkDirectLineage::RootFromManifest { is_static: false },
                     )
                 }),
         );
@@ -190,7 +190,7 @@ impl ChunkStore {
             Self::on_events(std::slice::from_ref(&event));
         }
 
-        Ok(event)
+        event
     }
 
     /// Inserts a [`Chunk`] in the store.
@@ -261,7 +261,9 @@ impl ChunkStore {
                         chunk.id()
                     );
                 } else {
-                    re_log::warn_once!("The same chunk was inserted twice (this has no effect)");
+                    re_log::warn_once!(
+                        "[DEBUG] The same chunk was inserted twice (this has no effect)"
+                    );
                 }
             } else {
                 re_log::debug_once!("The same chunk was inserted twice (this has no effect)");
@@ -294,7 +296,7 @@ impl ChunkStore {
 
         if matches!(
             self.direct_lineage(&chunk.id()),
-            Some(&ChunkDirectLineage::ReferencedFrom(_))
+            Some(&ChunkDirectLineage::RootFromManifest { .. })
         ) {
             // If we reach here, then a chunk that was previously virtually inserted using `insert_rrd_manifest`
             // is about to be physically inserted for real.

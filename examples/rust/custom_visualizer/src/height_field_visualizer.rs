@@ -1,5 +1,5 @@
 use rerun::Archetype as _;
-use rerun::components::{Colormap, ImageFormat};
+use rerun::components::{Colormap, ImageBuffer, ImageFormat};
 use rerun::external::re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use rerun::external::re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -28,7 +28,11 @@ impl VisualizerSystem for HeightFieldVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<HeightField>()
+        VisualizerQueryInfo::buffer_and_format::<ImageBuffer, ImageFormat>(
+            &HeightField::descriptor_buffer(),
+            &HeightField::descriptor_format(),
+            &HeightField::all_components(),
+        )
     }
 
     fn execute(
@@ -53,7 +57,7 @@ impl VisualizerSystem for HeightFieldVisualizer {
 
             let results =
                 data_result.query_archetype_with_history::<HeightField>(ctx, query, instruction);
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let transform =
                 transform_info.single_transform_required_for_entity(ent_path, HeightField::name());

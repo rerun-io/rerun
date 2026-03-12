@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 import rerun_bindings as bindings
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.recording_stream import RecordingStream, get_application_id
+from rerun.recording_stream import BinaryStream, RecordingStream, get_application_id
 from rerun_bindings import (
     FileSink,
     GrpcSink,
@@ -29,7 +29,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
-LogSinkLike = GrpcSink | FileSink
+LogSinkLike: TypeAlias = GrpcSink | FileSink | BinaryStream
 
 
 def set_sinks(
@@ -54,7 +54,7 @@ def set_sinks(
     sinks:
         A list of sinks to wrap.
 
-        See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+        See [`rerun.GrpcSink`][], [`rerun.FileSink`][], [`rerun.BinaryStream`][].
     default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -462,6 +462,8 @@ def spawn(
     server_memory_limit: str = "1GiB",
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
+    executable_name: str = "rerun",
+    executable_path: str | None = None,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -494,6 +496,16 @@ def spawn(
         Hide the normal Rerun welcome screen.
     detach_process:
         Detach Rerun Viewer process from the application process.
+    executable_name:
+        Specifies the name of the Rerun executable.
+        You can omit the `.exe` suffix on Windows.
+
+        Defaults to `rerun`.
+    executable_path:
+        Enforce a specific executable to use instead of searching
+        through PATH for `executable_name`.
+
+        Unspecified by default.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -516,6 +528,8 @@ def spawn(
         server_memory_limit=server_memory_limit,
         hide_welcome_screen=hide_welcome_screen,
         detach_process=detach_process,
+        executable_name=executable_name,
+        executable_path=executable_path,
     )
 
     if connect:

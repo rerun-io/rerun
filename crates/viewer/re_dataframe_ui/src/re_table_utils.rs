@@ -244,40 +244,42 @@ impl TableConfig {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        let response = egui_dnd::dnd(ui, "Columns").show(
-            self.columns.iter_mut(),
-            |ui, column, handle, _state| {
-                let visible = column.visible;
-                egui::Sides::new().show(
-                    ui,
-                    |ui| {
-                        handle.ui(ui, |ui| {
-                            ui.small_icon(&icons::DND_HANDLE, Some(ui.visuals().text_color()));
-                        });
-                        let mut label = RichText::new(&column.name);
-                        if visible {
-                            label = label.strong();
-                        } else {
-                            label = label.weak();
-                        }
-                        ui.label(label);
-                    },
-                    |ui| {
-                        let (icon, alt_text) = if column.visible {
-                            (&icons::VISIBLE, "Hide column")
-                        } else {
-                            (&icons::INVISIBLE, "Show column")
-                        };
-                        if ui.small_icon_button(icon, alt_text).clicked() {
-                            column.visible = !column.visible;
-                        }
-                    },
-                );
-            },
-        );
-        if response.is_drag_finished() {
-            response.update_vec(self.columns.as_mut_slice());
-        }
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            let response = egui_dnd::dnd(ui, "Columns").show(
+                self.columns.iter_mut(),
+                |ui, column, handle, _state| {
+                    let visible = column.visible;
+                    egui::Sides::new().show(
+                        ui,
+                        |ui| {
+                            handle.ui(ui, |ui| {
+                                ui.small_icon(&icons::DND_HANDLE, Some(ui.visuals().text_color()));
+                            });
+                            let mut label = RichText::new(&column.name);
+                            if visible {
+                                label = label.strong();
+                            } else {
+                                label = label.weak();
+                            }
+                            ui.label(label);
+                        },
+                        |ui| {
+                            let (icon, alt_text) = if column.visible {
+                                (&icons::VISIBLE, "Hide column")
+                            } else {
+                                (&icons::INVISIBLE, "Show column")
+                            };
+                            if ui.small_icon_button(icon, alt_text).clicked() {
+                                column.visible = !column.visible;
+                            }
+                        },
+                    );
+                },
+            );
+            if response.is_drag_finished() {
+                response.update_vec(self.columns.as_mut_slice());
+            }
+        });
     }
 
     pub fn button_ui(&mut self, ui: &mut egui::Ui) {

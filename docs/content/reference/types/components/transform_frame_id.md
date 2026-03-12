@@ -19,7 +19,7 @@ that the entity path may be using (defined by an [`archetypes.CoordinateFrame`](
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links

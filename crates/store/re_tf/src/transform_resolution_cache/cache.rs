@@ -199,30 +199,40 @@ impl TransformResolutionCache {
         re_tracing::profile_function!();
 
         for event in events {
-            // This doesn't maintain a collection of chunks that needs to be kept in sync 1:1 with
-            // the store, rather it just keeps track of what entities have what properties, and for
-            // that a delta chunk is all we need.
-            let Some(delta_chunk) = event.delta_chunk() else {
-                continue; // virtual event, we don't care
-            };
+            match &**event {
+                re_chunk_store::ChunkStoreDiff::Addition(addition) => {
+                    let delta_chunk = addition.delta_chunk();
 
-            // Since entity paths lead to implicit frames, we have to prime our lookup table
-            // with them even if this chunk doesn't have transform data.
-            self.frame_id_registry
-                .write()
-                .register_all_frames_in_chunk(delta_chunk);
+                    // Since entity paths lead to implicit frames, we have to prime our lookup table
+                    // with them even if this chunk doesn't have transform data.
+                    self.frame_id_registry
+                        .write()
+                        .register_all_frames_in_chunk(delta_chunk);
 
-            let aspects = TransformAspect::transform_aspects_of(delta_chunk);
-            if aspects.is_empty() {
-                continue;
-            }
+                    let aspects = TransformAspect::transform_aspects_of(delta_chunk);
+                    if !aspects.is_empty() {
+                        if delta_chunk.is_static() {
+                            self.add_static_chunk(delta_chunk, aspects);
+                        } else {
+                            self.add_temporal_chunk(delta_chunk, aspects);
+                        }
+                    }
+                }
 
-            if event.is_deletion() {
-                self.remove_chunk(delta_chunk, aspects);
-            } else if delta_chunk.is_static() {
-                self.add_static_chunk(delta_chunk, aspects);
-            } else {
-                self.add_temporal_chunk(delta_chunk, aspects);
+                re_chunk_store::ChunkStoreDiff::VirtualAddition(addition) => {
+                    // Make all the entity paths known as potential transform paths.
+                    let mut frame_id_registry = self.frame_id_registry.write();
+                    for entity_path in addition.rrd_manifest.recording_schema().all_entities() {
+                        frame_id_registry.register_frame_id_from_entity_path(entity_path);
+                    }
+                }
+
+                re_chunk_store::ChunkStoreDiff::Deletion(deletion) => {
+                    let aspects = TransformAspect::transform_aspects_of(&deletion.chunk);
+                    if !aspects.is_empty() {
+                        self.remove_chunk(&deletion.chunk, aspects);
+                    }
+                }
             }
         }
     }

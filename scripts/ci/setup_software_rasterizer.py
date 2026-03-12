@@ -24,6 +24,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from shutil import copytree
 
@@ -51,8 +52,19 @@ def run(
     env: dict[str, str] | None = None,
     timeout: int | None = None,
     cwd: str | None = None,
+    retries: int = 0,
 ) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+    for attempt in range(retries + 1):
+        result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+        if result.returncode == 0:
+            return result
+
+        if attempt < retries:
+            print(
+                f"Command {args[0]} failed with exit-code {result.returncode}. Retrying in 5 seconds ({attempt + 1}/{retries})…"
+            )
+            time.sleep(5)
+
     assert result.returncode == 0, (
         f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
     )
@@ -83,15 +95,18 @@ def set_environment_variables(variables: dict[str, str]) -> None:
 def setup_lavapipe_for_linux() -> dict[str, str]:
     """Sets up lavapipe mesa driver for Linux (x64)."""
     # Download mesa
-    run([
-        "curl",
-        "-L",
-        "--retry",
-        "5",
-        f"https://github.com/gfx-rs/ci-build/releases/download/{CI_BINARY_BUILD}/mesa-{MESA_VERSION}-linux-x86_64.tar.xz",
-        "-o",
-        "mesa.tar.xz",
-    ])
+    run(
+        [
+            "curl",
+            "-L",
+            "--retry",
+            "5",
+            f"https://github.com/gfx-rs/ci-build/releases/download/{CI_BINARY_BUILD}/mesa-{MESA_VERSION}-linux-x86_64.tar.xz",
+            "-o",
+            "mesa.tar.xz",
+        ],
+        retries=3,
+    )
 
     # Create mesa directory and extract
     os.makedirs("mesa", exist_ok=True)
@@ -133,15 +148,18 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     """Sets up lavapipe mesa driver for Windows (x64)."""
 
     # Download mesa
-    run([
-        "curl.exe",
-        "-L",
-        "--retry",
-        "5",
-        f"https://github.com/pal1000/mesa-dist-win/releases/download/{MESA_VERSION}/mesa3d-{MESA_VERSION}-release-msvc.7z",
-        "-o",
-        "mesa.7z",
-    ])
+    run(
+        [
+            "curl.exe",
+            "-L",
+            "--retry",
+            "5",
+            f"https://github.com/pal1000/mesa-dist-win/releases/download/{MESA_VERSION}/mesa3d-{MESA_VERSION}-release-msvc.7z",
+            "-o",
+            "mesa.7z",
+        ],
+        retries=3,
+    )
 
     # Extract needed files
     run([

@@ -150,7 +150,7 @@ typedef struct rr_spawn_options {
     /// Defaults to `rerun` if null.
     rr_string executable_name;
 
-    /// Enforce a specific executable to use instead of searching though PATH
+    /// Enforce a specific executable to use instead of searching through PATH
     /// for [`Self::executable_name`].
     ///
     /// Unspecified by default.

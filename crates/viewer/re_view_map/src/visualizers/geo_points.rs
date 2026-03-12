@@ -1,8 +1,9 @@
 use re_log_types::EntityPath;
 use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::PointCloudDrawDataError;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GeoPoints;
-use re_sdk_types::components::Radius;
+use re_sdk_types::components::{LatLon, Radius};
 use re_view::{
     AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults,
     process_annotation_slices, process_color_slice,
@@ -38,7 +39,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<GeoPoints>()
+        VisualizerQueryInfo::single_required_component::<LatLon>(
+            &GeoPoints::descriptor_positions(),
+            &GeoPoints::all_components(),
+        )
     }
 
     fn execute(
@@ -56,7 +60,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         {
             let results =
                 data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 

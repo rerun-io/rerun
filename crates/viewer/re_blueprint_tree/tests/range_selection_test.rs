@@ -33,12 +33,12 @@ fn test_range_selection_in_blueprint_tree() {
 
     let mut harness = test_context
         .setup_kittest_for_rendering_ui([400.0, 500.0])
-        .build(|ctx| {
+        .build_ui(|ui| {
             // We must create a side panel here (instead of the default central panel, as
             // `list_item::LabelContent`'s sizing behave differently there.
-            egui::SidePanel::left("blueprint_tree")
-                .default_width(400.0)
-                .show(ctx, |ui| {
+            egui::Panel::left("blueprint_tree")
+                .default_size(400.0)
+                .show_inside(ui, |ui| {
                     test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                         let blueprint = ViewportBlueprint::from_db(
                             viewer_ctx.store_context.blueprint,

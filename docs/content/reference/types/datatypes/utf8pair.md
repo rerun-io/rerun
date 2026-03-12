@@ -7,22 +7,22 @@ Stores a tuple of UTF-8 strings.
 
 ## Fields
 #### `first`
-Type: [`Utf8`](../datatypes/utf8.md)
+Type: non-null [`Utf8`](../datatypes/utf8.md)
 
 The first string.
 
 #### `second`
-Type: [`Utf8`](../datatypes/utf8.md)
+Type: non-null [`Utf8`](../datatypes/utf8.md)
 
 The second string.
 
 
 ## Arrow datatype
 ```
-Struct {
-    first: utf8
-    second: utf8
-}
+Struct(
+    "first": non-null Utf8
+    "second": non-null Utf8
+)
 ```
 
 ## API reference links

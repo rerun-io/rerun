@@ -20,7 +20,7 @@ Used as default for mesh rendering.
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

@@ -8,7 +8,7 @@ A 16-byte UUID.
 
 ## Arrow datatype
 ```
-FixedSizeList<16, uint8>
+FixedSizeList(16 x non-null UInt8)
 ```
 
 ## API reference links

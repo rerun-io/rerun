@@ -36,7 +36,6 @@ re_byte_size.workspace = true
 re_chunk = { workspace = true, features = ["serde"] }
 re_chunk_store.workspace = true
 re_format.workspace = true
-re_int_histogram.workspace = true
 re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
@@ -66,6 +65,7 @@ web-time.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 
 anyhow.workspace = true
+insta.workspace = true
 similar-asserts.workspace = true
 
 [lib]

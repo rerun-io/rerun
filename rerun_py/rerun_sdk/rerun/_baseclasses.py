@@ -175,9 +175,9 @@ class BaseBatch(Generic[T]):
 
         Parameters
         ----------
-        data : T | None
+        data:
             The data to convert into an Arrow array.
-        strict : bool | None
+        strict:
             Whether to raise an exception if the data cannot be converted into an Arrow array. If None, the value
             defaults to the value of the `rerun.strict` global setting.
 
@@ -208,7 +208,7 @@ class BaseBatch(Generic[T]):
 
         Parameters
         ----------
-        data : T | None
+        data:
             The data to convert into an Arrow array.
 
         Returns
@@ -249,9 +249,9 @@ class BaseBatch(Generic[T]):
 
         Parameters
         ----------
-        data : T
+        data:
             The data to convert into an Arrow array.
-        data_type : pa.DataType
+        data_type:
             The Arrow data type of the data.
 
         Returns

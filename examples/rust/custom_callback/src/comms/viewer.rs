@@ -96,13 +96,6 @@ impl ControlViewer {
         loop {
             match TcpStream::connect(self.address.clone()).await {
                 Ok(socket) => {
-                    if let Err(err) = socket.set_linger(Some(Duration::from_secs(2))) {
-                        re_log::error!(
-                            "Failed to set socket linger: {}",
-                            re_error::format_ref(&err)
-                        );
-                    }
-
                     re_log::info!("Connected to {}", self.address);
                     let (read_half, write_half) = tokio::io::split(socket);
 

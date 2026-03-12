@@ -99,7 +99,7 @@ impl SceneBoundingBoxes {
                 || (new_smoothed_size.length() - current_diagonal_length) / current_diagonal_length
                     > sameness_threshold
             {
-                ui.ctx().request_repaint();
+                ui.request_repaint();
             }
         }
     }

@@ -13,8 +13,8 @@ use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
 use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
-    SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
-    ViewerContext, video_stream_time_from_query,
+    SharablePlayableVideoStream, StoreViewContext, SystemCommandSender as _, UiLayout,
+    VideoStreamCache, VideoStreamProcessingError, video_stream_time_from_query,
 };
 
 use crate::image_ui::texture_preview_size;
@@ -310,7 +310,7 @@ fn timestamp_ui(
 }
 
 fn decoded_frame_ui<'a>(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::AppContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
@@ -320,112 +320,122 @@ fn decoded_frame_ui<'a>(
     let player_stream_id =
         re_video::player::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(
-        ctx.render_ctx(),
+    let frame_output = video.frame_at(
+        ctx.render_ctx,
         player_stream_id,
         video_time,
         get_video_buffer,
-    ) {
-        Ok(VideoFrameTexture {
-            texture,
-            decoder_delay_state,
-            show_loading_indicator,
-            frame_info,
-            source_pixel_format,
-        }) => {
-            if let Some(frame_info) = frame_info
-                && ui_layout == UiLayout::SelectionPanel
-            {
-                re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-                    let id = ui.id().with("decoded_frame_collapsible");
-                    let default_open = false;
-                    let label = if let Some(frame_nr) = frame_info.frame_nr {
-                        format!("Decoded frame #{}", re_format::format_uint(frame_nr))
-                    } else {
-                        "Current decoded frame".to_owned()
-                    };
-                    ui.list_item()
-                        .interactive(false)
-                        .show_hierarchical_with_children(
-                            ui,
-                            id,
-                            default_open,
-                            list_item::LabelContent::new(label),
-                            |ui| {
-                                list_item::list_item_scope(ui, id, |ui| {
-                                    frame_info_ui(ui, &frame_info, video.data_descr());
-                                    source_image_data_format_ui(ui, &source_pixel_format);
-                                });
-                            },
-                        )
-                });
-            }
+    );
 
-            let preview_size = if let Some(texture) = &texture {
-                let [w, h] = texture.width_height();
-                texture_preview_size(ui, ui_layout, [w, h])
-            } else if let Some([w, h]) = video.dimensions() {
-                texture_preview_size(ui, ui_layout, [w as _, h as _])
-            } else {
-                egui::Vec2::splat(ui.available_width().at_most(64.0))
-            };
-
-            let response = if let Some(texture) = texture {
-                crate::image_ui::texture_preview_ui(
-                    ctx.render_ctx(),
-                    ui,
-                    ui_layout,
-                    "video_preview",
-                    re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-                    preview_size,
-                )
-            } else {
-                ui.allocate_response(preview_size, egui::Sense::hover())
-            };
-
-            if decoder_delay_state.should_request_more_frames() {
-                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
-            }
-
-            {
-                let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
-                let loading_indicator_opacity = ui.ctx().animate_bool(
-                    ui.id().with((video_id, "loading_indicator")),
-                    show_loading_indicator,
-                );
-
-                if 0.0 < loading_indicator_opacity {
-                    re_ui::loading_indicator::paint_loading_indicator_inside(
+    if let Some(VideoFrameTexture {
+        texture,
+        decoder_delay_state,
+        show_loading_indicator,
+        source_pixel_format,
+        frame_info,
+    }) = frame_output.output
+    {
+        if let Some(frame_info) = frame_info
+            && ui_layout == UiLayout::SelectionPanel
+        {
+            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+                let id = ui.id().with("decoded_frame_collapsible");
+                let default_open = false;
+                let label = if let Some(frame_nr) = frame_info.frame_nr {
+                    format!("Decoded frame #{}", re_format::format_uint(frame_nr))
+                } else {
+                    "Current decoded frame".to_owned()
+                };
+                ui.list_item()
+                    .interactive(false)
+                    .show_hierarchical_with_children(
                         ui,
-                        egui::Align2::CENTER_CENTER,
-                        response.rect,
-                        loading_indicator_opacity,
-                        None,
-                        "Decoding video frame",
-                    );
-                }
-            }
+                        id,
+                        default_open,
+                        list_item::LabelContent::new(label),
+                        |ui| {
+                            list_item::list_item_scope(ui, id, |ui| {
+                                frame_info_ui(ui, &frame_info, video.data_descr());
+                                source_image_data_format_ui(ui, &source_pixel_format);
+                            });
+                        },
+                    )
+            });
         }
 
-        Err(err) => {
-            ui.error_label(err.to_string());
+        let preview_size = if let Some(texture) = &texture {
+            let [w, h] = texture.width_height();
+            texture_preview_size(ui, ui_layout, [w, h])
+        } else if let Some([w, h]) = video.dimensions() {
+            texture_preview_size(ui, ui_layout, [w as _, h as _])
+        } else {
+            egui::Vec2::splat(ui.available_width().at_most(64.0))
+        };
 
-            #[cfg(not(target_arch = "wasm32"))]
-            if let re_video::player::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(
-                err,
-            )) = &err
-            {
-                match err.as_ref() {
-                    re_video::FFmpegError::UnsupportedFFmpegVersion { .. }
-                    | re_video::FFmpegError::FailedToDetermineFFmpegVersion(_)
-                    | re_video::FFmpegError::FFmpegNotInstalled => {
-                        if let Some(download_url) = re_video::ffmpeg_download_url() {
-                            ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
-                        }
+        let response = if let Some(texture) = texture {
+            crate::image_ui::texture_preview_ui(
+                ctx.render_ctx,
+                ui,
+                ui_layout,
+                "video_preview",
+                &re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture.clone()),
+                preview_size,
+                &|| match re_renderer::schedule_read_texture(ctx.render_ctx, &texture.inner.texture)
+                {
+                    Ok(id) => ctx
+                        .command_sender
+                        .send_system(re_viewer_context::SystemCommand::ReadbackAndSaveTexture(id)),
+                    Err(err) => {
+                        re_log::error!("Failed to save video preview: {err}");
                     }
+                },
+            )
+        } else {
+            ui.allocate_response(preview_size, egui::Sense::hover())
+        };
 
-                    _ => {}
+        if decoder_delay_state.should_request_more_frames() {
+            ui.request_repaint(); // Keep polling for an up-to-date texture
+        }
+
+        {
+            let show_loading_indicator = frame_output.error.is_some() || show_loading_indicator;
+            let video_id = video.debug_name(); // TODO(emilk): actual unique id for video
+            let loading_indicator_opacity = ui.animate_bool(
+                ui.id().with((video_id, "loading_indicator")),
+                show_loading_indicator,
+            );
+
+            if 0.0 < loading_indicator_opacity {
+                re_ui::loading_indicator::paint_loading_indicator_inside(
+                    ui,
+                    egui::Align2::CENTER_CENTER,
+                    response.rect,
+                    loading_indicator_opacity,
+                    None,
+                    "Decoding video frame",
+                );
+            }
+        }
+    }
+
+    if let Some(err) = frame_output.error {
+        ui.error_label(err.to_string());
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let re_video::player::VideoPlayerError::Decoding(re_video::DecodeError::Ffmpeg(err)) =
+            &err
+        {
+            match err.as_ref() {
+                re_video::FFmpegError::UnsupportedFFmpegVersion { .. }
+                | re_video::FFmpegError::FailedToDetermineFFmpegVersion(_)
+                | re_video::FFmpegError::FFmpegNotInstalled => {
+                    if let Some(download_url) = re_video::ffmpeg_download_url() {
+                        ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                    }
                 }
+
+                _ => {}
             }
         }
     }
@@ -603,7 +613,7 @@ pub enum VideoUi {
 
 impl VideoUi {
     pub fn from_blob(
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
@@ -611,20 +621,19 @@ impl VideoUi {
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {
-        let result =
-            ctx.store_context
-                .caches
-                .entry(|c: &mut re_viewer_context::VideoAssetCache| {
-                    let debug_name = entity_path.to_string();
-                    c.entry(
-                        debug_name,
-                        blob_row_id,
-                        blob_component_descriptor.component,
-                        blob,
-                        media_type,
-                        ctx.app_options().video_decoder_settings(),
-                    )
-                });
+        let result = ctx
+            .caches
+            .entry(|c: &mut re_viewer_context::VideoAssetCache| {
+                let debug_name = entity_path.to_string();
+                c.entry(
+                    debug_name,
+                    blob_row_id,
+                    blob_component_descriptor.component,
+                    blob,
+                    media_type,
+                    ctx.app_options.video_decoder_settings(),
+                )
+            });
 
         let certain_this_is_a_video =
             blob_component_descriptor.archetype == Some(archetypes::AssetVideo::name());
@@ -644,8 +653,7 @@ impl VideoUi {
     }
 
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
-        query: &re_chunk_store::LatestAtQuery,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         descr: &ComponentDescriptor,
     ) -> Option<Self> {
@@ -653,30 +661,24 @@ impl VideoUi {
             return None;
         }
 
-        let video_stream_result = ctx.store_context.caches.entry(|c: &mut VideoStreamCache| {
+        let video_stream_result = ctx.caches.entry(|c: &mut VideoStreamCache| {
             c.entry(
-                ctx.recording(),
+                ctx.db,
                 entity_path,
-                query.timeline(),
-                ctx.app_options().video_decoder_settings(),
+                ctx.timeline_name(),
+                ctx.app_ctx.app_options.video_decoder_settings(),
             )
         });
 
         Some(Self::Stream(video_stream_result))
     }
 
-    pub fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-    ) {
+    pub fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         match self {
             Self::Stream(video_stream_result) => {
                 video_stream_result_ui(ui, ui_layout, video_stream_result);
 
-                let storage_engine = ctx.store_context.recording.storage_engine();
+                let storage_engine = ctx.db.storage_engine();
                 let get_chunk_array = |id| {
                     let chunk = storage_engine
                         .store()
@@ -693,7 +695,7 @@ impl VideoUi {
 
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
-                    let time = video_stream_time_from_query(query);
+                    let time = video_stream_time_from_query(&ctx.query());
                     decoded_frame_ui(ctx, ui, ui_layout, &video.video_renderer, time, &|id| {
                         let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
 
@@ -710,7 +712,7 @@ impl VideoUi {
                         // TODO(emilk): Some time controls would be nice,
                         // but the point here is not to have a nice viewer,
                         // but to show the user what they have selected
-                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                        ui.request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
                         let time = ui.input(|i| i.time);
 
                         if let Some(duration) = video.data_descr().duration() {
@@ -721,7 +723,7 @@ impl VideoUi {
                         }
                     });
                     let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-                        ctx,
+                        Some(ctx.time_ctrl),
                         video_timestamp,
                         video.data_descr().timescale,
                     );

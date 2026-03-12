@@ -22,7 +22,7 @@ impl<'a> DataTypeUi<'a> {
     pub fn new(data_type: &'a DataType) -> Self {
         match data_type {
             DataType::Struct(fields) => DataTypeUi {
-                type_name: "struct".to_owned(),
+                type_name: "Struct".to_owned(),
                 content: Some(Box::new(move |ui| {
                     for field in fields {
                         data_type_field_ui(ui, field);
@@ -30,39 +30,39 @@ impl<'a> DataTypeUi<'a> {
                 })),
             },
             DataType::List(field) => DataTypeUi {
-                type_name: "list".to_owned(),
+                type_name: "List".to_owned(),
                 content: Some(Box::new(move |ui| {
                     data_type_field_ui(ui, field);
                 })),
             },
             DataType::ListView(field) => DataTypeUi {
-                type_name: "list view".to_owned(),
+                type_name: "ListView".to_owned(),
                 content: Some(Box::new(move |ui| {
                     data_type_field_ui(ui, field);
                 })),
             },
             DataType::FixedSizeList(field, size) => DataTypeUi {
-                type_name: format!("fixed-size list ({size})"),
+                type_name: format!("FixedSizeList({size})"),
                 content: Some(Box::new(move |ui| {
                     data_type_field_ui(ui, field);
                 })),
             },
             DataType::LargeList(field) => DataTypeUi {
-                type_name: "large list".to_owned(),
+                type_name: "LargeList".to_owned(),
                 content: Some(Box::new(move |ui| {
                     data_type_field_ui(ui, field);
                 })),
             },
             DataType::LargeListView(field) => DataTypeUi {
-                type_name: "large list view".to_owned(),
+                type_name: "LargeListView".to_owned(),
                 content: Some(Box::new(move |ui| {
                     data_type_field_ui(ui, field);
                 })),
             },
             DataType::Union(fields, mode) => {
                 let label = match mode {
-                    arrow::datatypes::UnionMode::Sparse => "sparse union",
-                    arrow::datatypes::UnionMode::Dense => "dense union",
+                    arrow::datatypes::UnionMode::Sparse => "Union(Sparse)",
+                    arrow::datatypes::UnionMode::Dense => "Union(Dense)",
                 };
                 DataTypeUi {
                     type_name: label.to_owned(),
@@ -74,17 +74,17 @@ impl<'a> DataTypeUi<'a> {
                 }
             }
             DataType::Dictionary(_k, _v) => DataTypeUi {
-                type_name: "dictionary".to_owned(),
+                type_name: "Dictionary".to_owned(),
                 content: None,
             },
             DataType::Map(a, _) => DataTypeUi {
-                type_name: "map".to_owned(),
+                type_name: "Map".to_owned(),
                 content: Some(Box::new(move |ui| {
                     data_type_field_ui(ui, a);
                 })),
             },
             DataType::RunEndEncoded(a, b) => DataTypeUi {
-                type_name: "run-end encoded".to_owned(),
+                type_name: "RunEndEncoded".to_owned(),
                 content: Some(Box::new(move |ui| {
                     data_type_field_ui(ui, a);
                     data_type_field_ui(ui, b);
@@ -130,9 +130,12 @@ fn data_type_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
     let data_type_ui = DataTypeUi::new(field.data_type());
 
     let text = if field.is_nullable() {
-        format!("nullable {}", data_type_ui.type_name)
+        data_type_ui.type_name.clone()
     } else {
-        field.name().to_owned()
+        // This follows the notation set by arrow-rs.
+        // If we change this, we should probably change
+        // arrow-rs and datafusion to match.
+        format!("non-null {}", data_type_ui.type_name)
     };
 
     let property = PropertyContent::new(field.name())
@@ -155,21 +158,21 @@ fn data_type_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
 // TODO(#11071): there is some overlap here with `re_arrow_util::format` and `codegen`.
 pub(crate) fn simple_data_type_string(datatype: &DataType) -> Option<&'static str> {
     match datatype {
-        DataType::Null => Some("null"),
-        DataType::Boolean => Some("bool"),
-        DataType::Int8 => Some("int8"),
-        DataType::Int16 => Some("int16"),
-        DataType::Int32 => Some("int32"),
-        DataType::Int64 => Some("int64"),
-        DataType::UInt8 => Some("uint8"),
-        DataType::UInt16 => Some("uint16"),
-        DataType::UInt32 => Some("uint32"),
-        DataType::UInt64 => Some("uint64"),
-        DataType::Float16 => Some("float16"),
-        DataType::Float32 => Some("float32"),
-        DataType::Float64 => Some("float64"),
-        DataType::Utf8 | DataType::LargeUtf8 => Some("utf8"),
-        DataType::Binary | DataType::LargeBinary => Some("binary"),
+        DataType::Null => Some("Null"),
+        DataType::Boolean => Some("Boolean"),
+        DataType::Int8 => Some("Int8"),
+        DataType::Int16 => Some("Int16"),
+        DataType::Int32 => Some("Int32"),
+        DataType::Int64 => Some("Int64"),
+        DataType::UInt8 => Some("UInt8"),
+        DataType::UInt16 => Some("UInt16"),
+        DataType::UInt32 => Some("UInt32"),
+        DataType::UInt64 => Some("UInt64"),
+        DataType::Float16 => Some("Float16"),
+        DataType::Float32 => Some("Float32"),
+        DataType::Float64 => Some("Float64"),
+        DataType::Utf8 | DataType::LargeUtf8 => Some("Utf8"),
+        DataType::Binary | DataType::LargeBinary => Some("Binary"),
         _ => None,
     }
 }

@@ -248,7 +248,7 @@ impl SpatialView2D {
             let picking_context = crate::picking::PickingContext::new(
                 pointer_pos_ui,
                 scene_from_ui,
-                ui.ctx().pixels_per_point(),
+                ui.pixels_per_point(),
                 &eye,
             );
             let (_response, picking_config) = crate::picking_ui::picking(
@@ -318,7 +318,7 @@ impl SpatialView2D {
                 query.space_origin,
                 &ui_from_scene,
                 selected_context,
-                ui.ctx().selection_stroke().color,
+                ui.selection_stroke().color,
             ));
         }
         if let Some(hovered_context) = ctx.selection_state().hovered_item_context() {
@@ -327,7 +327,7 @@ impl SpatialView2D {
                 query.space_origin,
                 &ui_from_scene,
                 hovered_context,
-                ui.ctx().hover_stroke().color,
+                ui.hover_stroke().color,
             ));
         }
 

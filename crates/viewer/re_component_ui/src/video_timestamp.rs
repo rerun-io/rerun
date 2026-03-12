@@ -1,9 +1,9 @@
 use re_format::time::{format_relative_timestamp_secs, parse_relative_timestamp_secs};
 use re_sdk_types::components::VideoTimestamp;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 pub fn edit_or_view_timestamp(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     timestamp: &mut MaybeMutRef<'_, VideoTimestamp>,
 ) -> egui::Response {

@@ -443,9 +443,9 @@ fn dataset_entry_ui(
                         SegmentData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
                             let response = entity_db_button_ui(
-                                ctx,
-                                ui,
+                                &ctx.app_ctx,
                                 entity_db,
+                                ui,
                                 UiLayout::SelectionPanel,
                                 include_app_id,
                             );
@@ -483,13 +483,13 @@ fn dataset_entry_ui(
 
         if ui.button("Copy dataset name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
-            ui.ctx().copy_text(name.clone());
+            ui.copy_text(name.clone());
         }
 
         if ui.button("Copy dataset id").clicked() {
             let id = entry_id.id.to_string();
             re_log::info!("Copied {id:?} to clipboard");
-            ui.ctx().copy_text(id);
+            ui.copy_text(id);
         }
     });
 
@@ -616,9 +616,9 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
                 for recording_data in loaded_recordings {
                     let include_app_id = false; // we already show it in the parent item
                     let response = entity_db_button_ui(
-                        ctx,
-                        ui,
+                        &ctx.app_ctx,
                         recording_data.entity_db,
+                        ui,
                         UiLayout::SelectionPanel,
                         include_app_id,
                     );
@@ -634,7 +634,11 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     };
 
     item_response = item_response.on_hover_ui(|ui| {
-        app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+        app_id.data_ui(
+            &ctx.active_recording_store_view_context(),
+            ui,
+            UiLayout::Tooltip,
+        );
     });
 
     ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
@@ -726,7 +730,7 @@ fn receiver_ui(
 
         if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
-            ui.ctx().copy_text(name);
+            ui.copy_text(name);
         }
     });
 }

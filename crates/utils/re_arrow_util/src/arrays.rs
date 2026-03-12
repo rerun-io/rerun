@@ -658,7 +658,8 @@ mod tests {
                 Arc::new(Field::new("f32", f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64", i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields =
+                UnionFields::try_new(type_ids, fields).expect("UnionFields should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..NUM_TOTAL as i32)
@@ -700,7 +701,8 @@ mod tests {
                 Arc::new(Field::new("f32", f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64", i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields =
+                UnionFields::try_new(type_ids, fields).expect("UnionFields should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..NUM_TOTAL as i32)
@@ -780,7 +782,8 @@ mod tests {
                 Arc::new(Field::new("f32_list", list_f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64_list", list_i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields =
+                UnionFields::try_new(type_ids, fields).expect("UnionFields should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..(NUM_TOTAL / NUM_PER_BATCH) as i32)
@@ -869,7 +872,8 @@ mod tests {
                 Arc::new(Field::new("f32_list", list_f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64_list", list_i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields = UnionFields::try_new(type_ids, fields)
+                .expect("UnionFields::try_new should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..(NUM_TOTAL / NUM_PER_BATCH) as i32)

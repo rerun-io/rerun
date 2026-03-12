@@ -39,12 +39,12 @@ pub fn picking(
 ) -> Result<(egui::Response, Option<ViewPickingConfiguration>), ViewSystemExecutionError> {
     re_tracing::profile_function!();
 
-    if ui.ctx().dragged_id().is_some() {
+    if ui.dragged_id().is_some() {
         state.previous_picking_result = None;
         return Ok((response, None));
     }
 
-    let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
+    let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.pixels_per_point();
     // Make the picking rect bigger than necessary so we can use it to counter-act delays.
     // (by the time the picking rectangle is read back, the cursor may have moved on).
     let picking_rect_size = (picking_rect_size * 2.0)
@@ -126,7 +126,7 @@ pub fn picking(
                     ui.set_max_width(320.0);
                     ui.vertical(|ui| {
                         textured_rect_hover_ui(
-                            ctx,
+                            &ctx.active_recording_store_view_context(),
                             ui,
                             &instance_path,
                             query,
@@ -144,14 +144,16 @@ pub fn picking(
                 list_item_scope(ui, "spatial_hover", |ui| {
                     hit_ui(ui, hit);
                     item_ui::instance_path_button(
-                        ctx,
-                        &query.latest_at_query(),
-                        ctx.recording(),
+                        &ctx.active_recording_store_view_context(),
                         ui,
                         Some(query.view_id),
                         &instance_path,
                     );
-                    instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    instance_path.data_ui(
+                        &ctx.active_recording_store_view_context(),
+                        ui,
+                        UiLayout::Tooltip,
+                    );
                 });
             })
         };

@@ -1,5 +1,6 @@
 use re_chunk::EntityPath;
 use re_log_types::example_components::MyPoint;
+use re_sdk_types::Archetype as _;
 use re_ui::Help;
 use re_viewer_context::external::re_chunk_store::external::re_chunk;
 use re_viewer_context::{
@@ -30,7 +31,10 @@ impl VisualizerSystem for TestSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> re_viewer_context::VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<re_log_types::example_components::MyPoints>()
+        VisualizerQueryInfo::single_required_component::<MyPoint>(
+            &re_log_types::example_components::MyPoints::descriptor_points(),
+            &re_log_types::example_components::MyPoints::all_components(),
+        )
     }
 
     fn execute(

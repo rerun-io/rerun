@@ -144,7 +144,7 @@ Under the hood, blueprints are just data. They are structured using the same [En
 
 -   **Anything you modify in the Viewer can be saved and shared** as a blueprint file
 -   **Blueprints can be produced programmatically** using just the Rerun SDK without depending on the Viewer
--   **Blueprint data is fully expressive**, enabling [blueprint overrides](visualizers-and-overrides.md#per-entity-component-override) that are as powerful as logged data
+-   **Blueprint data is fully expressive**, enabling [blueprint overrides](customize-views.md#per-entity-component-override) that are as powerful as logged data
 -   **The full time-series nature** simplifies future features like snapshots and undo/redo
 -   **Debugging tools for Rerun data** can inspect blueprint state just like recording data
 
@@ -163,5 +163,5 @@ This means the Viewer output is a deterministic function of the blueprint and th
 
 -   **Learn to use blueprints**: See [Configure the Viewer](../../getting-started/configure-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
 -   **Understand the UI**: Check the [Blueprint Panel Reference](../../reference/viewer/blueprints.md) for details on UI controls
--   **Customize visualizations**: Learn about [Visualizers and Overrides](visualizers-and-overrides.md) for advanced per-entity customization
+-   **Customize visualizations**: Learn about [Visualizers and Overrides](customize-views.md) for advanced per-entity customization
 -   **Explore the API**: Browse the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control (Python)

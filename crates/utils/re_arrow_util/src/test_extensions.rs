@@ -390,15 +390,15 @@ impl SchemaTestExt for arrow::datatypes::Schema {
                 format!(
                     "{}: {}{}",
                     field.name(),
-                    if field.is_nullable() { "nullable " } else { "" },
-                    crate::format_data_type(field.data_type())
+                    if field.is_nullable() { "" } else { "non-null " },
+                    field.data_type()
                 )
             } else {
                 format!(
                     "{}: {}{} [\n    {}\n]",
                     field.name(),
-                    if field.is_nullable() { "nullable " } else { "" },
-                    crate::format_data_type(field.data_type()),
+                    if field.is_nullable() { "" } else { "non-null " },
+                    field.data_type(),
                     field
                         .metadata()
                         .iter()

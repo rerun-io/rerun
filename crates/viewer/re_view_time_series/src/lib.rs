@@ -12,6 +12,7 @@ mod point_visualizer_system;
 mod series_query;
 mod util;
 mod view_class;
+mod visualizer_ui;
 
 use re_sdk_types::{
     blueprint::components::VisualizerInstructionId,
@@ -21,7 +22,12 @@ use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewport_blueprint::ViewPropertyQueryError;
 pub use view_class::TimeSeriesView;
 
-pub(crate) const MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT: usize = 20;
+/// Maximum number of time series shown per entity when the scalar component
+/// has a non-identity mapping (e.g. sourced from a different component or using a selector).
+///
+/// This limit is NOT applied when the scalar component has an identity mapping,
+/// since in that case the user explicitly logged `Scalars` data and knows how many series to expect.
+pub(crate) const MAX_NUM_SERIES_FOR_REMAPPED_SCALARS: usize = 100;
 pub(crate) const MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN: usize = 20;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the view

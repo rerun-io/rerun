@@ -126,6 +126,10 @@ pub struct DesignTokens {
 
     pub text_edit_bg_color: Color32,
 
+    pub form_field_bg_color: Color32,
+    pub form_selectable_bg_color: Color32,
+    pub form_selectable_stroke_color: Color32,
+
     /// Color for blueprint time panel background
     pub blueprint_time_panel_bg_fill: Color32,
 
@@ -224,12 +228,15 @@ pub struct DesignTokens {
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
 
-    // Visualizer list (selection panel)
-    pub visualizer_list_title_text_color: Color32,
-    pub visualizer_list_path_text_color: Color32,
     pub color_swatch_size: f32,
     pub color_swatch_interactive_stroke: Stroke,
     pub color_swatch_noninteractive_stroke: Stroke,
+
+    // Visualizer list (selection panel)
+    pub visualizer_list_title_text_color: Color32,
+    pub visualizer_list_title_text_invisible_color: Color32,
+    pub visualizer_list_path_text_color: Color32,
+    pub visualizer_list_path_text_invisible_color: Color32,
     pub visualizer_list_pill_bg_color: Color32,
     pub visualizer_list_pill_bg_color_hovered: Color32,
 
@@ -330,6 +337,9 @@ impl DesignTokens {
 
             panel_bg_color: get_color("panel_bg_color"),
             text_edit_bg_color: get_color("text_edit_bg_color"),
+            form_field_bg_color: get_color("form_field_bg_color"),
+            form_selectable_bg_color: get_color("form_selectable_bg_color"),
+            form_selectable_stroke_color: get_color("form_selectable_stroke_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
             notification_background_color: get_color("notification_background_color"),
@@ -400,11 +410,18 @@ impl DesignTokens {
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
 
-            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
-            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
             color_swatch_size: get_scalar("color_swatch_size")?,
             color_swatch_interactive_stroke: get_stroke("color_swatch_interactive_stroke"),
             color_swatch_noninteractive_stroke: get_stroke("color_swatch_noninteractive_stroke"),
+
+            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
+            visualizer_list_title_text_invisible_color: get_color(
+                "visualizer_list_title_text_invisible_color",
+            ),
+            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
+            visualizer_list_path_text_invisible_color: get_color(
+                "visualizer_list_path_text_invisible_color",
+            ),
             visualizer_list_pill_bg_color: get_color("visualizer_list_pill_bg_color"),
             visualizer_list_pill_bg_color_hovered: get_color(
                 "visualizer_list_pill_bg_color_hovered",
@@ -1023,9 +1040,7 @@ fn test_design_tokens() {
     crate::apply_style_and_install_loaders(&ctx);
 
     // Make sure it works:
-    let _ignored = ctx.run(Default::default(), |ctx| {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Hello Test!");
-        });
+    let _ignored = ctx.run_ui(Default::default(), |ui| {
+        ui.label("Hello Test!");
     });
 }

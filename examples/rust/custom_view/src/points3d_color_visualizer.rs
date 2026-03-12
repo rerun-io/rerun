@@ -3,9 +3,9 @@ use rerun::external::re_log_types::{EntityPath, Instance};
 use rerun::external::re_sdk_types::blueprint::components::VisualizerInstructionId;
 use rerun::external::re_view::{DataResultQuery, VisualizerInstructionQueryResults};
 use rerun::external::re_viewer_context::{
-    AppOptions, IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
-    VisualizerQueryInfo, VisualizerSystem,
+    AppOptions, IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.
@@ -29,18 +29,14 @@ impl VisualizerSystem for Points3DColorVisualizer {
     fn visualizer_query_info(&self, _app_options: &AppOptions) -> VisualizerQueryInfo {
         // Usually, visualizers are closely tied to archetypes.
         // However, here we're adding a visualizer that queries only parts of an existing archetype.
-        if false {
-            // This is what it looks like to query all the fields of an archetype.
-            VisualizerQueryInfo::from_archetype::<rerun::Points3D>()
-        } else {
-            // Instead, our custom query here is solely interested in Points3D's colors.
-            VisualizerQueryInfo {
-                relevant_archetype: Default::default(),
-                required: RequiredComponents::AllComponents(
-                    std::iter::once(rerun::Points3D::descriptor_colors().component).collect(),
-                ),
-                queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
-            }
+        // Instead, our custom query here is solely interested in Points3D's colors.
+        VisualizerQueryInfo {
+            relevant_archetype: None,
+            constraints: SingleRequiredComponentConstraint::new::<rerun::Color>(
+                &rerun::Points3D::descriptor_colors(),
+            )
+            .into(),
+            queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
         }
     }
 
@@ -64,7 +60,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
                 [rerun::Points3D::descriptor_colors().component],
                 instruction,
             );
-            let results = VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             // From the query result, get all the color arrays as `[u32]` slices.
             // For latest-at queries should be only a single slice`,

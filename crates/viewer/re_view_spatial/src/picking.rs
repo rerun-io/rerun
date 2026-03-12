@@ -136,7 +136,7 @@ impl PickingContext {
         );
 
         let mut image_hits = picking_textured_rects(self, images);
-        image_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
+        image_hits.sort_by_key(|a| std::cmp::Reverse(a.depth_offset));
 
         let ui_hits = picking_ui_rects(self, ui_rects);
 

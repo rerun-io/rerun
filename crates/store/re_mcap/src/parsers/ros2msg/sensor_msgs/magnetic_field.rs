@@ -28,8 +28,9 @@ impl MessageParser for MagneticFieldMessageParser {
                 .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
+        ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(
             magnetic_field.header.stamp.as_nanos() as u64,
+            ctx.time_type(),
         ));
 
         self.frame_ids.push(magnetic_field.header.frame_id);

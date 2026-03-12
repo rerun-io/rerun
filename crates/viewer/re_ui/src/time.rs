@@ -54,8 +54,7 @@ pub fn short_duration_ui(
     } else {
         3600
     };
-    ui.ctx()
-        .request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
+    ui.request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
 
     let short = format_duration_short(timestamp, format);
     show(ui, short).on_hover_text(timestamp.format(format))

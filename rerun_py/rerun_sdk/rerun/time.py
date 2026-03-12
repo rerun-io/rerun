@@ -63,7 +63,7 @@ def set_time(
 
     Parameters
     ----------
-    timeline : str
+    timeline:
         The name of the timeline to set the time for.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -165,7 +165,7 @@ def disable_timeline(timeline: str, recording: RecordingStream | None = None) ->
 
     Parameters
     ----------
-    timeline : str
+    timeline:
         The name of the timeline to clear the time for.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.

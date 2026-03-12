@@ -44,7 +44,7 @@ pub struct SpawnOptions {
     /// Defaults to `rerun`.
     pub executable_name: String,
 
-    /// Enforce a specific executable to use instead of searching though PATH
+    /// Enforce a specific executable to use instead of searching through PATH
     /// for [`Self::executable_name`].
     ///
     /// Unspecified by default.
@@ -55,6 +55,11 @@ pub struct SpawnOptions {
 
     /// Extra environment variables that will be passed as-is to the Rerun Viewer process.
     pub extra_env: Vec<(String, String)>,
+
+    /// Always start a new viewer. If the port is already in use, a free port will be picked automatically.
+    ///
+    /// Equivalent to using `--port auto` on the CLI.
+    pub new: bool,
 
     /// Hide the welcome screen.
     pub hide_welcome_screen: bool,
@@ -77,6 +82,7 @@ impl Default for SpawnOptions {
             executable_path: None,
             extra_args: Vec::new(),
             extra_env: Vec::new(),
+            new: false,
             hide_welcome_screen: false,
             detach_process: true,
         }
@@ -179,7 +185,7 @@ impl std::fmt::Debug for SpawnError {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect_grpc`] or use [`crate::RecordingStream::spawn`] directly.
-pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
+pub fn spawn(opts: &SpawnOptions) -> Result<u16, SpawnError> {
     use std::net::TcpStream;
     #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;
@@ -226,13 +232,32 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     let executable_path = opts.executable_path();
 
     // TODO(#4019): application-level handshake
-    if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+    if !opts.new && TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
         re_log::info!(
             addr = %opts.listen_addr(),
-            "A process is already listening at this address. Assuming it's a Rerun Viewer."
+            "A process is already listening at this address. Assuming it's a Rerun Viewer. \
+            Use `new: true` in SpawnOptions or `--port auto` on the CLI to force a new viewer."
         );
-        return Ok(());
+        return Ok(port);
     }
+
+    // When --new is requested and the default port is already taken, find a free one.
+    let port = if opts.new
+        && TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok()
+    {
+        let listener = std::net::TcpListener::bind(std::net::SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            0,
+        ))?;
+        let free_port = listener.local_addr()?.port();
+        drop(listener);
+        re_log::info!(
+            "Default port {port} is already in use, spawning viewer on port {free_port} instead."
+        );
+        free_port
+    } else {
+        port
+    };
 
     let map_err = |err: std::io::Error| -> SpawnError {
         if err.kind() == std::io::ErrorKind::NotFound {
@@ -340,17 +365,26 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
         // at all, the connection will fail immediately, irrelevant of the timeout configuration.
         // For that reason we use an extra loop.
+        let bind_addr =
+            std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), port);
+        let mut bound = false;
         for i in 0..5 {
             re_log::debug!("connection attempt {}", i + 1);
-            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+            if TcpStream::connect_timeout(&bind_addr, Duration::from_secs(1)).is_ok() {
+                bound = true;
                 break;
             }
             std::thread::sleep(Duration::from_millis(100));
         }
+
+        re_log::debug_assert!(
+            bound,
+            "Spawned Rerun Viewer did not bind to port {port} in time"
+        );
     }
 
     // Simply forget about the child process, we want it to outlive the parent process if needed.
     _ = rerun_bin;
 
-    Ok(())
+    Ok(port)
 }

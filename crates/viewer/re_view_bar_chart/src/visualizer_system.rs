@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_sdk_types::{
+    Archetype as _,
     archetypes::BarChart,
     components::{self, Length},
     datatypes,
@@ -41,7 +42,10 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<BarChart>()
+        VisualizerQueryInfo::single_required_component::<components::TensorData>(
+            &BarChart::descriptor_values(),
+            &BarChart::all_components(),
+        )
     }
 
     fn execute(
@@ -81,7 +85,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let results =
                     BlueprintResolvedResults::LatestAt(timeline_query.clone(), latest_at_results);
                 let results =
-                    VisualizerInstructionQueryResults::new(instruction.id, &results, &output);
+                    VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
                 let widths = results.iter_optional(BarChart::descriptor_widths().component);
                 let widths: &[f32] = widths

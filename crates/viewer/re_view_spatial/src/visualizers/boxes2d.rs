@@ -175,7 +175,10 @@ impl VisualizerSystem for Boxes2DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Boxes2D>()
+        VisualizerQueryInfo::single_required_component::<HalfSize2D>(
+            &Boxes2D::descriptor_half_sizes(),
+            &Boxes2D::all_components(),
+        )
     }
 
     fn execute(

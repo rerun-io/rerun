@@ -1,4 +1,5 @@
 use re_chunk_store::LatestAtQuery;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::TextDocument;
 use re_sdk_types::components;
 use re_view::DataResultQuery as _;
@@ -32,7 +33,10 @@ impl VisualizerSystem for TextDocumentSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<TextDocument>()
+        VisualizerQueryInfo::single_required_component::<components::Text>(
+            &TextDocument::descriptor_text(),
+            &TextDocument::all_components(),
+        )
     }
 
     fn execute(

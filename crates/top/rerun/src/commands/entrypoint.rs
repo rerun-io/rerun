@@ -75,6 +75,51 @@ Examples:
         rerun --save new_recording.rrd
 "#;
 
+/// Port argument that accepts either a port number or `auto`.
+///
+/// `auto` will use the default port, but find a free one if it's already in use.
+#[derive(Debug, Clone)]
+enum PortArg {
+    Port(u16),
+    Auto,
+}
+
+impl PortArg {
+    fn port(&self) -> u16 {
+        match self {
+            Self::Port(port) => *port,
+            Self::Auto => 9876,
+        }
+    }
+
+    fn is_auto(&self) -> bool {
+        matches!(self, Self::Auto)
+    }
+}
+
+impl std::fmt::Display for PortArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Port(port) => write!(f, "{port}"),
+            Self::Auto => write!(f, "auto"),
+        }
+    }
+}
+
+impl std::str::FromStr for PortArg {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq_ignore_ascii_case("auto") {
+            Ok(Self::Auto)
+        } else {
+            s.parse::<u16>()
+                .map(Self::Port)
+                .map_err(|err| format!("invalid port: {err}"))
+        }
+    }
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(
     long_about = LONG_ABOUT,
@@ -130,9 +175,17 @@ When persisted, the state will be stored at the following locations:
     persist_state: bool,
 
     /// What port do we listen to for SDKs to connect to over gRPC.
+    ///
+    /// Use `auto` to always start a new viewer with a free port if the default is taken.
     // Default is `re_grpc_server::DEFAULT_SERVER_PORT`, can't use symbollically if `server` feature is disabled
-    #[clap(long, default_value_t = 9876)]
-    port: u16,
+    #[clap(long, default_value_t = PortArg::Port(9876))]
+    port: PortArg,
+
+    /// Alias for `--port auto`. Always start a new viewer.
+    ///
+    /// If the port is already in use, a free port will be picked automatically.
+    #[clap(long, conflicts_with = "port")]
+    new: bool,
 
     /// Start with the puffin profiler running.
     #[clap(long)]
@@ -740,7 +793,21 @@ fn run_impl(
     //TODO(#10068): populate token passed with `--token`
     let connection_registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
-    let server_addr = std::net::SocketAddr::new(args.bind, args.port);
+    let wants_new = args.new || args.port.is_auto();
+    let port = args.port.port();
+
+    let server_addr = if wants_new
+        && is_another_server_already_running(std::net::SocketAddr::new(args.bind, port))
+    {
+        let default_port = port;
+        let free_port = find_free_port(args.bind)?;
+        re_log::info!(
+            "Default port {default_port} is already in use, using port {free_port} instead."
+        );
+        std::net::SocketAddr::new(args.bind, free_port)
+    } else {
+        std::net::SocketAddr::new(args.bind, port)
+    };
 
     #[cfg(feature = "server")]
     let server_options = re_sdk::ServerOptions {
@@ -842,7 +909,8 @@ fn run_impl(
                 )
             }
         }
-    } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
+    } else if !wants_new && args.connect.is_none() && is_another_server_already_running(server_addr)
+    {
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
@@ -1039,7 +1107,7 @@ fn connect_to_existing_server(
     use re_sdk::sink::LogSink as _;
 
     let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
-    re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
+    re_log::info!(%uri, "Another viewer is already running, streaming data to it. Use --port auto to force a new viewer.");
     let sink = re_sdk::sink::GrpcSink::new(uri);
     if !receivers.urls_to_pass_on_to_viewer.is_empty() {
         re_log::warn!(
@@ -1201,6 +1269,11 @@ fn save_or_test_receive(
     }
 }
 
+fn find_free_port(bind: std::net::IpAddr) -> anyhow::Result<u16> {
+    let listener = std::net::TcpListener::bind(std::net::SocketAddr::new(bind, 0))?;
+    Ok(listener.local_addr()?.port())
+}
+
 fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool {
     // Check if there is already a viewer running and if so, send the data to it.
     use std::net::TcpStream;
@@ -1250,6 +1323,21 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                             };
 
                             mut_db.add_rrd_manifest_message(rrd_manifest);
+                        }
+
+                        DataSourceMessage::RrdManifestComplete(store_id) => {
+                            let mut_db = match store_id.kind() {
+                                re_log_types::StoreKind::Recording => {
+                                    rec.get_or_insert_with(|| {
+                                        re_entity_db::EntityDb::new(store_id.clone())
+                                    })
+                                }
+                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                    re_entity_db::EntityDb::new(store_id.clone())
+                                }),
+                            };
+
+                            mut_db.mark_rrd_manifest_complete();
                         }
 
                         DataSourceMessage::LogMsg(msg) => {
@@ -1517,9 +1605,14 @@ impl ReceiversFromUrlParams {
         let mut urls_to_pass_on_to_viewer = Vec::new();
 
         for url in input_urls {
-            if let Some(data_source) =
-                LogDataSource::from_uri(re_log_types::FileSource::Cli, &url, follow)
-            {
+            if let Some(data_source) = LogDataSource::from_uri(
+                re_log_types::FileSource::Cli,
+                &url,
+                &re_data_source::FromUriOptions {
+                    follow,
+                    accept_extensionless_http: true,
+                },
+            ) {
                 match &data_source {
                     LogDataSource::HttpUrl { .. } => {
                         if config.data_sources_from_http_urls {
@@ -1621,6 +1714,7 @@ fn record_cli_command_analytics(args: &Args) {
         memory_limit: _,
         server_memory_limit: _,
         port: _,
+        new: _,
     } = args;
 
     let (command, subcommand) = match command {

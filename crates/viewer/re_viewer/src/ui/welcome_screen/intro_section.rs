@@ -113,7 +113,7 @@ impl IntroItem {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
                 };
-                ui.set_style(ui.ctx().style_of(opposite_theme));
+                ui.set_style(ui.style_of(opposite_theme));
 
                 ui.heading(RichText::new("Rerun Data Platform").strong());
 

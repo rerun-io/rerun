@@ -4,15 +4,10 @@
 //!
 //! See [`Lens`] for more details and assumptions.
 
-mod ast;
-mod builder;
-mod error;
-mod op;
-mod semantic;
+pub mod op;
 
-pub use self::{
-    ast::{Lens, Lenses, Op, OutputMode, PartialChunk},
-    builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder, StaticColumnsBuilder},
-    error::LensError,
-    op::OpError,
+// Re-export core types for backward compatibility.
+pub use re_lenses_core::{
+    ColumnsBuilder, Lens, LensBuilder, LensError, Lenses, OutputMode, PartialChunk,
+    ScatterColumnsBuilder, StaticColumnsBuilder,
 };

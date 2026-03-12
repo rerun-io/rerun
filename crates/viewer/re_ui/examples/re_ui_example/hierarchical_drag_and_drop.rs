@@ -364,7 +364,7 @@ impl HierarchicalDragAndDrop {
             return;
         };
 
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+        ui.set_cursor_icon(egui::CursorIcon::Grabbing);
 
         let Some((parent_id, position_index_in_parent)) = self.parent_and_pos(item_id) else {
             // this shouldn't happen

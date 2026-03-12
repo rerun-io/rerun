@@ -1,8 +1,8 @@
 use re_sdk_types::components::PinholeProjection;
-use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext, UiLayout};
 
 pub fn singleline_view_pinhole(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, PinholeProjection>,
 ) -> egui::Response {
@@ -30,7 +30,7 @@ pub fn singleline_view_pinhole(
 }
 
 pub fn multiline_view_pinhole(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, PinholeProjection>,
 ) -> egui::Response {

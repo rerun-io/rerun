@@ -75,22 +75,18 @@ pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 's
     async fn get_dataset_schema(
         &mut self,
         request: tonic::Request<GetDatasetSchemaRequest>,
-    ) -> Result<tonic::Response<GetDatasetSchemaResponse>, tonic::Status>;
+    ) -> tonic::Result<tonic::Response<GetDatasetSchemaResponse>>;
 
     async fn query_dataset(
         &mut self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
-    ) -> std::result::Result<
-        tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>,
-        tonic::Status,
-    >;
+    ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>>;
 
     async fn fetch_chunks(
         &mut self,
         request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
-    ) -> std::result::Result<
+    ) -> tonic::Result<
         tonic::Response<tonic::codec::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
-        tonic::Status,
     >;
 }
 
@@ -99,26 +95,22 @@ impl DataframeClientAPI for ConnectionClient {
     async fn get_dataset_schema(
         &mut self,
         request: tonic::Request<GetDatasetSchemaRequest>,
-    ) -> Result<tonic::Response<GetDatasetSchemaResponse>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<GetDatasetSchemaResponse>> {
         self.inner().get_dataset_schema(request).await
     }
 
     async fn query_dataset(
         &mut self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
-    ) -> std::result::Result<
-        tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
         self.inner().query_dataset(request).await
     }
 
     async fn fetch_chunks(
         &mut self,
         request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
-    ) -> std::result::Result<
+    ) -> tonic::Result<
         tonic::Response<tonic::codec::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
-        tonic::Status,
     > {
         self.inner().fetch_chunks(request).await
     }

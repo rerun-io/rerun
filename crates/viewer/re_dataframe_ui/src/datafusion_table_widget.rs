@@ -4,18 +4,18 @@ use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _};
+use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 use itertools::Itertools as _;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
-use re_log_types::{EntryId, TimelineName, Timestamp};
+use re_log_types::{EntryId, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, ViewerContext,
+    AsyncRuntimeHandle, StoreViewContext, SystemCommand, SystemCommandSender as _,
 };
 
 use crate::StreamingCacheTableProvider;
@@ -230,7 +230,7 @@ impl<'a> DataFusionTableWidget<'a> {
     /// Display the table.
     pub fn show(
         self,
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
     ) -> TableStatus {
@@ -352,7 +352,7 @@ impl<'a> DataFusionTableWidget<'a> {
     //TODO(ab): make the argument list less crazy
     #[expect(clippy::too_many_arguments)]
     fn table_ui(
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
         session_ctx: Arc<SessionContext>,
@@ -503,7 +503,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
     fn bottom_bar_ui(
         ui: &mut Ui,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         session_id: Id,
         total_rows: u64,
         visible_columns: usize,
@@ -515,7 +515,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let frame = Frame::new()
             .fill(ui.tokens().table_header_bg_fill)
             .inner_margin(Margin::symmetric(12, 0));
-        TopBottomPanel::bottom(session_id.with("bottom_bar"))
+        Panel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
             .show_separator_line(false)
             .show_inside(ui, |ui| {
@@ -574,7 +574,7 @@ fn id_from_session_context_and_table(
 
 fn title_ui(
     ui: &mut egui::Ui,
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&str>,
@@ -621,7 +621,7 @@ enum BottomBarAction {
 
 struct DataFusionTableDelegate<'a> {
     session_id: Id,
-    ctx: &'a ViewerContext<'a>,
+    ctx: &'a StoreViewContext<'a>,
     table_style: re_ui::TableStyle,
     query_result: &'a DataFusionQueryResult,
     migrated_fields: &'a Vec<Field>,
@@ -688,7 +688,7 @@ impl DataFusionTableDelegate<'_> {
                         if let Some(segment_link) =
                             self.segment_link_for_row(row, segment_links_spec)
                         {
-                            ui.ctx().open_url(OpenUrl {
+                            ui.open_url(OpenUrl {
                                 url: segment_link,
                                 new_tab,
                             });
@@ -810,17 +810,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         {
             let column = &display_record_batch.columns()[col_index];
 
-            // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
-            // avoiding doing so needs significant refactoring work.
-            column.data_ui(
-                self.ctx,
-                ui,
-                &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
-                    TimelineName::new("unknown"),
-                ),
-                batch_index,
-                None,
-            );
+            column.data_ui(self.ctx, ui, batch_index, None);
         }
     }
 

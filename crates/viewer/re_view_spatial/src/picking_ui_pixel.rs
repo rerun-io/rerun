@@ -7,7 +7,7 @@ use re_sdk_types::image::ImageKind;
 use re_sdk_types::tensor_data::TensorElement;
 use re_ui::UiExt as _;
 use re_view::AnnotationSceneContext;
-use re_viewer_context::{Annotations, ImageInfo, ViewQuery, ViewerContext, gpu_bridge};
+use re_viewer_context::{Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge};
 
 use crate::PickableRectSourceData;
 use crate::view_kind::SpatialViewKind;
@@ -20,7 +20,7 @@ pub struct PickedPixelInfo {
 
 #[expect(clippy::too_many_arguments)]
 pub fn textured_rect_hover_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
     query: &ViewQuery<'_>,
@@ -47,14 +47,7 @@ pub fn textured_rect_hover_ui(
 
     let depth_meter = depth_meter.map(|d| *d.0);
 
-    item_ui::instance_path_button(
-        ctx,
-        &query.latest_at_query(),
-        ctx.recording(),
-        ui,
-        Some(query.view_id),
-        instance_path,
-    );
+    item_ui::instance_path_button(ctx, ui, Some(query.view_id), instance_path);
 
     ui.add_space(8.0);
 

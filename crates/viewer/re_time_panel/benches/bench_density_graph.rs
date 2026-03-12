@@ -14,8 +14,8 @@ use re_time_panel::__bench::{
 };
 
 fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: ChunkEntry) {
-    egui::__run_test_ctx(|ctx| {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    egui::__run_test_ui(|ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             let row_rect = ui.max_rect();
             assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
 
@@ -52,12 +52,12 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
 
             b.iter(|| {
                 black_box(build_density_graph(
+                    &db,
+                    timeline.name(),
                     ui,
                     &time_ranges_ui,
                     row_rect,
-                    &db,
                     &item,
-                    timeline.name(),
                     config,
                 ));
             });

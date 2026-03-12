@@ -27,7 +27,7 @@ table Mesh3D (
   /// The positions of each vertex.
   ///
   /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
-  vertex_positions: [rerun.components.Position3D] ("attr.rerun.component_required", order: 1000);
+  vertex_positions: [rerun.components.Position3D] ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   // --- Recommended ---
 

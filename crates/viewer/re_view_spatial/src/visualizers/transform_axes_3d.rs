@@ -7,8 +7,8 @@ use re_sdk_types::archetypes::{
 use re_sdk_types::components::{AxisLength, ShowLabels};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizabilityConstraints, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem,
 };
 
@@ -38,19 +38,19 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
-
-        // Make this visualizer available for any entity with Transform3D components
-        query_info.required = RequiredComponents::AnyComponent(
-            Transform3D::all_component_identifiers()
-                .chain(CoordinateFrame::all_component_identifiers())
-                .chain(InstancePoses3D::all_component_identifiers())
-                .chain(Pinhole::all_component_identifiers())
-                .chain(TransformAxes3D::all_component_identifiers())
-                .collect(),
-        );
-
-        query_info
+        VisualizerQueryInfo {
+            relevant_archetype: Some(TransformAxes3D::name()),
+            // Make this visualizer available for any entity with Transform3D components
+            constraints: VisualizabilityConstraints::AnyBuiltinComponent(
+                Transform3D::all_component_identifiers()
+                    .chain(CoordinateFrame::all_component_identifiers())
+                    .chain(InstancePoses3D::all_component_identifiers())
+                    .chain(Pinhole::all_component_identifiers())
+                    .chain(TransformAxes3D::all_component_identifiers())
+                    .collect(),
+            ),
+            queried: TransformAxes3D::all_components().iter().cloned().collect(),
+        }
     }
 
     fn execute(
@@ -148,9 +148,11 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         && src.as_entity_path_hash() == entity_path.hash() => {}
 
                 _ => {
-                    if let Err(err_msg) =
-                        format_transform_info_result(transforms, coordinate_frame_transform_result)
-                    {
+                    if let Err(err_msg) = format_transform_info_result(
+                        entity_path,
+                        transforms,
+                        coordinate_frame_transform_result,
+                    ) {
                         output.report_unspecified_source(
                             instruction.id,
                             VisualizerReportSeverity::Error,

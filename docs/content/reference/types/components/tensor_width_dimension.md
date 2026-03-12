@@ -11,10 +11,10 @@ Specifies which dimension to use for width.
 
 ## Arrow datatype
 ```
-Struct {
-    dimension: uint32
-    invert: boolean
-}
+Struct(
+    "dimension": non-null UInt32
+    "invert": non-null Boolean
+)
 ```
 
 ## API reference links

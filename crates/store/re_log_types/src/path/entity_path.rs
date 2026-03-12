@@ -1,3 +1,4 @@
+use std::hash::{Hash as _, Hasher as _};
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
@@ -267,6 +268,16 @@ impl EntityPath {
     #[inline]
     pub fn hash64(&self) -> u64 {
         self.hash.hash64()
+    }
+
+    /// Calculates a deterministic hash of the entity path.
+    ///
+    /// This is useful for generating deterministic IDs for visualizer instructions. By default,
+    /// self.hash is generated using ahash, which works differently on web and native.
+    pub fn calculate_deterministic_hash(&self) -> u64 {
+        let mut hasher = xxhash_rust::xxh64::Xxh64::new(0);
+        self.parts.hash(&mut hasher);
+        hasher.finish()
     }
 
     /// Return [`None`] if root.

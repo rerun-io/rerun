@@ -4,7 +4,7 @@ use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic singleline string editor.
 pub fn edit_singleline_string(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Utf8>>,
 ) -> egui::Response {
@@ -36,7 +36,7 @@ fn edit_singleline_string_impl(
 
 /// Generic multiline string editor.
 pub fn edit_multiline_string(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Utf8>>,
 ) -> egui::Response {

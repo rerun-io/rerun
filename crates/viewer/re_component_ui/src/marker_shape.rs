@@ -1,12 +1,12 @@
 use re_sdk_types::components::MarkerShape;
 use re_sdk_types::reflection::Enum as _;
 use re_ui::UiExt as _;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 use crate::response_utils::response_with_changes_of_inner;
 
 pub(crate) fn edit_marker_shape_ui(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     marker: &mut MaybeMutRef<'_, MarkerShape>,
 ) -> egui::Response {

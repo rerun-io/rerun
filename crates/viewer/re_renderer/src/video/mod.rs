@@ -20,7 +20,19 @@ impl From<crate::resource_managers::ImageDataToTextureError> for VideoPlayerErro
     }
 }
 
-pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
+pub struct FrameDecodingOutput {
+    pub output: Option<VideoFrameTexture>,
+    pub error: Option<VideoPlayerError>,
+}
+
+impl FrameDecodingOutput {
+    fn error(error: impl Into<VideoPlayerError>) -> Self {
+        Self {
+            output: None,
+            error: Some(error.into()),
+        }
+    }
+}
 
 /// A texture of a specific video frame.
 #[derive(Clone)]
@@ -188,7 +200,7 @@ impl Video {
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
         get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
-    ) -> FrameDecodingResult {
+    ) -> FrameDecodingOutput {
         re_tracing::profile_function!();
 
         // We could protect this hashmap by a RwLock and the individual decoders by a Mutex.
@@ -200,11 +212,14 @@ impl Video {
         let decoder_entry = match players.entry(player_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_player = VideoPlayer::new(
+                let new_player = match VideoPlayer::new(
                     &self.debug_name,
                     &self.video_description,
                     &self.decode_settings,
-                )?;
+                ) {
+                    Ok(player) => player,
+                    Err(err) => return FrameDecodingOutput::error(err),
+                };
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,
                     used_last_frame: true,
@@ -220,19 +235,26 @@ impl Video {
                 chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
             },
             get_video_buffer,
-        )?;
+        );
 
         let output = decoder_entry.player.output();
-        Ok(VideoFrameTexture {
-            texture: output.and_then(|o| o.texture.clone()),
-            decoder_delay_state: status.decoder_delay_state,
-            show_loading_indicator: status.show_loading_indicator,
-            source_pixel_format: output.map_or(
-                SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::Rgba8Unorm),
-                |o| o.source_pixel_format,
-            ),
-            frame_info: status.frame_info,
-        })
+
+        FrameDecodingOutput {
+            output: Some(VideoFrameTexture {
+                texture: output.and_then(|o| o.texture.clone()),
+                decoder_delay_state: status
+                    .as_ref()
+                    .map(|s| s.decoder_delay_state)
+                    .unwrap_or(DecoderDelayState::UpToDate),
+                show_loading_indicator: status.as_ref().is_ok_and(|s| s.show_loading_indicator),
+                source_pixel_format: output.map_or(
+                    SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::Rgba8Unorm),
+                    |o| o.source_pixel_format,
+                ),
+                frame_info: status.as_ref().ok().and_then(|s| s.frame_info.clone()),
+            }),
+            error: status.err(),
+        }
     }
 
     /// Notify players that samples were inserted/removed at `splice_start`,

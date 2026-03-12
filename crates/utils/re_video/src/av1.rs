@@ -56,10 +56,10 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
 
                 continue;
             }
-            ObuType::Frame | ObuType::FrameHeader => {
-                if is_keyframe(&mut cursor).map_err(DetectGopStartError::Av1ParserError)? {
-                    keyframe_found = true;
-                }
+            ObuType::Frame | ObuType::FrameHeader
+                if is_keyframe(&mut cursor).map_err(DetectGopStartError::Av1ParserError)? =>
+            {
+                keyframe_found = true;
             }
             _ => {
                 // Skip other OBUs

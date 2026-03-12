@@ -89,7 +89,7 @@ impl ChunkUi {
                 (
                     component,
                     // TODO(#11071): use re_arrow_ui to format the datatype here
-                    re_arrow_util::format_data_type(column.list_array.data_type()),
+                    column.list_array.data_type().to_string(),
                 )
             })
             .collect::<BTreeMap<_, _>>();
@@ -114,7 +114,7 @@ impl ChunkUi {
                     });
 
                     if response.clicked() {
-                        ui.ctx().copy_text(datatype.clone());
+                        ui.copy_text(datatype.clone());
                     }
                 });
             }
@@ -279,7 +279,7 @@ impl ChunkUi {
                 .clicked()
             {
                 //TODO(#7282): make sure the output is not dependant on the parent terminal's width
-                ui.ctx().copy_text(self.chunk.to_string());
+                ui.copy_text(self.chunk.to_string());
             }
         });
 

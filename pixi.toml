@@ -219,7 +219,7 @@ fmt = { depends-on = ["format"] }
 link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
   { arg = "ref" },
 ] }
-link-check = 'lychee --verbose --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
+link-check = 'lychee --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
@@ -324,8 +324,8 @@ meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisea
 # Update the results of `insta` and `kittest` snapshot regression tests
 rs-update-snapshot-tests = "INSTA_UPDATE=always UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet --no-fail-fast"
 
-# Update the Python-based snapshot tests
-py-update-snapshot-tests = { cmd = "uv run pytest --inline-snapshot=fix", depends-on = [
+# Update the Python-based snapshot tests (inline-snapshot for inline snapshots, --snapshot-update for syrupy .ambr files)
+py-update-snapshot-tests = { cmd = "uv run pytest -vv rerun_py/tests --inline-snapshot=fix --snapshot-update", depends-on = [
   "py-build",
 ] }
 
@@ -392,8 +392,10 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 
 py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "uv sync --package rerun-notebook", depends-on = ["js-build-base"] }
-py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook" }
+py-build-notebook = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk", depends-on = [
+  "js-build-base",
+] }
+py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk" }
 # Create a wheel for the `rerun-sdk` package.
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
@@ -423,7 +425,9 @@ py-build-perf-release = { cmd = "uv run maturin develop --uv --release --manifes
 
 py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
 py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests" }
-py-bench = { cmd = "uvpy -m pytest --benchmark-only", depends-on = ["py-build-release"] }
+py-bench = { cmd = "uvpy -m pytest --benchmark-only --benchmark-group-by=func --benchmark-sort=fullname", depends-on = [
+  "py-build-release",
+] }
 
 snapshots = "uvpy scripts/snapshots.py"
 
@@ -534,7 +538,7 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
-lychee = "0.21.0.*"
+lychee = "0.23.0.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 pyyaml = ">=6.0" # For `check_doc_redirects.py`

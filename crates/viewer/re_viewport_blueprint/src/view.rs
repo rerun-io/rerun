@@ -9,9 +9,9 @@ use re_sdk_types::blueprint::components::{self as blueprint_components, ViewOrig
 use re_sdk_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
-    ViewStates, ViewerContext,
+    ActiveStoreContext, BlueprintContext as _, ContentsName, QueryRange, RecommendedView,
+    SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId,
+    ViewState, ViewStates, ViewerContext,
 };
 
 use crate::{ViewContents, ViewProperty};
@@ -237,7 +237,7 @@ impl ViewBlueprint {
     /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`ViewId`]
     ///
     /// Also duplicates all the queries in the view.
-    pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
+    pub fn duplicate(&self, store_context: &ActiveStoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
         let blueprint = store_context.blueprint;
         let blueprint_engine = blueprint.storage_engine();
@@ -430,7 +430,7 @@ impl ViewBlueprint {
         let class = ctx
             .view_class_registry()
             .get_class_or_log_error(self.class_identifier());
-        let view_state = view_states.get_mut_or_create(self.id, class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), self.id, class);
         self.bundle_context_with_state(ctx, view_state)
     }
 
@@ -679,6 +679,7 @@ mod tests {
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {
             let mut view_states = ViewStates::default();
             let view_state = view_states.get_mut_or_create(
+                ctx.store_id(),
                 view.id,
                 ctx.view_class_registry
                     .class(view.class_identifier())

@@ -12,9 +12,11 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    DataResultInteractionAddress, HoverHighlight, Item, Route, SystemCommand,
-    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewId, ViewerContext,
+    AppContext, DataResultInteractionAddress, HoverHighlight, Item, Route, StoreViewContext,
+    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewId, ViewerContext,
 };
+
+use crate::AppUi as _;
 
 use super::DataUi as _;
 
@@ -43,17 +45,13 @@ use super::DataUi as _;
 
 /// Show an entity path and make it selectable.
 pub fn entity_path_button(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: Option<ViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
     instance_path_button_to(
         ctx,
-        query,
-        db,
         ui,
         view_id,
         &InstancePath::entity_all(entity_path.clone()),
@@ -63,9 +61,7 @@ pub fn entity_path_button(
 
 /// Show the different parts of an entity path and make them selectable.
 pub fn entity_path_parts_buttons(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: Option<ViewId>,
     entity_path: &EntityPath,
@@ -85,7 +81,7 @@ pub fn entity_path_parts_buttons(
         if !with_individual_icons {
             // Show one single icon up-front instead:
             let instance_path = InstancePath::entity_all(entity_path.clone());
-            ui.add(instance_path_icon(&query.timeline(), db, &instance_path).as_image());
+            ui.add(instance_path_icon(ctx, &instance_path).as_image());
         }
 
         if entity_path.is_root() {
@@ -98,8 +94,6 @@ pub fn entity_path_parts_buttons(
                 ui.strong("/");
                 instance_path_button_to_ex(
                     ctx,
-                    query,
-                    db,
                     ui,
                     view_id,
                     &InstancePath::entity_all(accumulated.clone()),
@@ -112,37 +106,9 @@ pub fn entity_path_parts_buttons(
     .response
 }
 
-/// Show an entity path that is part of the blueprint and make it selectable.
-///
-/// Like [`entity_path_button_to`] but with the apriori knowledge that this exists in the blueprint.
-pub fn blueprint_entity_path_button_to(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_path: &EntityPath,
-    text: impl Into<egui::WidgetText>,
-) -> egui::Response {
-    // If we're targeting an entity in the blueprint store,
-    // it doesn't make much sense to specify the view id since view ids are
-    // embedded in entity paths of the blueprint store.
-    // I.e. if there is a view relationship that we would care about, we would know that from the path!
-    let view_id = None;
-
-    entity_path_button_to(
-        ctx,
-        ctx.blueprint_query,
-        ctx.blueprint_db(),
-        ui,
-        view_id,
-        entity_path,
-        text,
-    )
-}
-
 /// Show an entity path and make it selectable.
 pub fn entity_path_button_to(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: Option<ViewId>,
     entity_path: &EntityPath,
@@ -150,8 +116,6 @@ pub fn entity_path_button_to(
 ) -> egui::Response {
     instance_path_button_to(
         ctx,
-        query,
-        db,
         ui,
         view_id,
         &InstancePath::entity_all(entity_path.clone()),
@@ -161,17 +125,13 @@ pub fn entity_path_button_to(
 
 /// Show an instance id and make it selectable.
 pub fn instance_path_button(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: Option<ViewId>,
     instance_path: &InstancePath,
 ) -> egui::Response {
     instance_path_button_to(
         ctx,
-        query,
-        db,
         ui,
         view_id,
         instance_path,
@@ -184,16 +144,18 @@ pub fn instance_path_button(
 /// The choice of icon is based on whether the instance is "empty" as in hasn't any logged component
 /// _on the current timeline_.
 pub fn instance_path_icon(
-    timeline: &TimelineName,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
     if instance_path.is_all() {
+        let timeline = ctx.timeline_name();
+
         // It is an entity path
-        if db
+        if ctx
+            .db
             .storage_engine()
             .store()
-            .entity_has_physical_data_on_timeline(timeline, &instance_path.entity_path)
+            .entity_has_physical_data_on_timeline(&timeline, &instance_path.entity_path)
         {
             if instance_path.entity_path.is_reserved() {
                 &icons::ENTITY_RESERVED
@@ -211,55 +173,28 @@ pub fn instance_path_icon(
     }
 }
 
-/// The current time query, based on the current time control and an `entity_path`
-///
-/// If the user is inspecting the blueprint, and the `entity_path` is on the blueprint
-/// timeline, then use the blueprint. Otherwise, use the recording.
-// TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
-// directly from the entity_path.
-pub fn guess_query_and_db_for_selected_entity<'a>(
-    ctx: &'a ViewerContext<'_>,
-    entity_path: &EntityPath,
-) -> (re_chunk_store::LatestAtQuery, &'a re_entity_db::EntityDb) {
-    if ctx.app_options().inspect_blueprint_timeline
-        && ctx.store_context.blueprint.is_logged_entity(entity_path)
-    {
-        (
-            ctx.blueprint_time_ctrl.current_query(),
-            ctx.store_context.blueprint,
-        )
-    } else {
-        (ctx.time_ctrl.current_query(), ctx.recording())
-    }
-}
-
 pub fn guess_instance_path_icon(
     ctx: &ViewerContext<'_>,
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
-    let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(&query.timeline(), db, instance_path)
+    let ctx = ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
+    instance_path_icon(&ctx, instance_path)
 }
 
 /// Show an instance id and make it selectable.
 pub fn instance_path_button_to(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: Option<ViewId>,
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
-    instance_path_button_to_ex(ctx, query, db, ui, view_id, instance_path, text, true)
+    instance_path_button_to_ex(ctx, ui, view_id, instance_path, text, true)
 }
 
 /// Show an instance id and make it selectable.
-#[expect(clippy::too_many_arguments)]
 fn instance_path_button_to_ex(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: Option<ViewId>,
     instance_path: &InstancePath,
@@ -278,7 +213,7 @@ fn instance_path_button_to_ex(
 
     let response = if with_icon {
         ui.selectable_label_with_icon(
-            instance_path_icon(&query.timeline(), db, instance_path),
+            instance_path_icon(ctx, instance_path),
             text,
             ctx.is_selected_or_loading(&item),
             re_ui::LabelStyle::Normal,
@@ -289,7 +224,7 @@ fn instance_path_button_to_ex(
 
     let response = response.on_hover_ui(|ui| {
         let include_subtree = false;
-        instance_hover_card_ui(ui, ctx, query, db, instance_path, include_subtree);
+        instance_hover_card_ui(ui, ctx, instance_path, include_subtree);
     });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -297,9 +232,7 @@ fn instance_path_button_to_ex(
 
 /// Show the different parts of an instance path and make them selectable.
 pub fn instance_path_parts_buttons(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: Option<ViewId>,
     instance_path: &InstancePath,
@@ -310,7 +243,7 @@ pub fn instance_path_parts_buttons(
         ui.spacing_mut().item_spacing.x = 2.0;
 
         // Show one single icon up-front instead:
-        ui.add(instance_path_icon(&query.timeline(), db, instance_path).as_image());
+        ui.add(instance_path_icon(ctx, instance_path).as_image());
 
         let mut accumulated = Vec::new();
         for part in instance_path.entity_path.iter() {
@@ -319,8 +252,6 @@ pub fn instance_path_parts_buttons(
             ui.strong("/");
             instance_path_button_to_ex(
                 ctx,
-                query,
-                db,
                 ui,
                 view_id,
                 &InstancePath::entity_all(accumulated.clone()),
@@ -333,8 +264,6 @@ pub fn instance_path_parts_buttons(
             ui.weak("[");
             instance_path_button_to_ex(
                 ctx,
-                query,
-                db,
                 ui,
                 view_id,
                 instance_path,
@@ -462,9 +391,7 @@ fn entity_tree_stats_ui(
 }
 
 pub fn data_blueprint_button_to(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     view_id: ViewId,
@@ -478,7 +405,7 @@ pub fn data_blueprint_button_to(
         .selectable_label(ctx.is_selected_or_loading(&item), text)
         .on_hover_ui(|ui| {
             let include_subtree = false;
-            entity_hover_card_ui(ui, ctx, query, db, entity_path, include_subtree);
+            entity_hover_card_ui(ui, ctx, entity_path, include_subtree);
         });
     cursor_interact_with_selectable(ctx, response, item)
 }
@@ -508,7 +435,7 @@ pub fn time_button(
 }
 
 pub fn timeline_button(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     timeline: &TimelineName,
 ) -> egui::Response {
@@ -516,18 +443,20 @@ pub fn timeline_button(
 }
 
 pub fn timeline_button_to(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.time_ctrl.timeline_name() == timeline_name;
+    let is_selected = ctx
+        .active_time_ctrl
+        .is_some_and(|time_ctr| time_ctr.timeline_name() == timeline_name);
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
-        ctx.send_time_commands([
+        ctx.send_time_commands_to_active_recording([
             TimeControlCommand::SetActiveTimeline(*timeline_name),
             TimeControlCommand::Pause,
         ]);
@@ -537,7 +466,7 @@ pub fn timeline_button_to(
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
 pub fn cursor_interact_with_selectable(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     response: egui::Response,
     item: Item,
 ) -> egui::Response {
@@ -562,13 +491,11 @@ pub fn cursor_interact_with_selectable(
 /// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 pub fn instance_hover_card_ui(
     ui: &mut egui::Ui,
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     instance_path: &InstancePath,
     include_subtree: bool,
 ) {
-    if !db.is_known_entity(&instance_path.entity_path) {
+    if !ctx.db.is_known_entity(&instance_path.entity_path) {
         ui.label("Unknown entity.");
         return;
     }
@@ -587,14 +514,14 @@ pub fn instance_hover_card_ui(
     // Then we can move the size view into `data_ui`.
 
     if instance_path.instance.is_all() {
-        if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
+        if let Some(subtree) = ctx.db.tree().subtree(&instance_path.entity_path) {
+            entity_tree_stats_ui(ui, &ctx.timeline_name(), ctx.db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats
     }
 
-    instance_path.data_ui(ctx, ui, UiLayout::Tooltip, query, db);
+    instance_path.data_ui(ctx, ui, UiLayout::Tooltip);
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an entity.
@@ -602,18 +529,16 @@ pub fn instance_hover_card_ui(
 /// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 pub fn entity_hover_card_ui(
     ui: &mut egui::Ui,
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    db: &re_entity_db::EntityDb,
+    ctx: &StoreViewContext<'_>,
     entity_path: &EntityPath,
     include_subtree: bool,
 ) {
     let instance_path = InstancePath::entity_all(entity_path.clone());
-    instance_hover_card_ui(ui, ctx, query, db, &instance_path, include_subtree);
+    instance_hover_card_ui(ui, ctx, &instance_path, include_subtree);
 }
 
 pub fn app_id_button_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     app_id: &ApplicationId,
 ) -> egui::Response {
@@ -627,14 +552,14 @@ pub fn app_id_button_ui(
     );
 
     let response = response.on_hover_ui(|ui| {
-        app_id.data_ui_recording(ctx, ui, re_viewer_context::UiLayout::Tooltip);
+        app_id.app_ui(ctx, ui, re_viewer_context::UiLayout::Tooltip);
     });
 
     cursor_interact_with_selectable(ctx, response, item)
 }
 
 pub fn data_source_button_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     data_source: &re_log_channel::LogSource,
 ) -> egui::Response {
@@ -648,7 +573,7 @@ pub fn data_source_button_ui(
     );
 
     let response = response.on_hover_ui(|ui| {
-        data_source.data_ui_recording(ctx, ui, re_viewer_context::UiLayout::Tooltip);
+        data_source.app_ui(ctx, ui, re_viewer_context::UiLayout::Tooltip);
     });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -657,13 +582,13 @@ pub fn data_source_button_ui(
 /// This uses [`list_item::ListItem::show_hierarchical`], meaning it comes with built-in
 /// indentation.
 pub fn store_id_button_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     store_id: &re_log_types::StoreId,
     ui_layout: UiLayout,
 ) {
     if let Some(entity_db) = ctx.store_bundle().get(store_id) {
-        entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
+        entity_db_button_ui(ctx, entity_db, ui, ui_layout, true);
     } else {
         ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
             ui.label(format!("{store_id:?}"));
@@ -678,9 +603,9 @@ pub fn store_id_button_ui(
 /// This uses [`list_item::ListItem::show_hierarchical`], meaning it comes with built-in
 /// indentation.
 pub fn entity_db_button_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
+    ctx: &AppContext<'_>,
     entity_db: &re_entity_db::EntityDb,
+    ui: &mut egui::Ui,
     ui_layout: UiLayout,
     include_app_id: bool,
 ) -> egui::Response {
@@ -710,7 +635,7 @@ pub fn entity_db_button_ui(
             .recording_info_property::<Timestamp>(RecordingInfo::descriptor_start_time().component)
             .map(|started| {
                 re_log_types::Timestamp::from(started.0)
-                    .to_jiff_zoned(ctx.app_options().timestamp_format)
+                    .to_jiff_zoned(ctx.app_options.timestamp_format)
                     .strftime("%H:%M:%S")
                     .to_string()
             })
@@ -744,7 +669,7 @@ pub fn entity_db_button_ui(
                     }
                 });
             if resp.clicked() {
-                ctx.command_sender()
+                ctx.command_sender
                     .send_system(SystemCommand::CloseRecordingOrTable(
                         store_id.clone().into(),
                     ));
@@ -754,7 +679,10 @@ pub fn entity_db_button_ui(
 
     let mut list_item = ui
         .list_item()
-        .active(ctx.store_context.is_active(&store_id))
+        .active(
+            ctx.active_store_context
+                .is_some_and(|sc| sc.is_active(&store_id)),
+        )
         .selected(ctx.is_selected_or_loading(&item));
 
     if ctx.hovered().contains_item(&item) {
@@ -765,13 +693,7 @@ pub fn entity_db_button_ui(
         list_item
             .show_hierarchical(ui, item_content)
             .on_hover_ui(|ui| {
-                entity_db.data_ui(
-                    ctx,
-                    ui,
-                    re_viewer_context::UiLayout::Tooltip,
-                    &ctx.current_query(),
-                    entity_db,
-                );
+                entity_db.app_ui(ctx, ui, re_viewer_context::UiLayout::Tooltip);
             })
     })
     .inner;
@@ -795,13 +717,13 @@ pub fn entity_db_button_ui(
             .clicked()
             && let Ok(url) = url
         {
-            ctx.command_sender()
+            ctx.command_sender
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
 
         if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {recording_name:?} to clipboard");
-            ui.ctx().copy_text(recording_name);
+            ui.copy_text(recording_name);
         }
     });
 
@@ -814,7 +736,7 @@ pub fn entity_db_button_ui(
         // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
         // for the blueprint.
         if store_id.is_recording() {
-            ctx.command_sender()
+            ctx.command_sender
                 .send_system(SystemCommand::SetRoute(new_entry.route()));
         }
     }

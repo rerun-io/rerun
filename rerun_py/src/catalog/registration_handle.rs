@@ -165,9 +165,9 @@ impl PyRegistrationHandleInternal {
                     .await
                     .map_err(to_py_err)?;
 
-                // Track errors by descriptor index
-                let mut errors: HashMap<&RegisterWithDatasetTaskDescriptor, String> =
-                    HashMap::new();
+                // Collect unique error messages (deduplicated across descriptors
+                // that share the same task).
+                let mut unique_errors: Vec<String> = Vec::new();
 
                 while let Some(response) = response_stream.next().await {
                     let response = response.map_err(to_py_err)?.try_into().map_err(to_py_err)?;
@@ -175,27 +175,20 @@ impl PyRegistrationHandleInternal {
                     let results =
                         process_task_response(response, &descriptors, &task_id_to_indices)?;
 
-                    for (uri, _segment_id, error) in results {
-                        if let Some(err) = error {
-                            // Lookup the descriptor index for this URI
-                            for desc in &descriptors {
-                                if desc.storage_url.to_string() == uri {
-                                    errors.insert(desc, err.clone());
-                                }
-                            }
+                    for (_uri, _segment_id, error) in results {
+                        if let Some(err) = error
+                            && !unique_errors.contains(&err)
+                        {
+                            unique_errors.push(err);
                         }
                     }
                 }
 
                 // Check for any errors
-                if !errors.is_empty() {
-                    let error_msgs: Vec<String> = errors
-                        .iter()
-                        .map(|(desc, err)| format!("{}: {err}", desc.storage_url))
-                        .collect();
+                if !unique_errors.is_empty() {
                     return Err(PyValueError::new_err(format!(
-                        "Registration failed for the following URIs:\n{}",
-                        error_msgs.join("\n")
+                        "Registration failed while processing the following segments:\n{}",
+                        unique_errors.join("\n")
                     )));
                 }
 
@@ -296,7 +289,7 @@ impl PyRegistrationIterator {
         let rx = slf.rx.clone();
 
         // Release the GIL while waiting for data
-        let batch_result = py.allow_threads(|| {
+        let batch_result = py.detach(|| {
             let mut rx_guard = rx.lock();
             rx_guard.blocking_recv()
         });

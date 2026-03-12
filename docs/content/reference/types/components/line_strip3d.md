@@ -19,7 +19,7 @@ The points will be connected in order, like so:
 
 ## Arrow datatype
 ```
-List<FixedSizeList<3, float32>>
+List(non-null FixedSizeList(3 x non-null Float32))
 ```
 
 ## API reference links

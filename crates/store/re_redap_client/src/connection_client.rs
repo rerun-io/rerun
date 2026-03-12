@@ -408,16 +408,15 @@ where
             })
     }
 
-    /// Get the full [`RawRrdManifest`] of a recording.
-    pub async fn get_rrd_manifest(
+    /// Stream the [`RawRrdManifest`] parts of a recording as they arrive from the server.
+    ///
+    /// Each item in the returned stream is a manifest part (a slice of the full manifest).
+    /// Use [`RawRrdManifest::concat`] to combine parts if needed.
+    pub async fn get_rrd_manifest_stream(
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-    ) -> ApiResult<RawRrdManifest> {
-        // TODO(cmc): at some point we should probably continue the stream all the way down, but
-        // for now we simplify downstream's life by concatenating everything in here.
-        let mut rrd_manifest_parts = Vec::new();
-
+    ) -> ApiResult<impl Stream<Item = ApiResult<RawRrdManifest>> + use<T>> {
         let responses = self
             .inner()
             .get_rrd_manifest(
@@ -431,32 +430,41 @@ where
             .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?
             .into_inner();
 
-        futures::pin_mut!(responses);
-        while let Some(resp) = responses.next().await {
-            let rrd_manifest_part = resp
-                .map_err(|err| {
-                    ApiError::connection_with_source(
-                        err,
-                        "failed fetching /GetRrdManifest response part",
-                    )
-                })?
-                .rrd_manifest
-                .ok_or_else(|| {
-                    let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                    ApiError::serialization_with_source(
-                        err,
-                        "missing field in /GetRrdManifest response",
-                    )
-                })?
-                .to_application(())
-                .map_err(|err| {
-                    ApiError::serialization_with_source(
-                        err,
-                        "failed parsing /GetRrdManifest response",
-                    )
-                })?;
+        Ok(responses.map(|resp| {
+            resp.map_err(|err| {
+                ApiError::connection_with_source(
+                    err,
+                    "failed fetching /GetRrdManifest response part",
+                )
+            })?
+            .rrd_manifest
+            .ok_or_else(|| {
+                let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
+                ApiError::serialization_with_source(
+                    err,
+                    "missing field in /GetRrdManifest response",
+                )
+            })?
+            .to_application(())
+            .map_err(|err| {
+                ApiError::serialization_with_source(err, "failed parsing /GetRrdManifest response")
+            })
+        }))
+    }
 
-            rrd_manifest_parts.push(rrd_manifest_part);
+    /// Get the full [`RawRrdManifest`] of a recording, concatenated from all stream parts.
+    pub async fn get_rrd_manifest(
+        &mut self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+    ) -> ApiResult<RawRrdManifest> {
+        let stream = self.get_rrd_manifest_stream(dataset_id, segment_id).await?;
+
+        futures::pin_mut!(stream);
+
+        let mut rrd_manifest_parts = Vec::new();
+        while let Some(part) = stream.next().await {
+            rrd_manifest_parts.push(part?);
         }
 
         let Some(mut rrd_manifest) = rrd_manifest_parts.first().cloned() else {

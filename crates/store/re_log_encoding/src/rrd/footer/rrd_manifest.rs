@@ -5,9 +5,10 @@ use arrow::buffer::{BooleanBuffer, ScalarBuffer};
 use re_chunk::external::re_byte_size;
 use re_chunk::{ChunkId, EntityPath};
 use re_log_types::StoreId;
+use re_sorbet::SorbetSchema;
 
 use super::{RawRrdManifest, RrdManifestSha256, RrdManifestStaticMap, RrdManifestTemporalMap};
-use crate::CodecResult;
+use crate::{CodecError, CodecResult};
 
 /// A pre-validated and parsed [`RawRrdManifest`].
 ///
@@ -20,9 +21,11 @@ use crate::CodecResult;
 /// and does not duplicate the actual data.
 ///
 /// Use [`RrdManifest::try_new`] to create an instance from a [`RawRrdManifest`].
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct RrdManifest {
     raw: RawRrdManifest,
+
+    recording_schema: SorbetSchema,
 
     chunk_ids: FixedSizeBinaryArray,
     chunk_entity_paths: StringArray,
@@ -40,6 +43,13 @@ pub struct RrdManifest {
 impl std::fmt::Debug for RrdManifest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RrdManifest").finish_non_exhaustive()
+    }
+}
+
+impl PartialEq for RrdManifest {
+    fn eq(&self, other: &Self) -> bool {
+        // All other fields are derived from `raw`, so comparing `raw` is sufficient.
+        self.raw == other.raw
     }
 }
 
@@ -151,8 +161,12 @@ impl RrdManifest {
         let static_data_map = manifest.calc_static_map()?;
         let temporal_data_map = manifest.calc_temporal_map()?;
 
+        let recording_schema =
+            SorbetSchema::try_from_raw_arrow_schema(Arc::new(manifest.sorbet_schema.clone()))?;
+
         Ok(Self {
             raw: manifest,
+            recording_schema,
             chunk_ids,
             chunk_entity_paths,
             chunk_is_static,
@@ -164,6 +178,21 @@ impl RrdManifest {
             static_data_map,
             temporal_data_map,
         })
+    }
+
+    /// The schema for the entire recording.
+    pub fn recording_schema(&self) -> &SorbetSchema {
+        &self.recording_schema
+    }
+
+    pub fn concat(a: &Self, b: &Self) -> CodecResult<Self> {
+        re_tracing::profile_function!();
+        let a = a.raw.clone();
+        let b = b.raw.clone();
+        let combined = a.concat(b).map_err(|err| {
+            CodecError::FrameDecoding(format!("Failed to concatenate RRD manifests: {err}"))
+        })?;
+        Self::try_new(combined)
     }
 
     /// Builds an [`RrdManifest`] for in-memory chunks (useful for tests).

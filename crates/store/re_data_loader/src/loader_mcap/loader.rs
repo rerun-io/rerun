@@ -1,5 +1,6 @@
 //! MCAP file loader implementation.
 
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use crossbeam::channel::Sender;
 use re_chunk::RowId;
 use re_lenses::Lenses;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
-use re_mcap::{LayerIdentifier, LayerRegistry, SelectedLayers};
+use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
 use re_quota_channel::send_crossbeam;
 
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
@@ -20,60 +21,72 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// There are many different ways to extract and interpret information from MCAP files.
 /// For example, it might be interesting to query for particular fields of messages,
 /// or show information directly in the Rerun viewer. Because use-cases can vary, the
-/// [`McapLoader`] is made up of [`re_mcap::Layer`]s, each representing different views of the
+/// [`McapLoader`] is made up of [`re_mcap::Decoder`]s, each representing different views of the
 /// underlying data.
 ///
-/// These layers can be specified in the CLI wen converting an MCAP file
+/// These decoders can be specified in the CLI when converting an MCAP file
 /// to an .rrd. Here are a few examples:
-/// - [`re_mcap::layers::McapProtobufLayer`]
-/// - [`re_mcap::layers::McapRawLayer`]
-///
-/// Optionally, [`Lenses`] can be configured via [`Self::with_lenses`] to transform
-/// chunks as they are loaded (e.g., converting raw protobuf data into semantic Rerun components).
+/// - [`re_mcap::decoders::McapProtobufDecoder`]
+/// - [`re_mcap::decoders::McapRawDecoder`]
 pub struct McapLoader {
-    selected_layers: SelectedLayers,
+    selected_decoders: SelectedDecoders,
     // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
     raw_fallback_enabled: bool,
-    lenses: Option<Arc<Lenses>>,
+    lenses_by_time_type: HashMap<re_log_types::TimeType, Arc<Lenses>>,
 }
 
 impl Default for McapLoader {
     fn default() -> Self {
-        Self::new(SelectedLayers::All)
+        Self::new(&SelectedDecoders::All)
     }
 }
 
 impl McapLoader {
-    /// Creates a new [`McapLoader`] that extracts the specified `layers`.
-    pub fn new(selected_layers: SelectedLayers) -> Self {
-        let lenses = Self::build_lenses(&selected_layers);
+    /// Creates a new [`McapLoader`] that uses the specified decoders.
+    pub fn new(selected_decoders: &SelectedDecoders) -> Self {
+        // Cache lenses for each supported timeline type.
+        let mut lenses_by_time_type = HashMap::new();
+        for time_type in [
+            re_log_types::TimeType::TimestampNs,
+            re_log_types::TimeType::DurationNs,
+        ] {
+            if let Some(lenses) = Self::build_lenses(selected_decoders, time_type) {
+                lenses_by_time_type.insert(time_type, lenses);
+            }
+        }
         Self {
-            selected_layers,
+            selected_decoders: selected_decoders.clone(),
             raw_fallback_enabled: true,
-            lenses,
+            lenses_by_time_type,
         }
     }
 
-    /// Configures whether the raw layer is used as a fallback for unsupported channels.
+    /// Configures whether the raw decoder is used as a fallback for unsupported channels.
     pub fn with_raw_fallback(mut self, raw_fallback_enabled: bool) -> Self {
         self.raw_fallback_enabled = raw_fallback_enabled;
         self
     }
 
-    /// Configures lenses to apply to chunks as they are loaded.
-    pub fn with_lenses(mut self, lenses: Lenses) -> Self {
-        self.lenses = Some(Arc::new(lenses));
-        self
+    /// Returns the cached lenses for the given [`re_log_types::TimeType`].
+    fn lenses_for(&self, time_type: re_log_types::TimeType) -> Option<Arc<Lenses>> {
+        if time_type == re_log_types::TimeType::Sequence {
+            re_log::error_once!("Sequence is not a supported timeline type for MCAP lenses");
+            return None;
+        }
+        self.lenses_by_time_type.get(&time_type).cloned()
     }
 
-    fn build_lenses(selected_layers: &SelectedLayers) -> Option<Arc<Lenses>> {
-        if !selected_layers.contains(&LayerIdentifier::from(
+    fn build_lenses(
+        selected_decoders: &SelectedDecoders,
+        time_type: re_log_types::TimeType,
+    ) -> Option<Arc<Lenses>> {
+        if !selected_decoders.contains(&DecoderIdentifier::from(
             super::lenses::FOXGLOVE_LENSES_IDENTIFIER,
         )) {
             return None;
         }
 
-        match super::lenses::foxglove_lenses() {
+        match super::lenses::foxglove_lenses(time_type) {
             Ok(lenses) => Some(Arc::new(lenses)),
             Err(err) => {
                 re_log::error_once!(
@@ -109,9 +122,9 @@ impl DataLoader for McapLoader {
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
         let settings = settings.clone();
-        let selected_layers = self.selected_layers.clone();
+        let selected_decoders = self.selected_decoders.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
-        let lenses = self.lenses.clone();
+        let lenses = self.lenses_for(settings.timeline_type);
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
             .spawn(move || {
@@ -119,7 +132,7 @@ impl DataLoader for McapLoader {
                     &path,
                     &settings,
                     &tx,
-                    &selected_layers,
+                    &selected_decoders,
                     raw_fallback_enabled,
                     lenses.as_deref(),
                 ) {
@@ -146,9 +159,9 @@ impl DataLoader for McapLoader {
 
         let contents = contents.into_owned();
         let settings = settings.clone();
-        let selected_layers = self.selected_layers.clone();
+        let selected_decoders = self.selected_decoders.clone();
         let raw_fallback_enabled = self.raw_fallback_enabled;
-        let lenses = self.lenses.clone();
+        let lenses = self.lenses_for(settings.timeline_type);
 
         // NOTE: this must be spawned on a dedicated thread to avoid a deadlock!
         // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
@@ -160,7 +173,7 @@ impl DataLoader for McapLoader {
                     &contents,
                     &settings,
                     &tx,
-                    &selected_layers,
+                    &selected_decoders,
                     raw_fallback_enabled,
                     lenses.as_deref(),
                 )?;
@@ -172,7 +185,7 @@ impl DataLoader for McapLoader {
                             &contents,
                             &settings,
                             &tx,
-                            &selected_layers,
+                            &selected_decoders,
                             raw_fallback_enabled,
                             lenses.as_deref(),
                         ) {
@@ -192,7 +205,7 @@ fn load_mcap_mmap(
     filepath: &std::path::PathBuf,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: &SelectedLayers,
+    selected_decoders: &SelectedDecoders,
     raw_fallback_enabled: bool,
     lenses: Option<&Lenses>,
 ) -> Result<(), DataLoaderError> {
@@ -207,7 +220,7 @@ fn load_mcap_mmap(
         &mmap,
         settings,
         tx,
-        selected_layers,
+        selected_decoders,
         raw_fallback_enabled,
         lenses,
     )
@@ -217,11 +230,15 @@ pub fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: &SelectedLayers,
+    selected_decoders: &SelectedDecoders,
     raw_fallback_enabled: bool,
     lenses: Option<&Lenses>,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
+    re_log::debug!(
+        "Loading MCAP with timeline type {:?}",
+        settings.timeline_type
+    );
     let store_id = settings.recommended_store_id();
 
     if send_crossbeam(
@@ -240,26 +257,34 @@ pub fn load_mcap(
         return Ok(());
     }
 
+    let timestamp_offset_ns = settings.timestamp_offset_ns;
+    let time_type = settings.timeline_type;
+
     let mut send_chunk = |chunk: re_chunk::Chunk| {
         // Apply lenses if configured, otherwise forward the chunk directly.
         if let Some(lenses) = lenses {
             for result in lenses.apply(&chunk) {
                 match result {
                     Ok(transformed_chunk) => {
-                        send_chunk_to_channel(tx, &store_id, transformed_chunk);
+                        send_chunk_to_channel(
+                            tx,
+                            &store_id,
+                            transformed_chunk,
+                            timestamp_offset_ns,
+                        );
                     }
                     Err(partial_chunk) => {
                         for error in partial_chunk.errors() {
                             re_log::error_once!("Lens error: {error}");
                         }
                         if let Some(chunk) = partial_chunk.take() {
-                            send_chunk_to_channel(tx, &store_id, chunk);
+                            send_chunk_to_channel(tx, &store_id, chunk, timestamp_offset_ns);
                         }
                     }
                 }
             }
         } else {
-            send_chunk_to_channel(tx, &store_id, chunk);
+            send_chunk_to_channel(tx, &store_id, chunk, timestamp_offset_ns);
         }
     };
 
@@ -269,15 +294,32 @@ pub fn load_mcap(
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     // TODO(#10862): Add warning for channel that miss semantic information.
-    LayerRegistry::all_builtin(raw_fallback_enabled)
-        .select(selected_layers)
+    DecoderRegistry::all_builtin(raw_fallback_enabled)
+        .select(selected_decoders)
         .plan(&summary)?
-        .run(mcap, &summary, &mut send_chunk)?;
+        .run(mcap, &summary, time_type, &mut send_chunk)?;
 
     Ok(())
 }
 
-fn send_chunk_to_channel(tx: &Sender<LoadedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
+fn send_chunk_to_channel(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    mut chunk: re_chunk::Chunk,
+    timestamp_offset_ns: Option<i64>,
+) {
+    if let Some(offset_ns) = timestamp_offset_ns {
+        let offset_timelines: Vec<_> = chunk
+            .timelines()
+            .values()
+            .filter(|time_col| time_col.timeline().typ() == re_log_types::TimeType::TimestampNs)
+            .map(|time_col| time_col.offset_by_nanos(offset_ns))
+            .collect();
+        for time_col in offset_timelines {
+            chunk.add_timeline(time_col).ok();
+        }
+    }
+
     if send_crossbeam(
         tx,
         LoadedData::Chunk(MCAP_LOADER_NAME.to_owned(), store_id.clone(), chunk),

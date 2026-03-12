@@ -6,7 +6,7 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field};
 use rerun::external::re_log;
-use rerun::lenses::{Lens, LensesSink, Op};
+use rerun::lenses::{Lens, LensesSink, Selector, Transform as _, op};
 use rerun::sink::GrpcSink;
 use rerun::{
     ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn,
@@ -29,7 +29,7 @@ fn lens_flag() -> anyhow::Result<Lens> {
             })
             .collect();
 
-        Ok(ListArray::new(
+        Ok(Some(ListArray::new(
             Arc::new(Field::new_list_field(
                 scalar_array.data_type().clone(),
                 true,
@@ -37,7 +37,7 @@ fn lens_flag() -> anyhow::Result<Lens> {
             offsets,
             Arc::new(scalar_array),
             nulls,
-        ))
+        )))
     };
 
     let series_points = SeriesPoints::new()
@@ -55,15 +55,20 @@ fn lens_flag() -> anyhow::Result<Lens> {
         .unwrap();
 
     let lens = Lens::for_input_column("/flag".parse()?, "example:Flag:flag")
-        .output_columns(|out| out.component(Scalars::descriptor_scalars(), [Op::func(step_fn)]))?
+        .output_columns(|out| {
+            out.component(
+                Scalars::descriptor_scalars(),
+                Selector::parse(".")?.then(step_fn),
+            )
+        })?
         .output_static_columns_at("/flag", |out| {
             out.component(
                 series_points.descriptor,
-                [Op::constant(series_points.list_array)],
-            )
+                Selector::parse(".")?.then(op::constant(series_points.list_array)),
+            )?
             .component(
                 series_lines.descriptor,
-                [Op::constant(series_lines.list_array)],
+                Selector::parse(".")?.then(op::constant(series_lines.list_array)),
             )
         })?
         .build();
@@ -75,25 +80,31 @@ fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let instruction = Lens::for_input_column("/instructions".parse()?, "example:Instruction:text")
-        .output_columns(|out| out.component(TextDocument::descriptor_text(), []))?
+        .output_columns(|out| {
+            out.component(TextDocument::descriptor_text(), Selector::parse(".")?)
+        })?
         .build();
 
     let destructure = Lens::for_input_column("/nested".parse()?, "example:Nested:payload")
         .output_columns_at("nested/a", |out| {
             out.component(
                 Scalars::descriptor_scalars(),
-                [Op::selector(".a"), Op::cast(DataType::Float64)],
+                Selector::parse(".a")?.then(op::cast(DataType::Float64)),
             )
         })?
         .output_columns_at("nested/b", |out| {
-            out.component(Scalars::descriptor_scalars(), [Op::selector(".b")])
+            out.component(Scalars::descriptor_scalars(), Selector::parse(".b")?)
         })?
         .build();
 
     let time = Lens::for_input_column("/timestamped".parse()?, "my_timestamp")
         .output_columns(|out| {
-            out.time("my_timeline", rerun::time::TimeType::Sequence, [])
-                .component(ComponentDescriptor::partial("value"), [])
+            out.time(
+                "my_timeline",
+                rerun::time::TimeType::Sequence,
+                Selector::parse(".")?,
+            )?
+            .component(ComponentDescriptor::partial("value"), Selector::parse(".")?)
         })?
         .build();
 

@@ -6,7 +6,9 @@ use nohash_hasher::IntSet;
 use re_log::debug_assert;
 use saturating_cast::SaturatingCast as _;
 
-use re_chunk::{Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
+use re_chunk::{
+    Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimeColumn, TimelineName,
+};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
 
@@ -289,8 +291,8 @@ impl ChunkStore {
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
-                    .iter()
-                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
+                    .values()
+                    .flat_map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component.keys().copied()
                     })
                     .collect()
@@ -328,8 +330,8 @@ impl ChunkStore {
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
-                    .iter()
-                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
+                    .values()
+                    .flat_map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component.keys().copied()
                     })
                     .collect()
@@ -620,6 +622,120 @@ impl ChunkStore {
         Some(AbsoluteTimeRange::new(*start, *end))
     }
 
+    fn search_chunk_by_time(
+        &self,
+        timeline: &TimelineName,
+        chunk_id: &ChunkId,
+        search: impl Fn(&TimeColumn) -> Option<TimeInt>,
+    ) -> Option<TimeInt> {
+        let chunk = self.physical_chunks_per_chunk_id.get(chunk_id)?;
+        let time_col = chunk.timelines().get(timeline)?;
+        search(time_col)
+    }
+
+    /// Returns the next non-static time with data on the given timeline, strictly after `after`.
+    ///
+    /// Searches physical chunks across all entities. Returns `None` if there is no later temporal data.
+    ///
+    /// This scales linearly with the number of chunks on the timeline.
+    pub fn next_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        after: TimeInt,
+    ) -> Option<TimeInt> {
+        re_tracing::profile_function!();
+
+        let mut result: Option<TimeInt> = None;
+
+        for per_timeline in self.temporal_chunk_ids_per_entity.values() {
+            let Some(per_time) = per_timeline.get(timeline) else {
+                continue;
+            };
+
+            // Check chunks whose start time is after our cursor.
+            for (&start_time, chunk_ids) in per_time
+                .per_start_time
+                .range((std::ops::Bound::Excluded(after), std::ops::Bound::Unbounded))
+            {
+                if result.is_some_and(|r| r <= start_time) {
+                    break;
+                }
+                for chunk_id in chunk_ids {
+                    result = opt_min(
+                        result,
+                        self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                            tc.find_next_time(after)
+                        }),
+                    );
+                }
+            }
+
+            // Also check chunks that start at or before `after` but may contain times after it.
+            for (_start_time, chunk_ids) in per_time.per_start_time.range(..=after).rev() {
+                for chunk_id in chunk_ids {
+                    result = opt_min(
+                        result,
+                        self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                            tc.find_next_time(after)
+                        }),
+                    );
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Returns the previous non-static time with data on the given timeline, strictly before `before`.
+    ///
+    /// Searches physical chunks across all entities. Returns `None` if there is no earlier temporal data.
+    ///
+    /// This scales linearly with the number of chunks on the timeline.
+    pub fn prev_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        before: TimeInt,
+    ) -> Option<TimeInt> {
+        re_tracing::profile_function!();
+
+        let mut result: Option<TimeInt> = None;
+
+        for per_timeline in self.temporal_chunk_ids_per_entity.values() {
+            let Some(per_time) = per_timeline.get(timeline) else {
+                continue;
+            };
+
+            // Check chunks whose end time is before our cursor.
+            for (&end_time, chunk_ids) in per_time.per_end_time.range(..before).rev() {
+                if result.is_some_and(|r| r >= end_time) {
+                    break;
+                }
+                for chunk_id in chunk_ids {
+                    result = opt_max(
+                        result,
+                        self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                            tc.find_prev_time(before)
+                        }),
+                    );
+                }
+            }
+
+            // Also check chunks that end after `before` but may contain times before it.
+            for (_end_time, chunk_ids) in per_time.per_end_time.range(before..) {
+                for chunk_id in chunk_ids {
+                    result = opt_max(
+                        result,
+                        self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                            tc.find_prev_time(before)
+                        }),
+                    );
+                }
+            }
+        }
+
+        result
+    }
+
     /// Returns the min and max times at which data was logged on a specific timeline, considering
     /// all entities.
     ///
@@ -637,6 +753,20 @@ impl ChunkStore {
                 Some(AbsoluteTimeRange::new(*start, *end))
             })
             .reduce(|r1, r2| r1.union(r2))
+    }
+}
+
+fn opt_min(a: Option<TimeInt>, b: Option<TimeInt>) -> Option<TimeInt> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    }
+}
+
+fn opt_max(a: Option<TimeInt>, b: Option<TimeInt>) -> Option<TimeInt> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (a, b) => a.or(b),
     }
 }
 
@@ -1565,6 +1695,258 @@ mod tests {
             );
             assert_eq!(false, results.is_partial());
         }
+    }
+
+    #[test]
+    fn next_and_prev_time_on_timeline_single_row_chunks() {
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            crate::ChunkStoreConfig::ALL_DISABLED,
+        );
+
+        let entity_path: EntityPath = "entity".into();
+        let timeline = Timeline::new_sequence("frame");
+        let tl = timeline.name();
+        let point = MyPoint::new(1.0, 1.0);
+        let mut next_chunk_id = next_chunk_id_generator(0xAA);
+
+        // Insert single-row chunks at times 10, 20, 30.
+        for t in [10, 20, 30] {
+            let chunk = create_chunk_with_point(
+                next_chunk_id(),
+                entity_path.clone(),
+                TimePoint::from_iter([(timeline, t)]),
+                point,
+            );
+            store.insert_chunk(&chunk).unwrap();
+        }
+
+        // Empty store on a different timeline.
+        let other = TimelineName::from("other");
+        assert_eq!(
+            store.next_time_on_timeline(&other, TimeInt::new_temporal(0)),
+            None
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(&other, TimeInt::new_temporal(99)),
+            None
+        );
+
+        // next: before all data
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(0)),
+            Some(TimeInt::new_temporal(10))
+        );
+
+        // next: exactly on a data point returns the following one
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(10)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(20)),
+            Some(TimeInt::new_temporal(30))
+        );
+
+        // next: between data points
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(15)),
+            Some(TimeInt::new_temporal(20))
+        );
+
+        // next: at or after last data point
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(30)),
+            None
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(99)),
+            None
+        );
+
+        // prev: after all data
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(99)),
+            Some(TimeInt::new_temporal(30))
+        );
+
+        // prev: exactly on a data point returns the preceding one
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(30)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(20)),
+            Some(TimeInt::new_temporal(10))
+        );
+
+        // prev: between data points
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(25)),
+            Some(TimeInt::new_temporal(20))
+        );
+
+        // prev: at or before first data point
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(10)),
+            None
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(0)),
+            None
+        );
+    }
+
+    #[test]
+    fn next_and_prev_time_on_timeline_multi_row_chunk() {
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            crate::ChunkStoreConfig::ALL_DISABLED,
+        );
+
+        let entity_path: EntityPath = "entity".into();
+        let timeline = Timeline::new_sequence("frame");
+        let tl = timeline.name();
+        let point = MyPoint::new(1.0, 1.0);
+        let mut next_chunk_id = next_chunk_id_generator(0xBB);
+
+        // One chunk with three rows at times 10, 20, 30.
+        let chunk = Arc::new(
+            Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 10)]),
+                    (
+                        MyPoints::descriptor_points(),
+                        &[point] as &dyn re_types_core::ComponentBatch,
+                    ),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 20)]),
+                    (
+                        MyPoints::descriptor_points(),
+                        &[point] as &dyn re_types_core::ComponentBatch,
+                    ),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 30)]),
+                    (
+                        MyPoints::descriptor_points(),
+                        &[point] as &dyn re_types_core::ComponentBatch,
+                    ),
+                )
+                .build()
+                .unwrap(),
+        );
+        store.insert_chunk(&chunk).unwrap();
+
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(0)),
+            Some(TimeInt::new_temporal(10))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(10)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(15)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(30)),
+            None
+        );
+
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(99)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(30)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(25)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(10)),
+            None
+        );
+    }
+
+    #[test]
+    fn next_and_prev_time_on_timeline_multiple_entities() {
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            crate::ChunkStoreConfig::ALL_DISABLED,
+        );
+
+        let timeline = Timeline::new_sequence("frame");
+        let tl = timeline.name();
+        let point = MyPoint::new(1.0, 1.0);
+        let mut next_chunk_id = next_chunk_id_generator(0xCC);
+
+        // Entity A has data at 10, 30.
+        // Entity B has data at 20, 40.
+        for (entity, times) in [("a", vec![10, 30]), ("b", vec![20, 40])] {
+            let entity_path: EntityPath = entity.into();
+            for t in times {
+                let chunk = create_chunk_with_point(
+                    next_chunk_id(),
+                    entity_path.clone(),
+                    TimePoint::from_iter([(timeline, t)]),
+                    point,
+                );
+                store.insert_chunk(&chunk).unwrap();
+            }
+        }
+
+        // next should find the global minimum across entities.
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(0)),
+            Some(TimeInt::new_temporal(10))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(10)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(20)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(30)),
+            Some(TimeInt::new_temporal(40))
+        );
+        assert_eq!(
+            store.next_time_on_timeline(tl, TimeInt::new_temporal(40)),
+            None
+        );
+
+        // prev should find the global maximum across entities.
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(50)),
+            Some(TimeInt::new_temporal(40))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(40)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(30)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(20)),
+            Some(TimeInt::new_temporal(10))
+        );
+        assert_eq!(
+            store.prev_time_on_timeline(tl, TimeInt::new_temporal(10)),
+            None
+        );
     }
 
     fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {

@@ -4,18 +4,25 @@ use itertools::Itertools as _;
 
 use re_chunk_store::RangeQuery;
 use re_log_types::TimeInt;
-use re_log_types::external::arrow::array::{self, BooleanArray};
+use re_log_types::external::arrow::array::AsArray as _;
 use re_log_types::external::arrow::buffer::BooleanBuffer;
+use re_log_types::external::arrow::datatypes::UInt32Type;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, components};
+use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
-use re_viewer_context::{QueryContext, VisualizerReportSeverity};
+use re_viewer_context::VisualizerReportSeverity;
 
-use crate::{MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT, PlotPoint, PlotSeriesKind};
+use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
 /// Determines how many series there are in the scalar chunks.
+///
+/// If the scalar component has a non-identity mapping (i.e. it's sourced from a different
+/// component or uses a selector), the number of series is capped at
+/// [`MAX_NUM_SERIES_FOR_REMAPPED_SCALARS`].
+/// Identity mappings (direct `Scalars` data) are not capped since the user explicitly
+/// logged that data.
 pub fn determine_num_series(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
@@ -31,9 +38,16 @@ pub fn determine_num_series(
                 .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         })
         .unwrap_or(1);
-    if count > MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT {
-        results.report_unspecified_source(VisualizerReportSeverity::Error,format!("Number of series ({count}) exceeds the maximum ({MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT}). Only the first {MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT} series will be visualized."));
-        MAX_NUM_TIME_SERIES_SHOWN_PER_ENTITY_BY_DEFAULT
+
+    let scalar_component = archetypes::Scalars::descriptor_scalars().component;
+    let is_identity = results.has_identity_mapping_for_component(scalar_component);
+
+    if !is_identity && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS {
+        results.report_unspecified_source(VisualizerReportSeverity::Error, format!(
+            "Number of series ({count}) exceeds the maximum ({MAX_NUM_SERIES_FOR_REMAPPED_SCALARS}). \
+             Only the first {MAX_NUM_SERIES_FOR_REMAPPED_SCALARS} series will be visualized."
+        ));
+        MAX_NUM_SERIES_FOR_REMAPPED_SCALARS
     } else {
         count
     }
@@ -41,11 +55,11 @@ pub fn determine_num_series(
 
 /// Queries the visibility flags for all series in a query.
 pub fn collect_series_visibility(
-    query_ctx: &QueryContext<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
     num_series: usize,
     visibility_descriptor: &ComponentDescriptor,
 ) -> Vec<bool> {
+    let query_ctx = results.query_context();
     let boolean_buffer = results
         .iter_optional(visibility_descriptor.component)
         .slice::<bool>()
@@ -56,8 +70,7 @@ pub fn collect_series_visibility(
                     .viewer_ctx()
                     .component_fallback_registry
                     .fallback_for(visibility_descriptor, query_ctx)
-                    .as_any()
-                    .downcast_ref::<BooleanArray>()
+                    .as_boolean_opt()
                     .map(|arr| arr.values().clone())
                     .unwrap_or_else(|| {
                         re_log::warn_once!(
@@ -147,7 +160,6 @@ pub fn collect_scalars(
 
 /// Collects colors for the series into pre-allocated plot points.
 pub fn collect_colors(
-    query_ctx: &QueryContext<'_>,
     query: &RangeQuery,
     query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
@@ -156,6 +168,7 @@ pub fn collect_colors(
 ) {
     re_tracing::profile_function!();
 
+    let query_ctx = query_results.query_context();
     let num_series = points_per_series.len();
 
     re_log::debug_assert_eq!(components::Color::arrow_datatype(), ArrowDatatype::UInt32);
@@ -191,7 +204,7 @@ pub fn collect_colors(
             .component_fallback_registry
             .fallback_for(color_descriptor, query_ctx);
 
-        if let Some(color_array) = fallback_array.as_any().downcast_ref::<array::UInt32Array>() {
+        if let Some(color_array) = fallback_array.as_primitive_opt::<UInt32Type>() {
             let fallback_colors = color_array.values();
 
             for (points, color) in points_per_series
@@ -261,13 +274,13 @@ fn expand_series_names(names: &[String], num_series: usize) -> Vec<String> {
 
 /// Collects series names for the series into pre-allocated plot points.
 pub fn collect_series_name(
-    query_ctx: &QueryContext<'_>,
     query_results: &re_view::VisualizerInstructionQueryResults<'_>,
     num_series: usize,
     name_descriptor: &ComponentDescriptor,
 ) -> Vec<String> {
     re_tracing::profile_function!();
 
+    let query_ctx = query_results.query_context();
     let name_iter = query_results.iter_optional(name_descriptor.component);
     let all_name_chunks = name_iter.chunks().iter().collect_vec();
 
@@ -288,7 +301,7 @@ pub fn collect_series_name(
             .component_fallback_registry
             .fallback_for(name_descriptor, query_ctx);
 
-        if let Some(string_array) = fallback_array.as_any().downcast_ref::<array::StringArray>() {
+        if let Some(string_array) = fallback_array.as_string_opt::<i32>() {
             let fallback_names: Vec<_> = string_array
                 .iter()
                 .flatten()

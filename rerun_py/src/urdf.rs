@@ -168,7 +168,12 @@ impl PyUrdfJoint {
     /// If `clamp` is true, values outside joint limits will be clamped and a warning is generated.
     /// If `clamp` is false (default), values outside limits are used as-is without warnings.
     #[pyo3(signature = (value, clamp = false))]
-    pub fn compute_transform(&self, py: Python<'_>, value: f64, clamp: bool) -> PyResult<PyObject> {
+    pub fn compute_transform(
+        &self,
+        py: Python<'_>,
+        value: f64,
+        clamp: bool,
+    ) -> PyResult<Py<PyAny>> {
         match urdf_joint_transform::internal::compute_joint_transform(&self.0, value, clamp) {
             Ok(result) => {
                 let dict = pyo3::types::PyDict::new(py);
@@ -216,7 +221,7 @@ impl PyUrdfJoint {
         py: Python<'_>,
         values: Vec<f64>,
         clamp: bool,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<Py<PyAny>> {
         let mut translations = Vec::with_capacity(values.len());
         let mut quaternions = Vec::with_capacity(values.len());
         let mut warnings = Vec::new();

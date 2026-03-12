@@ -3,11 +3,30 @@ use std::fs::File;
 use std::io::BufWriter;
 
 use clap::Subcommand;
+use clap::builder::TypedValueParser as _;
 use re_log_encoding::Encoder;
-use re_log_types::{LogMsg, RecordingId};
-use re_mcap::{LayerIdentifier, SelectedLayers};
+use re_log_types::{LogMsg, RecordingId, TimeType};
+use re_mcap::{DecoderIdentifier, DecoderRegistry, SelectedDecoders};
 use re_sdk::external::re_data_loader::McapLoader;
 use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
+
+fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
+    clap::builder::PossibleValuesParser::new(["timestamp", "duration"]).map(|value: String| {
+        match value.as_str() {
+            "timestamp" => TimeType::TimestampNs,
+            "duration" => TimeType::DurationNs,
+            _ => unreachable!("PossibleValuesParser already validated the input"),
+        }
+    })
+}
+
+fn possible_decoders() -> clap::builder::PossibleValuesParser {
+    static DECODER_IDS: std::sync::LazyLock<Vec<String>> =
+        std::sync::LazyLock::new(|| DecoderRegistry::all_builtin(true).all_identifiers());
+    clap::builder::PossibleValuesParser::new(
+        DECODER_IDS.iter().map(String::as_str).collect::<Vec<_>>(),
+    )
+}
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct ConvertCommand {
@@ -22,13 +41,13 @@ pub struct ConvertCommand {
     #[clap(long = "application-id")]
     application_id: Option<String>,
 
-    /// Specifies which layers to apply during conversion.
-    #[clap(short = 'l', long = "layer")]
-    selected_layers: Vec<String>,
+    /// Specifies which decoders to apply during conversion.
+    #[clap(short = 'd', long = "decoder", value_parser = possible_decoders())]
+    selected_decoders: Vec<String>,
 
-    /// Disable using the raw layer as a fallback for unsupported channels.
-    /// By default, channels that cannot be handled by semantic layers (protobuf, ROS2)
-    /// will be processed by the raw layer.
+    /// Disable using the raw decoder as a fallback for unsupported channels.
+    /// By default, channels that cannot be handled by semantic decoders (protobuf, ROS2)
+    /// will be processed by the raw decoder.
     #[clap(long = "disable-raw-fallback")]
     disable_raw_fallback: bool,
 
@@ -39,6 +58,22 @@ pub struct ConvertCommand {
     /// output.
     #[clap(long = "recording-id")]
     recording_id: Option<String>,
+
+    /// If set, an offset in nanoseconds to add to all timestamp timelines.
+    ///
+    /// This can be used to shift all timestamps of the MCAP file if they are not yet
+    /// relative to the UNIX epoch.
+    ///
+    /// Duration and sequence timelines are not affected by this offset.
+    #[clap(long = "timestamp-offset-ns")]
+    timestamp_offset_ns: Option<i64>,
+
+    /// The timeline type to use for timestamp timelines.
+    ///
+    /// "timestamp" (default) creates `TimestampNs` timelines (nanoseconds since Unix epoch).
+    /// "duration" creates `DurationNs` timelines (nanosecond durations).
+    #[clap(long = "timeline-type", value_parser = possible_timeline_types(), default_value = "timestamp")]
+    timeline_type: TimeType,
 }
 
 impl ConvertCommand {
@@ -48,8 +83,10 @@ impl ConvertCommand {
             path_to_output_rrd,
             application_id,
             recording_id,
-            selected_layers,
+            selected_decoders,
             disable_raw_fallback,
+            timestamp_offset_ns,
+            timeline_type,
         } = self;
 
         let start_time = std::time::Instant::now();
@@ -64,26 +101,28 @@ impl ConvertCommand {
             .map(RecordingId::from)
             .unwrap_or_else(RecordingId::random);
 
-        let selected_layers = if selected_layers.is_empty() {
-            SelectedLayers::All
+        let selected_decoders = if selected_decoders.is_empty() {
+            SelectedDecoders::All
         } else {
-            SelectedLayers::Subset(
-                selected_layers
+            SelectedDecoders::Subset(
+                selected_decoders
                     .iter()
                     .cloned()
-                    .map(LayerIdentifier::from)
+                    .map(DecoderIdentifier::from)
                     .collect(),
             )
         };
 
         let loader: &dyn DataLoader =
-            &McapLoader::new(selected_layers).with_raw_fallback(!*disable_raw_fallback);
+            &McapLoader::new(&selected_decoders).with_raw_fallback(!*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = crossbeam::channel::bounded::<LoadedData>(1024);
         loader.load_from_path(
             &DataLoaderSettings {
                 application_id: Some(application_id),
+                timestamp_offset_ns: *timestamp_offset_ns,
+                timeline_type: *timeline_type,
                 ..DataLoaderSettings::recommended(recording_id)
             },
             path_to_input_mcap.into(),

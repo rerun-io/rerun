@@ -11,10 +11,10 @@ Used in MCAP statistics to track how many messages were recorded per channel.
 
 ## Arrow datatype
 ```
-List<Struct {
-        channel_id: uint16
-        message_count: uint64
-    }>
+List(non-null Struct(
+        "channel_id": non-null UInt16
+        "message_count": non-null UInt64
+    ))
 ```
 
 ## API reference links

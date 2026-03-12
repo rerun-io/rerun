@@ -125,7 +125,7 @@ def log(
         else:
             raise TypeError(
                 f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
-                f"but got {type(entity)} instead.",
+                f"but got {type(ext)} instead.",
             )
 
     _log_components(

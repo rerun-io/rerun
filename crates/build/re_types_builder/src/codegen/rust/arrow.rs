@@ -63,10 +63,10 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     }))
                 });
                 quote!(DataType::Union(
-                    UnionFields::new(
+                    UnionFields::try_new(
                         vec![ #(#types,)* ],
                         vec![ #(#fields,)* ],
-                    ),
+                    ).expect("UnionFields::try_new should be infallible"),
                     #mode,
                 ))
             }

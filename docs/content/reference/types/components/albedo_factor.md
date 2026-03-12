@@ -11,7 +11,7 @@ A color multiplier, usually applied to a whole entity, e.g. a mesh.
 
 ## Arrow datatype
 ```
-uint32
+UInt32
 ```
 
 ## API reference links

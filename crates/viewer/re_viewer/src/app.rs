@@ -27,9 +27,9 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry, Item,
-    MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext, StoreContext,
+    ActiveStoreContext, AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver,
+    CommandSender, ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry,
+    Item, MoveDirection, MoveSpeed, NeedsRepaint, RecordingOrTable, Route, StorageContext,
     SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel, sanitize_file_name,
 };
@@ -77,6 +77,7 @@ pub struct App {
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
+    texture_readback: crate::texture_readback::TextureReadbacks,
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
@@ -196,9 +197,12 @@ impl App {
         if connection_registry.should_use_stored_credentials() {
             let command_sender = command_channel.0.clone();
             re_auth::credentials::subscribe_auth_changes(move |user| {
-                command_sender.send_system(SystemCommand::OnAuthChanged(
-                    user.map(|user| AuthContext { email: user.email }),
-                ));
+                command_sender.send_system(SystemCommand::OnAuthChanged(user.map(|user| {
+                    AuthContext {
+                        email: user.email,
+                        org_name: user.org_name,
+                    }
+                })));
             });
 
             // Call get_token once so the auth state is initialized.
@@ -409,6 +413,7 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),
             screenshotter,
+            texture_readback: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             popstate_listener: None,
@@ -505,7 +510,13 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        match ViewerOpenUrl::from_str(url) {
+        match ViewerOpenUrl::parse_with_options(
+            url,
+            &re_data_source::FromUriOptions {
+                accept_extensionless_http: true,
+                ..Default::default()
+            },
+        ) {
             Ok(url) => {
                 url.open(
                     &self.egui_ctx,
@@ -598,7 +609,7 @@ impl App {
                 // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
                 // we want to diff state changes.
                 let response = time_ctrl.update(
-                    recording.timeline_histograms(),
+                    recording,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in,
@@ -624,7 +635,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.timeline_histograms(),
+                    bp_ctx.current_blueprint,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in: true,
@@ -700,7 +711,7 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
@@ -732,7 +743,7 @@ impl App {
             // because you need to hold down pointer to aggressively scrub, need to
             // hold down key inputs to quickly step through the timeline.
             #[cfg(target_arch = "wasm32")]
-            if !self.egui_ctx.is_using_pointer()
+            if !self.egui_ctx.egui_is_using_pointer()
                 && self
                     .egui_ctx
                     .input(|input| !input.any_touches() && input.keys_down.is_empty())
@@ -865,7 +876,7 @@ impl App {
 
                         let response = time_ctrl.handle_time_commands(
                             Some(&blueprint_ctx),
-                            store_ctx.recording.timeline_histograms(),
+                            store_ctx.recording,
                             &time_commands,
                         );
 
@@ -884,7 +895,7 @@ impl App {
                             let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
                             let response = self.state.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
-                                target_store.timeline_histograms(),
+                                target_store,
                                 &time_commands,
                             );
 
@@ -1240,6 +1251,10 @@ impl App {
                 self.notifications.add(notification);
             }
 
+            SystemCommand::ReadbackAndSaveTexture(texture_readback_id) => {
+                self.texture_readback.push(texture_readback_id);
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::FileSaver(file_saver) => {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
@@ -1575,7 +1590,7 @@ impl App {
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
         cmd: UICommand,
     ) {
@@ -2248,7 +2263,7 @@ impl App {
     fn copy_entity_hierarchy_to_clipboard(
         &mut self,
         egui_ctx: &egui::Context,
-        store_context: Option<&StoreContext<'_>>,
+        store_context: Option<&ActiveStoreContext<'_>>,
     ) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             re_log::warn!("Could not copy entity hierarchy: No active recording");
@@ -2287,8 +2302,8 @@ impl App {
             ..ui.tokens().bottom_panel_frame()
         };
 
-        egui::TopBottomPanel::bottom("memory_panel")
-            .default_height(300.0)
+        egui::Panel::bottom("memory_panel")
+            .default_size(300.0)
             .resizable(true)
             .frame(frame)
             .show_animated_inside(ui, self.memory_panel_open, |ui| {
@@ -2305,8 +2320,8 @@ impl App {
     fn egui_debug_panel_ui(&self, ui: &mut egui::Ui) {
         let egui_ctx = ui.ctx().clone();
 
-        egui::SidePanel::left("style_panel")
-            .default_width(300.0)
+        egui::Panel::left("style_panel")
+            .default_size(300.0)
             .resizable(true)
             .frame(ui.tokens().top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
@@ -2316,7 +2331,7 @@ impl App {
                         .on_hover_text("Request a second layout pass. Just for testing.")
                         .clicked()
                     {
-                        ui.ctx().request_discard("testing");
+                        ui.request_discard("testing");
                     }
 
                     egui::CollapsingHeader::new("egui settings")
@@ -2338,13 +2353,13 @@ impl App {
     ///
     /// Shows the viewer ui.
     #[expect(clippy::too_many_arguments)]
-    fn ui(
+    fn ui_impl(
         &mut self,
-        egui_ctx: &egui::Context,
+        ui: &mut egui::Ui,
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_context: &StoreContext<'_>,
+        store_context: &ActiveStoreContext<'_>,
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
@@ -2357,7 +2372,7 @@ impl App {
 
         egui::CentralPanel::default()
             .frame(main_panel_frame)
-            .show(egui_ctx, |ui| {
+            .show_inside(ui, |ui| {
                 paint_background_fill(ui);
 
                 crate::ui::mobile_warning_ui(ui);
@@ -2390,7 +2405,7 @@ impl App {
 
                     // In some (rare) circumstances we run two egui passes in a single frame.
                     // This happens on call to `egui::Context::request_discard`.
-                    let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+                    let is_start_of_new_frame = ui.current_pass_index() == 0;
 
                     if is_start_of_new_frame {
                         self.state.redap_servers.on_frame_start(
@@ -2401,6 +2416,12 @@ impl App {
                     }
 
                     let mut startup_options = self.startup_options.clone();
+
+                    self.texture_readback.poll_and_save_texture_readbacks(
+                        render_ctx,
+                        ui,
+                        &self.command_sender,
+                    );
 
                     self.state.show(
                         &self.app_env,
@@ -2418,7 +2439,7 @@ impl App {
                         &self.command_sender,
                         &WelcomeScreenState {
                             hide_examples: self.startup_options.hide_welcome_screen,
-                            opacity: self.welcome_screen_opacity(egui_ctx),
+                            opacity: self.welcome_screen_opacity(ui),
                         },
                         self.event_dispatcher.as_ref(),
                         &self.connection_registry,
@@ -2432,7 +2453,7 @@ impl App {
             });
 
         if self.app_options().show_notification_toasts {
-            self.notifications.show_toasts(egui_ctx);
+            self.notifications.show_toasts(ui);
         }
     }
 
@@ -2478,7 +2499,7 @@ impl App {
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
-                    entity_db.add_rrd_manifest_message(rrd_manifest);
+                    let store_event = entity_db.add_rrd_manifest_message(rrd_manifest);
 
                     if let Some(caches) = store_hub.caches_for_store(&store_id) {
                         // Downgrade to read-only, so we can access caches.
@@ -2486,8 +2507,13 @@ impl App {
                             .entity_db(&store_id)
                             .expect("Just queried it mutable and that was fine.");
 
-                        caches.on_rrd_manifest(entity_db);
+                        caches.on_store_events(&[store_event], entity_db);
                     }
+                }
+
+                DataSourceMessage::RrdManifestComplete(store_id) => {
+                    let entity_db = store_hub.entity_db_entry(&store_id);
+                    entity_db.mark_rrd_manifest_complete();
                 }
 
                 DataSourceMessage::LogMsg(msg) => {
@@ -2626,8 +2652,8 @@ impl App {
                                         .replace(Route::LocalRecording { recording_id });
                                 } else {
                                     // TODO(RR-3713): show a blueprint for it anyway
-                                    re_log::warn_once!(
-                                        "Can't show {app_id} at this time - we have no recording for it"
+                                    re_log::debug_once!(
+                                        "Received BlueprintActivationCommand for app '{app_id}', but we have no recording for it"
                                     );
                                 }
                             }
@@ -2880,7 +2906,7 @@ impl App {
                             }
                         }
                     } else {
-                        re_log::debug_once!("Unknown archetype: {archetype_name}");
+                        re_log::trace_once!("Unknown archetype: {archetype_name}");
                     }
                 }
             }
@@ -3000,6 +3026,8 @@ impl App {
         if dropped_files.is_empty() {
             return;
         }
+
+        egui_ctx.request_repaint();
 
         let mut force_store_info = false;
 
@@ -3366,7 +3394,9 @@ impl App {
         });
 
         let mut memory_limit = if let Some(active_recording) = active_recording {
-            if active_recording.is_currently_downloading_manifest() {
+            if active_recording.is_downloading_first_part_of_manifest() {
+                // We need at least ONE part of the manifest, but
+                // as soon as we have one part we start prefetching chunks
                 return;
             }
 
@@ -3439,7 +3469,7 @@ impl App {
 
             // Subtract all already loaded physical chunks from the memory limit.
             for recording in store_hub.store_bundle().recordings() {
-                if recording.is_currently_downloading_manifest() {
+                if recording.is_downloading_first_part_of_manifest() {
                     // If any are downloading manifest, don't prefetch background recordings.
                     memory_limit = re_memory::MemoryLimit::ZERO;
                     break;
@@ -3614,13 +3644,49 @@ impl eframe::App for App {
         }
     }
 
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    /// Called before each call to `ui`, but ALSO when the app is
+    /// hidden (occluded, minimized, …) if something has called `request_repaint`.
+    ///
+    /// We put things here that are unrelated to the UI,
+    /// and that we still want to happen if the application is hidden.
+    fn logic(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
+        let mut store_hub = self
+            .store_hub
+            .take()
+            .expect("Failed to take store hub from the Viewer");
+
+        {
+            // Respect memory budget:
+            self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
+
+            if self.app_options().blueprint_gc {
+                store_hub.gc_blueprints(&self.state.blueprint_undo_state);
+            }
+        }
+
+        {
+            // Download/ingest data:
+            self.receive_messages(&mut store_hub, egui_ctx);
+            self.receive_fetched_chunks(&mut store_hub);
+            self.prefetch_chunks(&mut store_hub);
+        }
+
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        self.state.cleanup(&store_hub);
+
+        // Return the `StoreHub` to the Viewer so we have it on the next frame
+        self.store_hub = Some(store_hub);
+    }
+
+    /// Called when application need to be repainted
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
 
         if let Some(seconds) = frame.info().cpu_usage {
-            self.frame_time_history
-                .add(egui_ctx.input(|i| i.time), seconds);
+            self.frame_time_history.add(ui.input(|i| i.time), seconds);
         }
 
         // NOTE: Memory stats can be very costly to compute, so only do so if the memory panel is opened.
@@ -3631,10 +3697,8 @@ impl eframe::App for App {
         #[cfg(target_arch = "wasm32")]
         if self.startup_options.enable_history {
             // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
-            let back_pressed =
-                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
-            let fwd_pressed =
-                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
+            let back_pressed = ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
+            let fwd_pressed = ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
 
             if back_pressed {
                 crate::web_history::go_back();
@@ -3662,14 +3726,14 @@ impl eframe::App for App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
-            egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(
+            ui.send_viewport_cmd(egui::ViewportCommand::InnerSize(
                 resolution_in_points.into(),
             ));
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.update(egui_ctx).quit {
-            egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        if self.screenshotter.update(ui).quit {
+            ui.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
 
@@ -3730,22 +3794,14 @@ impl eframe::App for App {
 
         // In some (rare) circumstances we run two egui passes in a single frame.
         // This happens on call to `egui::Context::request_discard`.
-        let is_start_of_new_frame = egui_ctx.current_pass_index() == 0;
+        let is_start_of_new_frame = ui.current_pass_index() == 0;
         if is_start_of_new_frame {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
             store_hub.begin_frame_caches(); // Call AFTER `purge_memory_if_needed`
         }
 
-        self.receive_messages(&mut store_hub, egui_ctx);
-
-        if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
-        }
-
-        self.state.cleanup(&store_hub);
-
-        file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
+        file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver
 
         // Make sure some app is active
         // Must be called before `read_context` below.
@@ -3789,9 +3845,6 @@ impl eframe::App for App {
             }
         }
 
-        self.receive_fetched_chunks(&mut store_hub);
-        self.prefetch_chunks(&mut store_hub);
-
         {
             let (storage_context, store_context) =
                 store_hub.read_context(self.state.navigation.current());
@@ -3803,13 +3856,13 @@ impl eframe::App for App {
             let app_blueprint = AppBlueprint::new(
                 Some(store_context.blueprint),
                 &blueprint_query,
-                egui_ctx,
+                ui,
                 self.panel_state_overrides_active
                     .then_some(self.panel_state_overrides),
             );
 
-            self.ui(
-                egui_ctx,
+            self.ui_impl(
+                ui,
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
@@ -3821,22 +3874,28 @@ impl eframe::App for App {
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 // Paint the main window frame on top of everything else
-                paint_native_window_frame(egui_ctx);
+                paint_native_window_frame(ui);
             }
 
-            if let Some(cmd) = self.cmd_palette.show(
-                egui_ctx,
-                &crate::open_url_description::command_palette_parse_url,
-            ) {
+            if let Some(cmd) = self
+                .cmd_palette
+                .show(ui, &crate::open_url_description::command_palette_parse_url)
+            {
                 match cmd {
                     re_ui::CommandPaletteAction::UiCommand(cmd) => {
                         self.command_sender.send_ui(cmd);
                     }
                     re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
-                        match url_desc.url.parse::<ViewerOpenUrl>() {
+                        match ViewerOpenUrl::parse_with_options(
+                            &url_desc.url,
+                            &re_data_source::FromUriOptions {
+                                accept_extensionless_http: true,
+                                ..Default::default()
+                            },
+                        ) {
                             Ok(url) => {
                                 url.open(
-                                    egui_ctx,
+                                    ui,
                                     &OpenUrlOptions {
                                         follow: false,
                                         select_redap_source_when_loaded: true,
@@ -3850,7 +3909,7 @@ impl eframe::App for App {
                             }
                         }
 
-                        // Note that we can't use `ui.ctx().open_url(egui::OpenUrl::same_tab(uri))` here because..
+                        // Note that we can't use `ui.open_url(egui::OpenUrl::same_tab(uri))` here because..
                         // * the url redirect in `check_for_clicked_hyperlinks` wouldn't be hit
                         // * we don't actually want to open any URLs in the browser here ever, only ever into the current viewer
                     }
@@ -3858,18 +3917,18 @@ impl eframe::App for App {
             }
 
             let route = self.state.navigation.current().clone();
-            Self::handle_dropping_files(egui_ctx, &self.command_sender, &route);
+            Self::handle_dropping_files(ui, &self.command_sender, &route);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
             self.run_pending_ui_commands(
-                egui_ctx,
+                ui,
                 &app_blueprint,
                 &storage_context,
                 Some(&store_context),
                 &route,
             );
         }
-        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+        self.run_pending_system_commands(&mut store_hub, ui);
 
         self.update_history(&store_hub);
 
@@ -3878,7 +3937,7 @@ impl eframe::App for App {
 
         {
             // Check for returned screenshots:
-            let screenshots: Vec<_> = egui_ctx.input(|i| {
+            let screenshots: Vec<_> = ui.input(|i| {
                 i.raw
                     .events
                     .iter()
@@ -3965,7 +4024,7 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             screen_rect,
             0.0,
             egui_ctx
-                .style()
+                .global_style()
                 .visuals
                 .extreme_bg_color
                 .gamma_multiply_u8(192),
@@ -3974,8 +4033,8 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             screen_rect.center(),
             Align2::CENTER_CENTER,
             text,
-            TextStyle::Body.resolve(&egui_ctx.style()),
-            egui_ctx.style().visuals.strong_text_color(),
+            TextStyle::Body.resolve(&egui_ctx.global_style()),
+            egui_ctx.global_style().visuals.strong_text_color(),
         );
     }
 }
@@ -4067,7 +4126,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 
 fn save_active_recording(
     app: &mut App,
-    store_context: Option<&StoreContext<'_>>,
+    store_context: Option<&ActiveStoreContext<'_>>,
     loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
@@ -4112,7 +4171,10 @@ fn save_recording(
     )
 }
 
-fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
+fn save_blueprint(
+    app: &mut App,
+    store_context: Option<&ActiveStoreContext<'_>>,
+) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
         anyhow::bail!("No blueprint to save");
     };

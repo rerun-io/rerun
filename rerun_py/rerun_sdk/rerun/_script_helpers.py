@@ -38,7 +38,7 @@ def script_add_args(parser: ArgumentParser) -> None:
 
     Parameters
     ----------
-    parser : ArgumentParser
+    parser:
         The parser to add arguments to.
 
     """
@@ -77,11 +77,11 @@ def script_setup(
 
     Parameters
     ----------
-    args : Namespace
+    args:
         The parsed arguments from `parser.parse_args()`.
-    application_id : str
+    application_id:
         The application ID to use for the viewer.
-    recording_id : Optional[str]
+    recording_id:
         Set the recording ID that this process is logging to, as a UUIDv4.
 
         The default recording_id is based on `multiprocessing.current_process().authkey`
@@ -92,7 +92,7 @@ def script_setup(
         processes to log to the same Rerun instance (and be part of the same recording),
         you will need to manually assign them all the same recording_id.
         Any random UUIDv4 will work, or copy the recording id for the parent process.
-    default_blueprint
+    default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
         clicks the "reset blueprint" button. If you want to activate the new blueprint
@@ -131,7 +131,7 @@ def script_teardown(args: Namespace) -> None:
 
     Parameters
     ----------
-    args : Namespace
+    args:
         The parsed arguments from `parser.parse_args()`.
 
     """

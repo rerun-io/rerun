@@ -276,10 +276,10 @@ impl ChunkStore {
         self.temporal_chunk_ids_per_entity_per_component
             .values()
             .flat_map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.iter().flat_map(
-                    |(_timeline, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.iter().flat_map(
-                            |(_, temporal_chunk_ids_per_time)| {
+                temporal_chunk_ids_per_timeline.values().flat_map(
+                    |temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component.values().flat_map(
+                            |temporal_chunk_ids_per_time| {
                                 itertools::chain!(
                                     temporal_chunk_ids_per_time
                                         .per_start_time

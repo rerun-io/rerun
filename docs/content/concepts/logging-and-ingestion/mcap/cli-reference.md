@@ -37,29 +37,30 @@ rerun mcap convert input.mcap -o output.rrd
 rerun mcap convert data.mcap -o /path/to/output.rrd
 ```
 
-## Layer selection
+## Decoder selection
 
-### Using specific layers
+### Using specific decoders
 
-Control which processing layers are applied during conversion:
+Control which processing decoders are applied during conversion:
 
 ```bash
 # Use only protobuf decoding and file statistics
-rerun mcap convert input.mcap -l protobuf -l stats -o output.rrd
+rerun mcap convert input.mcap -d protobuf -d stats -o output.rrd
 
 # Use only ROS2 semantic interpretation for robotics data
-rerun mcap convert input.mcap -l ros2msg -o output.rrd
+rerun mcap convert input.mcap -d ros2msg -o output.rrd
 
-# Combine multiple layers for comprehensive data access
-rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
+# Combine multiple decoders for comprehensive data access
+rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
 ```
 
-### Available layer options
+### Available decoder options
 
 Decoding:
 - **`raw`**: Preserve original message bytes
 - **`schema`**: Extract metadata and schema information
 - **`stats`**: Compute file and channel statistics
+- **`metadata`**: Extract metadata records into RRD `__properties`, if present
 - **`protobuf`**: Decode protobuf messages using into generic Arrow data without Rerun visualization components
 - **`recording_info`**: Extract recording session metadata
 
@@ -69,20 +70,21 @@ Semantic:
 
 ### Default behavior
 
-When no `-l` flags are specified, all available layers are used:
+When no `-d` flags are specified, all available decoders are used:
 
 ```bash
-# These commands are equivalent (default uses all layers):
+# These commands are equivalent (default uses all decoders):
 
 rerun mcap convert input.mcap -o output.rrd
 
 rerun mcap convert input.mcap \
-    -l raw \
-    -l schema \
-    -l stats \
-    -l protobuf \
-    -l ros2msg \
-    -l foxglove \
-    -l recording_info \
+    -d raw \
+    -d schema \
+    -d stats \
+    -d metadata \
+    -d protobuf \
+    -d ros2msg \
+    -d foxglove \
+    -d recording_info \
     -o output.rrd
 ```

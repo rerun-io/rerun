@@ -9,7 +9,7 @@ use arrow::array::{
 use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
-use re_arrow_util::{ArrowArrayDowncastRef as _, DisplayDataType, widen_binary_arrays};
+use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log::debug_assert;
 use re_log_types::{
@@ -787,7 +787,7 @@ pub enum TimeColumnError {
     ContainsNulls,
 
     #[error("Unsupported data type : {0}")]
-    UnsupportedDataType(DisplayDataType),
+    UnsupportedDataType(arrow::datatypes::DataType),
 }
 
 impl Chunk {
@@ -1164,7 +1164,7 @@ impl TimeColumn {
             Ok((times.values().clone(), times.nulls().cloned()))
         } else {
             Err(TimeColumnError::UnsupportedDataType(
-                array.data_type().clone().into(),
+                array.data_type().clone(),
             ))
         }
     }
@@ -1450,6 +1450,53 @@ impl TimeColumn {
                 }
             })
             .collect()
+    }
+
+    /// Find the earliest time strictly after `after` in this time column.
+    pub fn find_next_time(&self, after: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t <= after.as_i64());
+            (idx < times.len()).then(|| TimeInt::new_temporal(times[idx]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t > after.as_i64())
+                .min()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
+
+    /// Find the latest time strictly before `before` in this time column.
+    pub fn find_prev_time(&self, before: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t < before.as_i64());
+            (idx > 0).then(|| TimeInt::new_temporal(times[idx - 1]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t < before.as_i64())
+                .max()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
+
+    /// Returns a new [`TimeColumn`] with all time values offset by `offset_ns` nanoseconds.
+    ///
+    /// Uses saturating arithmetic.
+    pub fn offset_by_nanos(&self, offset_ns: i64) -> Self {
+        let new_times: Vec<i64> = self
+            .times
+            .iter()
+            .map(|&t| NonMinI64::saturating_from_i64(t.saturating_add(offset_ns)).get())
+            .collect();
+
+        Self::new(
+            Some(self.is_sorted),
+            self.timeline,
+            ArrowScalarBuffer::from(new_times),
+        )
     }
 }
 

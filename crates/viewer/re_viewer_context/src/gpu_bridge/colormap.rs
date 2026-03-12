@@ -98,7 +98,7 @@ fn colormap_variant_ui(
 }
 
 fn colormap_category_ui(
-    ctx: &crate::ViewerContext<'_>,
+    ctx: &crate::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     category: ColormapCategory,
     selected: &mut re_sdk_types::components::Colormap,
@@ -130,7 +130,7 @@ fn colormap_category_ui(
 }
 
 pub fn colormap_edit_or_view_ui(
-    ctx: &crate::ViewerContext<'_>,
+    ctx: &crate::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     map: &mut MaybeMutRef<'_, re_sdk_types::components::Colormap>,
 ) -> egui::Response {

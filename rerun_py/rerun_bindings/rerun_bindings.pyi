@@ -288,19 +288,19 @@ class ChunkBatcherConfig:
 
         Parameters
         ----------
-        flush_tick : int | float | timedelta | None
+        flush_tick:
             Duration of the periodic tick, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
 
-        flush_num_bytes : int | None
+        flush_num_bytes:
             Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
 
-        flush_num_rows : int | None
+        flush_num_rows:
             Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
 
-        chunk_max_rows_if_unsorted : int | None
+        chunk_max_rows_if_unsorted:
             Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
             by default `None`.
             Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.

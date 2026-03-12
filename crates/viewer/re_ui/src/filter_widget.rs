@@ -208,7 +208,7 @@ impl FilterState {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
         let textedit_id = ui.id().with("textedit");
-        let response = ui.ctx().read_response(textedit_id);
+        let response = ui.read_response(textedit_id);
 
         let visuals = response
             .as_ref()
@@ -592,7 +592,7 @@ pub fn format_matching_text(
                 &text[current..start],
                 0.0,
                 egui::TextFormat {
-                    font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                    font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
                     color,
                     ..Default::default()
                 },
@@ -603,9 +603,9 @@ pub fn format_matching_text(
             &text[start..end],
             0.0,
             egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
                 color,
-                background: ctx.style().visuals.selection.bg_fill,
+                background: ctx.global_style().visuals.selection.bg_fill,
                 ..Default::default()
             },
         );
@@ -618,7 +618,7 @@ pub fn format_matching_text(
             &text[current..],
             0.0,
             egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
                 color,
                 ..Default::default()
             },

@@ -4,13 +4,14 @@ use parking_lot::Mutex;
 use re_chunk_store::MissingChunkReporter;
 use vec1::Vec1;
 
-use re_chunk::{ArchetypeName, ComponentType};
+use re_chunk::ArchetypeName;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
-use re_sdk_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier};
 
 use crate::{
-    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    ViewSystemIdentifier,
+    BufferAndFormatConstraint, IdentifiedViewSystem, SingleRequiredComponentConstraint,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    VisualizabilityConstraints,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -40,90 +41,94 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
     }
 }
 
-pub type DatatypeSet = std::collections::BTreeSet<arrow::datatypes::DataType>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AnyPhysicalDatatypeRequirement {
-    /// The required component that this requirement is targeting.
-    pub target_component: ComponentIdentifier,
-
-    /// The semantic type the visualizer is working with.
-    ///
-    /// Matches with the semantic type are generally preferred.
-    pub semantic_type: ComponentType,
-
-    /// All supported physical Arrow data types.
-    ///
-    /// Has to contain the physical data type that is covered by the Rerun semantic type.
-    pub physical_types: DatatypeSet,
-
-    /// If false, ignores all static components.
-    ///
-    /// This is useful if you rely on ranges queries as done by the time series view.
-    pub allow_static_data: bool,
-}
-
-impl From<AnyPhysicalDatatypeRequirement> for RequiredComponents {
-    fn from(req: AnyPhysicalDatatypeRequirement) -> Self {
-        Self::AnyPhysicalDatatype(req)
-    }
-}
-
-/// Specifies how component requirements should be evaluated for visualizer entity matching.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub enum RequiredComponents {
-    /// No component requirements - all entities are candidates.
-    #[default]
-    None,
-
-    /// Entity must have _all_ of these components.
-    AllComponents(ComponentSet),
-
-    /// Entity must have _any one_ of these components.
-    AnyComponent(ComponentSet),
-
-    /// Entity must have _any one_ of these physical Arrow data types.
-    ///
-    /// For instance, we may not put views into the "recommended" section or visualizer entities proactively unless they support the native type.
-    AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement),
-}
-
 // TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.
 pub struct VisualizerQueryInfo {
     /// This is not required, but if it is found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
+    ///
+    /// This information results in the "indicated visualizer" list.
     pub relevant_archetype: Option<ArchetypeName>,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
-    pub required: RequiredComponents,
+    pub constraints: VisualizabilityConstraints,
 
     /// Returns the list of components that the system _queries_.
     ///
     /// Must include required components.
     /// Order should reflect order in archetype docs & user code as well as possible.
     ///
-    /// Note that we need full descriptors here in order to write overrides from the UI.
-    pub queried: SortedComponentSet, // TODO(grtlr, wumpf): This can probably be removed?
+    /// We use this to determine which components should be shown in the UI.
+    pub queried: SortedComponentSet,
 }
 
 impl VisualizerQueryInfo {
-    pub fn from_archetype<A: Archetype>() -> Self {
-        Self {
-            relevant_archetype: A::name().into(),
-            required: RequiredComponents::AllComponents(
-                A::required_components()
-                    .iter()
-                    .map(|c| c.component)
-                    .collect(),
-            ),
-            queried: A::all_components().iter().cloned().collect(),
-        }
+    /// Creates a query info for a visualizer that requires both a buffer and a format component.
+    ///
+    /// Both components have to be part of the queried components.
+    /// See [`BufferAndFormatConstraint`] for more details.
+    pub fn buffer_and_format<Buffer: re_sdk_types::Component, Format: re_sdk_types::Component>(
+        buffer_descriptor: &ComponentDescriptor,
+        format_descriptor: &ComponentDescriptor,
+        all_queried_components: &[ComponentDescriptor],
+    ) -> Self {
+        let query_info = Self {
+            relevant_archetype: format_descriptor.archetype,
+            constraints: BufferAndFormatConstraint::new::<Buffer, Format>(
+                buffer_descriptor,
+                format_descriptor,
+            )
+            .into(),
+            queried: all_queried_components.iter().cloned().collect(),
+        };
+
+        re_log::debug_assert!(
+            query_info
+                .queried
+                .iter()
+                .any(|desc| desc == buffer_descriptor),
+            "The buffer component must be part of the queried components."
+        );
+        re_log::debug_assert!(
+            query_info
+                .queried
+                .iter()
+                .any(|desc| desc == format_descriptor),
+            "The format component must be part of the queried components."
+        );
+
+        query_info
+    }
+
+    /// Creates a query info for a visualizer that requires a single component.
+    ///
+    /// The target component has to be part of the queried components.
+    /// See [`SingleRequiredComponentConstraint`] for more details.
+    pub fn single_required_component<C: re_sdk_types::Component>(
+        target_component_descriptor: &ComponentDescriptor,
+        all_queried_components: &[ComponentDescriptor],
+    ) -> Self {
+        let query_info = Self {
+            relevant_archetype: target_component_descriptor.archetype,
+            constraints: SingleRequiredComponentConstraint::new::<C>(target_component_descriptor)
+                .into(),
+            queried: all_queried_components.iter().cloned().collect(),
+        };
+
+        re_log::debug_assert!(
+            query_info
+                .queried
+                .iter()
+                .any(|desc| desc == target_component_descriptor),
+            "The required component must be part of the queried components."
+        );
+
+        query_info
     }
 
     pub fn empty() -> Self {
         Self {
             relevant_archetype: Default::default(),
-            required: RequiredComponents::None,
+            constraints: VisualizabilityConstraints::None,
             queried: SortedComponentSet::default(),
         }
     }

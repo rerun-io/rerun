@@ -15,7 +15,7 @@ use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{
-    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, ViewerContext,
+    AppContext, AsyncRuntimeHandle, EditRedapServerModalCommand, StoreViewContext,
 };
 
 use crate::context::Context;
@@ -132,7 +132,7 @@ impl Server {
     /// Central panel UI for when a server is selected.
     fn server_ui(
         &self,
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
         has_active_login_flow: bool,
@@ -192,7 +192,7 @@ impl Server {
 
     fn dataset_entry_ui(
         &self,
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
@@ -252,7 +252,7 @@ impl Server {
         .show(viewer_ctx, &self.runtime, ui);
     }
 
-    fn table_entry_ui(&self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table: &Table) {
+    fn table_entry_ui(&self, viewer_ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, table: &Table) {
         re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), table.name())
             .title(table.name())
             .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
@@ -261,7 +261,7 @@ impl Server {
 }
 
 fn error_ui(
-    viewer_ctx: &ViewerContext<'_>,
+    viewer_ctx: &StoreViewContext<'_>,
     ctx: &Context<'_>,
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
@@ -732,7 +732,7 @@ impl RedapServers {
 
     pub fn server_central_panel_ui(
         &self,
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
     ) {
@@ -756,7 +756,7 @@ impl RedapServers {
 
     pub fn entry_ui(
         &self,
-        viewer_ctx: &ViewerContext<'_>,
+        viewer_ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         active_entry: EntryId,
     ) {

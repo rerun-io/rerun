@@ -4,11 +4,12 @@ use ordered_float::NotNan;
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::archetypes::Capsules3D;
 use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
-use re_sdk_types::{ArrowString, components};
-use re_view::clamped_or_nothing;
+use re_sdk_types::{Archetype as _, ArrowString, components};
+use re_view::clamped_or_else;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -41,11 +42,18 @@ impl Capsules3DVisualizer {
             // Number of instances is determined by whichever is *longer* of `lengths` and `radii`.
             // The other component is clamped (last value repeated) to match.
             let num_instances = batch.radii.len().max(batch.lengths.len());
-            let lengths_iter = clamped_or_nothing(batch.lengths, num_instances);
-            let radii_iter = clamped_or_nothing(batch.radii, num_instances);
+            let lengths_iter = clamped_or_else(batch.lengths, || {
+                typed_fallback_for(query_context, Capsules3D::descriptor_lengths().component)
+            })
+            .take(num_instances);
+            let radii: Vec<Radius> = clamped_or_else(batch.radii, || {
+                typed_fallback_for(query_context, Capsules3D::descriptor_radii().component)
+            })
+            .take(num_instances)
+            .collect();
 
-            let half_sizes: Vec<HalfSize3D> = radii_iter
-                .clone()
+            let half_sizes: Vec<HalfSize3D> = radii
+                .iter()
                 .map(|&Radius(radius)| HalfSize3D::splat(clean_length(radius.0)))
                 .collect();
 
@@ -61,8 +69,8 @@ impl Capsules3DVisualizer {
             };
 
             let meshes = lengths_iter
-                .zip(radii_iter)
-                .map(|(&Length(length), &Radius(radius))| {
+                .zip(radii.iter())
+                .map(|(Length(length), &Radius(radius))| {
                     let ratio = clean_length(length.0 / radius.0);
 
                     // Avoid generating extremely similar meshes by rounding the ratio.
@@ -110,9 +118,9 @@ impl Capsules3DVisualizer {
 struct Capsules3DComponentData<'a> {
     // Point of views
     lengths: &'a [Length],
-    radii: &'a [Radius],
 
     // Clamped to edge
+    radii: &'a [Radius],
     translations: &'a [components::Translation3D],
     rotation_axis_angles: ChunkComponentIterItem<components::RotationAxisAngle>,
     quaternions: &'a [components::RotationQuat],
@@ -137,7 +145,14 @@ impl VisualizerSystem for Capsules3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Capsules3D>()
+        // The required component of the archetype is actually both lengths and radii,
+        // But while that makes sense for the user-facing API, we can just use lengths as the required component for visualizability purposes.
+        // This makes the requirements easier, and also means that if a user only provides length,
+        // they will still get a visualizer with (editable) default radii instead of no visualizer at all.
+        VisualizerQueryInfo::single_required_component::<Length>(
+            &Capsules3D::descriptor_lengths(),
+            &Capsules3D::all_components(),
+        )
     }
 
     fn execute(
@@ -163,31 +178,11 @@ impl VisualizerSystem for Capsules3DVisualizer {
             &output,
             preferred_view_kind,
             |ctx, spatial_ctx, results| {
+                // See comment on `visualizer_query_info` for the rationale of treating only lengths as required.
+                // (instead of lengths and radii as noted in the archetype definition).
                 let all_lengths = results.iter_required(Capsules3D::descriptor_lengths().component);
-                if all_lengths.is_empty() {
-                    return Ok(());
-                }
-                let all_radii = results.iter_required(Capsules3D::descriptor_radii().component);
-                if all_radii.is_empty() {
-                    return Ok(());
-                }
 
-                let num_lengths: usize = all_lengths
-                    .chunks()
-                    .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>())
-                    .map(|lengths| lengths.len())
-                    .sum();
-                let num_radii: usize = all_radii
-                    .chunks()
-                    .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>())
-                    .map(|radii| radii.len())
-                    .sum();
-                let num_instances = num_lengths.max(num_radii);
-                if num_instances == 0 {
-                    return Ok(());
-                }
+                let all_radii = results.iter_optional(Capsules3D::descriptor_radii().component);
                 let all_translations =
                     results.iter_optional(Capsules3D::descriptor_translations().component);
                 let all_rotation_axis_angles =
@@ -205,7 +200,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 let all_class_ids =
                     results.iter_optional(Capsules3D::descriptor_class_ids().component);
 
-                let data = re_query::range_zip_2x9(
+                let data = re_query::range_zip_1x10(
                     all_lengths.slice::<f32>(),
                     all_radii.slice::<f32>(),
                     all_translations.slice::<[f32; 3]>(),
@@ -235,7 +230,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
                     )| {
                         Capsules3DComponentData {
                             lengths: bytemuck::cast_slice(lengths),
-                            radii: bytemuck::cast_slice(radii),
+                            radii: radii.map_or(&[], bytemuck::cast_slice),
                             translations: translations.map_or(&[], bytemuck::cast_slice),
                             rotation_axis_angles: rotation_axis_angles.unwrap_or_default(),
                             quaternions: quaternions.map_or(&[], bytemuck::cast_slice),

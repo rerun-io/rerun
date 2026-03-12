@@ -19,7 +19,7 @@ use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::{
-    CpuMeshInstance, CpuModel, CpuModelMeshKey, DebugLabel, RenderContext, Rgba32Unmul,
+    CpuModel, CpuModelMeshKey, DebugLabel, RenderContext, Rgba32Unmul,
     mesh::{self, CpuMesh},
 };
 
@@ -132,7 +132,7 @@ fn load_dae_from_buffer_inner(
         }
 
         let cpu_mesh = import_geometry(geometry, mesh_element, &all_triangles, &maps, ctx)?;
-        let key = model.meshes.insert(cpu_mesh);
+        let key = model.add_mesh(cpu_mesh);
         let geom_id = geometry
             .id
             .as_deref()
@@ -142,13 +142,11 @@ fn load_dae_from_buffer_inner(
         mesh_keys.insert(geom_id, key);
     }
 
-    let mut instances = Vec::new();
-
     let mut any_scene = false;
     for scene in document.iter::<VisualScene>() {
         any_scene = true;
         for root in &scene.nodes {
-            gather_instances_recursive(&mut instances, root, &glam::Affine3A::IDENTITY, &mesh_keys);
+            gather_instances_recursive(&mut model, root, &glam::Affine3A::IDENTITY, &mesh_keys);
         }
     }
 
@@ -156,7 +154,6 @@ fn load_dae_from_buffer_inner(
         return Err(DaeImportError::NoVisualScene);
     }
 
-    model.instances = instances;
     Ok(model)
 }
 
@@ -297,7 +294,7 @@ fn extract_material_color(
 }
 
 fn gather_instances_recursive(
-    out: &mut Vec<CpuMeshInstance>,
+    model: &mut CpuModel,
     node: &DaeNode,
     parent_tf: &glam::Affine3A,
     meshes: &HashMap<String, CpuModelMeshKey>,
@@ -344,18 +341,15 @@ fn gather_instances_recursive(
             }
         };
 
-        if let Some(mesh_key) = meshes.get(&id) {
-            out.push(CpuMeshInstance {
-                mesh: *mesh_key,
-                world_from_mesh: world_tf,
-            });
+        if let Some(&mesh_key) = meshes.get(&id) {
+            model.add_instance(mesh_key, world_tf);
         } else {
             re_log::warn_once!("<instance_geometry> references unknown geometry {id}");
         }
     }
 
     for child in &node.children {
-        gather_instances_recursive(out, child, &world_tf, meshes);
+        gather_instances_recursive(model, child, &world_tf, meshes);
     }
 }
 

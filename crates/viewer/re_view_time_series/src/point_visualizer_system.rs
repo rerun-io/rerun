@@ -2,11 +2,11 @@ use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_sdk_types::archetypes::SeriesPoints;
 use re_sdk_types::components::{self, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, Component as _, Loggable as _, archetypes};
+use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    AnyPhysicalDatatypeRequirement, IdentifiedViewSystem, ViewContext, ViewQuery,
+    IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
@@ -39,12 +39,11 @@ impl VisualizerSystem for SeriesPointsSystem {
     ) -> VisualizerQueryInfo {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesPoints::name().into(),
-            required: AnyPhysicalDatatypeRequirement {
-                target_component: archetypes::Scalars::descriptor_scalars().component,
-                semantic_type: components::Scalar::name(),
-                physical_types: util::series_supported_datatypes().into_iter().collect(),
-                allow_static_data: false,
-            }
+            constraints: SingleRequiredComponentConstraint::new::<components::Scalar>(
+                &archetypes::Scalars::descriptor_scalars(),
+            )
+            .with_additional_physical_types(util::series_supported_datatypes())
+            .with_allow_static_data(false)
             .into(),
             queried: archetypes::Scalars::all_components()
                 .iter()
@@ -146,7 +145,7 @@ impl SeriesPointsSystem {
         // Wrap results for convenient error-reporting iteration
         let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
         let results =
-            re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, output);
+            re_view::VisualizerInstructionQueryResults::new(instruction, &results, output);
 
         // If we have no scalars, we can't do anything.
         let scalar_iter =
@@ -181,7 +180,6 @@ impl SeriesPointsSystem {
 
         collect_scalars(all_scalar_chunks, &mut points_per_series);
         collect_colors(
-            &query_ctx,
             &query,
             &results,
             all_scalar_chunks,
@@ -297,13 +295,11 @@ impl SeriesPointsSystem {
         }
 
         let series_visibility = collect_series_visibility(
-            &query_ctx,
             &results,
             num_series,
             &archetypes::SeriesPoints::descriptor_visible_series(),
         );
         let series_names = collect_series_name(
-            &query_ctx,
             &results,
             num_series,
             &archetypes::SeriesPoints::descriptor_names(),

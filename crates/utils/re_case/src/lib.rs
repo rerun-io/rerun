@@ -15,7 +15,7 @@ pub fn to_snake_case(s: &str) -> String {
             Boundary::LowerUpper,
         ])
         .set_pattern(Pattern::Lowercase)
-        .set_delim("_");
+        .set_delimiter("_");
 
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
@@ -185,7 +185,7 @@ pub fn to_human_case(s: &str) -> String {
             Boundary::LowerUpper,
         ])
         .set_pattern(Pattern::Sentence)
-        .set_delim(" ");
+        .set_delimiter(" ");
 
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {

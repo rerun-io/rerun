@@ -7,7 +7,7 @@ use egui_kittest::kittest::Queryable as _;
 use re_sdk_types::components::Colormap;
 use re_test_context::TestContext;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::MaybeMutRef;
 
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
@@ -69,7 +69,7 @@ fn colormap_selector_ui() {
         .build_ui(|ui| {
             re_ui::apply_style_and_install_loaders(ui.ctx());
 
-            test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
                 ui.horizontal(|ui| {
                     ui.label("Colormap:");
 

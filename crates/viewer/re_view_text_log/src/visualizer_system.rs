@@ -39,7 +39,10 @@ impl VisualizerSystem for TextLogSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<TextLog>()
+        VisualizerQueryInfo::single_required_component::<Text>(
+            &TextLog::descriptor_text(),
+            &TextLog::all_components(),
+        )
     }
 
     fn execute(
@@ -94,7 +97,7 @@ impl TextLogSystem {
         // Convert to HybridResults for unified access
         let results = re_view::BlueprintResolvedResults::from((query.clone(), range_results));
         let results =
-            re_view::VisualizerInstructionQueryResults::new(instruction.id, &results, output);
+            re_view::VisualizerInstructionQueryResults::new(instruction, &results, output);
 
         let all_texts = results.iter_required(TextLog::descriptor_text().component);
         if all_texts.is_empty() {

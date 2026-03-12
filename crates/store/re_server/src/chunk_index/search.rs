@@ -110,7 +110,7 @@ async fn apply_parameters(
     if let Some(filter) = filter.filter(|f| !f.is_empty()) {
         let filter =
             lance::io::exec::Planner::new(scanner.schema().await?).parse_filter(&filter)?;
-        match scanner.get_filter()? {
+        match scanner.get_expr_filter()? {
             Some(existing_filter) => {
                 scanner.filter_expr(existing_filter.and(filter));
             }
@@ -146,7 +146,7 @@ async fn apply_parameters(
     }
 
     if explain_filter {
-        match scanner.get_filter() {
+        match scanner.get_expr_filter() {
             Ok(Some(filter)) => {
                 info!(%filter);
             }

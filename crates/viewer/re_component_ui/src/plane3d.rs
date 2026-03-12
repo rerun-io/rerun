@@ -75,7 +75,7 @@ impl TryFrom<AxisDirection> for glam::Vec3 {
 }
 
 pub fn edit_or_view_plane3d(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, components::Plane3D>,
 ) -> egui::Response {
@@ -115,7 +115,7 @@ pub fn edit_or_view_plane3d(
         ))
     } else {
         let normal = value.normal();
-        edit_or_view_vec3d_raw(ui, &mut MaybeMutRef::Ref(&normal))
+        edit_or_view_vec3d_raw(ui, &mut MaybeMutRef::Ref(&normal), f32::MIN..=f32::MAX)
     };
 
     ui.label("d");
@@ -130,7 +130,7 @@ pub fn edit_or_view_plane3d(
 }
 
 pub fn multiline_edit_or_view_plane3d(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
+    _ctx: &re_viewer_context::StoreViewContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, components::Plane3D>,
 ) -> egui::Response {
@@ -145,7 +145,8 @@ pub fn multiline_edit_or_view_plane3d(
                 MaybeMutRef::MutRef(_) => MaybeMutRef::MutRef(&mut normal),
             };
 
-            any_edit |= edit_or_view_vec3d_raw(ui, &mut maybe_mut_normal).changed();
+            any_edit |=
+                edit_or_view_vec3d_raw(ui, &mut maybe_mut_normal, f32::MIN..=f32::MAX).changed();
 
             if let MaybeMutRef::MutRef(value) = value {
                 **value = components::Plane3D::new(normal, value.distance());

@@ -1510,7 +1510,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Vectors",
                         component_type: "rerun.components.Vector2D".into(),
                         docstring_md: "All the vectors for each arrow in the batch.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "origins",
@@ -1577,7 +1577,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Vectors",
                         component_type: "rerun.components.Vector3D".into(),
                         docstring_md: "All the vectors for each arrow in the batch.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "origins",
@@ -1733,7 +1733,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Half sizes",
                         component_type: "rerun.components.HalfSize2D".into(),
                         docstring_md: "All half-extents that make up the batch of boxes.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -1800,7 +1800,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Half sizes",
                         component_type: "rerun.components.HalfSize3D".into(),
                         docstring_md: "All half-extents that make up the batch of boxes.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -1881,14 +1881,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Lengths",
                         component_type: "rerun.components.Length".into(),
                         docstring_md: "Lengths of the capsules, defined as the distance between the centers of the endcaps.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
                         display_name: "Radii",
                         component_type: "rerun.components.Radius".into(),
                         docstring_md: "Radii of the capsules.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "translations",
@@ -2001,14 +2001,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Lengths",
                         component_type: "rerun.components.Length".into(),
                         docstring_md: "The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
                         display_name: "Radii",
                         component_type: "rerun.components.Radius".into(),
                         docstring_md: "Radii of the cylinders.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -2149,7 +2149,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Half sizes",
                         component_type: "rerun.components.HalfSize3D".into(),
                         docstring_md: "For each ellipsoid, half of its size on its three axes.\n\nIf all components are equal, then it is a sphere with that radius.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "centers",
@@ -2361,7 +2361,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Positions",
                         component_type: "rerun.components.LatLon".into(),
                         docstring_md: "The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
@@ -2985,7 +2985,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Positions",
                         component_type: "rerun.components.Position2D".into(),
                         docstring_md: "All the 2D positions at which the point cloud shows points.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
@@ -3052,7 +3052,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Positions",
                         component_type: "rerun.components.Position3D".into(),
                         docstring_md: "All the 3D positions at which the point cloud shows points.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "radii",
@@ -3316,7 +3316,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Text",
                         component_type: "rerun.components.Text".into(),
                         docstring_md: "Contents of the text document.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "media_type",
@@ -3341,7 +3341,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Text",
                         component_type: "rerun.components.Text".into(),
                         docstring_md: "The body of the message.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "level",
@@ -3465,7 +3465,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Timestamp",
                         component_type: "rerun.components.VideoTimestamp".into(),
                         docstring_md: "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\nTimestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.\nThis is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames\n(bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "video_reference",
@@ -3558,7 +3558,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Instruction ids",
                     component_type: "rerun.blueprint.components.VisualizerInstructionId".into(),
                     docstring_md: "Id's of the visualizers that should be active.",
-                    flags: ArchetypeFieldFlags::REQUIRED,
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },
         ),
@@ -3575,7 +3575,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Kind",
                         component_type: "rerun.blueprint.components.BackgroundKind".into(),
                         docstring_md: "The type of the background.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "color",
@@ -3600,7 +3600,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Container kind",
                         component_type: "rerun.blueprint.components.ContainerKind".into(),
                         docstring_md: "The class of the view.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "display_name",
@@ -4428,7 +4428,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Class identifier",
                         component_type: "rerun.blueprint.components.ViewClass".into(),
                         docstring_md: "The class of the view.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "display_name",
@@ -4529,7 +4529,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Ranges",
                     component_type: "rerun.blueprint.components.VisibleTimeRange".into(),
                     docstring_md: "The time ranges to show for each timeline unless specified otherwise on a per-entity basis.\n\nIf a timeline is specified more than once, the first entry will be used.",
-                    flags: ArchetypeFieldFlags::REQUIRED,
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },
         ),
@@ -4545,7 +4545,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Range",
                     component_type: "rerun.blueprint.components.VisualBounds2D".into(),
                     docstring_md: "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
-                    flags: ArchetypeFieldFlags::REQUIRED,
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },
         ),
@@ -4562,7 +4562,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Visualizer type",
                         component_type: "rerun.blueprint.components.VisualizerType".into(),
                         docstring_md: "The type of the visualizer.",
-                        flags: ArchetypeFieldFlags::REQUIRED,
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
                         name: "component_map",

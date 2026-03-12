@@ -259,14 +259,14 @@ class RecordingStream:
 
         Parameters
         ----------
-        application_id : str
+        application_id:
             Your Rerun recordings will be categorized by this application id, so
             try to pick a unique one for each application that uses the Rerun SDK.
 
             For example, if you have one application doing object detection
             and another doing camera calibration, you could have
             `rerun.init("object_detector")` and `rerun.init("calibrator")`.
-        recording_id : Optional[str]
+        recording_id:
             Set the recording ID that this process is logging to, as a UUIDv4.
 
             The default recording_id is based on `multiprocessing.current_process().authkey`
@@ -277,13 +277,13 @@ class RecordingStream:
             processes to log to the same Rerun instance (and be part of the same recording),
             you will need to manually assign them all the same recording_id.
             Any random UUIDv4 will work, or copy the recording id for the parent process.
-        make_default : bool
+        make_default:
             If true (_not_ the default), the newly initialized recording will replace the current
             active one (if any) in the global scope.
-        make_thread_default : bool
+        make_thread_default:
             If true (_not_ the default), the newly initialized recording will replace the current
             active one (if any) in the thread-local scope.
-        default_enabled : bool
+        default_enabled:
             Should Rerun logging be on by default?
             Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
         send_properties
@@ -763,11 +763,11 @@ class RecordingStream:
 
         Parameters
         ----------
-        width : int
+        width:
             The width of the viewer in pixels.
-        height : int
+        height:
             The height of the viewer in pixels.
-        blueprint : BlueprintLike
+        blueprint:
             A blueprint object to send to the viewer.
             It will be made active and set as the default blueprint in the recording.
 
@@ -821,7 +821,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        name : str
+        name:
             The name of the recording.
 
         """
@@ -838,7 +838,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        nanos : int
+        nanos:
             The start time of the recording.
 
         """
@@ -883,7 +883,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        timeline : str
+        timeline:
             The name of the timeline to set the time for.
         sequence:
             Used for sequential indices, like `frame_nr`.
@@ -916,7 +916,7 @@ class RecordingStream:
 
         Parameters
         ----------
-        timeline : str
+        timeline:
             The name of the timeline to clear the time for.
 
         """
@@ -1337,7 +1337,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
     Parameters
     ----------
-    application_id : str
+    application_id:
         The application ID that this recording is associated with.
 
     """

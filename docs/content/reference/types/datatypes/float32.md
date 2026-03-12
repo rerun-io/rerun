@@ -8,7 +8,7 @@ A single-precision 32-bit IEEE 754 floating point number.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

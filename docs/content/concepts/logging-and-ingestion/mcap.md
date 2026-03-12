@@ -11,5 +11,5 @@ Working with MCAP files in Rerun:
 * [Supported Message Formats](mcap/message-formats.md)
 
 Technical details and advanced usage:
-* [MCAP Layers Explained](mcap/layers-explained.md)
+* [MCAP Decoders Explained](mcap/decoders-explained.md)
 * [CLI Reference for MCAP](mcap/cli-reference.md)

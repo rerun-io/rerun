@@ -456,7 +456,10 @@ fn rr_spawn_impl(spawn_opts: *const CSpawnOptions) -> Result<(), CError> {
         spawn_opts.as_rust()?
     };
 
+    // Port is unused here — this function only spawns the viewer process.
+    // The C SDK connects separately via `rr_recording_stream_spawn`.
     re_sdk::spawn(&spawn_opts)
+        .map(drop)
         .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
 
     Ok(())

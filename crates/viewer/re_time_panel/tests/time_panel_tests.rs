@@ -13,46 +13,6 @@ use re_time_panel::TimePanel;
 use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
-fn add_sparse_data(test_context: &mut TestContext) {
-    let points1 = MyPoint::from_iter(0..1);
-    for i in 0..2 {
-        test_context.log_entity(format!("/entity/{i}"), |mut builder| {
-            for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|frame| frame + i) {
-                builder = builder.with_sparse_component_batches(
-                    RowId::new(),
-                    [build_frame_nr(frame)],
-                    [(MyPoints::descriptor_points(), Some(&points1 as _))],
-                );
-            }
-
-            builder
-        });
-    }
-}
-
-#[test]
-pub fn time_panel_two_sections() {
-    TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::new();
-
-    add_sparse_data(&mut test_context);
-
-    test_context.set_active_timeline("frame_nr");
-
-    let mut snapshot_results = SnapshotResults::new();
-    run_time_panel_and_save_snapshot(
-        &test_context,
-        TimePanel::default(),
-        "time_panel_two_sections",
-        &mut snapshot_results,
-        &RunOptions {
-            height: 300.0,
-            expand_all: false,
-            mark_chunks_used_or_missing: vec![],
-        },
-    );
-}
-
 #[test]
 pub fn time_panel_dense_data() {
     TimePanel::ensure_registered_subscribers();
@@ -468,11 +428,11 @@ fn run_time_panel_and_save_snapshot(
 
                 let mut time_commands = Vec::new();
 
+                let store_ctx = viewer_ctx.active_recording_store_view_context();
                 time_panel.show_expanded_with_header(
                     viewer_ctx,
-                    viewer_ctx.time_ctrl,
+                    &store_ctx,
                     &blueprint,
-                    viewer_ctx.recording(),
                     ui,
                     &mut time_commands,
                 );

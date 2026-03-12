@@ -6,14 +6,14 @@ use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons};
 
 #[test]
 fn test_help() {
-    let mut snapshot_results = SnapshotResults::new();
+    let mut _snapshot_results = SnapshotResults::new();
 
     // We show different shortcuts based on the OS
     for os in [OperatingSystem::Windows, OperatingSystem::Mac] {
         let mut harness = Harness::builder()
             .with_size(vec2(240.0, 420.0))
             .build_ui(|ui| {
-                ui.ctx().set_os(os);
+                ui.set_os(os);
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
                 ui.help_button(|ui| {
@@ -58,6 +58,10 @@ fn test_help() {
 
         harness.try_run_realtime().ok();
 
-        snapshot_results.add(harness.try_snapshot(format!("help_{os:?}")));
+        // TODO(#12450): Keeps failing randomly on swiftshader.
+        #[cfg(not(target_os = "macos"))]
+        {
+            _snapshot_results.add(harness.try_snapshot(format!("help_{os:?}")));
+        }
     }
 }

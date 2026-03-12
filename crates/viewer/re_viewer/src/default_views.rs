@@ -121,7 +121,7 @@ mod tests {
                 let mut harness = test_context
                     .setup_kittest_for_rendering_ui([400.0, 700.0])
                     .build_ui(|ui| {
-                        ui.ctx().set_theme(egui_theme);
+                        ui.set_theme(egui_theme);
 
                         test_context.run_ui(ui, |viewer_ctx, ui| {
                             ui.set_min_size(Vec2::new(400.0, 300.0));

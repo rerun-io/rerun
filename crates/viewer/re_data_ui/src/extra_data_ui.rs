@@ -1,7 +1,7 @@
 use re_chunk_store::UnitChunkShared;
 use re_types_core::ComponentDescriptor;
 use re_ui::{UiLayout, list_item};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{AppContext, StoreViewContext};
 
 use crate::{
     blob_ui::BlobUi, image_ui::ImageUi, transform_frames_ui::TransformFramesUi, video_ui::VideoUi,
@@ -16,8 +16,7 @@ pub enum ExtraDataUi {
 
 impl ExtraDataUi {
     pub fn from_components(
-        ctx: &ViewerContext<'_>,
-        query: &re_chunk_store::LatestAtQuery,
+        ctx: &StoreViewContext<'_>,
         entity_path: &re_log_types::EntityPath,
         descr: &ComponentDescriptor,
         chunk: &UnitChunkShared,
@@ -28,16 +27,16 @@ impl ExtraDataUi {
             .or_else(|| {
                 ImageUi::from_components(ctx, descr, chunk, entity_components).map(Self::Image)
             })
-            .or_else(|| VideoUi::from_components(ctx, query, entity_path, descr).map(Self::Video))
+            .or_else(|| VideoUi::from_components(ctx, entity_path, descr).map(Self::Video))
             .or_else(|| {
-                TransformFramesUi::from_components(ctx, query, descr, chunk, entity_components)
+                TransformFramesUi::from_components(ctx, descr, chunk, entity_components)
                     .map(Self::TransformHierarchy)
             })
     }
 
     pub fn add_inline_buttons<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'_>,
+        ctx: &'a AppContext<'_>,
         main_thread_token: re_capabilities::MainThreadToken,
         entity_path: &'a re_log_types::EntityPath,
         mut property_content: list_item::PropertyContent<'a>,
@@ -61,24 +60,23 @@ impl ExtraDataUi {
 
     pub fn data_ui(
         self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
         entity_path: &re_log_types::EntityPath,
     ) {
         match self {
             Self::Video(video) => {
-                video.data_ui(ctx, ui, layout, query);
+                video.data_ui(ctx, ui, layout);
             }
             Self::Image(image) => {
-                image.data_ui(ctx, ui, layout, query, entity_path);
+                image.data_ui(ctx, ui, layout, entity_path);
             }
             Self::Blob(blob) => {
-                blob.data_ui(ctx, ui, layout, query, entity_path);
+                blob.data_ui(ctx, ui, layout, entity_path);
             }
             Self::TransformHierarchy(transform_hierarchy) => {
-                transform_hierarchy.data_ui(ctx, ui, layout);
+                transform_hierarchy.data_ui(ctx.app_ctx, ctx.db, ui, layout);
             }
         }
     }

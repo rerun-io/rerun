@@ -119,15 +119,15 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             otel.name = %endpoint,
             url,
             method = %request.method(),
-            // Record trace_id and benchmark_id as top level span fields.
+            // Record benchmark_id as a top level span field.
             //
-            // At this stage we may not know yet the actual trace_id (depending on whether
+            // At this stage we may not know yet the actual value (depending on whether
             // we're generating a new trace or continuing an existing one). However,
-            // we need to pre-declare these fields if we want to record values for them later.
+            // we need to pre-declare the field if we want to record a value for it later.
             //
-            // The fields will be filled in by a separate [`tracing_subscriber::Layer`] (see
-            // [`TraceIdLayer`]).
-            trace_id = tracing::field::Empty,
+            // The field will be filled in by a separate [`tracing_subscriber::Layer`] (see
+            // [`BenchmarkIdLayer`]).
+            //
             // This will only be filled if we have a benchmark_id in the tracestate.
             // That's OK, it won't be printed if empty.
             benchmark_id = tracing::field::Empty,
@@ -802,25 +802,25 @@ use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::Context;
 
-/// A `tracing_subscriber::Layer` that injects the opentelemetry `trace_id` as a `benchmark_id` field
-/// top level field on every span.
+/// A `tracing_subscriber::Layer` that injects the opentelemetry `benchmark_id` as a
+/// top level field on every span that pre-declares it.
 ///
-/// This allows us to use the upstream tooling to filter logs within a span by `trace_id`
+/// The `benchmark_id` is extracted from the W3C `tracestate` header.
 #[derive(Default)]
-pub struct TraceIdLayer {
+pub struct BenchmarkIdLayer {
     _private: (),
 }
 
 // Just a marker to avoid injecting multiple times per span.
-struct TraceIdInjected;
+struct BenchmarkIdInjected;
 
-impl<S> Layer<S> for TraceIdLayer
+impl<S> Layer<S> for BenchmarkIdLayer
 where
     S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
 {
     fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
         if let Some(span_ref) = ctx.span(id) {
-            if span_ref.extensions().get::<TraceIdInjected>().is_some() {
+            if span_ref.extensions().get::<BenchmarkIdInjected>().is_some() {
                 return;
             }
 
@@ -830,13 +830,11 @@ where
             let span_cx = otel_span.span_context();
 
             if span_cx.is_valid() {
-                let trace_id = span_cx.trace_id();
                 let trace_state = span_cx.trace_state();
-                current_span.record("trace_id", trace_id.to_string());
                 if let Some(benchmark_id) = trace_state.get("benchmark_id") {
                     current_span.record("benchmark_id", benchmark_id.to_owned());
                 }
-                span_ref.extensions_mut().insert(TraceIdInjected);
+                span_ref.extensions_mut().insert(BenchmarkIdInjected);
             }
         }
     }

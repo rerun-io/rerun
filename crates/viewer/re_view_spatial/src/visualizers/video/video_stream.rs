@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::VideoStream;
-use re_sdk_types::components::Opacity;
+use re_sdk_types::components::{Opacity, VideoCodec};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
     IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
@@ -16,8 +16,8 @@ use crate::visualizers::utilities::{
     spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
 };
 use crate::visualizers::video::{
-    VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
-    visualize_video_frame_texture,
+    AT_TIME_CURSOR_SALT, VideoFrameRenderInfo, VideoPlaybackIssue, VideoPlaybackIssueSeverity,
+    show_video_frame, video_stream_id,
 };
 use crate::{PickableTexturedRect, SpatialView2D};
 
@@ -44,7 +44,10 @@ impl VisualizerSystem for VideoStreamVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<VideoStream>()
+        VisualizerQueryInfo::single_required_component::<VideoCodec>(
+            &VideoStream::descriptor_codec(),
+            &VideoStream::all_components(),
+        )
     }
 
     fn execute(
@@ -104,7 +107,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 ),
             );
             let opacity_result = re_view::VisualizerInstructionQueryResults::new(
-                instruction.id,
+                instruction,
                 &opacity_result_wrapped,
                 &output,
             );
@@ -137,22 +140,30 @@ impl VisualizerSystem for VideoStreamVisualizer {
                             format!("No video samples available for {entity_path:?}"),
                             VideoPlaybackIssueSeverity::Informational,
                         ),
-                        _ => (
+                        VideoStreamProcessingError::UnloadedCodec => (
+                            "Codec not loaded yet".to_owned(),
+                            VideoPlaybackIssueSeverity::Loading,
+                        ),
+                        VideoStreamProcessingError::InvalidVideoSampleType(_)
+                        | VideoStreamProcessingError::MissingCodec
+                        | VideoStreamProcessingError::FailedReadingCodec(_)
+                        | VideoStreamProcessingError::OutOfOrderSamples
+                        | VideoStreamProcessingError::UnexpectedChunkChanges => (
                             format!("Failed to play video at {entity_path:?}: {err}"),
                             VideoPlaybackIssueSeverity::Error,
                         ),
                     };
 
-                    show_video_playback_issue(
+                    show_video_frame(
                         ctx,
                         &mut self.data,
-                        highlight,
-                        world_from_entity,
-                        description,
-                        severity,
-                        video_resolution,
                         entity_path,
+                        world_from_entity,
+                        highlight,
+                        video_resolution,
                         instruction.id,
+                        None,
+                        Some(VideoPlaybackIssue::custom(description, severity)),
                     );
                     continue;
                 }
@@ -164,7 +175,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 continue;
             }
 
-            let frame_result = {
+            let frame_output = {
                 let video = video.read();
 
                 if let Some([w, h]) = video.video_renderer.dimensions() {
@@ -193,7 +204,11 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
                 video.video_renderer.frame_at(
                     ctx.viewer_ctx.render_ctx(),
-                    video_stream_id(entity_path, ctx.view_id, Self::identifier()),
+                    video_stream_id(
+                        entity_path,
+                        VideoStream::descriptor_sample().component,
+                        AT_TIME_CURSOR_SALT,
+                    ),
                     video_stream_time_from_query(&query_context.query),
                     &|id| {
                         let buffer = get_chunk_array(re_sdk_types::ChunkId::from_tuid(id));
@@ -203,58 +218,41 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 )
             };
 
-            match frame_result {
-                Ok(frame_texture) => {
-                    let depth_offset = depth_offsets
-                        .per_entity_and_visualizer
-                        .get(&(Self::identifier(), entity_path.hash()))
-                        .copied()
-                        .unwrap_or_default();
-                    let opacity = opacity.unwrap_or_else(|| {
-                        typed_fallback_for(
-                            &re_viewer_context::QueryContext {
-                                view_ctx: ctx,
-                                target_entity_path: entity_path,
-                                instruction_id: Some(instruction.id),
-                                archetype_name: Some(VideoStream::name()),
-                                query: latest_at.clone(),
-                            },
-                            VideoStream::descriptor_opacity().component,
-                        )
-                    });
-                    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
-                    let multiplicative_tint =
-                        egui::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
-                    visualize_video_frame_texture(
-                        ctx,
-                        &mut self.data,
-                        frame_texture,
-                        entity_path,
-                        depth_offset,
-                        world_from_entity,
-                        highlight,
-                        video_resolution,
-                        multiplicative_tint,
-                    );
-                }
+            let depth_offset = depth_offsets
+                .per_entity_and_visualizer
+                .get(&(Self::identifier(), entity_path.hash()))
+                .copied()
+                .unwrap_or_default();
+            let opacity = opacity.unwrap_or_else(|| {
+                typed_fallback_for(
+                    &re_viewer_context::QueryContext {
+                        view_ctx: ctx,
+                        target_entity_path: entity_path,
+                        instruction_id: Some(instruction.id),
+                        archetype_name: Some(VideoStream::name()),
+                        query: latest_at.clone(),
+                    },
+                    VideoStream::descriptor_opacity().component,
+                )
+            });
+            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+            let multiplicative_tint = egui::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-                Err(err) => {
-                    if err.should_request_more_frames() {
-                        ctx.egui_ctx().request_repaint();
-                    }
-                    show_video_playback_issue(
-                        ctx,
-                        &mut self.data,
-                        highlight,
-                        world_from_entity,
-                        err.to_string(),
-                        err.severity(),
-                        video_resolution,
-                        entity_path,
-                        instruction.id,
-                    );
-                }
-            }
+            show_video_frame(
+                ctx,
+                &mut self.data,
+                entity_path,
+                world_from_entity,
+                highlight,
+                video_resolution,
+                instruction.id,
+                frame_output.output.map(|texture| VideoFrameRenderInfo {
+                    texture,
+                    depth_offset,
+                    multiplicative_tint,
+                }),
+                frame_output.error.map(VideoPlaybackIssue::from),
+            );
 
             if context_systems.view_class_identifier == SpatialView2D::identifier() {
                 let bounding_box = macaw::BoundingBox::from_min_size(

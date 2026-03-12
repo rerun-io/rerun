@@ -9,22 +9,22 @@ Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, 
 
 ## Fields
 #### `dimension`
-Type: `uint32`
+Type: non-null `UInt32`
 
 The dimension number to select.
 
 #### `index`
-Type: `uint64`
+Type: non-null `UInt64`
 
 The index along the dimension to use.
 
 
 ## Arrow datatype
 ```
-Struct {
-    dimension: uint32
-    index: uint64
-}
+Struct(
+    "dimension": non-null UInt32
+    "index": non-null UInt64
+)
 ```
 
 ## API reference links
