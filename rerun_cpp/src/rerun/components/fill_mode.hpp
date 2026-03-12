@@ -43,6 +43,11 @@ namespace rerun::components {
 
         /// The surface of the shape is filled in with a solid color. No lines are drawn.
         Solid = 3,
+
+        /// The surface of the shape is filled in with a transparent color, with major wireframe lines on top.
+        ///
+        /// This gives a good default appearance that shows both the shape's surface and its structure.
+        TransparentFillMajorWireframe = 4,
     };
 } // namespace rerun::components
 

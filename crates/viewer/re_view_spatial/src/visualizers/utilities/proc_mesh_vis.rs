@@ -237,62 +237,81 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                     .transform_affine3(&world_from_instance),
             );
 
-            match fill_mode {
-                FillMode::MajorWireframe | FillMode::DenseWireframe => {
-                    let Some(wireframe_mesh) = query_context.store_ctx().caches.entry(
-                        |c: &mut proc_mesh::WireframeCache| c.entry(proc_mesh_key, self.render_ctx),
-                    ) else {
-                        return Err(ViewSystemExecutionError::DrawDataCreationError(
-                            "Failed to allocate wireframe mesh".into(),
-                        ));
-                    };
+            let draw_wireframe = fill_mode.has_wireframe();
+            let draw_solid = fill_mode.has_solid();
 
-                    for strip in &wireframe_mesh.line_strips {
-                        let strip_builder = line_batch
-                            .add_strip(
-                                strip
-                                    .iter()
-                                    .map(|&point| world_from_instance.transform_point3(point)),
-                            )
-                            .color(color)
-                            .radius(radius)
-                            .picking_instance_id(PickingLayerInstanceId(instance_index as _))
-                            // Looped lines should be connected with rounded corners.
-                            .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS);
-
-                        if let Some(outline_mask_ids) = ent_context
-                            .highlight
-                            .instances
-                            .get(&Instance::from(instance_index as u64))
-                        {
-                            // Not using ent_context.highlight.index_outline_mask() because
-                            // that's already handled when the builder was created.
-                            strip_builder.outline_mask_ids(*outline_mask_ids);
-                        }
-                    }
-                }
-                FillMode::Solid => {
-                    let store_ctx = query_context.store_ctx();
-                    let Some(solid_mesh) =
-                        store_ctx.caches.entry(|c: &mut proc_mesh::SolidCache| {
+            if draw_wireframe {
+                let Some(wireframe_mesh) =
+                    query_context
+                        .store_ctx()
+                        .caches
+                        .entry(|c: &mut proc_mesh::WireframeCache| {
                             c.entry(proc_mesh_key, self.render_ctx)
                         })
-                    else {
-                        return Err(ViewSystemExecutionError::DrawDataCreationError(
-                            "Failed to allocate solid mesh".into(),
-                        ));
-                    };
+                else {
+                    return Err(ViewSystemExecutionError::DrawDataCreationError(
+                        "Failed to allocate wireframe mesh".into(),
+                    ));
+                };
 
-                    self.solid_instances.push(GpuMeshInstance {
-                        gpu_mesh: solid_mesh.gpu_mesh,
-                        world_from_mesh: world_from_instance,
-                        outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
-                        picking_layer_id: re_view::picking_layer_id_from_instance_path_hash(
-                            InstancePathHash::instance(entity_path, instance),
-                        ),
-                        additive_tint: color,
-                    });
+                for strip in &wireframe_mesh.line_strips {
+                    let strip_builder = line_batch
+                        .add_strip(
+                            strip
+                                .iter()
+                                .map(|&point| world_from_instance.transform_point3(point)),
+                        )
+                        .color(color)
+                        .radius(radius)
+                        .picking_instance_id(PickingLayerInstanceId(instance_index as _))
+                        // Looped lines should be connected with rounded corners.
+                        .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS);
+
+                    if let Some(outline_mask_ids) = ent_context
+                        .highlight
+                        .instances
+                        .get(&Instance::from(instance_index as u64))
+                    {
+                        // Not using ent_context.highlight.index_outline_mask() because
+                        // that's already handled when the builder was created.
+                        strip_builder.outline_mask_ids(*outline_mask_ids);
+                    }
                 }
+            }
+
+            if draw_solid {
+                let store_ctx = query_context.store_ctx();
+                let Some(solid_mesh) = store_ctx
+                    .caches
+                    .entry(|c: &mut proc_mesh::SolidCache| c.entry(proc_mesh_key, self.render_ctx))
+                else {
+                    return Err(ViewSystemExecutionError::DrawDataCreationError(
+                        "Failed to allocate solid mesh".into(),
+                    ));
+                };
+
+                let tint = if fill_mode == FillMode::TransparentFillMajorWireframe {
+                    // Make the solid fill transparent so the wireframe shows through.
+                    #[expect(clippy::disallowed_methods)]
+                    re_renderer::Color32::from_rgba_unmultiplied(
+                        color.r(),
+                        color.g(),
+                        color.b(),
+                        color.a() / 4, // TODO(emilk): make configurabe?
+                    )
+                } else {
+                    color
+                };
+
+                self.solid_instances.push(GpuMeshInstance {
+                    gpu_mesh: solid_mesh.gpu_mesh,
+                    world_from_mesh: world_from_instance,
+                    outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
+                    picking_layer_id: re_view::picking_layer_id_from_instance_path_hash(
+                        InstancePathHash::instance(entity_path, instance),
+                    ),
+                    additive_tint: tint,
+                });
             }
         }
 

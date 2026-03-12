@@ -173,15 +173,10 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     })
                     .unwrap_or_default();
 
-                match fill_mode {
-                    FillMode::DenseWireframe | FillMode::MajorWireframe => {
-                        // Each box consists of 4 strips with a total of 16 vertices
-                        builder.line_builder.reserve_strips(num_boxes * 4)?;
-                        builder.line_builder.reserve_vertices(num_boxes * 16)?;
-                    }
-                    FillMode::Solid => {
-                        // No lines.
-                    }
+                if fill_mode.has_wireframe() {
+                    // Each box consists of 4 strips with a total of 16 vertices
+                    builder.line_builder.reserve_strips(num_boxes * 4)?;
+                    builder.line_builder.reserve_vertices(num_boxes * 16)?;
                 }
 
                 let data = re_query::range_zip_1x8(

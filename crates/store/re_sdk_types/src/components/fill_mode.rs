@@ -33,7 +33,6 @@ pub enum FillMode {
     /// * An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections
     ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
     /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to [`components::FillMode::DenseWireframe`][crate::components::FillMode::DenseWireframe].
-    #[default]
     MajorWireframe = 1,
 
     /// Many lines are drawn to represent the surface of the shape in a see-through fashion.
@@ -47,6 +46,12 @@ pub enum FillMode {
 
     /// The surface of the shape is filled in with a solid color. No lines are drawn.
     Solid = 3,
+
+    /// The surface of the shape is filled in with a transparent color, with major wireframe lines on top.
+    ///
+    /// This gives a good default appearance that shows both the shape's surface and its structure.
+    #[default]
+    TransparentFillMajorWireframe = 4,
 }
 
 impl ::re_types_core::Component for FillMode {
@@ -121,6 +126,7 @@ impl ::re_types_core::Loggable for FillMode {
                 Some(1) => Ok(Some(Self::MajorWireframe)),
                 Some(2) => Ok(Some(Self::DenseWireframe)),
                 Some(3) => Ok(Some(Self::Solid)),
+                Some(4) => Ok(Some(Self::TransparentFillMajorWireframe)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -139,6 +145,9 @@ impl std::fmt::Display for FillMode {
             Self::MajorWireframe => write!(f, "MajorWireframe"),
             Self::DenseWireframe => write!(f, "DenseWireframe"),
             Self::Solid => write!(f, "Solid"),
+            Self::TransparentFillMajorWireframe => {
+                write!(f, "TransparentFillMajorWireframe")
+            }
         }
     }
 }
@@ -146,7 +155,12 @@ impl std::fmt::Display for FillMode {
 impl ::re_types_core::reflection::Enum for FillMode {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::MajorWireframe, Self::DenseWireframe, Self::Solid]
+        &[
+            Self::MajorWireframe,
+            Self::DenseWireframe,
+            Self::Solid,
+            Self::TransparentFillMajorWireframe,
+        ]
     }
 
     #[inline]
@@ -160,6 +174,9 @@ impl ::re_types_core::reflection::Enum for FillMode {
             }
             Self::Solid => {
                 "The surface of the shape is filled in with a solid color. No lines are drawn."
+            }
+            Self::TransparentFillMajorWireframe => {
+                "The surface of the shape is filled in with a transparent color, with major wireframe lines on top.\n\nThis gives a good default appearance that shows both the shape's surface and its structure."
             }
         }
     }

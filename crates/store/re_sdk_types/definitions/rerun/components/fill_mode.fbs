@@ -19,7 +19,7 @@ enum FillMode: ubyte{
     /// * An [archetypes.Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections
     ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
     /// * For [archetypes.Boxes3D], it is the edges of the box, identical to [components.FillMode.DenseWireframe].
-    MajorWireframe (default),
+    MajorWireframe,
 
     /// Many lines are drawn to represent the surface of the shape in a see-through fashion.
     ///
@@ -32,4 +32,9 @@ enum FillMode: ubyte{
 
     /// The surface of the shape is filled in with a solid color. No lines are drawn.
     Solid,
+
+    /// The surface of the shape is filled in with a transparent color, with major wireframe lines on top.
+    ///
+    /// This gives a good default appearance that shows both the shape's surface and its structure.
+    TransparentFillMajorWireframe (default),
 }

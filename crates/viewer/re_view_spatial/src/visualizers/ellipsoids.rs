@@ -41,15 +41,12 @@ impl Ellipsoids3DVisualizer {
             // either world size or screen size (depending on application).
             let subdivisions = match batch.fill_mode {
                 FillMode::DenseWireframe => 2, // Don't make it too crowded - let the user see inside the mesh.
-                FillMode::Solid => 6,          // Smooth, but not too CPU/GPU intensive
+                FillMode::Solid | FillMode::TransparentFillMajorWireframe => 6, // Smooth, but not too CPU/GPU intensive
                 FillMode::MajorWireframe => 12, // Three smooth ellipses
             };
             let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere {
                 subdivisions,
-                axes_only: match batch.fill_mode {
-                    FillMode::MajorWireframe => true,
-                    FillMode::DenseWireframe | FillMode::Solid => false,
-                },
+                axes_only: batch.fill_mode.axes_only(),
             };
 
             builder.add_batch(

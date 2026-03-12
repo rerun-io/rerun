@@ -49,6 +49,13 @@ class FillMode(Enum):
     Solid = 3
     """The surface of the shape is filled in with a solid color. No lines are drawn."""
 
+    TransparentFillMajorWireframe = 4
+    """
+    The surface of the shape is filled in with a transparent color, with major wireframe lines on top.
+
+    This gives a good default appearance that shows both the shape's surface and its structure.
+    """
+
     @classmethod
     def auto(cls, val: str | int | FillMode) -> FillMode:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -71,13 +78,33 @@ class FillMode(Enum):
 
 
 FillModeLike = (
-    FillMode | Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"] | int
+    FillMode
+    | Literal[
+        "DenseWireframe",
+        "MajorWireframe",
+        "Solid",
+        "TransparentFillMajorWireframe",
+        "densewireframe",
+        "majorwireframe",
+        "solid",
+        "transparentfillmajorwireframe",
+    ]
+    | int
 )
 """A type alias for any FillMode-like object."""
 
 FillModeArrayLike = (
     FillMode
-    | Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"]
+    | Literal[
+        "DenseWireframe",
+        "MajorWireframe",
+        "Solid",
+        "TransparentFillMajorWireframe",
+        "densewireframe",
+        "majorwireframe",
+        "solid",
+        "transparentfillmajorwireframe",
+    ]
     | int
     | Sequence[FillModeLike]
 )

@@ -59,14 +59,11 @@ impl Capsules3DVisualizer {
 
             let subdivisions = match batch.fill_mode {
                 FillMode::DenseWireframe => 3, // Don't make it too crowded - let the user see inside the mesh.
-                FillMode::Solid => 4,          // Smooth, but not too CPU/GPU intensive
+                FillMode::Solid | FillMode::TransparentFillMajorWireframe => 4, // Smooth, but not too CPU/GPU intensive
                 FillMode::MajorWireframe => 10,
             };
 
-            let axes_only = match batch.fill_mode {
-                FillMode::MajorWireframe => true,
-                FillMode::DenseWireframe | FillMode::Solid => false,
-            };
+            let axes_only = batch.fill_mode.axes_only();
 
             let meshes = lengths_iter
                 .zip(radii.iter())

@@ -40,6 +40,18 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
         opacity_fallback(ImageKind::Segmentation),
     );
 
+    // Line radii for solid primitives (thinner than the global default).
+    // This looks nicer with the default `FillMode::TransparentFillMajorWireframe`.
+    for component in [
+        archetypes::Boxes3D::descriptor_radii().component,
+        archetypes::Ellipsoids3D::descriptor_line_radii().component,
+        archetypes::Capsules3D::descriptor_line_radii().component,
+        archetypes::Cylinders3D::descriptor_line_radii().component,
+    ] {
+        system_registry
+            .register_fallback_provider(component, |_ctx| components::Radius::new_ui_points(0.5));
+    }
+
     // Pinhole
     system_registry.register_fallback_provider(
         archetypes::Pinhole::descriptor_image_plane_distance().component,
