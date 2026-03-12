@@ -10,4 +10,9 @@ pixi.lock linguist-generated=true
 **/snapshots/**/*.png filter=lfs diff=lfs merge=lfs -text
 **/*.h264 filter=lfs diff=lfs merge=lfs -text
 **/*.mp4 filter=lfs diff=lfs merge=lfs -text
+landing/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+landing/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+landing/**/*.png filter=lfs diff=lfs merge=lfs -text
+landing/**/*.gif filter=lfs diff=lfs merge=lfs -text
+landing/**/*.webp filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text

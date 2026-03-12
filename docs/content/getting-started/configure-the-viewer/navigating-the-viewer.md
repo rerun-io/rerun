@@ -208,6 +208,14 @@ This is particularly valuable for:
 
 ---
 
+## Programmatic blueprints
+
+You can also define blueprints entirely from code using the Blueprint API. This is ideal for creating reproducible layouts, generating views dynamically based on your data, or integrating blueprint configuration into your logging pipeline.
+
+For a complete guide, see [Build a blueprint programmatically](../../howto/visualization/build-a-blueprint-programmatically.md) and the [Blueprints concept page](../../concepts/visualization/blueprints.md).
+
+---
+
 ## Next steps
 
 - **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options

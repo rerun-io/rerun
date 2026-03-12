@@ -21,7 +21,7 @@
 
 # Maximum number of concurrent link checks.
 # Workaround for "too many open files" error on MacOS, see https://github.com/lycheeverse/lychee/issues/1248
-max_concurrency = 32
+max_concurrency = 96
 
 # Check links inside `<code>` and `<pre>` blocks as well as Markdown code blocks.
 include_verbatim = true
@@ -53,6 +53,7 @@ exclude_path = [
   ".pixi",
   "build",
   "docs/python/",
+  "landing",
   "rerun_cpp/_deps",
   "rerun_cpp/docs/html",
   "rerun_cpp/docs/xml",

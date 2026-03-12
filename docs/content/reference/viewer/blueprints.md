@@ -40,7 +40,7 @@ Hovering over any item reveals controls for:
 - **Eye icon**: Show or hide the item
 - **"-" button**: Remove the item from the blueprint
 
-Right-click any item for a context menu with additional operations. See [Configure the Viewer](../../getting-started/configure-the-viewer.md#interactive-configuration) for details on all interactive operations.
+Right-click any item for a context menu with additional operations. See [Configure the Viewer](../../getting-started/configure-the-viewer/navigating-the-viewer.md#interactive-configuration) for details on all interactive operations.
 
 ### Data blueprints
 

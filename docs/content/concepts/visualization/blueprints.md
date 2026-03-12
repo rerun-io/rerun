@@ -115,7 +115,7 @@ if robot_error:
     rr.send_blueprint(blueprint, make_active=True)
 ```
 
-See [Configure the Viewer](../../getting-started/configure-the-viewer.md#programmatic-blueprints) for detailed examples and our guide on how to [build a blueprint programmatically](../../howto/visualization/build-a-blueprint-programmatically.md).
+See [Configure the Viewer](../../getting-started/configure-the-viewer/navigating-the-viewer.md#programmatic-blueprints) for detailed examples and our guide on how to [build a blueprint programmatically](../../howto/visualization/build-a-blueprint-programmatically.md).
 
 ## Common use cases
 
@@ -144,7 +144,7 @@ Under the hood, blueprints are just data. They are structured using the same [En
 
 -   **Anything you modify in the Viewer can be saved and shared** as a blueprint file
 -   **Blueprints can be produced programmatically** using just the Rerun SDK without depending on the Viewer
--   **Blueprint data is fully expressive**, enabling [blueprint overrides](customize-views.md#per-entity-component-override) that are as powerful as logged data
+-   **Blueprint data is fully expressive**, enabling [blueprint overrides](customize-views.md#component-mappings) that are as powerful as logged data
 -   **The full time-series nature** simplifies future features like snapshots and undo/redo
 -   **Debugging tools for Rerun data** can inspect blueprint state just like recording data
 

@@ -64,7 +64,7 @@ rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
 Each decoder creates different types of components on entity paths (derived from MCAP channel topics) that can be accessed through Rerun's SDK:
 
 - Data from the `ros2msg` decoder and supported Foxglove messages appears as native Rerun visualization archetypes (see [here](message-formats.md#overview) for an overview)
-- Other data from the `protobuf` or `ros2_reflection` decoders appears as structured components that can be queried by field name or manually added to certain views ([example](message-formats.md#example-time-series-plot-for-custom-message-scalars))
+- Other data from the `protobuf` or `ros2_reflection` decoders appears as structured components that can be queried by field name or manually added to certain views ([example](message-formats.md#example-timeseries-plot-for-custom-message-scalars))
 - Data from the `raw` decoder appears as blob components containing the original message bytes
 - Metadata from `schema`, `stats`, and `recording_info` decoders appears as dedicated metadata entities
 

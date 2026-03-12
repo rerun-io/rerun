@@ -76,7 +76,7 @@ reference/viewer: reference/viewer/overview
 # Howto section
 howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
 howto/callbacks: howto/visualization/callbacks
-howto/configure-viewer-through-code: getting-started/configure-the-viewer#programmatic-blueprints
+howto/configure-viewer-through-code: getting-started/configure-the-viewer/navigating-the-viewer#programmatic-blueprints
 howto/dataframe-api: howto/query-and-transform/get-data-out
 howto/embed-rerun-viewer: howto/integrations/embed-web
 howto/fixed-window-plot: howto/visualization/fixed-window-plot
