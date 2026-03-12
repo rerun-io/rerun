@@ -705,8 +705,19 @@ mod tests {
 
         let chunks = Box::new(parser).finalize(ctx).unwrap();
         let row_counts = chunks.iter().map(Chunk::num_rows).collect::<Vec<_>>();
+        let data_chunk = chunks
+            .iter()
+            .find(|chunk| chunk.num_rows() == 2 && chunk.num_components() > 1)
+            .unwrap();
+        let intensity_descriptor = ComponentDescriptor::partial("intensity")
+            .with_builtin_archetype(archetypes::Points3D::name());
 
         assert_eq!(chunks.len(), 3);
         assert_eq!(row_counts, vec![2, 1, 2]);
+        assert!(
+            data_chunk
+                .component_descriptors()
+                .any(|descriptor| descriptor == &intensity_descriptor)
+        );
     }
 }
