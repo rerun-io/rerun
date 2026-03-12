@@ -539,9 +539,8 @@ impl TransformTreeContext {
 
     /// Formats a frame ID hash as a human-readable string.
     ///
-    /// Returns the frame name if known, otherwise triggers a [`re_log::debug_panic`]
-    /// and returns `None`.
-    pub fn format_frame_or_debug_panic(
+    /// Returns the frame name if known, otherwise logs a warning in debug builds and returns `None`.
+    pub fn format_frame_or_debug_warn(
         &self,
         frame_id_hash: TransformFrameIdHash,
         debug_location: &EntityPath,
@@ -549,7 +548,7 @@ impl TransformTreeContext {
         if let Some(frame_id) = self.lookup_frame_id(frame_id_hash) {
             Some(frame_id.to_string())
         } else {
-            re_log::debug_panic!(
+            re_log::debug_warn!(
                 "Failed to resolve frame id hash {frame_id_hash:?} which was referenced at {debug_location:?}"
             );
             None

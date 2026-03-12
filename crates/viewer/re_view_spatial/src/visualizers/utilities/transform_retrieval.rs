@@ -66,14 +66,14 @@ pub fn format_transform_info_result<'a>(
 
         Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, target, .. })) => {
             let src = if let Some(frame_id) =
-                transform_context.format_frame_or_debug_panic(*src, entity_path)
+                transform_context.format_frame_or_debug_warn(*src, entity_path)
             {
                 format!("{frame_id:?}")
             } else {
                 format!("{entity_path}:?")
             };
             let target = if let Some(target) =
-                transform_context.format_frame_or_debug_panic(*target, entity_path)
+                transform_context.format_frame_or_debug_warn(*target, entity_path)
             {
                 format!(" ({target:?})")
             } else {
@@ -87,7 +87,7 @@ pub fn format_transform_info_result<'a>(
 
         Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
             let target = if let Some(target) =
-                transform_context.format_frame_or_debug_panic(*target, entity_path)
+                transform_context.format_frame_or_debug_warn(*target, entity_path)
             {
                 format!("target frame {target:?}")
             } else {
@@ -99,7 +99,7 @@ pub fn format_transform_info_result<'a>(
 
         Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {
             let src = if let Some(frame_id) =
-                transform_context.format_frame_or_debug_panic(*src, entity_path)
+                transform_context.format_frame_or_debug_warn(*src, entity_path)
             {
                 format!("{frame_id:?}")
             } else {
@@ -138,7 +138,7 @@ pub fn is_valid_space_for_content(
         && let Some(target_frame_pinhole_root) = target_frame_pinhole_root
     {
         let origin = if let Some(origin) =
-            transform_context.format_frame_or_debug_panic(target_frame_pinhole_root, entity_path)
+            transform_context.format_frame_or_debug_warn(target_frame_pinhole_root, entity_path)
         {
             format!("The origin of the 3D view ({origin:?})")
         } else {
