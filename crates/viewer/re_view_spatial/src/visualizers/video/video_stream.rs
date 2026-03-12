@@ -123,8 +123,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
 
             let video = match viewer_ctx
                 .store_context
-                .caches
-                .entry(|c: &mut VideoStreamCache| {
+                .memoizer(|c: &mut VideoStreamCache| {
                     c.entry(
                         viewer_ctx.recording(),
                         entity_path,

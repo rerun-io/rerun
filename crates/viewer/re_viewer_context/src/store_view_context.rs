@@ -1,7 +1,7 @@
 use re_chunk::{Timeline, TimelineName};
 use re_entity_db::EntityDb;
 
-use crate::{AppContext, AppOptions, Caches, TimeControl};
+use crate::{AppContext, AppOptions, Cache, StoreCache, TimeControl};
 
 /// Context for viewing a specific store,
 /// (either a recording, or a blueprint).
@@ -18,7 +18,7 @@ pub struct StoreViewContext<'a> {
     pub time_ctrl: &'a TimeControl,
 
     /// Needed to display images, videos, etc
-    pub caches: &'a Caches,
+    pub caches: &'a StoreCache,
 }
 
 impl<'a> std::ops::Deref for StoreViewContext<'a> {
@@ -71,5 +71,12 @@ impl<'a> StoreViewContext<'a> {
 
     pub fn command_sender(&self) -> &crate::CommandSender {
         self.app_ctx.command_sender
+    }
+
+    /// Accesses a memoization cache for reading and writing.
+    ///
+    /// Shorthand for `self.caches.memoizer(f)`.
+    pub fn memoizer<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
+        self.caches.memoizer(f)
     }
 }

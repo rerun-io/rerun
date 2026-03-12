@@ -61,8 +61,7 @@ pub fn resolution_of_image_at(
 
         let image = ctx
             .store_context
-            .caches
-            .entry(|c: &mut crate::ImageDecodeCache| {
+            .memoizer(|c: &mut crate::ImageDecodeCache| {
                 c.entry_encoded_color(
                     row_id,
                     archetypes::EncodedImage::descriptor_blob().component,
@@ -94,8 +93,7 @@ pub fn resolution_of_image_at(
 
         let depth_image = ctx
             .store_context
-            .caches
-            .entry(|c: &mut crate::ImageDecodeCache| {
+            .memoizer(|c: &mut crate::ImageDecodeCache| {
                 c.entry_encoded_depth(
                     row_id,
                     archetypes::EncodedDepthImage::descriptor_blob().component,

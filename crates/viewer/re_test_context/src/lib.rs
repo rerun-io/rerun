@@ -260,7 +260,7 @@ impl TestContext {
 
         let mut store_hub = StoreHub::test_hub();
         store_hub.insert_entity_db(recording_store);
-        store_hub.cache_entry(&recording_store_id); // create cache
+        store_hub.store_cache_entry(&recording_store_id); // create per-store state
         store_hub.insert_entity_db(blueprint_store);
         store_hub
             .set_cloned_blueprint_active_for_app(&blueprint_id)

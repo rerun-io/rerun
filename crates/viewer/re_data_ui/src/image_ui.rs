@@ -28,9 +28,7 @@ pub fn image_preview_ui(
     image: &ImageInfo,
     colormap_with_range: Option<&ColormapWithRange>,
 ) -> Option<()> {
-    let image_stats = app_ctx
-        .caches
-        .entry(|c: &mut ImageStatsCache| c.entry(image));
+    let image_stats = app_ctx.memoizer(|c: &mut ImageStatsCache| c.entry(image));
     let annotations = store_ctx.map(|store_ctx| crate::annotations(store_ctx, entity_path));
     let debug_name = entity_path.to_string();
 
@@ -332,7 +330,7 @@ pub struct ImageUi {
 
 impl ImageUi {
     pub fn new(ctx: &StoreViewContext<'_>, image: ImageInfo) -> Self {
-        let image_stats = ctx.caches.entry(|c: &mut ImageStatsCache| c.entry(&image));
+        let image_stats = ctx.memoizer(|c: &mut ImageStatsCache| c.entry(&image));
         let data_range = image_data_range_heuristic(&image_stats, &image.format);
         Self {
             image,
@@ -348,17 +346,16 @@ impl ImageUi {
         blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
     ) -> Option<Self> {
-        ctx.caches
-            .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry_encoded_color(
-                    blob_row_id,
-                    blob_component_descriptor.component,
-                    blob,
-                    media_type,
-                )
-            })
-            .ok()
-            .map(|image| Self::new(ctx, image))
+        ctx.memoizer(|c: &mut re_viewer_context::ImageDecodeCache| {
+            c.entry_encoded_color(
+                blob_row_id,
+                blob_component_descriptor.component,
+                blob,
+                media_type,
+            )
+        })
+        .ok()
+        .map(|image| Self::new(ctx, image))
     }
 
     pub fn from_components(
@@ -393,7 +390,7 @@ impl ImageUi {
             image_format.0,
             kind,
         );
-        let image_stats = ctx.caches.entry(|c: &mut ImageStatsCache| c.entry(&image));
+        let image_stats = ctx.memoizer(|c: &mut ImageStatsCache| c.entry(&image));
 
         let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
             entity_components,

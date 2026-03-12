@@ -119,7 +119,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         .and_then(|types| types.first().cloned())
                         .map(|mt| MediaType(mt.into()));
 
-                    let image = match ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
+                    let image = match ctx.store_ctx().memoizer(|c: &mut ImageDecodeCache| {
                         c.entry_encoded_depth(
                             row_id,
                             EncodedDepthImage::descriptor_blob().component,

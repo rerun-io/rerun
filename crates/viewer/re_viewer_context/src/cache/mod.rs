@@ -1,17 +1,21 @@
 //! Viewer caches
 //!
-//! Caches are registered lazily upon first use, see [`Caches::entry`].
+//! Caches are registered lazily upon first use, see [`Memoizers::entry`].
 //! The concrete caches exposed here are always available for all viewer crates.
 
-mod caches;
+mod cache_trait;
 mod image_decode_cache;
 mod image_stats_cache;
+mod memoizers;
+mod store_cache;
 mod tensor_stats_cache;
 mod transform_database_store;
 mod video_asset_cache;
 mod video_stream_cache;
 
-pub use caches::{Cache, Caches};
+pub use cache_trait::Cache;
+pub use memoizers::Memoizers;
+pub use store_cache::StoreCache;
 // TODO(andreas): Do we _really_ have to have all these caches in `re_viewer_context`?
 // Caches are fully dynamic and registration based, so they can be added at runtime by any crate.
 // The reason this happens it that various viewer crates wants to access these, mostly for ui purposes.

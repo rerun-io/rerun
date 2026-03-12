@@ -63,7 +63,7 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+    Cache, ImageDecodeCache, ImageStatsCache, Memoizers, SharablePlayableVideoStream, StoreCache,
     TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache,
     VideoStreamProcessingError,
 };

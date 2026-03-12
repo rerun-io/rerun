@@ -1,7 +1,7 @@
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::Caches;
+use crate::{Cache, StoreCache};
 
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct ActiveStoreContext<'a> {
@@ -16,8 +16,8 @@ pub struct ActiveStoreContext<'a> {
     /// If none is active, this will point to a dummy empty recording.
     pub recording: &'a EntityDb,
 
-    /// Things that need caching.
-    pub caches: &'a Caches,
+    /// Per-recording caches.
+    pub caches: &'a StoreCache,
 
     /// Should we enable the heuristics during this frame?
     pub should_enable_heuristics: bool,
@@ -34,5 +34,12 @@ impl ActiveStoreContext<'_> {
 
     pub fn recording_store_id(&self) -> &StoreId {
         self.recording.store_id()
+    }
+
+    /// Accesses a memoization cache for reading and writing.
+    ///
+    /// Shorthand for `self.caches.memoizer(f)`.
+    pub fn memoizer<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
+        self.caches.memoizer(f)
     }
 }

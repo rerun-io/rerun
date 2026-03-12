@@ -21,7 +21,7 @@ pub fn edit_or_view_transform_frame_id(
             let suggestions = if let Some(store_ctx) = ctx.active_store_context {
                 let caches = store_ctx.caches;
                 let frame_id_registry =
-                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                    caches.memoizer(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
                         c.frame_id_registry(store_ctx.recording)
                     });
 

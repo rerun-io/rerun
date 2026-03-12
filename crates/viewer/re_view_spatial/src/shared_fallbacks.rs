@@ -182,7 +182,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             'scope: {
                 let caches = ctx.store_ctx().caches;
                 let (frame_id_registry, transform_forest) =
-                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                    caches.memoizer(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
                         (c.frame_id_registry(ctx.recording()), c.transform_forest())
                     });
 

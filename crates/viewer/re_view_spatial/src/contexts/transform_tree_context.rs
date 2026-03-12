@@ -170,12 +170,12 @@ impl ViewContextSystem for TransformTreeContext {
         re_tracing::profile_function!();
 
         let caches = ctx.store_context.caches;
-        let transform_forest = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+        let transform_forest = caches.memoizer(|c: &mut TransformDatabaseStoreCache| {
             c.update_transform_forest(ctx.recording(), &ctx.current_query())
         });
 
         let frame_id_registry = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
+            .memoizer(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
 
         let frame_ids = frame_id_registry
             .iter_frame_ids()
@@ -305,7 +305,7 @@ impl ViewContextSystem for TransformTreeContext {
         }
 
         let caches = ctx.viewer_ctx.store_context.caches;
-        let transforms_for_timeline = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+        let transforms_for_timeline = caches.memoizer(|c: &mut TransformDatabaseStoreCache| {
             c.transforms_for_timeline(ctx.recording(), query.timeline)
         });
 

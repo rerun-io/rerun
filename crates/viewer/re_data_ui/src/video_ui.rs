@@ -621,19 +621,17 @@ impl VideoUi {
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {
-        let result = ctx
-            .caches
-            .entry(|c: &mut re_viewer_context::VideoAssetCache| {
-                let debug_name = entity_path.to_string();
-                c.entry(
-                    debug_name,
-                    blob_row_id,
-                    blob_component_descriptor.component,
-                    blob,
-                    media_type,
-                    ctx.app_options.video_decoder_settings(),
-                )
-            });
+        let result = ctx.memoizer(|c: &mut re_viewer_context::VideoAssetCache| {
+            let debug_name = entity_path.to_string();
+            c.entry(
+                debug_name,
+                blob_row_id,
+                blob_component_descriptor.component,
+                blob,
+                media_type,
+                ctx.app_options.video_decoder_settings(),
+            )
+        });
 
         let certain_this_is_a_video =
             blob_component_descriptor.archetype == Some(archetypes::AssetVideo::name());
@@ -661,7 +659,7 @@ impl VideoUi {
             return None;
         }
 
-        let video_stream_result = ctx.caches.entry(|c: &mut VideoStreamCache| {
+        let video_stream_result = ctx.memoizer(|c: &mut VideoStreamCache| {
             c.entry(
                 ctx.db,
                 entity_path,

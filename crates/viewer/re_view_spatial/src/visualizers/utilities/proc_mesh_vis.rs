@@ -244,8 +244,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                 let Some(wireframe_mesh) =
                     query_context
                         .store_ctx()
-                        .caches
-                        .entry(|c: &mut proc_mesh::WireframeCache| {
+                        .memoizer(|c: &mut proc_mesh::WireframeCache| {
                             c.entry(proc_mesh_key, self.render_ctx)
                         })
                 else {
@@ -281,10 +280,9 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
 
             if draw_solid {
                 let store_ctx = query_context.store_ctx();
-                let Some(solid_mesh) = store_ctx
-                    .caches
-                    .entry(|c: &mut proc_mesh::SolidCache| c.entry(proc_mesh_key, self.render_ctx))
-                else {
+                let Some(solid_mesh) = store_ctx.memoizer(|c: &mut proc_mesh::SolidCache| {
+                    c.entry(proc_mesh_key, self.render_ctx)
+                }) else {
                     return Err(ViewSystemExecutionError::DrawDataCreationError(
                         "Failed to allocate solid mesh".into(),
                     ));

@@ -22,11 +22,9 @@ pub fn redap_thumbnail(
 
     let media_type = MediaType::guess_from_data(slice);
 
-    let image = ctx
-        .caches
-        .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-            c.entry_encoded_color(row_id, component, slice, media_type.as_ref())
-        })?;
+    let image = ctx.memoizer(|c: &mut re_viewer_context::ImageDecodeCache| {
+        c.entry_encoded_color(row_id, component, slice, media_type.as_ref())
+    })?;
 
     re_data_ui::image_preview_ui(
         ctx,

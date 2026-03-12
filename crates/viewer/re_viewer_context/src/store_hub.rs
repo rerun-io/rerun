@@ -18,7 +18,7 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
 use crate::{
-    ActiveStoreContext, BlueprintUndoState, Caches, RecordingOrTable, Route, StorageContext,
+    ActiveStoreContext, BlueprintUndoState, RecordingOrTable, Route, StorageContext, StoreCache,
     TableStore, TableStores,
 };
 
@@ -57,8 +57,8 @@ pub struct StoreHub {
     /// These applications should enable the heuristics early next frame.
     should_enable_heuristics_by_app_id: HashSet<ApplicationId>,
 
-    /// Viewer caches (e.g. image decode cache).
-    caches_per_recording: HashMap<StoreId, Caches>,
+    /// Viewer-specific state (caches, subscribers, etc.) per store.
+    store_caches: HashMap<StoreId, StoreCache>,
 
     /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, ChunkStoreGeneration>,
@@ -188,7 +188,7 @@ impl StoreHub {
             should_enable_heuristics_by_app_id: Default::default(),
 
             data_source_order: Default::default(),
-            caches_per_recording: Default::default(),
+            store_caches: Default::default(),
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
 
@@ -225,8 +225,8 @@ impl StoreHub {
                     .clone(),
             ))
         });
-        static EMPTY_CACHES: LazyLock<Caches> =
-            LazyLock::new(|| Caches::new(re_log_types::StoreId::empty_recording()));
+        static EMPTY_CACHES: LazyLock<StoreCache> =
+            LazyLock::new(|| StoreCache::new(re_log_types::StoreId::empty_recording()));
 
         let store_context = 'ctx: {
             // If we have an app-id, then use it to look up the blueprint.
@@ -286,7 +286,7 @@ impl StoreHub {
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
             let caches = route
                 .recording_id()
-                .and_then(|store_id| self.caches_per_recording.get(store_id));
+                .and_then(|store_id| self.store_caches.get(store_id));
 
             let caches = caches.unwrap_or_else(|| {
                 if recording.is_some() {
@@ -387,7 +387,7 @@ impl StoreHub {
     }
 
     fn remove_store(&mut self, store_id: &StoreId) {
-        _ = self.caches_per_recording.remove(store_id);
+        _ = self.store_caches.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
 
         let Some(removed_store) = removed_store else {
@@ -491,7 +491,7 @@ impl StoreHub {
                 false
             }
         });
-        self.caches_per_recording
+        self.store_caches
             .retain(|store_id, _| store_ids_retained.contains(store_id));
 
         self.table_stores.clear();
@@ -537,7 +537,7 @@ impl StoreHub {
                 true
             }
         });
-        self.caches_per_recording
+        self.store_caches
             .retain(|store_id, _| !store_ids_removed.contains(store_id));
 
         self.default_blueprint_by_app_id.remove(app_id);
@@ -547,19 +547,18 @@ impl StoreHub {
     // ---------------------
     // Recording management
 
-    /// Get the [`Caches`] for a given store.
+    /// Get the [`StoreCache`] for a given store.
     ///
-    /// Returns `None` if no caches exist for this store.
-    pub fn caches_for_store(&self, store_id: &StoreId) -> Option<&Caches> {
-        self.caches_per_recording.get(store_id)
+    /// Returns `None` if no state exists for this store.
+    pub fn store_caches(&self, store_id: &StoreId) -> Option<&StoreCache> {
+        self.store_caches.get(store_id)
     }
 
-    /// Get or create the cache if it doesn't already axist
-    pub fn cache_entry(&mut self, recording_id: &StoreId) -> &Caches {
-        // Make sure the recording has associated caches, always.
-        self.caches_per_recording
-            .entry(recording_id.clone())
-            .or_insert_with(|| Caches::new(recording_id.clone()))
+    /// Get or create the [`StoreCache`] for a given store.
+    pub fn store_cache_entry(&mut self, store_id: &StoreId) -> &mut StoreCache {
+        self.store_caches
+            .entry(store_id.clone())
+            .or_insert_with(|| StoreCache::new(store_id.clone()))
     }
 
     /// Ensure caches and blueprints are set up for the given recording.
@@ -578,7 +577,7 @@ impl StoreHub {
             self.load_persisted_blueprints_for_app(&app_id);
         }
 
-        self.cache_entry(recording_id);
+        self.store_cache_entry(recording_id);
     }
 
     // ---------------------
@@ -740,7 +739,7 @@ impl StoreHub {
         re_tracing::profile_function!();
 
         #[expect(clippy::iter_over_hash_type)]
-        for cache in self.caches_per_recording.values_mut() {
+        for cache in self.store_caches.values_mut() {
             cache.purge_memory();
         }
 
@@ -831,8 +830,8 @@ impl StoreHub {
         let store_events = entity_db.gc_with_target(target, time_cursor);
         let store_size_after = entity_db.total_size_bytes();
 
-        if let Some(caches) = self.caches_per_recording.get_mut(store_id) {
-            caches.on_store_events(&store_events, entity_db);
+        if let Some(cache) = self.store_caches.get(store_id) {
+            cache.on_store_events(&store_events, entity_db);
         }
 
         store_size_before.saturating_sub(store_size_after)
@@ -897,8 +896,8 @@ impl StoreHub {
                 });
                 if !store_events.is_empty() {
                     re_log::debug!("Garbage-collected blueprint store");
-                    if let Some(caches) = self.caches_per_recording.get_mut(blueprint_id) {
-                        caches.on_store_events(&store_events, blueprint);
+                    if let Some(cache) = self.store_caches.get(blueprint_id) {
+                        cache.on_store_events(&store_events, blueprint);
                     }
                 }
 
@@ -908,14 +907,14 @@ impl StoreHub {
         }
     }
 
-    /// See [`crate::Caches::begin_frame`].
+    /// See [`crate::StoreCache::begin_frame`].
     pub fn begin_frame_caches(&mut self) {
-        self.caches_per_recording.retain(|store_id, caches| {
+        self.store_caches.retain(|store_id, cache| {
             if self.store_bundle.contains(store_id) {
-                caches.begin_frame();
-                true // keep caches for existing recordings
+                cache.begin_frame();
+                true // keep cache for existing recordings
             } else {
-                false // remove caches for recordings that no longer exist
+                false // remove cache for recordings that no longer exist
             }
         });
     }
@@ -1020,7 +1019,7 @@ impl StoreHub {
             table_stores,
             data_source_order: _,
             should_enable_heuristics_by_app_id: _,
-            caches_per_recording,
+            store_caches,
             blueprint_last_save: _,
             blueprint_last_gc: _,
         } = self;
@@ -1030,9 +1029,9 @@ impl StoreHub {
         for store in store_bundle.entity_dbs() {
             let store_id = store.store_id();
             let engine = store.storage_engine();
-            let cache_vram_usage = caches_per_recording
+            let cache_vram_usage = store_caches
                 .get(store_id)
-                .map(|caches| caches.vram_usage())
+                .map(|cache| cache.vram_usage())
                 .unwrap_or_default();
             store_stats.insert(
                 store_id.clone(),
@@ -1067,7 +1066,7 @@ impl MemUsageTreeCapture for StoreHub {
         let Self {
             store_bundle,
             table_stores,
-            caches_per_recording,
+            store_caches,
 
             // Small stuff:
             persistence: _,
@@ -1081,16 +1080,16 @@ impl MemUsageTreeCapture for StoreHub {
 
         let mut node = MemUsageNode::new();
 
-        // Collect all store IDs from both store_bundle and caches_per_recording
+        // Collect all store IDs from both store_bundle and store_caches
         let mut all_store_ids = std::collections::BTreeSet::new();
         for entity_db in store_bundle.entity_dbs() {
             all_store_ids.insert(entity_db.store_id().clone());
         }
-        for store_id in caches_per_recording.keys() {
+        for store_id in store_caches.keys() {
             all_store_ids.insert(store_id.clone());
         }
 
-        // Group stores by recording ID, combining EntityDb and Caches
+        // Group stores by recording ID, combining EntityDb and StoreCache
         let mut stores_node = MemUsageNode::new();
         for store_id in all_store_ids {
             let recording_id = format!("{store_id:?}");
@@ -1101,9 +1100,9 @@ impl MemUsageTreeCapture for StoreHub {
                 recording_node.add("EntityDb", entity_db.capture_mem_usage_tree());
             }
 
-            // Add Caches if they exist for this store
-            if let Some(caches) = caches_per_recording.get(&store_id) {
-                recording_node.add("Caches", caches.capture_mem_usage_tree());
+            // Add StoreCache if it exists for this store
+            if let Some(cache) = store_caches.get(&store_id) {
+                recording_node.add("StoreCache", cache.capture_mem_usage_tree());
             }
 
             stores_node.add(recording_id, recording_node.into_tree());

@@ -108,7 +108,7 @@ impl EncodedImageVisualizer {
                 .and_then(|media_types| media_types.first().cloned())
                 .map(|media_type| MediaType(media_type.into()));
 
-            let image = ctx.store_ctx().caches.entry(|c: &mut ImageDecodeCache| {
+            let image = ctx.store_ctx().memoizer(|c: &mut ImageDecodeCache| {
                 c.entry_encoded_color(
                     tensor_data_row_id,
                     EncodedImage::descriptor_blob().component,

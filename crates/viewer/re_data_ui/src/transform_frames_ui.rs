@@ -74,7 +74,7 @@ impl TransformFramesUi {
 
         let mut frame_id_hash = TransformFrameIdHash::new(&frame_id);
 
-        let (frame_ids, transforms) = ctx.caches.entry(|c: &mut TransformDatabaseStoreCache| {
+        let (frame_ids, transforms) = ctx.memoizer(|c: &mut TransformDatabaseStoreCache| {
             (
                 c.frame_id_registry(ctx.db),
                 c.transforms_for_timeline(ctx.db, ctx.timeline_name()),

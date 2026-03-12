@@ -135,7 +135,7 @@ Set the displayed dimensions in a selection panel.",
                 ..
             }) = &state.tensor
             {
-                let tensor_stats = ctx.store_context.caches.entry(|c: &mut TensorStatsCache| {
+                let tensor_stats = ctx.store_context.memoizer(|c: &mut TensorStatsCache| {
                     c.entry(Hash64::hash(*tensor_row_id), tensor)
                 });
 

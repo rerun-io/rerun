@@ -20,8 +20,7 @@ pub fn textured_rect_from_image(
     let debug_name = ent_path.to_string();
     let image_stats = ctx
         .store_context
-        .caches
-        .entry(|c: &mut ImageStatsCache| c.entry(image));
+        .memoizer(|c: &mut ImageStatsCache| c.entry(image));
 
     gpu_bridge::image_to_gpu(
         ctx.render_ctx(),

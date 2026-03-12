@@ -2501,7 +2501,7 @@ impl App {
                     let entity_db = store_hub.entity_db_entry(&store_id);
                     let store_event = entity_db.add_rrd_manifest_message(rrd_manifest);
 
-                    if let Some(caches) = store_hub.caches_for_store(&store_id) {
+                    if let Some(caches) = store_hub.store_caches(&store_id) {
                         // Downgrade to read-only, so we can access caches.
                         let entity_db = store_hub
                             .entity_db(&store_id)
@@ -2691,7 +2691,7 @@ impl App {
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
         if let Some(entity_db) = store_hub.entity_db(store_id)
-            && let Some(caches) = store_hub.caches_for_store(store_id)
+            && let Some(caches) = store_hub.store_caches(store_id)
         {
             caches.on_store_events(store_events, entity_db);
         }
@@ -3381,7 +3381,7 @@ impl App {
 
         // Even if we wanted, we cannot get rid of this overhead
         let unpurgable_cache_size = active_recording_id
-            .and_then(|id| store_hub.caches_for_store(id))
+            .and_then(|id| store_hub.store_caches(id))
             .map_or(0, |caches| caches.memory_use_after_last_purge());
 
         const APP_OVERHEAD_BYTES: u64 = 300_000_000;

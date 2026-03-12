@@ -268,7 +268,7 @@ fn latest_at_query_video_from_datastore(
     let media_type =
         results.component_instance::<MediaType>(0, AssetVideo::descriptor_media_type().component);
 
-    let video = ctx.store_context.caches.entry(|c: &mut VideoAssetCache| {
+    let video = ctx.store_context.memoizer(|c: &mut VideoAssetCache| {
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,

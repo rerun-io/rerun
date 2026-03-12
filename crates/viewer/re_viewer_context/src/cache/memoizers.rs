@@ -8,6 +8,8 @@ use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 use re_mutex::Mutex;
 
+use crate::Cache;
+
 /// A wrapper around a cache that allows for shared access with its own lock.
 ///
 /// This reduces lock contention by having one lock per cache type
@@ -32,28 +34,33 @@ impl SharedCache {
 }
 
 /// Does memoization of different objects for the immediate mode UI.
-pub struct Caches {
+pub struct Memoizers {
+    /// The store for which these caches are caching data.
+    store_id: StoreId,
+
     /// Master map from cache type to the cache itself.
     ///
     /// The master mutex is only held briefly to look up or insert a cache.
     /// Each cache has its own mutex for actual access.
     caches: Mutex<HashMap<TypeId, Arc<SharedCache>>>,
 
-    /// The store for which these caches are caching data.
-    pub store_id: StoreId,
-
     /// How much memory we used after the last call to [`Self::purge_memory`].
     memory_use_after_last_purge: u64,
 }
 
-impl Caches {
-    /// Creates a new instance of `Caches` associated with a specific store.
+impl Memoizers {
+    /// Creates a new instance of [`Memoizers`] associated with a specific store.
     pub fn new(store_id: StoreId) -> Self {
         Self {
             caches: Mutex::new(HashMap::default()),
             store_id,
             memory_use_after_last_purge: 0,
         }
+    }
+
+    /// The store for which these caches are caching data.
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
     }
 
     /// Call once per frame to potentially flush the cache(s).
@@ -155,46 +162,13 @@ impl Caches {
         let cache = cache_guard.as_mut();
         f((cache as &mut dyn std::any::Any)
             .downcast_mut::<C>()
-            .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
+            .expect(
+                "Downcast failed, this indicates a bug in how `Memoizers` adds new cache types.",
+            ))
     }
 }
 
-/// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.
-///
-/// See also egus's cache system, in [`egui::cache`] (<https://docs.rs/egui/latest/egui/cache/index.html>).
-pub trait Cache: std::any::Any + Send + Sync + re_byte_size::MemUsageTreeCapture {
-    fn name(&self) -> &'static str;
-
-    /// Called once per frame to potentially flush the cache.
-    fn begin_frame(&mut self) {}
-
-    /// Attempt to free up memory.
-    ///
-    /// This should attempt to purge everything
-    /// that is not currently in use.
-    ///
-    /// Called BEFORE `begin_frame` (if at all).
-    fn purge_memory(&mut self);
-
-    /// Returns a memory usage tree containing only GPU memory (VRAM) usage.
-    ///
-    /// This should report GPU memory usage with per-item breakdown where applicable.
-    /// Defaults to an empty tree (0 bytes) for caches that don't use GPU memory.
-    fn vram_usage(&self) -> MemUsageTree {
-        MemUsageTree::Bytes(0)
-    }
-
-    /// React to the chunk store's changelog, if needed.
-    ///
-    /// Useful to e.g. invalidate unreachable data.
-    /// Since caches are created per store, each cache consistently receives events only for the same store.
-    fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
-        _ = events;
-        _ = entity_db;
-    }
-}
-
-impl MemUsageTreeCapture for Caches {
+impl MemUsageTreeCapture for Memoizers {
     fn capture_mem_usage_tree(&self) -> MemUsageTree {
         re_tracing::profile_function!();
 

@@ -293,7 +293,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                         re_sdk_types::image::ImageKind::Depth,
                     );
                     let cache = ctx.store_ctx().caches;
-                    let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                    let image_stats = cache.memoizer(|c: &mut ImageStatsCache| c.entry(&image));
                     let default_range =
                         ColormapWithRange::default_range_for_depth_images(&image_stats);
                     return [default_range[0] as f64, default_range[1] as f64].into();
@@ -333,7 +333,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
 
                 let cache = ctx.store_ctx().caches;
                 let blob_bytes = blob.0.to_vec();
-                if let Ok(image) = cache.entry(|c: &mut ImageDecodeCache| {
+                if let Ok(image) = cache.memoizer(|c: &mut ImageDecodeCache| {
                     c.entry_encoded_depth(
                         row_id,
                         archetypes::EncodedDepthImage::descriptor_blob().component,
@@ -341,7 +341,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                         media_type.as_ref(),
                     )
                 }) {
-                    let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                    let image_stats = cache.memoizer(|c: &mut ImageStatsCache| c.entry(&image));
                     let default_range =
                         ColormapWithRange::default_range_for_depth_images(&image_stats);
                     return [default_range[0] as f64, default_range[1] as f64].into();
@@ -394,7 +394,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                     archetypes::Tensor::descriptor_data().component,
                 )
             {
-                let tensor_stats = ctx.store_ctx().caches.entry(|c: &mut TensorStatsCache| {
+                let tensor_stats = ctx.store_ctx().memoizer(|c: &mut TensorStatsCache| {
                     c.entry(re_log_types::hash::Hash64::hash(row_id), &tensor)
                 });
                 tensor_data_range_heuristic(&tensor_stats, tensor.dtype())

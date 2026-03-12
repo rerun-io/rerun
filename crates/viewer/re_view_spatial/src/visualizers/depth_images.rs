@@ -86,8 +86,7 @@ pub fn process_depth_image_data(
             // Don't use fallback provider since it has to query information we already have.
             let image_stats = ctx
                 .store_ctx()
-                .caches
-                .entry(|c: &mut ImageStatsCache| c.entry(&image_info));
+                .memoizer(|c: &mut ImageStatsCache| c.entry(&image_info));
             ColormapWithRange::default_range_for_depth_images(&image_stats)
         });
     let colormap_with_range = ColormapWithRange {

@@ -778,7 +778,7 @@ mod tests {
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_types_core::reflection::Reflection;
     use re_viewer_context::{
-        ActiveStoreContext, Caches, FallbackProviderRegistry, IdentifiedViewSystem as _,
+        ActiveStoreContext, FallbackProviderRegistry, IdentifiedViewSystem as _, StoreCache,
         ViewClass as _, ViewClassRegistry, VisualizableReason, blueprint_timeline,
     };
 
@@ -852,7 +852,7 @@ mod tests {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &Caches::new(recording.store_id().clone()),
+            caches: &StoreCache::new(recording.store_id().clone()),
             should_enable_heuristics: false,
         };
 

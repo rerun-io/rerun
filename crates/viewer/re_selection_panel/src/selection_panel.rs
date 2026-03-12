@@ -777,7 +777,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             let suggestions = {
                 let caches = ctx.viewer_ctx.store_context.caches;
                 let frame_id_registry =
-                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                    caches.memoizer(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
                         c.frame_id_registry(ctx.viewer_ctx.recording())
                     });
 
