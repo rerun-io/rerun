@@ -106,9 +106,9 @@ pub fn clear_credentials() -> Result<Option<LogoutOutcome>, CredentialsClearErro
         }
     });
 
-    storage::clear()?;
-
+    crate::credentials::oauth::clear_cache();
     crate::credentials::oauth::auth_update(None);
+    storage::clear()?;
 
     Ok(outcome)
 }
