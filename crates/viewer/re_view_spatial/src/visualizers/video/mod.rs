@@ -7,6 +7,7 @@ use re_renderer::renderer;
 use re_renderer::resource_managers::ImageDataDesc;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_ui::ContextExt as _;
 use re_video::player::{VideoPlaybackIssueSeverity, VideoPlayerError};
 use re_viewer_context::{ViewClass as _, ViewContext};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
@@ -117,6 +118,7 @@ fn show_video_frame(
     let extent_v = world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y);
 
     let mut has_rendered_texture = false;
+    let mut depth_offset = 0;
 
     let loading_indicator_reason = if let Some(issue) = &issue {
         if matches!(issue.severity, VideoPlaybackIssueSeverity::Loading) {
@@ -163,6 +165,7 @@ fn show_video_frame(
                     .with(visualizer_instruction),
                 issue.is_none() && !show_loading_indicator,
             );
+            depth_offset = frame.depth_offset;
             let textured_rect = renderer::TexturedRect {
                 top_left_corner_position,
                 extent_u,
@@ -313,9 +316,8 @@ fn show_video_frame(
             texture_filter_magnification: renderer::TextureFilterMag::Linear,
             texture_filter_minification: renderer::TextureFilterMin::Linear,
             outline_mask: highlight.overall,
-            #[expect(clippy::disallowed_methods)] // Ok to just dim it
-            multiplicative_tint: egui::Rgba::from_gray(0.5),
-            ..Default::default()
+            multiplicative_tint: egui::Rgba::from(ctx.egui_ctx().tokens().text_default).to_opaque(),
+            depth_offset,
         },
     };
 
