@@ -36,7 +36,7 @@ strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
 [dev-dependencies]
-crossbeam.workspace = true
 insta = { workspace = true, features = ["filters", "redactions"] }
 prost-reflect = { workspace = true, features = ["text-format"] }
+re_arrow_util.workspace = true
 re_log = { workspace = true, features = ["setup"] }

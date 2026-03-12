@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
 use arrow::array::{
     ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
-    Float64Builder, Int32Builder, Int64Builder, ListBuilder, StringBuilder, StructBuilder,
-    UInt32Builder, UInt64Builder,
+    Float64Builder, Int32Builder, Int64Builder, ListBuilder, MapBuilder, MapFieldNames,
+    StringBuilder, StructBuilder, UInt32Builder, UInt64Builder,
 };
 use arrow::datatypes::{DataType, Field, Fields};
 use prost_reflect::{
-    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, ReflectMessage as _,
-    Value,
+    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MapKey, MessageDescriptor,
+    OneofDescriptor, ReflectMessage as _, Value,
 };
 use re_chunk::{Chunk, ChunkId};
 use re_sdk_types::ComponentDescriptor;
@@ -14,21 +16,6 @@ use re_sdk_types::reflection::ComponentDescriptorExt as _;
 
 use crate::parsers::{MessageParser, ParserContext};
 use crate::{DecoderIdentifier, Error, MessageDecoder};
-
-/// Returns `true` if the field belongs to a real (non-synthetic) `oneof`.
-///
-/// Proto3 `optional` fields use synthetic `oneof`s for presence tracking,
-/// which should be treated as regular fields. A real oneof always has 2+
-/// variants, while proto3 optional creates exactly one synthetic oneof per
-/// field, so checking `o.fields().len() > 1` is sufficient.
-///
-/// Note: `o.is_synthetic()` alone is NOT reliable because some protobuf
-/// compilers/tools don't emit the `proto3_optional` flag it relies on.
-fn is_real_oneof_field(field: &FieldDescriptor) -> bool {
-    field
-        .containing_oneof()
-        .is_some_and(|o| o.fields().len() > 1)
-}
 
 struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
@@ -55,6 +42,9 @@ enum ProtobufError {
         expected: &'static str,
         actual: prost_reflect::Kind,
     },
+
+    #[error("appending to array failed: {0}")]
+    AppendFailed(#[from] arrow::error::ArrowError),
 
     #[error("unknown enum number {0}")]
     UnknownEnumNumber(i32),
@@ -95,30 +85,57 @@ fn append_message_fields(
         .map(|(field_desc, value)| (field_desc.number(), value))
         .collect();
 
-    // TODO(#11221): Support real `oneof` values in protobuf MCAP files.
-    // Synthetic oneofs (proto3 optional) are treated as regular fields.
-    let non_oneof_fields = descriptor.fields().filter(|f| !is_real_oneof_field(f));
+    let grouped = grouped_fields(&descriptor);
 
-    for (field_builder, field_desc) in struct_builder
+    for (field_builder, grouped_field) in struct_builder
         .field_builders_mut()
         .iter_mut()
-        .zip(non_oneof_fields)
+        .zip(grouped.iter())
     {
-        // Use the actual field number from the schema, not index-based numbering.
-        // Protobuf schemas can have gaps (e.g., fields 1, 2, 5, 8 after deprecating 3, 4).
-        let protobuf_number = field_desc.number();
+        match grouped_field {
+            GroupedField::Regular(field_desc) => {
+                // Use the actual field number from the schema, not index-based numbering.
+                // Protobuf schemas can have gaps (e.g., fields 1, 2, 5, 8 after deprecating 3, 4).
+                let protobuf_number = field_desc.number();
 
-        if let Some(val) = set_fields.get(&protobuf_number) {
-            append_value(field_builder, &field_desc, val)?;
-        } else {
-            // For proto3 optional fields, append null for unset fields.
-            // For regular proto3 fields, append default values.
-            if field_desc.supports_presence() {
-                append_null_to_builder(field_builder)?;
-            } else {
-                // Use the default value for this field type.
-                let default_value = field_desc.default_value();
-                append_value(field_builder, &field_desc, &default_value)?;
+                if let Some(val) = set_fields.get(&protobuf_number) {
+                    append_value(field_builder, field_desc, val)?;
+                } else {
+                    // For proto3 optional fields, maps, and lists: append null for unset fields.
+                    // For regular proto3 fields: append default values.
+                    if field_desc.supports_presence() || field_desc.is_map() || field_desc.is_list()
+                    {
+                        append_null_to_builder(field_builder)?;
+                    } else {
+                        // Use the default value for this field type.
+                        let default_value = field_desc.default_value();
+                        append_value(field_builder, field_desc, &default_value)?;
+                    }
+                }
+            }
+            GroupedField::OneOf(oneof) => {
+                let oneof_builder = field_builder
+                    .as_any_mut()
+                    .downcast_mut::<StructBuilder>()
+                    .expect("oneof wrapper builder should be a StructBuilder");
+
+                // Find which variant (if any) is set in this message.
+                let mut any_set = false;
+                for (variant_builder, variant_field) in oneof_builder
+                    .field_builders_mut()
+                    .iter_mut()
+                    .zip(oneof.fields())
+                {
+                    if let Some(val) = set_fields.get(&variant_field.number()) {
+                        append_value(variant_builder, &variant_field, val)?;
+                        any_set = true;
+                    } else {
+                        append_null_to_builder(variant_builder)?;
+                    }
+                }
+
+                // Append the wrapper struct: true if any variant is set, false (null) otherwise.
+                oneof_builder.append(any_set);
             }
         }
     }
@@ -219,6 +236,11 @@ fn append_null_to_builder(builder: &mut dyn ArrayBuilder) -> Result<(), Protobuf
         .downcast_mut::<ListBuilder<Box<dyn ArrayBuilder>>>()
     {
         b.append_null();
+    } else if let Some(b) = builder
+        .as_any_mut()
+        .downcast_mut::<MapBuilder<Box<dyn ArrayBuilder>, Box<dyn ArrayBuilder>>>()
+    {
+        b.append(false)?;
     } else {
         return Err(ProtobufError::UnsupportedType(
             "Unknown builder type for append_null",
@@ -260,9 +282,30 @@ fn append_value(
             list_builder.append(true);
             re_log::trace!("Finished append on list with elements {val}");
         }
-        Value::Map(_hash_map) => {
-            // We should not encounter hash maps in protobufs.
-            return Err(ProtobufError::UnsupportedType("HashMap"));
+        Value::Map(hash_map) => {
+            let Kind::Message(entry_msg) = field.kind() else {
+                return Err(ProtobufError::UnexpectedType {
+                    expected: "message (map entry)",
+                    actual: field.kind(),
+                });
+            };
+            let key_field = entry_msg.map_entry_key_field();
+            let value_field = entry_msg.map_entry_value_field();
+
+            let map_builder = downcast_err::<
+                MapBuilder<Box<dyn ArrayBuilder>, Box<dyn ArrayBuilder>>,
+            >(builder, val)?;
+
+            let mut sorted_entries: Vec<_> = hash_map.iter().collect();
+            sorted_entries.sort_by_key(|(k, _)| (*k).clone());
+            for (map_key, map_value) in sorted_entries {
+                let key_value = map_key_to_value(map_key);
+                append_value(map_builder.keys(), &key_field, &key_value)?;
+                append_value(map_builder.values(), &value_field, map_value)?;
+            }
+            map_builder
+                .append(true)
+                .map_err(|_err| ProtobufError::UnsupportedType("MapBuilder append failed"))?;
         }
         Value::EnumNumber(x) => {
             let kind = field.kind();
@@ -293,31 +336,85 @@ fn append_value(
     Ok(())
 }
 
-fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> StructBuilder {
-    // TODO(#11221): Support real `oneof` values in protobuf MCAP files.
-    // Log about real oneof fields (not synthetic ones from proto3 optional).
-    let skipped_fields: Vec<_> = message_descriptor
-        .fields()
-        .filter(is_real_oneof_field)
-        .map(|f| f.name().to_owned())
-        .collect();
-    if !skipped_fields.is_empty() {
-        re_log::debug_once!(
-            "Skipping `oneof` fields {skipped_fields:?} in `{}`.",
-            message_descriptor.full_name()
-        );
+/// Converts a [`MapKey`] to a [`Value`] so it can be appended via `append_value`.
+fn map_key_to_value(key: &MapKey) -> Value {
+    match key {
+        MapKey::Bool(b) => Value::Bool(*b),
+        MapKey::I32(i) => Value::I32(*i),
+        MapKey::I64(i) => Value::I64(*i),
+        MapKey::U32(u) => Value::U32(*u),
+        MapKey::U64(u) => Value::U64(*u),
+        MapKey::String(s) => Value::String(s.clone()),
     }
+}
 
-    let fields = message_descriptor
-        .fields()
-        .filter(|f| !is_real_oneof_field(f))
-        .map(|f| arrow_field_from(&f))
-        .collect::<Fields>();
-    let field_builders = message_descriptor
-        .fields()
-        .filter(|f| !is_real_oneof_field(f))
-        .map(|f| arrow_builder_from_field(&f))
-        .collect::<Vec<_>>();
+enum GroupedField {
+    Regular(FieldDescriptor),
+    OneOf(OneofDescriptor),
+}
+
+/// Iterates the fields of a message descriptor, collapsing real oneof variants
+/// (those with more than one field) into a single [`GroupedField::OneOf`] entry
+/// at the position of the first variant.
+fn grouped_fields(descriptor: &MessageDescriptor) -> Vec<GroupedField> {
+    let mut result = Vec::new();
+    let mut seen = ahash::HashSet::default();
+    for field in descriptor.fields() {
+        // Synthetic oneofs (single-field, proto3 optional) remain as [`GroupedField::Regular`].
+        if let Some(oneof) = field.containing_oneof()
+            && oneof.fields().len() > 1
+        {
+            if seen.insert(oneof.full_name().to_owned()) {
+                result.push(GroupedField::OneOf(oneof));
+            }
+            continue;
+        }
+        result.push(GroupedField::Regular(field));
+    }
+    result
+}
+
+/// Creates Arrow [`Fields`] from a message descriptor, wrapping real oneof
+/// variants in a single struct field named after the oneof with
+/// `ProtobufOneOf` metadata on the wrapper.
+fn fields_from_message(descriptor: &MessageDescriptor) -> Fields {
+    grouped_fields(descriptor)
+        .into_iter()
+        .map(|gf| match gf {
+            GroupedField::Regular(f) => arrow_field_from(&f),
+            GroupedField::OneOf(oneof) => {
+                let inner: Fields = oneof.fields().map(|f| arrow_field_from(&f)).collect();
+                Field::new(oneof.name(), DataType::Struct(inner), true).with_metadata(
+                    std::iter::once((
+                        "ARROW:extension:name".to_owned(),
+                        "rerun.datatypes.ProtobufOneOf".to_owned(),
+                    ))
+                    .collect(),
+                )
+            }
+        })
+        .collect()
+}
+
+fn struct_builder_from_message(message_descriptor: &MessageDescriptor) -> StructBuilder {
+    let fields = fields_from_message(message_descriptor);
+    let field_builders: Vec<Box<dyn ArrayBuilder>> = grouped_fields(message_descriptor)
+        .into_iter()
+        .map(|gf| -> Box<dyn ArrayBuilder> {
+            match gf {
+                GroupedField::Regular(f) => arrow_builder_from_field(&f),
+                GroupedField::OneOf(oneof) => {
+                    let inner_fields: Fields =
+                        oneof.fields().map(|f| arrow_field_from(&f)).collect();
+                    let inner_builders: Vec<Box<dyn ArrayBuilder>> = oneof
+                        .fields()
+                        .map(|f| arrow_builder_from_field(&f))
+                        .collect();
+                    Box::new(StructBuilder::new(inner_fields, inner_builders))
+                }
+            }
+        })
+        .collect();
 
     re_log::debug_assert_eq!(fields.len(), field_builders.len());
 
@@ -340,6 +437,18 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
         Kind::Bool => Box::new(BooleanBuilder::new()),
         Kind::String => Box::new(StringBuilder::new()),
         Kind::Bytes => Box::new(BinaryBuilder::new()),
+        Kind::Message(message_descriptor) if descr.is_map() => {
+            let key_field = message_descriptor.map_entry_key_field();
+            let val_field = message_descriptor.map_entry_value_field();
+            let field_names = MapFieldNames {
+                entry: "entries".to_owned(),
+                key: key_field.name().to_owned(),
+                value: val_field.name().to_owned(),
+            };
+            let key_builder = arrow_builder_from_field(&key_field);
+            let val_builder = arrow_builder_from_field(&val_field);
+            return Box::new(MapBuilder::new(Some(field_names), key_builder, val_builder));
+        }
         Kind::Message(message_descriptor) => {
             Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
         }
@@ -395,14 +504,29 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
         Kind::Bool => DataType::Boolean,
         Kind::String => DataType::Utf8,
         Kind::Bytes => DataType::Binary,
+        Kind::Message(message_descriptor) if descr.is_map() => {
+            let proto_key_field = message_descriptor.map_entry_key_field();
+            let proto_val_field = message_descriptor.map_entry_value_field();
+            let key_field = Field::new(
+                proto_key_field.name(),
+                datatype_from(&proto_key_field),
+                false,
+            );
+            let val_field = Field::new(
+                proto_val_field.name(),
+                datatype_from(&proto_val_field),
+                true,
+            );
+            let entry_field = Field::new(
+                "entries",
+                DataType::Struct(Fields::from(vec![key_field, val_field])),
+                false,
+            );
+            // TODO(grtlr): We actually store the data sorted, but `MapBuilder` does not allow that.
+            DataType::Map(Arc::new(entry_field), false)
+        }
         Kind::Message(message_descriptor) => {
-            // TODO(#11221): Support real `oneof` values in protobuf MCAP files.
-            let fields = message_descriptor
-                .fields()
-                .filter(|f| !is_real_oneof_field(f))
-                .map(|f| arrow_field_from(&f))
-                .collect::<Fields>();
-            DataType::Struct(fields)
+            DataType::Struct(fields_from_message(&message_descriptor))
         }
         Kind::Enum(_) => {
             // Struct with "name" (String) and "value" (Int32) fields.
@@ -421,14 +545,6 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
     }
 
     inner
-}
-
-/// Returns `true` if the message or any of its nested messages contain real (non-synthetic) oneofs.
-fn has_real_oneofs(descriptor: &MessageDescriptor) -> bool {
-    descriptor.fields().any(|f| {
-        is_real_oneof_field(&f)
-            || matches!(f.kind(), Kind::Message(nested) if has_real_oneofs(&nested))
-    })
 }
 
 /// Provides reflection-based conversion of protobuf-encoded MCAP messages.
@@ -467,15 +583,6 @@ impl MessageDecoder for McapProtobufDecoder {
             let message_descriptor = pool
                 .get_message_by_name(schema.name.as_str())
                 .ok_or_else(|| Error::NoSchema(schema.name.clone()))?;
-
-            // TODO(#11221): Support real oneof values in protobuf MCAP files.
-            if has_real_oneofs(&message_descriptor) {
-                re_log::warn_once!(
-                    "Protobuf schema `{}` on topic `{}` contains `oneof` fields which are not yet supported and will be ignored.",
-                    schema.name,
-                    channel.topic,
-                );
-            }
 
             let found = self
                 .descrs_per_topic
@@ -548,21 +655,31 @@ mod unit_tests {
 mod integration_tests {
     use std::io;
 
-    use crossbeam::channel::Receiver;
-
     use prost_reflect::prost::Message as _;
     use prost_reflect::prost_types::{
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-        FileDescriptorProto, FileDescriptorSet, OneofDescriptorProto, field_descriptor_proto,
+        FileDescriptorProto, FileDescriptorSet, MessageOptions, OneofDescriptorProto,
+        field_descriptor_proto,
     };
     use prost_reflect::{DescriptorPool, DynamicMessage, MessageDescriptor};
     use re_chunk::Chunk;
-    use re_log::LogMsg;
 
     use re_log_types::TimeType;
 
     use crate::DecoderRegistry;
     use crate::decoders::McapProtobufDecoder;
+
+    fn format_chunk(chunk: &Chunk) -> String {
+        let batch = chunk.to_record_batch().expect("failed to convert chunk");
+        re_arrow_util::RecordBatchFormatOpts {
+            width: Some(240),
+            max_cell_content_width: usize::MAX,
+            redact_non_deterministic: true,
+            ..Default::default()
+        }
+        .format(&batch)
+        .to_string()
+    }
 
     /// Helper to mark fields as proto3 optional with proper synthetic oneof declarations.
     ///
@@ -618,6 +735,32 @@ mod integration_tests {
             .expect("failed to get message descriptor")
     }
 
+    /// Creates a `Person` message descriptor equivalent to:
+    ///
+    /// ```protobuf
+    /// message Person {
+    ///   enum Status {
+    ///     UNKNOWN = 0;
+    ///     ACTIVE = 1;
+    ///     INACTIVE = 2;
+    ///   }
+    ///
+    ///   message Address {
+    ///     optional string street = 1;
+    ///     optional string city = 2;
+    ///   }
+    ///
+    ///   optional string name = 1;
+    ///   reserved 2 to 4;
+    ///   optional int32 id = 5;
+    ///   optional Status status = 8;
+    ///   optional Address address = 9;
+    ///   map<string, string> tags = 10;
+    /// }
+    /// ```
+    ///
+    /// If `use_proto3_optional` is `false`, the `optional` keywords are removed and
+    /// fields will not have presence tracking (unset fields show default values).
     fn create_person_descriptor(use_proto3_optional: bool) -> (&'static str, DescriptorProto) {
         let status = EnumDescriptorProto {
             name: Some("Status".into()),
@@ -704,17 +847,52 @@ mod integration_tests {
             },
         ];
 
-        let (fields, person_oneof_decls) = if use_proto3_optional {
+        let (mut fields, person_oneof_decls) = if use_proto3_optional {
             make_fields_optional(fields, 0)
         } else {
             (fields, vec![])
         };
 
+        // Map field added *after* `make_fields_optional` so it is not wrapped in a synthetic oneof.
+        let tags_entry = DescriptorProto {
+            name: Some("TagsEntry".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("key".into()),
+                    number: Some(1),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("value".into()),
+                    number: Some(2),
+                    label: Some(field_descriptor_proto::Label::Optional as i32),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+            ],
+            options: Some(MessageOptions {
+                map_entry: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        fields.push(FieldDescriptorProto {
+            name: Some("tags".into()),
+            number: Some(10),
+            label: Some(field_descriptor_proto::Label::Repeated as i32),
+            r#type: Some(field_descriptor_proto::Type::Message as i32),
+            type_name: Some("TagsEntry".into()),
+            ..Default::default()
+        });
+
         // Create a message descriptor with reserved field numbers (2, 3, 4) between actual fields.
         let person_proto = DescriptorProto {
             name: Some("Person".into()),
             field: fields,
-            nested_type: vec![address_message],
+            nested_type: vec![address_message, tags_entry],
             enum_type: vec![status],
             oneof_decl: person_oneof_decls,
             reserved_range: vec![
@@ -784,13 +962,22 @@ mod integration_tests {
 
     /// Helper to create test messages with various field combinations.
     fn create_test_messages(person_message: &MessageDescriptor) -> Vec<DynamicMessage> {
+        use prost_reflect::{MapKey, Value};
+
         vec![
-            // Message 1: has all fields including nested address.
-            DynamicMessage::parse_text_format(
-                person_message.clone(),
-                "name: \"Alice\" id: 123 status: 1 address: { street: \"Main St\" city: \"NYC\" }",
-            )
-            .expect("failed to parse text format"),
+            // Message 1: has all fields including nested address and tags.
+            {
+                let mut msg = DynamicMessage::parse_text_format(
+                    person_message.clone(),
+                    "name: \"Alice\" id: 123 status: 1 address: { street: \"Main St\" city: \"NYC\" }",
+                )
+                .expect("failed to parse text format");
+                let mut tags = std::collections::HashMap::new();
+                tags.insert(MapKey::String("role".into()), Value::String("admin".into()));
+                tags.insert(MapKey::String("org".into()), Value::String("rerun".into()));
+                msg.set_field_by_name("tags", Value::Map(tags));
+                msg
+            },
             // Message 2: has name and status, with partial address (only street).
             DynamicMessage::parse_text_format(
                 person_message.clone(),
@@ -800,22 +987,28 @@ mod integration_tests {
             // Message 3: has name and id, no address.
             DynamicMessage::parse_text_format(person_message.clone(), "name: \"Charlie\" id: 456")
                 .expect("failed to parse text format"),
-            // Message 4: has only name and nested address.
-            DynamicMessage::parse_text_format(
-                person_message.clone(),
-                "name: \"Dave\" address: { city: \"LA\" }",
-            )
-            .expect("failed to parse text format"),
+            // Message 4: has only name, nested address, and tags.
+            {
+                let mut msg = DynamicMessage::parse_text_format(
+                    person_message.clone(),
+                    "name: \"Dave\" address: { city: \"LA\" }",
+                )
+                .expect("failed to parse text format");
+                let mut tags = std::collections::HashMap::new();
+                tags.insert(MapKey::String("role".into()), Value::String("admin".into()));
+                msg.set_field_by_name("tags", Value::Map(tags));
+                msg
+            },
             // Message 5: has only id (name, status, and address missing).
             {
                 let mut msg = DynamicMessage::new(person_message.clone());
-                msg.set_field_by_name("id", prost_reflect::Value::I32(789));
+                msg.set_field_by_name("id", Value::I32(789));
                 msg
             },
             // Message 6: has only status (name, id, and address missing).
             {
                 let mut msg = DynamicMessage::new(person_message.clone());
-                msg.set_field_by_name("status", prost_reflect::Value::EnumNumber(1));
+                msg.set_field_by_name("status", Value::EnumNumber(1));
                 msg
             },
             // Message 7: empty message (all fields missing).
@@ -853,7 +1046,7 @@ mod integration_tests {
         let chunks = run_decoder(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
 
-        insta::assert_snapshot!(snapshot_name, format!("{:-240}", &chunks[0]));
+        insta::assert_snapshot!(snapshot_name, format_chunk(&chunks[0]));
     }
 
     /// Test various field combinations with proto3 optional (presence tracking).
@@ -925,9 +1118,23 @@ mod integration_tests {
         // We wrote 10 messages (5 valid, 5 invalid), so we should get 5 rows.
         assert_eq!(chunks[0].num_rows(), 5);
 
-        insta::assert_snapshot!("decode_failure_resilience", format!("{:-240}", &chunks[0]));
+        insta::assert_snapshot!("decode_failure_resilience", format_chunk(&chunks[0]));
     }
 
+    /// Creates a `Color` message descriptor equivalent to:
+    ///
+    /// ```protobuf
+    /// message Color {
+    ///   string object = 1;
+    ///   oneof color {
+    ///     string rgb = 2;
+    ///     string hsv = 3;
+    ///     string bgr = 4;
+    ///   }
+    ///   optional float gamma = 5;
+    /// }
+    /// ```
+    ///
     /// If `set_proto3_optional_flag` is `false`, the `gamma` field will still be in a
     /// single-field oneof but without the `proto3_optional` flag. This simulates protobuf
     /// compilers/tools that don't emit the flag.
@@ -996,6 +1203,13 @@ mod integration_tests {
         ("com.example.Color", color_proto)
     }
 
+    /// Creates a `Scene` message descriptor equivalent to:
+    ///
+    /// ```protobuf
+    /// message Scene {
+    ///   Color object = 1;
+    /// }
+    /// ```
     fn create_scene_descriptor() -> (&'static str, DescriptorProto) {
         let scene_proto = DescriptorProto {
             name: Some("Scene".into()),
@@ -1033,30 +1247,6 @@ mod integration_tests {
         ]
     }
 
-    fn check_single_warning(log_rx: &Receiver<LogMsg>, topic: &str) {
-        // Verify warning was emitted
-        let warning = log_rx
-            .try_recv()
-            .expect("Expected warning for oneof field in message");
-        assert_eq!(warning.level, re_log::Level::Warn);
-        assert!(
-            warning.msg.contains("oneof"),
-            "Expected warning to mention 'oneof', but got: {}",
-            warning.msg
-        );
-        assert!(
-            warning.msg.contains(topic),
-            "Expected warning to mention topic '{topic}', but got: {}",
-            warning.msg
-        );
-
-        // Verify no additional warnings
-        assert!(
-            log_rx.try_recv().is_err(),
-            "Expected exactly one warning, but found additional warnings"
-        );
-    }
-
     fn create_color_test_messages(color_message: &MessageDescriptor) -> Vec<DynamicMessage> {
         vec![
             // Message 1: object, gamma, and rgb color.
@@ -1077,59 +1267,9 @@ mod integration_tests {
         ]
     }
 
-    // TODO(#11221): Support `oneof` values in protobuf MCAP files.
-    /// This test verifies that proto3 optional fields (synthetic oneofs) are preserved
-    /// while real oneof fields are properly filtered out.
-    #[test]
-    fn test_synthetic_vs_real_oneof() {
-        // Setup logging to capture warnings
-        re_log::setup_logging();
-        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
-        re_log::add_boxed_logger(Box::new(logger)).expect("failed to add logger");
-
-        let (color_name, color_proto) = create_color_descriptor(true);
-        let color_message = create_message_descriptor(vec![color_proto], color_name);
-
-        // Create MCAP with test messages.
-        let buffer = Vec::new();
-        let cursor = io::Cursor::new(buffer);
-        let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
-
-        let channel_id = add_schema_and_channel(&mut writer, &color_message, "color_topic")
-            .expect("failed to add schema and channel");
-
-        let messages = create_color_test_messages(&color_message);
-        for (i, msg) in messages.iter().enumerate() {
-            write_message(&mut writer, channel_id, msg, (i + 1) as u64)
-                .expect("failed to write message");
-        }
-
-        let summary = writer.finish().expect("finishing writer failed");
-        let buffer = writer.into_inner().into_inner();
-
-        let chunks = run_decoder(&summary, buffer.as_slice());
-
-        check_single_warning(&log_rx, "color_topic");
-
-        assert_eq!(chunks.len(), 1);
-        assert_eq!(chunks[0].num_rows(), 3);
-
-        // The chunk should have columns for "object" and "gamma" (regular + optional),
-        // but NOT for "rgb", "hsv", or "bgr" (real oneof fields, filtered out).
-        insta::assert_snapshot!("synthetic_vs_real_oneof", format!("{:-240}", &chunks[0]));
-    }
-
-    /// Same as `test_synthetic_vs_real_oneof` but without the `proto3_optional` flag on
-    /// `gamma`. Verifies that single-field oneofs are treated as regular optional fields
-    /// even when `is_synthetic()` returns `false` (which happens when some protobuf
-    /// compilers/tools don't emit the `proto3_optional` flag).
-    #[test]
-    fn test_single_field_oneof_without_proto3_optional_flag() {
-        re_log::setup_logging();
-        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
-        re_log::add_boxed_logger(Box::new(logger)).expect("failed to add logger");
-
-        let (color_name, color_proto) = create_color_descriptor(false);
+    /// Helper to test oneof fields with or without the `proto3_optional` flag on `gamma`.
+    fn test_oneof_fields_helper(set_proto3_optional_flag: bool) {
+        let (color_name, color_proto) = create_color_descriptor(set_proto3_optional_flag);
         let color_message = create_message_descriptor(vec![color_proto], color_name);
 
         let buffer = Vec::new();
@@ -1150,30 +1290,33 @@ mod integration_tests {
 
         let chunks = run_decoder(&summary, buffer.as_slice());
 
-        check_single_warning(&log_rx, "color_topic");
-
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].num_rows(), 3);
 
-        // Output should be identical to `synthetic_vs_real_oneof` — gamma is preserved
-        // despite the missing `proto3_optional` flag, thanks to the `fields().len() > 1` check.
-        insta::assert_snapshot!("synthetic_vs_real_oneof", format!("{:-240}", &chunks[0]));
+        insta::assert_snapshot!("oneof_fields", format_chunk(&chunks[0]));
     }
 
-    // TODO(#11221): Support `oneof` values in protobuf MCAP files.
-    /// This test verifies that nested `oneof` fields triggers a warning and are filtered out.
+    /// This test verifies that all oneof fields (both real and synthetic) are included
+    /// in the Arrow output.
+    #[test]
+    fn test_oneof_fields() {
+        test_oneof_fields_helper(true);
+    }
+
+    /// Same as `test_oneof_fields` but without the `proto3_optional` flag on `gamma`.
+    /// Verifies that the output is identical regardless of whether the flag is set.
+    #[test]
+    fn test_oneof_fields_without_proto3_optional_flag() {
+        test_oneof_fields_helper(false);
+    }
+
+    /// This test verifies that nested oneof fields are included in the Arrow output.
     #[test]
     fn test_oneof_nested() {
-        // Setup logging to capture warnings
-        re_log::setup_logging();
-        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Warn);
-        re_log::add_boxed_logger(Box::new(logger)).expect("failed to add logger");
-
         let (_, color_proto) = create_color_descriptor(true);
         let (scene_name, scene_proto) = create_scene_descriptor();
         let scene_message = create_message_descriptor(vec![color_proto, scene_proto], scene_name);
 
-        // Create MCAP with test messages.
         let buffer = Vec::new();
         let cursor = io::Cursor::new(buffer);
         let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
@@ -1192,11 +1335,9 @@ mod integration_tests {
 
         let chunks = run_decoder(&summary, buffer.as_slice());
 
-        check_single_warning(&log_rx, "scene_topic");
-
-        assert_eq!(chunks.len(), 1); // One chunk for scene_topic
+        assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].num_rows(), 2);
 
-        insta::assert_snapshot!("oneof_nested", format!("{:-240}", &chunks[0]));
+        insta::assert_snapshot!("oneof_nested", format_chunk(&chunks[0]));
     }
 }

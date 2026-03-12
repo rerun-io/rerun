@@ -1,6 +1,6 @@
 ---
-source: crates/store/re_mcap/src/layers/protobuf.rs
-expression: "format!(\"{:-240}\", &chunks[0])"
+source: crates/store/re_mcap/src/decoders/protobuf.rs
+expression: "format_chunk(&chunks[0])"
 ---
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                       │
@@ -12,13 +12,17 @@ expression: "format!(\"{:-240}\", &chunks[0])"
 │ │ RowId                                         ┆ message_log_time              ┆ message_publish_time             ┆ com.example.Scene:message                                │ │
 │ │ ---                                           ┆ ---                           ┆ ---                              ┆ ---                                                      │ │
 │ │ type: non-null FixedSizeBinary(16)            ┆ type: Timestamp(ns)           ┆ type: Timestamp(ns)              ┆ type: List(Struct("object": Struct("object": Utf8,       │ │
-│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: message_log_time  ┆ index_name: message_publish_time ┆ "gamma": Float32)))                                      │ │
-│ │ ARROW:extension:name: TUID                    ┆ is_sorted: true               ┆ is_sorted: true                  ┆ archetype: com.example.Scene                             │ │
-│ │ is_sorted: true                               ┆ kind: index                   ┆ kind: index                      ┆ component: com.example.Scene:message                     │ │
-│ │ kind: control                                 ┆                               ┆                                  ┆ kind: data                                               │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: message_log_time  ┆ index_name: message_publish_time ┆ "color": Struct("rgb": Utf8, "hsv": Utf8, "bgr": Utf8),  │ │
+│ │ ARROW:extension:name: TUID                    ┆ is_sorted: true               ┆ is_sorted: true                  ┆ metadata: {"ARROW:extension:name":                       │ │
+│ │ is_sorted: true                               ┆ kind: index                   ┆ kind: index                      ┆ "rerun.datatypes.ProtobufOneOf"}, "gamma": Float32)))    │ │
+│ │ kind: control                                 ┆                               ┆                                  ┆ archetype: com.example.Scene                             │ │
+│ │                                               ┆                               ┆                                  ┆ component: com.example.Scene:message                     │ │
+│ │                                               ┆                               ┆                                  ┆ kind: data                                               │ │
 │ ╞═══════════════════════════════════════════════╪═══════════════════════════════╪══════════════════════════════════╪══════════════════════════════════════════════════════════╡ │
-│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000001 ┆ 1970-01-01T00:00:00.000000001    ┆ [{object: {object: cube, gamma: null}}]                  │ │
+│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000001 ┆ 1970-01-01T00:00:00.000000001    ┆ [{object: {object: cube, color: {rgb: 128,64,32, hsv:    │ │
+│ │                                               ┆                               ┆                                  ┆ null, bgr: null}, gamma: null}}]                         │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000002 ┆ 1970-01-01T00:00:00.000000002    ┆ [{object: {object: pyramid, gamma: null}}]               │ │
+│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000002 ┆ 1970-01-01T00:00:00.000000002    ┆ [{object: {object: pyramid, color: {rgb: null, hsv:      │ │
+│ │                                               ┆                               ┆                                  ┆ null, bgr: 0,255,0}, gamma: null}}]                      │ │
 │ └───────────────────────────────────────────────┴───────────────────────────────┴──────────────────────────────────┴──────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

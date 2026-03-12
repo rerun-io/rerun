@@ -4,37 +4,27 @@ expression: "format_chunk(&chunks[0])"
 ---
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                       │
-│ * entity_path: /test_topic                                                                                                                                                      │
+│ * entity_path: /color_topic                                                                                                                                                     │
 │ * id: [**REDACTED**]                                                                                                                                                            │
 │ * version: [**REDACTED**]                                                                                                                                                       │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌───────────────────────────────────────────────┬───────────────────────────────┬──────────────────────────────────┬──────────────────────────────────────────────────────────┐ │
-│ │ RowId                                         ┆ message_log_time              ┆ message_publish_time             ┆ com.example.Person:message                               │ │
+│ │ RowId                                         ┆ message_log_time              ┆ message_publish_time             ┆ com.example.Color:message                                │ │
 │ │ ---                                           ┆ ---                           ┆ ---                              ┆ ---                                                      │ │
-│ │ type: non-null FixedSizeBinary(16)            ┆ type: Timestamp(ns)           ┆ type: Timestamp(ns)              ┆ type: List(Struct("name": Utf8, "id": Int32, "status":   │ │
-│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: message_log_time  ┆ index_name: message_publish_time ┆ Struct("name": Utf8, "value": Int32), metadata:          │ │
+│ │ type: non-null FixedSizeBinary(16)            ┆ type: Timestamp(ns)           ┆ type: Timestamp(ns)              ┆ type: List(Struct("object": Utf8, "color": Struct("rgb": │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ index_name: message_log_time  ┆ index_name: message_publish_time ┆ Utf8, "hsv": Utf8, "bgr": Utf8), metadata:               │ │
 │ │ ARROW:extension:name: TUID                    ┆ is_sorted: true               ┆ is_sorted: true                  ┆ {"ARROW:extension:name":                                 │ │
-│ │ is_sorted: true                               ┆ kind: index                   ┆ kind: index                      ┆ "rerun.datatypes.ProtobufEnum"}, "address":              │ │
-│ │ kind: control                                 ┆                               ┆                                  ┆ Struct("street": Utf8, "city": Utf8), "tags":            │ │
-│ │                                               ┆                               ┆                                  ┆ Map("entries": non-null Struct("key": non-null Utf8,     │ │
-│ │                                               ┆                               ┆                                  ┆ "value": Utf8), unsorted)))                              │ │
-│ │                                               ┆                               ┆                                  ┆ archetype: com.example.Person                            │ │
-│ │                                               ┆                               ┆                                  ┆ component: com.example.Person:message                    │ │
+│ │ is_sorted: true                               ┆ kind: index                   ┆ kind: index                      ┆ "rerun.datatypes.ProtobufOneOf"}, "gamma": Float32))     │ │
+│ │ kind: control                                 ┆                               ┆                                  ┆ archetype: com.example.Color                             │ │
+│ │                                               ┆                               ┆                                  ┆ component: com.example.Color:message                     │ │
 │ │                                               ┆                               ┆                                  ┆ kind: data                                               │ │
 │ ╞═══════════════════════════════════════════════╪═══════════════════════════════╪══════════════════════════════════╪══════════════════════════════════════════════════════════╡ │
-│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000101 ┆ 1970-01-01T00:00:00.000000101    ┆ [{name: Person1, id: 1, status: null, address: null,     │ │
-│ │                                               ┆                               ┆                                  ┆ tags: null}]                                             │ │
+│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000001 ┆ 1970-01-01T00:00:00.000000001    ┆ [{object: box, color: {rgb: 255,0,0, hsv: null, bgr:     │ │
+│ │                                               ┆                               ┆                                  ┆ null}, gamma: 2.2}]                                      │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000103 ┆ 1970-01-01T00:00:00.000000103    ┆ [{name: Person3, id: 3, status: null, address: null,     │ │
-│ │                                               ┆                               ┆                                  ┆ tags: null}]                                             │ │
+│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000002 ┆ 1970-01-01T00:00:00.000000002    ┆ [{object: sphere, color: {rgb: null, hsv: 120,1.0,1.0,   │ │
+│ │                                               ┆                               ┆                                  ┆ bgr: null}, gamma: null}]                                │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000105 ┆ 1970-01-01T00:00:00.000000105    ┆ [{name: Person5, id: 5, status: null, address: null,     │ │
-│ │                                               ┆                               ┆                                  ┆ tags: null}]                                             │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000107 ┆ 1970-01-01T00:00:00.000000107    ┆ [{name: Person7, id: 7, status: null, address: null,     │ │
-│ │                                               ┆                               ┆                                  ┆ tags: null}]                                             │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000109 ┆ 1970-01-01T00:00:00.000000109    ┆ [{name: Person9, id: 9, status: null, address: null,     │ │
-│ │                                               ┆                               ┆                                  ┆ tags: null}]                                             │ │
+│ │ row_[**REDACTED**]                            ┆ 1970-01-01T00:00:00.000000003 ┆ 1970-01-01T00:00:00.000000003    ┆ [{object: cone, color: null, gamma: null}]               │ │
 │ └───────────────────────────────────────────────┴───────────────────────────────┴──────────────────────────────────┴──────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
