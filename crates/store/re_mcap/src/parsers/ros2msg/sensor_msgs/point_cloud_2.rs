@@ -373,7 +373,7 @@ impl MessageParser for PointCloud2MessageParser {
 
         // We lazily initialize the builders that store the extracted fields from
         // the blob when we receive the first message.
-        if extracted_fields.len() != point_cloud.fields.len() {
+        if extracted_fields.is_empty && !point_cloud.fields.is_empty() {
             *extracted_fields = point_cloud
                 .fields
                 .iter()
