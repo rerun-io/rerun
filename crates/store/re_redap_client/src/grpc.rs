@@ -317,6 +317,34 @@ where
     })
 }
 
+/// Callback invoked as chunks are downloaded.
+///
+/// Arguments: `(total_bytes_downloaded, total_bytes_expected)`.
+/// `total_bytes_expected` may be `None` if the total size is not known.
+pub type ProgressCallback = std::sync::Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
+
+/// Options that control how segment data is streamed from the server.
+#[derive(Clone, Default)]
+pub struct StreamingOptions {
+    /// If `true`, download all chunks eagerly instead of relying on
+    /// on-demand streaming via the RRD manifest.
+    ///
+    /// This is useful for downloading a full recording to disk.
+    pub force_full_download: bool,
+
+    /// Optional callback invoked as chunks are downloaded.
+    pub on_progress: Option<ProgressCallback>,
+}
+
+impl std::fmt::Debug for StreamingOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamingOptions")
+            .field("force_full_download", &self.force_full_download)
+            .field("on_progress", &self.on_progress.as_ref().map(|_| "…"))
+            .finish()
+    }
+}
+
 /// Canonical way to ingest segment data from a Rerun Data Platform server, dealing with
 /// server-stored blueprints if any.
 ///
@@ -330,6 +358,7 @@ pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetSegmentUri,
+    options: StreamingOptions,
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
@@ -355,6 +384,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             store_version: None,
         };
 
+        // Blueprints are always fully downloaded regardless of streaming options.
         if stream_segment_from_server(
             &mut client,
             blueprint_store_info,
@@ -362,6 +392,7 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_dataset,
             blueprint_segment,
             re_uri::Fragment::default(),
+            &StreamingOptions::default(),
         )
         .await?
         .is_break()
@@ -408,6 +439,7 @@ pub async fn stream_blueprint_and_segment_from_server(
         dataset_id.into(),
         segment_id.into(),
         fragment,
+        &options,
     )
     .await?
     .is_break()
@@ -426,6 +458,7 @@ async fn stream_segment_from_server(
     dataset_id: EntryId,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
+    options: &StreamingOptions,
 ) -> ApiResult<ControlFlow<()>> {
     let store_id = store_info.store_id.clone();
 
@@ -531,16 +564,16 @@ async fn stream_segment_from_server(
             }
 
             match store_id.kind() {
-                StoreKind::Recording => {
+                StoreKind::Recording if !options.force_full_download => {
                     re_log::debug!("Letting the viewer load chunks on-demand");
                     return Ok(ControlFlow::Continue(()));
                 }
-                StoreKind::Blueprint => {
+                StoreKind::Recording | StoreKind::Blueprint => {
                     // Load all of the chunks in one go; most important first:
                     let batch = sort_batch(rrd_manifest.data()).map_err(|err| {
                         ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
                     })?;
-                    return load_chunks(client, tx, &store_id, batch).await;
+                    return load_chunks(client, tx, &store_id, batch, options).await;
                 }
             }
         }
@@ -604,7 +637,10 @@ async fn stream_segment_from_server(
                 );
             }
 
-            if load_chunks(client, tx, &store_id, batch).await?.is_break() {
+            if load_chunks(client, tx, &store_id, batch, options)
+                .await?
+                .is_break()
+            {
                 return Ok(ControlFlow::Break(()));
             }
         }
@@ -655,9 +691,9 @@ async fn stream_segment_from_server(
         let filtered_batch = re_arrow_util::take_record_batch(&batch, &filtered_indices)
             .map_err(|err| ApiError::invalid_arguments_with_source(err, "take_record_batch"))?;
 
-        load_chunks(client, tx, &store_id, filtered_batch).await
+        load_chunks(client, tx, &store_id, filtered_batch, options).await
     } else {
-        load_chunks(client, tx, &store_id, batch).await
+        load_chunks(client, tx, &store_id, batch, options).await
     }
 }
 
@@ -674,6 +710,7 @@ async fn load_chunks(
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     full_batch: RecordBatch,
+    options: &StreamingOptions,
 ) -> ApiResult<ControlFlow<()>> {
     re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
 
@@ -682,6 +719,7 @@ async fn load_chunks(
     // Batch requests in groups of N=32 rows.
     const BATCH_SIZE: usize = 32;
     let num_rows = full_batch.num_rows();
+    let total_size_bytes = total_size_bytes_from_batch(&full_batch);
     let mut futures = FuturesUnordered::new();
 
     for start in (0..num_rows).step_by(BATCH_SIZE) {
@@ -697,8 +735,16 @@ async fn load_chunks(
         });
     }
 
+    let mut downloaded_bytes: u64 = 0;
+
     while let Some(res) = futures::stream::StreamExt::next(&mut futures).await {
-        let result = res?;
+        let (result, batch_bytes) = res?;
+
+        downloaded_bytes += batch_bytes;
+        if let Some(on_progress) = &options.on_progress {
+            on_progress(downloaded_bytes, total_size_bytes);
+        }
+
         if result.is_break() {
             return Ok(ControlFlow::Break(()));
         }
@@ -709,18 +755,30 @@ async fn load_chunks(
     Ok(ControlFlow::Continue(()))
 }
 
+/// Try to extract total deflated size from the batch's `chunk_byte_size` column.
+fn total_size_bytes_from_batch(batch: &RecordBatch) -> Option<u64> {
+    let col = batch.column_by_name("chunk_byte_size")?;
+    let array = col.as_primitive_opt::<arrow::datatypes::UInt64Type>()?;
+    Some(array.iter().map(|v| v.unwrap_or(0)).sum())
+}
+
+/// Returns `(control_flow, bytes_downloaded)`.
 async fn load_small_chunk_batch(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
     store_id: &StoreId,
     batch: &RecordBatch,
-) -> ApiResult<ControlFlow<()>> {
+) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
 
+    let mut batch_bytes: u64 = 0;
+
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
+            batch_bytes += chunk.heap_size_bytes();
+
             if tx
                 .send(
                     LogMsg::ArrowMsg(
@@ -738,12 +796,12 @@ async fn load_small_chunk_batch(
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
-                return Ok(ControlFlow::Break(()));
+                return Ok((ControlFlow::Break(()), batch_bytes));
             }
         }
     }
 
-    Ok(ControlFlow::Continue(()))
+    Ok((ControlFlow::Continue(()), batch_bytes))
 }
 
 fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {

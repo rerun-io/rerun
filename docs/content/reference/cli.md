@@ -18,6 +18,7 @@ The Rerun command-line interface:
 
 * `analytics`: Configure the behavior of our analytics.
 * `auth`: Authentication with the redap.
+* `download`: Download recordings and save them as .rrd files.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
 * `reset`: Reset the memory of the Rerun Viewer.
@@ -323,6 +324,26 @@ It's closer to an API key than an access token, as it can be revoked before it e
 > [`read`, `read-write`]
 >
 > [Default: `read`]
+
+## rerun download
+
+Download recordings and save them as .rrd files.
+
+Supports downloading from Rerun Cloud as well as any other supported URI.
+
+**Usage**: `rerun download [OPTIONS] <URLS>…`
+
+**Arguments**
+
+* `<URLS>`
+> One or more URIs to download.
+
+**Options**
+
+* `-o, --output-dir <OUTPUT_DIR>`
+> Override the output directory for the downloaded `.rrd` files.
+>
+> Defaults to the current working directory.
 
 ## rerun mcap
 

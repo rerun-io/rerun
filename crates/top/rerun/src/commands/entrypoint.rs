@@ -14,6 +14,7 @@ use super::auth::AuthCommands;
 use crate::CallSource;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
+use crate::commands::DownloadCommand;
 #[cfg(feature = "data_loaders")]
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
@@ -581,6 +582,11 @@ enum Command {
     #[command(subcommand)]
     Auth(AuthCommands),
 
+    /// Download recordings and save them as .rrd files.
+    ///
+    /// Supports downloading from Rerun Cloud as well as any other supported URI.
+    Download(DownloadCommand),
+
     /// Generates the Rerun CLI manual (markdown).
     ///
     /// Example: `rerun man > docs/content/reference/cli.md`
@@ -693,6 +699,8 @@ where
 
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
+
+            Command::Download(cmd) => cmd.run(tokio_runtime.handle()),
 
             Command::Manual => {
                 let man = Args::generate_markdown_manual();
@@ -1752,6 +1760,8 @@ fn record_cli_command_analytics(args: &Args) {
             };
             ("mcap", Some(subcommand))
         }
+
+        Some(Command::Download(_)) => ("download", None),
 
         #[cfg(feature = "native_viewer")]
         Some(Command::Reset) => ("reset", None),

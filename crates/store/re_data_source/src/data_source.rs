@@ -222,6 +222,20 @@ impl LogDataSource {
         on_auth_err: AuthErrorHandler,
         connection_registry: &ConnectionRegistryHandle,
     ) -> anyhow::Result<LogReceiver> {
+        self.stream_with_options(
+            on_auth_err,
+            connection_registry,
+            re_redap_client::StreamingOptions::default(),
+        )
+    }
+
+    /// Like [`Self::stream`], but with additional options controlling streaming behavior.
+    pub fn stream_with_options(
+        self,
+        on_auth_err: AuthErrorHandler,
+        connection_registry: &ConnectionRegistryHandle,
+        streaming_options: re_redap_client::StreamingOptions,
+    ) -> anyhow::Result<LogReceiver> {
         re_tracing::profile_function!();
 
         match self {
@@ -313,8 +327,13 @@ impl LogDataSource {
                 let uri_clone = uri.clone();
                 let stream_segment = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
-                    re_redap_client::stream_blueprint_and_segment_from_server(client, tx, uri_clone)
-                        .await
+                    re_redap_client::stream_blueprint_and_segment_from_server(
+                        client,
+                        tx,
+                        uri_clone,
+                        streaming_options,
+                    )
+                    .await
                 };
 
                 spawn_future(async move {

@@ -23,6 +23,7 @@ impl CallSource {
 
 #[cfg(feature = "auth")]
 mod auth;
+mod download;
 
 mod entrypoint;
 #[cfg(feature = "data_loaders")]
@@ -35,6 +36,7 @@ mod analytics;
 
 #[cfg(feature = "analytics")]
 pub(crate) use self::analytics::AnalyticsCommands;
+pub use self::download::DownloadCommand;
 pub use self::entrypoint::run;
 #[cfg(feature = "data_loaders")]
 pub use self::mcap::McapCommands;

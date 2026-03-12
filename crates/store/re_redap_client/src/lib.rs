@@ -10,7 +10,7 @@ pub use self::connection_registry::{
     CredentialSource, Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
-    RedapClient, channel, fetch_chunks_response_to_chunk_and_segment_id,
+    RedapClient, StreamingOptions, channel, fetch_chunks_response_to_chunk_and_segment_id,
     stream_blueprint_and_segment_from_server,
 };
 
