@@ -45,6 +45,9 @@ struct VideoPlaybackIssue {
     message: String,
     severity: VideoPlaybackIssueSeverity,
     should_request_more_frames: bool,
+
+    /// Should we show the last successful video frame behind this issue?
+    show_frame: bool,
 }
 
 impl VideoPlaybackIssue {
@@ -53,6 +56,7 @@ impl VideoPlaybackIssue {
             message,
             severity,
             should_request_more_frames: false,
+            show_frame: false,
         }
     }
 }
@@ -63,6 +67,19 @@ impl From<VideoPlayerError> for VideoPlaybackIssue {
             message: error.to_string(),
             severity: error.severity(),
             should_request_more_frames: error.should_request_more_frames(),
+            show_frame: match error {
+                VideoPlayerError::NegativeTimestamp
+                | VideoPlayerError::InsufficientSampleData(_) => false,
+
+                VideoPlayerError::EmptyBuffer
+                | VideoPlayerError::UnloadedSampleData(_)
+                | VideoPlayerError::CreateChunk(_)
+                | VideoPlayerError::DecodeChunk(_)
+                | VideoPlayerError::Decoding(_)
+                | VideoPlayerError::BadData
+                | VideoPlayerError::TextureUploadError(_)
+                | VideoPlayerError::DecoderUnexpectedlyExited => true,
+            },
         }
     }
 }
@@ -85,6 +102,7 @@ fn show_video_frame(
     frame: Option<VideoFrameRenderInfo>,
     issue: Option<VideoPlaybackIssue>,
 ) {
+    let show_frame = issue.as_ref().map(|issue| issue.show_frame).unwrap_or(true);
     // Use the texture dimensions if available, otherwise the provided fallback.
     let video_size = frame
         .as_ref()
@@ -123,7 +141,9 @@ fn show_video_frame(
         });
     }
 
-    if let Some(frame) = frame {
+    if let Some(frame) = frame
+        && show_frame
+    {
         let re_renderer::video::VideoFrameTexture {
             texture,
             decoder_delay_state,
