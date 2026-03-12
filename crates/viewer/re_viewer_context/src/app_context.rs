@@ -11,8 +11,8 @@ use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, Item, ItemCollection, Route, StorageContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableStores, TimeControl,
+    DragAndDropManager, FocusTarget, Item, ItemCollection, Route, StorageContext, StoreHub,
+    SystemCommand, SystemCommandSender as _, TableStores, TimeControl,
 };
 
 /// Application context that is shared across all parts of the viewer.
@@ -67,7 +67,7 @@ pub struct AppContext<'a> {
     ///
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
-    pub focused_item: &'a Option<crate::Item>,
+    pub focused_item: &'a Option<FocusTarget>,
 
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
@@ -168,7 +168,7 @@ impl AppContext<'_> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> &Option<crate::Item> {
+    pub fn focused_item(&self) -> &Option<FocusTarget> {
         self.focused_item
     }
 
@@ -272,6 +272,9 @@ impl AppContext<'_> {
             if response.double_clicked()
                 && let Some(item) = interacted_items.first_item()
             {
+                // Use context of original interacted item
+                let context = interacted_items.context_for_item(item).cloned();
+
                 let item = if let Item::DataResult(data_result) = item {
                     interacted_items = Item::DataResult(data_result.as_entity_all()).into();
                     interacted_items
@@ -282,7 +285,10 @@ impl AppContext<'_> {
                 };
 
                 self.command_sender
-                    .send_system(SystemCommand::SetFocus(item.clone()));
+                    .send_system(SystemCommand::SetFocus(FocusTarget {
+                        item: item.clone(),
+                        context: context,
+                    }));
             }
 
             let modifiers = response.ctx.input(|i| i.modifiers);

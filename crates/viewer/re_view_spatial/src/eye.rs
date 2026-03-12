@@ -955,6 +955,64 @@ impl EyeState {
         Ok(())
     }
 
+    pub fn focus_point(
+        &self,
+        ctx: &ViewContext<'_>,
+        bounding_boxes: &SceneBoundingBoxes,
+        eye_property: &ViewProperty,
+        focused_entity: &EntityPath,
+        point_in_space: Vec3,
+    ) -> Result<(), ViewPropertyQueryError> {
+        let mut eye_controller = EyeController::from_blueprint(ctx, eye_property, self.fov_y)?;
+        eye_controller.did_interact = true;
+
+        let EyeController {
+            pos: old_pos,
+            look_target: old_look_target,
+            eye_up: old_eye_up,
+            ..
+        } = eye_controller;
+
+        let fwd = self
+            .last_eye
+            .map(|eye| eye.forward_in_world())
+            .unwrap_or_else(|| Vec3::splat(f32::sqrt(1.0 / 3.0)));
+
+        // Compute the distance from the current camera to the target point
+        let current_eye_pos = self
+            .last_eye
+            .map(|eye| eye.pos_in_world())
+            .unwrap_or(old_pos);
+        let distance_to_target = current_eye_pos.distance(point_in_space);
+
+        // Compute a radius from the target entity's bounding sphere
+        let bbox_radius = bounding_boxes
+            .per_entity
+            .get(&focused_entity.hash())
+            .map(|bbox| bbox.centered_bounding_sphere_radius() * 1.5)
+            .filter(|radius| *radius >= 0.0001);
+
+        // Use the minimum of both to avoid large jumps of the camera when clicking a nearby point
+        let radius = bbox_radius
+            .map(|bbox_radius| bbox_radius.min(distance_to_target))
+            .unwrap_or(distance_to_target)
+            .at_least(0.02);
+
+        eye_controller.look_target = point_in_space;
+        eye_controller.pos = point_in_space - fwd * radius;
+
+        eye_controller.save_to_blueprint(
+            ctx.viewer_ctx,
+            eye_property,
+            old_pos,
+            old_look_target,
+            old_eye_up,
+        );
+        eye_property
+            .clear_blueprint_component(ctx.viewer_ctx, EyeControls3D::descriptor_tracking_entity());
+        Ok(())
+    }
+
     pub fn update(
         &mut self,
         ctx: &ViewContext<'_>,

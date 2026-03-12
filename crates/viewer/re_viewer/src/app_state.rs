@@ -17,8 +17,8 @@ use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle,
     AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, FallbackProviderRegistry, Item, PerVisualizerTypeInViewClass, Route,
-    SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
+    DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, PerVisualizerTypeInViewClass,
+    Route, SelectionChange, StorageContext, StoreHub, StoreViewContext, SystemCommand,
     SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
     ViewStates, ViewerContext, blueprint_timeline,
 };
@@ -117,7 +117,7 @@ pub struct AppState {
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
     #[serde(skip)]
-    pub(crate) focused_item: Option<Item>,
+    pub(crate) focused_item: Option<FocusTarget>,
 
     /// Are we logged in?
     #[serde(skip)]

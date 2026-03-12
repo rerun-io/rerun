@@ -13,7 +13,7 @@ use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
     ActiveStoreContext, AppContext, AppOptions, ApplicationSelectionState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, IndicatedEntities, Item, ItemCollection,
+    ComponentUiRegistry, DragAndDropManager, FocusTarget, IndicatedEntities, Item, ItemCollection,
     PerVisualizerType, PerVisualizerTypeInViewClass, StoreHub, StoreViewContext, SystemCommand,
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
@@ -227,7 +227,7 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Item that got focused on the last frame if any.
-    pub fn focused_item(&self) -> &Option<crate::Item> {
+    pub fn focused_item(&self) -> &Option<FocusTarget> {
         self.app_ctx.focused_item()
     }
 
