@@ -320,15 +320,33 @@ impl TimeState {
     }
 }
 
+/// Which timeline is currently active in the time panel.
+///
+/// The active timeline can be in one of three states:
+/// - Automatically chosen based on heuristics (e.g. the timeline with most data),
+/// - Explicitly selected by the user,
+/// - Or "pending": requested by name (via blueprint or user action) but not yet
+///   present in the entity database. A pending timeline is promoted to `UserEdited`
+///   once data containing that timeline arrives (see [`TimeControl::select_valid_timeline`]).
 // TODO(andreas): This should be a blueprint property and follow the usual rules of how we determine fallbacks.
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Debug)]
 enum ActiveTimeline {
+    /// Automatically selected based on heuristics. Re-evaluated every frame.
     Auto(Timeline),
+
+    /// Explicitly selected by the user or resolved from blueprint.
     UserEdited(Timeline),
+
+    /// A timeline was requested by name but hasn't been seen in the data yet.
+    ///
+    /// This happens when the blueprint or a [`TimeControlCommand::SetActiveTimeline`] references
+    /// a timeline that doesn't exist in the current [`EntityDb`]. We store only the name
+    /// and wait for matching data to arrive, at which point this becomes `UserEdited`.
     Pending(TimelineName),
 }
 
 impl ActiveTimeline {
+    /// The name of the active timeline, regardless of its state.
     pub fn name(&self) -> &TimelineName {
         match self {
             Self::Auto(timeline) | Self::UserEdited(timeline) => timeline.name(),
@@ -336,6 +354,10 @@ impl ActiveTimeline {
         }
     }
 
+    /// The full [`Timeline`], if available.
+    ///
+    /// Returns `None` for [`Self::Pending`] since the timeline hasn't been
+    /// resolved against the entity database yet.
     pub fn timeline(&self) -> Option<&Timeline> {
         match self {
             Self::Auto(timeline) | Self::UserEdited(timeline) => Some(timeline),
@@ -1451,7 +1473,10 @@ impl TimeControl {
         }
     }
 
-    /// Is the active timeline pending?
+    /// Is the active timeline pending resolution?
+    ///
+    /// When `true`, the requested timeline name hasn't been found in the data yet,
+    /// so [`Self::timeline()`] returns `None` and time-dependent queries may not work.
     pub fn is_pending(&self) -> bool {
         matches!(self.timeline, ActiveTimeline::Pending(_))
     }

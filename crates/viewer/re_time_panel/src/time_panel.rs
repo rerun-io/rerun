@@ -9,6 +9,7 @@ use egui::{
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
 use re_entity_db::InstancePath;
+use re_entity_db::entity_db::RedapConnectionState;
 use re_log_types::{
     AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
 };
@@ -352,7 +353,16 @@ impl TimePanel {
         let loading_text = if entity_db.is_downloading_first_part_of_manifest() {
             Some("Downloading meta-data")
         } else if time_ctrl.is_pending() {
-            Some("Waiting for timeline")
+            if entity_db.redap_connection_state() == RedapConnectionState::PartialManifest {
+                Some("Waiting for timeline")
+            } else {
+                ui.horizontal(|ui| {
+                    ui.centered_and_justified(|ui| {
+                        ui.label("The recording has no timelines");
+                    });
+                });
+                return;
+            }
         } else {
             None
         };
@@ -437,32 +447,40 @@ impl TimePanel {
         }
 
         if store_ctx.time_ctrl.is_pending() {
-            ui.loading_screen_ui("Waiting for timeline", |ui| {
-                let text = format!("Waiting for timeline: {}", store_ctx.timeline_name());
-                ui.label(egui::RichText::from(text).heading().strong());
+            if store_ctx.db.redap_connection_state() == RedapConnectionState::PartialManifest {
+                ui.loading_screen_ui("Waiting for timeline", |ui| {
+                    let text = format!("Waiting for timeline: {}", store_ctx.timeline_name());
+                    ui.label(egui::RichText::from(text).heading().strong());
 
-                let timeline_count = store_ctx.db.timelines().len();
+                    let timeline_count = store_ctx.db.timelines().len();
 
-                match timeline_count {
-                    0 => {}
-                    1 => {
-                        ui.label("One other timeline has data");
+                    match timeline_count {
+                        0 => {}
+                        1 => {
+                            ui.label("One other timeline has data");
+                        }
+                        c => {
+                            ui.label(format!("{c} other timelines have data"));
+                        }
                     }
-                    c => {
-                        ui.label(format!("{c} other timelines have data"));
-                    }
-                }
 
-                if ui
-                    .button(
-                        egui::RichText::new("Go to default timeline")
-                            .color(ui.style().visuals.weak_text_color()),
-                    )
-                    .clicked()
-                {
-                    time_commands.push(TimeControlCommand::ResetActiveTimeline);
-                }
-            });
+                    if ui
+                        .button(
+                            egui::RichText::new("Go to default timeline")
+                                .color(ui.style().visuals.weak_text_color()),
+                        )
+                        .clicked()
+                    {
+                        time_commands.push(TimeControlCommand::ResetActiveTimeline);
+                    }
+                });
+            } else {
+                ui.horizontal(|ui| {
+                    ui.centered_and_justified(|ui| {
+                        ui.label("The recording has no timelines");
+                    });
+                });
+            }
 
             return;
         }

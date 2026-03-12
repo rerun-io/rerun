@@ -26,7 +26,14 @@ impl TimeControlUi {
             let response = egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_ctrl.timeline_name().as_str())
                 .show_ui(ui, |ui| {
-                    for timeline in entity_db.timelines().values() {
+                    let timelines = entity_db.timelines();
+
+                    if timelines.is_empty() {
+                        ui.weak("The recording has no timelines");
+                        return;
+                    }
+
+                    for timeline in timelines.values() {
                         let num_rows = entity_db.num_temporal_rows_on_timeline(timeline.name());
                         if ui
                             .selectable_label(
