@@ -61,7 +61,7 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let schema_internal = PySchemaInternal {
-            columns: self.store.read().schema().into(),
+            columns: self.store.read().schema().chunk_column_descriptors().into(),
             metadata: Default::default(),
         };
 

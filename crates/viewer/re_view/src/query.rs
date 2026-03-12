@@ -124,7 +124,7 @@ fn component_not_found_error(
         {
             let store = store_engine.store();
 
-            let timeline = store.timelines().get(&timeline_name).copied();
+            let timeline = store.schema().timelines().get(&timeline_name).copied();
 
             for missing_root_chunk_id in missing_virtual_chunks
                 .iter()

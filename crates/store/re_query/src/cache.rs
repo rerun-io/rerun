@@ -246,8 +246,10 @@ impl std::fmt::Debug for QueryCache {
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
                     cache.pending_invalidations.first().map(|&t| {
                         let range = AbsoluteTimeRange::new(t, TimeInt::MAX);
-                        if let Some(time_type) =
-                            store.read().time_column_type(&cache_key.timeline_name)
+                        if let Some(time_type) = store
+                            .read()
+                            .schema()
+                            .time_column_type(&cache_key.timeline_name)
                         {
                             time_type.format_range_utc(range)
                         } else {

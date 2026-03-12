@@ -24,7 +24,7 @@ pub fn resolution_of_image_at(
     // TODO(andreas): can we do this more efficiently?
     // TODO(andreas): doesn't take blueprint into account!
     let all_components = storage_engine
-        .store()
+        .schema()
         .all_components_for_entity(entity_path)?;
     let image_format_descr = all_components
         .get(&archetypes::Image::descriptor_format().component)

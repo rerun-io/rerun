@@ -1425,9 +1425,10 @@ fn initialize_thread_pool(threads_args: i32) {
         }
     } else if threads_args == 1 {
         // 1 means "single-threaded".
-        // Put all jobs on the caller thread, just to simplify
-        // the flamegraph and make it more similar to a browser.
-        builder = builder.num_threads(1).use_current_thread();
+        // NOTE: we intentionally do NOT use `.use_current_thread()` here,
+        // because that causes deadlocks when code does `rayon::spawn()`
+        // followed by blocking on the result (e.g. in `load_file.rs`).
+        builder = builder.num_threads(1);
         re_log::info!("Running in single-threaded mode.");
     } else {
         // 0 means "use all cores", and rayon understands that

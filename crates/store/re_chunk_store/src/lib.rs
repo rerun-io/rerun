@@ -24,6 +24,7 @@ mod properties;
 mod query;
 mod stats;
 mod store;
+mod store_schema;
 mod subscribers;
 mod writes;
 
@@ -56,6 +57,7 @@ pub use self::store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreHandleWeak,
     ColumnMetadata, QueriedChunkIdTracker,
 };
+pub use self::store_schema::StoreSchema;
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };

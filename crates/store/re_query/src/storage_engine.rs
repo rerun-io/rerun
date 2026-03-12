@@ -158,6 +158,11 @@ impl StorageEngineReadGuard<'_> {
     }
 
     #[inline]
+    pub fn schema(&self) -> &re_chunk_store::StoreSchema {
+        self.store.schema()
+    }
+
+    #[inline]
     pub fn cache(&self) -> &QueryCache {
         &self.cache
     }
@@ -202,6 +207,11 @@ impl StorageEngineArcReadGuard {
     #[inline]
     pub fn store(&self) -> &ChunkStore {
         &self.store
+    }
+
+    #[inline]
+    pub fn schema(&self) -> &re_chunk_store::StoreSchema {
+        self.store.schema()
     }
 
     #[inline]

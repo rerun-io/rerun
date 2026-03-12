@@ -62,7 +62,7 @@ mod tests {
         }
 
         // Extract and snapshot the schema
-        let schema = store_handle.read().schema();
+        let schema = store_handle.read().schema().chunk_column_descriptors();
         insta::assert_debug_snapshot!("ros2", schema);
     }
 }

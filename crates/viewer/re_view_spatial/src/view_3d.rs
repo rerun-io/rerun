@@ -385,8 +385,8 @@ impl ViewClass for SpatialView3D {
                 // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
                 let engine = ctx.recording_engine();
                 ctx.recording().tree().visit_children_recursively(|path| {
-                    if let Some(components) = engine.store().all_components_for_entity(path)
-                        && components.into_iter().any(|component| {
+                    if let Some(components) = engine.schema().all_components_for_entity(path)
+                        && components.iter().any(|&component| {
                             archetypes::Pinhole::all_components().iter().any(|c| c.component == component)
                             // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
                                 || component

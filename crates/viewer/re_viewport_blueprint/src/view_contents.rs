@@ -624,15 +624,16 @@ impl DataQueryPropertyResolver<'_> {
                     .map(|vi| (vi.id, handle)),
             );
 
+        let blueprint_engine = blueprint.storage_engine();
+
         // Gather "special" overrides directly on the base path (per entity).
-        for component in blueprint
-            .storage_engine()
-            .store()
+        for &component in blueprint_engine
+            .schema()
             .all_components_for_entity(override_base_path)
-            .unwrap_or_default()
+            .into_iter()
+            .flatten()
         {
-            if let Some(component_data) = blueprint
-                    .storage_engine()
+            if let Some(component_data) = blueprint_engine
                     .cache()
                     .latest_at(blueprint_query, override_base_path, [component])
                     .component_batch_raw(component)
@@ -679,14 +680,13 @@ impl DataQueryPropertyResolver<'_> {
         for instruction in &mut node.data_result.visualizer_instructions {
             // Gather "real" overrides on visualizer instruction specific path.
             // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
-            for component in blueprint
-                .storage_engine()
-                .store()
+            for &component in blueprint_engine
+                .schema()
                 .all_components_for_entity(&instruction.override_path)
-                .unwrap_or_default()
+                .into_iter()
+                .flatten()
             {
-                if let Some(component_data) = blueprint
-                        .storage_engine()
+                if let Some(component_data) = blueprint_engine
                         .cache()
                         .latest_at(blueprint_query, &instruction.override_path, [component])
                         .component_batch_raw(component) &&

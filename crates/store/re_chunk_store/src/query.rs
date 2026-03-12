@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
@@ -9,8 +9,8 @@ use saturating_cast::SaturatingCast as _;
 use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimeColumn, TimelineName,
 };
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
-use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+use re_types_core::{ComponentSet, UnorderedComponentSet};
 
 use crate::{ChunkStore, ChunkTrackingMode};
 // Used all over in docstrings.
@@ -27,15 +27,6 @@ use crate::store::ChunkIdSetPerTime;
 
 // Meta queries
 impl ChunkStore {
-    /// Retrieve all [`Timeline`]s in the store.
-    #[inline]
-    pub fn timelines(&self) -> BTreeMap<TimelineName, Timeline> {
-        self.time_type_registry
-            .iter()
-            .map(|(name, typ)| (*name, Timeline::new(*name, *typ)))
-            .collect()
-    }
-
     /// Retrieve all [`EntityPath`]s in the store.
     #[inline]
     pub fn all_entities(&self) -> IntSet<EntityPath> {
@@ -171,7 +162,7 @@ impl ChunkStore {
     }
 
     /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`] on
-    /// the specified [`Timeline`].
+    /// the specified [`re_chunk::Timeline`].
     ///
     /// Static components are always included in the results.
     ///
@@ -220,7 +211,7 @@ impl ChunkStore {
     }
 
     /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`] on
-    /// the specified [`Timeline`].
+    /// the specified [`re_chunk::Timeline`].
     ///
     /// Static components are always included in the results.
     ///
@@ -266,97 +257,6 @@ impl ChunkStore {
                 Some(static_comps.into_iter().chain(temporal_comps).collect())
             }
         }
-    }
-
-    /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`].
-    ///
-    /// Static components are always included in the results.
-    ///
-    /// Returns `None` if the entity has never had any data logged to it.
-    pub fn all_components_for_entity(
-        &self,
-        entity_path: &EntityPath,
-    ) -> Option<UnorderedComponentSet> {
-        re_tracing::profile_function!();
-
-        let static_components: Option<UnorderedComponentSet> = self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .map(|static_chunks_per_component| {
-                static_chunks_per_component.keys().copied().collect()
-            });
-
-        let temporal_components: Option<UnorderedComponentSet> = self
-            .temporal_chunk_ids_per_entity_per_component
-            .get(entity_path)
-            .map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline
-                    .values()
-                    .flat_map(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component.keys().copied()
-                    })
-                    .collect()
-            });
-
-        match (static_components, temporal_components) {
-            (None, None) => None,
-            (None, comps @ Some(_)) | (comps @ Some(_), None) => comps,
-            (Some(static_comps), Some(temporal_comps)) => {
-                Some(static_comps.into_iter().chain(temporal_comps).collect())
-            }
-        }
-    }
-
-    /// Retrieve all the [`ComponentIdentifier`]s that have been written to for a given [`EntityPath`].
-    ///
-    /// Static components are always included in the results.
-    ///
-    /// Returns `None` if the entity has never had any data logged to it.
-    pub fn all_components_for_entity_sorted(
-        &self,
-        entity_path: &EntityPath,
-    ) -> Option<ComponentSet> {
-        re_tracing::profile_function!();
-
-        let static_components: Option<ComponentSet> = self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .map(|static_chunks_per_component| {
-                static_chunks_per_component.keys().copied().collect()
-            });
-
-        let temporal_components: Option<ComponentSet> = self
-            .temporal_chunk_ids_per_entity_per_component
-            .get(entity_path)
-            .map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline
-                    .values()
-                    .flat_map(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component.keys().copied()
-                    })
-                    .collect()
-            });
-
-        match (static_components, temporal_components) {
-            (None, None) => None,
-            (None, comps @ Some(_)) | (comps @ Some(_), None) => comps,
-            (Some(static_comps), Some(temporal_comps)) => {
-                Some(static_comps.into_iter().chain(temporal_comps).collect())
-            }
-        }
-    }
-
-    /// Retrieves the [`ComponentDescriptor`] at a given [`EntityPath`] that has a certain [`ComponentIdentifier`].
-    // TODO(andreas): The descriptor for a given identifier should never change within a recording.
-    pub fn entity_component_descriptor(
-        &self,
-        entity_path: &EntityPath,
-        component: ComponentIdentifier,
-    ) -> Option<ComponentDescriptor> {
-        self.per_column_metadata
-            .get(entity_path)
-            .and_then(|per_identifier| per_identifier.get(&component))
-            .map(|(component_descr, _, _)| component_descr.clone())
     }
 
     /// Check whether an entity has a static component or a temporal component on the specified timeline.

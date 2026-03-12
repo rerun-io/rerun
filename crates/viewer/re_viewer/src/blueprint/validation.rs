@@ -4,7 +4,7 @@ use re_types_core::Component;
 pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
     let engine = blueprint.storage_engine();
     if let Some(actual_datatype) = engine
-        .store()
+        .schema()
         .has_mismatched_datatype_for_component_type(&C::name(), &C::arrow_datatype())
     {
         // If the schemas don't match, we definitely have a problem

@@ -254,12 +254,14 @@ pub fn components_for_entity(
     store: &ChunkStore,
     entity_path: &EntityPath,
 ) -> ArchetypeComponentMap {
-    if let Some(components) = store.all_components_for_entity(entity_path) {
+    if let Some(components) = store.schema().all_components_for_entity(entity_path) {
         sorted_component_list_by_archetype_for_ui(
             ctx.reflection,
-            components
-                .iter()
-                .filter_map(|component| store.entity_component_descriptor(entity_path, *component)),
+            components.iter().filter_map(|component| {
+                store
+                    .schema()
+                    .entity_component_descriptor(entity_path, *component)
+            }),
         )
     } else {
         ArchetypeComponentMap::default()

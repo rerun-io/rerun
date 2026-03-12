@@ -300,9 +300,8 @@ fn placeholder_for(
     } else {
         let entity_path = ctx.target_entity_path;
         viewer_ctx.recording_engine()
-                .store()
-                .lookup_component_type(entity_path, component_identifier)
-                .or_else(|| viewer_ctx.blueprint_engine().store().lookup_component_type(entity_path, component_identifier))
+                .schema().lookup_component_type(entity_path, component_identifier)
+                .or_else(|| viewer_ctx.blueprint_engine().schema().lookup_component_type(entity_path, component_identifier))
                 .map(|(_component_type, datatype)| datatype)
                 .unwrap_or_else(|| {
                          re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");

@@ -515,8 +515,7 @@ impl ChunkStore {
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,                // purely additive
-            per_column_metadata: _,               // purely additive
+            schema: _,                            // purely additive
             physical_chunks_per_chunk_id: _,      // handled by shallow impl
             physical_chunk_ids_per_min_row_id: _, // handled by shallow impl
             chunks_lineage,                       // purely additive
@@ -679,8 +678,7 @@ impl ChunkStore {
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,  // purely additive
-            per_column_metadata: _, // purely additive
+            schema: _, // purely additive
             physical_chunks_per_chunk_id,
             physical_chunk_ids_per_min_row_id,
             chunks_lineage: _,                              // virtual

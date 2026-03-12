@@ -14,7 +14,7 @@ use crate::store::ChunkIdSetPerTime;
 use crate::{
     ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreChunkStats,
     ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreError, ChunkStoreEvent,
-    ChunkStoreResult, ColumnMetadataState,
+    ChunkStoreResult,
 };
 
 // ---
@@ -30,9 +30,8 @@ impl ChunkStore {
         let Self {
             id: _,
             config: _,
-            time_type_registry,
-            per_column_metadata,
-            physical_chunks_per_chunk_id: _, // physical data only
+            schema: _,                            // handled below
+            physical_chunks_per_chunk_id: _,      // physical data only
             physical_chunk_ids_per_min_row_id: _, // physical data only
             chunks_lineage,
             dangling_splits: _, // cannot split during virtual insert
@@ -48,44 +47,6 @@ impl ChunkStore {
             gc_id: _,
             event_id: _,
         } = self;
-
-        let sorbet_schema = &rrd_manifest.recording_schema();
-
-        time_type_registry.extend(
-            sorbet_schema
-                .columns
-                .index_columns()
-                .map(|descr| (descr.timeline_name(), descr.timeline().typ())),
-        );
-
-        for descr in sorbet_schema.columns.component_columns() {
-            let inner_datatype = descr.inner_datatype();
-            let previous = per_column_metadata
-                .entry(descr.entity_path.clone())
-                .or_default()
-                .insert(
-                    descr.component,
-                    (
-                        descr.component_descriptor(),
-                        ColumnMetadataState {
-                            is_semantically_empty: descr.is_semantically_empty,
-                        },
-                        inner_datatype.clone(),
-                    ),
-                );
-
-            if let Some(previous) = previous
-                && previous.2 != inner_datatype
-            {
-                re_log::warn_once!(
-                    "Component '{}' on entity '{}' changed type from {} to {}",
-                    descr.component,
-                    descr.entity_path,
-                    previous.2,
-                    inner_datatype
-                );
-            }
-        }
 
         let native_static_map = rrd_manifest.static_map();
         chunks_lineage.extend(
@@ -186,6 +147,8 @@ impl ChunkStore {
             diff: ChunkStoreDiff::virtual_addition(rrd_manifest),
         };
 
+        self.schema.on_events(std::slice::from_ref(&event));
+
         if self.config.enable_changelog {
             Self::on_events(std::slice::from_ref(&event));
         }
@@ -220,6 +183,8 @@ impl ChunkStore {
                 diff,
             })
             .collect();
+
+        self.schema.on_events(&events);
 
         if self.config.enable_changelog {
             Self::on_events(&events);
@@ -769,57 +734,6 @@ impl ChunkStore {
             );
         }
 
-        for (name, columns) in chunk_after_processing.timelines() {
-            let new_typ = columns.timeline().typ();
-            if let Some(old_typ) = self.time_type_registry.insert(*name, new_typ)
-                && old_typ != new_typ
-            {
-                re_log::warn_once!(
-                    "Timeline '{name}' changed type from {old_typ:?} to {new_typ:?}. \
-                        Rerun does not support using different types for the same timeline.",
-                );
-            }
-        }
-
-        for column in chunk_after_processing.components().values() {
-            let re_types_core::SerializedComponentColumn {
-                list_array,
-                descriptor,
-            } = column;
-
-            let (descr, column_metadata_state, datatype) = self
-                .per_column_metadata
-                .entry(chunk_after_processing.entity_path().clone())
-                .or_default()
-                .entry(descriptor.component)
-                .or_insert_with(|| {
-                    (
-                        descriptor.clone(),
-                        ColumnMetadataState {
-                            is_semantically_empty: true,
-                        },
-                        list_array.value_type().clone(),
-                    )
-                });
-            {
-                if *datatype != list_array.value_type() {
-                    // TODO(grtlr): If we encounter two different data types, we should split the chunk.
-                    // More information: https://github.com/rerun-io/rerun/pull/10082#discussion_r2140549340
-                    re_log::warn!(
-                        "Datatype of column {descr} in {} has changed from {datatype} to {}",
-                        chunk_after_processing.entity_path(),
-                        list_array.value_type()
-                    );
-                    *datatype = list_array.value_type().clone();
-                }
-
-                let is_semantically_empty =
-                    re_arrow_util::is_list_array_semantically_empty(list_array);
-
-                column_metadata_state.is_semantically_empty &= is_semantically_empty;
-            }
-        }
-
         Ok(all_diffs)
     }
 
@@ -1012,8 +926,7 @@ impl ChunkStore {
         let Self {
             id,
             config: _,
-            time_type_registry: _,
-            per_column_metadata,
+            schema,
             physical_chunks_per_chunk_id: chunks_per_chunk_id,
             chunks_lineage: _, // lineage metadata must never be dropped, regardless
             dangling_splits: _, // this counts as lineage metadata too
@@ -1031,7 +944,7 @@ impl ChunkStore {
             event_id,
         } = self;
 
-        per_column_metadata.remove(entity_path);
+        schema.drop_entity(entity_path);
 
         let dropped_static_chunks = {
             let dropped_static_chunk_ids: BTreeSet<_> = static_chunk_ids_per_entity

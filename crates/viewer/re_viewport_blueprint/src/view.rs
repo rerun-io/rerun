@@ -277,7 +277,7 @@ impl ViewBlueprint {
                                     .cache()
                                     .latest_at(query, path, [component])
                                     .component_batch_raw(component)?;
-                                let descriptor = blueprint_engine.store().entity_component_descriptor(path, component)?;
+                                let descriptor = blueprint_engine.schema().entity_component_descriptor(path, component)?;
                                 Some((descriptor, array))
                             }),
                     )

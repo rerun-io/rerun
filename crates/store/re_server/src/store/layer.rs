@@ -60,7 +60,12 @@ impl Layer {
     }
 
     pub fn schema(&self) -> Schema {
-        let fields = self.store_handle.read().schema().arrow_fields();
+        let fields = self
+            .store_handle
+            .read()
+            .schema()
+            .chunk_column_descriptors()
+            .arrow_fields();
         Schema::new_with_metadata(fields, HashMap::default())
     }
 

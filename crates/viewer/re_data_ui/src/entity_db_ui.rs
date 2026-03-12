@@ -279,7 +279,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
 
         let storage_engine = db.storage_engine();
         let store = storage_engine.store();
-        let schema = store.schema();
+        let schema = store.schema().chunk_column_descriptors();
 
         ui.grid_left_hand_label("Entities")
             .on_hover_text("In the ChunkStore");

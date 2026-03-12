@@ -437,7 +437,7 @@ impl SplitCommand {
             //
             // Note that this is across *all recordings* in the file/stream.
             let mut known_timelines: BTreeMap<TimelineName, Timeline> = Default::default();
-            for (name, timeline) in stores.values().flat_map(|store| store.timelines()) {
+            for (name, timeline) in stores.values().flat_map(|store| store.schema().timelines()) {
                 if let Some(existing) = known_timelines.insert(name, timeline) {
                     anyhow::ensure!(
                         existing == timeline,
@@ -570,6 +570,7 @@ impl SplitCommand {
             .into_iter()
             .filter_map(|entity| {
                 store
+                    .schema()
                     .all_components_for_entity(&entity)
                     .map(|components| (entity, components))
             })

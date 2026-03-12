@@ -44,7 +44,7 @@ impl DataUi for LatestAtInstanceResult<'_> {
         let engine = ctx.db.storage_engine();
 
         let Some(component_descriptor) = engine
-            .store()
+            .schema()
             .entity_component_descriptor(&entity_path, component)
         else {
             ui.label(format!(

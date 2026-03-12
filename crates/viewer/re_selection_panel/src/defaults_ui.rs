@@ -120,7 +120,7 @@ fn active_default_ui(
             let Some(component_descr) = blueprint_store_view_ctx
                 .db
                 .storage_engine()
-                .store()
+                .schema()
                 .entity_component_descriptor(&view.defaults_path, *component)
             else {
                 // Must mean the default wasn't active after all.

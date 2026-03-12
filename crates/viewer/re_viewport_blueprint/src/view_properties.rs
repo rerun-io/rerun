@@ -241,8 +241,9 @@ impl ViewProperty {
         let blueprint_storage_engine = ctx.blueprint_db().storage_engine();
         let blueprint_store = blueprint_storage_engine.store();
         for component in self.query_results.components.keys().copied() {
-            if let Some(component_descr) =
-                blueprint_store.entity_component_descriptor(&self.blueprint_store_path, component)
+            if let Some(component_descr) = blueprint_store
+                .schema()
+                .entity_component_descriptor(&self.blueprint_store_path, component)
             {
                 ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
             }

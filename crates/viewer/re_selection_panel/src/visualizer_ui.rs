@@ -240,17 +240,17 @@ fn visualizer_components(
 
     // Query all components of the entity so we can show them in the source component mapping UI.
     let entity_components_with_datatype = {
-        let components = viewer_ctx
-            .recording_engine()
-            .store()
-            .all_components_for_entity_sorted(&data_result.entity_path)
-            .unwrap_or_default();
+        let engine = viewer_ctx.recording_engine();
+        let store = engine.store();
+        let components = store
+            .schema()
+            .all_components_for_entity(&data_result.entity_path);
         components
             .into_iter()
-            .filter_map(|component_id| {
-                let component_type = viewer_ctx
-                    .recording_engine()
-                    .store()
+            .flatten()
+            .filter_map(|&component_id| {
+                let component_type = store
+                    .schema()
                     .lookup_component_type(&data_result.entity_path, component_id);
                 component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
             })

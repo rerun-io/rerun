@@ -574,7 +574,11 @@ impl Dataset {
         // Validate schema compatibility before inserting
         let current_schema = self.schema()?;
         let new_layer_schema = {
-            let fields = store_handle.read().schema().arrow_fields();
+            let fields = store_handle
+                .read()
+                .schema()
+                .chunk_column_descriptors()
+                .arrow_fields();
             Schema::new_with_metadata(fields, HashMap::default())
         };
         Schema::try_merge([current_schema, new_layer_schema]).map_err(|err| {

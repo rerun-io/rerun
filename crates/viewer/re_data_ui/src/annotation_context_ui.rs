@@ -102,10 +102,14 @@ fn annotation_info(
     let storage_engine = ctx.db.storage_engine();
     let store = storage_engine.store();
     let mut possible_class_id_components = store
+        .schema()
         .all_components_for_entity(entity_path)?
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|component| {
-            let descriptor = store.entity_component_descriptor(entity_path, *component);
+            let descriptor = store
+                .schema()
+                .entity_component_descriptor(entity_path, *component);
             descriptor.is_some_and(|d| d.component_type == Some(components::ClassId::name()))
         });
     let picked_class_id_component = possible_class_id_components.next()?;

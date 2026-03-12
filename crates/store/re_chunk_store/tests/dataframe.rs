@@ -43,7 +43,7 @@ fn schema() -> anyhow::Result<()> {
     let chunk1 = Arc::new(chunk1);
     store.insert_chunk(&chunk1)?;
 
-    let ChunkColumnDescriptors { components, .. } = store.schema();
+    let ChunkColumnDescriptors { components, .. } = store.schema().chunk_column_descriptors();
 
     assert_eq!(
         components

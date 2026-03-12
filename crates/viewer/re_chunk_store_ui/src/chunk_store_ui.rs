@@ -144,7 +144,7 @@ impl DatastoreUi {
             self.chunk_store_info_ui(ui, chunk_store, storage_context, datastore_ui_active);
 
         // Each of these must be a column that contains the corresponding time range.
-        let all_timelines = chunk_store.timelines();
+        let all_timelines = chunk_store.schema().timelines();
 
         self.chunk_list_mode.ui(ui, chunk_store, timestamp_format);
 

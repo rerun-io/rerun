@@ -252,13 +252,13 @@ impl EntityDb {
             let depth = entity_path.len() - 1;
             let indent = "  ".repeat(depth);
             text.push_str(&format!("{indent}{entity_path}\n"));
-            let Some(components) = store.all_components_for_entity_sorted(entity_path) else {
+            let Some(components) = store.schema().all_components_for_entity(entity_path) else {
                 return;
             };
-            for component in components {
+            for &component in components {
                 let component_indent = "  ".repeat(depth + 1);
                 if let Some((component_type, datatype)) =
-                    store.lookup_component_type(entity_path, component)
+                    store.schema().lookup_component_type(entity_path, component)
                 {
                     let name = component_type
                         .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
@@ -510,7 +510,7 @@ impl EntityDb {
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
         self.storage_engine()
-            .store()
+            .schema()
             .time_column_type(timeline_name)
             .unwrap_or_else(|| {
                 if timeline_name == &TimelineName::log_time() {
@@ -641,7 +641,7 @@ impl EntityDb {
     }
 
     pub fn timelines(&self) -> std::collections::BTreeMap<TimelineName, Timeline> {
-        self.storage_engine().store().timelines()
+        self.storage_engine().schema().timelines()
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.

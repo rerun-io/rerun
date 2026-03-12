@@ -68,7 +68,8 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema(&self) -> ChunkColumnDescriptors {
-        self.engine.with(|store, _cache| store.schema())
+        self.engine
+            .with(|store, _cache| store.schema().chunk_column_descriptors())
     }
 
     /// Returns the filtered schema for the given [`QueryExpression`].

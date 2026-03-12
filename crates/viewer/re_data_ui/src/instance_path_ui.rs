@@ -53,7 +53,7 @@ impl DataUi for InstancePath {
             let store = storage_engine.store();
             unordered_components
                 .iter()
-                .filter_map(|c| store.entity_component_descriptor(entity_path, *c))
+                .filter_map(|c| store.schema().entity_component_descriptor(entity_path, *c))
                 .sorted()
                 .collect_vec()
         };

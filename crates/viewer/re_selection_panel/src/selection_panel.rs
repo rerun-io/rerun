@@ -190,7 +190,7 @@ impl SelectionPanel {
                 let store_view_ctx = ctx.guess_store_view_context_for_entity(entity_path);
                 let engine = store_view_ctx.db.storage_engine();
                 let component_descriptor = engine
-                    .store()
+                    .schema()
                     .entity_component_descriptor(entity_path, *component)
                     .unwrap_or_else(|| ComponentDescriptor::partial(*component));
 
