@@ -103,7 +103,7 @@ pub fn format_transform_info_result<'a>(
             {
                 format!("{frame_id:?}")
             } else {
-                format!("{entity_path}:?")
+                format!("{entity_path:?}")
             };
             Err(format!("The entity's coordinate frame {src} is unknown."))
         }

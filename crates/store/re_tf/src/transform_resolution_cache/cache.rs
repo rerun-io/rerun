@@ -6,6 +6,7 @@ use re_byte_size::SizeBytes;
 use re_chunk_store::ChunkStore;
 use re_entity_db::EntityDb;
 use re_log::{debug_assert, debug_assert_eq};
+use re_log_encoding::RrdManifest;
 use re_log_types::{TimeInt, TimelineName};
 use re_sdk_types::archetypes;
 
@@ -64,6 +65,10 @@ impl TransformResolutionCache {
         re_tracing::profile_function!();
 
         let mut cache = Self::default();
+
+        if let Some(manifest) = entity_db.rrd_manifest_index().manifest() {
+            cache.register_manifest(manifest);
+        }
 
         for chunk in entity_db.storage_engine().store().iter_physical_chunks() {
             // Register all frames even if this chunk doesn't have transform data.
@@ -220,11 +225,7 @@ impl TransformResolutionCache {
                 }
 
                 re_chunk_store::ChunkStoreDiff::VirtualAddition(addition) => {
-                    // Make all the entity paths known as potential transform paths.
-                    let mut frame_id_registry = self.frame_id_registry.write();
-                    for entity_path in addition.rrd_manifest.recording_schema().all_entities() {
-                        frame_id_registry.register_frame_id_from_entity_path(entity_path);
-                    }
+                    self.register_manifest(&addition.rrd_manifest);
                 }
 
                 re_chunk_store::ChunkStoreDiff::Deletion(deletion) => {
@@ -234,6 +235,16 @@ impl TransformResolutionCache {
                     }
                 }
             }
+        }
+    }
+
+    fn register_manifest(&self, manifest: &RrdManifest) {
+        re_tracing::profile_function!();
+
+        // Make all the entity paths known as potential transform paths.
+        let mut frame_id_registry = self.frame_id_registry.write();
+        for entity_path in manifest.recording_schema().all_entities() {
+            frame_id_registry.register_frame_id_from_entity_path(entity_path);
         }
     }
 
