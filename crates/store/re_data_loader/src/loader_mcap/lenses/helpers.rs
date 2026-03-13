@@ -1,6 +1,8 @@
 //! Common helper functions for transforming Arrow data in lenses.
 
-use arrow::array::{Array, FixedSizeListArray, Float32Array, Float64Array, ListArray, StructArray};
+use arrow::array::{
+    Array, FixedSizeListArray, Float32Array, Float64Array, ListArray, StructArray, UInt32Array,
+};
 use re_lenses_core::combinators::{
     GetField, ListToFixedSizeList, MapFixedSizeList, PrimitiveCast, RowMajorToColumnMajor,
     StructToFixedList, Transform,
@@ -18,6 +20,15 @@ pub fn xyz_struct_to_fixed() -> impl Transform<Source = StructArray, Target = Fi
 pub fn xyzw_struct_to_fixed() -> impl Transform<Source = StructArray, Target = FixedSizeListArray> {
     StructToFixedList::new(["x", "y", "z", "w"]).then(MapFixedSizeList::new(PrimitiveCast::<
         Float64Array,
+        Float32Array,
+    >::new()))
+}
+
+/// Returns a transform that converts u32 width and height fields to a Resolution component (fixed-size list of 2 f32 values).
+pub fn width_height_to_resolution()
+-> impl Transform<Source = StructArray, Target = FixedSizeListArray> {
+    StructToFixedList::new(["width", "height"]).then(MapFixedSizeList::new(PrimitiveCast::<
+        UInt32Array,
         Float32Array,
     >::new()))
 }
