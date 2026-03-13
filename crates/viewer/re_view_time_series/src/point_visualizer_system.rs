@@ -3,7 +3,7 @@ use rayon::prelude::*;
 use re_sdk_types::archetypes::SeriesPoints;
 use re_sdk_types::components::{self, MarkerShape, MarkerSize};
 use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
-use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
+use re_view::{ChunksWithComponent, clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
@@ -15,10 +15,7 @@ use crate::series_query::{
     all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
     collect_series_name, collect_series_visibility, determine_num_series,
 };
-use crate::{
-    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, ViewPropertyQueryError,
-    util,
-};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util};
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.
 #[derive(Default, Debug)]
@@ -71,7 +68,7 @@ impl VisualizerSystem for SeriesPointsSystem {
             .iter_visualizer_instruction_for(Self::identifier())
             .collect();
 
-        let all_series: Result<Vec<_>, _> = data_results
+        let all_series: Vec<_> = data_results
             .par_iter()
             .map(|(data_result, instruction)| {
                 Self::load_series(
@@ -85,7 +82,7 @@ impl VisualizerSystem for SeriesPointsSystem {
             })
             .collect();
 
-        self.all_series.extend(all_series?.into_iter().flatten());
+        self.all_series.extend(all_series.into_iter().flatten());
 
         Ok(output)
     }
@@ -99,7 +96,7 @@ impl SeriesPointsSystem {
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
         output: &VisualizerExecutionOutput,
-    ) -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
+    ) -> Vec<PlotSeries> {
         re_tracing::profile_function!(data_result.entity_path.to_string());
 
         let current_query = ctx.current_query();
@@ -107,7 +104,17 @@ impl SeriesPointsSystem {
 
         let data_time_range =
             util::data_result_time_range(ctx.viewer_ctx, data_result, view_query.timeline);
-        let query_range = util::determine_query_range(ctx, data_time_range)?;
+        let query_range = match util::determine_query_range(ctx, data_time_range) {
+            Ok(range) => range,
+            Err(err) => {
+                output.report_unspecified_source(
+                    instruction.id,
+                    VisualizerReportSeverity::Error,
+                    format!("Failed to determine query range: {err}"),
+                );
+                return Vec::new();
+            }
+        };
         let query = re_chunk_store::RangeQuery::new(view_query.timeline, query_range);
 
         let mut results = range_with_blueprint_resolved_data(
@@ -148,9 +155,22 @@ impl SeriesPointsSystem {
             re_view::VisualizerInstructionQueryResults::new(instruction, &results, output);
 
         // If we have no scalars, we can't do anything.
-        let scalar_iter =
-            results.iter_required(archetypes::Scalars::descriptor_scalars().component);
+        let scalar_component = archetypes::Scalars::descriptor_scalars().component;
+        let scalar_iter = results.iter_required(scalar_component);
         let all_scalar_chunks = scalar_iter.chunks();
+
+        // Filter out static times if any slipped in.
+        // It's enough to check the first one chunk since an entire column has to be either temporal or static.
+        let empty_chunks;
+        let all_scalar_chunks = if let Some(chunk) = all_scalar_chunks.chunks.first()
+            && chunk.is_static()
+        {
+            results.report_for_component(scalar_component, VisualizerReportSeverity::Error, "Can't plot data that was logged statically in a time series since there's no temporal dimension");
+            empty_chunks = ChunksWithComponent::empty(scalar_component);
+            &empty_chunks // Proceed with empty data so we catch other errors as well.
+        } else {
+            all_scalar_chunks
+        };
 
         // All the default values for a `PlotPoint`, accounting for both overrides and default values.
         // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
@@ -326,7 +346,7 @@ impl SeriesPointsSystem {
                 InstancePath::instance(data_result.entity_path.clone(), instance as u64)
             };
 
-            if let Err(err) = util::points_to_series(
+            util::points_to_series(
                 instance_path,
                 time_per_pixel,
                 visible,
@@ -338,14 +358,9 @@ impl SeriesPointsSystem {
                 re_sdk_types::components::AggregationPolicy::Off,
                 &mut series,
                 instruction.id,
-            ) {
-                results.report_unspecified_source(
-                    VisualizerReportSeverity::Error,
-                    format!("Failed to create series: {err}"),
-                );
-            }
+            );
         }
 
-        Ok(series)
+        series
     }
 }

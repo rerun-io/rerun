@@ -19,7 +19,6 @@ use re_sdk_types::{
     components::{AggregationPolicy, MarkerShape},
 };
 use re_viewer_context::external::re_entity_db::InstancePath;
-use re_viewport_blueprint::ViewPropertyQueryError;
 pub use view_class::TimeSeriesView;
 
 /// Maximum number of time series shown per entity when the scalar component
