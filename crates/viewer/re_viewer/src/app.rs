@@ -714,6 +714,7 @@ impl App {
         store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
     ) {
+        re_tracing::profile_function!();
         while let Some(cmd) = self.command_receiver.recv_ui() {
             self.run_ui_command(
                 egui_ctx,
@@ -3673,6 +3674,33 @@ impl eframe::App for App {
         }
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        {
+            // We also need to check for Ui commands, especially `UiCommand::Quit`.
+
+            let route = self.state.navigation.current().clone();
+            let (storage_context, store_context) = store_hub.read_context(&route);
+
+            let blueprint_query = self
+                .state
+                .blueprint_query_for_viewer(store_context.blueprint);
+
+            let app_blueprint = AppBlueprint::new(
+                Some(store_context.blueprint),
+                &blueprint_query,
+                egui_ctx,
+                self.panel_state_overrides_active
+                    .then_some(self.panel_state_overrides),
+            );
+
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                Some(&store_context),
+                &route,
+            );
+        }
 
         self.state.cleanup(&store_hub);
 
