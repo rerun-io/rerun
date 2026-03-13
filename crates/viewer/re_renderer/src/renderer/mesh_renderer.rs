@@ -675,7 +675,7 @@ mod tests {
             glam::Vec3::new(-1.0, -1.0, 0.0),
             glam::Vec3::new(1.0, -1.0, 0.0),
         ];
-        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+        let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
         let cpu_mesh = CpuMesh {
             label: "test_mesh".into(),
             triangle_indices: vec![glam::UVec3::new(0, 1, 2)],

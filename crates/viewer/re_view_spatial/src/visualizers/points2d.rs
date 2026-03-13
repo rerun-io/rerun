@@ -117,9 +117,11 @@ impl Points2DVisualizer {
                 }
             }
 
-            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            let obj_space_bounding_box = self.data.add_bounding_box_from_points(
+                entity_path.hash(),
+                positions.iter().copied(),
+                world_from_obj,
+            );
 
             load_keypoint_connections(
                 line_builder,

@@ -184,7 +184,7 @@ impl TexturedRect {
         let extent_u = self.extent_u;
         let extent_v = self.extent_v;
 
-        macaw::BoundingBox::from_points(
+        crate::util::bounding_box_from_points(
             [
                 left_top,
                 left_top + extent_u,

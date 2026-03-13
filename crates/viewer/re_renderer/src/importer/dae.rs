@@ -227,7 +227,7 @@ fn import_geometry(
 
     let num_vertices = pos_raw.len();
     let vertex_positions = bytemuck::cast_vec(pos_raw);
-    let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+    let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
     let cpu_mesh = mesh::CpuMesh {
         label: label.clone(),

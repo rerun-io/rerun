@@ -57,6 +57,21 @@ impl SpatialViewVisualizerData {
             .push((entity, bbox.transform_affine3(&world_from_obj)));
     }
 
+    /// Computes a bounding box from points, ignoring NaN and infinity values,
+    /// then adds it via [`Self::add_bounding_box`].
+    ///
+    /// Returns the computed object-space bounding box.
+    pub fn add_bounding_box_from_points(
+        &mut self,
+        entity: EntityPathHash,
+        points: impl Iterator<Item = glam::Vec3>,
+        world_from_obj: glam::Affine3A,
+    ) -> macaw::BoundingBox {
+        let bbox = re_renderer::util::bounding_box_from_points(points);
+        self.add_bounding_box(entity, bbox, world_from_obj);
+        bbox
+    }
+
     pub fn add_pickable_rect_to_bounding_box(
         &mut self,
         pickable_rect: &PickableTexturedRect,

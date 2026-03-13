@@ -55,7 +55,7 @@ pub fn load_stl_from_buffer(
     };
 
     let vertex_positions = bytemuck::cast_vec(triangles);
-    let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+    let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
     let mesh = mesh::CpuMesh {
         label: name.clone(),

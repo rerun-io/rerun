@@ -58,6 +58,7 @@ mod queueable_draw_data;
 mod rect;
 mod size;
 mod transform;
+pub mod util;
 mod wgpu_resources;
 
 #[cfg(test)]
