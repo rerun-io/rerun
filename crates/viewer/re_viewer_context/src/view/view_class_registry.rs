@@ -4,16 +4,14 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk::{ComponentIdentifier, ComponentType};
-use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_sdk_types::ViewClassIdentifier;
 
 use super::view_class_placeholder::ViewClassPlaceholder;
-use super::visualizer_entity_subscriber::VisualizerEntitySubscriber;
+use super::visualizer_entity_subscriber::{VisualizerEntityConfig, VisualizerEntitySubscriber};
 use crate::view::view_context_system::ViewContextSystemOncePerFrameResult;
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, PerVisualizerType, QueryContext, ViewClass,
-    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizerCollection, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass, ViewContextCollection, ViewContextSystem,
+    ViewSystemIdentifier, ViewerContext, VisualizerCollection, VisualizerSystem,
 };
 use crate::{
     component_fallbacks::FallbackProviderRegistry, view::view_context_system::ViewSystemState,
@@ -108,17 +106,20 @@ impl ViewSystemRegistrator<'_> {
                 .entry(T::identifier())
                 .or_insert_with(move || {
                     let visualizer = T::default();
-                    let entity_subscriber_handle =
-                        ChunkStore::register_subscriber(Box::new(VisualizerEntitySubscriber::new(
-                            &visualizer,
-                            known_builtin_enum_components,
-                            app_options,
-                        )));
+
+                    let visualizer_query_info = visualizer.visualizer_query_info(app_options);
+
+                    let entity_config = VisualizerEntityConfig {
+                        visualizer: T::identifier(),
+                        relevant_archetype: visualizer_query_info.relevant_archetype,
+                        constraints: Arc::new(visualizer_query_info.constraints),
+                        known_builtin_enum_components,
+                    };
 
                     VisualizerTypeRegistryEntry {
                         factory_method: Box::new(|| Box::<T>::default()),
                         used_by: Default::default(),
-                        entity_subscriber_handle,
+                        entity_config,
                     }
                 })
                 .used_by
@@ -192,15 +193,8 @@ struct VisualizerTypeRegistryEntry {
     factory_method: Box<dyn Fn() -> Box<dyn VisualizerSystem> + Send + Sync>,
     used_by: HashSet<ViewClassIdentifier>,
 
-    /// Handle to subscription of [`VisualizerEntitySubscriber`] for this visualizer.
-    entity_subscriber_handle: ChunkStoreSubscriberHandle,
-}
-
-impl Drop for VisualizerTypeRegistryEntry {
-    fn drop(&mut self) {
-        // TODO(andreas): ChunkStore unsubscribe is not yet implemented!
-        //ChunkStore::unregister_subscriber(self.entity_subscriber_handle);
-    }
+    /// Configuration data for building per-store [`VisualizerEntitySubscriber`] instances.
+    entity_config: VisualizerEntityConfig,
 }
 
 /// Registry of all known view types.
@@ -421,56 +415,17 @@ impl ViewClassRegistry {
             .sorted_by_key(|entry| entry.class.display_name())
     }
 
-    /// For each visualizer, return the set of entities that may be visualizable with it.
+    /// Create a set of empty entity subscribers for a new store.
     ///
-    /// The list is kept up to date by store subscribers.
-    pub fn visualizable_entities_for_visualizer_systems(
+    /// Each subscriber is built from the config stored in the registry,
+    /// with empty per-store data.
+    pub fn create_entity_subscribers(
         &self,
-        store_id: &re_log_types::StoreId,
-    ) -> PerVisualizerType<VisualizableEntities> {
-        re_tracing::profile_function!();
-
-        PerVisualizerType::<VisualizableEntities>(
-            self.visualizers
-                .iter()
-                .map(|(id, entry)| {
-                    (
-                        *id,
-                        ChunkStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
-                            entry.entity_subscriber_handle,
-                            |subscriber| subscriber.visualizable_entities(store_id).cloned(),
-                        )
-                        .flatten()
-                        .unwrap_or_default(),
-                    )
-                })
-                .collect(),
-        )
-    }
-
-    /// For each visualizer, the set of entities that have at least one component with a matching archetype name.
-    pub fn indicated_entities_per_visualizer(
-        &self,
-        store_id: &re_log_types::StoreId,
-    ) -> PerVisualizerType<IndicatedEntities> {
-        re_tracing::profile_function!();
-
-        PerVisualizerType::<IndicatedEntities>(
-            self.visualizers
-                .iter()
-                .map(|(id, entry)| {
-                    (
-                        *id,
-                        ChunkStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
-                            entry.entity_subscriber_handle,
-                            |subscriber| subscriber.indicated_entities(store_id).cloned(),
-                        )
-                        .flatten()
-                        .unwrap_or_default(),
-                    )
-                })
-                .collect(),
-        )
+    ) -> IntMap<ViewSystemIdentifier, VisualizerEntitySubscriber> {
+        self.visualizers
+            .iter()
+            .map(|(id, entry)| (*id, entry.entity_config.create_subscriber()))
+            .collect()
     }
 
     /// Runs the once-per-frame execution method for each context system once for each view that needs it.

@@ -33,13 +33,13 @@ pub struct ViewerContext<'a> {
 
     /// For each visualizer, the set of entities that are known to have all its required components.
     // TODO(andreas): This could have a generation id, allowing to update heuristics entities etc. more lazily.
-    pub visualizable_entities_per_visualizer: &'a PerVisualizerType<VisualizableEntities>,
+    pub visualizable_entities_per_visualizer: &'a PerVisualizerType<&'a VisualizableEntities>,
 
     /// For each visualizer, the set of entities with relevant archetypes.
     ///
     /// TODO(andreas): Should we always do the intersection with `maybe_visualizable_entities_per_visualizer`
     ///                 or are we ever interested in a (definitely-)non-visualizable but archetype-matching entity?
-    pub indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
+    pub indicated_entities_per_visualizer: &'a PerVisualizerType<&'a IndicatedEntities>,
 
     /// All the query results for this frame.
     pub query_results: &'a HashMap<ViewId, DataQueryResult>,
@@ -364,7 +364,7 @@ impl<'a> ViewerContext<'a> {
                 .filter(|(viz_id, _entities)| {
                     view_class_entry.visualizer_system_ids.contains(viz_id)
                 })
-                .map(|(viz_id, entities)| (*viz_id, entities)),
+                .map(|(viz_id, entities)| (*viz_id, *entities)),
         )
     }
 }

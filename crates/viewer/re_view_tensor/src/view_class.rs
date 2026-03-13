@@ -100,7 +100,7 @@ Set the displayed dimensions in a selection panel.",
         &self,
         _entity_path: &EntityPath,
         visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
-        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         // Default implementation would not suggest the Tensor visualizer for images,
         // since they're not indicated with a Tensor indicator.

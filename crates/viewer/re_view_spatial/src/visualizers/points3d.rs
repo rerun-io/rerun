@@ -58,6 +58,7 @@ impl Points3DVisualizer {
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Points3DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
+        re_tracing::profile_function!();
         let entity_path = ctx.target_entity_path;
 
         for data in data {
@@ -66,9 +67,14 @@ impl Points3DVisualizer {
                 continue;
             }
 
-            let picking_ids = (0..num_instances)
-                .map(|i| PickingLayerInstanceId(i as _))
-                .collect_vec();
+            re_tracing::profile_scope!("num_points", num_instances.to_string());
+
+            let picking_ids = {
+                re_tracing::profile_scope_if!(100_000 < num_instances, "picking_ids");
+                (0..num_instances)
+                    .map(|i| PickingLayerInstanceId(i as _))
+                    .collect_vec()
+            };
 
             let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
                 query.latest_at,
@@ -81,8 +87,10 @@ impl Points3DVisualizer {
 
             let positions = bytemuck::cast_slice(data.positions);
 
-            let obj_space_bounding_box =
-                re_renderer::util::bounding_box_from_points(positions.iter().copied());
+            let obj_space_bounding_box = {
+                re_tracing::profile_scope_if!(100_000 < num_instances, "bounding_box");
+                re_renderer::util::bounding_box_from_points(positions.iter().copied())
+            };
 
             // Has not custom fallback for radius, so we use the default.
             // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
@@ -106,6 +114,8 @@ impl Points3DVisualizer {
                 .iter()
                 .map(|transform| transform.as_affine3a())
             {
+                re_tracing::profile_scope!("one-transform");
+
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
                     .world_from_obj(world_from_obj)
@@ -192,6 +202,7 @@ impl VisualizerSystem for Points3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
         let output = VisualizerExecutionOutput::default();
 
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
@@ -214,18 +225,23 @@ impl VisualizerSystem for Points3DVisualizer {
             &output,
             self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
+                re_tracing::profile_scope!("Point3D");
+
                 let all_positions =
                     results.iter_required(Points3D::descriptor_positions().component);
                 if all_positions.is_empty() {
                     return Ok(());
                 }
 
-                let num_positions = all_positions
-                    .chunks()
-                    .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
-                    .map(|points| points.len())
-                    .sum();
+                let num_positions = {
+                    re_tracing::profile_scope!("num_positions");
+                    all_positions
+                        .chunks()
+                        .iter()
+                        .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
+                        .map(|points| points.len())
+                        .sum()
+                };
 
                 if num_positions == 0 {
                     return Ok(());

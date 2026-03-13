@@ -323,10 +323,11 @@ impl AppState {
 
                 let recording = store_context.recording;
 
-                let visualizable_entities_per_visualizer = view_class_registry
-                    .visualizable_entities_for_visualizer_systems(recording.store_id());
+                let visualizable_entities_per_visualizer = store_context
+                    .caches
+                    .visualizable_entities_for_visualizer_systems();
                 let indicated_entities_per_visualizer =
-                    view_class_registry.indicated_entities_per_visualizer(recording.store_id());
+                    store_context.caches.indicated_entities_per_visualizer();
 
                 let app_blueprint_ctx = AppBlueprintCtx {
                     command_sender,

@@ -163,7 +163,7 @@ pub trait ViewClass: Send + Sync {
         &self,
         entity_path: &EntityPath,
         visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let recommended = visualizers_with_reason
             .iter()

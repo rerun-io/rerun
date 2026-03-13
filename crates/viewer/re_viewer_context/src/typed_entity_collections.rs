@@ -42,6 +42,26 @@ pub enum DatatypeMatch {
     },
 }
 
+impl re_byte_size::SizeBytes for DatatypeMatch {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::PhysicalDatatypeOnly {
+                arrow_datatype,
+                component_type,
+                selectors,
+            } => {
+                arrow_datatype.heap_size_bytes()
+                    + component_type.heap_size_bytes()
+                    + selectors.heap_size_bytes()
+            }
+            Self::NativeSemantics {
+                arrow_datatype,
+                component_type,
+            } => arrow_datatype.heap_size_bytes() + component_type.heap_size_bytes(),
+        }
+    }
+}
+
 impl DatatypeMatch {
     pub fn component_type(&self) -> &Option<re_chunk::ComponentType> {
         match self {
@@ -93,6 +113,31 @@ pub struct BufferAndFormatMatch {
     pub format_matches: IntSet<ComponentIdentifier>,
 }
 
+impl re_byte_size::SizeBytes for SingleRequiredComponentMatch {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            target_component,
+            matches,
+        } = self;
+        target_component.heap_size_bytes() + matches.heap_size_bytes()
+    }
+}
+
+impl re_byte_size::SizeBytes for BufferAndFormatMatch {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            buffer_target,
+            format_target,
+            buffer_matches,
+            format_matches,
+        } = self;
+        buffer_target.heap_size_bytes()
+            + format_target.heap_size_bytes()
+            + buffer_matches.heap_size_bytes()
+            + format_matches.heap_size_bytes()
+    }
+}
+
 /// Describes why a given entity was marked as visualizable.
 #[derive(Clone, Debug)]
 pub enum VisualizableReason {
@@ -107,6 +152,16 @@ pub enum VisualizableReason {
 
     /// See [`BufferAndFormatMatch`].
     BufferAndFormatMatch(BufferAndFormatMatch),
+}
+
+impl re_byte_size::SizeBytes for VisualizableReason {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Always | Self::ExactMatchAny => 0,
+            Self::SingleRequiredComponentMatch(m) => m.heap_size_bytes(),
+            Self::BufferAndFormatMatch(m) => m.heap_size_bytes(),
+        }
+    }
 }
 
 impl VisualizableReason {
@@ -146,6 +201,12 @@ impl VisualizableReason {
 /// *not* be influenced by individual view setups.
 #[derive(Default, Clone, Debug)]
 pub struct VisualizableEntities(pub IntMap<EntityPath, VisualizableReason>);
+
+impl re_byte_size::SizeBytes for VisualizableEntities {
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+}
 
 impl std::ops::Deref for VisualizableEntities {
     type Target = IntMap<EntityPath, VisualizableReason>;
@@ -198,6 +259,14 @@ impl<T: Clone> Clone for PerVisualizerType<T> {
 impl<T> Default for PerVisualizerType<T> {
     fn default() -> Self {
         Self(IntMap::default())
+    }
+}
+
+impl<T> PerVisualizerType<T> {
+    /// Convert from `PerVisualizerType<T>` to `PerVisualizerType<&T>`.
+    #[inline]
+    pub fn as_ref(&self) -> PerVisualizerType<&T> {
+        PerVisualizerType(self.0.iter().map(|(&k, v)| (k, v)).collect())
     }
 }
 

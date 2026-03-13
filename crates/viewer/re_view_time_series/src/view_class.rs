@@ -276,7 +276,7 @@ impl ViewClass for TimeSeriesView {
         &self,
         entity_path: &EntityPath,
         visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let available_visualizers: HashMap<ViewSystemIdentifier, &VisualizableReason> =
             visualizers_with_reason

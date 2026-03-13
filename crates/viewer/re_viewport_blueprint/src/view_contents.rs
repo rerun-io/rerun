@@ -268,8 +268,8 @@ impl ViewContents {
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
         query_range: &QueryRange,
-        visualizable_entities_per_visualizer: &PerVisualizerType<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerType<&VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
         app_options: &re_viewer_context::AppOptions,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
@@ -461,7 +461,7 @@ struct DataQueryPropertyResolver<'a> {
     view_query_range: &'a QueryRange,
     view_class: &'a dyn re_viewer_context::ViewClass,
     visualizable_entities_per_visualizer_in_view: &'a VisualizableEntitiesPerVisualizerInView<'a>,
-    indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
+    indicated_entities_per_visualizer: &'a PerVisualizerType<&'a IndicatedEntities>,
 }
 
 impl DataQueryPropertyResolver<'_> {
@@ -852,7 +852,7 @@ mod tests {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &StoreCache::new(recording.store_id().clone()),
+            caches: &StoreCache::new(&view_class_registry, &recording),
             should_enable_heuristics: false,
         };
 
@@ -956,7 +956,7 @@ mod tests {
                 &view_class_registry,
                 &LatestAtQuery::latest(blueprint_timeline()),
                 &query_range,
-                &visualizable_entities_for_visualizer_systems,
+                &visualizable_entities_for_visualizer_systems.as_ref(),
                 &PerVisualizerType::default(),
                 &re_viewer_context::AppOptions::default(),
             );

@@ -42,6 +42,38 @@ pub struct ChunkMeta {
     pub components: Vec<ChunkComponentMeta>,
 }
 
+impl ChunkMeta {
+    /// Build a [`ChunkMeta`] from an existing physical [`Chunk`].
+    pub fn from_chunk(chunk: &Chunk) -> Self {
+        let components: Vec<ChunkComponentMeta> = chunk
+            .components()
+            .values()
+            .map(|column| ChunkComponentMeta {
+                descriptor: column.descriptor.clone(),
+                inner_arrow_datatype: Some(column.list_array.value_type()),
+                has_data: !column.list_array.values().is_empty(),
+                is_static_only: chunk.is_static(),
+            })
+            .collect();
+
+        Self {
+            entity_path: chunk.entity_path().clone(),
+            components,
+        }
+    }
+
+    /// Build [`ChunkMeta`]s from an [`RrdManifest`], one per entity path.
+    pub fn from_manifest(manifest: &RrdManifest) -> Vec<Self> {
+        re_tracing::profile_function!();
+        // Reuse the same logic as ChunkStoreDiffVirtualAddition::chunk_metas.
+        ChunkStoreDiffVirtualAddition {
+            rrd_manifest: Arc::new(manifest.clone()),
+        }
+        .chunk_metas()
+        .collect()
+    }
+}
+
 /// The atomic unit of change in the Rerun [`ChunkStore`].
 ///
 /// A [`ChunkStoreEvent`] describes the changes caused by the addition or deletion of a

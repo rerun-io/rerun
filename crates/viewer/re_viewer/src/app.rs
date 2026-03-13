@@ -852,7 +852,7 @@ impl App {
             } => {
                 match store_id.kind() {
                     StoreKind::Recording => {
-                        store_hub.load_blueprint_and_caches(&store_id); // Ensure caches and blueprints
+                        store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry); // Ensure caches and blueprints
                         let route = Route::LocalRecording {
                             recording_id: store_id.clone(),
                         };
@@ -931,7 +931,7 @@ impl App {
             SystemCommand::ActivateApp(app_id) => {
                 store_hub.load_persisted_blueprints_for_app(&app_id);
                 if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                    store_hub.load_blueprint_and_caches(&recording_id);
+                    store_hub.load_blueprint_and_caches(&recording_id, &self.view_class_registry);
                     self.state
                         .navigation
                         .replace(Route::LocalRecording { recording_id });
@@ -1028,7 +1028,7 @@ impl App {
                 }
 
                 if let Some(recording_id) = new_route.recording_id() {
-                    store_hub.load_blueprint_and_caches(recording_id);
+                    store_hub.load_blueprint_and_caches(recording_id, &self.view_class_registry);
                 }
 
                 if matches!(new_route, Route::Loading(_)) {
@@ -1234,7 +1234,8 @@ impl App {
                     // If the selected item has its own page, switch to it.
                     if let Some(route) = Route::from_item(item) {
                         if let Route::LocalRecording { recording_id } = &route {
-                            store_hub.load_blueprint_and_caches(recording_id);
+                            store_hub
+                                .load_blueprint_and_caches(recording_id, &self.view_class_registry);
                         }
                         self.state.navigation.replace(route);
                     }
@@ -2502,13 +2503,10 @@ impl App {
                     let entity_db = store_hub.entity_db_entry(&store_id);
                     let store_event = entity_db.add_rrd_manifest_message(rrd_manifest);
 
-                    if let Some(caches) = store_hub.store_caches(&store_id) {
-                        // Downgrade to read-only, so we can access caches.
-                        let entity_db = store_hub
-                            .entity_db(&store_id)
-                            .expect("Just queried it mutable and that was fine.");
-
-                        caches.on_store_events(&[store_event], entity_db);
+                    if let Some((entity_db, cache)) =
+                        store_hub.entity_db_and_cache(&store_id, &self.view_class_registry)
+                    {
+                        cache.on_store_events(&[store_event], entity_db);
                     }
                 }
 
@@ -2644,7 +2642,10 @@ impl App {
                                 if let Some(recording_id) =
                                     store_hub.earliest_recording_for_app(&app_id)
                                 {
-                                    store_hub.load_blueprint_and_caches(&recording_id);
+                                    store_hub.load_blueprint_and_caches(
+                                        &recording_id,
+                                        &self.view_class_registry,
+                                    );
                                     self.state
                                         .selection_state
                                         .set_selection(Item::StoreId(recording_id.clone()));
@@ -2683,7 +2684,7 @@ impl App {
 
     fn process_store_events_for_db(
         &self,
-        store_hub: &StoreHub,
+        store_hub: &mut StoreHub,
         store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
@@ -2691,10 +2692,10 @@ impl App {
 
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
-        if let Some(entity_db) = store_hub.entity_db(store_id)
-            && let Some(caches) = store_hub.store_caches(store_id)
+        if let Some((entity_db, cache)) =
+            store_hub.entity_db_and_cache(store_id, &self.view_class_registry)
         {
-            caches.on_store_events(store_events, entity_db);
+            cache.on_store_events(store_events, entity_db);
         }
 
         self.validate_loaded_events(store_events);
@@ -2869,7 +2870,7 @@ impl App {
             return;
         }
 
-        store_hub.load_blueprint_and_caches(store_id);
+        store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
         self.state.navigation.replace(Route::LocalRecording {
             recording_id: store_id.clone(),
         });
@@ -3857,7 +3858,8 @@ impl eframe::App for App {
                 if let Some(app_id) = any_other_app_id {
                     store_hub.load_persisted_blueprints_for_app(&app_id);
                     if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                        store_hub.load_blueprint_and_caches(&recording_id);
+                        store_hub
+                            .load_blueprint_and_caches(&recording_id, &self.view_class_registry);
                         self.state
                             .selection_state
                             .set_selection(Item::StoreId(recording_id.clone()));

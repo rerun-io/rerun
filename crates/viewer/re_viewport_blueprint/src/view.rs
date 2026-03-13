@@ -640,7 +640,7 @@ mod tests {
                 add_to_blueprint(&base_override_path, batch.as_ref());
             }
 
-            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities);
+            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities.as_ref());
 
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
@@ -666,7 +666,7 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizerType<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerType<&VisualizableEntities>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 

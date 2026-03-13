@@ -37,6 +37,15 @@ pub enum SegmentKind {
     Each,
 }
 
+impl re_byte_size::SizeBytes for SegmentKind {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Field(s) => s.heap_size_bytes(),
+            Self::Index(_) | Self::Each => 0,
+        }
+    }
+}
+
 impl std::fmt::Display for SegmentKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -56,6 +65,17 @@ pub struct Segment {
 
     /// When `true`, rows where all inner values are null will not produce output (the `!` operator).
     pub assert_non_null: bool,
+}
+
+impl re_byte_size::SizeBytes for Segment {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            kind,
+            suppressed,
+            assert_non_null,
+        } = self;
+        kind.heap_size_bytes() + suppressed.heap_size_bytes() + assert_non_null.heap_size_bytes()
+    }
 }
 
 impl std::fmt::Display for Segment {
@@ -89,6 +109,16 @@ pub enum Expr {
     Identity,
     Path(Vec<Segment>),
     Pipe(Box<Self>, Box<Self>),
+}
+
+impl re_byte_size::SizeBytes for Expr {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Identity => 0,
+            Self::Path(segments) => segments.heap_size_bytes(),
+            Self::Pipe(left, right) => left.heap_size_bytes() + right.heap_size_bytes(),
+        }
+    }
 }
 
 impl std::fmt::Display for Expr {

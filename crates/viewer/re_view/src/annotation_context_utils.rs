@@ -63,7 +63,7 @@ pub fn process_annotation_and_keypoint_slices(
     class_ids: &[re_sdk_types::components::ClassId],
     annotations: &Annotations,
 ) -> (ResolvedAnnotationInfos, Keypoints) {
-    re_tracing::profile_function!();
+    re_tracing::profile_function_if!(100_000 < num_instances);
 
     let mut keypoints: Keypoints = HashMap::default();
 

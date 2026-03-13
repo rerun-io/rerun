@@ -148,6 +148,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
     system_registry.register_fallback_provider(
         blueprint::archetypes::SpatialInformation::descriptor_target_frame().component,
         |ctx| {
+            re_tracing::profile_scope!("SpatialInformation fallback");
             // 1. Check if the space root has a defined coordinate frame.
             // 2. Check if all coordinate frames logged on entities included in the filter share the same
             //    root frame, if so use that frame.
@@ -200,6 +201,8 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                     if node.data_result.tree_prefix_only {
                         return true;
                     }
+
+                    re_tracing::profile_scope!("visit-node");
 
                     let Some(root_from_frame) = node
                         .data_result

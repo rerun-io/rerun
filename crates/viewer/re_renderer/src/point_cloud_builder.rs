@@ -45,6 +45,8 @@ impl<'ctx> PointCloudBuilder<'ctx> {
         &mut self,
         expected_number_of_additional_points: usize,
     ) -> Result<usize, CpuWriteGpuReadError> {
+        re_tracing::profile_function_if!(100_000 < expected_number_of_additional_points);
+
         // We know that the maximum number is independent of datatype, so we can use the same value for all.
         self.position_radius_buffer
             .reserve(expected_number_of_additional_points)?;

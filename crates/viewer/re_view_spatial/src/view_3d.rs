@@ -324,7 +324,7 @@ impl ViewClass for SpatialView3D {
         &self,
         entity_path: &EntityPath,
         visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();

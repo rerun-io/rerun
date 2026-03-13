@@ -19,7 +19,7 @@ use re_sdk_types::components::Timestamp;
 
 use crate::{
     ActiveStoreContext, BlueprintUndoState, RecordingOrTable, Route, StorageContext, StoreCache,
-    TableStore, TableStores,
+    TableStore, TableStores, ViewClassRegistry,
 };
 
 /// Interface for accessing all blueprints and recordings.
@@ -42,7 +42,6 @@ use crate::{
 ///
 /// The default blueprint is usually the blueprint set by the SDK.
 /// This lets users reset the active blueprint to the one sent by the SDK.
-#[derive(Default)]
 pub struct StoreHub {
     /// How we load and save blueprints.
     persistence: BlueprintPersistence,
@@ -225,8 +224,12 @@ impl StoreHub {
                     .clone(),
             ))
         });
-        static EMPTY_CACHES: LazyLock<StoreCache> =
-            LazyLock::new(|| StoreCache::new(re_log_types::StoreId::empty_recording()));
+        static EMPTY_CACHES: LazyLock<StoreCache> = LazyLock::new(|| {
+            StoreCache::empty(
+                &ViewClassRegistry::default(),
+                re_log_types::StoreId::empty_recording(),
+            )
+        });
 
         let store_context = 'ctx: {
             // If we have an app-id, then use it to look up the blueprint.
@@ -379,6 +382,33 @@ impl StoreHub {
     /// if needed.
     pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
         self.store_bundle.insert(entity_db);
+    }
+
+    /// Add a chunk to a store and forward events to the store's [`StoreCache`] (if one exists).
+    ///
+    /// This is the correct way to add data when a [`StoreCache`] may already exist,
+    /// e.g. in test harnesses that bypass the normal message channel.
+    pub fn add_chunk_for_tests(
+        &mut self,
+        store_id: &StoreId,
+        chunk: &std::sync::Arc<re_chunk::Chunk>,
+    ) -> anyhow::Result<Vec<re_chunk_store::ChunkStoreEvent>> {
+        let entity_db = self
+            .store_bundle
+            .get_mut(store_id)
+            .context("missing store")?;
+        let events = entity_db.add_chunk(chunk)?;
+
+        // Forward events to the cache so subscribers stay up to date.
+        let entity_db = self
+            .store_bundle
+            .get(store_id)
+            .expect("store was just accessed");
+        if let Some(cache) = self.store_caches.get_mut(store_id) {
+            cache.on_store_events(&events, entity_db);
+        }
+
+        Ok(events)
     }
 
     /// Inserts a new table into the store (potentially overwriting an existing entry).
@@ -555,17 +585,42 @@ impl StoreHub {
     }
 
     /// Get or create the [`StoreCache`] for a given store.
-    pub fn store_cache_entry(&mut self, store_id: &StoreId) -> &mut StoreCache {
+    pub fn store_cache_entry(
+        &mut self,
+        store_id: &StoreId,
+        view_class_registry: &ViewClassRegistry,
+    ) -> &mut StoreCache {
+        let entity_db = self.store_bundle.entry(store_id);
         self.store_caches
             .entry(store_id.clone())
-            .or_insert_with(|| StoreCache::new(store_id.clone()))
+            .or_insert_with(|| StoreCache::new(view_class_registry, entity_db))
+    }
+
+    /// Get both the [`EntityDb`] and [`StoreCache`] for a given store.
+    ///
+    /// Uses split borrows to allow simultaneous access.
+    pub fn entity_db_and_cache(
+        &mut self,
+        store_id: &StoreId,
+        view_class_registry: &ViewClassRegistry,
+    ) -> Option<(&EntityDb, &mut StoreCache)> {
+        let entity_db = self.store_bundle.get(store_id)?;
+        let cache = self
+            .store_caches
+            .entry(store_id.clone())
+            .or_insert_with(|| StoreCache::new(view_class_registry, entity_db));
+        Some((entity_db, cache))
     }
 
     /// Ensure caches and blueprints are set up for the given recording.
     ///
     /// Call this when a recording becomes active (e.g. via [`Route::LocalRecording`]).
     // TODO(RR-3033): get rid of this?
-    pub fn load_blueprint_and_caches(&mut self, recording_id: &StoreId) {
+    pub fn load_blueprint_and_caches(
+        &mut self,
+        recording_id: &StoreId,
+        view_class_registry: &ViewClassRegistry,
+    ) {
         debug_assert!(recording_id.is_recording());
 
         // Ensure persisted blueprints are loaded for this recording's app.
@@ -577,7 +632,7 @@ impl StoreHub {
             self.load_persisted_blueprints_for_app(&app_id);
         }
 
-        self.store_cache_entry(recording_id);
+        self.store_cache_entry(recording_id, view_class_registry);
     }
 
     // ---------------------
@@ -830,7 +885,7 @@ impl StoreHub {
         let store_events = entity_db.gc_with_target(target, time_cursor);
         let store_size_after = entity_db.total_size_bytes();
 
-        if let Some(cache) = self.store_caches.get(store_id) {
+        if let Some(cache) = self.store_caches.get_mut(store_id) {
             cache.on_store_events(&store_events, entity_db);
         }
 
@@ -896,7 +951,7 @@ impl StoreHub {
                 });
                 if !store_events.is_empty() {
                     re_log::debug!("Garbage-collected blueprint store");
-                    if let Some(cache) = self.store_caches.get(blueprint_id) {
+                    if let Some(cache) = self.store_caches.get_mut(blueprint_id) {
                         cache.on_store_events(&store_events, blueprint);
                     }
                 }
@@ -1019,6 +1074,7 @@ impl StoreHub {
             table_stores,
             data_source_order: _,
             should_enable_heuristics_by_app_id: _,
+
             store_caches,
             blueprint_last_save: _,
             blueprint_last_gc: _,
@@ -1074,6 +1130,7 @@ impl MemUsageTreeCapture for StoreHub {
             active_blueprint_by_app_id: _,
             data_source_order: _,
             should_enable_heuristics_by_app_id: _,
+
             blueprint_last_save: _,
             blueprint_last_gc: _,
         } = self;
