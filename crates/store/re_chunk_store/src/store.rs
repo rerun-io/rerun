@@ -1002,9 +1002,8 @@ impl ChunkStore {
         let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))?;
 
         // TODO(cmc): offload the decoding to a background thread.
-        for res in decoder {
-            let msg = res?;
-            match msg {
+        for msg in decoder {
+            match msg? {
                 re_log_types::LogMsg::SetStoreInfo(info) => {
                     stores.entry(info.info.store_id.clone()).or_insert_with(|| {
                         Self::new(info.info.store_id.clone(), store_config.clone())
