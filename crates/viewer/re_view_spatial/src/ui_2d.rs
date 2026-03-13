@@ -236,7 +236,7 @@ impl SpatialView2D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(&system_output.view_systems),
+            &collect_ui_labels(&system_output.view_systems),
             ui_from_scene,
             &eye,
             ui,

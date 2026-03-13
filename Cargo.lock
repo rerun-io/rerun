@@ -12352,6 +12352,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_label_compaction"
+version = "0.31.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "re_log",
+ "rerun",
+]
+
+[[package]]
 name = "test_out_of_order_transforms"
 version = "0.31.0-alpha.1+dev"
 dependencies = [

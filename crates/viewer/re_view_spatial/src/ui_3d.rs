@@ -215,7 +215,7 @@ impl SpatialView3D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(&system_output.view_systems),
+            &collect_ui_labels(&system_output.view_systems),
             RectTransform::from_to(ui_rect, ui_rect),
             &eye,
             ui,

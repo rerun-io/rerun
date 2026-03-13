@@ -20,7 +20,7 @@ pub enum UiLabelTarget {
     Position3D(glam::Vec3),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum UiLabelStyle {
     Default,
 
