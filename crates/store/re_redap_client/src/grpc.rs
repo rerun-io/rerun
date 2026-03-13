@@ -509,13 +509,12 @@ async fn stream_segment_from_server(
         Ok(manifest_stream) => {
             let mut manifest_stream = std::pin::pin!(manifest_stream);
 
-            let mut last_rrd_manifest: Option<Arc<re_log_encoding::RrdManifest>> = None;
-            let mut part_nr: usize = 0;
+            let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
 
             while let Some(part_result) = manifest_stream.next().await {
                 let raw_rrd_manifest_part = part_result?;
 
-                part_nr += 1;
+                let part_nr = rrd_manifest_parts.len() + 1;
                 re_log::debug!(
                     "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
                     re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
@@ -540,17 +539,18 @@ async fn stream_segment_from_server(
                     return Ok(ControlFlow::Break(()));
                 }
 
-                last_rrd_manifest = Some(rrd_manifest);
+                rrd_manifest_parts.push(rrd_manifest);
             }
 
-            let Some(rrd_manifest) = last_rrd_manifest else {
+            if rrd_manifest_parts.is_empty() {
                 return Err(ApiError::serialization(
                     "failed to parse the response for /GetRrdManifest (no data)",
                 ));
-            };
+            }
 
+            let part_nr = rrd_manifest_parts.len();
             re_log::debug!(
-                "The server supports on-demand streaming. Full RRD manifest loaded in {:.1}s in {}",
+                "Full RRD manifest loaded in {:.1}s in {}",
                 start_time.elapsed().as_secs_f32(),
                 re_format::format_plural_s(part_nr, "part")
             );
@@ -569,8 +569,16 @@ async fn stream_segment_from_server(
                     return Ok(ControlFlow::Continue(()));
                 }
                 StoreKind::Recording | StoreKind::Blueprint => {
-                    // Load all of the chunks in one go; most important first:
-                    let batch = sort_batch(rrd_manifest.data()).map_err(|err| {
+                    re_log::debug!("Loading all of the chunks in one go; most important first");
+                    let refs: Vec<&re_log_encoding::RrdManifest> =
+                        rrd_manifest_parts.iter().map(|m| m.as_ref()).collect();
+                    let combined = re_log_encoding::RrdManifest::concat(&refs).map_err(|err| {
+                        ApiError::invalid_arguments_with_source(
+                            err,
+                            "Failed to concatenate RRD manifest parts",
+                        )
+                    })?;
+                    let batch = sort_batch(combined.data()).map_err(|err| {
                         ApiError::invalid_arguments_with_source(err, "Failed to sort chunk index")
                     })?;
                     return load_chunks(client, tx, &store_id, batch, options).await;
@@ -712,18 +720,28 @@ async fn load_chunks(
     full_batch: RecordBatch,
     options: &StreamingOptions,
 ) -> ApiResult<ControlFlow<()>> {
-    re_log::trace!("Requesting {} chunks from server…", full_batch.num_rows());
+    let num_chunks = full_batch.num_rows();
+
+    re_log::debug!(
+        "Downloading {} chunks from server…",
+        re_format::format_uint(num_chunks)
+    );
+    if 10_000 < num_chunks {
+        re_log::warn!(
+            "There are {} chunks in this recording. Consider running `rerun rrd compact` on it!",
+            re_format::format_uint(num_chunks)
+        );
+    }
 
     use futures::stream::FuturesUnordered;
 
     // Batch requests in groups of N=32 rows.
     const BATCH_SIZE: usize = 32;
-    let num_rows = full_batch.num_rows();
     let total_size_bytes = total_size_bytes_from_batch(&full_batch);
     let mut futures = FuturesUnordered::new();
 
-    for start in (0..num_rows).step_by(BATCH_SIZE) {
-        let end = usize::min(start + BATCH_SIZE, num_rows);
+    for start in (0..num_chunks).step_by(BATCH_SIZE) {
+        let end = usize::min(start + BATCH_SIZE, num_chunks);
         let small_batch = full_batch.slice(start, end - start);
 
         let mut client = client.clone();
@@ -750,7 +768,10 @@ async fn load_chunks(
         }
     }
 
-    re_log::trace!("Finished downloading {} chunks.", num_rows);
+    re_log::trace!(
+        "Finished downloading {} chunks.",
+        re_format::format_uint(num_chunks)
+    );
 
     Ok(ControlFlow::Continue(()))
 }

@@ -8786,6 +8786,7 @@ dependencies = [
  "re_chunk_store",
  "re_crash_handler",
  "re_error",
+ "re_format",
  "re_lenses",
  "re_lenses_core",
  "re_log",

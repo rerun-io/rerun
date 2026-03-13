@@ -185,11 +185,10 @@ impl RrdManifest {
         &self.recording_schema
     }
 
-    pub fn concat(a: &Self, b: &Self) -> CodecResult<Self> {
+    pub fn concat(manifests: &[&Self]) -> CodecResult<Self> {
         re_tracing::profile_function!();
-        let a = a.raw.clone();
-        let b = b.raw.clone();
-        let combined = a.concat(b).map_err(|err| {
+        let raws: Vec<&RawRrdManifest> = manifests.iter().map(|m| &m.raw).collect();
+        let combined = RawRrdManifest::concat(&raws).map_err(|err| {
             CodecError::FrameDecoding(format!("Failed to concatenate RRD manifests: {err}"))
         })?;
         Self::try_new(combined)

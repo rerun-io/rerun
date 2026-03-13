@@ -235,7 +235,7 @@ impl RrdManifestIndex {
         }
 
         let new_full_manifest = if let Some(existing) = self.manifest.take() {
-            Arc::new(RrdManifest::concat(&existing, &delta)?)
+            Arc::new(RrdManifest::concat(&[&existing, &delta])?)
         } else {
             delta
         };
@@ -407,6 +407,14 @@ impl RrdManifestIndex {
     /// Mark the manifest as complete (all parts have been received).
     pub fn set_manifest_complete(&mut self) {
         self.manifest_complete = true;
+
+        let num_root_chunks = self.root_chunks.len();
+        if 10_000 < num_root_chunks {
+            re_log::warn!(
+                "There are {} rooot chunks in this recording. Consider running `rerun rrd compact` on the original.",
+                re_format::format_uint(num_root_chunks)
+            );
+        }
     }
 
     /// The manifest as it currently stands.

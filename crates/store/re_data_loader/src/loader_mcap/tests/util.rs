@@ -29,16 +29,14 @@ pub fn load_mcap(path: impl AsRef<Path>) -> LoadedMcap {
             panic!("Failed to load MCAP file at {}: {err}", path.display());
         });
 
-    let chunks = rx
-        .iter()
-        .filter_map(|res| {
-            if let LoadedData::Chunk(_, _, chunk) = res {
-                Some(chunk)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let chunks: Vec<Chunk> = rx.iter().filter_map(LoadedData::into_chunk).collect();
+
+    if 10_000 < chunks.len() {
+        re_log::warn!(
+            "MCAP file contained {} chunks. Consider running `rerun rrd compact` on the output.",
+            re_format::format_uint(chunks.len()),
+        );
+    }
 
     LoadedMcap { chunks }
 }

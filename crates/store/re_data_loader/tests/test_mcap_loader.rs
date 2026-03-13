@@ -28,15 +28,7 @@ mod tests {
         drop(tx);
 
         // Collect chunks
-        rx.iter()
-            .filter_map(|res| {
-                if let LoadedData::Chunk(_, _, chunk) = res {
-                    Some(chunk)
-                } else {
-                    None
-                }
-            })
-            .collect()
+        rx.iter().filter_map(LoadedData::into_chunk).collect()
     }
 
     // TODO(grtlr): This should be something like a snippet / backwards-compatibility test, but

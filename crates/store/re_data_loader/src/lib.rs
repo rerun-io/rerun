@@ -428,6 +428,18 @@ impl LoadedData {
             Self::LogMsg(_name, msg) => Ok(msg),
         }
     }
+
+    /// Convert the data into a [`Chunk`], ignoring all non-chunk-related things.
+    pub fn into_chunk(self) -> Option<Chunk> {
+        match self {
+            Self::Chunk(_name, _store_id, chunk) => Some(chunk),
+            Self::ArrowMsg(_name, _store_id, arrow_msg) => Chunk::from_arrow_msg(&arrow_msg).ok(),
+            Self::LogMsg(_name, msg) => match msg {
+                LogMsg::ArrowMsg(_store_id, arrow_msg) => Chunk::from_arrow_msg(&arrow_msg).ok(),
+                LogMsg::SetStoreInfo { .. } | LogMsg::BlueprintActivationCommand { .. } => None,
+            },
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

@@ -3301,7 +3301,7 @@ impl App {
             let db = store_hub.entity_db_entry(&store_id);
 
             if cfg!(debug_assertions) && db.can_fetch_chunks_from_redap() {
-                // Some sanity checks:
+                re_tracing::profile_scope!("debug-sanity-check");
                 let storage_engine = db.storage_engine();
                 let store = storage_engine.store();
 
