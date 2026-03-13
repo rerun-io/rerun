@@ -71,15 +71,21 @@ impl IsEnabled for ChannelId {}
 /// Common context used by parsers to build timelines and store entity paths.
 pub struct ParserContext {
     entity_path: EntityPath,
+    channel_topic: String,
     time_type: TimeType,
     pub timelines: IntMap<TimelineName, TimeColumnBuilder>,
 }
 
 impl ParserContext {
     /// Construct a new parser context with the given [`EntityPath`] and [`TimeType`].
-    pub fn new(entity_path: EntityPath, time_type: TimeType) -> Self {
+    pub fn new(
+        entity_path: EntityPath,
+        channel_topic: impl Into<String>,
+        time_type: TimeType,
+    ) -> Self {
         Self {
             entity_path,
+            channel_topic: channel_topic.into(),
             time_type,
             timelines: IntMap::default(),
         }
@@ -153,5 +159,10 @@ impl ParserContext {
     /// Get the entity path associated with this context.
     pub fn entity_path(&self) -> &EntityPath {
         &self.entity_path
+    }
+
+    /// Get the MCAP channel topic associated with this context.
+    pub fn channel_topic(&self) -> &str {
+        &self.channel_topic
     }
 }

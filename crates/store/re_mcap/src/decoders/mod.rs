@@ -212,7 +212,7 @@ impl MessageDecoderRunner {
 
                     let parser = self.inner.message_parser(channel, msg_offsets.len())?;
                     let entity_path = EntityPath::from(channel.topic.as_str());
-                    let ctx = ParserContext::new(entity_path, time_type);
+                    let ctx = ParserContext::new(entity_path, channel.topic.clone(), time_type);
                     Some((channel_id, (ctx, parser)))
                 })
                 .collect::<IntMap<_, _>>();
