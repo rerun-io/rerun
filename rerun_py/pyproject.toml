@@ -22,6 +22,7 @@ dependencies = [
   "typing_extensions>=4.5",
 ]
 description = "The Rerun Logging SDK"
+readme = "README.md"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
 requires-python = ">=3.10"
