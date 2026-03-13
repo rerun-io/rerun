@@ -10,9 +10,9 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
-use re_log_types::{AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time};
-use re_sdk_types::ComponentDescriptor;
+use re_log_types::{build_frame_nr, build_log_time, AbsoluteTimeRange, EntityPath, Timestamp};
 use re_sdk_types::testing::{build_some_large_structs, large_struct_descriptor};
+use re_sdk_types::ComponentDescriptor;
 
 // ---
 
@@ -44,7 +44,7 @@ fn query_latest_array(
 // ---
 
 #[test]
-fn simple() -> anyhow::Result<()> {
+fn simple() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut rng = rand::rng();
@@ -105,7 +105,7 @@ fn simple() -> anyhow::Result<()> {
 }
 
 #[test]
-fn simple_static() -> anyhow::Result<()> {
+fn simple_static() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -221,7 +221,7 @@ fn simple_static() -> anyhow::Result<()> {
 }
 
 #[test]
-fn protected() -> anyhow::Result<()> {
+fn protected() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -351,7 +351,7 @@ fn protected() -> anyhow::Result<()> {
 }
 
 #[test]
-fn protected_time_ranges() -> anyhow::Result<()> {
+fn protected_time_ranges() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -449,7 +449,7 @@ fn protected_time_ranges() -> anyhow::Result<()> {
 // ---
 
 #[test]
-fn manual_drop_entity_path() -> anyhow::Result<()> {
+fn manual_drop_entity_path() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(

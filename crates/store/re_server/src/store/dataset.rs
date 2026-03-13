@@ -673,7 +673,7 @@ impl Dataset {
         re_log::info!("Loading RRD: {}", path.display());
         let contents =
             ChunkStore::handle_from_rrd_filepath(&InMemoryStore::chunk_store_config(), path)
-                .map_err(Error::RrdLoadingError)?;
+                .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
         let layer_name = layer_name.unwrap_or(DataSource::DEFAULT_LAYER);
 

@@ -41,7 +41,6 @@ re_types_core.workspace = true
 
 # External dependencies:
 ahash.workspace = true
-anyhow.workspace = true
 arrow.workspace = true
 indent.workspace = true
 itertools.workspace = true
@@ -56,6 +55,7 @@ thiserror.workspace = true
 re_log_encoding.workspace = true
 re_sdk_types.workspace = true
 
+anyhow.workspace = true
 bytemuck.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true

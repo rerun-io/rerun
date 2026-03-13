@@ -10,14 +10,14 @@ use re_chunk_store::{
     AbsoluteTimeRange, ChunkStore, ChunkStoreSubscriber as _, RangeQuery, TimeInt,
 };
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-use re_log_types::{EntityPath, TimePoint, build_frame_nr};
+use re_log_types::{build_frame_nr, EntityPath, TimePoint};
 use re_query::QueryCache;
 use re_types_core::{Archetype as _, ComponentBatch as _};
 
 // ---
 
 #[test]
-fn simple_range() -> anyhow::Result<()> {
+fn simple_range() -> re_chunk::ChunkResult<()> {
     let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
@@ -117,7 +117,7 @@ fn simple_range() -> anyhow::Result<()> {
 }
 
 #[test]
-fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
+fn simple_range_with_differently_tagged_components() -> re_chunk::ChunkResult<()> {
     let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
@@ -225,7 +225,7 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
 }
 
 #[test]
-fn static_range() -> anyhow::Result<()> {
+fn static_range() -> re_chunk::ChunkResult<()> {
     let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),

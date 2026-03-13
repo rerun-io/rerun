@@ -8645,7 +8645,6 @@ name = "re_chunk_store"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "anyhow",
  "arrow",
  "criterion",
  "document-features",
@@ -8998,7 +8997,6 @@ name = "re_entity_db"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "anyhow",
  "arrow",
  "document-features",
  "emath",

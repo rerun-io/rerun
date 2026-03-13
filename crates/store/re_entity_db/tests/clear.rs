@@ -8,9 +8,9 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
-use re_types_core::ComponentBatch as _;
 use re_types_core::archetypes::Clear;
 use re_types_core::components::ClearIsRecursive;
+use re_types_core::ComponentBatch as _;
 
 // ---
 
@@ -55,7 +55,7 @@ fn query_latest_component_clear(
 
 /// Complete test suite for the clear & pending clear paths.
 #[test]
-fn clears() -> anyhow::Result<()> {
+fn clears() -> re_entity_db::Result<()> {
     re_log::setup_logging();
 
     let mut db = EntityDb::new(StoreId::random(
@@ -183,24 +183,20 @@ fn clears() -> anyhow::Result<()> {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
             // parent
-            assert!(
-                query_latest_component::<MyPoint>(
-                    &db,
-                    &entity_path_parent,
-                    &query,
-                    MyPoints::descriptor_points().component
-                )
-                .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(
-                    &db,
-                    &entity_path_parent,
-                    &query,
-                    MyPoints::descriptor_colors().component
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_parent,
+                &query,
+                MyPoints::descriptor_points().component
+            )
+            .is_none());
+            assert!(query_latest_component::<MyColor>(
+                &db,
+                &entity_path_parent,
+                &query,
+                MyPoints::descriptor_colors().component
+            )
+            .is_none());
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
                 query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
@@ -212,26 +208,22 @@ fn clears() -> anyhow::Result<()> {
             );
 
             // child1
-            assert!(
-                query_latest_component::<MyPoint>(
-                    &db,
-                    &entity_path_child1,
-                    &query,
-                    MyPoints::descriptor_points().component
-                )
-                .is_some()
-            );
+            assert!(query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_child1,
+                &query,
+                MyPoints::descriptor_points().component
+            )
+            .is_some());
 
             // child2
-            assert!(
-                query_latest_component::<MyColor>(
-                    &db,
-                    &entity_path_child2,
-                    &query,
-                    MyPoints::descriptor_colors().component
-                )
-                .is_some()
-            );
+            assert!(query_latest_component::<MyColor>(
+                &db,
+                &entity_path_child2,
+                &query,
+                MyPoints::descriptor_colors().component
+            )
+            .is_some());
         }
     }
 
@@ -253,24 +245,20 @@ fn clears() -> anyhow::Result<()> {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
             // parent
-            assert!(
-                query_latest_component::<MyPoint>(
-                    &db,
-                    &entity_path_parent,
-                    &query,
-                    MyPoints::descriptor_points().component
-                )
-                .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(
-                    &db,
-                    &entity_path_parent,
-                    &query,
-                    MyPoints::descriptor_colors().component
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_parent,
+                &query,
+                MyPoints::descriptor_points().component
+            )
+            .is_none());
+            assert!(query_latest_component::<MyColor>(
+                &db,
+                &entity_path_parent,
+                &query,
+                MyPoints::descriptor_colors().component
+            )
+            .is_none());
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
                 query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
@@ -282,26 +270,22 @@ fn clears() -> anyhow::Result<()> {
             );
 
             // child1
-            assert!(
-                query_latest_component::<MyPoint>(
-                    &db,
-                    &entity_path_child1,
-                    &query,
-                    MyPoints::descriptor_points().component
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_child1,
+                &query,
+                MyPoints::descriptor_points().component
+            )
+            .is_none());
 
             // child2
-            assert!(
-                query_latest_component::<MyColor>(
-                    &db,
-                    &entity_path_child2,
-                    &query,
-                    MyPoints::descriptor_colors().component
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyColor>(
+                &db,
+                &entity_path_child2,
+                &query,
+                MyPoints::descriptor_colors().component
+            )
+            .is_none());
         }
     }
 
@@ -339,15 +323,13 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            assert!(
-                query_latest_component::<MyIndex>(
-                    &db,
-                    &entity_path_parent,
-                    &query,
-                    MyIndex::partial_descriptor().component,
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyIndex>(
+                &db,
+                &entity_path_parent,
+                &query,
+                MyIndex::partial_descriptor().component,
+            )
+            .is_none());
         }
     }
 
@@ -393,24 +375,20 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            assert!(
-                query_latest_component::<MyPoint>(
-                    &db,
-                    &entity_path_child1,
-                    &query,
-                    MyPoints::descriptor_points().component
-                )
-                .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(
-                    &db,
-                    &entity_path_child1,
-                    &query,
-                    MyPoints::descriptor_colors().component
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_child1,
+                &query,
+                MyPoints::descriptor_points().component
+            )
+            .is_none());
+            assert!(query_latest_component::<MyColor>(
+                &db,
+                &entity_path_child1,
+                &query,
+                MyPoints::descriptor_colors().component
+            )
+            .is_none());
         }
     }
 
@@ -456,24 +434,20 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            assert!(
-                query_latest_component::<MyPoint>(
-                    &db,
-                    &entity_path_child2,
-                    &query,
-                    MyPoints::descriptor_points().component
-                )
-                .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(
-                    &db,
-                    &entity_path_child2,
-                    &query,
-                    MyPoints::descriptor_colors().component
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_child2,
+                &query,
+                MyPoints::descriptor_points().component
+            )
+            .is_none());
+            assert!(query_latest_component::<MyColor>(
+                &db,
+                &entity_path_child2,
+                &query,
+                MyPoints::descriptor_colors().component
+            )
+            .is_none());
         }
     }
 
@@ -509,15 +483,13 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            assert!(
-                query_latest_component::<MyColor>(
-                    &db,
-                    &entity_path_grandchild,
-                    &query,
-                    MyPoints::descriptor_colors().component
-                )
-                .is_none()
-            );
+            assert!(query_latest_component::<MyColor>(
+                &db,
+                &entity_path_grandchild,
+                &query,
+                MyPoints::descriptor_colors().component
+            )
+            .is_none());
         }
     }
 
@@ -525,7 +497,7 @@ fn clears() -> anyhow::Result<()> {
 }
 
 #[test]
-fn clears_respect_index_order() -> anyhow::Result<()> {
+fn clears_respect_index_order() -> re_entity_db::Result<()> {
     re_log::setup_logging();
 
     let mut db = EntityDb::new(StoreId::random(
@@ -609,15 +581,13 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
     {
         let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
-        assert!(
-            query_latest_component::<MyPoint>(
-                &db,
-                &entity_path,
-                &query,
-                MyPoints::descriptor_points().component
-            )
-            .is_none()
-        );
+        assert!(query_latest_component::<MyPoint>(
+            &db,
+            &entity_path,
+            &query,
+            MyPoints::descriptor_points().component
+        )
+        .is_none());
 
         // the `Clear` component itself doesn't get cleared!
         let (_, _, got_clear) = query_latest_component_clear(&db, &entity_path, &query).unwrap();

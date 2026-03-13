@@ -64,7 +64,6 @@ web-time.workspace = true
 [dev-dependencies]
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 
-anyhow.workspace = true
 insta.workspace = true
 similar-asserts.workspace = true
 

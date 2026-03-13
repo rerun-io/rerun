@@ -1049,7 +1049,7 @@ mod tests {
     // We can re-assess later if things turns out to be shaky in practice.
 
     #[test]
-    fn compaction_simple() -> anyhow::Result<()> {
+    fn compaction_simple() -> crate::ChunkStoreResult<()> {
         re_log::setup_logging();
 
         let mut store = ChunkStore::new(
@@ -1240,7 +1240,7 @@ mod tests {
     }
 
     #[test]
-    fn no_components() -> anyhow::Result<()> {
+    fn no_components() -> crate::ChunkStoreResult<()> {
         re_log::setup_logging();
         let mut store = ChunkStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
@@ -1304,7 +1304,7 @@ mod tests {
     }
 
     #[test]
-    fn static_overwrites() -> anyhow::Result<()> {
+    fn static_overwrites() -> crate::ChunkStoreResult<()> {
         re_log::setup_logging();
 
         let mut store = ChunkStore::new(
@@ -1441,7 +1441,7 @@ mod tests {
     }
 
     #[test]
-    fn row_id_min_overwrites() -> anyhow::Result<()> {
+    fn row_id_min_overwrites() -> crate::ChunkStoreResult<()> {
         re_log::setup_logging();
 
         let entity_path = EntityPath::from("this/that");
@@ -1557,7 +1557,7 @@ mod tests {
     }
 
     #[test]
-    fn compaction_blobs() -> anyhow::Result<()> {
+    fn compaction_blobs() -> crate::ChunkStoreResult<()> {
         #![expect(clippy::cloned_ref_to_slice_refs)]
 
         re_log::setup_logging();

@@ -7,13 +7,13 @@ use re_chunk_store::{
     ViewContentsSelector,
 };
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_log_types::{EntityPath, build_frame_nr};
+use re_log_types::{build_frame_nr, EntityPath};
 use re_sdk_types::{AnyValues, AsComponents as _};
 use re_sorbet::ChunkColumnDescriptors;
 
 #[test]
 /// Tests whether the store has the expected schema after populating it with a chunk.
-fn schema() -> anyhow::Result<()> {
+fn schema() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -68,7 +68,7 @@ fn schema() -> anyhow::Result<()> {
 
 #[test]
 /// Tests whether the `schema_for_query` for a given query has the expected contents.
-fn schema_for_query() -> anyhow::Result<()> {
+fn schema_for_query() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -136,7 +136,7 @@ fn schema_for_query() -> anyhow::Result<()> {
 }
 
 #[test]
-fn schema_static_columns() -> anyhow::Result<()> {
+fn schema_static_columns() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(

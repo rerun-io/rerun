@@ -3,10 +3,10 @@ use std::sync::Arc;
 use re_chunk::{Chunk, RowId, TimePoint};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, TimeInt};
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-use re_log_types::{EntityPath, build_frame_nr};
+use re_log_types::{build_frame_nr, EntityPath};
 
 #[test]
-fn stats() -> anyhow::Result<()> {
+fn stats() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(

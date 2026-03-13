@@ -69,8 +69,6 @@ pub enum QueryError {
     #[error("Not implemented")]
     NotImplemented,
 
-    #[error("{}", re_error::format(.0))]
-    Other(#[from] anyhow::Error),
 }
 
 const _: () = assert!(
