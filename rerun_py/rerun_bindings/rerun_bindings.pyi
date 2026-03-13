@@ -4,7 +4,7 @@ import os
 from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import datafusion as dfn
 import numpy as np
@@ -15,9 +15,6 @@ from .types import (
     IndexValuesLike as IndexValuesLike,
     VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
-
-if TYPE_CHECKING:
-    from rerun.catalog import Schema
 
 # NOTE
 #
@@ -190,74 +187,20 @@ class SchemaInternal:
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
 
-class Recording:
-    """
-    A single Rerun recording.
+class RecordingInternal:
+    def schema(self) -> SchemaInternal: ...
+    def recording_id(self) -> str: ...
+    def application_id(self) -> str: ...
 
-    This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
+class RRDArchiveInternal:
+    def num_recordings(self) -> int: ...
+    def all_recordings(self) -> list[RecordingInternal]: ...
 
-    A recording is a collection of data that was logged to Rerun. This data is organized
-    as a column for each index (timeline) and each entity/component pair that was logged.
+def load_recording(path_to_rrd: str | os.PathLike[str]) -> RecordingInternal:
+    """Load a single recording from an RRD file."""
 
-    You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
-    what data is available.
-    """
-
-    def schema(self) -> Schema:
-        """The schema describing all the columns available in the recording."""
-
-    def recording_id(self) -> str:
-        """The recording ID of the recording."""
-
-    def application_id(self) -> str:
-        """The application ID of the recording."""
-
-class RRDArchive:
-    """
-    An archive loaded from an RRD.
-
-    RRD archives may include 1 or more recordings or blueprints.
-    """
-
-    def num_recordings(self) -> int:
-        """The number of recordings in the archive."""
-
-    def all_recordings(self) -> list[Recording]:
-        """All the recordings in the archive."""
-
-def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
-    """
-    Load a single recording from an RRD file.
-
-    Will raise a `ValueError` if the file does not contain exactly one recording.
-
-    Parameters
-    ----------
-    path_to_rrd:
-        The path to the file to load.
-
-    Returns
-    -------
-    Recording
-        The loaded recording.
-
-    """
-
-def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
-    """
-    Load a rerun archive from an RRD file.
-
-    Parameters
-    ----------
-    path_to_rrd:
-        The path to the file to load.
-
-    Returns
-    -------
-    RRDArchive
-        The loaded archive.
-
-    """
+def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchiveInternal:
+    """Load a rerun archive from an RRD file."""
 
 # AI generated stubs for `PyRecordingStream` related class and functions
 # TODO(#9187): this will be entirely replaced when `RecordingStream` is itself written in Rust
@@ -865,7 +808,7 @@ def send_blueprint(
 ) -> None:
     """Send a blueprint to the given recording stream."""
 
-def send_recording(rrd: Recording, recording: PyRecordingStream | None = None) -> None:
+def send_recording(rrd: RecordingInternal, recording: PyRecordingStream | None = None) -> None:
     """
     Send all chunks from a [`PyRecording`] to the given recording stream.
 
@@ -1011,7 +954,7 @@ class DatasetEntryInternal:
 
     # ---
 
-    def download_segment(self, segment_id: str) -> Recording: ...
+    def download_segment(self, segment_id: str) -> RecordingInternal: ...
 
     # ---
 

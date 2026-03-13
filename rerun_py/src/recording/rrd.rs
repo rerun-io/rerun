@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
-use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::PyModule;
-use pyo3::{Py, PyAny, PyResult, Python, pyclass, pyfunction, pymethods};
+use pyo3::{PyResult, pyclass, pyfunction, pymethods};
 
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::StoreId;
@@ -13,14 +11,18 @@ use crate::catalog::PySchemaInternal;
 /// An archive loaded from an RRD.
 ///
 /// RRD archives may include 1 or more recordings or blueprints.
-#[pyclass(frozen, name = "RRDArchive", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(  // NOLINT: ignore[py-cls-eq] non-trivial implementation
+    frozen,
+    name = "RRDArchiveInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
-pub struct PyRRDArchive {
+pub struct PyRRDArchiveInternal {
     pub datasets: BTreeMap<StoreId, ChunkStoreHandle>,
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyRRDArchive {
+impl PyRRDArchiveInternal {
     /// The number of recordings in the archive.
     fn num_recordings(&self) -> usize {
         self.datasets
@@ -31,11 +33,11 @@ impl PyRRDArchive {
 
     /// All the recordings in the archive.
     // TODO(jleibs): This should return an iterator
-    fn all_recordings(&self) -> Vec<PyRecording> {
+    fn all_recordings(&self) -> Vec<PyRecordingInternal> {
         self.datasets
             .iter()
             .filter(|(id, _)| id.is_recording())
-            .map(|(_, store)| PyRecording {
+            .map(|(_, store)| PyRecordingInternal {
                 store: store.clone(),
             })
             .collect()
@@ -51,24 +53,19 @@ impl PyRRDArchive {
 ///
 /// You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
 /// what data is available.
-#[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct PyRecording {
+#[pyclass(name = "RecordingInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+pub struct PyRecordingInternal {
     pub(crate) store: ChunkStoreHandle,
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyRecording {
+impl PyRecordingInternal {
     /// The schema describing all the columns available in the recording.
-    fn schema(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let schema_internal = PySchemaInternal {
+    fn schema(&self) -> PySchemaInternal {
+        PySchemaInternal {
             columns: self.store.read().schema().chunk_column_descriptors().into(),
             metadata: Default::default(),
-        };
-
-        // Import rerun.catalog.Schema and instantiate it with the internal schema
-        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
-        let schema = schema_class.call1((schema_internal,))?;
-        Ok(schema.into())
+        }
     }
 
     /// The recording ID of the recording.
@@ -83,20 +80,8 @@ impl PyRecording {
 }
 
 /// Load a single recording from an RRD file.
-///
-/// Will raise a `ValueError` if the file does not contain exactly one recording.
-///
-/// Parameters
-/// ----------
-/// path_to_rrd:
-///     The path to the file to load.
-///
-/// Returns
-/// -------
-/// Recording
-///     The loaded recording.
 #[pyfunction]
-pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> {
+pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecordingInternal> {
     let archive = load_archive(path_to_rrd)?;
 
     let num_recordings = archive.num_recordings();
@@ -117,25 +102,15 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
 }
 
 /// Load a rerun archive from an RRD file.
-///
-/// Parameters
-/// ----------
-/// path_to_rrd:
-///     The path to the file to load.
-///
-/// Returns
-/// -------
-/// RRDArchive
-///     The loaded archive.
 #[pyfunction]
-pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
+pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchiveInternal> {
     let stores = ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
         .into_iter()
         .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
         .collect();
 
-    let archive = PyRRDArchive { datasets: stores };
+    let archive = PyRRDArchiveInternal { datasets: stores };
 
     Ok(archive)
 }

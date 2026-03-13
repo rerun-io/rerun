@@ -449,7 +449,7 @@ def send_recording(rrd: Recording, recording: RecordingStream | None = None) -> 
         raise ValueError("No application id found. You must call rerun.init before sending a recording.")
 
     bindings.send_recording(
-        rrd,
+        rrd._internal,
         recording=recording.to_native() if recording is not None else None,
     )
 
