@@ -38,11 +38,14 @@ pub fn view_components_defaults_section_ui(
     ui: &mut egui::Ui,
     view: &ViewBlueprint,
 ) {
+    // For accessing the blueprint store/cache (NOT for querying — its `.query()` uses the wrong timeline).
     let blueprint_store_view_ctx = ctx.viewer_ctx.blueprint_store_view_ctx();
+    // The undo-aware query on the `blueprint` timeline. Must be used for all blueprint queries.
+    let blueprint_query = ctx.blueprint_query();
 
     // TODO(andreas): Components in `active_defaults` should be sorted by field order within each archetype.
     // Right now, they're just sorted by descriptor, which is not the same.
-    let active_defaults = active_defaults(&blueprint_store_view_ctx, view);
+    let active_defaults = active_defaults(&blueprint_store_view_ctx, blueprint_query, view);
     let visualizers = ctx.new_visualizer_collection();
     let visualized_components_by_archetype =
         visualized_components_by_archetype(&visualizers, ctx.viewer_ctx.app_options());
@@ -67,7 +70,7 @@ pub fn view_components_defaults_section_ui(
                 ctx,
                 ui,
                 &view.defaults_path,
-                &blueprint_store_view_ctx.query(),
+                blueprint_query,
                 components_to_show_in_add_menu.unwrap_or_default(),
             );
         })
@@ -84,7 +87,14 @@ override is specified.\n
 Click on the `+` button to add a new default value.";
 
     let body = |ui: &mut egui::Ui| {
-        active_default_ui(ctx, &blueprint_store_view_ctx, ui, &active_defaults, view);
+        active_default_ui(
+            ctx,
+            &blueprint_store_view_ctx,
+            blueprint_query,
+            ui,
+            &active_defaults,
+            view,
+        );
     };
     ui.section_collapsing_header("Component defaults")
         .with_button(add_button)
@@ -95,6 +105,7 @@ Click on the `+` button to add a new default value.";
 fn active_default_ui(
     ctx: &ViewContext<'_>,
     blueprint_store_view_ctx: &StoreViewContext<'_>,
+    blueprint_query: &LatestAtQuery,
     ui: &mut egui::Ui,
     active_defaults: &BTreeMap<ComponentIdentifier, ArrayRef>,
     view: &ViewBlueprint,
@@ -104,7 +115,7 @@ fn active_default_ui(
         target_entity_path: &view.defaults_path,
         instruction_id: None,
         archetype_name: None,
-        query: blueprint_store_view_ctx.query().clone(),
+        query: blueprint_query.clone(),
     };
 
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
@@ -217,12 +228,13 @@ fn visualized_components_by_archetype(
 }
 
 fn active_defaults(
-    blueprint_ctx: &StoreViewContext<'_>,
+    store_view_ctx: &StoreViewContext<'_>,
+    blueprint_query: &LatestAtQuery,
     view: &ViewBlueprint,
 ) -> BTreeMap<ComponentIdentifier, ArrayRef> {
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
-    let engine = blueprint_ctx.db.storage_engine();
+    let engine = store_view_ctx.db.storage_engine();
 
     engine
         .store()
@@ -232,7 +244,7 @@ fn active_defaults(
         .filter_map(|component| {
             let data = engine
                 .cache()
-                .latest_at(&blueprint_ctx.query(), &view.defaults_path, [component])
+                .latest_at(blueprint_query, &view.defaults_path, [component])
                 .component_batch_raw(component)?;
             (!data.is_empty()).then_some((component, data))
         })
