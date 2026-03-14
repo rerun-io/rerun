@@ -8,7 +8,7 @@ use re_chunk_store::{
     TimeInt,
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
-use re_log_types::{EntityPath, TimeType, Timeline, build_frame_nr};
+use re_log_types::{build_frame_nr, EntityPath, TimeType, Timeline};
 use re_sdk_types::testing::{build_some_large_structs, large_struct_descriptor};
 use re_sdk_types::{ComponentDescriptor, ComponentSet};
 
@@ -47,7 +47,7 @@ fn query_latest_array(
 // ---
 
 #[test]
-fn all_components() -> anyhow::Result<()> {
+fn all_components() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let entity_path = EntityPath::from("this/that");
@@ -129,7 +129,7 @@ fn all_components() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_all_components_on_timeline() -> anyhow::Result<()> {
+fn test_all_components_on_timeline() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let entity_path1 = EntityPath::from("both/timeline");
@@ -164,32 +164,24 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
     store.insert_chunk(&Arc::new(chunk))?;
 
     // entity1 is on both timelines
-    assert!(
-        !store
-            .all_components_on_timeline(timeline1.name(), &entity_path1)
-            .unwrap()
-            .is_empty()
-    );
-    assert!(
-        !store
-            .all_components_on_timeline(timeline2.name(), &entity_path1)
-            .unwrap()
-            .is_empty()
-    );
+    assert!(!store
+        .all_components_on_timeline(timeline1.name(), &entity_path1)
+        .unwrap()
+        .is_empty());
+    assert!(!store
+        .all_components_on_timeline(timeline2.name(), &entity_path1)
+        .unwrap()
+        .is_empty());
 
     // entity2 is only on timeline1
-    assert!(
-        !store
-            .all_components_on_timeline(timeline1.name(), &entity_path2)
-            .unwrap()
-            .is_empty()
-    );
+    assert!(!store
+        .all_components_on_timeline(timeline1.name(), &entity_path2)
+        .unwrap()
+        .is_empty());
 
-    assert!(
-        store
-            .all_components_on_timeline(timeline2.name(), &entity_path2)
-            .is_none()
-    );
+    assert!(store
+        .all_components_on_timeline(timeline2.name(), &entity_path2)
+        .is_none());
 
     Ok(())
 }
@@ -197,7 +189,7 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
 // ---
 
 #[test]
-fn latest_at() -> anyhow::Result<()> {
+fn latest_at() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -377,7 +369,7 @@ fn latest_at() -> anyhow::Result<()> {
 }
 
 #[test]
-fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
+fn latest_at_sparse_component_edge_case() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -520,7 +512,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
 }
 
 #[test]
-fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
+fn latest_at_overlapped_chunks() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -690,7 +682,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
 // ---
 
 #[test]
-fn range() -> anyhow::Result<()> {
+fn range() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
@@ -1058,7 +1050,7 @@ fn range() -> anyhow::Result<()> {
 }
 
 #[test]
-fn range_overlapped_chunks() -> anyhow::Result<()> {
+fn range_overlapped_chunks() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(

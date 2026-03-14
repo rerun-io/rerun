@@ -164,8 +164,8 @@ impl ChunkStore {
 
     /// Registers a [`PerStoreChunkSubscriber`] type so it gets automatically notified when data gets added and/or
     /// removed to/from a [`ChunkStore`].
-    pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>()
-    -> ChunkStoreSubscriberHandle {
+    pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>(
+    ) -> ChunkStoreSubscriberHandle {
         let mut subscribers = SUBSCRIBERS.write();
         subscribers.push(RwLock::new(Box::new(
             PerStoreStoreSubscriberWrapper::<S>::default(),
@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn store_subscriber() -> anyhow::Result<()> {
+    fn store_subscriber() -> crate::ChunkStoreResult<()> {
         let mut store1 = ChunkStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
