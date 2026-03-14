@@ -296,7 +296,7 @@ pub fn load_mcap(
     // TODO(#10862): Add warning for channel that miss semantic information.
     DecoderRegistry::all_builtin(raw_fallback_enabled)
         .select(selected_decoders)
-        .plan(&summary)?
+        .plan(mcap, &summary)?
         .run(mcap, &summary, time_type, &mut send_chunk)?;
 
     Ok(())

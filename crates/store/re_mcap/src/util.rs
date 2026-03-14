@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::io::{Read, Seek};
 
 use mcap::Summary;
@@ -5,6 +6,9 @@ use mcap::sans_io::{SummaryReadEvent, SummaryReader};
 use re_chunk::TimePoint;
 use re_log_types::{TimeCell, TimeType};
 use saturating_cast::SaturatingCast as _;
+
+use crate::Error;
+use crate::parsers::ChannelId;
 
 /// Read out the summary of an MCAP file.
 pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summary>> {
@@ -22,6 +26,45 @@ pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summ
     }
 
     Ok(summary_reader.finish())
+}
+
+/// Returns the set of channels that contain no messages.
+pub fn collect_empty_channels(
+    mcap_bytes: &[u8],
+    summary: &mcap::Summary,
+) -> Result<BTreeSet<ChannelId>, Error> {
+    let all_channels = summary
+        .channels
+        .keys()
+        .copied()
+        .map(ChannelId)
+        .collect::<BTreeSet<_>>();
+
+    if let Some(stats) = &summary.stats {
+        let nonempty_channels = stats
+            .channel_message_counts
+            .iter()
+            .filter_map(|(&channel_id, &count)| (count > 0).then_some(ChannelId(channel_id)))
+            .collect::<BTreeSet<_>>();
+
+        return Ok(all_channels
+            .difference(&nonempty_channels)
+            .copied()
+            .collect());
+    }
+
+    let mut empty_channels = all_channels;
+
+    for chunk in &summary.chunk_indexes {
+        for (channel, msg_offsets) in summary.read_message_indexes(mcap_bytes, chunk)? {
+            if !msg_offsets.is_empty() {
+                // Channel has at least one message, so it's not empty.
+                empty_channels.remove(&ChannelId(channel.id));
+            }
+        }
+    }
+
+    Ok(empty_channels)
 }
 
 /// Extracts log and publish time from an MCAP message as a `TimePoint`.

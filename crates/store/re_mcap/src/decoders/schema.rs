@@ -20,11 +20,17 @@ impl Decoder for McapSchemaDecoder {
 
     fn process(
         &mut self,
-        _mcap_bytes: &[u8],
+        mcap_bytes: &[u8],
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
+        let empty_channels = crate::util::collect_empty_channels(mcap_bytes, summary)?;
+
         for channel in summary.channels.values() {
+            if empty_channels.contains(&crate::parsers::ChannelId(channel.id)) {
+                continue;
+            }
+
             let mut components = from_channel(channel).as_serialized_batches();
             if let Some(schema) = channel.schema.as_ref() {
                 components.extend(

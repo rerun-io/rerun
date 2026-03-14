@@ -117,7 +117,7 @@ mod tests {
         let mut chunks = Vec::new();
         let registry = DecoderRegistry::empty().register_file_decoder::<McapMetadataDecoder>();
         registry
-            .plan(&summary)
+            .plan(buffer, &summary)
             .expect("failed to plan")
             .run(buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
                 chunks.push(chunk);
