@@ -85,6 +85,12 @@ impl FrameIdRegistry {
         for component in frame_components {
             for frame_id_strings in chunk.iter_slices::<String>(component) {
                 for frame_id_string in frame_id_strings {
+                    // Empty frame id strings are treated as implicit frames,
+                    // which are already registered above via `register_frame_id_from_entity_path`.
+                    if frame_id_string.is_empty() {
+                        continue;
+                    }
+
                     let (frame_id_hash, entity_path) =
                         TransformFrameIdHash::from_str_with_optional_derived_path(
                             frame_id_string.as_str(),
