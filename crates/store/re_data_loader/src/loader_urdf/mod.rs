@@ -11,7 +11,8 @@ use crossbeam::channel::Sender;
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::StoreId;
 use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transform3D};
-use re_sdk_types::datatypes::Vec3D;
+use re_sdk_types::components::Color;
+use re_sdk_types::datatypes::{Rgba32, Vec3D};
 use re_sdk_types::external::glam;
 use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor};
 use urdf_rs::{Geometry, Joint, Vec3, Vec4};
@@ -447,26 +448,17 @@ fn log_geometry(
             use re_sdk_types::components::MediaType;
 
             let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
-            let mut asset3d =
-                Asset3D::from_file_contents(mesh_bytes, MediaType::guess_from_path(filename));
+            let asset3d =
+                Asset3D::from_file_contents(mesh_bytes, MediaType::guess_from_path(filename))
+                    .with_albedo_factor(material_albedo_factor(material));
 
             if let Some(material) = material {
                 let urdf_rs::Material {
                     name: _,
-                    color,
+                    color: _,
                     texture,
                 } = material;
-                if let Some(color) = color {
-                    let urdf_rs::Color {
-                        rgba: Vec4([r, g, b, a]),
-                    } = color;
-                    asset3d = asset3d.with_albedo_factor(
-                        // TODO(emilk): is this linear or sRGB?
-                        re_sdk_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
-                            *r as f32, *g as f32, *b as f32, *a as f32,
-                        ),
-                    );
-                }
+
                 if texture.is_some() {
                     re_log::warn_once!("Material texture not supported"); // TODO(emilk): support textures
                 }
@@ -484,7 +476,8 @@ fn log_geometry(
                 timepoint,
                 &re_sdk_types::archetypes::Boxes3D::from_sizes([Vec3D::new(
                     *x as _, *y as _, *z as _,
-                )]),
+                )])
+                .with_colors([material_color(material)]),
             )?;
         }
         Geometry::Cylinder { radius, length } => {
@@ -497,7 +490,8 @@ fn log_geometry(
                 &re_sdk_types::archetypes::Cylinders3D::from_lengths_and_radii(
                     [*length as f32],
                     [*radius as f32],
-                ),
+                )
+                .with_colors([material_color(material)]),
             )?;
         }
         Geometry::Capsule { radius, length } => {
@@ -510,7 +504,8 @@ fn log_geometry(
                 &re_sdk_types::archetypes::Capsules3D::from_lengths_and_radii(
                     [*length as f32],
                     [*radius as f32],
-                ),
+                )
+                .with_colors([material_color(material)]),
             )?;
         }
         Geometry::Sphere { radius } => {
@@ -519,11 +514,31 @@ fn log_geometry(
                 store_id,
                 entity_path,
                 timepoint,
-                &re_sdk_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
+                &re_sdk_types::archetypes::Ellipsoids3D::from_radii([*radius as f32])
+                    .with_colors([material_color(material)]),
             )?;
         }
     }
     Ok(())
+}
+
+/// Extracts the RGBA color from a URDF material. Falls back to white if no color is specified.
+fn material_color(material: Option<&urdf_rs::Material>) -> Color {
+    Color::new(material_albedo_factor(material))
+}
+
+fn material_albedo_factor(material: Option<&urdf_rs::Material>) -> Rgba32 {
+    material
+        .and_then(|material| material.color.as_ref())
+        .map(|color| {
+            let urdf_rs::Color {
+                rgba: Vec4([r, g, b, a]),
+            } = color;
+
+            // TODO(emilk): is this linear or sRGB?
+            Rgba32::from_linear_unmultiplied_rgba_f32(*r as f32, *g as f32, *b as f32, *a as f32)
+        })
+        .unwrap_or(Rgba32::WHITE)
 }
 
 fn quat_from_rpy(rpy: &[f64; 3]) -> glam::Quat {
