@@ -182,6 +182,7 @@ impl framework::Example for Picking {
                     Color32::BLACK
                 },
                 outline_mask_ids: Default::default(),
+                cull_mode: None,
             })
             .collect_vec();
 

@@ -28,8 +28,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// If there are multiple [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
-/// The viewer draws meshes always two-sided. However, for transparency ordering
-/// front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+/// For transparency ordering, as well as back face culling (disabled by default),
+/// front faces are assumed to be those with counter clockwise triangle winding order
+/// (this is the same as in the GLTF specification).
 ///
 /// ## Examples
 ///
@@ -138,6 +139,11 @@ pub struct Mesh3D {
     /// Alpha channel governs the overall mesh transparency.
     pub albedo_factor: Option<SerializedComponentBatch>,
 
+    /// Determines which faces of the mesh are rendered.
+    ///
+    /// The default is [`components::MeshFaceRendering::DoubleSided`][crate::components::MeshFaceRendering::DoubleSided], meaning both front and back faces are shown.
+    pub face_rendering: Option<SerializedComponentBatch>,
+
     /// Optional albedo texture.
     ///
     /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
@@ -230,6 +236,18 @@ impl Mesh3D {
         }
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::face_rendering`].
+    ///
+    /// The corresponding component is [`crate::components::MeshFaceRendering`].
+    #[inline]
+    pub fn descriptor_face_rendering() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Mesh3D".into()),
+            component: "Mesh3D:face_rendering".into(),
+            component_type: Some("rerun.components.MeshFaceRendering".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_buffer`].
     ///
     /// The corresponding component is [`crate::components::ImageBuffer`].
@@ -278,19 +296,20 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]
         ]
     });
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
     std::sync::LazyLock::new(|| {
         [
             Mesh3D::descriptor_vertex_colors(),
             Mesh3D::descriptor_vertex_texcoords(),
             Mesh3D::descriptor_albedo_factor(),
+            Mesh3D::descriptor_face_rendering(),
             Mesh3D::descriptor_albedo_texture_buffer(),
             Mesh3D::descriptor_albedo_texture_format(),
             Mesh3D::descriptor_class_ids(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 10usize]> =
     std::sync::LazyLock::new(|| {
         [
             Mesh3D::descriptor_vertex_positions(),
@@ -299,6 +318,7 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
             Mesh3D::descriptor_vertex_colors(),
             Mesh3D::descriptor_vertex_texcoords(),
             Mesh3D::descriptor_albedo_factor(),
+            Mesh3D::descriptor_face_rendering(),
             Mesh3D::descriptor_albedo_texture_buffer(),
             Mesh3D::descriptor_albedo_texture_format(),
             Mesh3D::descriptor_class_ids(),
@@ -306,8 +326,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
     });
 
 impl Mesh3D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 6 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 7 optional
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
 impl ::re_types_core::Archetype for Mesh3D {
@@ -378,6 +398,11 @@ impl ::re_types_core::Archetype for Mesh3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_albedo_factor())
             });
+        let face_rendering = arrays_by_descr
+            .get(&Self::descriptor_face_rendering())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_face_rendering())
+            });
         let albedo_texture_buffer = arrays_by_descr
             .get(&Self::descriptor_albedo_texture_buffer())
             .map(|array| {
@@ -406,6 +431,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             vertex_colors,
             vertex_texcoords,
             albedo_factor,
+            face_rendering,
             albedo_texture_buffer,
             albedo_texture_format,
             class_ids,
@@ -424,6 +450,7 @@ impl ::re_types_core::AsComponents for Mesh3D {
             self.vertex_colors.clone(),
             self.vertex_texcoords.clone(),
             self.albedo_factor.clone(),
+            self.face_rendering.clone(),
             self.albedo_texture_buffer.clone(),
             self.albedo_texture_format.clone(),
             self.class_ids.clone(),
@@ -459,6 +486,7 @@ impl Mesh3D {
             vertex_colors: None,
             vertex_texcoords: None,
             albedo_factor: None,
+            face_rendering: None,
             albedo_texture_buffer: None,
             albedo_texture_format: None,
             class_ids: None,
@@ -499,6 +527,10 @@ impl Mesh3D {
             albedo_factor: Some(SerializedComponentBatch::new(
                 crate::components::AlbedoFactor::arrow_empty(),
                 Self::descriptor_albedo_factor(),
+            )),
+            face_rendering: Some(SerializedComponentBatch::new(
+                crate::components::MeshFaceRendering::arrow_empty(),
+                Self::descriptor_face_rendering(),
             )),
             albedo_texture_buffer: Some(SerializedComponentBatch::new(
                 crate::components::ImageBuffer::arrow_empty(),
@@ -552,6 +584,9 @@ impl Mesh3D {
             self.albedo_factor
                 .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.face_rendering
+                .map(|face_rendering| face_rendering.partitioned(_lengths.clone()))
+                .transpose()?,
             self.albedo_texture_buffer
                 .map(|albedo_texture_buffer| albedo_texture_buffer.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -579,6 +614,7 @@ impl Mesh3D {
         let len_vertex_colors = self.vertex_colors.as_ref().map(|b| b.array.len());
         let len_vertex_texcoords = self.vertex_texcoords.as_ref().map(|b| b.array.len());
         let len_albedo_factor = self.albedo_factor.as_ref().map(|b| b.array.len());
+        let len_face_rendering = self.face_rendering.as_ref().map(|b| b.array.len());
         let len_albedo_texture_buffer = self.albedo_texture_buffer.as_ref().map(|b| b.array.len());
         let len_albedo_texture_format = self.albedo_texture_format.as_ref().map(|b| b.array.len());
         let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
@@ -589,6 +625,7 @@ impl Mesh3D {
             .or(len_vertex_colors)
             .or(len_vertex_texcoords)
             .or(len_albedo_factor)
+            .or(len_face_rendering)
             .or(len_albedo_texture_buffer)
             .or(len_albedo_texture_format)
             .or(len_class_ids)
@@ -679,6 +716,33 @@ impl Mesh3D {
         self
     }
 
+    /// Determines which faces of the mesh are rendered.
+    ///
+    /// The default is [`components::MeshFaceRendering::DoubleSided`][crate::components::MeshFaceRendering::DoubleSided], meaning both front and back faces are shown.
+    #[inline]
+    pub fn with_face_rendering(
+        mut self,
+        face_rendering: impl Into<crate::components::MeshFaceRendering>,
+    ) -> Self {
+        self.face_rendering =
+            try_serialize_field(Self::descriptor_face_rendering(), [face_rendering]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MeshFaceRendering`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_face_rendering`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_face_rendering(
+        mut self,
+        face_rendering: impl IntoIterator<Item = impl Into<crate::components::MeshFaceRendering>>,
+    ) -> Self {
+        self.face_rendering =
+            try_serialize_field(Self::descriptor_face_rendering(), face_rendering);
+        self
+    }
+
     /// Optional albedo texture.
     ///
     /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
@@ -766,6 +830,7 @@ impl ::re_byte_size::SizeBytes for Mesh3D {
             + self.vertex_colors.heap_size_bytes()
             + self.vertex_texcoords.heap_size_bytes()
             + self.albedo_factor.heap_size_bytes()
+            + self.face_rendering.heap_size_bytes()
             + self.albedo_texture_buffer.heap_size_bytes()
             + self.albedo_texture_format.heap_size_bytes()
             + self.class_ids.heap_size_bytes()

@@ -48,6 +48,7 @@ fn build_mesh_instances(
                     additive_tint: *c,
                     outline_mask_ids: Default::default(),
                     picking_layer_id: Default::default(),
+                    cull_mode: None,
                 },
             )
         })

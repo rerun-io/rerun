@@ -42,6 +42,7 @@
 #include "components/marker_shape.hpp"
 #include "components/marker_size.hpp"
 #include "components/media_type.hpp"
+#include "components/mesh_face_rendering.hpp"
 #include "components/name.hpp"
 #include "components/opacity.hpp"
 #include "components/pinhole_projection.hpp"

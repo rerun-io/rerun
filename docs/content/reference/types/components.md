@@ -53,6 +53,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`MarkerShape`](components/marker_shape.md): The visual appearance of a point in e.g. a 2D plot.
 * [`MarkerSize`](components/marker_size.md): Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 * [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.
+* [`MeshFaceRendering`](components/mesh_face_rendering.md): Determines which faces of a mesh are rendered.
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.

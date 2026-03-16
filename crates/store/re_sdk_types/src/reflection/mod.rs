@@ -1064,6 +1064,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <MeshFaceRendering as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Determines which faces of a mesh are rendered.\n\nFor this purpose, we assume that the winding order of vertices in a mesh is\nconsistent and that front faces are defined as those with vertices in counter clockwise order.",
+                deprecation_summary: None,
+                custom_placeholder: Some(MeshFaceRendering::default().to_arrow()?),
+                datatype: MeshFaceRendering::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: MeshFaceRendering::verify_arrow_array,
+            },
+        ),
+        (
             <Name as Component>::name(),
             ComponentReflection {
                 docstring_md: "A display name, typically for an entity or a item like a plot series.",
@@ -2879,6 +2890,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Albedo factor",
                         component_type: "rerun.components.AlbedoFactor".into(),
                         docstring_md: "A color multiplier applied to the whole mesh.\n\nAlpha channel governs the overall mesh transparency.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "face_rendering",
+                        display_name: "Face rendering",
+                        component_type: "rerun.components.MeshFaceRendering".into(),
+                        docstring_md: "Determines which faces of the mesh are rendered.\n\nThe default is [`components.MeshFaceRendering#DoubleSided`](https://rerun.io/docs/reference/types/components/mesh_face_rendering?speculative-link), meaning both front and back faces are shown.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

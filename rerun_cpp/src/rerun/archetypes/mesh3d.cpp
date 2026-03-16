@@ -26,6 +26,9 @@ namespace rerun::archetypes {
         archetype.albedo_factor =
             ComponentBatch::empty<rerun::components::AlbedoFactor>(Descriptor_albedo_factor)
                 .value_or_throw();
+        archetype.face_rendering =
+            ComponentBatch::empty<rerun::components::MeshFaceRendering>(Descriptor_face_rendering)
+                .value_or_throw();
         archetype.albedo_texture_buffer =
             ComponentBatch::empty<rerun::components::ImageBuffer>(Descriptor_albedo_texture_buffer)
                 .value_or_throw();
@@ -40,7 +43,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Mesh3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(9);
+        columns.reserve(10);
         if (vertex_positions.has_value()) {
             columns.push_back(vertex_positions.value().partitioned(lengths_).value_or_throw());
         }
@@ -58,6 +61,9 @@ namespace rerun::archetypes {
         }
         if (albedo_factor.has_value()) {
             columns.push_back(albedo_factor.value().partitioned(lengths_).value_or_throw());
+        }
+        if (face_rendering.has_value()) {
+            columns.push_back(face_rendering.value().partitioned(lengths_).value_or_throw());
         }
         if (albedo_texture_buffer.has_value()) {
             columns.push_back(albedo_texture_buffer.value().partitioned(lengths_).value_or_throw());
@@ -90,6 +96,9 @@ namespace rerun::archetypes {
         if (albedo_factor.has_value()) {
             return columns(std::vector<uint32_t>(albedo_factor.value().length(), 1));
         }
+        if (face_rendering.has_value()) {
+            return columns(std::vector<uint32_t>(face_rendering.value().length(), 1));
+        }
         if (albedo_texture_buffer.has_value()) {
             return columns(std::vector<uint32_t>(albedo_texture_buffer.value().length(), 1));
         }
@@ -110,7 +119,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(9);
+        cells.reserve(10);
 
         if (archetype.vertex_positions.has_value()) {
             cells.push_back(archetype.vertex_positions.value());
@@ -129,6 +138,9 @@ namespace rerun {
         }
         if (archetype.albedo_factor.has_value()) {
             cells.push_back(archetype.albedo_factor.value());
+        }
+        if (archetype.face_rendering.has_value()) {
+            cells.push_back(archetype.face_rendering.value());
         }
         if (archetype.albedo_texture_buffer.has_value()) {
             cells.push_back(archetype.albedo_texture_buffer.value());

@@ -42,6 +42,7 @@ magnification_filter.py linguist-generated=true
 marker_shape.py linguist-generated=true
 marker_size.py linguist-generated=true
 media_type.py linguist-generated=true
+mesh_face_rendering.py linguist-generated=true
 name.py linguist-generated=true
 opacity.py linguist-generated=true
 pinhole_projection.py linguist-generated=true

@@ -213,6 +213,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
             vertex_positions=mesh.vertices,  # type: ignore[attr-defined]
             vertex_colors=mesh.visual.vertex_colors,  # type: ignore[attr-defined]
             triangle_indices=mesh.faces,  # type: ignore[attr-defined]
+            face_rendering="Back",  # We want to hide the front facing faces, but the dataset uses mostly clockwise winding order which is the opposite of what Rerun assumes (CCW).
         ),
         static=True,
     )

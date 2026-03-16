@@ -36,8 +36,9 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
     If there are multiple [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
     an instance of the mesh will be drawn for each transform.
 
-    The viewer draws meshes always two-sided. However, for transparency ordering
-    front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+    For transparency ordering, as well as back face culling (disabled by default),
+    front faces are assumed to be those with counter clockwise triangle winding order
+    (this is the same as in the GLTF specification).
 
     Examples
     --------
@@ -121,6 +122,7 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             vertex_colors=None,
             vertex_texcoords=None,
             albedo_factor=None,
+            face_rendering=None,
             albedo_texture_buffer=None,
             albedo_texture_format=None,
             class_ids=None,
@@ -144,6 +146,7 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
         vertex_colors: datatypes.Rgba32ArrayLike | None = None,
         vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
+        face_rendering: components.MeshFaceRenderingLike | None = None,
         albedo_texture_buffer: datatypes.BlobLike | None = None,
         albedo_texture_format: datatypes.ImageFormatLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -173,6 +176,10 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             A color multiplier applied to the whole mesh.
 
             Alpha channel governs the overall mesh transparency.
+        face_rendering:
+            Determines which faces of the mesh are rendered.
+
+            The default is [`components.MeshFaceRendering.DoubleSided`][rerun.components.MeshFaceRendering.DoubleSided], meaning both front and back faces are shown.
         albedo_texture_buffer:
             Optional albedo texture.
 
@@ -200,6 +207,7 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
                 "vertex_colors": vertex_colors,
                 "vertex_texcoords": vertex_texcoords,
                 "albedo_factor": albedo_factor,
+                "face_rendering": face_rendering,
                 "albedo_texture_buffer": albedo_texture_buffer,
                 "albedo_texture_format": albedo_texture_format,
                 "class_ids": class_ids,
@@ -229,6 +237,7 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
         vertex_colors: datatypes.Rgba32ArrayLike | None = None,
         vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
         albedo_factor: datatypes.Rgba32ArrayLike | None = None,
+        face_rendering: components.MeshFaceRenderingArrayLike | None = None,
         albedo_texture_buffer: datatypes.BlobArrayLike | None = None,
         albedo_texture_format: datatypes.ImageFormatArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -261,6 +270,10 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             A color multiplier applied to the whole mesh.
 
             Alpha channel governs the overall mesh transparency.
+        face_rendering:
+            Determines which faces of the mesh are rendered.
+
+            The default is [`components.MeshFaceRendering.DoubleSided`][rerun.components.MeshFaceRendering.DoubleSided], meaning both front and back faces are shown.
         albedo_texture_buffer:
             Optional albedo texture.
 
@@ -288,6 +301,7 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
                 vertex_colors=vertex_colors,
                 vertex_texcoords=vertex_texcoords,
                 albedo_factor=albedo_factor,
+                face_rendering=face_rendering,
                 albedo_texture_buffer=albedo_texture_buffer,
                 albedo_texture_format=albedo_texture_format,
                 class_ids=class_ids,
@@ -304,6 +318,7 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             "Mesh3D:vertex_colors": vertex_colors,
             "Mesh3D:vertex_texcoords": vertex_texcoords,
             "Mesh3D:albedo_factor": albedo_factor,
+            "Mesh3D:face_rendering": face_rendering,
             "Mesh3D:albedo_texture_buffer": albedo_texture_buffer,
             "Mesh3D:albedo_texture_format": albedo_texture_format,
             "Mesh3D:class_ids": class_ids,
@@ -398,6 +413,17 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
     # A color multiplier applied to the whole mesh.
     #
     # Alpha channel governs the overall mesh transparency.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    face_rendering: components.MeshFaceRenderingBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.MeshFaceRenderingBatch._converter,  # type: ignore[misc]
+    )
+    # Determines which faces of the mesh are rendered.
+    #
+    # The default is [`components.MeshFaceRendering.DoubleSided`][rerun.components.MeshFaceRendering.DoubleSided], meaning both front and back faces are shown.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
