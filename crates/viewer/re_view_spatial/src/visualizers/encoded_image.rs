@@ -1,6 +1,6 @@
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::EncodedImage;
-use re_sdk_types::components::{Blob, MagnificationFilter, MediaType, Opacity};e629a42b (Add `magnification_filter` component to all image archetypes)
+use re_sdk_types::components::{Blob, MagnificationFilter, MediaType, Opacity};
 use re_view::VisualizerInstructionQueryResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,
