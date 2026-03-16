@@ -233,6 +233,9 @@ impl AppState {
                 if !show_settings_ui {
                     self.navigation.replace((**previous).clone());
                 }
+
+                self.share_modal
+                    .ui(None, ui, startup_options.web_viewer_base_url().as_ref());
             }
 
             Route::ChunkStoreBrowser { previous, .. } => {
@@ -245,6 +248,9 @@ impl AppState {
                 if !should_datastore_ui_remain_active {
                     self.navigation.replace((**previous).clone());
                 }
+
+                self.share_modal
+                    .ui(None, ui, startup_options.web_viewer_base_url().as_ref());
             }
 
             // TODO(RR-3033): This needs to be further cleaned up and split into separately handled routes.
@@ -729,8 +735,11 @@ impl AppState {
 
                 self.redap_servers.modals_ui(&ctx.app_ctx, ui);
                 self.open_url_modal.ui(ui);
-                self.share_modal
-                    .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
+                self.share_modal.ui(
+                    Some(&ctx),
+                    ui,
+                    startup_options.web_viewer_base_url().as_ref(),
+                );
 
                 // Only in integration tests: call the test hook if any.
                 #[cfg(feature = "testing")]
