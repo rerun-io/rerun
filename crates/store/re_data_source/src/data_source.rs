@@ -341,7 +341,7 @@ impl LogDataSource {
                         if let Some(err) = err.as_client_credentials_error() {
                             on_auth_err(uri, err);
                         } else {
-                            re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
+                            re_log::error!("Error while streaming: {}", err);
                         }
                     }
                 });

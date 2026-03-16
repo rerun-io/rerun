@@ -8814,7 +8814,6 @@ dependencies = [
  "itertools 0.14.0",
  "rayon",
  "re_data_loader",
- "re_error",
  "re_format",
  "re_grpc_client",
  "re_log",

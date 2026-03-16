@@ -24,7 +24,6 @@ default = []
 
 [dependencies]
 re_data_loader.workspace = true
-re_error.workspace = true
 re_format.workspace = true
 re_grpc_client.workspace = true
 re_log_channel.workspace = true
