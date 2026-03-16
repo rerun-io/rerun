@@ -103,6 +103,18 @@ pub struct PickingLayerObjectId(pub u64);
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug, PartialEq, Eq)]
 pub struct PickingLayerInstanceId(pub u64);
 
+impl re_byte_size::SizeBytes for PickingLayerInstanceId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 /// Combination of `PickingLayerObjectId` and `PickingLayerInstanceId`.
 ///
 /// This is the same memory order as it is found in the GPU picking layer texture.

@@ -69,6 +69,34 @@ pub mod gpu_data {
     }
     static_assertions::assert_eq_size!(PositionRadius, glam::Vec4);
 
+    impl PositionRadius {
+        /// If there are fewer radii than positions,
+        /// the last radius will be repeated for the remaining positions
+        /// (clamp to edge).
+        pub fn from_many(positions: &[glam::Vec3], radii: &[Size]) -> Vec<Self> {
+            use itertools::izip;
+
+            re_tracing::profile_function_if!(10_0000 < positions.len());
+            if positions.len() == radii.len() {
+                // Optimize common-case with simpler iterators.
+                re_tracing::profile_scope_if!(10_000 < positions.len(), "zipped");
+                izip!(positions.iter().copied(), radii.iter().copied())
+                    .map(|(pos, radius)| Self { pos, radius })
+                    .collect()
+            } else {
+                re_tracing::profile_scope_if!(10_000 < positions.len(), "extended-radius");
+                izip!(
+                    positions.iter().copied(),
+                    radii.iter().copied().chain(std::iter::repeat(
+                        *radii.last().unwrap_or(&Size::ONE_UI_POINT)
+                    ))
+                )
+                .map(|(pos, radius)| Self { pos, radius })
+                .collect()
+            }
+        }
+    }
+
     /// Uniform buffer that changes once per draw data rendering.
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]

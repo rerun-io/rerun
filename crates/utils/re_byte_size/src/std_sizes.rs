@@ -205,6 +205,16 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     }
 }
 
+impl<T: SizeBytes + Clone> SizeBytes for std::borrow::Cow<'_, [T]> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            std::borrow::Cow::Borrowed(_) => 0,
+            std::borrow::Cow::Owned(v) => v.heap_size_bytes(),
+        }
+    }
+}
+
 impl<T: SizeBytes> SizeBytes for VecDeque<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {

@@ -160,7 +160,7 @@ impl framework::Example for Picking {
             point_builder
                 .batch(format!("Random Points {i}"))
                 .picking_object_id(re_renderer::PickingLayerObjectId(i as u64 + 1)) // offset by one since 0=default=no hit
-                .add_points(
+                .add_points_slow(
                     &point_set.positions,
                     &point_set.radii,
                     &point_set.colors,

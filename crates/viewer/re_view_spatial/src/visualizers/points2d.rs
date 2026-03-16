@@ -66,10 +66,13 @@ impl Points2DVisualizer {
                 &ent_context.annotations,
             );
 
-            // Has not custom fallback for radius, so we use the default.
-            // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
-            let radii =
-                process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
+            let radii = process_radius_slice(
+                ctx,
+                entity_path,
+                num_instances,
+                data.radii,
+                Points2D::descriptor_radii().component,
+            );
             let colors = process_color_slice(
                 ctx,
                 Points2D::descriptor_colors().component,

@@ -8583,6 +8583,7 @@ name = "re_byte_size"
 version = "0.31.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "ecolor",
  "glam",
  "half",
  "insta",

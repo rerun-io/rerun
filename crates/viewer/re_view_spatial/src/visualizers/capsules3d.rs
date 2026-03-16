@@ -88,6 +88,7 @@ impl Capsules3DVisualizer {
                 query_context,
                 ent_context,
                 Capsules3D::descriptor_colors().component,
+                Capsules3D::descriptor_line_radii().component,
                 Capsules3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {

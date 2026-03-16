@@ -34,11 +34,13 @@ pub fn process_color_slice<'a>(
                 re_tracing::profile_scope!("no colors, same annotation");
                 let color = annotation_info
                     .color()
+                    // TODO(RR-3840): Fallback should be already incorporated into the query.
                     .unwrap_or_else(|| typed_fallback_for::<Color>(ctx, component).into());
                 vec![color; *count]
             }
             ResolvedAnnotationInfos::Many(annotation_info) => {
                 re_tracing::profile_scope!("no-colors, many annotations");
+                // TODO(RR-3840): Fallback should be already incorporated into the query.
                 let fallback = typed_fallback_for::<Color>(ctx, component).into();
                 annotation_info
                     .iter()

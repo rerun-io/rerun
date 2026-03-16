@@ -143,11 +143,13 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     }
 
     /// Add a batch of data to be drawn.
+    #[expect(clippy::too_many_arguments)]
     pub fn add_batch(
         &mut self,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         color_component: ComponentIdentifier,
+        line_radii_component: ComponentIdentifier,
         show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,
         batch: ProcMeshBatch<'_, impl Iterator<Item = ProcMeshKey>, impl Iterator<Item = FillMode>>,
@@ -179,13 +181,12 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             &ent_context.annotations,
         );
 
-        // Has not custom fallback for radius, so we use the default.
-        // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
         let line_radii = process_radius_slice(
+            query_context,
             entity_path,
             num_instances,
             batch.line_radii,
-            components::Radius::default(),
+            line_radii_component,
         );
         let colors = process_color_slice(
             query_context,

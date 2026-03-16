@@ -102,6 +102,7 @@ pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStrip
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
 pub use rect::{RectF32, RectInt};
+pub use renderer::gpu_data::PositionRadius;
 pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;

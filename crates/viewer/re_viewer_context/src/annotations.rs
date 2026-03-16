@@ -52,6 +52,9 @@ impl Annotations {
         }
     }
 
+    /// The [`RowId`] of the annotation context that was used to create this [`Annotations`].
+    ///
+    /// This can be used as a cache key to determine if the annotation context has changed.
     #[inline]
     pub fn row_id(&self) -> RowId {
         self.row_id
@@ -176,6 +179,17 @@ impl ResolvedAnnotationInfo {
     }
 }
 
+impl re_byte_size::SizeBytes for ResolvedAnnotationInfo {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            class_id,
+            annotation_info,
+        } = self;
+        class_id.heap_size_bytes() + annotation_info.heap_size_bytes()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Many [`ResolvedAnnotationInfo`], with optimization
@@ -186,6 +200,16 @@ pub enum ResolvedAnnotationInfos {
 
     /// All different
     Many(Vec<ResolvedAnnotationInfo>),
+}
+
+impl re_byte_size::SizeBytes for ResolvedAnnotationInfos {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Same(_count, info) => info.heap_size_bytes(),
+            Self::Many(infos) => infos.heap_size_bytes(),
+        }
+    }
 }
 
 impl ResolvedAnnotationInfos {
