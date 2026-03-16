@@ -1447,6 +1447,15 @@ fn round_nanos_to_start_of_day(ns: i64) -> i64 {
     (ns.saturating_add(nanos_per_day / 2)) / nanos_per_day * nanos_per_day
 }
 
+/// Add a relative margin to a range so the data doesn't touch the plot edges.
+///
+/// `fraction` is the fraction of the range to add on each side (e.g. 0.05 = 5%).
+pub fn add_margin_to_range(range: Range1D, fraction: f64) -> Range1D {
+    let span = range.end() - range.start();
+    let margin = span * fraction;
+    Range1D::new(range.start() - margin, range.end() + margin)
+}
+
 /// Make sure the range is finite and positive, or `egui_plot` might be buggy.
 pub fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());

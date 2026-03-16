@@ -7,7 +7,7 @@ use re_sdk_types::{
 use re_viewer_context::ViewStateExt as _;
 
 use crate::MAX_NUM_ITEMS_IN_PLOT_LEGEND_BEFORE_HIDDEN;
-use crate::view_class::{TimeSeriesViewState, make_range_sane};
+use crate::view_class::{TimeSeriesViewState, add_margin_to_range, make_range_sane};
 
 /// Register fallback providers for TimeSeriesView-related components and view properties.
 pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>) {
@@ -102,10 +102,11 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             .as_any()
             .downcast_ref::<TimeSeriesViewState>()
             .map(|s| {
-                make_range_sane(
+                let range = make_range_sane(
                     s.scalar_range
                         .unwrap_or(re_sdk_types::components::Range1D::EMPTY),
-                )
+                );
+                add_margin_to_range(range, 0.05)
             })
             .unwrap_or_default()
     });
