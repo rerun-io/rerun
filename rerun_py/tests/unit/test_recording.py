@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import subprocess
 import uuid
 from typing import TYPE_CHECKING
 
@@ -280,3 +281,71 @@ def test_load_recording_path_types(tmp_path: pathlib.Path) -> None:
     # Test with Path object
     recording = rr.recording.load_recording(pathlib.Path(tmp_path) / "tmp.rrd")
     assert recording is not None
+
+
+def test_save_roundtrip(tmp_path: pathlib.Path) -> None:
+    """Test that save() produces an RRD that preserves metadata and schema."""
+
+    original_rrd = tmp_path / "original.rrd"
+    roundtrip_rrd = tmp_path / "roundtrip.rrd"
+
+    expected_recording_id = uuid.uuid4()
+
+    with rr.RecordingStream(APP_ID, recording_id=expected_recording_id) as rec:
+        rec.save(original_rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6]]))
+        rec.set_time("my_index", sequence=2)
+        rec.log("points", rr.Points3D([[7, 8, 9]], colors=[[255, 0, 0]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+
+    recording = rr.recording.load_recording(original_rrd)
+    recording.save(roundtrip_rrd)
+
+    # Load the roundtripped recording and verify metadata is preserved
+    roundtripped = rr.recording.load_recording(roundtrip_rrd)
+
+    assert roundtripped.application_id() == APP_ID
+    assert roundtripped.recording_id() == str(expected_recording_id)
+
+    # Verify schema is preserved
+    original_schema = recording.schema()
+    roundtrip_schema = roundtripped.schema()
+
+    assert str(original_schema) == str(roundtrip_schema)
+
+
+def test_save_roundtrip_compare(tmp_path: pathlib.Path) -> None:
+    """Test that compacting then roundtripping produces an identical RRD."""
+
+    original_rrd = tmp_path / "original.rrd"
+    compacted_rrd = tmp_path / "compacted.rrd"
+    roundtrip_rrd = tmp_path / "roundtrip.rrd"
+
+    with rr.RecordingStream(APP_ID, recording_id=uuid.uuid4()) as rec:
+        rec.save(original_rrd)
+        rec.set_time("my_index", sequence=1)
+        rec.log("points", rr.Points3D([[1, 2, 3]]))
+        rec.log("static_text", rr.TextLog("Hello"), static=True)
+
+    # Compact the original so chunk boundaries match what ChunkStore produces
+    process = subprocess.run(
+        ["rerun", "rrd", "compact", str(original_rrd), "-o", str(compacted_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    assert process.returncode == 0, f"RRD compact failed: {process.stderr.decode('utf-8')}"
+
+    # Roundtrip via load + save
+    rr.recording.load_recording(compacted_rrd).save(roundtrip_rrd)
+
+    # Compare compacted vs roundtripped
+    process = subprocess.run(
+        ["rerun", "rrd", "compare", "--unordered", str(compacted_rrd), str(roundtrip_rrd)],
+        check=False,
+        capture_output=True,
+    )
+    if process.returncode != 0:
+        print(process.stdout.decode("utf-8"))
+        print(process.stderr.decode("utf-8"))
+    assert process.returncode == 0, f"RRD compare failed: {process.stderr.decode('utf-8')}"

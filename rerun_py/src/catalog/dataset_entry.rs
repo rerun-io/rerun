@@ -490,7 +490,10 @@ impl PyDatasetEntryInternal {
 
         let handle = ChunkStoreHandle::new(store?);
 
-        Ok(PyRecordingInternal { store: handle })
+        Ok(PyRecordingInternal {
+            store: handle,
+            store_info: None,
+        })
     }
 
     // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`

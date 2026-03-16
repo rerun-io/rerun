@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rerun.catalog import Schema
     from rerun_bindings import RecordingInternal, RRDArchiveInternal
 
@@ -38,6 +40,10 @@ class Recording:
     def application_id(self) -> str:
         """The application ID of the recording."""
         return self._internal.application_id()
+
+    def save(self, path: str | Path) -> None:
+        """Save this recording to an RRD file."""
+        self._internal.save(str(path))
 
 
 class RRDArchive:
