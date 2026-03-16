@@ -135,7 +135,7 @@ impl ViewClass for SpatialView3D {
 
                 let speed = match kind {
                     Eye3DKind::FirstPerson => {
-                        let l = view_state.bounding_boxes.current.size().length() as f64;
+                        let l = view_state.bounding_boxes.region_of_interest_current.size().length() as f64;
                         if l.is_finite() {
                             (0.1 * l).max(MIN_SPEED)
                         } else {
@@ -168,7 +168,7 @@ impl ViewClass for SpatialView3D {
                     );
                     return Position3D::ZERO;
                 };
-                let center = view_state.bounding_boxes.current.center();
+                let center = view_state.bounding_boxes.region_of_interest_current.center();
 
                 if !center.is_finite() {
                     return Position3D::ZERO;
@@ -187,13 +187,13 @@ impl ViewClass for SpatialView3D {
                     );
                     return Position3D::ZERO;
                 };
-                let mut center = view_state.bounding_boxes.current.center();
+                let mut center = view_state.bounding_boxes.region_of_interest_current.center();
 
                 if !center.is_finite() {
                     center = Vec3::ZERO;
                 }
 
-                let mut radius = 1.5 * view_state.bounding_boxes.current.half_size().length();
+                let mut radius = 1.5 * view_state.bounding_boxes.region_of_interest_current.half_size().length();
                 if !radius.is_finite() || radius == 0.0 {
                     radius = 1.0;
                 }

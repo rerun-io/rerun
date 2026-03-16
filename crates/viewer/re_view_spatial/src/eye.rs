@@ -794,14 +794,20 @@ impl EyeState {
                 //     ..
                 // }) = ctx.selection_state().hovered_space_context()
 
-                if let Some(entity_bbox) = bounding_boxes.per_entity.get(&tracking_entity.hash()) {
+                if let Some(entity_bbox) = bounding_boxes
+                    .region_of_interest_per_entity
+                    .get(&tracking_entity.hash())
+                {
                     // If we're tracking something new, set the current position & look target to the correct view.
                     if new_tracking {
                         let fwd = eye_controller.fwd();
                         let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
                         let radius = if radius < 0.0001 {
                             // Handle zero-sized bounding boxes:
-                            (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5)
+                            (bounding_boxes
+                                .region_of_interest_current
+                                .centered_bounding_sphere_radius()
+                                * 1.5)
                                 .at_least(0.02)
                         } else {
                             radius
@@ -936,7 +942,10 @@ impl EyeState {
         // Focusing cameras is not something that happens now, since those are always tracked.
         if let Some(target_eye) = find_camera(cameras, focused_entity) {
             eye_controller.copy_from_eye(&target_eye);
-        } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&focused_entity.hash()) {
+        } else if let Some(entity_bbox) = bounding_boxes
+            .region_of_interest_per_entity
+            .get(&focused_entity.hash())
+        {
             let fwd = self
                 .last_eye
                 .map(|eye| eye.forward_in_world())
@@ -944,7 +953,11 @@ impl EyeState {
             let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
             let radius = if radius < 0.0001 {
                 // Handle zero-sized bounding boxes:
-                (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.02)
+                (bounding_boxes
+                    .region_of_interest_current
+                    .centered_bounding_sphere_radius()
+                    * 1.5)
+                    .at_least(0.02)
             } else {
                 radius
             };

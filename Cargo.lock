@@ -9628,6 +9628,7 @@ dependencies = [
  "bytemuck",
  "cfg_aliases",
  "clean-path",
+ "criterion",
  "crossbeam",
  "dae-parser",
  "document-features",

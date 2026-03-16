@@ -209,8 +209,11 @@ impl SpatialView3D {
                 Instance::ALL.get(),
             );
 
-            // If we are showing the axes for the space, then add the space origin to the bounding box.
-            state.bounding_boxes.current.extend(glam::Vec3::ZERO);
+            // If we are showing the axes for the space, then add the space origin to the region of interest, but not the scene bounding box.
+            state
+                .bounding_boxes
+                .region_of_interest_current
+                .extend(glam::Vec3::ZERO);
         }
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
@@ -369,6 +372,8 @@ impl SpatialView3D {
         // TODO(andreas): Make configurable. Could pick up default radius for this view?
         let box_line_radius = Size(*re_sdk_types::components::Radius::default().0);
 
+        // TODO(andreas): Make this an enum so the user can choose between showing
+        // the bounding box (all entities), the region of interest, or per-entity bounding boxes.
         if show_bounding_box {
             line_builder
                 .batch("scene_bbox_current")
@@ -381,8 +386,8 @@ impl SpatialView3D {
         }
         if state.state_3d.show_smoothed_bbox {
             line_builder
-                .batch("scene_bbox_smoothed")
-                .add_box_outline(&state.bounding_boxes.smoothed)
+                .batch("scene_region_of_interest_smoothed")
+                .add_box_outline(&state.bounding_boxes.region_of_interest_smoothed)
                 .map(|lines| {
                     lines
                         .radius(box_line_radius)
@@ -390,10 +395,10 @@ impl SpatialView3D {
                 });
         }
         if state.state_3d.show_per_entity_bbox {
-            let mut batch = line_builder.batch("per_entity_bboxes");
-            for bbox in state.bounding_boxes.per_entity.values() {
+            let mut batch = line_builder.batch("per_entity_regions_of_interest");
+            for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
                 batch
-                    .add_box_outline(bbox)
+                    .add_box_outline(region_of_interest)
                     .map(|lines| lines.radius(box_line_radius).color(egui::Color32::YELLOW));
             }
         }
@@ -632,7 +637,7 @@ fn show_projections_from_2d_space(
                     add_picking_ray(
                         line_builder,
                         ray,
-                        &state.bounding_boxes.smoothed,
+                        &state.bounding_boxes.region_of_interest_smoothed,
                         thick_ray_length,
                         ray_color,
                     );
@@ -655,7 +660,7 @@ fn show_projections_from_2d_space(
                 add_picking_ray(
                     line_builder,
                     ray,
-                    &state.bounding_boxes.current,
+                    &state.bounding_boxes.region_of_interest_current,
                     distance,
                     ray_color,
                 );

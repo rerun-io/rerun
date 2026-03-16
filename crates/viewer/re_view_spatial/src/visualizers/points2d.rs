@@ -120,9 +120,11 @@ impl Points2DVisualizer {
                 }
             }
 
-            let obj_space_bounding_box = self.data.add_bounding_box_from_points(
+            let point_cloud_bounds = re_renderer::util::point_cloud_bounds(&positions);
+            self.data.add_bounding_box_and_region_of_interest(
                 entity_path.hash(),
-                positions.iter().copied(),
+                point_cloud_bounds.bbox,
+                point_cloud_bounds.region_of_interest,
                 world_from_obj,
             );
 
@@ -139,7 +141,7 @@ impl Points2DVisualizer {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
-                    overall_position: obj_space_bounding_box.center().truncate(),
+                    overall_position: point_cloud_bounds.bbox.center().truncate(),
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
                     labels: &data.labels,
                     colors: &colors,

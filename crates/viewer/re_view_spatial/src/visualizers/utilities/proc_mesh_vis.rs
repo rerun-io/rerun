@@ -319,9 +319,11 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             }
         }
 
-        self.data
-            .bounding_boxes
-            .push((entity_path.hash(), world_space_bounding_box));
+        self.data.add_bounding_box(
+            entity_path.hash(),
+            world_space_bounding_box,
+            glam::Affine3A::IDENTITY,
+        );
 
         self.data.ui_labels.extend(process_labels_3d(
             LabeledBatch {

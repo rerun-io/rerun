@@ -61,7 +61,7 @@ struct Points3DComponentData<'a> {
 /// so that it can be memoized based on `data.query_hash`.
 struct Points3DCpu {
     position_radii: Vec<PositionRadius>,
-    obj_space_bounding_box: macaw::BoundingBox,
+    point_cloud_bounds: re_renderer::util::PointCloudBounds,
     picking_ids: Vec<PickingLayerInstanceId>,
     annotation_infos: ResolvedAnnotationInfos,
     keypoints: Keypoints,
@@ -96,9 +96,9 @@ impl Points3DCpu {
 
         let positions: &[glam::Vec3] = bytemuck::cast_slice(data.positions);
 
-        let obj_space_bounding_box = {
+        let point_cloud_bounds = {
             re_tracing::profile_scope_if!(100_000 < num_instances, "bounding_box");
-            re_renderer::util::bounding_box_from_points(positions.iter().copied())
+            re_renderer::util::point_cloud_bounds(positions)
         };
 
         let radii = process_radius_slice(
@@ -120,7 +120,7 @@ impl Points3DCpu {
 
         Self {
             position_radii,
-            obj_space_bounding_box,
+            point_cloud_bounds,
             picking_ids,
             annotation_infos,
             keypoints,
@@ -131,7 +131,7 @@ impl Points3DCpu {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             position_radii,
-            obj_space_bounding_box: _,
+            point_cloud_bounds: _,
             picking_ids,
             annotation_infos,
             keypoints,
@@ -314,9 +314,10 @@ impl Points3DVisualizer {
                     }
                 }
 
-                self.data.add_bounding_box(
+                self.data.add_bounding_box_and_region_of_interest(
                     entity_path.hash(),
-                    cpu.obj_space_bounding_box,
+                    cpu.point_cloud_bounds.bbox,
+                    cpu.point_cloud_bounds.region_of_interest,
                     world_from_obj,
                 );
 
@@ -333,7 +334,7 @@ impl Points3DVisualizer {
                         entity_path,
                         visualizer_instruction: ent_context.visualizer_instruction,
                         num_instances,
-                        overall_position: cpu.obj_space_bounding_box.center(),
+                        overall_position: cpu.point_cloud_bounds.bbox.center(),
                         instance_positions: cpu.position_radii.iter().map(|pr| pr.pos),
                         labels: &data.labels,
                         colors: &cpu.colors,
