@@ -1,4 +1,5 @@
 use ahash::HashSet;
+use egui::NumExt as _;
 use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
@@ -196,6 +197,8 @@ impl ViewClass for SpatialView3D {
                 if !radius.is_finite() || radius == 0.0 {
                     radius = 1.0;
                 }
+
+                radius = radius.at_least(crate::eye::EyeController::MIN_ORBIT_DISTANCE);
 
 
                 let scene_view_coordinates =
