@@ -777,7 +777,7 @@ fn extract_recommended_source_options(
         viewer_ctx.indicated_entities_per_visualizer,
     );
     if let Some(recommended_mappings) = recommended_visualizers
-        .0
+        .all_recommendations()
         .get(&mapping_ctx.instruction.visualizer_type)
     {
         let recommended: Vec<_> = recommended_mappings
@@ -1025,10 +1025,12 @@ fn menu_add_new_visualizer(
         ctx.viewer_ctx.indicated_entities_per_visualizer,
     );
 
-    let (recommended, other): (Vec<_>, Vec<_>) = available_visualizers
-        .iter()
-        .copied()
-        .partition(|vis| recommended_visualizers.0.contains_key(vis));
+    let (recommended, other): (Vec<_>, Vec<_>) =
+        available_visualizers.iter().copied().partition(|vis| {
+            recommended_visualizers
+                .all_recommendations()
+                .contains_key(vis)
+        });
 
     // Don't show categorization if either group is empty.
     let show_sections = !recommended.is_empty() && !other.is_empty();
@@ -1142,7 +1144,10 @@ fn component_mappings_for_new_visualizer(
         &entity_visualizers,
         ctx.viewer_ctx.indicated_entities_per_visualizer,
     );
-    let component_mapping_recommendations = recommended_visualizers.0.get(visualizer_type).cloned();
+    let component_mapping_recommendations = recommended_visualizers
+        .all_recommendations()
+        .get(visualizer_type)
+        .cloned();
 
     // Chain in all possible mappings.
     let visualizable_reason = entity_visualizers

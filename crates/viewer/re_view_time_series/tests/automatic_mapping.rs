@@ -328,6 +328,51 @@ fn setup_store(test_context: &mut TestContext) {
         });
     }
 
+    // Scenario 14: Entity with many custom Float64 components (more than the auto-spawn limit)
+    // Expected: Only the first MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY (4)
+    // should be auto-spawned as visualizer instructions. The rest are still recommended
+    // but not auto-spawned.
+    for i in 0..10 {
+        test_context.log_entity("entity_many_custom_floats", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component_from_data(
+                        "comp_a",
+                        Arc::new(Float64Array::from(vec![i as f64])),
+                    )
+                    .with_component_from_data(
+                        "comp_b",
+                        Arc::new(Float64Array::from(vec![i as f64 * 2.0])),
+                    )
+                    .with_component_from_data(
+                        "comp_c",
+                        Arc::new(Float64Array::from(vec![i as f64 * 3.0])),
+                    )
+                    .with_component_from_data(
+                        "comp_d",
+                        Arc::new(Float64Array::from(vec![i as f64 * 4.0])),
+                    )
+                    .with_component_from_data(
+                        "comp_e",
+                        Arc::new(Float64Array::from(vec![i as f64 * 5.0])),
+                    )
+                    .with_component_from_data(
+                        "comp_f",
+                        Arc::new(Float64Array::from(vec![i as f64 * 6.0])),
+                    )
+                    .with_component_from_data(
+                        "comp_g",
+                        Arc::new(Float64Array::from(vec![i as f64 * 7.0])),
+                    )
+                    .with_component_from_data(
+                        "comp_h",
+                        Arc::new(Float64Array::from(vec![i as f64 * 8.0])),
+                    ),
+            )
+        });
+    }
+
     test_context.set_active_timeline(*timeline.name());
 }
 
@@ -597,5 +642,28 @@ fn check_visualizer_instructions(test_context: &TestContext, view_id: ViewId) {
             selector, ".a[].c",
             "Expected selector `.a[].c` to access Float64 field (c) within list of structs; Uint32 field (b) is never recommended"
         );
+    }
+
+    // Scenario 14: Entity with many custom Float64 components (8 total, auto-spawn limit is 4)
+    // Expected: Only the first 4 (by priority order) are auto-spawned as visualizer instructions.
+    // The entity has no indicated components, so it goes through the fallback path which
+    // limits auto-spawned visualizers to MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY.
+    {
+        let instructions = visualizers_for(data_result_tree, "entity_many_custom_floats");
+        assert_eq!(
+            instructions.len(),
+            re_view_time_series::MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY,
+            "Should auto-spawn only {} visualizers out of 8, got: {instructions:#?}",
+            re_view_time_series::MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY,
+        );
+
+        // All auto-spawned instructions should be SeriesLines visualizers with source component mappings.
+        for instruction in instructions {
+            let (component, _selector) = source_component_for(instruction);
+            assert!(
+                component.starts_with("custom:comp_"),
+                "Expected custom component mapping, got: {component}"
+            );
+        }
     }
 }

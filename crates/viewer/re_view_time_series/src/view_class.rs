@@ -30,11 +30,11 @@ use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
 use vec1::Vec1;
 
-use crate::PlotSeriesKind;
 use crate::line_visualizer_system::SeriesLinesSystem;
 use crate::naming::{SeriesInfo, SeriesNamesContext};
 use crate::point_visualizer_system::SeriesPointsSystem;
 use crate::util::data_result_time_range;
+use crate::{MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY, PlotSeriesKind};
 
 // ---
 
@@ -284,7 +284,7 @@ impl ViewClass for TimeSeriesView {
                 .map(|(visualizer, reason)| (*visualizer, *reason))
                 .collect();
 
-        let mut recommended = RecommendedVisualizers(
+        let mut recommended = RecommendedVisualizers::new(
             available_visualizers
                 .iter()
                 .filter_map(|(visualizer, reason)| {
@@ -308,18 +308,32 @@ impl ViewClass for TimeSeriesView {
         );
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if recommended.0.is_empty()
+        if recommended.all_recommendations().is_empty()
             && let Some(series_line_visualizable_reason) =
                 available_visualizers.get(&SeriesLinesSystem::identifier())
         {
-            let all_mappings: Vec<RecommendedMappings> =
+            let mut mappings_with_auto_spawn: Vec<RecommendedMappings> =
                 all_scalar_mappings(series_line_visualizable_reason)
                     .map(|(component, source)| RecommendedMappings::new(component, source))
                     .collect();
-            if let Ok(mappings) = Vec1::try_from_vec(all_mappings) {
-                recommended
-                    .0
-                    .insert(SeriesLinesSystem::identifier(), mappings);
+
+            // Not all automatic recommendations should be spawned by default, since that can lead to
+            // a huge number of visualizers being spawned for a single entity.
+            let recommendation_only = if mappings_with_auto_spawn.len()
+                > MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY
+            {
+                mappings_with_auto_spawn
+                    .split_off(MAX_NUM_NON_INDICATED_RECOMMENDED_VISUALIZERS_PER_ENTITY)
+            } else {
+                Vec::new()
+            };
+
+            // First add mappings with auto spawn since they should show up higher in the list.
+            if let Ok(mappings) = Vec1::try_from_vec(mappings_with_auto_spawn) {
+                recommended.insert(SeriesLinesSystem::identifier(), mappings, true);
+            }
+            if let Ok(mappings) = Vec1::try_from_vec(recommendation_only) {
+                recommended.insert(SeriesLinesSystem::identifier(), mappings, false);
             }
         }
 
@@ -360,7 +374,9 @@ impl ViewClass for TimeSeriesView {
                 let recommended = if let Ok(mappings) =
                     vec1::Vec1::try_from_vec(all_scalar_mappings_for(matches))
                 {
-                    RecommendedVisualizers(std::iter::once((series_line_id, mappings)).collect())
+                    RecommendedVisualizers::new(
+                        std::iter::once((series_line_id, mappings)).collect(),
+                    )
                 } else {
                     return None;
                 };
@@ -1515,7 +1531,7 @@ mod tests {
             &indicated,
         );
 
-        assert!(result.0.is_empty());
+        assert!(result.all_recommendations().is_empty());
     }
 
     /// `SeriesLinesSystem` should be recommended when the datatype is a recommended one, even if not indicated.
@@ -1542,8 +1558,12 @@ mod tests {
             &indicated,
         );
 
-        assert!(result.0.contains_key(&SeriesLinesSystem::identifier()));
-        let mappings = &result.0[&SeriesLinesSystem::identifier()];
+        assert!(
+            result
+                .all_recommendations()
+                .contains_key(&SeriesLinesSystem::identifier())
+        );
+        let mappings = &result.all_recommendations()[&SeriesLinesSystem::identifier()];
         assert_eq!(mappings.len(), 1);
         assert!(
             mappings[0].contains_mapping_for_component(&Scalars::descriptor_scalars().component)

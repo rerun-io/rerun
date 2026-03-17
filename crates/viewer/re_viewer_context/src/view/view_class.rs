@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_chunk_store::MissingChunkReporter;
 use re_log_types::EntityPath;
@@ -28,18 +29,35 @@ pub enum ViewClassLayoutPriority {
     High,
 }
 
-pub struct RecommendedVisualizers(
-    /// A _stable_ mapping for which visualizers can visualize which components (with optional selectors).
-    pub BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
-);
+/// Recommended visualizers for an entity, split into all recommendations and the subset to auto-spawn.
+///
+/// `auto_spawned` is always a subset of `all_recommendations`.
+/// By default, all recommendations are also auto-spawned.
+pub struct RecommendedVisualizers {
+    /// All recommended visualizers (used for UI purposes like "add visualizer" menus).
+    all_recommendations: BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+
+    /// The subset of [`Self::all_recommendations`] that should be automatically spawned.
+    auto_spawned: BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+}
 
 impl RecommendedVisualizers {
+    /// Creates a new [`RecommendedVisualizers`] where all recommendations are auto-spawned.
+    pub fn new(
+        recommended_and_auto_spawned: BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+    ) -> Self {
+        Self {
+            auto_spawned: recommended_and_auto_spawned.clone(),
+            all_recommendations: recommended_and_auto_spawned,
+        }
+    }
+
     pub fn empty() -> Self {
-        Self(Default::default())
+        Self::new(Default::default())
     }
 
     pub fn default(visualizer: ViewSystemIdentifier) -> Self {
-        Self(std::iter::once((visualizer, Default::default())).collect())
+        Self::new(std::iter::once((visualizer, Default::default())).collect())
     }
 
     pub fn default_many(visualizers: impl IntoIterator<Item = ViewSystemIdentifier>) -> Self {
@@ -47,7 +65,55 @@ impl RecommendedVisualizers {
             .into_iter()
             .map(|v| (v, Default::default()))
             .collect();
-        Self(recommended)
+        Self::new(recommended)
+    }
+
+    /// Inserts visualizer recommendations, merging with any existing mappings for the same visualizer.
+    ///
+    /// Duplicate mappings are removed.
+    /// If `auto_spawn` is true, this recommendation will also spawn a view.
+    pub fn insert(
+        &mut self,
+        visualizer: ViewSystemIdentifier,
+        mappings: Vec1<RecommendedMappings>,
+        auto_spawn: bool,
+    ) {
+        if auto_spawn {
+            Self::extend_mappings_unique(&mut self.auto_spawned, visualizer, mappings.clone());
+        }
+        Self::extend_mappings_unique(&mut self.all_recommendations, visualizer, mappings);
+    }
+
+    /// All recommended visualizers, including those not auto-spawned.
+    pub fn all_recommendations(
+        &self,
+    ) -> &BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>> {
+        &self.all_recommendations
+    }
+
+    /// Consumes self and returns the auto-spawned recommendations.
+    ///
+    /// Auto-spanned recommendations are always a subset of all recommendations.
+    pub fn into_auto_spawned(self) -> BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>> {
+        self.auto_spawned
+    }
+
+    fn extend_mappings_unique(
+        map: &mut BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>>,
+        visualizer: ViewSystemIdentifier,
+        mappings: Vec1<RecommendedMappings>,
+    ) {
+        match map.entry(visualizer) {
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                let existing = entry.get_mut();
+                existing.extend(mappings);
+                *existing = Vec1::try_from_vec(existing.iter().cloned().unique().collect())
+                    .expect("There was already at least one mapping.");
+            }
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(mappings);
+            }
+        }
     }
 }
 
@@ -179,7 +245,7 @@ pub trait ViewClass: Send + Sync {
             })
             .collect();
 
-        RecommendedVisualizers(recommended)
+        RecommendedVisualizers::new(recommended)
     }
 
     /// Custom UI and add-visualizer options for the "Visualizers" section in the selection panel.

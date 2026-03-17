@@ -588,7 +588,7 @@ impl DataQueryPropertyResolver<'_> {
                     self.indicated_entities_per_visualizer,
                 );
                 node.data_result.visualizer_instructions = recommended_visualizers
-                    .0
+                    .into_auto_spawned()
                     .into_iter()
                     .flat_map(|(visualizer_type, mappings_per_visualizer_type)| {
                         mappings_per_visualizer_type

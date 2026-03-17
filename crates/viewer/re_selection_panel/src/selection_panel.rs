@@ -641,7 +641,7 @@ fn build_add_visualizer_menu_options(
         };
 
         let options =
-            collect_add_visualizer_options_for_entity(data_result, recommended_visualizers);
+            collect_add_visualizer_options_for_entity(data_result, &recommended_visualizers);
         if !options.is_empty() {
             result.push(AddVisualizerOption {
                 entity_path,
@@ -655,12 +655,14 @@ fn build_add_visualizer_menu_options(
 
 fn collect_add_visualizer_options_for_entity(
     data_result: &DataResult,
-    recommended_visualizers: RecommendedVisualizers,
+    recommended_visualizers: &RecommendedVisualizers,
 ) -> Vec<AddVisualizerOptionPerEntity> {
     let existing_visualizers = &data_result.visualizer_instructions;
 
     let mut visualizer_options = vec![];
-    for (view_system_id, recommended_mappings_per_view_system) in recommended_visualizers.0 {
+    for (view_system_id, recommended_mappings_per_view_system) in
+        recommended_visualizers.all_recommendations()
+    {
         for recommended_mappings in recommended_mappings_per_view_system {
             let Some(display_name) = recommended_mappings.display_name() else {
                 continue;
@@ -668,13 +670,13 @@ fn collect_add_visualizer_options_for_entity(
 
             // Check if there is already a visualizer that covers this recommendation.
             let is_already_visualized = existing_visualizers.iter().any(|visualizer| {
-                visualizer.visualizer_type == view_system_id
+                visualizer.visualizer_type == *view_system_id
                     && recommended_mappings.is_covered_by(&visualizer.component_mappings)
             });
 
             visualizer_options.push(AddVisualizerOptionPerEntity {
-                view_system_id,
-                recommended_mappings,
+                view_system_id: *view_system_id,
+                recommended_mappings: recommended_mappings.clone(),
                 display_name,
                 is_already_visualized,
             });
