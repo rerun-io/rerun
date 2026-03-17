@@ -411,7 +411,7 @@ impl RrdManifestIndex {
         let num_root_chunks = self.root_chunks.len();
         if 10_000 < num_root_chunks {
             re_log::warn!(
-                "There are {} rooot chunks in this recording. Consider running `rerun rrd compact` on the original.",
+                "There are {} root chunks in this recording. Consider running `rerun rrd compact` on the original.",
                 re_format::format_uint(num_root_chunks)
             );
         }
