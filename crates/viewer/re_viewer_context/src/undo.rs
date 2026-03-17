@@ -133,6 +133,11 @@ impl BlueprintUndoState {
                 AbsoluteTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
             );
 
+            // Also remove inflection points after the current time,
+            // so they don't stick around with stale frame numbers.
+            self.inflection_points
+                .split_off(&last_kept_event_time.inc());
+
             re_log::trace!("{} chunks affected when clearing redo buffer", events.len());
         }
     }
@@ -157,6 +162,12 @@ impl BlueprintUndoState {
 
         // Nothing is happening - remember this as a time to undo to.
         let time = max_blueprint_time(blueprint_db);
+
+        // Blueprint GC can remove data, causing max_blueprint_time to decrease.
+        // Remove any stale inflection points above the current max time,
+        // since that data no longer exists in the store.
+        self.inflection_points.split_off(&time.inc());
+
         let inserted = self.inflection_points.insert(time, frame_nr).is_none();
         if inserted {
             re_log::trace!("Inserted new inflection point at {time:?}");
