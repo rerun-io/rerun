@@ -6230,6 +6230,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lz4_flex"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db9a0d582c2874f68138a16ce1867e0ffde6c0bb0a0df85e1f36d04146db488a"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "macaw"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9207,7 +9216,7 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "js-sys",
- "lz4_flex 0.12.0",
+ "lz4_flex 0.13.0",
  "mimalloc",
  "parking_lot",
  "re_arrow_util",
@@ -9394,7 +9403,7 @@ dependencies = [
  "arrow",
  "http",
  "jiff",
- "lz4_flex 0.12.0",
+ "lz4_flex 0.13.0",
  "pin-project-lite",
  "prost",
  "prost-types",
