@@ -453,7 +453,7 @@ impl RrdManifestIndex {
                     self.mark_roots_as(store, &del.chunk.id(), LoadState::Unloaded);
                 }
 
-                ChunkStoreDiff::VirtualAddition(_) => {}
+                ChunkStoreDiff::VirtualAddition(_) | ChunkStoreDiff::SchemaAddition(_) => {}
             }
         }
     }

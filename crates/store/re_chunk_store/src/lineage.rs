@@ -584,8 +584,7 @@ mod tests {
 
         for chunk in &chunks {
             let events = store.insert_chunk(chunk).unwrap();
-            for event in events {
-                let diff = event.to_addition().unwrap();
+            for diff in events.iter().filter_map(|event| event.to_addition()) {
                 if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
                     assert_eq!(
                         diff.chunk_before_processing.id(),
@@ -675,8 +674,11 @@ mod tests {
                 assert_eq!(chunk.id(), diff.chunk.id(), "ghost index");
             }
 
-            for event in events.into_iter().skip(1) {
-                let diff = event.to_addition().unwrap();
+            for diff in events
+                .iter()
+                .filter_map(|event| event.to_addition())
+                .skip(1)
+            {
                 if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
                     assert_eq!(
                         diff.chunk_before_processing.id(),
@@ -746,12 +748,16 @@ mod tests {
 
         // We will end up with 4 split chunks.
         let events = store.insert_chunk(&chunk).unwrap();
-        assert_eq!(4, events.len());
-        for event in &events {
+        assert_eq!(5, events.len());
+        assert!(
+            events[4].is_schema_addition(),
+            "the first write should emit a schema addition for newly seen columns"
+        );
+        for event in &events[..4] {
             assert_eq!(true, event.is_addition());
 
             // Check that splits are always flattened, very important!
-            let siblings = events
+            let siblings = events[..4]
                 .iter()
                 .filter(|e| e.delta_chunk().unwrap().id() != event.delta_chunk().unwrap().id())
                 .map(|e| e.delta_chunk().unwrap().clone())
@@ -846,10 +852,14 @@ mod tests {
 
         // We will end up with 2 split chunks, both below the num_rows threshold.
         let events = store.insert_chunk(&chunk1).unwrap();
-        assert_eq!(2, events.len());
-        for event in events {
+        assert_eq!(3, events.len());
+        for event in &events[..2] {
             assert_eq!(true, event.is_addition());
         }
+        assert!(
+            events[2].is_schema_addition(),
+            "the first write should emit a schema addition for newly seen columns"
+        );
 
         assert_eq!(2, store.num_physical_chunks());
         for chunk in store.iter_physical_chunks() {
@@ -949,15 +959,16 @@ mod tests {
         let chunk2 = build_chunk(9);
 
         let events = store.insert_chunk(&chunk1).unwrap();
-        assert_eq!(1, events.len());
-        for event in events {
-            assert_eq!(true, event.is_addition());
-        }
+        assert_eq!(2, events.len());
+        assert_eq!(true, events[0].is_addition());
+        assert!(
+            events[1].is_schema_addition(),
+            "the first write should emit a schema addition for newly seen columns"
+        );
+
         let events = store.insert_chunk(&chunk2).unwrap();
         assert_eq!(1, events.len());
-        for event in events {
-            assert_eq!(true, event.is_addition());
-        }
+        assert_eq!(true, events[0].is_addition());
 
         // The chunks should just not get compacted since the result would be beyond the num_rows
         // threshold, and therefore will never be split either since there will never be a chunk
@@ -1012,11 +1023,21 @@ mod tests {
         let chunks = (0..10).map(|_| build_chunk(1)).collect_vec();
 
         let mut prev_chunk: Option<Arc<Chunk>> = None;
+        let mut is_first_insert = true;
         for chunk in chunks {
             let mut events = store.insert_chunk(&chunk).unwrap();
-            assert_eq!(1, events.len());
+            if is_first_insert {
+                assert_eq!(2, events.len());
+                assert!(
+                    events[1].is_schema_addition(),
+                    "the first write should emit a schema addition for newly seen columns"
+                );
+                is_first_insert = false;
+            } else {
+                assert_eq!(1, events.len());
+            }
 
-            let event = events.pop().unwrap();
+            let event = events.remove(0);
             let event = event.to_addition().unwrap();
             assert_eq!(chunk.id(), event.chunk_before_processing.id());
 

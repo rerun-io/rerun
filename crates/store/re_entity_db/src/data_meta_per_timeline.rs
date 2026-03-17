@@ -140,6 +140,7 @@ impl DataMetaPerTimeline {
                     }
                 }
             }
+            ChunkStoreDiff::SchemaAddition(_) => {}
         }
     }
 
@@ -373,9 +374,9 @@ mod tests {
         let (_, rrd_manifest) = build_manifest_chunks(&entity, tl, &[10, 20, 30], &store_id);
 
         // Insert the manifest virtually.
-        let event = store.insert_rrd_manifest(rrd_manifest.clone());
+        let events = store.insert_rrd_manifest(rrd_manifest.clone());
         manifest_index.append(rrd_manifest).unwrap();
-        meta.on_events(&manifest_index, &store, &[event]);
+        meta.on_events(&manifest_index, &store, &events);
 
         // Virtual rows should be counted.
         assert_eq!(meta.row_count_for_timeline(tl.name()), 3);
@@ -394,10 +395,10 @@ mod tests {
         let (chunks, rrd_manifest) = build_manifest_chunks(&entity, tl, &[10, 20, 30], &store_id);
 
         // Load virtually first.
-        let event = store.insert_rrd_manifest(rrd_manifest.clone());
+        let events = store.insert_rrd_manifest(rrd_manifest.clone());
         manifest_index.append(rrd_manifest).unwrap();
-        manifest_index.on_events(&store, std::slice::from_ref(&event));
-        meta.on_events(&manifest_index, &store, std::slice::from_ref(&event));
+        manifest_index.on_events(&store, &events);
+        meta.on_events(&manifest_index, &store, &events);
 
         assert_eq!(meta.row_count_for_timeline(tl.name()), 3);
 
@@ -455,9 +456,9 @@ mod tests {
         )
         .unwrap();
 
-        let event = store.insert_rrd_manifest(rrd_manifest.clone());
+        let events = store.insert_rrd_manifest(rrd_manifest.clone());
         manifest_index.append(rrd_manifest).unwrap();
-        meta.on_events(&manifest_index, &store, &[event]);
+        meta.on_events(&manifest_index, &store, &events);
 
         assert_eq!(meta.row_count_for_timeline(tl.name()), 4);
     }

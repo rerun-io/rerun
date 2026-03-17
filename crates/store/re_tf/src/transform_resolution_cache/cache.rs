@@ -234,6 +234,8 @@ impl TransformResolutionCache {
                         self.remove_chunk(&deletion.chunk, aspects);
                     }
                 }
+
+                re_chunk_store::ChunkStoreDiff::SchemaAddition(_) => {}
             }
         }
     }

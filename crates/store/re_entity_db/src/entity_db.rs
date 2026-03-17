@@ -724,22 +724,25 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: Arc<RrdManifest>) -> ChunkStoreEvent {
+    pub fn add_rrd_manifest_message(
+        &mut self,
+        rrd_manifest: Arc<RrdManifest>,
+    ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
-        let event = self
+        let events = self
             .storage_engine
             .write()
             .store()
             .insert_rrd_manifest(rrd_manifest.clone());
 
-        self.on_store_events(std::slice::from_ref(&event));
+        self.on_store_events(&events);
 
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to append RRD manifest: {err}");
         }
 
-        event
+        events
     }
 
     /// Mark the RRD manifest as complete (all parts have been received).

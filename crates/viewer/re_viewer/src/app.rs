@@ -2501,12 +2501,12 @@ impl App {
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
-                    let store_event = entity_db.add_rrd_manifest_message(rrd_manifest);
+                    let store_events = entity_db.add_rrd_manifest_message(rrd_manifest);
 
                     if let Some((entity_db, cache)) =
                         store_hub.entity_db_and_cache(&store_id, &self.view_class_registry)
                     {
-                        cache.on_store_events(&[store_event], entity_db);
+                        cache.on_store_events(&store_events, entity_db);
                     }
                 }
 

@@ -232,7 +232,7 @@ fn process_entity_components(
     re_chunk_store::ChunkMeta {
         entity_path,
         components,
-    }: re_chunk_store::ChunkMeta,
+    }: &re_chunk_store::ChunkMeta,
 ) {
     let VisualizerEntityConfig {
         relevant_archetype,
@@ -287,7 +287,7 @@ fn process_entity_components(
             let mut has_any_datatype = false;
 
             for c in components {
-                if !constraint.allow_static_data() && c.is_static_only {
+                if !constraint.allow_static_data() && c.is_static {
                     continue;
                 }
 
@@ -305,7 +305,7 @@ fn process_entity_components(
                     has_any_datatype = true;
 
                     store_mapping.add_visualizability_reason(
-                        &entity_path,
+                        entity_path,
                         visualizer,
                         VisualizableReason::SingleRequiredComponentMatch(
                             SingleRequiredComponentMatch {
@@ -359,7 +359,7 @@ fn process_entity_components(
                     let buffer_matches = state.all_buffer_matches.clone();
                     let format_components = state.all_formats_matches.clone();
                     store_mapping.add_visualizability_reason(
-                        &entity_path,
+                        entity_path,
                         visualizer,
                         VisualizableReason::BufferAndFormatMatch(BufferAndFormatMatch {
                             buffer_target: constraint.buffer_target(),
@@ -387,14 +387,14 @@ impl VisualizerEntitySubscriber {
         // Process manifest (virtual additions).
         if let Some(manifest) = entity_db.rrd_manifest_index().manifest() {
             for meta in re_chunk_store::ChunkMeta::from_manifest(manifest) {
-                process_entity_components(&self.config, &mut self.mapping, &store_id, meta);
+                process_entity_components(&self.config, &mut self.mapping, &store_id, &meta);
             }
         }
 
         // Process existing physical chunks.
         for chunk in store.iter_physical_chunks() {
             let meta = re_chunk_store::ChunkMeta::from_chunk(chunk);
-            process_entity_components(&self.config, &mut self.mapping, &store_id, meta);
+            process_entity_components(&self.config, &mut self.mapping, &store_id, &meta);
         }
     }
 
@@ -408,20 +408,8 @@ impl VisualizerEntitySubscriber {
 
         for event in events {
             match &event.diff {
-                re_chunk_store::ChunkStoreDiff::Addition(add) => {
-                    // This is a purely additive datastructure, and it doesn't keep track of actual chunks,
-                    // just the bits of data that are of actual interest.
-                    // Therefore, the meta of the delta chunk is all we need, always.
-
-                    process_entity_components(
-                        &self.config,
-                        &mut self.mapping,
-                        &event.store_id,
-                        add.chunk_meta(),
-                    );
-                }
-                re_chunk_store::ChunkStoreDiff::VirtualAddition(virtual_add) => {
-                    for meta in virtual_add.chunk_metas() {
+                re_chunk_store::ChunkStoreDiff::SchemaAddition(schema_add) => {
+                    for meta in &schema_add.new_columns {
                         process_entity_components(
                             &self.config,
                             &mut self.mapping,
@@ -430,8 +418,12 @@ impl VisualizerEntitySubscriber {
                         );
                     }
                 }
-                re_chunk_store::ChunkStoreDiff::Deletion(_) => {
-                    // Not handling deletions here yet.
+                re_chunk_store::ChunkStoreDiff::Addition(..)
+                | re_chunk_store::ChunkStoreDiff::Deletion(_)
+                | re_chunk_store::ChunkStoreDiff::VirtualAddition(..) => {
+                    // Our heuristics are additive and only change when new data is added to the store.
+                    // For now we don't look at the component data to inform the recommendations for
+                    // visualizers and view spawning, so looking at additions to the schema is enough.
                 }
             }
         }
@@ -442,13 +434,9 @@ impl VisualizerEntitySubscriber {
 mod tests {
     use super::*;
     use crate::BufferAndFormatConstraint;
-    use arrow::array::ArrayRef;
-    use re_chunk::{Chunk, RowId};
     use re_chunk_store::{
-        ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreEvent,
-        ChunkStoreGeneration,
+        ChunkStoreDiff, ChunkStoreDiffSchemaAddition, ChunkStoreEvent, ChunkStoreGeneration,
     };
-    use re_log_types::TimePoint;
     use re_sdk_types::ComponentDescriptor;
 
     const BUFFER_CTYPE: &str = "test.components.Buffer";
@@ -492,36 +480,30 @@ mod tests {
         }
     }
 
-    /// Build a minimal chunk with the given entity path and component columns.
-    ///
-    /// Each entry is `(descriptor, arrow_datatype)` — a single-element array of the
-    /// given type is created as data so that `has_data` is `true`.
-    fn make_chunk(
+    /// Build a `ChunkStoreEvent` for a schema addition with only the specified columns.
+    fn schema_addition_event(
+        store_id: &StoreId,
         entity: &EntityPath,
         columns: &[(ComponentDescriptor, arrow::datatypes::DataType)],
-    ) -> Arc<Chunk> {
-        let row = columns.iter().map(|(desc, dt)| {
-            let array: ArrayRef = arrow::array::new_null_array(dt, 1);
-            (desc.clone(), array)
-        });
-        Arc::new(
-            Chunk::builder(entity.clone())
-                .with_row(RowId::new(), TimePoint::default(), row)
-                .build()
-                .expect("failed to build test chunk"),
-        )
-    }
-
-    /// Wrap a chunk into a single `ChunkStoreEvent` (addition).
-    fn addition_event(store_id: &StoreId, chunk: Arc<Chunk>) -> ChunkStoreEvent {
+    ) -> ChunkStoreEvent {
+        let meta = re_chunk_store::ChunkMeta {
+            entity_path: entity.clone(),
+            components: columns
+                .iter()
+                .map(|(desc, dt)| re_chunk_store::ChunkComponentMeta {
+                    descriptor: desc.clone(),
+                    inner_arrow_datatype: Some(dt.clone()),
+                    has_data: true,
+                    is_static: false,
+                })
+                .collect(),
+        };
         ChunkStoreEvent {
             store_id: store_id.clone(),
             store_generation: ChunkStoreGeneration::default(),
             event_id: 0,
-            diff: ChunkStoreDiff::Addition(ChunkStoreDiffAddition {
-                chunk_before_processing: Arc::clone(&chunk),
-                chunk_after_processing: chunk,
-                direct_lineage: ChunkDirectLineageReport::Volatile,
+            diff: ChunkStoreDiff::SchemaAddition(ChunkStoreDiffSchemaAddition {
+                new_columns: vec![meta],
             }),
         }
     }
@@ -557,21 +539,18 @@ mod tests {
         let entity: EntityPath = "/test/entity".into();
         let mut sub = test_subscriber_with_buffer_and_format_constraint();
 
-        let chunk = make_chunk(
-            &entity,
-            &[
-                (
-                    descriptor("buf", Some(BUFFER_CTYPE)),
-                    BufferAndFormatConstraint::buffer_arrow_datatype(),
-                ),
-                (
-                    descriptor("fmt", Some(FORMAT_CTYPE)),
-                    arrow::datatypes::DataType::UInt32,
-                ),
-            ],
-        );
+        let columns = [
+            (
+                descriptor("buf", Some(BUFFER_CTYPE)),
+                BufferAndFormatConstraint::buffer_arrow_datatype(),
+            ),
+            (
+                descriptor("fmt", Some(FORMAT_CTYPE)),
+                arrow::datatypes::DataType::UInt32,
+            ),
+        ];
 
-        sub.on_events(&[addition_event(&store_id, chunk)]);
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns)]);
 
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         assert_eq!(m.buffer_matches.len(), 1);
@@ -587,31 +566,25 @@ mod tests {
         let store_id = test_store_id();
         let entity: EntityPath = "/test/entity".into();
 
-        let buffer_chunk = make_chunk(
-            &entity,
-            &[(
-                descriptor("buf", Some(BUFFER_CTYPE)),
-                BufferAndFormatConstraint::buffer_arrow_datatype(),
-            )],
-        );
-        let format_chunk = make_chunk(
-            &entity,
-            &[(
-                descriptor("fmt", Some(FORMAT_CTYPE)),
-                arrow::datatypes::DataType::UInt32,
-            )],
-        );
+        let buffer_columns = [(
+            descriptor("buf", Some(BUFFER_CTYPE)),
+            BufferAndFormatConstraint::buffer_arrow_datatype(),
+        )];
+        let format_columns = [(
+            descriptor("fmt", Some(FORMAT_CTYPE)),
+            arrow::datatypes::DataType::UInt32,
+        )];
 
-        for (first_chunk, second_chunk) in [
-            (buffer_chunk.clone(), format_chunk.clone()),
-            (format_chunk.clone(), buffer_chunk.clone()),
+        for (first, second) in [
+            (&buffer_columns[..], &format_columns[..]),
+            (&format_columns[..], &buffer_columns[..]),
         ] {
             let mut sub = test_subscriber_with_buffer_and_format_constraint();
 
-            sub.on_events(&[addition_event(&store_id, first_chunk)]);
+            sub.on_events(&[schema_addition_event(&store_id, &entity, first)]);
             assert_not_visualizable(&sub, &entity);
 
-            sub.on_events(&[addition_event(&store_id, second_chunk)]);
+            sub.on_events(&[schema_addition_event(&store_id, &entity, second)]);
             expect_buffer_and_format_visualizable(&sub, &entity);
         }
     }
@@ -623,20 +596,17 @@ mod tests {
         let mut sub = test_subscriber_with_buffer_and_format_constraint();
 
         // Buffer has the right arrow type but wrong semantic type → PhysicalDatatypeOnly.
-        let chunk = make_chunk(
-            &entity,
-            &[
-                (
-                    descriptor("buf", Some("other.components.Blob")),
-                    BufferAndFormatConstraint::buffer_arrow_datatype(),
-                ),
-                (
-                    descriptor("fmt", Some(FORMAT_CTYPE)),
-                    arrow::datatypes::DataType::UInt32,
-                ),
-            ],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk)]);
+        let columns = [
+            (
+                descriptor("buf", Some("other.components.Blob")),
+                BufferAndFormatConstraint::buffer_arrow_datatype(),
+            ),
+            (
+                descriptor("fmt", Some(FORMAT_CTYPE)),
+                arrow::datatypes::DataType::UInt32,
+            ),
+        ];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns)]);
 
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         assert!(matches!(
@@ -652,20 +622,17 @@ mod tests {
         let mut sub = test_subscriber_with_buffer_and_format_constraint();
 
         // Buffer matches, but format has wrong semantic type.
-        let chunk = make_chunk(
-            &entity,
-            &[
-                (
-                    descriptor("buf", Some(BUFFER_CTYPE)),
-                    BufferAndFormatConstraint::buffer_arrow_datatype(),
-                ),
-                (
-                    descriptor("fmt", Some("wrong.components.Format")),
-                    arrow::datatypes::DataType::UInt32,
-                ),
-            ],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk)]);
+        let columns = [
+            (
+                descriptor("buf", Some(BUFFER_CTYPE)),
+                BufferAndFormatConstraint::buffer_arrow_datatype(),
+            ),
+            (
+                descriptor("fmt", Some("wrong.components.Format")),
+                arrow::datatypes::DataType::UInt32,
+            ),
+        ];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns)]);
         assert_not_visualizable(&sub, &entity);
     }
 
@@ -676,20 +643,17 @@ mod tests {
         let mut sub = test_subscriber_with_buffer_and_format_constraint();
 
         // Neither buffer nor format arrow types match.
-        let chunk = make_chunk(
-            &entity,
-            &[
-                (
-                    descriptor("buf", Some(BUFFER_CTYPE)),
-                    arrow::datatypes::DataType::Float64,
-                ),
-                (
-                    descriptor("fmt", Some(FORMAT_CTYPE)),
-                    arrow::datatypes::DataType::Float64,
-                ),
-            ],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk)]);
+        let columns = [
+            (
+                descriptor("buf", Some(BUFFER_CTYPE)),
+                arrow::datatypes::DataType::Float64,
+            ),
+            (
+                descriptor("fmt", Some(FORMAT_CTYPE)),
+                arrow::datatypes::DataType::Float64,
+            ),
+        ];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns)]);
         assert_not_visualizable(&sub, &entity);
     }
 
@@ -700,31 +664,25 @@ mod tests {
         let mut sub = test_subscriber_with_buffer_and_format_constraint();
 
         // Event 1: first buffer + format.
-        let chunk1 = make_chunk(
-            &entity,
-            &[
-                (
-                    descriptor("buf1", Some(BUFFER_CTYPE)),
-                    BufferAndFormatConstraint::buffer_arrow_datatype(),
-                ),
-                (
-                    descriptor("fmt", Some(FORMAT_CTYPE)),
-                    arrow::datatypes::DataType::UInt32,
-                ),
-            ],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk1)]);
+        let columns1 = [
+            (
+                descriptor("buf1", Some(BUFFER_CTYPE)),
+                BufferAndFormatConstraint::buffer_arrow_datatype(),
+            ),
+            (
+                descriptor("fmt", Some(FORMAT_CTYPE)),
+                arrow::datatypes::DataType::UInt32,
+            ),
+        ];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns1)]);
         expect_buffer_and_format_visualizable(&sub, &entity);
 
         // Event 2: second buffer arrives.
-        let chunk2 = make_chunk(
-            &entity,
-            &[(
-                descriptor("buf2", Some("other.components.Blob")),
-                BufferAndFormatConstraint::buffer_arrow_datatype(),
-            )],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk2)]);
+        let columns2 = [(
+            descriptor("buf2", Some("other.components.Blob")),
+            BufferAndFormatConstraint::buffer_arrow_datatype(),
+        )];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns2)]);
 
         // Both buffer matches should be visible.
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
@@ -746,40 +704,34 @@ mod tests {
         let mut sub = test_subscriber_with_buffer_and_format_constraint();
 
         // Event 1: first buffer + first format.
-        let chunk1 = make_chunk(
-            &entity,
-            &[
-                (
-                    descriptor("buf1", Some(BUFFER_CTYPE)),
-                    BufferAndFormatConstraint::buffer_arrow_datatype(),
-                ),
-                (
-                    descriptor("fmt1", Some(FORMAT_CTYPE)),
-                    arrow::datatypes::DataType::UInt32,
-                ),
-            ],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk1)]);
+        let columns1 = [
+            (
+                descriptor("buf1", Some(BUFFER_CTYPE)),
+                BufferAndFormatConstraint::buffer_arrow_datatype(),
+            ),
+            (
+                descriptor("fmt1", Some(FORMAT_CTYPE)),
+                arrow::datatypes::DataType::UInt32,
+            ),
+        ];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns1)]);
 
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         assert_eq!(m.buffer_matches.len(), 1);
         assert_eq!(m.format_matches.len(), 1);
 
         // Event 2: second buffer + second format.
-        let chunk2 = make_chunk(
-            &entity,
-            &[
-                (
-                    descriptor("buf2", Some("other.components.Blob")),
-                    BufferAndFormatConstraint::buffer_arrow_datatype(),
-                ),
-                (
-                    descriptor("fmt2", Some(FORMAT_CTYPE)),
-                    arrow::datatypes::DataType::UInt32,
-                ),
-            ],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk2)]);
+        let columns2 = [
+            (
+                descriptor("buf2", Some("other.components.Blob")),
+                BufferAndFormatConstraint::buffer_arrow_datatype(),
+            ),
+            (
+                descriptor("fmt2", Some(FORMAT_CTYPE)),
+                arrow::datatypes::DataType::UInt32,
+            ),
+        ];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns2)]);
 
         // Both buffers and both formats should be tracked in a single entry.
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
@@ -825,17 +777,14 @@ mod tests {
             .into(),
         );
 
-        let chunk = make_chunk(
-            &entity,
-            &[
-                (descriptor("data", None), struct_dt),
-                (
-                    descriptor("fmt", Some(FORMAT_CTYPE)),
-                    arrow::datatypes::DataType::UInt32,
-                ),
-            ],
-        );
-        sub.on_events(&[addition_event(&store_id, chunk)]);
+        let columns = [
+            (descriptor("data", None), struct_dt),
+            (
+                descriptor("fmt", Some(FORMAT_CTYPE)),
+                arrow::datatypes::DataType::UInt32,
+            ),
+        ];
+        sub.on_events(&[schema_addition_event(&store_id, &entity, &columns)]);
 
         let m = expect_buffer_and_format_visualizable(&sub, &entity);
         let data_match = m

@@ -45,7 +45,7 @@ pub use self::dataframe::{
 };
 pub use self::events::{
     ChunkComponentMeta, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion,
-    ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
+    ChunkStoreDiffSchemaAddition, ChunkStoreDiffVirtualAddition, ChunkStoreEvent,
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};

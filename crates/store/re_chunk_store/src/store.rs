@@ -339,15 +339,21 @@ pub struct ColumnMetadataState {
     /// This is purely additive: once false, it will always be false. Even in case of garbage
     /// collection.
     pub is_semantically_empty: bool,
+
+    /// Whether this column has ever been written as static data.
+    ///
+    /// Starts as `false` and flips to `true` once static data is observed. Never goes back.
+    pub is_static: bool,
 }
 
 impl re_byte_size::SizeBytes for ColumnMetadataState {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             is_semantically_empty,
+            is_static,
         } = self;
 
-        is_semantically_empty.heap_size_bytes()
+        is_semantically_empty.heap_size_bytes() + is_static.heap_size_bytes()
     }
 }
 
@@ -888,6 +894,7 @@ impl ChunkStore {
     ) -> Option<ColumnMetadata> {
         let ColumnMetadataState {
             is_semantically_empty,
+            is_static: _,
         } = self
             .schema
             .lookup_column_metadata_state(entity_path, component)?;

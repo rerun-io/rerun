@@ -551,6 +551,7 @@ impl ChunkStoreSubscriber for QueryCache {
                         }
                     }
                 }
+                ChunkStoreDiff::SchemaAddition(_) => {} // Nothing to do here.
             }
         }
 
