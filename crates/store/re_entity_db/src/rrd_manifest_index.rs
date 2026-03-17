@@ -16,6 +16,7 @@ use crate::chunk_requests::ChunkBatchRequest;
 pub use crate::chunk_requests::{ChunkPromise, ChunkRequests, RequestInfo};
 
 mod chunk_prioritizer;
+mod collapsed_time_ranges;
 mod sorted_temporal_chunks;
 mod time_range_merger;
 
@@ -169,6 +170,10 @@ pub struct RrdManifestIndex {
 
     /// Full time range per timeline
     timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
+
+    /// Cached data time ranges per timeline, used for gap collapsing in the time panel.
+    /// Computed from chunk time ranges when the manifest is complete.
+    data_time_ranges: BTreeMap<TimelineName, Vec<AbsoluteTimeRange>>,
 
     pub entity_tree: crate::EntityTree,
     entity_has_static_data: IntSet<re_chunk::EntityPath>,
@@ -415,6 +420,8 @@ impl RrdManifestIndex {
                 re_format::format_uint(num_root_chunks)
             );
         }
+
+        self.data_time_ranges = collapsed_time_ranges::compute_data_time_ranges(&self.root_chunks);
     }
 
     /// The manifest as it currently stands.
@@ -459,6 +466,8 @@ impl RrdManifestIndex {
     }
 
     fn mark_roots_as(&mut self, store: &ChunkStore, chunk_id: &ChunkId, new_state: LoadState) {
+        re_tracing::profile_function!();
+
         let store_kind = store.id().kind();
 
         let root_chunk_ids = store.find_root_chunks(chunk_id);
@@ -469,6 +478,9 @@ impl RrdManifestIndex {
                 "Added chunk that was not part of the chunk index",
             );
         } else {
+            // Track which timelines had a large chunk transition to loaded
+            let mut timelines_to_recalculate: Vec<TimelineName> = Vec::new();
+
             for chunk_id in root_chunk_ids {
                 if let Some(chunk_info) = self.root_chunks.get_mut(&chunk_id) {
                     let old_state = chunk_info.state;
@@ -495,6 +507,16 @@ impl RrdManifestIndex {
                             }
                         }
                     }
+
+                    // When a large chunk gets loaded, recalculate data ranges for its timelines
+                    if new_state == LoadState::FullyLoaded && old_state != LoadState::FullyLoaded {
+                        timelines_to_recalculate.extend(
+                            collapsed_time_ranges::should_recalculate_for_chunk(
+                                chunk_info,
+                                &self.timelines,
+                            ),
+                        );
+                    }
                 } else {
                     warn_when_editing_recording(
                         store_kind,
@@ -502,7 +524,25 @@ impl RrdManifestIndex {
                     );
                 }
             }
+
+            for timeline_name in timelines_to_recalculate {
+                if let Some(ranges) = collapsed_time_ranges::calculate_data_ranges_for_timeline(
+                    &self.root_chunks,
+                    &self.timelines,
+                    store,
+                    &timeline_name,
+                ) {
+                    self.data_time_ranges.insert(timeline_name, ranges);
+                }
+            }
         }
+    }
+
+    /// Data time ranges for the given timeline, used for gap collapsing in the time panel.
+    ///
+    /// Returns `None` if the manifest is not yet complete or if there are no ranges.
+    pub fn data_time_ranges_for(&self, timeline: &TimelineName) -> Option<&[AbsoluteTimeRange]> {
+        self.data_time_ranges.get(timeline).map(|v| v.as_slice())
     }
 
     /// When do we have data on this timeline?
@@ -701,6 +741,7 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
             root_chunks: virtual_chunks,
             chunk_prioritizer,
             timelines,
+            data_time_ranges,
             full_uncompressed_size: _,
             manifest_complete: _,
         } = self;
@@ -713,6 +754,7 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
             + virtual_chunks.heap_size_bytes()
             + chunk_prioritizer.heap_size_bytes()
             + timelines.heap_size_bytes()
+            + data_time_ranges.heap_size_bytes()
     }
 }
 
@@ -731,6 +773,7 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             root_chunks: virtual_chunks,
             chunk_prioritizer,
             timelines,
+            data_time_ranges: _,
             full_uncompressed_size: _,
             manifest_complete: _,
         } = self;

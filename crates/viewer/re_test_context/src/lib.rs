@@ -562,6 +562,7 @@ impl TestContext {
         let store_hub = self.store_hub.get_mut();
         let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);
+        active_recording.mark_rrd_manifest_complete();
 
         // Pretend like we are connected to a real redap server:
         active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {

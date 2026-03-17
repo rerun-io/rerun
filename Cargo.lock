@@ -9036,6 +9036,7 @@ dependencies = [
  "static_assertions",
  "tap",
  "thiserror 2.0.18",
+ "vec1",
  "web-time",
 ]
 

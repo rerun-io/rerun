@@ -2,7 +2,7 @@
 #![expect(clippy::unwrap_used)] // Fine for tests
 
 use re_chunk::Chunk;
-use re_chunk_store::{LatestAtQuery, RowId};
+use re_chunk_store::{ChunkStoreConfig, LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr};
@@ -12,6 +12,64 @@ use re_test_context::external::egui_kittest::SnapshotResults;
 use re_time_panel::TimePanel;
 use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
+
+/// Creates chunks with two groups of frames separated by a gap:
+/// entity/0 at frames [10, 11, 12, 15, 18, 100, 102, 104]
+/// entity/1 at frames [11, 12, 13, 16, 19, 101, 103, 105]
+fn create_sparse_chunks() -> Vec<Chunk> {
+    let points1 = MyPoint::from_iter(0..1);
+    let mut chunks = Vec::new();
+    for i in 0..2i64 {
+        let entity_path: EntityPath = format!("/entity/{i}").into();
+        for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|f| f + i) {
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_sparse_component_batches(
+                    RowId::new(),
+                    [build_frame_nr(frame)],
+                    [(MyPoints::descriptor_points(), Some(&points1 as _))],
+                )
+                .build()
+                .unwrap();
+            chunks.push(chunk);
+        }
+    }
+    chunks
+}
+
+#[test]
+pub fn time_panel_two_sections() {
+    TimePanel::ensure_registered_subscribers();
+
+    let mut test_context = TestContext::new_with_store_info_and_config(
+        re_log_types::StoreInfo::testing(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
+    );
+
+    let chunks = create_sparse_chunks();
+
+    let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        test_context.active_store_id(),
+        chunks.iter(),
+    )
+    .unwrap();
+
+    test_context.add_rrd_manifest(rrd_manifest);
+    test_context.add_chunks(chunks.into_iter());
+    test_context.set_active_timeline("frame_nr");
+
+    let mut snapshot_results = SnapshotResults::new();
+    run_time_panel_and_save_snapshot(
+        &test_context,
+        TimePanel::default(),
+        "time_panel_two_sections",
+        &mut snapshot_results,
+        &RunOptions {
+            height: 300.0,
+            expand_all: false,
+            mark_chunks_used_or_missing: vec![],
+        },
+    );
+}
 
 #[test]
 pub fn time_panel_dense_data() {

@@ -649,6 +649,13 @@ impl EntityDb {
         self.storage_engine.read().store().time_range(timeline)
     }
 
+    /// Data time ranges for gap collapsing in the time panel.
+    ///
+    /// Only available for redap connections with manifests.
+    pub fn data_time_ranges_for(&self, timeline: &TimelineName) -> Option<&[AbsoluteTimeRange]> {
+        self.rrd_manifest_index.data_time_ranges_for(timeline)
+    }
+
     /// Returns the total number of temporal rows on the given timeline across all entities.
     pub fn num_temporal_rows_on_timeline(&self, timeline: &TimelineName) -> u64 {
         self.data_meta_per_timeline.row_count_for_timeline(timeline)

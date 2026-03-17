@@ -1669,7 +1669,14 @@ fn initialize_time_ranges_ui(
     if let Some(time_type) = store_ctx.time_ctrl.time_type()
         && let Some(full_timeline_range) = store_ctx.db.time_range_for(timeline)
     {
-        let timeline_axis = TimelineAxis::new(time_type, &[full_timeline_range]);
+        let data_ranges = store_ctx.db.data_time_ranges_for(timeline);
+        let timeline_axis = if let Some(ranges) = data_ranges
+            && !ranges.is_empty()
+        {
+            TimelineAxis::new(time_type, ranges)
+        } else {
+            TimelineAxis::new(time_type, &[full_timeline_range])
+        };
         time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
         time_range.extend(timeline_axis.ranges);
     }
