@@ -299,6 +299,19 @@ pub fn load_mcap(
         .plan(mcap, &summary)?
         .run(mcap, &summary, time_type, &mut send_chunk)?;
 
+    // Extract URDF from robot_description topics and convert to 3D visualization chunks.
+    // Non-fatal: errors here should never prevent the rest of the MCAP from loading.
+    // TODO(michael): make the URDF extraction a proper decoder.
+    if selected_decoders.contains(&DecoderIdentifier::from("urdf"))
+        && let Err(err) = super::robot_description::extract_urdf_from_robot_descriptions(
+            mcap,
+            &summary,
+            &mut send_chunk,
+        )
+    {
+        re_log::warn_once!("Failed to extract URDF from robot_description topics: {err}");
+    }
+
     Ok(())
 }
 

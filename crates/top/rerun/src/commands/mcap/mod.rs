@@ -21,8 +21,13 @@ fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
 }
 
 fn possible_decoders() -> clap::builder::PossibleValuesParser {
-    static DECODER_IDS: std::sync::LazyLock<Vec<String>> =
-        std::sync::LazyLock::new(|| DecoderRegistry::all_builtin(true).all_identifiers());
+    static DECODER_IDS: std::sync::LazyLock<Vec<String>> = std::sync::LazyLock::new(|| {
+        let mut ids = DecoderRegistry::all_builtin(true).all_identifiers();
+        ids.push("urdf".to_owned());
+        ids.sort();
+        ids.dedup();
+        ids
+    });
     clap::builder::PossibleValuesParser::new(
         DECODER_IDS.iter().map(String::as_str).collect::<Vec<_>>(),
     )

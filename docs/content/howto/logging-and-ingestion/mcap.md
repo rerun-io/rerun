@@ -66,6 +66,7 @@ Each layer extracts different types of information from the MCAP source and each
 - **`ros2msg`**: Provides semantic conversion of common ROS2 message types into Rerun's visualization components
 - **`ros2_reflection`**: Automatically decodes ROS2 messages using reflection
 - **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information
+- **`urdf`**: Uses Rerun's built-in URDF loader when a ROS 2 `/robot_description` string topic is present
 
 By default, Rerun analyzes an MCAP file to determine which decoders are active to provide the most comprehensive view of your data, while avoiding duplication.
 You can also choose to activate only specific decoders that are relevant to your use case.
@@ -78,6 +79,9 @@ rerun mcap convert input.mcap -d protobuf -d stats -o output.rrd
 
 # Use multiple decoders for different perspectives
 rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
+
+# Add robot geometry from robot_description topics
+rerun mcap convert input.mcap -d ros2msg -d urdf -o output.rrd
 ```
 
 For a detailed explanation of how each decoder works and when to use them, see [Decoders Explained](../../concepts/logging-and-ingestion/mcap/decoders-explained.md).

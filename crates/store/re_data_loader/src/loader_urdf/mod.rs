@@ -1,15 +1,16 @@
 //! Rerun data loader and utilities for URDF files.
 
 pub mod joint_transform;
+mod robot_description_parser;
 mod urdf_tree;
+pub(crate) use robot_description_parser::build_urdf_chunks_from_xml;
 pub use urdf_tree::UrdfTree;
 
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, bail};
 use crossbeam::channel::Sender;
-use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
-use re_log_types::StoreId;
+use re_chunk::{Chunk, ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transform3D};
 use re_sdk_types::components::Color;
 use re_sdk_types::datatypes::{Rgba32, Vec3D};
@@ -25,28 +26,19 @@ fn is_urdf_file(path: impl AsRef<Path>) -> bool {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("urdf"))
 }
 
-fn send_chunk_builder(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
-    chunk: ChunkBuilder,
-) -> anyhow::Result<()> {
-    re_quota_channel::send_crossbeam(
-        tx,
-        LoadedData::Chunk(UrdfDataLoader.name(), store_id.clone(), chunk.build()?),
-    )?;
+fn emit_chunk_builder(emit: &mut dyn FnMut(Chunk), chunk: ChunkBuilder) -> anyhow::Result<()> {
+    emit(chunk.build()?);
     Ok(())
 }
 
-fn send_archetype(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
+fn emit_archetype(
+    emit: &mut dyn FnMut(Chunk),
     entity_path: EntityPath,
     timepoint: &TimePoint,
     archetype: &impl AsComponents,
 ) -> anyhow::Result<()> {
-    send_chunk_builder(
-        tx,
-        store_id,
+    emit_chunk_builder(
+        emit,
         ChunkBuilder::new(ChunkId::new(), entity_path).with_archetype(
             RowId::new(),
             timepoint.clone(),
@@ -80,15 +72,31 @@ impl DataLoader for UrdfDataLoader {
         let robot = urdf_rs::read_file(&filepath)
             .with_context(|| format!("Path: {}", filepath.display()))?;
 
-        log_robot(
+        let store_id = settings.opened_store_id_or_recommended();
+        let mut send_error = None;
+        let mut emit = |chunk| {
+            if send_error.is_none() {
+                send_error = re_quota_channel::send_crossbeam(
+                    &tx,
+                    LoadedData::Chunk(Self.name(), store_id.clone(), chunk),
+                )
+                .err();
+            }
+        };
+
+        emit_robot(
+            &mut emit,
             robot,
-            &filepath,
-            &tx,
-            &settings.opened_store_id_or_recommended(),
+            filepath.parent().map(|path| path.to_path_buf()),
             &settings.entity_path_prefix,
             &settings.timepoint.clone().unwrap_or_default(),
+            true,
         )
         .with_context(|| "Failed to load URDF file!")?;
+
+        if let Some(err) = send_error {
+            return Err(anyhow::anyhow!(err.to_string()).into());
+        }
 
         Ok(())
     }
@@ -109,56 +117,68 @@ impl DataLoader for UrdfDataLoader {
         let robot = urdf_rs::read_from_string(&String::from_utf8_lossy(&contents))
             .with_context(|| format!("Path: {}", filepath.display()))?;
 
-        log_robot(
+        let store_id = settings.opened_store_id_or_recommended();
+        let mut send_error = None;
+        let mut emit = |chunk| {
+            if send_error.is_none() {
+                send_error = re_quota_channel::send_crossbeam(
+                    &tx,
+                    LoadedData::Chunk(Self.name(), store_id.clone(), chunk),
+                )
+                .err();
+            }
+        };
+
+        emit_robot(
+            &mut emit,
             robot,
-            &filepath,
-            &tx,
-            &settings.opened_store_id_or_recommended(),
+            filepath.parent().map(|path| path.to_path_buf()),
             &settings.entity_path_prefix,
             &settings.timepoint.clone().unwrap_or_default(),
+            true,
         )
         .with_context(|| "Failed to load URDF file!")?;
+
+        if let Some(err) = send_error {
+            return Err(anyhow::anyhow!(err.to_string()).into());
+        }
 
         Ok(())
     }
 }
 
-fn log_robot(
+pub(crate) fn emit_robot(
+    emit: &mut dyn FnMut(Chunk),
     robot: urdf_rs::Robot,
-    filepath: &Path,
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
+    urdf_dir: Option<PathBuf>,
     entity_path_prefix: &Option<EntityPath>,
     timepoint: &TimePoint,
+    include_joint_transforms: bool,
 ) -> anyhow::Result<()> {
-    let urdf_dir = filepath.parent().map(|path| path.to_path_buf());
-
     let urdf_tree = UrdfTree::new(robot, urdf_dir, entity_path_prefix.clone())
         .with_context(|| "Failed to build URDF tree!")?;
 
     // The robot's root coordinate frame_id.
-    send_archetype(
-        tx,
-        store_id,
+    emit_archetype(
+        emit,
         urdf_tree.log_paths.root.clone(),
         timepoint,
         &CoordinateFrame::update_fields().with_frame(urdf_tree.root().name.clone()),
     )?;
 
-    let transforms = walk_tree(&urdf_tree, tx, store_id, timepoint, &urdf_tree.root().name)?;
+    let transforms = walk_tree(emit, &urdf_tree, timepoint, &urdf_tree.root().name)?;
 
-    // Send all transforms as rows in a single chunk.
-    if !transforms.is_empty() {
-        send_static_transforms_batch(tx, store_id, &urdf_tree.log_paths.transforms, &transforms)?;
+    // Emit all transforms as rows in a single chunk.
+    if include_joint_transforms && !transforms.is_empty() {
+        emit_static_transforms_batch(emit, &urdf_tree.log_paths.transforms, &transforms)?;
     }
 
     Ok(())
 }
 
 fn walk_tree(
+    emit: &mut dyn FnMut(Chunk),
     urdf_tree: &UrdfTree,
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
     timepoint: &TimePoint,
     link_name: &str,
 ) -> anyhow::Result<Vec<Transform3D>> {
@@ -167,7 +187,7 @@ fn walk_tree(
         .with_context(|| format!("Link {link_name:?} missing from map"))?;
     re_log::debug_assert_eq!(link_name, link.name);
 
-    log_link(urdf_tree, tx, store_id, timepoint, link)?;
+    emit_link(urdf_tree, timepoint, link, emit)?;
 
     let Some(joints) = urdf_tree.get_children(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
@@ -179,8 +199,7 @@ fn walk_tree(
         joint_transforms_for_link.push(get_joint_transform(joint));
 
         // Recurse
-        let mut child_transforms =
-            walk_tree(urdf_tree, tx, store_id, timepoint, &joint.child.link)?;
+        let mut child_transforms = walk_tree(emit, urdf_tree, timepoint, &joint.child.link)?;
         joint_transforms_for_link.append(&mut child_transforms);
     }
 
@@ -205,13 +224,12 @@ fn get_joint_transform(joint: &Joint) -> Transform3D {
     transform_from_pose(origin, parent.link.clone(), child.link.clone())
 }
 
-/// Send a batch of static transforms as a single chunk.
+/// Emit a batch of static transforms as a single chunk.
 ///
 /// We always do this statically for URDF, because this allows users to override them later
 /// on any other transform entity of their choice.
-fn send_static_transforms_batch(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
+fn emit_static_transforms_batch(
+    emit: &mut dyn FnMut(Chunk),
     transforms_path: &EntityPath,
     transforms: &[Transform3D],
 ) -> anyhow::Result<()> {
@@ -221,7 +239,7 @@ fn send_static_transforms_batch(
         chunk = chunk.with_archetype(RowId::new(), TimePoint::STATIC, transform);
     }
 
-    send_chunk_builder(tx, store_id, chunk)
+    emit_chunk_builder(emit, chunk)
 }
 
 fn transform_from_pose(
@@ -254,25 +272,22 @@ fn instance_poses_from_pose(origin: &urdf_rs::Pose, scale: Option<Vec3D>) -> Ins
     poses
 }
 
-fn send_instance_pose_with_frame(
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
+fn emit_instance_pose_with_frame(
+    emit: &mut dyn FnMut(Chunk),
     entity_path: EntityPath,
     timepoint: &TimePoint,
     origin: &urdf_rs::Pose,
     parent_frame: String,
     scale: Option<Vec3D>,
 ) -> anyhow::Result<()> {
-    send_archetype(
-        tx,
-        store_id,
+    emit_archetype(
+        emit,
         entity_path.clone(),
         timepoint,
         &instance_poses_from_pose(origin, scale),
     )?;
-    send_archetype(
-        tx,
-        store_id,
+    emit_archetype(
+        emit,
         entity_path,
         timepoint,
         &CoordinateFrame::update_fields().with_frame(parent_frame),
@@ -289,12 +304,11 @@ fn extract_instance_scale(geometry: &Geometry) -> Option<Vec3D> {
     }
 }
 
-fn log_link(
+fn emit_link(
     urdf_tree: &UrdfTree,
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
     timepoint: &TimePoint,
     link: &urdf_rs::Link,
+    emit: &mut dyn FnMut(Chunk),
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
         name: link_name,
@@ -323,9 +337,8 @@ fn log_link(
 
         // A visual geometry has no frame ID of its own and has a constant pose,
         // so we attach it to the link using an instance pose.
-        send_instance_pose_with_frame(
-            tx,
-            store_id,
+        emit_instance_pose_with_frame(
+            emit,
             visual_entity_path.clone(),
             timepoint,
             origin,
@@ -333,10 +346,9 @@ fn log_link(
             instance_scale,
         )?;
 
-        log_geometry(
+        emit_geometry(
+            emit,
             urdf_tree,
-            tx,
-            store_id,
             visual_entity_path,
             geometry,
             material,
@@ -356,9 +368,8 @@ fn log_link(
 
         // A collision geometry has no frame ID of its own and has a constant pose,
         // so we attach it to the link using an instance pose.
-        send_instance_pose_with_frame(
-            tx,
-            store_id,
+        emit_instance_pose_with_frame(
+            emit,
             collision_entity_path.clone(),
             timepoint,
             origin,
@@ -366,10 +377,9 @@ fn log_link(
             instance_scale,
         )?;
 
-        log_geometry(
+        emit_geometry(
+            emit,
             urdf_tree,
-            tx,
-            store_id,
             collision_entity_path.clone(),
             geometry,
             None,
@@ -379,9 +389,8 @@ fn log_link(
         if false {
             // TODO(michael): consider hiding collision geometries by default.
             // TODO(#6541): the viewer should respect the `Visible` component.
-            send_chunk_builder(
-                tx,
-                store_id,
+            emit_chunk_builder(
+                emit,
                 ChunkBuilder::new(ChunkId::new(), collision_entity_path).with_component_batch(
                     RowId::new(),
                     timepoint.clone(),
@@ -434,10 +443,9 @@ fn load_ros_resource(
     }
 }
 
-fn log_geometry(
+fn emit_geometry(
+    emit: &mut dyn FnMut(Chunk),
     urdf_tree: &UrdfTree,
-    tx: &Sender<LoadedData>,
-    store_id: &StoreId,
     entity_path: EntityPath,
     geometry: &Geometry,
     material: Option<&urdf_rs::Material>,
@@ -464,14 +472,13 @@ fn log_geometry(
                 }
             }
 
-            send_archetype(tx, store_id, entity_path, timepoint, &asset3d)?;
+            emit_archetype(emit, entity_path, timepoint, &asset3d)?;
         }
         Geometry::Box {
             size: Vec3([x, y, z]),
         } => {
-            send_archetype(
-                tx,
-                store_id,
+            emit_archetype(
+                emit,
                 entity_path,
                 timepoint,
                 &re_sdk_types::archetypes::Boxes3D::from_sizes([Vec3D::new(
@@ -482,9 +489,8 @@ fn log_geometry(
         }
         Geometry::Cylinder { radius, length } => {
             // URDF and Rerun both use Z as the main axis
-            send_archetype(
-                tx,
-                store_id,
+            emit_archetype(
+                emit,
                 entity_path,
                 timepoint,
                 &re_sdk_types::archetypes::Cylinders3D::from_lengths_and_radii(
@@ -496,9 +502,8 @@ fn log_geometry(
         }
         Geometry::Capsule { radius, length } => {
             // URDF and Rerun both use Z as the main axis
-            send_archetype(
-                tx,
-                store_id,
+            emit_archetype(
+                emit,
                 entity_path,
                 timepoint,
                 &re_sdk_types::archetypes::Capsules3D::from_lengths_and_radii(
@@ -509,9 +514,8 @@ fn log_geometry(
             )?;
         }
         Geometry::Sphere { radius } => {
-            send_archetype(
-                tx,
-                store_id,
+            emit_archetype(
+                emit,
                 entity_path,
                 timepoint,
                 &re_sdk_types::archetypes::Ellipsoids3D::from_radii([*radius as f32])
