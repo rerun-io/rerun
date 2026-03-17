@@ -81,7 +81,7 @@ pub struct TestContext {
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
 
-    egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
+    pub egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
     called_setup_kittest_for_rendering: AtomicBool,
 }
 

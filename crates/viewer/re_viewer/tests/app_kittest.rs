@@ -98,3 +98,21 @@ fn colormap_selector_ui() {
     harness.run();
     harness.snapshot("colormap_selector_open");
 }
+
+#[test]
+fn ci_runners_use_software_rendering() {
+    if std::env::var("CI").is_ok() {
+        let test_context = TestContext::new();
+        let _viewer = test_context.setup_kittest_for_rendering_3d([200.0, 100.0]);
+        let render_state_guard = test_context.egui_render_state.lock();
+        let render_state = render_state_guard.as_ref().unwrap();
+        assert_eq!(
+            render_state.adapter.get_info().device_type,
+            wgpu::DeviceType::Cpu
+        );
+        assert_eq!(
+            render_state.adapter.get_info().backend,
+            wgpu::Backend::Vulkan
+        );
+    }
+}
