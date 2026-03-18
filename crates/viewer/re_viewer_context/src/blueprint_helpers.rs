@@ -210,6 +210,9 @@ pub trait BlueprintContext {
     }
 
     /// Queries a raw component from the currently active blueprint.
+    ///
+    /// Returns `None` for empty arrays, which are written by
+    /// [`Self::clear_blueprint_component`] to represent an unset value.
     fn raw_latest_at_in_current_blueprint(
         &self,
         entity_path: &EntityPath,
@@ -219,9 +222,13 @@ pub trait BlueprintContext {
             .latest_at(self.blueprint_query(), entity_path, [component])
             .get(component)?
             .component_batch_raw(component)
+            .filter(|a| !a.is_empty())
     }
 
     /// Queries a raw component from the default blueprint.
+    ///
+    /// Returns `None` for empty arrays, which are written by
+    /// [`Self::clear_blueprint_component`] to represent an unset value.
     fn raw_latest_at_in_default_blueprint(
         &self,
         entity_path: &EntityPath,
@@ -231,6 +238,7 @@ pub trait BlueprintContext {
             .latest_at(self.blueprint_query(), entity_path, [component])
             .get(component)?
             .component_batch_raw(component)
+            .filter(|a| !a.is_empty())
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.

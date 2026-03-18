@@ -162,10 +162,13 @@ impl ViewProperty {
         self.query_results.get(component)?.row_id()
     }
 
+    /// Returns `None` for empty arrays, which are written by
+    /// [`ViewerContext::clear_blueprint_component`] to represent an unset value.
     pub fn component_raw(&self, component: ComponentIdentifier) -> Option<arrow::array::ArrayRef> {
         self.query_results
             .get(component)?
             .component_batch_raw(component)
+            .filter(|a| !a.is_empty())
     }
 
     fn component_or_fallback_raw(
