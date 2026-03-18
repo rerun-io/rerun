@@ -83,5 +83,8 @@ tokio.workspace = true
 tracing-tracy = { workspace = true, optional = true }
 pyo3 = { workspace = true, optional = true }
 
+[dev-dependencies]
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
+
 [lints]
 workspace = true

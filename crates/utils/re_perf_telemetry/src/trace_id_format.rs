@@ -285,6 +285,101 @@ mod tests {
         );
     }
 
+    /// Verifies the `OTel` mechanism used by the Data Platform async tasks to suppress
+    /// span export while keeping `trace_id` in logs: setting an unsampled parent
+    /// context on a child span causes the `parentbased_traceidratio` sampler to mark
+    /// the child (and its subtree) as not-sampled, so spans are not exported, but the
+    /// `OTel` context is still valid and `trace_id` still appears in log lines.
+    #[test]
+    fn unsampled_child_has_trace_id_but_no_exported_spans() {
+        use opentelemetry::trace::{
+            SpanContext, TraceContextExt as _, TraceFlags, TracerProvider as _,
+        };
+        use opentelemetry_sdk::trace::{InMemorySpanExporter, SimpleSpanProcessor};
+        use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+
+        let exporter = InMemorySpanExporter::default();
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_span_processor(SimpleSpanProcessor::new(exporter.clone()))
+            .build();
+
+        let writer = CaptureWriter::new();
+
+        let otel_layer = tracing_opentelemetry::layer().with_tracer(provider.tracer("test"));
+
+        let fmt_layer = tracing_subscriber::fmt::layer()
+            .with_writer(writer.clone())
+            .with_target(false)
+            .with_file(false)
+            .with_line_number(false)
+            .json()
+            .map_event_format(|f| TraceIdFormat::new(f, true))
+            .with_filter(tracing_subscriber::filter::LevelFilter::INFO);
+
+        let subscriber = tracing_subscriber::registry()
+            .with(otel_layer)
+            .with(fmt_layer);
+
+        tracing::subscriber::with_default(subscriber, || {
+            // 1. Create a sampled parent span (this one SHOULD be exported)
+            let parent = tracing::info_span!("parent_span");
+            let _parent_enter = parent.enter();
+
+            // 2. Create a child span and set its parent to an unsampled context
+            let child = tracing::info_span!("child_span");
+            {
+                let cx = opentelemetry::Context::current();
+                let parent_otel_span = cx.span();
+                let parent_sc = parent_otel_span.span_context();
+                assert!(
+                    parent_sc.is_valid(),
+                    "parent should have a valid span context"
+                );
+
+                let unsampled_sc = SpanContext::new(
+                    parent_sc.trace_id(),
+                    parent_sc.span_id(),
+                    TraceFlags::default(), // not sampled
+                    true,                  // remote
+                    parent_sc.trace_state().clone(),
+                );
+                let unsampled_cx = cx.with_remote_span_context(unsampled_sc);
+                child.set_parent(unsampled_cx).ok();
+            }
+
+            // 3. Enter the child and emit a log — should still have trace_id
+            let _child_enter = child.enter();
+            tracing::info!("inside unsampled child");
+        });
+
+        // Check that trace_id appeared in the log output
+        let output = writer.output();
+        let parsed: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
+        let trace_id = parsed["trace_id"].as_str();
+        assert!(
+            trace_id.is_some(),
+            "trace_id should be present in logs even for unsampled child: {output}"
+        );
+        assert_ne!(
+            trace_id.unwrap(),
+            "00000000000000000000000000000000",
+            "trace_id should be a real (non-zero) value: {output}"
+        );
+
+        // Check that only the parent span was exported, not the child
+        provider.force_flush().ok();
+        let spans = exporter.get_finished_spans().unwrap();
+        let span_names: Vec<&str> = spans.iter().map(|s| s.name.as_ref()).collect();
+        assert!(
+            span_names.contains(&"parent_span"),
+            "parent_span should be exported: {span_names:?}"
+        );
+        assert!(
+            !span_names.contains(&"child_span"),
+            "child_span should NOT be exported (unsampled parent): {span_names:?}"
+        );
+    }
+
     #[test]
     fn json_output_is_valid_json_with_fields() {
         let provider = test_tracer_provider();
