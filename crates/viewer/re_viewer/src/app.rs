@@ -3836,7 +3836,23 @@ impl eframe::App for App {
         // Must be called before `read_context` below.
         if let Route::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
-                self.state.navigation.reset();
+                // The stream finished and may have produced a recording without triggering
+                // automatic navigation. So we try that before defaulting to showing the
+                // Welcome screen.
+                let loaded_recording = store_hub
+                    .find_recording_store_by_source(source)
+                    .map(|db| db.store_id().clone());
+
+                if let Some(store_id) = loaded_recording {
+                    re_log::debug!("Stream completed, navigating to loaded recording {store_id:?}");
+                    store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry);
+                    self.state.navigation.replace(Route::LocalRecording {
+                        recording_id: store_id,
+                    });
+                } else {
+                    re_log::debug!("No recording found from loading source, resetting navigation");
+                    self.state.navigation.reset();
+                }
             }
         } else {
             // If the current route points to a stale recording, find a new valid state.

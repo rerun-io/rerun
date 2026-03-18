@@ -212,7 +212,7 @@ impl WebHandle {
                         // TODO(andreas): should follow be part of the fragments?
                         follow: follow.unwrap_or(false),
                         select_redap_source_when_loaded: true,
-                        show_loader: false,
+                        show_loader: true,
                     },
                     &app.command_sender,
                 );
