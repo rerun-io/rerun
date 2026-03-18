@@ -28,9 +28,9 @@ use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
 
-use crate::Error;
 use crate::ingestion_statistics::IngestionStatistics;
 use crate::rrd_manifest_index::RrdManifestIndex;
+use crate::Error;
 
 // ----------------------------------------------------------------------------
 
@@ -1390,7 +1390,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn format_with_components() -> anyhow::Result<()> {
+    fn format_with_components() -> crate::Result<()> {
         re_log::setup_logging();
 
         let mut db = EntityDb::new(StoreId::random(

@@ -688,7 +688,7 @@ mod tests {
     }
 
     #[test]
-    fn store_events() -> anyhow::Result<()> {
+    fn store_events() -> crate::ChunkStoreResult<()> {
         let mut store = ChunkStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),

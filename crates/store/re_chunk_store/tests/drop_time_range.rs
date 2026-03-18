@@ -9,7 +9,7 @@ use re_log_types::example_components::{MyColor, MyPoints};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimePoint, Timeline};
 
 #[test]
-fn drop_time_range() -> anyhow::Result<()> {
+fn drop_time_range() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let entity_path = EntityPath::from("this/that");

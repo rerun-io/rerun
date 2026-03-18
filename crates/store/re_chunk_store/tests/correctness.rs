@@ -7,8 +7,8 @@ use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreError, ChunkTrackingMode, LatestAtQuery};
 use re_log_types::example_components::{MyIndex, MyPoint, MyPoints};
 use re_log_types::{
-    Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
-    build_log_time,
+    build_frame_nr, build_log_time, Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline,
+    Timestamp,
 };
 use re_sdk_types::ComponentIdentifier;
 
@@ -46,7 +46,7 @@ fn query_latest_component<C: re_types_core::Component>(
 // ---
 
 #[test]
-fn row_id_ordering_semantics() -> anyhow::Result<()> {
+fn row_id_ordering_semantics() -> re_chunk_store::ChunkStoreResult<()> {
     let entity_path: EntityPath = "some_entity".into();
 
     let timeline_frame = Timeline::new_sequence("frame");
@@ -265,7 +265,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 // ---
 
 #[test]
-fn write_errors() -> anyhow::Result<()> {
+fn write_errors() -> re_chunk_store::ChunkStoreResult<()> {
     re_log::setup_logging();
 
     let entity_path = EntityPath::from("this/that");
@@ -304,7 +304,7 @@ fn write_errors() -> anyhow::Result<()> {
 // ---
 
 #[test]
-fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
+fn latest_at_emptiness_edge_cases() -> re_chunk_store::ChunkStoreResult<()> {
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
@@ -384,7 +384,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
 // ---
 
 #[test]
-fn entity_min_time_correct() -> anyhow::Result<()> {
+fn entity_min_time_correct() -> re_chunk_store::ChunkStoreResult<()> {
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
@@ -413,11 +413,9 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    assert!(
-        store
-            .entity_min_time(timeline_wrong_name.name(), &entity_path)
-            .is_none()
-    );
+    assert!(store
+        .entity_min_time(timeline_wrong_name.name(), &entity_path)
+        .is_none());
     assert_eq!(
         store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(42))
@@ -426,11 +424,9 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now))
     );
-    assert!(
-        store
-            .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
-            .is_none()
-    );
+    assert!(store
+        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
+        .is_none());
 
     // insert row in the future, these shouldn't be visible
     let chunk = Chunk::builder(entity_path.clone())
@@ -444,11 +440,9 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    assert!(
-        store
-            .entity_min_time(timeline_wrong_name.name(), &entity_path)
-            .is_none()
-    );
+    assert!(store
+        .entity_min_time(timeline_wrong_name.name(), &entity_path)
+        .is_none());
     assert_eq!(
         store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(42))
@@ -457,11 +451,9 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now))
     );
-    assert!(
-        store
-            .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
-            .is_none()
-    );
+    assert!(store
+        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
+        .is_none());
 
     // insert row in the past, these should be visible
     let chunk = Chunk::builder(entity_path.clone())
@@ -475,11 +467,9 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    assert!(
-        store
-            .entity_min_time(timeline_wrong_name.name(), &entity_path)
-            .is_none()
-    );
+    assert!(store
+        .entity_min_time(timeline_wrong_name.name(), &entity_path)
+        .is_none());
     assert_eq!(
         store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(32))
@@ -488,11 +478,9 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now_minus_one))
     );
-    assert!(
-        store
-            .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
-            .is_none()
-    );
+    assert!(store
+        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
+        .is_none());
 
     Ok(())
 }

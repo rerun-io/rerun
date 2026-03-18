@@ -78,11 +78,20 @@ pub enum ChunkStoreError {
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),
 
-    #[error("Failed to load data, parsing error: {0:#}")]
-    Codec(#[from] re_log_encoding::CodecError),
-
     #[error("Failed to load data, semantic error: {0:#}")]
     Sorbet(#[from] re_sorbet::SorbetError),
+
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] re_types_core::SerializationError),
+
+    #[error("Failed to decode: {0:#}")]
+    Decode(#[from] re_log_encoding::DecodeError),
+
+    #[error("I/O error on {}: {err}", path.display())]
+    Io { path: std::path::PathBuf, err: std::io::Error },
+
+    #[error("Unknown store ID: {0:?}")]
+    UnknownStoreId(re_log_types::StoreId),
 
     /// Error when parsing configuration from environment.
     #[error("Failed to parse config: '{name}={value}': {err}")]

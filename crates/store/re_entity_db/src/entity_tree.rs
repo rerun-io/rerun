@@ -223,7 +223,7 @@ mod tests {
     use crate::EntityDb;
 
     #[test]
-    fn deleting_descendants() -> anyhow::Result<()> {
+    fn deleting_descendants() -> crate::Result<()> {
         re_log::setup_logging();
 
         let mut db = EntityDb::new(StoreId::random(

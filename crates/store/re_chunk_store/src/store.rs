@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
@@ -994,25 +994,23 @@ impl ChunkStore {
     pub fn from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-    ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
+    ) -> ChunkStoreResult<BTreeMap<StoreId, Self>> {
         let path_to_rrd = path_to_rrd.as_ref();
 
         re_tracing::profile_function!(path_to_rrd.to_string_lossy());
 
-        use anyhow::Context as _;
-
         let mut stores = BTreeMap::new();
 
-        let rrd_file = std::fs::File::open(path_to_rrd)
-            .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
+        let rrd_file = std::fs::File::open(path_to_rrd).map_err(|err| ChunkStoreError::Io {
+            path: path_to_rrd.to_owned(),
+            err,
+        })?;
 
-        let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))
-            .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
+        let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))?;
 
         // TODO(cmc): offload the decoding to a background thread.
-        for res in decoder {
-            let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?}"))?;
-            match msg {
+        for msg in decoder {
+            match msg? {
                 re_log_types::LogMsg::SetStoreInfo(info) => {
                     stores.entry(info.info.store_id.clone()).or_insert_with(|| {
                         Self::new(info.info.store_id.clone(), store_config.clone())
@@ -1021,15 +1019,12 @@ impl ChunkStore {
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
                     let Some(store) = stores.get_mut(&store_id) else {
-                        anyhow::bail!("unknown store ID: {store_id:?}");
+                        return Err(ChunkStoreError::UnknownStoreId(store_id));
                     };
 
-                    let chunk = Chunk::from_arrow_msg(&msg)
-                        .with_context(|| format!("couldn't decode chunk {path_to_rrd:?}"))?;
+                    let chunk = Chunk::from_arrow_msg(&msg)?;
 
-                    store
-                        .insert_chunk(&Arc::new(chunk))
-                        .with_context(|| format!("couldn't insert chunk {path_to_rrd:?}"))?;
+                    store.insert_chunk(&Arc::new(chunk))?;
                 }
 
                 re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
@@ -1048,10 +1043,8 @@ impl ChunkStore {
     pub fn from_log_msgs(
         store_config: &ChunkStoreConfig,
         log_msgs: impl IntoIterator<Item = re_log_types::LogMsg>,
-    ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
+    ) -> ChunkStoreResult<BTreeMap<StoreId, Self>> {
         re_tracing::profile_function!();
-
-        use anyhow::Context as _;
 
         let mut stores = BTreeMap::new();
 
@@ -1067,15 +1060,12 @@ impl ChunkStore {
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
                     let Some(store) = stores.get_mut(&store_id) else {
-                        anyhow::bail!("unknown store ID: {store_id:?}");
+                        return Err(ChunkStoreError::UnknownStoreId(store_id));
                     };
 
-                    let chunk = Chunk::from_arrow_msg(&msg)
-                        .with_context(|| "couldn't decode chunk".to_owned())?;
+                    let chunk = Chunk::from_arrow_msg(&msg)?;
 
-                    store
-                        .insert_chunk(&Arc::new(chunk))
-                        .with_context(|| "couldn't insert chunk".to_owned())?;
+                    store.insert_chunk(&Arc::new(chunk))?;
                 }
 
                 re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
@@ -1097,7 +1087,7 @@ impl ChunkStore {
     pub fn handle_from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-    ) -> anyhow::Result<BTreeMap<StoreId, ChunkStoreHandle>> {
+    ) -> ChunkStoreResult<BTreeMap<StoreId, ChunkStoreHandle>> {
         Ok(Self::from_rrd_filepath(store_config, path_to_rrd)?
             .into_iter()
             .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
