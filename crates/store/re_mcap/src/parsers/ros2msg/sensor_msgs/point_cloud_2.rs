@@ -607,6 +607,7 @@ mod tests {
     use byteorder::LittleEndian;
     use cdr_encoding::to_vec;
     use mcap::{Channel, Message};
+    use re_log_types::TimeType;
 
     use super::*;
     use crate::parsers::decode::ParserContext;
@@ -635,7 +636,11 @@ mod tests {
     #[test]
     fn ignores_zero_point_step_after_valid_message() {
         let mut parser = PointCloud2MessageParser::new(2);
-        let mut ctx = ParserContext::new(EntityPath::from("/nav2_percep_cloud"));
+        let mut ctx = ParserContext::new(
+            EntityPath::from("/nav2_percep_cloud"),
+            "/nav2_percep_cloud",
+            TimeType::TimestampNs,
+        );
 
         let valid_message = sensor_msgs::PointCloud2 {
             header: std_msgs::Header {
