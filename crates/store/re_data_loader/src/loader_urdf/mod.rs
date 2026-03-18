@@ -456,9 +456,12 @@ fn emit_geometry(
             use re_sdk_types::components::MediaType;
 
             let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
-            let asset3d =
-                Asset3D::from_file_contents(mesh_bytes, MediaType::guess_from_path(filename))
-                    .with_albedo_factor(material_albedo_factor(material));
+            let mut asset3d =
+                Asset3D::from_file_contents(mesh_bytes, MediaType::guess_from_path(filename));
+
+            if let Some(albedo_factor) = material_albedo_factor(material) {
+                asset3d = asset3d.with_albedo_factor(albedo_factor);
+            }
 
             if let Some(material) = material {
                 let urdf_rs::Material {
@@ -528,10 +531,11 @@ fn emit_geometry(
 
 /// Extracts the RGBA color from a URDF material. Falls back to white if no color is specified.
 fn material_color(material: Option<&urdf_rs::Material>) -> Color {
-    Color::new(material_albedo_factor(material))
+    Color::new(material_albedo_factor(material).unwrap_or(Rgba32::WHITE))
 }
 
-fn material_albedo_factor(material: Option<&urdf_rs::Material>) -> Rgba32 {
+/// Extracts the URDF material color for mesh albedo, if one is explicitly specified.
+fn material_albedo_factor(material: Option<&urdf_rs::Material>) -> Option<Rgba32> {
     material
         .and_then(|material| material.color.as_ref())
         .map(|color| {
@@ -542,7 +546,6 @@ fn material_albedo_factor(material: Option<&urdf_rs::Material>) -> Rgba32 {
             // TODO(emilk): is this linear or sRGB?
             Rgba32::from_linear_unmultiplied_rgba_f32(*r as f32, *g as f32, *b as f32, *a as f32)
         })
-        .unwrap_or(Rgba32::WHITE)
 }
 
 fn quat_from_rpy(rpy: &[f64; 3]) -> glam::Quat {
