@@ -26,7 +26,7 @@ impl DataUi for ComponentPath {
                 hits,
             }
             .data_ui(ctx, ui, ui_layout);
-        } else if ctx.db.tree().subtree(&entity_path).is_some() {
+        } else if engine.store().entity_tree().subtree(&entity_path).is_some() {
             let any_missing_chunks = !results.missing_virtual.is_empty();
 
             // TODO(RR-3670): figure out how to handle missing chunks

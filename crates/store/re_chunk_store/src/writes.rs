@@ -186,39 +186,7 @@ impl ChunkStore {
         }
 
         let diffs = self.insert_chunk_impl(chunk, ChunkDirectLineageReport::Volatile)?;
-
-        let mut events: Vec<_> = diffs
-            .into_iter()
-            .map(|diff| ChunkStoreEvent {
-                store_id: self.id.clone(),
-                store_generation: self.generation(),
-                event_id: self
-                    .event_id
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
-            .collect();
-
-        let new_columns = self.schema.on_events(&events);
-
-        if !new_columns.is_empty() {
-            events.push(ChunkStoreEvent {
-                store_id: self.id.clone(),
-                store_generation: self.generation(),
-                event_id: self
-                    .event_id
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff: ChunkStoreDiff::SchemaAddition(crate::ChunkStoreDiffSchemaAddition {
-                    new_columns,
-                }),
-            });
-        }
-
-        if self.config.enable_changelog {
-            Self::on_events(&events);
-        }
-
-        Ok(events)
+        Ok(self.finalize_events(diffs))
     }
 
     fn insert_chunk_impl(
@@ -949,10 +917,8 @@ impl ChunkStore {
 
         self.gc_id += 1; // close enough
 
-        let generation = self.generation();
-
         let Self {
-            id,
+            id: _,
             config: _,
             schema,
             physical_chunks_per_chunk_id: chunks_per_chunk_id,
@@ -969,7 +935,7 @@ impl ChunkStore {
             queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
-            event_id,
+            event_id: _,
         } = self;
 
         schema.drop_entity(entity_path);
@@ -1039,23 +1005,13 @@ impl ChunkStore {
                 *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
-        let events: Vec<_> = dropped_static_chunks
+        let diffs: Vec<_> = dropped_static_chunks
             .into_iter()
             .chain(dropped_temporal_chunks)
             .map(ChunkStoreDiff::deletion)
-            .map(|diff| ChunkStoreEvent {
-                store_id: id.clone(),
-                store_generation: generation.clone(),
-                event_id: event_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
             .collect();
 
-        if self.config.enable_changelog {
-            Self::on_events(&events);
-        }
-
-        events
+        self.finalize_events(diffs)
     }
 }
 

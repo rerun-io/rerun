@@ -85,7 +85,8 @@ fn add_entities_ui(
 ) {
     re_tracing::profile_function!();
 
-    let tree = &ctx.recording().tree();
+    let recording_engine = ctx.recording_engine();
+    let tree = recording_engine.store().entity_tree();
     let query_result = ctx.lookup_query_result(view.id);
     let entity_path_filter = view.contents.entity_path_filter();
     let entities_add_info = create_entity_add_info(ctx, tree, view, query_result);

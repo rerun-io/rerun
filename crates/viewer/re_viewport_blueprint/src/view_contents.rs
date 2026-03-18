@@ -315,7 +315,7 @@ impl ViewContents {
         let root_handle = {
             re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
             executor.add_entity_tree_to_data_results_recursive(
-                ctx.recording.tree(),
+                ctx.recording.storage_engine().store().entity_tree(),
                 &mut data_results,
                 &mut num_matching_entities,
                 &mut num_visualized_entities,
@@ -550,8 +550,10 @@ impl DataQueryPropertyResolver<'_> {
                 // the index in the low 64 bits of the UUID. We extract that index to
                 // build a map from index → existing instruction id.
                 let mut known_ids: IntMap<u64, VisualizerInstructionId> = Default::default();
-                if let Some(subtree) = blueprint
-                    .tree()
+                let bp_engine = blueprint.storage_engine();
+                if let Some(subtree) = bp_engine
+                    .store()
+                    .entity_tree()
                     .subtree(&node.data_result.override_base_path)
                 {
                     for child_tree in subtree.children.values() {

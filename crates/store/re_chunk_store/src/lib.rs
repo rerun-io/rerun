@@ -16,6 +16,7 @@
 
 mod dataframe;
 mod drop_time_range;
+pub mod entity_tree;
 mod events;
 mod gc;
 mod lineage;
@@ -43,6 +44,7 @@ pub use self::dataframe::{
     Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
     ViewContentsSelector,
 };
+pub use self::entity_tree::EntityTree;
 pub use self::events::{
     ChunkComponentMeta, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion,
     ChunkStoreDiffSchemaAddition, ChunkStoreDiffVirtualAddition, ChunkStoreEvent,

@@ -375,7 +375,9 @@ mod tests {
 
         // Insert the manifest virtually.
         let events = store.insert_rrd_manifest(rrd_manifest.clone());
-        manifest_index.append(rrd_manifest).unwrap();
+        manifest_index
+            .append(rrd_manifest, store.entity_tree())
+            .unwrap();
         meta.on_events(&manifest_index, &store, &events);
 
         // Virtual rows should be counted.
@@ -396,7 +398,9 @@ mod tests {
 
         // Load virtually first.
         let events = store.insert_rrd_manifest(rrd_manifest.clone());
-        manifest_index.append(rrd_manifest).unwrap();
+        manifest_index
+            .append(rrd_manifest, store.entity_tree())
+            .unwrap();
         manifest_index.on_events(&store, &events);
         meta.on_events(&manifest_index, &store, &events);
 
@@ -457,7 +461,9 @@ mod tests {
         .unwrap();
 
         let events = store.insert_rrd_manifest(rrd_manifest.clone());
-        manifest_index.append(rrd_manifest).unwrap();
+        manifest_index
+            .append(rrd_manifest, store.entity_tree())
+            .unwrap();
         meta.on_events(&manifest_index, &store, &events);
 
         assert_eq!(meta.row_count_for_timeline(tl.name()), 4);

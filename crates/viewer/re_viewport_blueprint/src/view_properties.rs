@@ -1,5 +1,6 @@
 use arrow::array::ArrayRef;
 use re_chunk::ComponentIdentifier;
+use re_chunk_store::EntityTree;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_query::LatestAtResults;
@@ -7,7 +8,6 @@ use re_log_types::EntityPath;
 use re_sdk_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
-use re_viewer_context::external::re_entity_db::EntityTree;
 use re_viewer_context::{
     BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
     ViewSystemExecutionError, ViewerContext,
@@ -76,8 +76,9 @@ impl ViewProperty {
         archetype_name: ArchetypeName,
         component_descrs: Vec<ComponentDescriptor>,
     ) -> Self {
+        let engine = blueprint_db.storage_engine();
         let blueprint_store_path =
-            entity_path_for_view_property(view_id, blueprint_db.tree(), archetype_name);
+            entity_path_for_view_property(view_id, engine.store().entity_tree(), archetype_name);
 
         let query_results = blueprint_db.latest_at(
             &blueprint_query,

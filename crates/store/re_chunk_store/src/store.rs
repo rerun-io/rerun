@@ -834,6 +834,67 @@ impl ChunkStore {
         &self.config
     }
 
+    /// The hierarchical tree of all entities registered in the store.
+    #[inline]
+    pub fn entity_tree(&self) -> &crate::EntityTree {
+        self.schema.entity_tree()
+    }
+
+    /// Prunes leaf entities from the entity tree that have no indexed data.
+    ///
+    /// Called after store deletions to keep the tree in sync with actual data.
+    fn prune_entity_tree(&mut self) {
+        let static_ids = &self.static_chunk_ids_per_entity;
+        let temporal_ids = &self.temporal_chunk_ids_per_entity;
+        self.schema.prune_entity_tree(&|path| {
+            static_ids.contains_key(path) || temporal_ids.contains_key(path)
+        });
+    }
+
+    /// Converts diffs into store events, prunes the entity tree if there are deletions,
+    /// and notifies subscribers.
+    pub(crate) fn finalize_events(
+        &mut self,
+        diffs: impl IntoIterator<Item = crate::ChunkStoreDiff>,
+    ) -> Vec<crate::ChunkStoreEvent> {
+        let mut events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| crate::ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+
+        let new_columns = self.schema.on_events(&events);
+
+        if !new_columns.is_empty() {
+            events.push(crate::ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff: crate::ChunkStoreDiff::SchemaAddition(crate::ChunkStoreDiffSchemaAddition {
+                    new_columns,
+                }),
+            });
+        }
+
+        if events.iter().any(|e| e.is_deletion()) {
+            self.prune_entity_tree();
+        }
+
+        if self.config.enable_changelog {
+            Self::on_events(&events);
+        }
+
+        events
+    }
+
     /// Iterate over all *physical* chunks in the store, in ascending [`ChunkId`] order.
     #[inline]
     pub fn iter_physical_chunks(&self) -> impl Iterator<Item = &Arc<Chunk>> + '_ {

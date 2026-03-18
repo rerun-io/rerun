@@ -4,7 +4,7 @@ use re_chunk::{ChunkId, TimelineName};
 use re_log::debug_assert;
 use re_log_types::AbsoluteTimeRange;
 
-use crate::{ChunkStore, ChunkStoreEvent};
+use crate::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 
 impl ChunkStore {
     /// Drop all events that are in the given range on the given timeline.
@@ -123,8 +123,7 @@ impl ChunkStore {
         // ------------------
         // Apply the changes:
 
-        let generation = self.generation();
-        let mut events: Vec<ChunkStoreEvent> = vec![];
+        let mut deletion_diffs: Vec<ChunkStoreDiff> = vec![];
 
         for chunk in chunks_to_drop {
             let dels = if deep_removal {
@@ -132,18 +131,11 @@ impl ChunkStore {
             } else {
                 self.remove_chunks_shallow(vec![chunk], None)
             };
-
-            for del in dels {
-                events.push(ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: generation.clone(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff: del.into(),
-                });
-            }
+            deletion_diffs.extend(dels.into_iter().map(ChunkStoreDiff::from));
         }
+
+        let mut events = self.finalize_events(deletion_diffs);
+
         for mut chunk in new_chunks {
             chunk.sort_if_unsorted();
             #[expect(clippy::unwrap_used)] // The chunk came from the store, so it should be fine

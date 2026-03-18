@@ -366,7 +366,20 @@ impl ChunkStore {
             || self.entity_has_physical_temporal_data_on_timeline(entity_path, timeline)
     }
 
-    /// Check whether an entity has any physical static data or any temporal data on any timeline.
+    /// Check whether an entity has any indexed data, physical or virtual.
+    ///
+    /// Returns true if the entity has any static or temporal chunk IDs,
+    /// regardless of whether those chunks are currently loaded in memory.
+    ///
+    /// An entity path can exist in the schema/entity tree but return `false` here
+    /// if all of its chunks have been removed by garbage collection or otherwise removed.
+    #[inline]
+    pub fn entity_has_data(&self, entity_path: &EntityPath) -> bool {
+        self.static_chunk_ids_per_entity.contains_key(entity_path)
+            || self.temporal_chunk_ids_per_entity.contains_key(entity_path)
+    }
+
+    /// Check whether an entity has any physical data.
     ///
     /// This is different from checking if the entity has any component, it also ensures
     /// that some _data_ currently exists in the store for this entity.

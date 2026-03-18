@@ -347,7 +347,8 @@ fn recommended_views_with_image_splits(
 ) {
     re_tracing::profile_function!();
 
-    let tree = ctx.recording().tree();
+    let engine = ctx.recording_engine();
+    let tree = engine.store().entity_tree();
 
     let Some(subtree) = tree.subtree(recommended_origin) else {
         re_log::debug_warn_once!("Ancestor of entity not found in entity tree.");

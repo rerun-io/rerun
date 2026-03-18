@@ -175,7 +175,6 @@ pub struct RrdManifestIndex {
     /// Computed from chunk time ranges when the manifest is complete.
     data_time_ranges: BTreeMap<TimelineName, Vec<AbsoluteTimeRange>>,
 
-    pub entity_tree: crate::EntityTree,
     entity_has_static_data: IntSet<re_chunk::EntityPath>,
 
     full_uncompressed_size: u64,
@@ -188,11 +187,14 @@ impl std::fmt::Debug for RrdManifestIndex {
 }
 
 impl RrdManifestIndex {
-    pub fn append(&mut self, delta: Arc<RrdManifest>) -> CodecResult<()> {
+    pub fn append(
+        &mut self,
+        delta: Arc<RrdManifest>,
+        entity_tree: &re_chunk_store::EntityTree,
+    ) -> CodecResult<()> {
         re_tracing::profile_function!();
 
         self.update_timeline_stats(&delta);
-        self.update_entity_tree(&delta);
         self.update_entity_static_data(&delta);
         self.chunk_prioritizer.on_rrd_manifest(&delta);
 
@@ -246,7 +248,7 @@ impl RrdManifestIndex {
         };
 
         self.sorted_chunks =
-            SortedTemporalChunks::new(&self.entity_tree, new_full_manifest.temporal_map());
+            SortedTemporalChunks::new(entity_tree, new_full_manifest.temporal_map());
 
         self.manifest = Some(new_full_manifest);
 
@@ -282,12 +284,6 @@ impl RrdManifestIndex {
                     self.timelines.insert(*timeline.name(), timeline_range);
                 }
             }
-        }
-    }
-
-    fn update_entity_tree(&mut self, manifest: &RrdManifest) {
-        for entity in manifest.recording_schema().all_entities() {
-            self.entity_tree.on_new_entity(entity);
         }
     }
 
@@ -734,7 +730,6 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
 
         let Self {
             entity_has_static_data,
-            entity_tree,
             manifest,
             sorted_chunks,
             loaded_ranges,
@@ -747,7 +742,6 @@ impl re_byte_size::SizeBytes for RrdManifestIndex {
         } = self;
 
         entity_has_static_data.heap_size_bytes()
-            + entity_tree.heap_size_bytes()
             + manifest.heap_size_bytes()
             + sorted_chunks.heap_size_bytes()
             + loaded_ranges.heap_size_bytes()
@@ -766,7 +760,6 @@ impl MemUsageTreeCapture for RrdManifestIndex {
 
         let Self {
             entity_has_static_data,
-            entity_tree,
             sorted_chunks,
             loaded_ranges,
             manifest,
@@ -784,7 +777,6 @@ impl MemUsageTreeCapture for RrdManifestIndex {
             "entity_has_static_data",
             entity_has_static_data.total_size_bytes(),
         );
-        node.add("entity_tree", entity_tree.total_size_bytes());
         node.add("sorted_chunks", sorted_chunks.total_size_bytes());
         node.add("loaded_ranges", loaded_ranges.total_size_bytes());
         node.add("manifest", manifest.total_size_bytes());

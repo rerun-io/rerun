@@ -248,7 +248,8 @@ impl ViewBlueprint {
 
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
-        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+        let bp_engine = blueprint.storage_engine();
+        if let Some(tree) = bp_engine.store().entity_tree().subtree(&current_path) {
             tree.visit_children_recursively(|path| {
                 let sub_path: EntityPath = new_path
                     .iter()

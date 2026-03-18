@@ -67,9 +67,9 @@ fn schema_component_key(descr: &ComponentColumnDescriptor) -> SchemaComponentKey
 
 /// Incrementally maintained store schema.
 ///
-/// Contains [`ChunkColumnDescriptors`] and per-entity component sets.
+/// Contains [`ChunkColumnDescriptors`], per-entity component sets, and the entity tree.
 /// Updated via [`Self::on_events`] when chunks are inserted or RRD manifests are ingested.
-/// Never affected by garbage collection.
+/// The schema itself is purely additive, but the entity tree is pruned on deletions.
 #[derive(Debug, Clone, Default)]
 pub struct StoreSchema {
     /// The _latest_ [`TimeType`] for each timeline name.
@@ -85,9 +85,20 @@ pub struct StoreSchema {
     // Ideally, we'd even merge this with the above fields. We are currently storing a lot of
     // redundant information.
     per_column_metadata: IntMap<EntityPath, IntMap<ComponentIdentifier, ColumnMetadataEntry>>,
+
+    /// Hierarchical tree of all entities that have been registered in the store.
+    ///
+    /// Entities are pruned on deletions but not during GC.
+    entity_tree: crate::EntityTree,
 }
 
 impl StoreSchema {
+    /// The hierarchical tree of all entities registered in the store.
+    #[inline]
+    pub fn entity_tree(&self) -> &crate::EntityTree {
+        &self.entity_tree
+    }
+
     /// Retrieve all timelines in the store.
     #[inline]
     pub fn timelines(&self) -> BTreeMap<TimelineName, Timeline> {
@@ -350,6 +361,7 @@ impl StoreSchema {
         }
 
         let entity_path = chunk.entity_path();
+        self.entity_tree.on_new_entity(entity_path);
 
         let mut new_columns = Vec::new();
 
@@ -400,6 +412,11 @@ impl StoreSchema {
                 .insert(descr.timeline_name(), descr.timeline().typ());
         }
 
+        // Update entity tree
+        for entity in sorbet_schema.all_entities() {
+            self.entity_tree.on_new_entity(entity);
+        }
+
         let mut new_per_entity: nohash_hasher::IntMap<EntityPath, Vec<ChunkComponentMeta>> =
             Default::default();
 
@@ -424,6 +441,13 @@ impl StoreSchema {
         self.components_per_entity.remove(entity_path);
         self.per_column_metadata.remove(entity_path);
     }
+
+    /// Prunes leaf entities from the entity tree that have no indexed data.
+    ///
+    /// Called after store deletions to keep the tree in sync with actual data.
+    pub fn prune_entity_tree(&mut self, entity_has_data: &impl Fn(&EntityPath) -> bool) {
+        self.entity_tree.prune_empty_entities(entity_has_data);
+    }
 }
 
 impl SizeBytes for StoreSchema {
@@ -433,11 +457,13 @@ impl SizeBytes for StoreSchema {
             components,
             components_per_entity,
             per_column_metadata,
+            entity_tree,
         } = self;
 
         time_type_registry.heap_size_bytes()
             + components.heap_size_bytes()
             + components_per_entity.heap_size_bytes()
             + per_column_metadata.heap_size_bytes()
+            + entity_tree.heap_size_bytes()
     }
 }

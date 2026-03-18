@@ -5,7 +5,6 @@ use std::{
     sync::Arc,
 };
 
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{
@@ -233,11 +232,6 @@ impl EntityDb {
         }
     }
 
-    #[inline]
-    pub fn tree(&self) -> &crate::EntityTree {
-        &self.rrd_manifest_index.entity_tree
-    }
-
     /// Formats the entity tree into a human-readable text representation with component schema information.
     pub fn format_with_components(&self) -> String {
         let mut text = String::new();
@@ -245,30 +239,31 @@ impl EntityDb {
         let storage_engine = self.storage_engine();
         let store = storage_engine.store();
 
-        self.tree().visit_children_recursively(|entity_path| {
-            if entity_path.is_root() {
-                return;
-            }
-            let depth = entity_path.len() - 1;
-            let indent = "  ".repeat(depth);
-            text.push_str(&format!("{indent}{entity_path}\n"));
-            let Some(components) = store.schema().all_components_for_entity(entity_path) else {
-                return;
-            };
-            for &component in components {
-                let component_indent = "  ".repeat(depth + 1);
-                if let Some((component_type, datatype)) =
-                    store.schema().lookup_component_type(entity_path, component)
-                {
-                    let name = component_type
-                        .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
-                    text.push_str(&format!("{component_indent}{name}: {datatype}\n"));
-                } else {
-                    // Fallback to component identifier
-                    text.push_str(&format!("{component_indent}{component}\n"));
+        store
+            .entity_tree()
+            .visit_children_recursively(|entity_path| {
+                if entity_path.is_root() {
+                    return;
                 }
-            }
-        });
+                let depth = entity_path.len() - 1;
+                let indent = "  ".repeat(depth);
+                text.push_str(&format!("{indent}{entity_path}\n"));
+                let Some(components) = store.schema().all_components_for_entity(entity_path) else {
+                    return;
+                };
+                for &component in components {
+                    let component_indent = "  ".repeat(depth + 1);
+                    if let Some((component_type, datatype)) =
+                        store.schema().lookup_component_type(entity_path, component)
+                    {
+                        let name = component_type
+                            .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
+                        text.push_str(&format!("{component_indent}{name}: {datatype}\n"));
+                    } else {
+                        text.push_str(&format!("{component_indent}{component}\n"));
+                    }
+                }
+            });
         text
     }
 
@@ -721,7 +716,12 @@ impl EntityDb {
     /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.tree().subtree(entity_path).is_some()
+        self.storage_engine
+            .read()
+            .store()
+            .entity_tree()
+            .subtree(entity_path)
+            .is_some()
     }
 
     /// If you log `world/points`, then that is a logged entity, but `world` is not,
@@ -745,7 +745,9 @@ impl EntityDb {
 
         self.on_store_events(&events);
 
-        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
+        let engine = self.storage_engine.read();
+        let entity_tree = engine.store().entity_tree();
+        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest, entity_tree) {
             re_log::error!("Failed to append RRD manifest: {err}");
         }
 
@@ -859,29 +861,6 @@ impl EntityDb {
             engine.store(),
             store_events,
         );
-
-        self.rrd_manifest_index
-            .entity_tree
-            .on_store_additions(store_events.iter().filter_map(|e| e.to_addition()));
-
-        let dels = store_events
-            .iter()
-            .filter_map(|e| e.to_deletion())
-            .collect_vec();
-
-        // It is possible for writes to trigger deletions: specifically in the case of
-        // overwritten static data leading to dangling chunks.
-        let entity_paths_with_deletions =
-            dels.iter().map(|e| e.chunk.entity_path().clone()).collect();
-
-        {
-            re_tracing::profile_scope!("on_store_deletions");
-            self.rrd_manifest_index.entity_tree.on_store_deletions(
-                &engine,
-                &entity_paths_with_deletions,
-                &dels,
-            );
-        }
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
@@ -1011,10 +990,14 @@ impl EntityDb {
 
         let mut to_drop = vec![entity_path.clone()];
 
-        if let Some(tree) = self.tree().subtree(entity_path) {
-            tree.visit_children_recursively(|path| {
-                to_drop.push(path.clone());
-            });
+        {
+            let storage_engine = self.storage_engine();
+            let tree = storage_engine.store().entity_tree();
+            if let Some(subtree) = tree.subtree(entity_path) {
+                subtree.visit_children_recursively(|path| {
+                    to_drop.push(path.clone());
+                });
+            }
         }
 
         for entity_path in to_drop {
@@ -1144,13 +1127,13 @@ impl EntityDb {
     ///
     /// This excludes temporal data.
     pub fn subtree_stats_static(
-        &self,
         engine: &StorageEngineReadGuard<'_>,
         entity_path: &EntityPath,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return Default::default();
         };
 
@@ -1166,14 +1149,14 @@ impl EntityDb {
     ///
     /// This excludes static data.
     pub fn subtree_stats_on_timeline(
-        &self,
         engine: &StorageEngineReadGuard<'_>,
         entity_path: &EntityPath,
         timeline: &TimelineName,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return Default::default();
         };
 
@@ -1196,7 +1179,8 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return false;
         };
 
@@ -1222,7 +1206,8 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return false;
         };
 

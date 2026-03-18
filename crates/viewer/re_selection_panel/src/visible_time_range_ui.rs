@@ -23,9 +23,10 @@ pub fn visible_time_range_ui_for_view(
         return;
     }
 
+    let engine = ctx.store_context.blueprint.storage_engine();
     let property_path = entity_path_for_view_property(
         view.id,
-        ctx.store_context.blueprint.tree(),
+        engine.store().entity_tree(),
         re_sdk_types::blueprint::archetypes::VisibleTimeRanges::name(),
     );
 
