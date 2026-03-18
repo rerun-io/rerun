@@ -674,23 +674,32 @@ impl RrdManifestIndex {
     ) -> impl Iterator<Item = &ChunkCountInfo> {
         re_tracing::profile_function!();
 
-        fn iterate_unloaded<'a>(
-            index: &RrdManifestIndex,
-            chunks: &'a [ChunkCountInfo],
-        ) -> impl Iterator<Item = &'a ChunkCountInfo> {
-            chunks
-                .iter()
-                .filter(|info| index.is_chunk_unloaded(&info.id))
-        }
+        self.temporal_entries_for(timeline, entity, component)
+            .iter()
+            .filter(|info| self.is_chunk_unloaded(&info.id))
+    }
+
+    /// If `component` is some, this returns all temporal entries for that specific
+    /// component on the given timeline.
+    ///
+    /// If not, this returns all temporal entries for `entity`'s components and its
+    /// descendants' unloaded temporal entries.
+    pub fn temporal_entries_for(
+        &self,
+        timeline: &re_chunk::TimelineName,
+        entity: &re_chunk::EntityPath,
+        component: Option<re_chunk::ComponentIdentifier>,
+    ) -> &[ChunkCountInfo] {
+        re_tracing::profile_function!();
 
         let Some(entry) = self.sorted_chunks.get(timeline, &entity.hash()) else {
-            return iterate_unloaded(self, &[]);
+            return &[];
         };
 
         if let Some(component) = component {
-            iterate_unloaded(self, entry.component_chunks(&component))
+            entry.component_chunks(&component)
         } else {
-            iterate_unloaded(self, entry.per_entity())
+            entry.per_entity()
         }
     }
 

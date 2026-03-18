@@ -1179,6 +1179,37 @@ impl TimePanel {
                     data_density_graph::show_row_ids_tooltip(ctx, ui, item, hovered_time);
                 });
             }
+        } else if ui.dragged_id().is_none()
+            && let Some(pointer) = ui.input(|i| i.pointer.latest_pos())
+            && row_rect.contains(pointer)
+            && let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer.x)
+        {
+            re_tracing::profile_scope!("protect hovered chunks");
+
+            // Mark physical chunks of hovered root chunks as used, so we don't end up
+            // flickering back and forth because the specific chunk didn't have data where
+            // the root chunk was hovered when it wasn't loaded.
+            let mut descendents_scratch = Vec::new();
+            for info in ctx.db.rrd_manifest_index().temporal_entries_for(
+                ctx.time_ctrl.timeline_name(),
+                &item.entity_path,
+                item.component,
+            ) {
+                // This is a sorted list, so can stop looking once we've passed the current time.
+                if info.time_range.min > at_time {
+                    break;
+                }
+
+                if at_time <= info.time_range.max {
+                    let storage_engine = ctx.db.storage_engine();
+                    let store = storage_engine.store();
+                    store.collect_physical_descendents_of(&info.id, &mut descendents_scratch);
+
+                    for chunk in descendents_scratch.drain(..) {
+                        store.use_physical_chunk_or_report_missing(&chunk);
+                    }
+                }
+            }
         }
     }
 
