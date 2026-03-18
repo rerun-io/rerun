@@ -150,6 +150,22 @@ impl SyntaxHighlightedBuilder {
         }
     );
 
+    /// Like [`Self::append_string_value`], but truncates to `max_chars` characters
+    /// and appends `…` (in syntax style) when truncated.
+    pub fn append_string_value_truncated(&mut self, portion: &str, max_chars: usize) -> &mut Self {
+        let quote = Self::QUOTE_CHAR.to_string();
+        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
+        if portion.len() > max_chars {
+            let truncated = &portion[..portion.floor_char_boundary(max_chars)];
+            self.append_kind(SyntaxHighlightedStyle::StringValue, truncated);
+            self.append_kind(SyntaxHighlightedStyle::Syntax, "…");
+        } else {
+            self.append_kind(SyntaxHighlightedStyle::StringValue, portion);
+        }
+        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
+        self
+    }
+
     impl_style_fns!(
         "A keyword, e.g. a filter operator, like `and` or `all`",
         keyword,

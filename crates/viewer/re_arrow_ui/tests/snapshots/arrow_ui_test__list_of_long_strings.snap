@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+[["This is a long nested string that should be truncated because it is inside a list and over 100 chara…", "Short string."]]

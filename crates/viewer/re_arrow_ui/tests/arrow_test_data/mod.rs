@@ -440,5 +440,27 @@ pub fn all_arrays() -> Vec<(&'static str, Arc<dyn Array>)> {
         ("fixed_size_list", create_fixed_size_list(9)),
         ("deeply_nested_struct", create_deeply_nested_struct(10)),
         ("optional_struct", create_optional_struct(11)),
+        ("long_string", create_long_string()),
+        ("list_of_long_strings", create_list_of_long_strings()),
     ]
+}
+
+fn create_long_string() -> Arc<dyn Array> {
+    Arc::new(StringArray::from(vec![
+        "This is a long root-level string that should not be truncated even though it is over 100 characters long, because it is the root element being displayed.",
+    ]))
+}
+
+fn create_list_of_long_strings() -> Arc<dyn Array> {
+    let values = StringArray::from(vec![
+        "This is a long nested string that should be truncated because it is inside a list and over 100 characters long. Truncate me please!",
+        "Short string.",
+    ]);
+    let offsets = OffsetBuffer::new(vec![0, 2].into());
+    Arc::new(GenericListArray::<i32>::new(
+        Arc::new(Field::new("item", DataType::Utf8, true)),
+        offsets,
+        Arc::new(values),
+        None,
+    ))
 }

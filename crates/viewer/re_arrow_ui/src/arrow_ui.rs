@@ -65,6 +65,7 @@ pub(crate) fn make_ui(
         array,
         &DisplayOptions {
             timestamp_format,
+            max_string_chars: if array.len() > 1 { 100 } else { usize::MAX },
             ..Default::default()
         },
     )?;
