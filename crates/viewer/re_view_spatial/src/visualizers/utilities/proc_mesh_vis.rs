@@ -26,7 +26,7 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
     /// TODO(kpreid): Should be using instanced meshes kept in GPU buffers
     /// instead of this immediate-mode strategy that copies every vertex every frame.
     pub line_builder: re_renderer::LineDrawableBuilder<'ctx>,
-    pub line_batch_debug_label: re_renderer::DebugLabel,
+    pub line_batch_debug_label: re_renderer::Label,
 
     /// Accumulates triangle mesh instances to render.
     pub solid_instances: Vec<GpuMeshInstance>,
@@ -125,7 +125,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         data: &'ctx mut SpatialViewVisualizerData,
         render_ctx: &'ctx re_renderer::RenderContext,
         view_query: &'ctx ViewQuery<'ctx>,
-        line_batch_debug_label: impl Into<re_renderer::DebugLabel>,
+        line_batch_debug_label: impl Into<re_renderer::Label>,
     ) -> Self {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(

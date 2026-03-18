@@ -13,7 +13,7 @@ use crate::queueable_draw_data::QueueableDrawData;
 use crate::renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo};
 use crate::transform::RectTransform;
 use crate::wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc};
-use crate::{DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba};
+use crate::{DrawPhaseManager, Label, MsaaMode, RectInt, RenderConfig, Rgba};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
@@ -37,7 +37,7 @@ pub struct ViewBuilder {
 }
 
 struct ViewTargetSetup {
-    name: DebugLabel,
+    name: Label,
 
     camera_position: glam::Vec3A,
 
@@ -198,7 +198,7 @@ pub enum RenderMode {
 /// Basic configuration for a target view.
 #[derive(Debug)]
 pub struct TargetConfiguration {
-    pub name: DebugLabel,
+    pub name: Label,
 
     /// Aim for beauty or determinism?
     pub render_mode: RenderMode,
@@ -722,7 +722,7 @@ impl ViewBuilder {
         let mut encoder = ctx
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: setup.name.clone().get(),
+                label: Some(setup.name.clone().get()),
             });
 
         {
@@ -731,7 +731,7 @@ impl ViewBuilder {
             let needs_msaa_resolve = ctx.render_config().msaa_mode != MsaaMode::Off;
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
+                label: Label::from(format!("{} - main pass", setup.name)).wgpu_label(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
                     depth_slice: None,

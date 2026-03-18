@@ -7,7 +7,7 @@ use crate::renderer::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
 };
 use crate::{
-    Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
+    Color32, CpuWriteGpuReadError, DepthOffset, Label, OutlineMaskPreference,
     PickingLayerInstanceId, RenderContext, Size,
 };
 
@@ -65,7 +65,7 @@ impl<'ctx> PointCloudBuilder<'ctx> {
 
     /// Start of a new batch.
     #[inline]
-    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_, 'ctx> {
+    pub fn batch(&mut self, label: impl Into<Label>) -> PointCloudBatchBuilder<'_, 'ctx> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
             ..PointCloudBatchInfo::default()

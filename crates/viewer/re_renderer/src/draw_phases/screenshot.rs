@@ -15,7 +15,7 @@ use re_mutex::Mutex;
 use crate::allocator::GpuReadbackError;
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{GpuTexture, TextureDesc};
-use crate::{DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext};
+use crate::{GpuReadbackBuffer, GpuReadbackIdentifier, Label, RenderContext};
 
 /// Type used as user data on the gpu readback belt.
 struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
@@ -34,7 +34,7 @@ impl ScreenshotProcessor {
 
     pub fn new<T: 'static + Send + Sync>(
         ctx: &RenderContext,
-        view_name: &DebugLabel,
+        view_name: &Label,
         resolution: glam::UVec2,
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
@@ -77,13 +77,13 @@ impl ScreenshotProcessor {
 
     pub fn begin_render_pass<'a>(
         &'a self,
-        view_name: &DebugLabel,
+        view_name: &Label,
         encoder: &'a mut wgpu::CommandEncoder,
     ) -> wgpu::RenderPass<'a> {
         re_tracing::profile_function!();
 
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from(format!("{view_name} - screenshot")).get(),
+            label: Label::from(format!("{view_name} - screenshot")).wgpu_label(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.screenshot_texture.default_view,
                 depth_slice: None,

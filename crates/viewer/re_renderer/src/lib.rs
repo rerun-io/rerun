@@ -44,7 +44,6 @@ pub mod wgpu_buffer_types;
 mod color;
 mod colormap;
 mod context;
-mod debug_label;
 mod depth_offset;
 mod draw_phases;
 mod error_handling;
@@ -52,6 +51,7 @@ mod file_resolver;
 mod file_server;
 mod file_system;
 mod global_bindings;
+mod label;
 mod line_drawable_builder;
 mod point_cloud_builder;
 mod queueable_draw_data;
@@ -85,13 +85,13 @@ pub use colormap::{
 pub use context::{
     MsaaMode, RenderConfig, RenderContext, RenderContextError, RendererTypeId, adapter_info_summary,
 };
-pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
 pub use draw_phases::{
     DrawPhase, DrawPhaseManager, Drawable, DrawableCollector, OutlineConfig, OutlineMaskPreference,
     OutlineMaskProcessor, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,
     PickingLayerProcessor, ScreenshotProcessor,
 };
+pub use label::Label;
 pub use resource_managers::AlphaChannelUsage;
 pub use texture_readback::{TextureReadback, poll_read_texture, schedule_read_texture};
 // Re-export used color types directly.

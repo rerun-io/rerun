@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
-use crate::{CpuModel, DebugLabel, RenderContext, mesh};
+use crate::{CpuModel, Label, RenderContext, mesh};
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {
@@ -24,7 +24,7 @@ pub fn load_stl_from_buffer(
 
     // TODO(hmeyer/stl_io#26): use optional name from ascii stl files.
     // https://github.com/hmeyer/stl_io/pull/26
-    let name = DebugLabel::from("");
+    let name = Label::from("");
 
     let (normals, triangles): (Vec<_>, Vec<_>) = reader
         .into_iter()

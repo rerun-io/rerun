@@ -25,8 +25,7 @@ use crate::wgpu_resources::{
     RenderPipelineDesc, TextureDesc,
 };
 use crate::{
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
-    include_shader_module,
+    GpuReadbackBuffer, GpuReadbackIdentifier, Label, RectInt, RenderContext, include_shader_module,
 };
 
 /// GPU retrieved & processed picking data result.
@@ -184,7 +183,7 @@ impl PickingLayerProcessor {
     /// It allows to sample the picking layer texture in a shader.
     pub fn new(
         ctx: &RenderContext,
-        view_name: &DebugLabel,
+        view_name: &Label,
         screen_resolution: glam::UVec2,
         picking_rect: RectInt,
         frame_uniform_buffer_content: &FrameUniformBuffer,
@@ -313,13 +312,13 @@ impl PickingLayerProcessor {
 
     pub fn begin_render_pass<'a>(
         &'a self,
-        view_name: &DebugLabel,
+        view_name: &Label,
         encoder: &'a mut wgpu::CommandEncoder,
     ) -> wgpu::RenderPass<'a> {
         re_tracing::profile_function!();
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from(format!("{view_name} - picking_layer pass")).get(),
+            label: Label::from(format!("{view_name} - picking_layer pass")).wgpu_label(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.picking_target.default_view,
                 depth_slice: None,
@@ -578,7 +577,7 @@ impl DepthReadbackWorkaround {
     ) -> Result<&GpuTexture, PoolError> {
         // Copy depth texture to a readable (color) texture with a screen filling triangle.
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from("Depth copy workaround").get(),
+            label: Label::from("Depth copy workaround").wgpu_label(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.readable_texture.default_view,
                 depth_slice: None,

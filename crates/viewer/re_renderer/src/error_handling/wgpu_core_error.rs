@@ -53,6 +53,13 @@ macro_rules! try_downcast {
                 wgpu_core::pipeline::CreateShaderModuleError,
                 wgpu_core::pipeline::DepthStencilStateError,
                 wgpu_core::pipeline::ImplicitLayoutError,
+                wgpu_core::resource::CreateTextureError,
+                wgpu_core::resource::CreateTextureViewError,
+                wgpu_core::resource::CreateBufferError,
+                wgpu_core::resource::CreateExternalTextureError,
+                wgpu_core::resource::CreateSamplerError,
+                wgpu_core::resource::CreateQuerySetError,
+                wgpu_core::resource::BufferAccessError,
         ]];
 
         break None;
@@ -123,6 +130,13 @@ impl_trait![
     // wgpu_core::pipeline::CreateShaderModuleError, // NOTE: custom impl!
     wgpu_core::pipeline::DepthStencilStateError,
     wgpu_core::pipeline::ImplicitLayoutError,
+    wgpu_core::resource::CreateTextureError,
+    wgpu_core::resource::CreateTextureViewError,
+    wgpu_core::resource::CreateBufferError,
+    wgpu_core::resource::CreateExternalTextureError,
+    wgpu_core::resource::CreateSamplerError,
+    wgpu_core::resource::CreateQuerySetError,
+    wgpu_core::resource::BufferAccessError,
 ];
 
 // Custom deduplication for shader compilation errors, based on compiler message.
@@ -173,7 +187,10 @@ impl std::hash::Hash for WgpuCoreWrappedContextError {
         // try to downcast into something that implements `DedupableError`, and
         // then call `DedupableError::hash`.
         if try_downcast!(self.0.source => |inner| DedupableError::hash(inner, state)).is_none() {
-            re_log::warn!(cause=?self.0.source, "unknown error cause");
+            re_log::debug_warn_once!(
+                "Wgpu error without `DedupableError` impl: {:?}",
+                self.0.source
+            );
         }
     }
 }
@@ -189,7 +206,10 @@ impl PartialEq for WgpuCoreWrappedContextError {
         {
             is_eq |= finer_eq;
         } else {
-            re_log::warn!(cause=?self.0.source, "unknown error cause");
+            re_log::debug_warn_once!(
+                "Wgpu error without `DedupableError` impl: {:?}",
+                self.0.source
+            );
         }
 
         is_eq

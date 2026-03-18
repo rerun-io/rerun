@@ -33,7 +33,7 @@ use crate::wgpu_resources::{
     GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
 };
 use crate::{
-    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
+    DepthOffset, DrawableCollector, Label, OutlineMaskPreference, PointCloudBuilder,
     include_shader_module,
 };
 
@@ -165,7 +165,7 @@ impl DrawData for PointCloudDrawData {
 
 /// Data that is valid for a batch of point cloud points.
 pub struct PointCloudBatchInfo {
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Transformation applies to point positions
     ///
@@ -204,7 +204,7 @@ impl Default for PointCloudBatchInfo {
     #[inline]
     fn default() -> Self {
         Self {
-            label: DebugLabel::default(),
+            label: Label::default(),
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
             point_count: 0,
@@ -441,7 +441,7 @@ impl PointCloudRenderer {
     fn create_point_cloud_batch(
         &self,
         ctx: &RenderContext,
-        label: DebugLabel,
+        label: Label,
         uniform_buffer_binding: BindGroupEntry,
         vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,

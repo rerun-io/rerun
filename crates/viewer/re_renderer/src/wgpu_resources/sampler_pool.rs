@@ -1,14 +1,14 @@
 use std::hash::Hash;
 
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 
 slotmap::new_key_type! { pub struct GpuSamplerHandle; }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct SamplerDesc {
     /// Debug label of the sampler. This will show up in graphics debuggers for easy identification.
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// How to deal with out of bounds accesses in the u (i.e. x) direction
     pub address_mode_u: wgpu::AddressMode,
@@ -44,7 +44,7 @@ impl GpuSamplerPool {
     pub fn get_or_create(&self, device: &wgpu::Device, desc: &SamplerDesc) -> GpuSamplerHandle {
         self.pool.get_or_create(desc, |desc| {
             device.create_sampler(&wgpu::SamplerDescriptor {
-                label: desc.label.get(),
+                label: Some(desc.label.get()),
                 address_mode_u: desc.address_mode_u,
                 address_mode_v: desc.address_mode_v,
                 address_mode_w: desc.address_mode_w,

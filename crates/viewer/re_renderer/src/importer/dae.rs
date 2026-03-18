@@ -19,7 +19,7 @@ use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::{
-    CpuModel, CpuModelMeshKey, DebugLabel, RenderContext, Rgba32Unmul,
+    CpuModel, CpuModelMeshKey, Label, RenderContext, Rgba32Unmul,
     mesh::{self, CpuMesh},
 };
 
@@ -166,7 +166,7 @@ fn import_geometry(
 ) -> Result<CpuMesh, DaeImportError> {
     let vertices = mesh.vertices.as_ref().ok_or(DaeImportError::NoTriangles)?;
 
-    let label = DebugLabel::from(
+    let label = Label::from(
         geo.name
             .clone()
             .or_else(|| geo.id.clone())

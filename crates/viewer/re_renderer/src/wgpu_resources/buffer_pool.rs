@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use super::dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc};
 use super::resource::PoolError;
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 
 slotmap::new_key_type! { pub struct GpuBufferHandle; }
 
@@ -14,7 +14,7 @@ pub type GpuBuffer = std::sync::Arc<DynamicResource<GpuBufferHandle, BufferDesc,
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct BufferDesc {
     /// Debug label of a buffer. This will show up in graphics debuggers for easy identification.
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Size of a buffer.
     pub size: wgpu::BufferAddress,
@@ -61,7 +61,7 @@ impl GpuBufferPool {
         self.pool.alloc(desc, |desc| {
             re_tracing::profile_scope!("create_buffer");
             device.create_buffer(&wgpu::BufferDescriptor {
-                label: desc.label.get(),
+                label: Some(desc.label.get()),
                 size: desc.size,
                 usage: desc.usage,
                 mapped_at_creation: desc.mapped_at_creation,

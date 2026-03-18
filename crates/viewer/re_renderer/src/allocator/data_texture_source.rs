@@ -3,7 +3,7 @@ use re_log::debug_assert;
 
 use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 use crate::wgpu_resources::{self, GpuTexture};
-use crate::{DebugLabel, RenderContext};
+use crate::{Label, RenderContext};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum DataTextureSourceWriteError {
@@ -330,7 +330,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     pub fn finish(
         self,
         texture_format: wgpu::TextureFormat,
-        texture_label: impl Into<DebugLabel>,
+        texture_label: impl Into<Label>,
     ) -> Result<GpuTexture, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 

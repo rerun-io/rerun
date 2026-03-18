@@ -433,7 +433,7 @@ impl YuvFormatConversionTask {
         let mut pass = encoder
             .get()
             .begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: self.target_texture.creation_desc.label.get(),
+                label: Some(self.target_texture.creation_desc.label.get()),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.target_texture.default_view,
                     depth_slice: None,

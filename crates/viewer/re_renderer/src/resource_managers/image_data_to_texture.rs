@@ -6,7 +6,7 @@ use super::yuv_converter::{
 use crate::renderer::DrawError;
 use crate::resource_managers::AlphaChannelUsage;
 use crate::wgpu_resources::{GpuTexture, TextureDesc};
-use crate::{DebugLabel, RenderContext, Texture2DBufferInfo};
+use crate::{Label, RenderContext, Texture2DBufferInfo};
 
 /// Image data format that can be converted to a wgpu texture.
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.
@@ -42,13 +42,13 @@ impl From<wgpu::TextureFormat> for SourceImageDataFormat {
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum ImageDataToTextureError {
     #[error("Texture {0:?} has zero width or height!")]
-    ZeroSize(DebugLabel),
+    ZeroSize(Label),
 
     #[error(
         "Texture {label:?} was {width}x{height}, larger than the max of {max_texture_dimension_2d}"
     )]
     TooLarge {
-        label: DebugLabel,
+        label: Label,
         width: u32,
         height: u32,
         max_texture_dimension_2d: u32,
@@ -58,7 +58,7 @@ pub enum ImageDataToTextureError {
         "Invalid data length for texture {label:?}. Expected {expected} bytes, got {actual} bytes"
     )]
     InvalidDataLength {
-        label: DebugLabel,
+        label: Label,
         expected: usize,
         actual: usize,
     },
@@ -68,18 +68,18 @@ pub enum ImageDataToTextureError {
 
     #[error("Texture {label:?} has a format {format:?} that data can't be transferred to!")]
     UnsupportedFormatForTransfer {
-        label: DebugLabel,
+        label: Label,
         format: wgpu::TextureFormat,
     },
 
     #[error("Gpu-based conversion for texture {label:?} did not succeed: {err}")]
-    GpuBasedConversionError { label: DebugLabel, err: DrawError },
+    GpuBasedConversionError { label: Label, err: DrawError },
 
     #[error(
         "Texture {label:?} has invalid texture usage flags: {actual_usage:?}, expected at least {required_usage:?}"
     )]
     InvalidTargetTextureUsageFlags {
-        label: DebugLabel,
+        label: Label,
         actual_usage: wgpu::TextureUsages,
         required_usage: wgpu::TextureUsages,
     },
@@ -88,7 +88,7 @@ pub enum ImageDataToTextureError {
         "Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}"
     )]
     InvalidTargetTextureFormat {
-        label: DebugLabel,
+        label: Label,
         actual_format: wgpu::TextureFormat,
         required_format: wgpu::TextureFormat,
     },
@@ -104,7 +104,7 @@ pub enum ImageDataToTextureError {
 pub struct ImageDataDesc<'a> {
     /// If this desc is not used for a texture update, this label is used for the target texture.
     /// Otherwise, it may still used for any intermediate resources that may be required during the conversion process.
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Data for the highest mipmap level.
     ///
