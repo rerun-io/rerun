@@ -364,7 +364,16 @@ fn spawn<F>(f: F)
 where
     F: FnOnce() + Send + 'static,
 {
-    rayon::spawn(f);
+    if 1 < rayon::current_num_threads() {
+        rayon::spawn(f);
+    } else {
+        // Avoids a deadlock when send-channel gets full.
+        // We usually only use `-j1` for profiling the main application; not data loading.
+        std::thread::Builder::new()
+            .name("data-loader".to_owned())
+            .spawn(f)
+            .expect("Failed to spawn a thread");
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
