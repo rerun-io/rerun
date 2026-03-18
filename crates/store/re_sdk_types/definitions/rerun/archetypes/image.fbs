@@ -53,4 +53,7 @@ table Image (
   /// Objects with higher values are drawn on top of those with lower values.
   /// Defaults to `-10.0`.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+  magnification_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 3200);
 }

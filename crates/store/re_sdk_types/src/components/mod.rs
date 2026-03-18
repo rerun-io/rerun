@@ -59,6 +59,7 @@ mod line_strip3d;
 mod line_strip3d_ext;
 mod linear_speed;
 mod magnification_filter;
+mod magnification_filter_ext;
 mod marker_shape;
 mod marker_shape_ext;
 mod marker_size;

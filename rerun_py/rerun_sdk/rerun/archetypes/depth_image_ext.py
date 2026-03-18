@@ -14,6 +14,7 @@ from ..error_utils import catch_and_log_exceptions
 if TYPE_CHECKING:
     from rerun.datatypes.range1d import Range1DLike
 
+    from .. import components
     from . import DepthImage, EncodedDepthImage
 
     ImageLike = (
@@ -61,6 +62,7 @@ class DepthImageExt:
         depth_range: Range1DLike | None = None,
         point_fill_ratio: Float32Like | None = None,
         draw_order: Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> None:
         """
         Create a new instance of the DepthImage archetype.
@@ -107,6 +109,8 @@ class DepthImageExt:
             An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
 
             Objects with higher values are drawn on top of those with lower values.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
 
         """
         image = _to_numpy(image)
@@ -140,6 +144,7 @@ class DepthImageExt:
             depth_range=depth_range,
             point_fill_ratio=point_fill_ratio,
             draw_order=draw_order,
+            magnification_filter=magnification_filter,
         )
 
     def image_format(self: Any) -> ImageFormat:
