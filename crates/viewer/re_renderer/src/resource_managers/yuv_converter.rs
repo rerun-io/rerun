@@ -15,7 +15,7 @@ use crate::{DrawableCollector, RenderContext, include_shader_module};
 ///
 /// We use `YUV`/`YCbCr`/`YPbPr` interchangeably and usually just call it `YUV`.
 ///
-/// According to this [source](https://www.retrosix.wiki/yuv-vs-ycbcr-vs-rgb-color-space/):
+/// According to this [source](https://web.archive.org/web/20251113140550/https://www.retrosix.wiki/yuv-vs-ycbcr-vs-rgb-color-space):
 /// * `YUV` is an analog signal
 /// * `YCbCr` is scaled and offsetted version of YUV, used in digital signals (we denote this as "limited range YUV")
 /// * `YPbPr` is the physical component cabel to transmit `YCbCr`
