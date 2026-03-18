@@ -266,12 +266,13 @@ impl StoreHub {
                 // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
                 let active_blueprint_id = self
                     .active_blueprint_by_app_id
-                    .entry(app_id.clone())
-                    .or_insert_with(|| StoreId::default_blueprint(app_id.clone()));
+                    .get(app_id)
+                    .cloned()
+                    .unwrap_or_else(|| StoreId::default_blueprint(app_id.clone()));
 
                 // Get or create the blueprint:
-                self.store_bundle.blueprint_entry(active_blueprint_id);
-                let Some(active_blueprint) = self.store_bundle.get(active_blueprint_id) else {
+                self.store_bundle.blueprint_entry(&active_blueprint_id);
+                let Some(active_blueprint) = self.store_bundle.get(&active_blueprint_id) else {
                     break 'ctx None;
                 };
                 active_blueprint
