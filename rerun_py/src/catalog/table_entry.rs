@@ -12,6 +12,7 @@ use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry,
 use tracing::instrument;
 
 use crate::catalog::entry::set_entry_name;
+use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
 use crate::catalog::{PyCatalogClientInternal, PyEntryDetails, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
@@ -59,16 +60,17 @@ impl PyTableEntryInternal {
     #[instrument(skip_all)]
     fn __datafusion_table_provider__<'py>(
         self_: PyRefMut<'py, Self>,
-        py: Python<'py>,
+        session: &Bound<'py, PyAny>,
     ) -> PyResult<Bound<'py, PyCapsule>> {
         let provider = Self::table_provider(self_)?;
 
         let capsule_name = cr"datafusion_table_provider".into();
 
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = FFI_TableProvider::new(provider, false, Some(runtime));
+        let codec = ffi_logical_codec_from_pycapsule(session)?;
+        let provider = FFI_TableProvider::new_with_ffi_codec(provider, false, Some(runtime), codec);
 
-        PyCapsule::new(py, provider, Some(capsule_name))
+        PyCapsule::new(session.py(), provider, Some(capsule_name))
     }
 
     /// Registers the table with the DataFusion context and return a DataFrame.

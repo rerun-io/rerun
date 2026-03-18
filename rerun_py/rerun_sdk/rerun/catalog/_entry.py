@@ -1146,10 +1146,10 @@ class TableEntry(Entry[TableEntryInternal]):
     Note: this object acts as a table provider for DataFusion.
     """
 
-    def __datafusion_table_provider__(self) -> Any:
+    def __datafusion_table_provider__(self, session: Any) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-        return self._internal.__datafusion_table_provider__()
+        return self._internal.__datafusion_table_provider__(session)
 
     def reader(self) -> datafusion.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""

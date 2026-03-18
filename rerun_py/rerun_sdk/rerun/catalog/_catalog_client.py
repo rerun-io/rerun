@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 # Known FFI compatible releases of Datafusion.
 DATAFUSION_MAJOR_VERSION_COMPATIBILITY_SETS = [
-    {49, 50, 51},
+    {52},
 ]
 
 
