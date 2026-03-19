@@ -308,9 +308,24 @@ fn error_ui(
 
                     ui.add_space(8.0);
                     if has_active_login_flow {
-                        ui.horizontal(|ui| {
+                        ui.horizontal_centered(|ui| {
+                            // 4.0 = Size::Small vertical padding
+                            let cancel_button_height =
+                                ui.text_style_height(&egui::TextStyle::Button) + 2.0 * 4.0;
+                            ui.set_min_height(cancel_button_height);
                             ui.loading_indicator("Waiting for login");
                             ui.label("Waiting for login…");
+                            ui.add_space(8.0);
+                            if ui
+                                .add(
+                                    re_ui::ReButton::new(("Cancel", &icons::CLOSE))
+                                        .small()
+                                        .primary(),
+                                )
+                                .clicked()
+                            {
+                                send_crossbeam(ctx.command_sender, Command::CancelLoginFlow).ok();
+                            }
                         });
                     } else {
                         ui.horizontal(|ui| {
@@ -514,6 +529,9 @@ pub enum Command {
 
     /// Use the stored account credentials for a server and refresh.
     UseStoredCredentials(re_uri::Origin),
+
+    /// Cancel the active inline login flow.
+    CancelLoginFlow,
 }
 
 impl std::fmt::Debug for Command {
@@ -541,6 +559,7 @@ impl std::fmt::Debug for Command {
             Self::UseStoredCredentials(origin) => {
                 f.debug_tuple("UseStoredCredentials").field(origin).finish()
             }
+            Self::CancelLoginFlow => write!(f, "CancelLoginFlow"),
         }
     }
 }
@@ -726,6 +745,10 @@ impl RedapServers {
             Command::UseStoredCredentials(origin) => {
                 connection_registry.set_credentials(&origin, re_redap_client::Credentials::Stored);
                 send_crossbeam(&self.command_sender, Command::RefreshCollection(origin)).ok();
+            }
+
+            Command::CancelLoginFlow => {
+                self.inline_login_flow = None;
             }
         }
     }

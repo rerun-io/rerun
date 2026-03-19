@@ -4,7 +4,6 @@ tags = ["Any scalar", "Plotting", "DynamicArchetype"]
 thumbnail = "https://static.rerun.io/any_scalar_example_market/4076a99f7fd5912af93258aa0c6c775a96f8b8e7/480w.png"
 thumbnail_dimensions = [480, 259]
 channel = "release"
-include_in_manifest = true
 -->
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/G9Xxf0sNYcQ?si=jfb-WrY9WrFGh6mB" title="Any Scalar Example" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>

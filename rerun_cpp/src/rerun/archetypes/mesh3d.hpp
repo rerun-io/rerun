@@ -11,6 +11,7 @@
 #include "../components/color.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
+#include "../components/mesh_face_rendering.hpp"
 #include "../components/position3d.hpp"
 #include "../components/texcoord2d.hpp"
 #include "../components/triangle_indices.hpp"
@@ -30,8 +31,9 @@ namespace rerun::archetypes {
     /// If there are multiple `archetypes::InstancePoses3D` instances logged to the same entity as a mesh,
     /// an instance of the mesh will be drawn for each transform.
     ///
-    /// The viewer draws meshes always two-sided. However, for transparency ordering
-    /// front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+    /// For transparency ordering, as well as back face culling (disabled by default),
+    /// front faces are assumed to be those with counter clockwise triangle winding order
+    /// (this is the same as in the GLTF specification).
     ///
     /// ## Examples
     ///
@@ -134,6 +136,11 @@ namespace rerun::archetypes {
         /// Alpha channel governs the overall mesh transparency.
         std::optional<ComponentBatch> albedo_factor;
 
+        /// Determines which faces of the mesh are rendered.
+        ///
+        /// The default is `components::MeshFaceRendering::DoubleSided`, meaning both front and back faces are shown.
+        std::optional<ComponentBatch> face_rendering;
+
         /// Optional albedo texture.
         ///
         /// Used with the `components::Texcoord2D` of the mesh.
@@ -184,6 +191,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
             ArchetypeName, "Mesh3D:albedo_factor",
             Loggable<rerun::components::AlbedoFactor>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `face_rendering` field.
+        static constexpr auto Descriptor_face_rendering = ComponentDescriptor(
+            ArchetypeName, "Mesh3D:face_rendering",
+            Loggable<rerun::components::MeshFaceRendering>::ComponentType
         );
         /// `ComponentDescriptor` for the `albedo_texture_buffer` field.
         static constexpr auto Descriptor_albedo_texture_buffer = ComponentDescriptor(
@@ -289,6 +301,29 @@ namespace rerun::archetypes {
         ) && {
             albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
                                 .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Determines which faces of the mesh are rendered.
+        ///
+        /// The default is `components::MeshFaceRendering::DoubleSided`, meaning both front and back faces are shown.
+        Mesh3D with_face_rendering(const rerun::components::MeshFaceRendering& _face_rendering) && {
+            face_rendering =
+                ComponentBatch::from_loggable(_face_rendering, Descriptor_face_rendering)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `face_rendering` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_face_rendering` should
+        /// be used when logging a single row's worth of data.
+        Mesh3D with_many_face_rendering(
+            const Collection<rerun::components::MeshFaceRendering>& _face_rendering
+        ) && {
+            face_rendering =
+                ComponentBatch::from_loggable(_face_rendering, Descriptor_face_rendering)
+                    .value_or_throw();
             return std::move(*this);
         }
 

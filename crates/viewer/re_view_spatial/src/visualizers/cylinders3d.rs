@@ -83,6 +83,7 @@ impl Cylinders3DVisualizer {
                 query_context,
                 ent_context,
                 Cylinders3D::descriptor_colors().component,
+                Cylinders3D::descriptor_line_radii().component,
                 Cylinders3D::descriptor_show_labels().component,
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {

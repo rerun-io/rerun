@@ -39,7 +39,7 @@ impl PyRuntimeErrorExt for PyRuntimeError {
     }
 }
 
-use crate::recording::PyRecording;
+use crate::recording::PyRecordingInternal;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -2103,7 +2103,7 @@ fn send_blueprint(
 ///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
 #[pyfunction]
 #[pyo3(signature = (rrd, recording = None))]
-fn send_recording(rrd: &PyRecording, recording: Option<&PyRecordingStream>) {
+fn send_recording(rrd: &PyRecordingInternal, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };

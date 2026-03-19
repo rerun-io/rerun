@@ -33,6 +33,7 @@ struct Mesh3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
     native_mesh: NativeMesh3D<'a>,
+    cull_mode: Option<re_renderer::external::wgpu::Face>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -95,6 +96,7 @@ impl Mesh3DVisualizer {
                                 picking_instance_hash,
                             ),
                             additive_tint: re_renderer::Color32::BLACK,
+                            cull_mode: data.cull_mode,
                         }
                     }));
 
@@ -161,10 +163,12 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     results.iter_optional(Mesh3D::descriptor_albedo_texture_buffer().component);
                 let all_albedo_formats =
                     results.iter_optional(Mesh3D::descriptor_albedo_texture_format().component);
+                let all_face_rendering =
+                    results.iter_optional(Mesh3D::descriptor_face_rendering().component);
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x8(
                     all_vertex_positions.slice::<[f32; 3]>(),
                     all_vertex_normals.slice::<[f32; 3]>(),
                     all_vertex_colors.slice::<u32>(),
@@ -174,6 +178,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_albedo_buffers.slice::<&[u8]>(),
                     // Legit call to `component_slow`, `ImageFormat` is real complicated.
                     all_albedo_formats.component_slow::<ImageFormat>(),
+                    all_face_rendering.slice::<u8>(),
                 )
                 .map(
                     |(
@@ -186,6 +191,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                         albedo_factors,
                         albedo_buffers,
                         albedo_formats,
+                        face_rendering,
                     )| {
                         Mesh3DComponentData {
                             index,
@@ -212,6 +218,9 @@ impl VisualizerSystem for Mesh3DVisualizer {
                                     .first()
                                     .map(|format| format.0),
                             },
+                            cull_mode: face_rendering
+                                .and_then(|s| s.first().copied())
+                                .and_then(face_rendering_to_wgpu_cull),
                         }
                     },
                 );
@@ -233,5 +242,18 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
     fn data(&self) -> Option<&dyn std::any::Any> {
         Some(self.0.as_any())
+    }
+}
+
+/// Converts a raw `MeshFaceRendering` u8 discriminant to `Option<wgpu::Face>` for culling.
+fn face_rendering_to_wgpu_cull(value: u8) -> Option<re_renderer::external::wgpu::Face> {
+    use re_sdk_types::components::MeshFaceRendering;
+
+    match MeshFaceRendering::from_u8(value)? {
+        MeshFaceRendering::DoubleSided => None,
+        // To show only front faces, cull back faces.
+        MeshFaceRendering::Front => Some(re_renderer::external::wgpu::Face::Back),
+        // To show only back faces, cull front faces.
+        MeshFaceRendering::Back => Some(re_renderer::external::wgpu::Face::Front),
     }
 }

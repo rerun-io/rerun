@@ -1,7 +1,7 @@
 use re_log::ResultExt as _;
 
 use crate::wgpu_resources::BindGroupEntry;
-use crate::{DebugLabel, RenderContext};
+use crate::{Label, RenderContext};
 
 struct UniformBufferSizeCheck<T> {
     pub _marker: std::marker::PhantomData<T>,
@@ -35,10 +35,10 @@ impl<T> UniformBufferSizeCheck<T> {
 /// For subsequent frames, this will automatically not allocate any resources (thanks to our buffer pooling mechanism).
 pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
     ctx: &RenderContext,
-    label: DebugLabel,
+    label: Label,
     content: impl ExactSizeIterator<Item = T>,
 ) -> Vec<BindGroupEntry> {
-    re_tracing::profile_function!(label.get().unwrap_or_default());
+    re_tracing::profile_function!(label.get());
 
     #[expect(clippy::let_unit_value)]
     let _ = UniformBufferSizeCheck::<T>::CHECK;
@@ -90,7 +90,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
 /// See [`create_and_fill_uniform_buffer`].
 pub fn create_and_fill_uniform_buffer<T: bytemuck::Pod + Send + Sync>(
     ctx: &RenderContext,
-    label: DebugLabel,
+    label: Label,
     content: T,
 ) -> BindGroupEntry {
     create_and_fill_uniform_buffer_batch(ctx, label, std::iter::once(content))

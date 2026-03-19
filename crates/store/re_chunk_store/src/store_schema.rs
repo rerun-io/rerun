@@ -40,7 +40,7 @@ impl re_byte_size::SizeBytes for ColumnMetadataEntry {
     }
 }
 
-use crate::ChunkStoreEvent;
+use crate::{ChunkComponentMeta, ChunkMeta, ChunkStoreEvent};
 
 // ---
 
@@ -67,9 +67,9 @@ fn schema_component_key(descr: &ComponentColumnDescriptor) -> SchemaComponentKey
 
 /// Incrementally maintained store schema.
 ///
-/// Contains [`ChunkColumnDescriptors`] and per-entity component sets.
+/// Contains [`ChunkColumnDescriptors`], per-entity component sets, and the entity tree.
 /// Updated via [`Self::on_events`] when chunks are inserted or RRD manifests are ingested.
-/// Never affected by garbage collection.
+/// The schema itself is purely additive, but the entity tree is pruned on deletions.
 #[derive(Debug, Clone, Default)]
 pub struct StoreSchema {
     /// The _latest_ [`TimeType`] for each timeline name.
@@ -82,10 +82,23 @@ pub struct StoreSchema {
     components_per_entity: IntMap<EntityPath, ComponentSet>,
 
     // TODO(grtlr): Can we slim this map down by getting rid of `ComponentIdentifier`-level here?
+    // Ideally, we'd even merge this with the above fields. We are currently storing a lot of
+    // redundant information.
     per_column_metadata: IntMap<EntityPath, IntMap<ComponentIdentifier, ColumnMetadataEntry>>,
+
+    /// Hierarchical tree of all entities that have been registered in the store.
+    ///
+    /// Entities are pruned on deletions but not during GC.
+    entity_tree: crate::EntityTree,
 }
 
 impl StoreSchema {
+    /// The hierarchical tree of all entities registered in the store.
+    #[inline]
+    pub fn entity_tree(&self) -> &crate::EntityTree {
+        &self.entity_tree
+    }
+
     /// Retrieve all timelines in the store.
     #[inline]
     pub fn timelines(&self) -> BTreeMap<TimelineName, Timeline> {
@@ -199,31 +212,139 @@ impl StoreSchema {
         }
     }
 
+    /// Update per-entity component set and per-column metadata for a single component.
+    ///
+    /// Returns `Some(ChunkComponentMeta)` when a schema event should be emitted,
+    /// i.e. when the column is genuinely new or `is_static` transitions from `false` to `true`.
+    fn update_column_metadata(
+        &mut self,
+        col_descr: &ComponentColumnDescriptor,
+    ) -> Option<ChunkComponentMeta> {
+        let ComponentColumnDescriptor {
+            entity_path,
+            component,
+            is_static,
+            is_semantically_empty,
+            store_datatype: _,
+            component_type: _,
+            archetype: _,
+            is_tombstone: _,
+        } = col_descr;
+        let descriptor = col_descr.component_descriptor();
+        let inner_datatype = col_descr.inner_datatype();
+        let metadata_state = ColumnMetadataState {
+            is_semantically_empty: *is_semantically_empty,
+            is_static: *is_static,
+        };
+
+        let key = schema_component_key(col_descr);
+        self.components
+            .entry(key)
+            .and_modify(|existing| {
+                existing.is_static |= is_static;
+                existing.is_semantically_empty &= is_semantically_empty;
+            })
+            .or_insert_with(|| col_descr.clone());
+
+        let is_new = self
+            .components_per_entity
+            .entry(entity_path.clone())
+            .or_default()
+            .insert(*component);
+
+        let prev_is_static = self
+            .per_column_metadata
+            .get(entity_path)
+            .and_then(|per_id| per_id.get(component))
+            .map(|e| e.metadata_state.is_static);
+
+        let entry = self
+            .per_column_metadata
+            .entry(entity_path.clone())
+            .or_default()
+            .entry(*component)
+            .and_modify(|e| {
+                if e.datatype != inner_datatype {
+                    // TODO(grtlr): If we encounter two different data types, we should split the chunk.
+                    // More information: https://github.com/rerun-io/rerun/pull/10082#discussion_r2140549340
+                    re_log::warn_once!(
+                        "Datatype of column {} in {entity_path} has changed from {} to {inner_datatype}",
+                        e.descriptor,
+                        e.datatype,
+                    );
+                    e.datatype = inner_datatype.clone();
+                }
+                e.metadata_state.is_static |= is_static;
+                e.metadata_state.is_semantically_empty &= is_semantically_empty;
+            })
+            .or_insert_with(|| ColumnMetadataEntry {
+                descriptor: descriptor.clone(),
+                metadata_state,
+                datatype: inner_datatype.clone(),
+            });
+
+        let new_is_static = entry.metadata_state.is_static;
+        let static_changed = prev_is_static.is_some_and(|prev| !prev && new_is_static);
+
+        if is_new || static_changed {
+            Some(ChunkComponentMeta {
+                descriptor: descriptor.clone(),
+                inner_arrow_datatype: Some(inner_datatype.clone()),
+                has_data: !entry.metadata_state.is_semantically_empty,
+                is_static: new_is_static,
+            })
+        } else {
+            None
+        }
+    }
+
     // --- Updating via events ---
 
     /// Update the schema from store events.
     ///
     /// This processes addition events (both physical chunk additions and virtual
-    /// manifest additions). Deletion events are ignored since the schema is purely additive.
-    pub fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+    /// manifest additions). Deletion events and schema column addition events are
+    /// ignored since the schema is purely additive and schema events are output, not input.
+    ///
+    /// Returns newly discovered entity/component pairs grouped by entity.
+    pub fn on_events(&mut self, events: &[ChunkStoreEvent]) -> Vec<ChunkMeta> {
         re_tracing::profile_function!();
+
+        let mut all_new: nohash_hasher::IntMap<EntityPath, Vec<ChunkComponentMeta>> =
+            Default::default();
 
         for event in events {
             match &event.diff {
                 crate::ChunkStoreDiff::Addition(add) => {
-                    self.on_chunk_addition(&add.chunk_after_processing);
+                    for new_col in self.on_chunk_addition(&add.chunk_after_processing) {
+                        all_new
+                            .entry(add.chunk_after_processing.entity_path().clone())
+                            .or_default()
+                            .push(new_col);
+                    }
                 }
                 crate::ChunkStoreDiff::VirtualAddition(vadd) => {
-                    self.on_rrd_manifest(&vadd.rrd_manifest);
+                    for (entity_path, new_cols) in self.on_rrd_manifest(&vadd.rrd_manifest) {
+                        all_new.entry(entity_path).or_default().extend(new_cols);
+                    }
                 }
-                crate::ChunkStoreDiff::Deletion(_) => {
-                    // Schema is purely additive — deletions are ignored.
+                crate::ChunkStoreDiff::Deletion(_) | crate::ChunkStoreDiff::SchemaAddition(_) => {
+                    // Schema is purely additive — deletions and schema column addition events are ignored.
                 }
             }
         }
+
+        all_new
+            .into_iter()
+            .map(|(entity_path, components)| ChunkMeta {
+                entity_path,
+                components,
+            })
+            .collect()
     }
 
-    fn on_chunk_addition(&mut self, chunk: &re_chunk::Chunk) {
+    /// Returns [`ChunkComponentMeta`] for each genuinely new component column.
+    fn on_chunk_addition(&mut self, chunk: &re_chunk::Chunk) -> Vec<ChunkComponentMeta> {
         let is_static = chunk.is_static();
 
         // Update time type registry
@@ -240,16 +361,14 @@ impl StoreSchema {
         }
 
         let entity_path = chunk.entity_path();
+        self.entity_tree.on_new_entity(entity_path);
+
+        let mut new_columns = Vec::new();
 
         // Update component columns and per-entity component sets
         for column in chunk.components().values() {
             let descriptor = &column.descriptor;
             let component = descriptor.component;
-
-            self.components_per_entity
-                .entry(entity_path.clone())
-                .or_default()
-                .insert(component);
 
             let is_semantically_empty =
                 re_arrow_util::is_list_array_semantically_empty(&column.list_array);
@@ -272,45 +391,19 @@ impl StoreSchema {
                 is_semantically_empty,
             };
 
-            let key = schema_component_key(&col_descr);
-            self.components
-                .entry(key)
-                .and_modify(|existing| {
-                    // Additive updates: once static, always static; once non-empty, always non-empty
-                    existing.is_static |= is_static;
-                    existing.is_semantically_empty &= is_semantically_empty;
-                })
-                .or_insert(col_descr);
-
-            // Update per-column metadata
-            let entry = self
-                .per_column_metadata
-                .entry(entity_path.clone())
-                .or_default()
-                .entry(component)
-                .or_insert_with(|| ColumnMetadataEntry {
-                    descriptor: descriptor.clone(),
-                    metadata_state: ColumnMetadataState {
-                        is_semantically_empty: true,
-                    },
-                    datatype: column.list_array.value_type().clone(),
-                });
-            if entry.datatype != column.list_array.value_type() {
-                // TODO(grtlr): If we encounter two different data types, we should split the chunk.
-                // More information: https://github.com/rerun-io/rerun/pull/10082#discussion_r2140549340
-                re_log::warn!(
-                    "Datatype of column {} in {entity_path} has changed from {} to {}",
-                    entry.descriptor,
-                    entry.datatype,
-                    column.list_array.value_type()
-                );
-                entry.datatype = column.list_array.value_type().clone();
+            if let Some(meta) = self.update_column_metadata(&col_descr) {
+                new_columns.push(meta);
             }
-            entry.metadata_state.is_semantically_empty &= is_semantically_empty;
         }
+
+        new_columns
     }
 
-    fn on_rrd_manifest(&mut self, rrd_manifest: &re_log_encoding::RrdManifest) {
+    /// Returns newly inserted columns grouped by entity path.
+    fn on_rrd_manifest(
+        &mut self,
+        rrd_manifest: &re_log_encoding::RrdManifest,
+    ) -> Vec<(EntityPath, Vec<ChunkComponentMeta>)> {
         let sorbet_schema = rrd_manifest.recording_schema();
 
         // Update time type registry
@@ -319,51 +412,25 @@ impl StoreSchema {
                 .insert(descr.timeline_name(), descr.timeline().typ());
         }
 
+        // Update entity tree
+        for entity in sorbet_schema.all_entities() {
+            self.entity_tree.on_new_entity(entity);
+        }
+
+        let mut new_per_entity: nohash_hasher::IntMap<EntityPath, Vec<ChunkComponentMeta>> =
+            Default::default();
+
         // Update component columns and per-entity component sets
         for descr in sorbet_schema.columns.component_columns() {
-            let component = descr.component;
-            let entity_path = &descr.entity_path;
-
-            self.components_per_entity
-                .entry(entity_path.clone())
-                .or_default()
-                .insert(component);
-
-            let key = schema_component_key(descr);
-            self.components
-                .entry(key)
-                .and_modify(|existing| {
-                    existing.is_static |= descr.is_static;
-                    existing.is_semantically_empty &= descr.is_semantically_empty;
-                })
-                .or_insert_with(|| descr.clone());
-
-            // Update per-column metadata
-            let inner_datatype = descr.inner_datatype();
-            let previous = self
-                .per_column_metadata
-                .entry(entity_path.clone())
-                .or_default()
-                .insert(
-                    component,
-                    ColumnMetadataEntry {
-                        descriptor: descr.component_descriptor(),
-                        metadata_state: ColumnMetadataState {
-                            is_semantically_empty: descr.is_semantically_empty,
-                        },
-                        datatype: inner_datatype.clone(),
-                    },
-                );
-
-            if let Some(previous) = previous
-                && previous.datatype != inner_datatype
-            {
-                re_log::warn_once!(
-                    "Component '{component}' on entity '{entity_path}' changed type from {} to {inner_datatype}",
-                    previous.datatype,
-                );
+            if let Some(meta) = self.update_column_metadata(descr) {
+                new_per_entity
+                    .entry(descr.entity_path.clone())
+                    .or_default()
+                    .push(meta);
             }
         }
+
+        new_per_entity.into_iter().collect()
     }
 
     /// Remove all data for a given entity path.
@@ -374,6 +441,13 @@ impl StoreSchema {
         self.components_per_entity.remove(entity_path);
         self.per_column_metadata.remove(entity_path);
     }
+
+    /// Prunes leaf entities from the entity tree that have no indexed data.
+    ///
+    /// Called after store deletions to keep the tree in sync with actual data.
+    pub fn prune_entity_tree(&mut self, entity_has_data: &impl Fn(&EntityPath) -> bool) {
+        self.entity_tree.prune_empty_entities(entity_has_data);
+    }
 }
 
 impl SizeBytes for StoreSchema {
@@ -383,11 +457,13 @@ impl SizeBytes for StoreSchema {
             components,
             components_per_entity,
             per_column_metadata,
+            entity_tree,
         } = self;
 
         time_type_registry.heap_size_bytes()
             + components.heap_size_bytes()
             + components_per_entity.heap_size_bytes()
             + per_column_metadata.heap_size_bytes()
+            + entity_tree.heap_size_bytes()
     }
 }

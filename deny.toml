@@ -31,11 +31,12 @@ all-features = true
 [advisories]
 version = 2
 ignore = [
-  "RUSTSEC-2024-0436", # https://rustsec.org/advisories/RUSTSEC-2024-0436 - paste is unmaintained - https://github.com/dtolnay/paste
-  "RUSTSEC-2024-0014", # https://rustsec.org/advisories/RUSTSEC-2024-0014 - generational-arena is unmaintained
-  "RUSTSEC-2025-0141", # https://rustsec.org/advisories/RUSTSEC-2025-0141 - bincode is unmaintained - https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md
+  { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained — https://github.com/dtolnay/paste" },
+  { id = "RUSTSEC-2024-0014", reason = "generational-arena is unmaintained" },
+  { id = "RUSTSEC-2025-0141", reason = "bincode is unmaintained — https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md" },
   # TODO(quickwit-oss/tantivy#2796): Remove when changes trickle down to `lance`.
-  "RUSTSEC-2026-0002", # https://rustsec.org/advisories/RUSTSEC-2026-0002 - lance uses an old version of `lru`
+  { id = "RUSTSEC-2026-0002", reason = "lance uses an old version of `lru`" },
+  { id = "RUSTSEC-2026-0041", reason = "waiting for dependencies (puffin, arrow-ipc) to upgrade" },
 ]
 
 
@@ -49,6 +50,8 @@ deny = [
   { name = "egui_glow", reason = "We use wgpu" },
   { name = "openssl-sys", reason = "We prefer rustls" },
   { name = "openssl", reason = "We prefer rustls" },
+  { name = "protobuf_src", reason = "We don't want to force users to compile protoc" },
+  # { name = "protoc-prebuilt", reason = "It would be better if 3rd party crates shipped their pre-compiled proto sources" }, # unfortunately, we use this for our objectron example. TODO(emilk): avoid protoc-prebuilt
 
   # We have to allow egui_kittest since we use it behind a `testing` feature flag, rather than just as a dev-dependency.
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },

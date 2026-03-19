@@ -114,8 +114,16 @@ wasm-bindgen.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
+criterion.workspace = true
 pollster.workspace = true
 unindent.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench_bounding_box"
+harness = false
 
 # For build.rs:
 [build-dependencies]

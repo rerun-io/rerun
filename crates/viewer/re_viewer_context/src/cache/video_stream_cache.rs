@@ -276,7 +276,7 @@ impl VideoStreamCache {
                 handle_deletion(entity_db, timeline, video_data, &del.chunk, known_ranges)
             }
 
-            ChunkStoreDiff::VirtualAddition(_) => Ok(()),
+            ChunkStoreDiff::VirtualAddition(_) | ChunkStoreDiff::SchemaAddition(_) => Ok(()),
         };
 
         let encoding_details_changed = encoding_details_before != video_data.encoding_details;

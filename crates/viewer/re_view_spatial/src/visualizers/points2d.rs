@@ -66,10 +66,13 @@ impl Points2DVisualizer {
                 &ent_context.annotations,
             );
 
-            // Has not custom fallback for radius, so we use the default.
-            // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
-            let radii =
-                process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
+            let radii = process_radius_slice(
+                ctx,
+                entity_path,
+                num_instances,
+                data.radii,
+                Points2D::descriptor_radii().component,
+            );
             let colors = process_color_slice(
                 ctx,
                 Points2D::descriptor_colors().component,
@@ -117,9 +120,13 @@ impl Points2DVisualizer {
                 }
             }
 
-            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            let point_cloud_bounds = re_renderer::util::point_cloud_bounds(&positions);
+            self.data.add_bounding_box_and_region_of_interest(
+                entity_path.hash(),
+                point_cloud_bounds.bbox,
+                point_cloud_bounds.region_of_interest,
+                world_from_obj,
+            );
 
             load_keypoint_connections(
                 line_builder,
@@ -134,7 +141,7 @@ impl Points2DVisualizer {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
-                    overall_position: obj_space_bounding_box.center().truncate(),
+                    overall_position: point_cloud_bounds.bbox.center().truncate(),
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
                     labels: &data.labels,
                     colors: &colors,

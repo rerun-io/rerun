@@ -577,8 +577,9 @@ impl FrameGlobalCommandEncoder {
     fn new(device: &wgpu::Device) -> Self {
         Self(Some(device.create_command_encoder(
             &wgpu::CommandEncoderDescriptor {
-                label:
-                    crate::DebugLabel::from("global \"before viewbuilder\" command encoder").get(),
+                label: Some(
+                    crate::Label::from("global \"before viewbuilder\" command encoder").get(),
+                ),
             },
         )))
     }

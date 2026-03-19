@@ -36,6 +36,8 @@ where
         &VisualizerInstructionQueryResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
+    re_tracing::profile_function!(A::name());
+
     let view_kind = super::spatial_view_kind_from_view_class(ctx.view_class_identifier);
     let transforms = context_systems.get::<TransformTreeContext>(output)?;
     let depth_offsets = context_systems.get::<EntityDepthOffsets>(output)?;

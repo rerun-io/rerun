@@ -714,6 +714,7 @@ impl App {
         store_context: Option<&ActiveStoreContext<'_>>,
         route: &Route,
     ) {
+        re_tracing::profile_function!();
         while let Some(cmd) = self.command_receiver.recv_ui() {
             self.run_ui_command(
                 egui_ctx,
@@ -851,7 +852,7 @@ impl App {
             } => {
                 match store_id.kind() {
                     StoreKind::Recording => {
-                        store_hub.load_blueprint_and_caches(&store_id); // Ensure caches and blueprints
+                        store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry); // Ensure caches and blueprints
                         let route = Route::LocalRecording {
                             recording_id: store_id.clone(),
                         };
@@ -930,7 +931,7 @@ impl App {
             SystemCommand::ActivateApp(app_id) => {
                 store_hub.load_persisted_blueprints_for_app(&app_id);
                 if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                    store_hub.load_blueprint_and_caches(&recording_id);
+                    store_hub.load_blueprint_and_caches(&recording_id, &self.view_class_registry);
                     self.state
                         .navigation
                         .replace(Route::LocalRecording { recording_id });
@@ -1027,7 +1028,7 @@ impl App {
                 }
 
                 if let Some(recording_id) = new_route.recording_id() {
-                    store_hub.load_blueprint_and_caches(recording_id);
+                    store_hub.load_blueprint_and_caches(recording_id, &self.view_class_registry);
                 }
 
                 if matches!(new_route, Route::Loading(_)) {
@@ -1233,7 +1234,8 @@ impl App {
                     // If the selected item has its own page, switch to it.
                     if let Some(route) = Route::from_item(item) {
                         if let Route::LocalRecording { recording_id } = &route {
-                            store_hub.load_blueprint_and_caches(recording_id);
+                            store_hub
+                                .load_blueprint_and_caches(recording_id, &self.view_class_registry);
                         }
                         self.state.navigation.replace(route);
                     }
@@ -2499,15 +2501,12 @@ impl App {
             match msg {
                 DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
-                    let store_event = entity_db.add_rrd_manifest_message(rrd_manifest);
+                    let store_events = entity_db.add_rrd_manifest_message(rrd_manifest);
 
-                    if let Some(caches) = store_hub.store_caches(&store_id) {
-                        // Downgrade to read-only, so we can access caches.
-                        let entity_db = store_hub
-                            .entity_db(&store_id)
-                            .expect("Just queried it mutable and that was fine.");
-
-                        caches.on_store_events(&[store_event], entity_db);
+                    if let Some((entity_db, cache)) =
+                        store_hub.entity_db_and_cache(&store_id, &self.view_class_registry)
+                    {
+                        cache.on_store_events(&store_events, entity_db);
                     }
                 }
 
@@ -2643,7 +2642,10 @@ impl App {
                                 if let Some(recording_id) =
                                     store_hub.earliest_recording_for_app(&app_id)
                                 {
-                                    store_hub.load_blueprint_and_caches(&recording_id);
+                                    store_hub.load_blueprint_and_caches(
+                                        &recording_id,
+                                        &self.view_class_registry,
+                                    );
                                     self.state
                                         .selection_state
                                         .set_selection(Item::StoreId(recording_id.clone()));
@@ -2682,7 +2684,7 @@ impl App {
 
     fn process_store_events_for_db(
         &self,
-        store_hub: &StoreHub,
+        store_hub: &mut StoreHub,
         store_id: &StoreId,
         store_events: &[re_chunk_store::ChunkStoreEvent],
     ) {
@@ -2690,10 +2692,10 @@ impl App {
 
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
-        if let Some(entity_db) = store_hub.entity_db(store_id)
-            && let Some(caches) = store_hub.store_caches(store_id)
+        if let Some((entity_db, cache)) =
+            store_hub.entity_db_and_cache(store_id, &self.view_class_registry)
         {
-            caches.on_store_events(store_events, entity_db);
+            cache.on_store_events(store_events, entity_db);
         }
 
         self.validate_loaded_events(store_events);
@@ -2868,7 +2870,7 @@ impl App {
             return;
         }
 
-        store_hub.load_blueprint_and_caches(store_id);
+        store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
         self.state.navigation.replace(Route::LocalRecording {
             recording_id: store_id.clone(),
         });
@@ -3300,7 +3302,7 @@ impl App {
             let db = store_hub.entity_db_entry(&store_id);
 
             if cfg!(debug_assertions) && db.can_fetch_chunks_from_redap() {
-                // Some sanity checks:
+                re_tracing::profile_scope!("debug-sanity-check");
                 let storage_engine = db.storage_engine();
                 let store = storage_engine.store();
 
@@ -3674,6 +3676,33 @@ impl eframe::App for App {
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
+        {
+            // We also need to check for Ui commands, especially `UiCommand::Quit`.
+
+            let route = self.state.navigation.current().clone();
+            let (storage_context, store_context) = store_hub.read_context(&route);
+
+            let blueprint_query = self
+                .state
+                .blueprint_query_for_viewer(store_context.blueprint);
+
+            let app_blueprint = AppBlueprint::new(
+                Some(store_context.blueprint),
+                &blueprint_query,
+                egui_ctx,
+                self.panel_state_overrides_active
+                    .then_some(self.panel_state_overrides),
+            );
+
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                Some(&store_context),
+                &route,
+            );
+        }
+
         self.state.cleanup(&store_hub);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
@@ -3807,7 +3836,23 @@ impl eframe::App for App {
         // Must be called before `read_context` below.
         if let Route::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
-                self.state.navigation.reset();
+                // The stream finished and may have produced a recording without triggering
+                // automatic navigation. So we try that before defaulting to showing the
+                // Welcome screen.
+                let loaded_recording = store_hub
+                    .find_recording_store_by_source(source)
+                    .map(|db| db.store_id().clone());
+
+                if let Some(store_id) = loaded_recording {
+                    re_log::debug!("Stream completed, navigating to loaded recording {store_id:?}");
+                    store_hub.load_blueprint_and_caches(&store_id, &self.view_class_registry);
+                    self.state.navigation.replace(Route::LocalRecording {
+                        recording_id: store_id,
+                    });
+                } else {
+                    re_log::debug!("No recording found from loading source, resetting navigation");
+                    self.state.navigation.reset();
+                }
             }
         } else {
             // If the current route points to a stale recording, find a new valid state.
@@ -3829,7 +3874,8 @@ impl eframe::App for App {
                 if let Some(app_id) = any_other_app_id {
                     store_hub.load_persisted_blueprints_for_app(&app_id);
                     if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
-                        store_hub.load_blueprint_and_caches(&recording_id);
+                        store_hub
+                            .load_blueprint_and_caches(&recording_id, &self.view_class_registry);
                         self.state
                             .selection_state
                             .set_selection(Item::StoreId(recording_id.clone()));

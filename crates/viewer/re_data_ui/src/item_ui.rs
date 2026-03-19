@@ -298,8 +298,8 @@ fn entity_tree_stats_ui(
 
     let (static_stats, timeline_stats) = if include_subtree {
         (
-            db.subtree_stats_static(&engine, &tree.path),
-            db.subtree_stats_on_timeline(&engine, &tree.path, timeline),
+            re_entity_db::EntityDb::subtree_stats_static(&engine, &tree.path),
+            re_entity_db::EntityDb::subtree_stats_on_timeline(&engine, &tree.path, timeline),
         )
     } else {
         (
@@ -514,7 +514,12 @@ pub fn instance_hover_card_ui(
     // Then we can move the size view into `data_ui`.
 
     if instance_path.instance.is_all() {
-        if let Some(subtree) = ctx.db.tree().subtree(&instance_path.entity_path) {
+        let db_engine = ctx.db.storage_engine();
+        if let Some(subtree) = db_engine
+            .store()
+            .entity_tree()
+            .subtree(&instance_path.entity_path)
+        {
             entity_tree_stats_ui(ui, &ctx.timeline_name(), ctx.db, subtree, include_subtree);
         }
     } else {

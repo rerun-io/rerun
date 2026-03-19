@@ -133,7 +133,7 @@ impl ViewClass for ColorCoordinatesView {
         &self,
         _entity_path: &EntityPath,
         visualizers: &[(ViewSystemIdentifier, &VisualizableReason)],
-        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         if visualizers
             .iter()

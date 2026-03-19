@@ -34,6 +34,8 @@ class SupportsDunderArray(Protocol):
 
 
 if TYPE_CHECKING:
+    from .. import components
+
     ImageLike = (
         npt.NDArray[np.float16]
         | npt.NDArray[np.float32]
@@ -87,6 +89,7 @@ class ImageExt:
         # Any any of these:
         opacity: Float32Like | None = None,
         draw_order: Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> None:
         """
         Create a new image with a given format.
@@ -122,6 +125,8 @@ class ImageExt:
             An optional floating point value that specifies the 2D drawing
             order. Objects with higher values are drawn on top of those with
             lower values.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel).
 
         """
 
@@ -157,6 +162,7 @@ class ImageExt:
                     format=ImageFormat(width=width, height=height, pixel_format=pixel_format),
                     opacity=opacity,
                     draw_order=draw_order,
+                    magnification_filter=magnification_filter,
                 )
                 return
             else:
@@ -191,6 +197,7 @@ class ImageExt:
                     ),
                     opacity=opacity,
                     draw_order=draw_order,
+                    magnification_filter=magnification_filter,
                 )
                 return
 
@@ -262,6 +269,7 @@ class ImageExt:
             ),
             opacity=opacity,
             draw_order=draw_order,
+            magnification_filter=magnification_filter,
         )
 
     def image_format(self: Any) -> ImageFormat:

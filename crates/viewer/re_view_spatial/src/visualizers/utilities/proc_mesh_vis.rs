@@ -26,7 +26,7 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
     /// TODO(kpreid): Should be using instanced meshes kept in GPU buffers
     /// instead of this immediate-mode strategy that copies every vertex every frame.
     pub line_builder: re_renderer::LineDrawableBuilder<'ctx>,
-    pub line_batch_debug_label: re_renderer::DebugLabel,
+    pub line_batch_debug_label: re_renderer::Label,
 
     /// Accumulates triangle mesh instances to render.
     pub solid_instances: Vec<GpuMeshInstance>,
@@ -125,7 +125,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         data: &'ctx mut SpatialViewVisualizerData,
         render_ctx: &'ctx re_renderer::RenderContext,
         view_query: &'ctx ViewQuery<'ctx>,
-        line_batch_debug_label: impl Into<re_renderer::DebugLabel>,
+        line_batch_debug_label: impl Into<re_renderer::Label>,
     ) -> Self {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(
@@ -143,11 +143,13 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     }
 
     /// Add a batch of data to be drawn.
+    #[expect(clippy::too_many_arguments)]
     pub fn add_batch(
         &mut self,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         color_component: ComponentIdentifier,
+        line_radii_component: ComponentIdentifier,
         show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,
         batch: ProcMeshBatch<'_, impl Iterator<Item = ProcMeshKey>, impl Iterator<Item = FillMode>>,
@@ -179,13 +181,12 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             &ent_context.annotations,
         );
 
-        // Has not custom fallback for radius, so we use the default.
-        // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
         let line_radii = process_radius_slice(
+            query_context,
             entity_path,
             num_instances,
             batch.line_radii,
-            components::Radius::default(),
+            line_radii_component,
         );
         let colors = process_color_slice(
             query_context,
@@ -309,13 +310,20 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                         InstancePathHash::instance(entity_path, instance),
                     ),
                     additive_tint: tint,
+                    cull_mode: if tint.is_opaque() {
+                        Some(re_renderer::external::wgpu::Face::Back)
+                    } else {
+                        None
+                    },
                 });
             }
         }
 
-        self.data
-            .bounding_boxes
-            .push((entity_path.hash(), world_space_bounding_box));
+        self.data.add_bounding_box(
+            entity_path.hash(),
+            world_space_bounding_box,
+            glam::Affine3A::IDENTITY,
+        );
 
         self.data.ui_labels.extend(process_labels_3d(
             LabeledBatch {

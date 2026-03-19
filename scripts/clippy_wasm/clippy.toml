@@ -81,6 +81,7 @@ disallowed-methods = [
   { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
+  { path = "macaw::BoundingBox::from_points", reason = "from_points propagates NaN/inf. Use re_renderer::util::bounding_box_from_points instead" },
   { path = "poll_promise::Promise::block_and_take", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready_mut", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready", reason = "Cannot block on Web" },

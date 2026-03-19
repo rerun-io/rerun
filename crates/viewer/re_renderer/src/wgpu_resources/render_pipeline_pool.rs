@@ -5,7 +5,7 @@ use super::resource::PoolError;
 use super::shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool};
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
 use crate::RenderContext;
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 
 slotmap::new_key_type! { pub struct GpuRenderPipelineHandle; }
 
@@ -74,7 +74,7 @@ impl VertexBufferLayout {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct RenderPipelineDesc {
     /// Debug label of the pipeline. This will show up in graphics debuggers for easy identification.
-    pub label: DebugLabel,
+    pub label: Label,
 
     pub pipeline_layout: GpuPipelineLayoutHandle,
 
@@ -140,7 +140,7 @@ impl RenderPipelineDesc {
 
         Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: self.label.get(),
+                label: Some(self.label.get()),
                 layout: Some(pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: vertex_shader_module,

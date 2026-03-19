@@ -16,7 +16,7 @@ mod view_context_system;
 mod view_query;
 mod view_states;
 mod visualizability_constraints;
-mod visualizer_entity_subscriber;
+pub(crate) mod visualizer_entity_subscriber;
 mod visualizer_system;
 
 pub use highlights::{

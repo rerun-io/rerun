@@ -51,6 +51,7 @@ impl Boxes3DVisualizer {
                 query_context,
                 ent_context,
                 Boxes3D::descriptor_colors().component,
+                Boxes3D::descriptor_radii().component,
                 Boxes3D::descriptor_show_labels().component,
                 constant_instance_transform,
                 ProcMeshBatch {

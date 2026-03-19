@@ -97,6 +97,7 @@ impl CpuModel {
                     additive_tint: Default::default(),
                     outline_mask_ids: Default::default(),
                     picking_layer_id: Default::default(),
+                    cull_mode: Default::default(),
                 })
             })
             .collect())

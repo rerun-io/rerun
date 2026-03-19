@@ -33,7 +33,7 @@ use crate::wgpu_resources::{
     GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
 };
 use crate::{
-    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
+    DepthOffset, DrawableCollector, Label, OutlineMaskPreference, PointCloudBuilder,
     include_shader_module,
 };
 
@@ -68,6 +68,34 @@ pub mod gpu_data {
         pub radius: Size, // Might use a f16 here to free memory for more data!
     }
     static_assertions::assert_eq_size!(PositionRadius, glam::Vec4);
+
+    impl PositionRadius {
+        /// If there are fewer radii than positions,
+        /// the last radius will be repeated for the remaining positions
+        /// (clamp to edge).
+        pub fn from_many(positions: &[glam::Vec3], radii: &[Size]) -> Vec<Self> {
+            use itertools::izip;
+
+            re_tracing::profile_function_if!(10_0000 < positions.len());
+            if positions.len() == radii.len() {
+                // Optimize common-case with simpler iterators.
+                re_tracing::profile_scope_if!(10_000 < positions.len(), "zipped");
+                izip!(positions.iter().copied(), radii.iter().copied())
+                    .map(|(pos, radius)| Self { pos, radius })
+                    .collect()
+            } else {
+                re_tracing::profile_scope_if!(10_000 < positions.len(), "extended-radius");
+                izip!(
+                    positions.iter().copied(),
+                    radii.iter().copied().chain(std::iter::repeat(
+                        *radii.last().unwrap_or(&Size::ONE_UI_POINT)
+                    ))
+                )
+                .map(|(pos, radius)| Self { pos, radius })
+                .collect()
+            }
+        }
+    }
 
     /// Uniform buffer that changes once per draw data rendering.
     #[repr(C)]
@@ -137,7 +165,7 @@ impl DrawData for PointCloudDrawData {
 
 /// Data that is valid for a batch of point cloud points.
 pub struct PointCloudBatchInfo {
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Transformation applies to point positions
     ///
@@ -176,7 +204,7 @@ impl Default for PointCloudBatchInfo {
     #[inline]
     fn default() -> Self {
         Self {
-            label: DebugLabel::default(),
+            label: Label::default(),
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
             point_count: 0,
@@ -413,7 +441,7 @@ impl PointCloudRenderer {
     fn create_point_cloud_batch(
         &self,
         ctx: &RenderContext,
-        label: DebugLabel,
+        label: Label,
         uniform_buffer_binding: BindGroupEntry,
         vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,

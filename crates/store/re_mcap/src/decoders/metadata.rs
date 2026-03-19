@@ -17,6 +17,7 @@ use crate::Error;
 pub struct McapMetadataDecoder;
 
 const ARCHETYPE_NAME: &str = "McapMetadata";
+const ROSBAG2_METADATA_NAME: &str = "rosbag2";
 
 impl Decoder for McapMetadataDecoder {
     fn identifier() -> DecoderIdentifier {
@@ -48,6 +49,18 @@ impl Decoder for McapMetadataDecoder {
                     continue;
                 }
             };
+
+            if metadata.name == ROSBAG2_METADATA_NAME {
+                // "rosbag2" is a dump of the metadata YAML file that is specific to ROS2's rosbag2 tool.
+                // It's mainly a backwards-compatibility feature for conversion to the legacy SQL rosbag format,
+                // so we can safely ignore it (it is potentially large).
+                // See also: https://docs.ros.org/en/kilted/Releases/Release-Jazzy-Jalisco.html#store-serialized-metadata-in-bag-files-directly
+                re_log::debug_once!(
+                    "Skipping ROS MCAP metadata record '{}' as it is not relevant for Rerun.",
+                    ROSBAG2_METADATA_NAME
+                );
+                continue;
+            }
 
             re_log::debug!(
                 "Processing MCAP metadata record '{}' with {} entries",
@@ -117,7 +130,7 @@ mod tests {
         let mut chunks = Vec::new();
         let registry = DecoderRegistry::empty().register_file_decoder::<McapMetadataDecoder>();
         registry
-            .plan(&summary)
+            .plan(buffer, &summary)
             .expect("failed to plan")
             .run(buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
                 chunks.push(chunk);

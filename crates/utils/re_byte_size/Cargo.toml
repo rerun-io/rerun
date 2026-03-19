@@ -20,6 +20,7 @@ all-features = true
 
 
 [features]
+ecolor = ["dep:ecolor"]
 glam = ["dep:glam"]
 
 
@@ -31,6 +32,7 @@ smallvec.workspace = true
 vec1.workspace = true # Small enough to always depend on it.
 
 # Optional dependencies:
+ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 
 

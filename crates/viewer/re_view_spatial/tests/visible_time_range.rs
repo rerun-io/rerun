@@ -343,9 +343,11 @@ fn setup_blueprint(
         ));
 
         // Set the bounds such that the points are fully visible, that way we get more pixels contributing to the output.
+        let engine = ctx.store_context.blueprint.storage_engine();
+        let blueprint_tree = engine.store().entity_tree();
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view_id,
-            ctx.store_context.blueprint.tree(),
+            blueprint_tree,
             re_sdk_types::blueprint::archetypes::VisualBounds2D::name(),
         );
         ctx.save_blueprint_archetype(
@@ -363,7 +365,7 @@ fn setup_blueprint(
                 re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([time_range]);
             let property_path = re_viewport_blueprint::entity_path_for_view_property(
                 view_id,
-                ctx.store_context.blueprint.tree(),
+                blueprint_tree,
                 re_sdk_types::blueprint::archetypes::VisibleTimeRanges::name(),
             );
 

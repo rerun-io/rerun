@@ -81,7 +81,7 @@ pub struct TestContext {
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
 
-    egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
+    pub egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
     called_setup_kittest_for_rendering: AtomicBool,
 }
 
@@ -260,7 +260,6 @@ impl TestContext {
 
         let mut store_hub = StoreHub::test_hub();
         store_hub.insert_entity_db(recording_store);
-        store_hub.store_cache_entry(&recording_store_id); // create per-store state
         store_hub.insert_entity_db(blueprint_store);
         store_hub
             .set_cloned_blueprint_active_for_app(&blueprint_id)
@@ -543,20 +542,19 @@ impl TestContext {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     ) {
         let builder = build_chunk(Chunk::builder(entity_path));
+        let chunk = Arc::new(builder.build().expect("chunk should be successfully built"));
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
-        active_recording
-            .add_chunk(&Arc::new(
-                builder.build().expect("chunk should be successfully built"),
-            ))
+        store_hub
+            .add_chunk_for_tests(&self.recording_store_id, &chunk)
             .expect("chunk should be successfully added");
     }
 
     pub fn add_chunks(&mut self, chunks: impl Iterator<Item = Chunk>) {
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         for chunk in chunks {
-            active_recording.add_chunk(&Arc::new(chunk)).unwrap();
+            store_hub
+                .add_chunk_for_tests(&self.recording_store_id, &Arc::new(chunk))
+                .unwrap();
         }
     }
 
@@ -564,6 +562,7 @@ impl TestContext {
         let store_hub = self.store_hub.get_mut();
         let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);
+        active_recording.mark_rrd_manifest_complete();
 
         // Pretend like we are connected to a real redap server:
         active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
@@ -624,17 +623,19 @@ impl TestContext {
             );
         }
 
+        // Ensure the per-store cache exists with up-to-date visualizer subscribers.
+        store_hub.store_cache_entry(&self.recording_store_id, &self.view_class_registry);
+
         let route = Route::LocalRecording {
             recording_id: self.recording_store_id.clone(),
         };
         let (storage_context, store_context) = store_hub.read_context(&route);
 
-        let indicated_entities_per_visualizer = self
-            .view_class_registry
-            .indicated_entities_per_visualizer(store_context.recording.store_id());
-        let visualizable_entities_per_visualizer = self
-            .view_class_registry
-            .visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
+        let visualizable_entities_per_visualizer = store_context
+            .caches
+            .visualizable_entities_for_visualizer_systems();
+        let indicated_entities_per_visualizer =
+            store_context.caches.indicated_entities_per_visualizer();
 
         let drag_and_drop_manager =
             re_viewer_context::DragAndDropManager::new(ItemCollection::default());
@@ -851,10 +852,10 @@ impl TestContext {
                         .store_hub
                         .try_lock()
                         .expect("Failed to lock store hub mutex");
-                    let db = store_hub.entity_db_mut(&store_id).unwrap();
 
                     for chunk in chunks {
-                        db.add_chunk(&Arc::new(chunk))
+                        store_hub
+                            .add_chunk_for_tests(&store_id, &Arc::new(chunk))
                             .expect("Updating the chunk store failed");
                     }
                 }

@@ -1,4 +1,3 @@
-use itertools::{Itertools as _, izip};
 use re_log::{ResultExt as _, debug_assert_eq};
 
 use crate::allocator::DataTextureSource;
@@ -8,7 +7,7 @@ use crate::renderer::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
 };
 use crate::{
-    Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
+    Color32, CpuWriteGpuReadError, DepthOffset, Label, OutlineMaskPreference,
     PickingLayerInstanceId, RenderContext, Size,
 };
 
@@ -45,6 +44,8 @@ impl<'ctx> PointCloudBuilder<'ctx> {
         &mut self,
         expected_number_of_additional_points: usize,
     ) -> Result<usize, CpuWriteGpuReadError> {
+        re_tracing::profile_function_if!(100_000 < expected_number_of_additional_points);
+
         // We know that the maximum number is independent of datatype, so we can use the same value for all.
         self.position_radius_buffer
             .reserve(expected_number_of_additional_points)?;
@@ -64,7 +65,7 @@ impl<'ctx> PointCloudBuilder<'ctx> {
 
     /// Start of a new batch.
     #[inline]
-    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_, 'ctx> {
+    pub fn batch(&mut self, label: impl Into<Label>) -> PointCloudBatchBuilder<'_, 'ctx> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
             ..PointCloudBatchInfo::default()
@@ -130,7 +131,10 @@ impl PointCloudBatchBuilder<'_, '_> {
         self
     }
 
-    /// Add several 3D points
+    /// Add several 3D points.
+    ///
+    /// If possible, prefer to using [`Self::add_points`] instead,
+    /// which avoids doing any extra allocations.
     ///
     /// Returns a `PointBuilder` which can be used to set the colors, radii, and user-data for the points.
     ///
@@ -138,10 +142,29 @@ impl PointCloudBatchBuilder<'_, '_> {
     /// Missing radii will default to `Size::AUTO`.
     /// Missing colors will default to white.
     #[inline]
-    pub fn add_points(
-        mut self,
+    pub fn add_points_slow(
+        self,
         positions: &[glam::Vec3],
         radii: &[Size],
+        colors: &[Color32],
+        picking_ids: &[PickingLayerInstanceId],
+    ) -> Self {
+        re_tracing::profile_function!();
+
+        let positions_and_radii = PositionRadius::from_many(positions, radii);
+        self.add_points(&positions_and_radii, colors, picking_ids)
+    }
+
+    /// Add several 3D points
+    ///
+    /// Returns a `PointBuilder` which can be used to set the colors, radii, and user-data for the points.
+    ///
+    /// Will add all positions.
+    /// Missing colors will default to white.
+    #[inline]
+    pub fn add_points(
+        mut self,
+        positions_and_radii: &[PositionRadius],
         colors: &[Color32],
         picking_ids: &[PickingLayerInstanceId],
     ) -> Self {
@@ -156,25 +179,27 @@ impl PointCloudBatchBuilder<'_, '_> {
             self.0.picking_instance_ids_buffer.len()
         );
 
+        let num_points = positions_and_radii.len();
+
         // Do a reserve ahead of time, to check whether we're hitting the data texture limit.
         // The limit is the same for all data textures, so we only need to check one.
         let Some(num_available_points) = self
             .0
             .position_radius_buffer
-            .reserve(positions.len())
+            .reserve(num_points)
             .ok_or_log_error()
         else {
             return self;
         };
 
-        let num_points = if positions.len() > num_available_points {
+        let num_points = if num_points > num_available_points {
             re_log::error_once!(
                 "Reached maximum number of points for point cloud of {}. Ignoring all excess points.",
                 self.0.position_radius_buffer.len() + num_available_points
             );
             num_available_points
         } else {
-            positions.len()
+            num_points
         };
 
         if num_points == 0 {
@@ -182,40 +207,18 @@ impl PointCloudBatchBuilder<'_, '_> {
         }
 
         // Shorten slices if needed:
-        let positions = &positions[0..num_points.min(positions.len())];
-        let radii = &radii[0..num_points.min(radii.len())];
+        let positions_and_radii =
+            &positions_and_radii[0..num_points.min(positions_and_radii.len())];
         let colors = &colors[0..num_points.min(colors.len())];
         let picking_ids = &picking_ids[0..num_points.min(picking_ids.len())];
 
         self.batch_mut().point_count += num_points as u32;
 
         {
-            re_tracing::profile_scope!("positions & radii");
-
-            // TODO(andreas): It would be nice to pass on the iterator as is so we don't have to do yet another
-            // copy of the data and instead write into the buffers directly - if done right this should be the fastest.
-            // But it's surprisingly tricky to do this effectively.
-            let vertices = if positions.len() == radii.len() {
-                // Optimize common-case with simpler iterators.
-                re_tracing::profile_scope!("collect_vec");
-                izip!(positions.iter().copied(), radii.iter().copied())
-                    .map(|(pos, radius)| PositionRadius { pos, radius })
-                    .collect_vec()
-            } else {
-                re_tracing::profile_scope!("collect_vec");
-                izip!(
-                    positions.iter().copied(),
-                    radii.iter().copied().chain(std::iter::repeat(
-                        *radii.last().unwrap_or(&Size::ONE_UI_POINT)
-                    ))
-                )
-                .map(|(pos, radius)| PositionRadius { pos, radius })
-                .collect_vec()
-            };
-
+            re_tracing::profile_scope!("positions_and_radii");
             self.0
                 .position_radius_buffer
-                .extend_from_slice(&vertices)
+                .extend_from_slice(positions_and_radii)
                 .ok_or_log_error();
         }
         {
@@ -263,7 +266,7 @@ impl PointCloudBatchBuilder<'_, '_> {
         picking_ids: &[PickingLayerInstanceId],
     ) -> Self {
         re_tracing::profile_function!();
-        self.add_points(positions, radii, colors, picking_ids)
+        self.add_points_slow(positions, radii, colors, picking_ids)
             .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
     }
 

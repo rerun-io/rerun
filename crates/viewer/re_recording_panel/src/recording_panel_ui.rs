@@ -113,6 +113,12 @@ fn add_button_ui(
                 {
                     ui.close();
                 }
+                if re_ui::UICommand::OpenUrl
+                    .menu_button_ui(ui, ctx.command_sender())
+                    .clicked()
+                {
+                    ui.close();
+                }
                 if re_ui::UICommand::AddRedapServer
                     .menu_button_ui(ui, ctx.command_sender())
                     .clicked()

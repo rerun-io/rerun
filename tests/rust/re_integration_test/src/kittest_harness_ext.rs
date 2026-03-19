@@ -221,14 +221,10 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .expect("expected a recording route")
             .clone();
         let builder = build_chunk(Chunk::builder(entity_path));
+        let chunk = Arc::new(builder.build().expect("chunk should be successfully built"));
         let store_hub = app.testonly_get_store_hub();
-        let active_recording = store_hub
-            .entity_db_mut(&recording_id)
-            .expect("Failed to find recording");
-        active_recording
-            .add_chunk(&Arc::new(
-                builder.build().expect("chunk should be successfully built"),
-            ))
+        store_hub
+            .add_chunk_for_tests(&recording_id, &chunk)
             .expect("chunk should be successfully added");
         self.run_ok();
     }

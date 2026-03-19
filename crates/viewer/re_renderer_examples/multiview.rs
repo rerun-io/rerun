@@ -48,6 +48,7 @@ fn build_mesh_instances(
                     additive_tint: *c,
                     outline_mask_ids: Default::default(),
                     picking_layer_id: Default::default(),
+                    cull_mode: None,
                 },
             )
         })
@@ -324,7 +325,7 @@ impl Example for Multiview {
         builder
             .batch("Random Points")
             .world_from_obj(glam::Affine3A::from_rotation_x(secs_since_startup))
-            .add_points(
+            .add_points_slow(
                 &self.random_points_positions,
                 &self.random_points_radii,
                 &self.random_points_colors,

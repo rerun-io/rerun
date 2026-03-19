@@ -100,7 +100,7 @@ Set the displayed dimensions in a selection panel.",
         &self,
         _entity_path: &EntityPath,
         visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
-        _indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         // Default implementation would not suggest the Tensor visualizer for images,
         // since they're not indicated with a Tensor indicator.
@@ -422,7 +422,9 @@ impl TensorView {
         let texture_options = egui::TextureOptions {
             magnification: match mag_filter {
                 MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
-                MagnificationFilter::Linear => egui::TextureFilter::Linear,
+                MagnificationFilter::Linear | MagnificationFilter::Bicubic => {
+                    egui::TextureFilter::Linear
+                }
             },
             minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
             wrap_mode: egui::TextureWrapMode::ClampToEdge,
@@ -435,7 +437,7 @@ impl TensorView {
             image_rect,
             colormapped_texture,
             texture_options,
-            re_renderer::DebugLabel::from("tensor_slice"),
+            re_renderer::Label::from("tensor_slice"),
         )?;
 
         Ok((response, image_rect))

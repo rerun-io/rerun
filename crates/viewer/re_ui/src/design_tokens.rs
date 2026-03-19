@@ -79,6 +79,10 @@ pub struct DesignTokens {
     /// Opacity multiplier for the background of 2D labels in spatial views.
     pub spatial_label_bg_opacity: f32,
 
+    /// Animation duration in seconds for some things that should feel smooth,
+    /// (as opposed as the default egui animaion that should feel _snappy_).
+    pub slow_animation_duration_sec: f32,
+
     /// Background color for viewport views.
     pub viewport_background: Color32,
 
@@ -307,6 +311,7 @@ impl DesignTokens {
             info_text_color: get_color("info_text_color"),
 
             spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
+            slow_animation_duration_sec: get_scalar("slow_animation_duration_sec")?,
 
             viewport_background: get_color("viewport_background"),
 

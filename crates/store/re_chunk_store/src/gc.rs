@@ -236,25 +236,9 @@ impl ChunkStore {
             "GC done"
         );
 
-        let events: Vec<_> = diffs
-            .into_iter()
-            .map(|diff| ChunkStoreEvent {
-                store_id: self.id.clone(),
-                store_generation: self.generation(),
-                event_id: self
-                    .event_id
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
-            .collect();
-        if cfg!(debug_assertions) {
-            let any_event_other_than_deletion = events.iter().any(|e| !e.is_deletion());
-            assert!(!any_event_other_than_deletion);
-        }
+        re_log::debug_assert!(diffs.iter().all(|d| d.is_deletion()));
 
-        if self.config.enable_changelog {
-            Self::on_events(&events);
-        }
+        let events = self.finalize_events(diffs);
 
         (events, stats_before - stats_after)
     }

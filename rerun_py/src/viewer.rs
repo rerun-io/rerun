@@ -17,14 +17,14 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 }
 
 /// A connection to an instance of a Rerun viewer.
-#[pyclass( // NOLINT: ignore[py-cls-eq] internal object
+#[pyclass(
     name = "ViewerClientInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
 pub struct PyViewerClientInternal {
     conn: ViewerConnectionHandle,
 }
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyViewerClientInternal {
     #[new]
     #[pyo3(text_signature = "(self, addr)")]

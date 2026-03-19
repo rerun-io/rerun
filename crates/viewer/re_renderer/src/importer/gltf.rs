@@ -274,7 +274,7 @@ fn import_mesh(
         return Err(GltfImportError::NoTrianglePrimitives { mesh_name });
     }
 
-    let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+    let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
     let mesh = CpuMesh {
         label: mesh.name().into(),

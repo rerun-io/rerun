@@ -1,4 +1,5 @@
 use ahash::HashSet;
+use egui::NumExt as _;
 use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
@@ -134,7 +135,7 @@ impl ViewClass for SpatialView3D {
 
                 let speed = match kind {
                     Eye3DKind::FirstPerson => {
-                        let l = view_state.bounding_boxes.current.size().length() as f64;
+                        let l = view_state.bounding_boxes.region_of_interest_current.size().length() as f64;
                         if l.is_finite() {
                             (0.1 * l).max(MIN_SPEED)
                         } else {
@@ -167,7 +168,7 @@ impl ViewClass for SpatialView3D {
                     );
                     return Position3D::ZERO;
                 };
-                let center = view_state.bounding_boxes.current.center();
+                let center = view_state.bounding_boxes.region_of_interest_current.center();
 
                 if !center.is_finite() {
                     return Position3D::ZERO;
@@ -186,16 +187,18 @@ impl ViewClass for SpatialView3D {
                     );
                     return Position3D::ZERO;
                 };
-                let mut center = view_state.bounding_boxes.current.center();
+                let mut center = view_state.bounding_boxes.region_of_interest_current.center();
 
                 if !center.is_finite() {
                     center = Vec3::ZERO;
                 }
 
-                let mut radius = 1.5 * view_state.bounding_boxes.current.half_size().length();
+                let mut radius = 1.5 * view_state.bounding_boxes.region_of_interest_current.half_size().length();
                 if !radius.is_finite() || radius == 0.0 {
                     radius = 1.0;
                 }
+
+                radius = radius.at_least(crate::eye::EyeController::MIN_ORBIT_DISTANCE);
 
 
                 let scene_view_coordinates =
@@ -324,7 +327,7 @@ impl ViewClass for SpatialView3D {
         &self,
         entity_path: &EntityPath,
         visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();
@@ -384,7 +387,7 @@ impl ViewClass for SpatialView3D {
                 // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
                 // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
                 let engine = ctx.recording_engine();
-                ctx.recording().tree().visit_children_recursively(|path| {
+                engine.store().entity_tree().visit_children_recursively(|path| {
                     if let Some(components) = engine.schema().all_components_for_entity(path)
                         && components.iter().any(|&component| {
                             archetypes::Pinhole::all_components().iter().any(|c| c.component == component)

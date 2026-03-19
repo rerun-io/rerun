@@ -32,6 +32,8 @@ pub struct Eye {
 impl Eye {
     pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
+    pub const PERSPECTIVE_NEAR_PLANE: f32 = 0.01;
+
     pub fn from_camera(camera: &PinholeWrapper) -> Option<Self> {
         let fov_y = camera.pinhole.fov_y();
 
@@ -43,7 +45,7 @@ impl Eye {
 
     pub fn near(&self) -> f32 {
         if self.is_perspective() {
-            0.01 // TODO(emilk)
+            Self::PERSPECTIVE_NEAR_PLANE // TODO(emilk)
         } else {
             -1000.0 // TODO(andreas)
         }
@@ -213,7 +215,7 @@ pub struct EyeState {
 
 /// Utility struct for handling eye control parameter changes,
 /// e.g. via user input or blueprint.
-struct EyeController {
+pub(crate) struct EyeController {
     pos: Vec3,
     look_target: Vec3,
     kind: Eye3DKind,
@@ -228,11 +230,20 @@ impl EyeController {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
+    /// Avoids breaking the view by zooming in too far.
+    pub const MIN_ORBIT_DISTANCE: f32 = Eye::PERSPECTIVE_NEAR_PLANE * 2.0;
+
     fn get_eye(&self) -> Eye {
         Eye {
             world_from_rub_view: IsoTransform::look_at_rh(
                 self.pos,
-                if self.pos.distance_squared(self.look_target) < 1e-6 {
+                // Check that the positions we base look target on are far enough
+                // apart here because if the eye is this zoomed in, look target
+                // likely is a value that can drastically change from small inputs
+                // because of float precision.
+                if self.pos.distance_squared(self.look_target)
+                    < (Self::MIN_ORBIT_DISTANCE * 0.5).powi(2)
+                {
                     self.pos + Vec3::Y
                 } else {
                     self.look_target
@@ -488,7 +499,7 @@ impl EyeController {
         match self.kind {
             Eye3DKind::Orbital => {
                 let radius = self.pos.distance(self.look_target);
-                let new_radius = radius / zoom_factor;
+                let new_radius = (radius / zoom_factor).at_least(Self::MIN_ORBIT_DISTANCE);
 
                 // The user may be scrolling to move the camera closer, but are not realizing
                 // the radius is now tiny.
@@ -783,14 +794,20 @@ impl EyeState {
                 //     ..
                 // }) = ctx.selection_state().hovered_space_context()
 
-                if let Some(entity_bbox) = bounding_boxes.per_entity.get(&tracking_entity.hash()) {
+                if let Some(entity_bbox) = bounding_boxes
+                    .region_of_interest_per_entity
+                    .get(&tracking_entity.hash())
+                {
                     // If we're tracking something new, set the current position & look target to the correct view.
                     if new_tracking {
                         let fwd = eye_controller.fwd();
                         let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
                         let radius = if radius < 0.0001 {
                             // Handle zero-sized bounding boxes:
-                            (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5)
+                            (bounding_boxes
+                                .region_of_interest_current
+                                .centered_bounding_sphere_radius()
+                                * 1.5)
                                 .at_least(0.02)
                         } else {
                             radius
@@ -925,7 +942,10 @@ impl EyeState {
         // Focusing cameras is not something that happens now, since those are always tracked.
         if let Some(target_eye) = find_camera(cameras, focused_entity) {
             eye_controller.copy_from_eye(&target_eye);
-        } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&focused_entity.hash()) {
+        } else if let Some(entity_bbox) = bounding_boxes
+            .region_of_interest_per_entity
+            .get(&focused_entity.hash())
+        {
             let fwd = self
                 .last_eye
                 .map(|eye| eye.forward_in_world())
@@ -933,7 +953,11 @@ impl EyeState {
             let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
             let radius = if radius < 0.0001 {
                 // Handle zero-sized bounding boxes:
-                (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.02)
+                (bounding_boxes
+                    .region_of_interest_current
+                    .centered_bounding_sphere_radius()
+                    * 1.5)
+                    .at_least(0.02)
             } else {
                 radius
             };

@@ -166,7 +166,7 @@ impl LoadedMesh {
 
         let bbox = {
             re_tracing::profile_scope!("bbox");
-            macaw::BoundingBox::from_points(vertex_positions.iter().copied())
+            re_renderer::util::bounding_box_from_points(vertex_positions.iter().copied())
         };
 
         let albedo = try_get_or_create_albedo_texture(

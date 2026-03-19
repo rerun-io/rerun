@@ -26,7 +26,7 @@ mod video;
 pub use cameras::CamerasVisualizer;
 pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer};
 pub use encoded_depth_image::EncodedDepthImageVisualizer;
-use re_sdk_types::{ComponentDescriptor, archetypes};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, archetypes};
 pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
 pub use utilities::{
     SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
@@ -55,10 +55,11 @@ pub struct LoadingIndicator {
 use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_sdk_types::datatypes::{KeypointId, KeypointPair};
-use re_view::clamped_or_nothing;
+use re_view::clamped_or_else;
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem as _, ViewClassRegistryError, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection, auto_color_egui,
+    Annotations, IdentifiedViewSystem as _, QueryContext, ViewClassRegistryError,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection,
+    auto_color_egui, typed_fallback_for,
 };
 
 /// Collection of keypoints for annotation context.
@@ -183,38 +184,29 @@ pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
 /// Process [`re_sdk_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
 pub fn process_radius_slice(
+    ctx: &QueryContext<'_>,
     entity_path: &EntityPath,
     num_instances: usize,
     radii: &[re_sdk_types::components::Radius],
-    fallback_radius: re_sdk_types::components::Radius,
+    component: ComponentIdentifier,
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
 
-    if let Some(last_radius) = radii.last() {
-        if radii.len() == num_instances {
-            // Common happy path
-            radii
-                .iter()
-                .map(|radius| process_radius(entity_path, *radius))
-                .collect()
-        } else if radii.len() == 1 {
-            // Common happy path
-            let last_radius = process_radius(entity_path, *last_radius);
-            vec![last_radius; num_instances]
-        } else {
-            clamped_or_nothing(radii, num_instances)
-                .map(|radius| process_radius(entity_path, *radius))
-                .collect()
-        }
-    } else {
-        vec![re_renderer::Size(*fallback_radius.0); num_instances]
-    }
+    clamped_or_else(radii, || {
+        // TODO(RR-3840): Fallback should be already incorporated into the query.
+        typed_fallback_for::<re_sdk_types::components::Radius>(ctx, component)
+    })
+    .take(num_instances)
+    .map(|radius| process_radius(entity_path, radius))
+    .collect()
 }
 
 fn process_radius(
     entity_path: &EntityPath,
     radius: re_sdk_types::components::Radius,
 ) -> re_renderer::Size {
+    // TODO(andreas): surface as visualizer warning. Handle correctly when cached!
+    // TODO(andreas): array casting _is_ possible here. Maybe it's faster to do these checks separately?
     if radius.0.is_infinite() {
         re_log::warn_once!("Found infinite radius in entity {entity_path}");
     } else if radius.0.is_nan() {

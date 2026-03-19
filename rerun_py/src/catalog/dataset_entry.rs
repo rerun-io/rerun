@@ -31,11 +31,11 @@ use super::{
 };
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::{AnyComponentColumn, PyIndexColumnSelector, PySchemaInternal};
-use crate::recording::PyRecording;
+use crate::recording::PyRecordingInternal;
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
-#[pyclass( // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(
     name = "DatasetEntryInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -441,7 +441,10 @@ impl PyDatasetEntryInternal {
 
     /// Download a segment from the dataset.
     #[instrument(skip(self_), err)]
-    fn download_segment(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyRecording> {
+    fn download_segment(
+        self_: PyRef<'_, Self>,
+        segment_id: String,
+    ) -> PyResult<PyRecordingInternal> {
         let catalog_client = self_.client.borrow(self_.py());
         let connection = catalog_client.connection();
         let dataset_id = self_.entry_details.id;
@@ -487,7 +490,10 @@ impl PyDatasetEntryInternal {
 
         let handle = ChunkStoreHandle::new(store?);
 
-        Ok(PyRecording { store: handle })
+        Ok(PyRecordingInternal {
+            store: handle,
+            store_info: None,
+        })
     }
 
     // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`

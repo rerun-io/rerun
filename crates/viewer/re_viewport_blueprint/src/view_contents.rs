@@ -268,8 +268,8 @@ impl ViewContents {
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
         query_range: &QueryRange,
-        visualizable_entities_per_visualizer: &PerVisualizerType<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizerType<IndicatedEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerType<&VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
         app_options: &re_viewer_context::AppOptions,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
@@ -315,7 +315,7 @@ impl ViewContents {
         let root_handle = {
             re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
             executor.add_entity_tree_to_data_results_recursive(
-                ctx.recording.tree(),
+                ctx.recording.storage_engine().store().entity_tree(),
                 &mut data_results,
                 &mut num_matching_entities,
                 &mut num_visualized_entities,
@@ -461,7 +461,7 @@ struct DataQueryPropertyResolver<'a> {
     view_query_range: &'a QueryRange,
     view_class: &'a dyn re_viewer_context::ViewClass,
     visualizable_entities_per_visualizer_in_view: &'a VisualizableEntitiesPerVisualizerInView<'a>,
-    indicated_entities_per_visualizer: &'a PerVisualizerType<IndicatedEntities>,
+    indicated_entities_per_visualizer: &'a PerVisualizerType<&'a IndicatedEntities>,
 }
 
 impl DataQueryPropertyResolver<'_> {
@@ -550,8 +550,10 @@ impl DataQueryPropertyResolver<'_> {
                 // the index in the low 64 bits of the UUID. We extract that index to
                 // build a map from index → existing instruction id.
                 let mut known_ids: IntMap<u64, VisualizerInstructionId> = Default::default();
-                if let Some(subtree) = blueprint
-                    .tree()
+                let bp_engine = blueprint.storage_engine();
+                if let Some(subtree) = bp_engine
+                    .store()
+                    .entity_tree()
                     .subtree(&node.data_result.override_base_path)
                 {
                     for child_tree in subtree.children.values() {
@@ -588,7 +590,7 @@ impl DataQueryPropertyResolver<'_> {
                     self.indicated_entities_per_visualizer,
                 );
                 node.data_result.visualizer_instructions = recommended_visualizers
-                    .0
+                    .into_auto_spawned()
                     .into_iter()
                     .flat_map(|(visualizer_type, mappings_per_visualizer_type)| {
                         mappings_per_visualizer_type
@@ -852,7 +854,7 @@ mod tests {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &StoreCache::new(recording.store_id().clone()),
+            caches: &StoreCache::new(&view_class_registry, &recording),
             should_enable_heuristics: false,
         };
 
@@ -956,7 +958,7 @@ mod tests {
                 &view_class_registry,
                 &LatestAtQuery::latest(blueprint_timeline()),
                 &query_range,
-                &visualizable_entities_for_visualizer_systems,
+                &visualizable_entities_for_visualizer_systems.as_ref(),
                 &PerVisualizerType::default(),
                 &re_viewer_context::AppOptions::default(),
             );

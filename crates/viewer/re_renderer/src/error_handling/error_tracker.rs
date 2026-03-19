@@ -109,11 +109,11 @@ impl ErrorTracker {
                 re_log::error!("A wgpu operation caused out-of-memory: {error}");
             }
             wgpu::Error::Internal {
-                source: _source,
+                source,
                 description,
             }
             | wgpu::Error::Validation {
-                source: _source,
+                source,
                 description,
             } => {
                 let entry = ErrorEntry {
@@ -121,7 +121,7 @@ impl ErrorTracker {
                     description: description.clone(),
                 };
 
-                let should_log = match _source.downcast::<wgpu::wgc::error::ContextError>() {
+                let should_log = match source.downcast::<wgpu::wgc::error::ContextError>() {
                     Ok(ctx_err) => {
                         if ctx_err
                             .source
@@ -133,9 +133,18 @@ impl ErrorTracker {
                             return;
                         }
 
+                        // Don't log errors for texture creation errors, they are exposed
+                        // as visualizer errors instead.
+                        let is_texture_err = ctx_err
+                            .source
+                            .is::<wgpu::wgc::resource::CreateTextureError>();
+
                         let ctx_err =
                             ContextError::WgpuCoreError(WgpuCoreWrappedContextError(ctx_err));
-                        self.errors.lock().insert(ctx_err, entry).is_none()
+
+                        let new_error = self.errors.lock().insert(ctx_err, entry).is_none();
+
+                        !is_texture_err && new_error
                     }
 
                     #[cfg(not(web))]

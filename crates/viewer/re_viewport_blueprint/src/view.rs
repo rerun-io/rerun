@@ -248,7 +248,8 @@ impl ViewBlueprint {
 
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
-        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+        let bp_engine = blueprint.storage_engine();
+        if let Some(tree) = bp_engine.store().entity_tree().subtree(&current_path) {
             tree.visit_children_recursively(|path| {
                 let sub_path: EntityPath = new_path
                     .iter()
@@ -640,7 +641,7 @@ mod tests {
                 add_to_blueprint(&base_override_path, batch.as_ref());
             }
 
-            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities);
+            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities.as_ref());
 
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
@@ -666,7 +667,7 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizerType<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerType<&VisualizableEntities>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 

@@ -1,6 +1,7 @@
 //! Rerun dataloader for MCAP files.
 
 mod loader;
+mod robot_description;
 
 /// Lens implementations for transforming various third-party data formats into Rerun components.
 pub mod lenses;

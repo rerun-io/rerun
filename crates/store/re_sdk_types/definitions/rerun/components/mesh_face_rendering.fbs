@@ -1,0 +1,25 @@
+namespace rerun.components;
+
+/// Determines which faces of a mesh are rendered.
+///
+/// For this purpose, we assume that the winding order of vertices in a mesh is
+/// consistent and that front faces are defined as those with vertices in counter clockwise order.
+enum MeshFaceRendering: ubyte (
+    "attr.docs.unreleased"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Show both back and front faces.
+    DoubleSided(default),
+
+    /// Only front faces are shown.
+    ///
+    /// Front faces are assumed to have a counter clockwise vertex winding order on screen.
+    Front,
+
+    /// Only back faces are shown.
+    ///
+    /// Back faces are assumed to have a clockwise vertex winding order on screen.
+    Back,
+}

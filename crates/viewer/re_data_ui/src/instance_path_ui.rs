@@ -159,24 +159,25 @@ fn instance_path_ui(
 
                 if !showed_short_summary {
                     // Show just a very short summary:
+                    ui.list_item_scope(instance_path, |ui| {
+                        ui.list_item_label(format_plural_s(num_components, "component"));
 
-                    ui.list_item_label(format_plural_s(num_components, "component"));
-
-                    let archetype_count = components_by_archetype.len();
-                    ui.list_item_label(format!(
-                        "{}: {}",
-                        format_plural_s(archetype_count, "archetype"),
-                        components_by_archetype
-                            .keys()
-                            .map(|archetype| {
-                                if let Some(archetype) = archetype {
-                                    archetype.short_name()
-                                } else {
-                                    "<Without archetype>"
-                                }
-                            })
-                            .join(", ")
-                    ));
+                        let archetype_count = components_by_archetype.len();
+                        ui.list_item_label(format!(
+                            "{}: {}",
+                            format_plural_s(archetype_count, "archetype"),
+                            components_by_archetype
+                                .keys()
+                                .map(|archetype| {
+                                    if let Some(archetype) = archetype {
+                                        archetype.short_name()
+                                    } else {
+                                        "<Without archetype>"
+                                    }
+                                })
+                                .join(", ")
+                        ));
+                    });
                 }
             }
         }

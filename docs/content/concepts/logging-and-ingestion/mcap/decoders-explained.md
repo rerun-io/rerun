@@ -45,6 +45,12 @@ The `raw` decoder preserves the original message bytes without any interpretatio
 
 The `recording_info` decoder extracts metadata about the recording session and capture context, creating metadata entities with information about recording timestamps, source system details, and capture software versions.
 
+## The URDF option
+
+The `urdf` option uses Rerun's built-in URDF loader if there is a ROS 2 string topic named `/robot_description`, logging the robot model as static 3D geometry. In this MCAP workflow, joint transforms are not loaded from the URDF itself; they are expected to come from TF topics in the MCAP (e.g. `/tf` or `/tf_static`).
+
+For general information about how to load URDF files, see [here](../../../howto/logging-and-ingestion/urdf.md).
+
 ## Decoder selection and performance
 
 ### Selecting decoders
@@ -57,6 +63,9 @@ rerun mcap convert input.mcap -d protobuf -d stats -o output.rrd
 
 # Use multiple decoders for different perspectives
 rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
+
+# Add robot geometry from ROS robot_description topics
+rerun mcap convert input.mcap -d ros2msg -d urdf -o output.rrd
 ```
 
 ## Accessing decoder data
@@ -66,6 +75,7 @@ Each decoder creates different types of components on entity paths (derived from
 - Data from the `ros2msg` decoder and supported Foxglove messages appears as native Rerun visualization archetypes (see [here](message-formats.md#overview) for an overview)
 - Other data from the `protobuf` or `ros2_reflection` decoders appears as structured components that can be queried by field name or manually added to certain views ([example](message-formats.md#example-timeseries-plot-for-custom-message-scalars))
 - Data from the `raw` decoder appears as blob components containing the original message bytes
+- Data from the `urdf` option appears as static 3D robot geometry loaded from the ROS 2 `/robot_description` topic
 - Metadata from `schema`, `stats`, and `recording_info` decoders appears as dedicated metadata entities
 
 For more information on querying data and working with archetypes, see the [Data Queries documentation](../../../howto/query-and-transform/get-data-out.md).

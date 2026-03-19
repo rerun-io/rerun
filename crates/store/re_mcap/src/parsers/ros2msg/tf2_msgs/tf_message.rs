@@ -14,6 +14,14 @@ use crate::parsers::{
 };
 use crate::util::{TimestampCell, log_and_publish_timepoint_from_msg};
 
+const STATIC_TF_TOPIC: &str = "/tf_static";
+
+fn static_chunk_timelines()
+-> re_chunk::external::nohash_hasher::IntMap<re_log_types::TimelineName, re_chunk::TimeColumn> {
+    // Chunks without any timelines are treated as static by Rerun.
+    re_chunk::external::nohash_hasher::IntMap::default()
+}
+
 pub struct TfMessageParser {
     translations: Vec<Translation3D>,
     quaternions: Vec<RotationQuat>,
@@ -104,7 +112,11 @@ impl MessageParser for TfMessageParser {
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
-        let timelines = ctx.build_timelines();
+        let timelines = if ctx.channel_topic() == STATIC_TF_TOPIC {
+            static_chunk_timelines()
+        } else {
+            ctx.build_timelines()
+        };
 
         let chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -120,5 +132,43 @@ impl MessageParser for TfMessageParser {
         )?;
 
         Ok(vec![chunk])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::TimePoint;
+    use re_log_types::{TimeCell, TimeType, TimelineName};
+
+    use super::*;
+
+    fn test_parser() -> TfMessageParser {
+        TfMessageParser {
+            translations: vec![Translation3D::new(1.0, 2.0, 3.0)],
+            quaternions: vec![Quaternion::from_xyzw([0.0, 0.0, 0.0, 1.0]).into()],
+            parent_frame_ids: vec!["parent".to_owned()],
+            child_frame_ids: vec!["child".to_owned()],
+        }
+    }
+
+    #[test]
+    fn tf_static_topic_produces_static_chunk() {
+        let ctx = ParserContext::new("/tf_static".into(), STATIC_TF_TOPIC, TimeType::TimestampNs);
+        let chunk = Box::new(test_parser()).finalize(ctx).unwrap().remove(0);
+
+        assert!(chunk.is_static());
+    }
+
+    #[test]
+    fn non_tf_static_topic_stays_temporal() {
+        let mut ctx = ParserContext::new("/tf".into(), "tf", TimeType::TimestampNs);
+        ctx.add_timepoint(TimePoint::from([(
+            TimelineName::log_time(),
+            TimeCell::from_timestamp_nanos_since_epoch(123),
+        )]));
+
+        let chunk = Box::new(test_parser()).finalize(ctx).unwrap().remove(0);
+
+        assert!(!chunk.is_static());
     }
 }

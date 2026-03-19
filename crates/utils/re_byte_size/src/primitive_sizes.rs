@@ -29,5 +29,8 @@ impl_size_bytes_pod!(
 );
 impl_size_bytes_pod!(half::f16);
 
+#[cfg(feature = "ecolor")]
+impl_size_bytes_pod!(ecolor::Color32);
+
 #[cfg(feature = "glam")]
-impl_size_bytes_pod!(glam::DAffine3);
+impl_size_bytes_pod!(glam::Vec3, glam::DAffine3);

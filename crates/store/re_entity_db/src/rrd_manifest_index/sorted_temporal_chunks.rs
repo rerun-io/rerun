@@ -17,6 +17,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 use re_chunk::{ChunkId, TimelineName};
+use re_chunk_store::EntityTree;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash};
 
 /// Summary information about a chunk for display/query purposes.
@@ -122,7 +123,7 @@ impl re_byte_size::SizeBytes for SortedTemporalChunks {
 
 impl SortedTemporalChunks {
     pub fn new(
-        entity_tree: &crate::EntityTree,
+        entity_tree: &EntityTree,
         native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
     ) -> Self {
         re_tracing::profile_function!();
@@ -137,7 +138,7 @@ impl SortedTemporalChunks {
     // TODO(emilk): handle incremental ingestion
     fn update(
         &mut self,
-        entity_tree: &crate::EntityTree,
+        entity_tree: &EntityTree,
         native_temporal_map: &re_log_encoding::RrdManifestTemporalMap,
     ) {
         re_tracing::profile_function!();
@@ -168,14 +169,14 @@ impl SortedTemporalChunks {
         }
 
         /// Bottom-up entity traversal
-        fn visit(current: &crate::EntityTree, visitor: &mut impl FnMut(&crate::EntityTree)) {
+        fn visit(current: &EntityTree, visitor: &mut impl FnMut(&EntityTree)) {
             for child in current.children.values() {
                 visit(child, visitor);
             }
             visitor(current);
         }
 
-        visit(entity_tree, &mut |node: &crate::EntityTree| {
+        visit(entity_tree, &mut |node: &EntityTree| {
             for per_entity in self.per_timeline.values_mut() {
                 // Collect all chunks from direct children which now already includes
                 // their descendants and components
@@ -261,8 +262,8 @@ mod tests {
     use re_chunk::EntityPath;
     use re_log_types::TimeInt;
 
-    fn make_entity_tree(paths: &[&EntityPath]) -> crate::EntityTree {
-        let mut tree = crate::EntityTree::root();
+    fn make_entity_tree(paths: &[&EntityPath]) -> EntityTree {
+        let mut tree = EntityTree::root();
         for path in paths {
             tree.on_new_entity(path);
         }

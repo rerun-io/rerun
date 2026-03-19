@@ -1,3 +1,11 @@
+<!--
+Thank you for filing a pull request! We kindly ask you to:
+
+1. Fill out this pull request template below, to make the review smoother.
+2. Enable edits to your branch by our maintainers. This helps us to get your branch ready to merge. See here for more details:
+https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/allowing-changes-to-a-pull-request-branch-created-from-a-fork
+-->
+
 ### Related
 
 <!--

@@ -7,7 +7,6 @@
 mod chunk_requests;
 mod data_meta_per_timeline;
 pub mod entity_db;
-pub mod entity_tree;
 mod ingestion_statistics;
 mod instance_path;
 mod rrd_manifest_index;
@@ -19,7 +18,6 @@ mod versioned_instance_path;
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
 pub use self::entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb};
-pub use self::entity_tree::EntityTree;
 pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats};
 pub use self::instance_path::{InstancePath, InstancePathHash};
 pub use self::rrd_manifest_index::{
@@ -27,6 +25,7 @@ pub use self::rrd_manifest_index::{
 };
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
+pub use re_chunk_store::EntityTree;
 
 pub mod external {
     pub use {re_chunk_store, re_query};

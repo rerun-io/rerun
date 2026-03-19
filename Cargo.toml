@@ -229,10 +229,10 @@ criterion = "0.5.1"
 cros-codecs = "0.0.6"
 crossbeam = "0.8.4"
 dae-parser = "0.11.0"
-datafusion = { version = "51.0.0", default-features = false, features = [
+datafusion = { version = "52.3.0", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
-  # The features here are the same as in https://github.com/lance-format/lance/blob/v2.0.0/Cargo.toml#L111-L118
+  # The features here are the same as in https://github.com/lance-format/lance/blob/v3.0.0/Cargo.toml#L116-L123
   # This is very hacky, and I don't like it.
   "crypto_expressions",
   "datetime_expressions",
@@ -243,7 +243,7 @@ datafusion = { version = "51.0.0", default-features = false, features = [
   "string_expressions",
   "unicode_expressions",
 ] }
-datafusion-ffi = "51.0.0"
+datafusion-ffi = "52.3.0"
 directories = "6.0"
 document-features = "0.2.12"
 econtext = "0.2.0" # Prints error contexts on crashes
@@ -283,14 +283,14 @@ itertools = "0.14.0"
 jiff = { version = "0.2.23", features = ["js"] }
 js-sys = "0.3.77"
 jsonwebtoken = { version = "10.3", default-features = false }
-lance = { version = "2.0.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
-lance-index = { version = "2.0.0", default-features = false }
-lance-linalg = { version = "2.0.0", default-features = false }
+lance = { version = "3.0.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
+lance-index = { version = "3.0.0", default-features = false }
+lance-linalg = { version = "3.0.0", default-features = false }
 libc = "0.2.182"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.29"
 log-once = "0.4.1"
-lz4_flex = "0.12"
+lz4_flex = "0.13"
 macaw = "0.30.0"
 mcap = "0.24.0"
 memmap2 = "0.9.10"
@@ -889,7 +889,7 @@ emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_table = { git = "https://github.com/rerun-io/egui_table", branch = "main" }
+egui_table = { git = "https://github.com/rerun-io/egui_table", branch = "main" }
 # egui_table = { path = "../egui_table" }
 
 # egui_dnd = { git = "https://github.com/rerun-io/hello_egui.git", branch = "emilk/egui-0.33.0" }

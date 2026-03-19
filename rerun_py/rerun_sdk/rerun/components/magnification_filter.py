@@ -22,21 +22,34 @@ from enum import Enum
 
 
 class MagnificationFilter(Enum):
-    """**Component**: Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen."""
+    """
+    **Component**: Filter used when a single texel/pixel of an image is displayed larger than a single screen pixel.
+
+    This happens when zooming into an image, when displaying a low-resolution image in a large area,
+    or when viewing an image up close in 3D space.
+    """
 
     Nearest = 1
     """
     Show the nearest pixel value.
 
-    This will give a blocky appearance when zooming in.
+    This will give a blocky appearance when the image is scaled up.
     Used as default when rendering 2D images.
     """
 
     Linear = 2
     """
-    Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.
+    Linearly interpolate the nearest neighbors, creating a smoother look when the image is scaled up.
 
     Used as default for mesh rendering.
+    """
+
+    Bicubic = 3
+    """
+    Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.
+
+    This is computationally more expensive than linear filtering but produces sharper results with less blurring.
+    Unlike bilinear filtering, this avoids cross-shaped artifacts at texel boundaries.
     """
 
     @classmethod
@@ -60,11 +73,16 @@ class MagnificationFilter(Enum):
         return self.name
 
 
-MagnificationFilterLike = MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int
+MagnificationFilterLike = (
+    MagnificationFilter | Literal["Bicubic", "Linear", "Nearest", "bicubic", "linear", "nearest"] | int
+)
 """A type alias for any MagnificationFilter-like object."""
 
 MagnificationFilterArrayLike = (
-    MagnificationFilter | Literal["Linear", "Nearest", "linear", "nearest"] | int | Sequence[MagnificationFilterLike]
+    MagnificationFilter
+    | Literal["Bicubic", "Linear", "Nearest", "bicubic", "linear", "nearest"]
+    | int
+    | Sequence[MagnificationFilterLike]
 )
 """A type alias for any MagnificationFilter-like array object."""
 

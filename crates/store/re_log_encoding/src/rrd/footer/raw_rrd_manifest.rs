@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use arrow::array::RecordBatch;
 use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use arrow::{
@@ -236,40 +237,48 @@ impl std::fmt::Display for RrdManifestSha256 {
 }
 
 impl RawRrdManifest {
-    /// Concatenate two manifests by appending the rows of `other` onto `self`.
+    /// Concatenate multiple manifests by appending all rows together.
     ///
-    /// Both manifests must be for the same recording (same `store_id`).
-    /// The sorbet schemas are merged, and the data `RecordBatch`es are concatenated.
+    /// All manifests must be for the same recording (same `store_id` and sorbet schema).
+    /// The data `RecordBatch`es are concatenated.
     ///
     /// This is used when the server sends a manifest in multiple parts.
-    pub fn concat(self, other: Self) -> Result<Self, ArrowError> {
+    pub fn concat(manifests: &[&Self]) -> Result<Self, ArrowError> {
         re_tracing::profile_function!();
 
-        re_log::debug_assert_eq!(self.store_id, other.store_id);
+        let first = manifests.first().ok_or_else(|| {
+            ArrowError::InvalidArgumentError("No manifests to concatenate".to_owned())
+        })?;
 
-        let (sorbet_schema, sorbet_schema_sha256) =
-            if self.sorbet_schema_sha256 == other.sorbet_schema_sha256 {
-                (self.sorbet_schema, self.sorbet_schema_sha256)
-            } else {
+        for other in &manifests[1..] {
+            if first.store_id != other.store_id {
+                return Err(ArrowError::SchemaError(
+                    "Mismatching store_id in RawRrdManifest::concat".to_owned(),
+                ));
+            }
+
+            if first.sorbet_schema_sha256 != other.sorbet_schema_sha256 {
                 return Err(ArrowError::SchemaError(
                     "Mismatching sorbet recording schemas in RawRrdManifest::concat".to_owned(),
                 ));
-            };
+            }
 
-        if self.data.schema() != other.data.schema() {
-            re_log::debug!(
-                "Different schemas in the RrdManifest ({} columns in existing, {} in the new part)",
-                self.data.num_columns(),
-                other.data.num_columns(),
-            );
+            if first.data.schema() != other.data.schema() {
+                re_log::debug!(
+                    "Different schemas in the RrdManifest ({} columns in existing, {} in the new part)",
+                    first.data.num_columns(),
+                    other.data.num_columns(),
+                );
+            }
         }
 
-        let data = arrow::compute::concat_batches(&self.data.schema(), &[self.data, other.data])?;
+        let batches: Vec<&RecordBatch> = manifests.iter().map(|m| &m.data).collect();
+        let data = arrow::compute::concat_batches(&first.data.schema(), batches)?;
 
         Ok(Self {
-            store_id: self.store_id,
-            sorbet_schema,
-            sorbet_schema_sha256,
+            store_id: first.store_id.clone(),
+            sorbet_schema: first.sorbet_schema.clone(),
+            sorbet_schema_sha256: first.sorbet_schema_sha256,
             data,
         })
     }

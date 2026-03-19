@@ -5,7 +5,7 @@ use ecolor::Rgba;
 use smallvec::{SmallVec, smallvec};
 
 use crate::allocator::create_and_fill_uniform_buffer_batch;
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 use crate::renderer::MeshRenderer;
 use crate::resource_managers::GpuTexture2D;
 use crate::wgpu_resources::{BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBuffer};
@@ -45,7 +45,7 @@ pub mod mesh_vertices {
 
 #[derive(Clone)]
 pub struct CpuMesh {
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Non-empty array of vertex triangle indices.
     ///
@@ -177,7 +177,7 @@ const _: () = assert!(
 
 #[derive(Clone)]
 pub struct Material {
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Index range within the owning [`CpuMesh`] that should be rendered with this material.
     pub index_range: Range<u32>,

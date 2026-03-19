@@ -177,10 +177,6 @@ impl Chunk {
         // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
         chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
-        #[cfg(debug_assertions)]
-        #[expect(clippy::unwrap_used)] // debug-only
-        chunk.sanity_check().unwrap();
-
         chunk
     }
 

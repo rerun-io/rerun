@@ -25,7 +25,7 @@ use crate::utils::wait_for_future;
 
 /// A view over a dataset with optional segment and content filters applied lazily.
 //TODO(RR-3157): add the ability to filter on components, not just entity paths
-#[pyclass(name = "DatasetViewInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq]
+#[pyclass(name = "DatasetViewInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyDatasetViewInternal {
     dataset: Py<PyDatasetEntryInternal>,
 
@@ -82,7 +82,7 @@ impl PyDatasetViewInternal {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyDatasetViewInternal {
     /// Return the underlying dataset entry.
     #[getter]

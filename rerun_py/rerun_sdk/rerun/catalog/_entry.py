@@ -508,8 +508,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     def download_segment(self, segment_id: str) -> Recording:
         """Download a segment from the dataset."""
+        from rerun.recording import Recording
 
-        return self._internal.download_segment(segment_id)
+        return Recording(self._internal.download_segment(segment_id))
 
     def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
@@ -1145,10 +1146,10 @@ class TableEntry(Entry[TableEntryInternal]):
     Note: this object acts as a table provider for DataFusion.
     """
 
-    def __datafusion_table_provider__(self) -> Any:
+    def __datafusion_table_provider__(self, session: Any) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-        return self._internal.__datafusion_table_provider__()
+        return self._internal.__datafusion_table_provider__(session)
 
     def reader(self) -> datafusion.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""

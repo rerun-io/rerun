@@ -133,6 +133,11 @@ impl BlueprintUndoState {
                 AbsoluteTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
             );
 
+            // Also remove inflection points after the current time,
+            // so they don't stick around with stale frame numbers.
+            self.inflection_points
+                .split_off(&last_kept_event_time.inc());
+
             re_log::trace!("{} chunks affected when clearing redo buffer", events.len());
         }
     }
@@ -157,6 +162,12 @@ impl BlueprintUndoState {
 
         // Nothing is happening - remember this as a time to undo to.
         let time = max_blueprint_time(blueprint_db);
+
+        // Blueprint GC can remove data, causing max_blueprint_time to decrease.
+        // Remove any stale inflection points above the current max time,
+        // since that data no longer exists in the store.
+        self.inflection_points.split_off(&time.inc());
+
         let inserted = self.inflection_points.insert(time, frame_nr).is_none();
         if inserted {
             re_log::trace!("Inserted new inflection point at {time:?}");
@@ -229,4 +240,140 @@ fn is_interacting(egui_ctx: &egui::Context) -> bool {
             || !i.keys_down.is_empty()
             || is_zooming
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, RowId, TimeInt, Timeline};
+    use re_entity_db::EntityDb;
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, StoreId, TimePoint};
+
+    use super::BlueprintUndoState;
+
+    fn make_blueprint_db() -> EntityDb {
+        EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Blueprint,
+            "test_app",
+        ))
+    }
+
+    fn insert_at_time(db: &mut EntityDb, entity: &str, time: i64) {
+        let timeline = Timeline::new_sequence(super::blueprint_timeline());
+        let timepoint = TimePoint::from_iter([(timeline, time)]);
+        let chunk = Chunk::builder(EntityPath::from(entity))
+            .with_component_batches(
+                RowId::new(),
+                timepoint,
+                [(
+                    MyPoints::descriptor_points(),
+                    &[MyPoint::new(1.0, 1.0)] as _,
+                )],
+            )
+            .build()
+            .unwrap();
+        db.add_chunk(&Arc::new(chunk)).unwrap();
+    }
+
+    /// Advance the egui context by `n` passes so `cumulative_frame_nr` increases.
+    fn advance_egui(ctx: &egui::Context, n: u64) {
+        for i in 0..n {
+            let input = egui::RawInput {
+                time: Some(10.0 + i as f64),
+                ..Default::default()
+            };
+            let _out = ctx.run_ui(input, |_| {});
+        }
+    }
+
+    /// Run an egui pass with enough elapsed time for `is_interacting` to return false,
+    /// then call the real `update`.
+    fn run_update(undo: &mut BlueprintUndoState, ctx: &egui::Context, db: &EntityDb) {
+        let frame_nr = ctx.cumulative_frame_nr();
+        let input = egui::RawInput {
+            time: Some(100.0 + frame_nr as f64),
+            ..Default::default()
+        };
+        let _out = ctx.run_ui(input, |_| {});
+        undo.update(ctx, db);
+    }
+
+    /// Simulates an inflection point existing at a `TimeInt` above the current `max_blueprint_time`,
+    /// with a lower frame number than entries below it.
+    #[test]
+    fn direct_stale_inflection_point_cleanup() {
+        let ctx = egui::Context::default();
+        let mut db = make_blueprint_db();
+        insert_at_time(&mut db, "entity", 40);
+
+        let mut undo = BlueprintUndoState::default();
+
+        // Create the broken state that GC produces:
+        // an entry at `TimeInt(50)` with a low frame number from early in the session,
+        // while entries at lower TimeInts have higher frame numbers.
+        undo.inflection_points.insert(TimeInt::new_temporal(10), 1);
+        undo.inflection_points.insert(TimeInt::new_temporal(20), 2);
+        undo.inflection_points.insert(TimeInt::new_temporal(30), 3);
+        undo.inflection_points.insert(TimeInt::new_temporal(40), 4);
+        // Add a stale unflection point, above `max_blueprint_time`
+        undo.inflection_points.insert(TimeInt::new_temporal(50), 0);
+
+        // Advance past the manually-set frame numbers
+        advance_egui(&ctx, 5);
+
+        // Before the fix, `latest_frame_nr - n_back_frame_nr` would overflow.
+        run_update(&mut undo, &ctx, &db);
+
+        assert!(
+            !undo
+                .inflection_points
+                .contains_key(&TimeInt::new_temporal(50)),
+            "Stale inflection point at `TimeInt(50)` should have been removed. \
+             inflection_points: {:?}",
+            undo.inflection_points
+        );
+
+        let frame_nrs: Vec<u64> = undo.inflection_points.values().copied().collect();
+        for window in frame_nrs.windows(2) {
+            assert!(
+                window[0] <= window[1],
+                "Frame numbers must be monotonic, got {frame_nrs:?}"
+            );
+        }
+    }
+
+    /// After stale inflection points are cleaned, redo should not jump to them.
+    #[test]
+    fn redo_skips_stale_inflection_points() {
+        let ctx = egui::Context::default();
+        let mut db = make_blueprint_db();
+        insert_at_time(&mut db, "entity", 40);
+
+        let mut undo = BlueprintUndoState::default();
+        undo.inflection_points.insert(TimeInt::new_temporal(10), 1);
+        undo.inflection_points.insert(TimeInt::new_temporal(20), 2);
+        undo.inflection_points.insert(TimeInt::new_temporal(30), 3);
+        undo.inflection_points.insert(TimeInt::new_temporal(40), 4);
+        // Add a stale unflection point, above `max_blueprint_time`
+        undo.inflection_points.insert(TimeInt::new_temporal(50), 0);
+
+        undo.undo(&db);
+        assert_eq!(undo.current_time, Some(TimeInt::new_temporal(30)));
+
+        advance_egui(&ctx, 5);
+
+        run_update(&mut undo, &ctx, &db);
+
+        undo.redo();
+        assert_eq!(undo.current_time, Some(TimeInt::new_temporal(40)));
+
+        undo.redo();
+        assert!(
+            undo.current_time.is_none(),
+            "Should redo to latest (None), got {:?}",
+            undo.current_time
+        );
+    }
 }

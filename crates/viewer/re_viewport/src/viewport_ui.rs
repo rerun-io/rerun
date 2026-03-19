@@ -261,9 +261,10 @@ impl ViewportUi {
         view_blueprint: &ViewBlueprint,
         entities: &[EntityPath],
     ) -> bool {
+        let recording_engine = ctx.recording_engine();
         let add_info = create_entity_add_info(
             ctx,
-            ctx.recording().tree(),
+            recording_engine.store().entity_tree(),
             view_blueprint,
             ctx.lookup_query_result(view_blueprint.id),
         );

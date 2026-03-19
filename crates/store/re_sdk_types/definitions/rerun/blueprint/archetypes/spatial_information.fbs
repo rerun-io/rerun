@@ -13,5 +13,7 @@ table SpatialInformation (
   show_axes: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 
   /// Whether the bounding box should be shown.
+  // TODO(andreas): Make this an enum so the user can choose between showing bounding boxes,
+  // regions of interest, or per-entity bounding boxes.
   show_bounding_box: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 200);
 }

@@ -664,7 +664,6 @@ where
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
-
     #[cfg(feature = "analytics")]
     record_cli_command_analytics(&args);
 
@@ -1754,11 +1753,9 @@ fn record_cli_command_analytics(args: &Args) {
         Some(Command::Manual) => ("man", None),
 
         #[cfg(feature = "data_loaders")]
-        Some(Command::Mcap(cmd)) => {
-            let subcommand = match cmd {
-                McapCommands::Convert(_) => "convert",
-            };
-            ("mcap", Some(subcommand))
+        Some(Command::Mcap(_cmd)) => {
+            // TODO(RR-4073): Re-enable analytics for MCAP commands.
+            return;
         }
 
         Some(Command::Download(_)) => ("download", None),
@@ -1766,20 +1763,9 @@ fn record_cli_command_analytics(args: &Args) {
         #[cfg(feature = "native_viewer")]
         Some(Command::Reset) => ("reset", None),
 
-        Some(Command::Rrd(cmd)) => {
-            let subcommand = match cmd {
-                RrdCommands::Compact(_) => "compact",
-                RrdCommands::Compare(_) => "compare",
-                RrdCommands::Filter(_) => "filter",
-                RrdCommands::Split(_) => "split",
-                RrdCommands::Merge(_) => "merge",
-                RrdCommands::Migrate(_) => "migrate",
-                RrdCommands::Print(_) => "print",
-                RrdCommands::Route(_) => "route",
-                RrdCommands::Stats(_) => "stats",
-                RrdCommands::Verify(_) => "verify",
-            };
-            ("rrd", Some(subcommand))
+        Some(Command::Rrd(_cmd)) => {
+            // TODO(RR-4073): Re-enable analytics for RRD commands.
+            return;
         }
 
         #[cfg(feature = "oss_server")]

@@ -191,7 +191,7 @@ impl PerStoreChunkSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
                     self.remove_chunk(&del.chunk);
                 }
 
-                ChunkStoreDiff::VirtualAddition(_) => {}
+                ChunkStoreDiff::VirtualAddition(_) | ChunkStoreDiff::SchemaAddition(_) => {}
             }
         }
     }

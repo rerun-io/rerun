@@ -116,6 +116,7 @@ impl framework::Example for Outlines {
                         outline_mask_ids: props.outline_mask_ids,
                         picking_layer_id: Default::default(),
                         additive_tint: Color32::BLACK,
+                        cull_mode: None,
                     })
             })
             .collect_vec();

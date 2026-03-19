@@ -5,7 +5,7 @@ use ahash::HashSet;
 use anyhow::Context as _;
 
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 use crate::{FileResolver, FileSystem, RenderContext};
 
 // ---
@@ -22,7 +22,7 @@ const RERUN_WGSL_SHADER_DUMP_PATH: &str = "RERUN_WGSL_SHADER_DUMP_PATH";
 macro_rules! include_shader_module {
     ($path:expr $(,)?) => {{
         $crate::ShaderModuleDesc {
-            label: $crate::DebugLabel::from(stringify!($path).strip_prefix("../../shader/")),
+            label: $crate::Label::from(stringify!($path).strip_prefix("../../shader/")),
             source: $crate::include_file!($path),
             extra_workaround_replacements: Vec::new(),
         }
@@ -33,7 +33,7 @@ macro_rules! include_shader_module {
 pub struct ShaderModuleDesc {
     /// Debug label of the shader.
     /// This will show up in graphics debuggers for easy identification.
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Path to the source code of this shader module.
     pub source: PathBuf,
@@ -96,7 +96,7 @@ impl ShaderModuleDesc {
         // Only when actually submitting passes that make use of this shader will we know if
         // something is wrong or not.
         device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: self.label.get(),
+            label: Some(self.label.get()),
             // TODO(cmc): handle non-WGSL shaders.
             source: wgpu::ShaderSource::Wgsl(source_interpolated.contents.into()),
         })

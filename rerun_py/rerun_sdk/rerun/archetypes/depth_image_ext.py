@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
+from PIL import Image as PILImage
 
 from ..components import ColormapLike, ImageFormat
 from ..datatypes import ChannelDatatype, Float32Like
+from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from rerun.datatypes.range1d import Range1DLike
+
+    from .. import components
+    from . import DepthImage, EncodedDepthImage
 
     ImageLike = (
         npt.NDArray[np.float16]
@@ -25,6 +31,11 @@ if TYPE_CHECKING:
         | npt.NDArray[np.uint8]
         | np.ndarray[Any, np.dtype[np.floating | np.integer]]
     )
+
+
+def _as_arrow_or_none(batch: Any) -> Any:
+    """Extract arrow array from a batch, or return None."""
+    return batch.as_arrow_array() if batch is not None else None
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
@@ -51,6 +62,7 @@ class DepthImageExt:
         depth_range: Range1DLike | None = None,
         point_fill_ratio: Float32Like | None = None,
         draw_order: Float32Like | None = None,
+        magnification_filter: components.MagnificationFilterLike | None = None,
     ) -> None:
         """
         Create a new instance of the DepthImage archetype.
@@ -97,6 +109,8 @@ class DepthImageExt:
             An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
 
             Objects with higher values are drawn on top of those with lower values.
+        magnification_filter:
+            Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
 
         """
         image = _to_numpy(image)
@@ -130,4 +144,80 @@ class DepthImageExt:
             depth_range=depth_range,
             point_fill_ratio=point_fill_ratio,
             draw_order=draw_order,
+            magnification_filter=magnification_filter,
         )
+
+    def image_format(self: Any) -> ImageFormat:
+        """Returns the image format of this depth image."""
+        image_format_arrow = self.format.as_arrow_array()[0].as_py()
+        return ImageFormat(
+            width=image_format_arrow["width"],
+            height=image_format_arrow["height"],
+            channel_datatype=image_format_arrow["channel_datatype"],
+        )
+
+    def as_pil_image(self: Any) -> PILImage.Image:
+        """Convert the depth image to a PIL Image."""
+        image_format = self.image_format()
+
+        np_dtype = image_format.channel_datatype.to_np_dtype()
+        buf = self.buffer.as_arrow_array().values.to_numpy().view(np_dtype)
+        image_array = buf.reshape(image_format.height, image_format.width)
+
+        return PILImage.fromarray(image_array)
+
+    def compress(self: Any, compress_level: int = 6) -> EncodedDepthImage | DepthImage:
+        """
+        Compress the given depth image as a PNG.
+
+        PNG compression is lossless. Only U8 and U16 depth images are supported,
+        as these are the only single-channel types the Rerun Viewer can decode
+        from encoded depth PNGs.
+
+        Note that compressing to PNG costs a bit of CPU time,
+        both when logging and later when viewing them.
+
+        Parameters
+        ----------
+        compress_level:
+            PNG compression level, 0-9. Higher means smaller files but slower.
+            0 = no compression, 1 = fastest, 9 = smallest. Default is 6.
+
+        """
+
+        from ..archetypes import EncodedDepthImage
+
+        with catch_and_log_exceptions(context="DepthImage compression"):
+            if self.format is None:
+                raise ValueError("Cannot PNG compress a depth image without a known image_format")
+
+            if self.buffer is None:
+                raise ValueError("Cannot PNG compress a depth image without data")
+
+            image_format = self.image_format()
+
+            if image_format.channel_datatype not in (ChannelDatatype.U8, ChannelDatatype.U16):
+                raise ValueError(
+                    f"Cannot PNG compress a depth image of datatype {image_format.channel_datatype}. "
+                    "Only U8 and U16 are supported.",
+                )
+
+            pil_image = self.as_pil_image()
+
+            output = BytesIO()
+            pil_image.save(output, format="PNG", compress_level=compress_level)
+            png_bytes = output.getvalue()
+            output.close()
+
+            return EncodedDepthImage(
+                blob=png_bytes,
+                media_type="image/png",
+                meter=_as_arrow_or_none(self.meter),
+                colormap=_as_arrow_or_none(self.colormap),
+                depth_range=_as_arrow_or_none(self.depth_range),
+                point_fill_ratio=_as_arrow_or_none(self.point_fill_ratio),
+                draw_order=_as_arrow_or_none(self.draw_order),
+            )
+
+        # On failure to compress, return the raw depth image
+        return self  # type: ignore[no-any-return]

@@ -74,15 +74,15 @@ fn query_tree_many_entities(c: &mut Criterion) {
         "bench_app",
     ));
 
+    let view_class_registry = ViewClassRegistry::default();
+
     let ctx = ActiveStoreContext {
         blueprint: &blueprint,
         default_blueprint: None,
         recording: &recording,
-        caches: &StoreCache::new(recording.store_id().clone()),
+        caches: &StoreCache::new(&view_class_registry, &recording),
         should_enable_heuristics: false,
     };
-
-    let view_class_registry = ViewClassRegistry::default();
     let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
     let active_timeline = Timeline::new_sequence("frame");
     let query_range = QueryRange::LatestAt;
@@ -104,8 +104,8 @@ fn query_tree_many_entities(c: &mut Criterion) {
                     &view_class_registry,
                     &blueprint_query,
                     &query_range,
-                    &visualizable_entities,
-                    &indicated_entities,
+                    &visualizable_entities.as_ref(),
+                    &indicated_entities.as_ref(),
                     &app_options,
                 )
             });
@@ -137,8 +137,8 @@ fn query_tree_many_entities(c: &mut Criterion) {
                     &view_class_registry,
                     &blueprint_query,
                     &query_range,
-                    &visualizable_entities,
-                    &indicated_entities,
+                    &visualizable_entities.as_ref(),
+                    &indicated_entities.as_ref(),
                     &app_options,
                 )
             });

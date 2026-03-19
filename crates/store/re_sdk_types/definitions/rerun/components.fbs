@@ -40,6 +40,7 @@ include "./components/magnification_filter.fbs";
 include "./components/marker_shape.fbs";
 include "./components/marker_size.fbs";
 include "./components/media_type.fbs";
+include "./components/mesh_face_rendering.fbs";
 include "./components/name.fbs";
 include "./components/opacity.fbs";
 include "./components/pinhole_projection.fbs";

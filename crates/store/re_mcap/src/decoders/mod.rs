@@ -23,6 +23,7 @@ pub use self::schema::McapSchemaDecoder;
 pub use self::stats::McapStatisticDecoder;
 use crate::Error;
 use crate::parsers::{ChannelId, MessageParser, ParserContext};
+use crate::util::collect_empty_channels;
 
 /// Globally unique identifier for a decoder.
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -212,7 +213,7 @@ impl MessageDecoderRunner {
 
                     let parser = self.inner.message_parser(channel, msg_offsets.len())?;
                     let entity_path = EntityPath::from(channel.topic.as_str());
-                    let ctx = ParserContext::new(entity_path, time_type);
+                    let ctx = ParserContext::new(entity_path, channel.topic.clone(), time_type);
                     Some((channel_id, (ctx, parser)))
                 })
                 .collect::<IntMap<_, _>>();
@@ -418,12 +419,18 @@ impl DecoderRegistry {
     }
 
     /// Build a concrete execution plan for a given file.
-    pub fn plan(&self, summary: &mcap::Summary) -> anyhow::Result<ExecutionPlan> {
+    pub fn plan(
+        &self,
+        mcap_bytes: &[u8],
+        summary: &mcap::Summary,
+    ) -> anyhow::Result<ExecutionPlan> {
         let file_decoders = self
             .file_factories
             .values()
             .map(|f| f())
             .collect::<Vec<_>>();
+
+        let empty_channels = collect_empty_channels(mcap_bytes, summary)?;
 
         // instantiate message decoders and init them (supports_channel may depend on init)
         let mut msg_decoders: Vec<(DecoderIdentifier, Box<dyn MessageDecoder>)> = self
@@ -440,10 +447,22 @@ impl DecoderRegistry {
         let mut assignments: Vec<DecoderAssignment> = Vec::new();
 
         for channel_id in summary.channels.values() {
+            let channel_id = ChannelId::from(channel_id.id);
+            let channel = summary.channels[&channel_id.0].as_ref();
+
+            if empty_channels.contains(&channel_id) {
+                re_log::debug!(
+                    "Skipping MCAP channel '{}' (id={}) because it contains no messages.",
+                    channel.topic,
+                    channel_id.0,
+                );
+                continue;
+            }
+
             // explicit priority order
             let mut chosen: Option<DecoderIdentifier> = None;
             for (id, decoder) in &msg_decoders {
-                if decoder.supports_channel(channel_id.as_ref()) {
+                if decoder.supports_channel(channel) {
                     chosen = Some(id.clone());
                     break;
                 }
@@ -458,31 +477,28 @@ impl DecoderRegistry {
                 }
             }
 
-            let schema_name = channel_id.schema.as_ref().map(|s| s.name.clone());
+            let schema_name = channel.schema.as_ref().map(|s| s.name.clone());
 
-            let schema_encoding = channel_id
+            let schema_encoding = channel
                 .schema
                 .as_ref()
                 .map(|s| s.encoding.as_str())
                 .unwrap_or("Unknown");
 
             if let Some(id) = chosen {
-                by_decoder
-                    .entry(id.clone())
-                    .or_default()
-                    .insert(ChannelId::from(channel_id.id));
+                by_decoder.entry(id.clone()).or_default().insert(channel_id);
 
                 assignments.push(DecoderAssignment {
-                    channel_id: ChannelId::from(channel_id.id),
-                    topic: channel_id.topic.clone(),
+                    channel_id,
+                    topic: channel.topic.clone(),
                     encoding: schema_encoding.to_owned(),
-                    schema_name: channel_id.schema.as_ref().map(|s| s.name.clone()),
+                    schema_name: channel.schema.as_ref().map(|s| s.name.clone()),
                     decoder: id,
                 });
             } else {
                 re_log::debug!(
                     "No message decoder selected for topic '{}' (encoding='{}', schema='{:?}')",
-                    channel_id.topic,
+                    channel.topic,
                     schema_encoding,
                     schema_name,
                 );
@@ -502,5 +518,75 @@ impl DecoderRegistry {
             runners,
             assignments,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+
+    use re_chunk::Chunk;
+    use re_log_types::TimeType;
+
+    use super::*;
+
+    #[test]
+    fn skips_channels_without_messages() {
+        let (summary, buffer, empty_channel_id, active_channel_id) = {
+            let cursor = io::Cursor::new(Vec::new());
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let empty_channel_id = writer
+                .add_channel(0, "empty_topic", "raw", &Default::default())
+                .expect("failed to add empty channel");
+            let active_channel_id = writer
+                .add_channel(0, "active_topic", "raw", &Default::default())
+                .expect("failed to add active channel");
+
+            writer
+                .write_to_known_channel(
+                    &mcap::records::MessageHeader {
+                        channel_id: active_channel_id,
+                        sequence: 0,
+                        log_time: 1,
+                        publish_time: 1,
+                    },
+                    &[1, 2, 3],
+                )
+                .expect("failed to write message");
+
+            let summary = writer.finish().expect("failed to finish writer");
+            let buffer = writer.into_inner().into_inner();
+
+            (summary, buffer, empty_channel_id, active_channel_id)
+        };
+
+        let plan = DecoderRegistry::empty()
+            .register_file_decoder::<McapSchemaDecoder>()
+            .register_message_decoder::<McapRawDecoder>()
+            .plan(&buffer, &summary)
+            .expect("failed to plan");
+
+        assert_eq!(plan.assignments.len(), 1);
+        assert_eq!(plan.assignments[0].channel_id, ChannelId(active_channel_id));
+        assert_ne!(plan.assignments[0].channel_id, ChannelId(empty_channel_id));
+
+        let mut chunks = Vec::<Chunk>::new();
+        plan.run(&buffer, &summary, TimeType::TimestampNs, &mut |chunk| {
+            chunks.push(chunk);
+        })
+        .expect("failed to run plan");
+
+        assert_eq!(chunks.len(), 2);
+        assert!(
+            chunks
+                .iter()
+                .all(|chunk| !chunk.entity_path().to_string().ends_with("empty_topic"))
+        );
+        assert!(
+            chunks
+                .iter()
+                .any(|chunk| chunk.entity_path().to_string().ends_with("active_topic"))
+        );
     }
 }

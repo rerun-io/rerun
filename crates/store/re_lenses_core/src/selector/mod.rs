@@ -56,6 +56,12 @@ use parser::{Expr, Segment, SegmentKind};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Selector(Expr);
 
+impl re_byte_size::SizeBytes for Selector {
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+}
+
 impl std::fmt::Display for Selector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

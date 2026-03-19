@@ -33,8 +33,9 @@ impl StreamsTreeData {
 
         let mut hierarchy = Vec::default();
         let mut hierarchy_highlights = PathRanges::default();
+        let db_engine = db.storage_engine();
         let root_data = EntityData::from_entity_tree_and_filter(
-            db.tree(),
+            db_engine.store().entity_tree(),
             filter_matcher,
             &mut hierarchy,
             &mut hierarchy_highlights,

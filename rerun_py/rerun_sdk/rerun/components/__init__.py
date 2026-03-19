@@ -67,6 +67,12 @@ from .magnification_filter import (
 from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike
 from .marker_size import MarkerSize, MarkerSizeBatch
 from .media_type import MediaType, MediaTypeBatch
+from .mesh_face_rendering import (
+    MeshFaceRendering,
+    MeshFaceRenderingArrayLike,
+    MeshFaceRenderingBatch,
+    MeshFaceRenderingLike,
+)
 from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
@@ -217,6 +223,10 @@ __all__ = [
     "MarkerSizeBatch",
     "MediaType",
     "MediaTypeBatch",
+    "MeshFaceRendering",
+    "MeshFaceRenderingArrayLike",
+    "MeshFaceRenderingBatch",
+    "MeshFaceRenderingLike",
     "Name",
     "NameBatch",
     "Opacity",

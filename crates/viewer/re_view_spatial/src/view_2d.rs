@@ -69,7 +69,8 @@ impl ViewClass for SpatialView2D {
                     .map(|pinhole| pinhole.resolution_rect())
                     .unwrap_or_else(|| {
                         // TODO(emilk): if there is a single image in this view, use that as the default bounds
-                        let scene_rect_smoothed = view_state.bounding_boxes.smoothed;
+                        let scene_rect_smoothed =
+                            view_state.bounding_boxes.region_of_interest_smoothed;
                         egui::Rect::from_min_max(
                             scene_rect_smoothed.min.truncate().to_array().into(),
                             scene_rect_smoothed.max.truncate().to_array().into(),
@@ -105,7 +106,7 @@ impl ViewClass for SpatialView2D {
         state.downcast_ref::<SpatialViewState>().ok().map(|state| {
             let (width, height) = state.visual_bounds_2d.map_or_else(
                 || {
-                    let bbox = &state.bounding_boxes.smoothed;
+                    let bbox = &state.bounding_boxes.region_of_interest_smoothed;
                     (
                         (bbox.max.x - bbox.min.x).abs(),
                         (bbox.max.y - bbox.min.y).abs(),
@@ -346,7 +347,8 @@ fn recommended_views_with_image_splits(
 ) {
     re_tracing::profile_function!();
 
-    let tree = ctx.recording().tree();
+    let engine = ctx.recording_engine();
+    let tree = engine.store().entity_tree();
 
     let Some(subtree) = tree.subtree(recommended_origin) else {
         re_log::debug_warn_once!("Ancestor of entity not found in entity tree.");

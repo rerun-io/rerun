@@ -94,7 +94,7 @@ use crate::wgpu_resources::{
     RenderPipelineDesc,
 };
 use crate::{
-    DebugLabel, DepthOffset, DrawableCollector, LineDrawableBuilder, OutlineMaskPreference,
+    DepthOffset, DrawableCollector, Label, LineDrawableBuilder, OutlineMaskPreference,
     PickingLayerObjectId, PickingLayerProcessor, include_shader_module,
 };
 
@@ -267,7 +267,7 @@ bitflags! {
 
 /// Data that is valid for a batch of line strips.
 pub struct LineBatchInfo {
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Transformation applies to line positions
     ///
@@ -548,7 +548,7 @@ impl LineRenderer {
     fn create_linestrip_batch(
         &self,
         ctx: &RenderContext,
-        label: DebugLabel,
+        label: Label,
         uniform_buffer_binding: BindGroupEntry,
         line_vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,

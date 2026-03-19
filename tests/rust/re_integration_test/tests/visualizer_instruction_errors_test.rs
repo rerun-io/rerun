@@ -172,7 +172,5 @@ pub async fn series_count_exceeds_max() {
 
     harness.click_label("View errors");
 
-    // TODO(#12450): macOS CI uses SwiftShader which produces images too different from the reference.
-    #[cfg(not(target_os = "macos"))]
     harness.snapshot_app("series_count_exceeds_max");
 }

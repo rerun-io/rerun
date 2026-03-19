@@ -1205,7 +1205,7 @@ mod tests {
         let mut cache = QueryCache::new(store.clone());
 
         // The store is now aware that there is a virtual tombstone pending somewhere, and so should be the cache.
-        cache.on_events(&[store.write().insert_rrd_manifest(rrd_manifest)]);
+        cache.on_events(&store.write().insert_rrd_manifest(rrd_manifest));
 
         // Load the physical data into the store, but not the tombstone.
         cache.on_events(
