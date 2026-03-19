@@ -8,16 +8,17 @@
 //! Simplified jq-like grammar with implicit piping:
 //!
 //! ```text
-//! Expr    → Term ( ( '|' | ε ) Term )*
+//! Expr    → Term ( '|' Term )*
 //! Term    → Segment+
 //!         | DOT
+//!         | IDENT ( '(' ArgList? ')' )?
 //! Segment → Primary ( '?' | '!' )*
 //! Primary → FIELD
 //!         | '[' INTEGER ']'
 //!         | '[' ']'
+//! ArgList → Literal ( ';' Literal )*
+//! Literal → STRING_LITERAL
 //! ```
-//!
-//! `UPPERCASE` symbols denote terminals, and `ε` denotes end of input.
 
 // NOTE: Please keep the grammar above up-to-date.
 
@@ -96,6 +97,14 @@ pub enum Literal {
     String(String),
 }
 
+impl re_byte_size::SizeBytes for Literal {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::String(s) => s.heap_size_bytes(),
+        }
+    }
+}
+
 impl std::fmt::Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -109,6 +118,14 @@ pub enum Expr {
     Identity,
     Path(Vec<Segment>),
     Pipe(Box<Self>, Box<Self>),
+    Function {
+        name: String,
+
+        /// This is `None` if the function was written as `my_func`, and
+        /// is `Some([])` if it's written as `my_func()`. These should
+        /// semantically be the same though.
+        arguments: Option<Vec<Literal>>,
+    },
 }
 
 impl re_byte_size::SizeBytes for Expr {
@@ -117,6 +134,9 @@ impl re_byte_size::SizeBytes for Expr {
             Self::Identity => 0,
             Self::Path(segments) => segments.heap_size_bytes(),
             Self::Pipe(left, right) => left.heap_size_bytes() + right.heap_size_bytes(),
+            Self::Function { name, arguments } => {
+                name.heap_size_bytes() + arguments.heap_size_bytes()
+            }
         }
     }
 }
@@ -132,6 +152,22 @@ impl std::fmt::Display for Expr {
                 Ok(())
             }
             Self::Pipe(left, right) => write!(f, "{left} | {right}"),
+            Self::Function { name, arguments } => {
+                write!(f, "{name}")?;
+
+                if let Some(arguments) = arguments {
+                    write!(f, "(")?;
+                    for (idx, literal) in arguments.iter().enumerate() {
+                        if idx > 0 {
+                            write!(f, "; ")?;
+                        }
+                        write!(f, "{literal}")?;
+                    }
+                    write!(f, ")")?;
+                }
+
+                Ok(())
+            }
         }
     }
 }
@@ -194,6 +230,15 @@ where
     }
 
     fn path(&mut self) -> Result<Expr> {
+        // Bare identifier: must be a function call
+        if let Some(token) = self.tokens.peek()
+            && let TokenType::Ident(name) = &token.typ
+        {
+            let name = name.clone();
+            self.tokens.next();
+            return self.function_args(name);
+        }
+
         let mut segments = Vec::new();
 
         // Check if it starts with identity (.)
@@ -218,6 +263,66 @@ where
             Ok(Expr::Identity)
         } else {
             Ok(Expr::Path(segments))
+        }
+    }
+
+    /// Parse function arguments: `(arg1; arg2; …)`.
+    /// The `name` has already been consumed; parentheses are optional for no-arg calls.
+    fn function_args(&mut self, name: String) -> Result<Expr> {
+        // Allow bare function name without parentheses
+        if self.tokens.peek().map(|t| &t.typ) != Some(&TokenType::LParen) {
+            return Ok(Expr::Function {
+                name,
+                arguments: None,
+            });
+        }
+        self.tokens.next(); // consume LParen
+
+        let mut arguments = Vec::new();
+
+        // Check for empty argument list
+        if let Some(token) = self.tokens.peek()
+            && token.typ == TokenType::RParen
+        {
+            self.tokens.next();
+            return Ok(Expr::Function {
+                name,
+                arguments: Some(arguments),
+            });
+        }
+
+        // Parse first argument
+        arguments.push(self.literal()?);
+
+        // Parse remaining semicolon-separated arguments
+        while let Some(token) = self.tokens.peek()
+            && token.typ == TokenType::Semicolon
+        {
+            self.tokens.next();
+            arguments.push(self.literal()?);
+        }
+
+        self.consume(TokenType::RParen)?;
+
+        Ok(Expr::Function {
+            name,
+            arguments: Some(arguments),
+        })
+    }
+
+    fn literal(&mut self) -> Result<Literal> {
+        match self.tokens.peek() {
+            Some(token) => match &token.typ {
+                TokenType::StringLiteral(s) => {
+                    let value = s.clone();
+                    self.tokens.next();
+                    Ok(Literal::String(value))
+                }
+                unexpected => Err(Error::UnexpectedSymbol {
+                    symbol: unexpected.clone(),
+                }),
+            },
+            None => Err(Error::UnexpectedEof),
         }
     }
 
@@ -583,5 +688,79 @@ mod test {
         // Combined: `?` is displayed before `!`
         let expr = parse(".foo?!").unwrap();
         assert_eq!(expr.to_string(), ".foo?!");
+    }
+
+    fn func(name: &str, args: Option<Vec<Literal>>) -> Expr {
+        Expr::Function {
+            name: name.to_owned(),
+            arguments: args,
+        }
+    }
+
+    #[test]
+    fn function_no_args() {
+        assert_eq!(parse("my_func()"), Ok(func("my_func", Some(vec![]))));
+        assert_eq!(parse("my_func"), Ok(func("my_func", None)));
+    }
+
+    #[test]
+    fn function_one_arg() {
+        assert_eq!(
+            parse(r#"my_func("hello")"#),
+            Ok(func("my_func", Some(vec![Literal::String("hello".into())])))
+        );
+    }
+
+    #[test]
+    fn function_multiple_args() {
+        assert_eq!(
+            parse(r#"my_func("foo"; "bar")"#),
+            Ok(func(
+                "my_func",
+                Some(vec![
+                    Literal::String("foo".into()),
+                    Literal::String("bar".into())
+                ])
+            ))
+        );
+    }
+
+    #[test]
+    fn function_no_args_in_pipe() {
+        assert_eq!(
+            parse(".path | my_func"),
+            Ok(pipe(path(vec![field("path")]), func("my_func", None)))
+        );
+    }
+
+    #[test]
+    fn function_in_pipe() {
+        assert_eq!(
+            parse(r#".path | my_func("arg")"#),
+            Ok(pipe(
+                path(vec![field("path")]),
+                func("my_func", Some(vec![Literal::String("arg".into())]))
+            ))
+        );
+    }
+
+    #[test]
+    fn function_display_roundtrip() {
+        // `my_func` & `my_func()` are functionally the same, but we want
+        // both to work for roundtrip.
+        let expr = parse("my_func").unwrap();
+        assert_eq!(expr.to_string(), "my_func");
+
+        let expr = parse("my_func()").unwrap();
+        assert_eq!(expr.to_string(), "my_func()");
+
+        let expr = parse(r#"my_func("hello")"#).unwrap();
+        assert_eq!(expr.to_string(), r#"my_func("hello")"#);
+
+        let expr = parse(r#"my_func("foo"; "bar")"#).unwrap();
+        assert_eq!(expr.to_string(), r#"my_func("foo"; "bar")"#);
+
+        let expr = parse(r#".path | my_func("a"; "b")"#).unwrap();
+        assert_eq!(expr.to_string(), r#".path | my_func("a"; "b")"#);
     }
 }

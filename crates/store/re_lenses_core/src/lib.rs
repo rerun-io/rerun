@@ -11,7 +11,9 @@ pub mod combinators;
 // Selector
 mod selector;
 
-pub use crate::selector::{Error as SelectorError, Selector, extract_nested_fields};
+pub use crate::selector::{
+    Error as SelectorError, Literal, Runtime, Selector, extract_nested_fields, function_registry,
+};
 
 // Lenses
 mod ast;

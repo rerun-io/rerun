@@ -6,6 +6,8 @@ use std::sync::Arc;
 use arrow::datatypes::DataType;
 use arrow::error::ArrowError;
 
+use crate::selector::function_registry::FunctionRegistryError;
+
 /// Errors that can occur during array transformations.
 #[derive(Debug, thiserror::Error, Clone)]
 pub enum Error {
@@ -28,6 +30,9 @@ pub enum Error {
         actual: DataType,
         context: String,
     },
+
+    #[error(transparent)]
+    FunctionRegistry(#[from] FunctionRegistryError),
 
     #[error("Struct is missing required field '{field_name}'. Available fields: [{}]", struct_fields.join(", "))]
     MissingStructField {

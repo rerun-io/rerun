@@ -6,16 +6,24 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TokenType {
     // Literals
+    /// A dot-prefixed field name, e.g. `.foo` produces `Field("foo")`.
     Field(String),
+
+    /// A bare identifier, e.g. `my_func` produces `Ident("my_func")`.
+    Ident(String),
     Integer(u64), // TODO(grtlr): distinguish between float and integers.
+    StringLiteral(String),
 
     // Brackets
     LBracket,
     RBracket,
+    LParen,
+    RParen,
 
     // Operators
     Dot,
     Pipe,
+    Semicolon,
     QuestionMark,
     ExclamationMark,
 }
@@ -31,9 +39,19 @@ pub enum Error {
 
     // TODO(grtlr): Add location information to other variants too (tricky because of line breaks).
     #[error("failed to parse `{lexeme}` as integer: {err}")]
-    ParseIntError {
+    ParseInt {
         err: std::num::ParseIntError,
         lexeme: String,
+    },
+
+    #[error("unterminated string at line {line}, column {column}")]
+    UnterminatedString { line: usize, column: usize },
+
+    #[error("invalid escape sequence `\\{ch}` at line {line}, column {column}")]
+    InvalidEscape {
+        ch: char,
+        line: usize,
+        column: usize,
     },
 }
 
@@ -41,11 +59,16 @@ impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Field(s) => write!(f, ".{s}"),
+            Self::Ident(s) => write!(f, "{s}"),
             Self::Integer(n) => write!(f, "{n}"),
+            Self::StringLiteral(s) => write!(f, "{s:?}"),
             Self::LBracket => write!(f, "["),
             Self::RBracket => write!(f, "]"),
+            Self::LParen => write!(f, "("),
+            Self::RParen => write!(f, ")"),
             Self::Dot => write!(f, "."),
             Self::Pipe => write!(f, "|"),
+            Self::Semicolon => write!(f, ";"),
             Self::QuestionMark => write!(f, "?"),
             Self::ExclamationMark => write!(f, "!"),
         }
@@ -119,12 +142,80 @@ impl<'a> Lexer<'a> {
 
         let number = lexeme
             .parse::<u64>()
-            .map_err(|err| Error::ParseIntError { err, lexeme })?;
+            .map_err(|err| Error::ParseInt { err, lexeme })?;
 
         Ok(Token {
             typ: TokenType::Integer(number),
             line: self.line,
         })
+    }
+
+    fn make_string(&mut self) -> Result<Token, Error> {
+        let start_line = self.line;
+        let start_column = self.column;
+        let mut value = String::new();
+
+        loop {
+            match self.chars.next() {
+                None => {
+                    return Err(Error::UnterminatedString {
+                        line: start_line,
+                        column: start_column,
+                    });
+                }
+                Some('"') => {
+                    self.column += 1;
+                    break;
+                }
+                Some('\\') => {
+                    self.column += 1;
+                    match self.chars.next() {
+                        None => {
+                            return Err(Error::UnterminatedString {
+                                line: start_line,
+                                column: start_column,
+                            });
+                        }
+                        Some('\\') => value.push('\\'),
+                        Some('"') => value.push('"'),
+                        Some('n') => value.push('\n'),
+                        Some('t') => value.push('\t'),
+                        Some(ch) => {
+                            return Err(Error::InvalidEscape {
+                                ch,
+                                line: self.line,
+                                column: self.column,
+                            });
+                        }
+                    }
+                    self.column += 1;
+                }
+                Some(ch) => {
+                    self.column += 1;
+                    value.push(ch);
+                }
+            }
+        }
+
+        Ok(Token {
+            typ: TokenType::StringLiteral(value),
+            line: start_line,
+        })
+    }
+
+    fn make_bare_identifier(&mut self) -> Token {
+        while let Some(next) = self.chars.peek().copied()
+            && (next.is_alphanumeric() || next == '-' || next == '_')
+        {
+            self.advance();
+        }
+
+        let text = std::mem::take(&mut self.lexeme_buffer);
+
+        Token {
+            typ: TokenType::Ident(text),
+            line: self.line,
+        }
     }
 
     fn scan_token(&mut self) -> Result<Option<Token>, Error> {
@@ -149,6 +240,12 @@ impl<'a> Lexer<'a> {
             '!' => Ok(Some(self.make_token(TokenType::ExclamationMark))),
             '[' => Ok(Some(self.make_token(TokenType::LBracket))),
             ']' => Ok(Some(self.make_token(TokenType::RBracket))),
+            '(' => Ok(Some(self.make_token(TokenType::LParen))),
+            ')' => Ok(Some(self.make_token(TokenType::RParen))),
+            ';' => Ok(Some(self.make_token(TokenType::Semicolon))),
+
+            // String literals
+            '"' => self.make_string().map(Some),
 
             // Dot
             '.' => {
@@ -165,6 +262,9 @@ impl<'a> Lexer<'a> {
 
             // Numbers
             '0'..='9' => self.make_number().map(Some),
+
+            // Bare identifiers for function names
+            c if c.is_alphabetic() || c == '_' => Ok(Some(self.make_bare_identifier())),
 
             unexpected => Err(Error::UnexpectedChar {
                 ch: unexpected,
@@ -300,5 +400,69 @@ mod test {
                 TokenType::RBracket,
             ]
         );
+    }
+
+    #[test]
+    fn function_tokens() {
+        assert_eq!(
+            extract_inner(Lexer::new("my_func(").scan_tokens().unwrap()),
+            vec![TokenType::Ident("my_func".into()), TokenType::LParen,]
+        );
+        assert_eq!(
+            extract_inner(Lexer::new("my_func()").scan_tokens().unwrap()),
+            vec![
+                TokenType::Ident("my_func".into()),
+                TokenType::LParen,
+                TokenType::RParen,
+            ]
+        );
+    }
+
+    #[test]
+    fn string_literals() {
+        assert_eq!(
+            extract_inner(Lexer::new(r#""hello""#).scan_tokens().unwrap()),
+            vec![TokenType::StringLiteral("hello".into()),]
+        );
+        assert_eq!(
+            extract_inner(Lexer::new(r#""hello"; "world""#).scan_tokens().unwrap()),
+            vec![
+                TokenType::StringLiteral("hello".into()),
+                TokenType::Semicolon,
+                TokenType::StringLiteral("world".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn string_escape_sequences() {
+        assert_eq!(
+            extract_inner(Lexer::new(r#""he\"llo""#).scan_tokens().unwrap()),
+            vec![TokenType::StringLiteral("he\"llo".into()),]
+        );
+        assert_eq!(
+            extract_inner(Lexer::new(r#""a\\b""#).scan_tokens().unwrap()),
+            vec![TokenType::StringLiteral("a\\b".into()),]
+        );
+        assert_eq!(
+            extract_inner(Lexer::new(r#""a\nb""#).scan_tokens().unwrap()),
+            vec![TokenType::StringLiteral("a\nb".into()),]
+        );
+        assert_eq!(
+            extract_inner(Lexer::new(r#""a\tb""#).scan_tokens().unwrap()),
+            vec![TokenType::StringLiteral("a\tb".into()),]
+        );
+    }
+
+    #[test]
+    fn unterminated_string() {
+        let result = Lexer::new(r#""hello"#).scan_tokens();
+        assert!(matches!(result, Err(Error::UnterminatedString { .. })));
+    }
+
+    #[test]
+    fn invalid_escape() {
+        let result = Lexer::new(r#""he\xllo""#).scan_tokens();
+        assert!(matches!(result, Err(Error::InvalidEscape { ch: 'x', .. })));
     }
 }

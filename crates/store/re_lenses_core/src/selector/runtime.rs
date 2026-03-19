@@ -2,11 +2,43 @@
 //!
 //! This module implements execution of expressions against Arrow [`ListArray`]s.
 
+use std::sync::{Arc, OnceLock};
+
 use arrow::array::{Array as _, FixedSizeListArray, ListArray};
 
 use crate::combinators::{
     Flatten, GetField, GetIndexList, MapList, PromoteInnerNulls, Transform as _,
 };
+
+use super::function_registry::FunctionRegistry;
+
+pub fn default_runtime() -> Arc<Runtime> {
+    static DEFAULT_RUNTIME: OnceLock<Arc<Runtime>> = OnceLock::new();
+
+    DEFAULT_RUNTIME
+        .get_or_init(|| {
+            Arc::new(Runtime {
+                function_registry: FunctionRegistry::default(),
+            })
+        })
+        .clone()
+}
+
+/// Context passed to selector execution.
+///
+/// Carries the [`FunctionRegistry`] and any future shared state
+/// needed during evaluation.
+pub struct Runtime {
+    pub function_registry: FunctionRegistry,
+}
+
+impl re_byte_size::SizeBytes for Runtime {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { function_registry } = self;
+
+        function_registry.heap_size_bytes()
+    }
+}
 
 use super::parser::{Expr, Segment, SegmentKind};
 
@@ -17,9 +49,10 @@ use super::parser::{Expr, Segment, SegmentKind};
 pub fn execute_per_row(
     expr: &Expr,
     source: &ListArray,
+    runtime: &Runtime,
 ) -> Result<Option<ListArray>, crate::combinators::Error> {
     // TODO(grtlr): It would be much cleaner if `MapList` (or equivalent would be called on this level).
-    let result = expr.execute(source)?;
+    let result = expr.execute(source, runtime)?;
 
     if let Some(ref result) = result {
         re_log::debug_assert_eq!(
@@ -89,7 +122,11 @@ impl Segment {
 }
 
 impl Expr {
-    fn execute(&self, source: &ListArray) -> Result<Option<ListArray>, crate::combinators::Error> {
+    fn execute(
+        &self,
+        source: &ListArray,
+        runtime: &Runtime,
+    ) -> Result<Option<ListArray>, crate::combinators::Error> {
         match self {
             Self::Identity => Ok(Some(source.clone())),
             Self::Path(segments) => {
@@ -102,10 +139,16 @@ impl Expr {
                 }
                 Ok(Some(result))
             }
-            Self::Pipe(left, right) => match left.as_ref().execute(source)? {
-                Some(intermediate) => right.as_ref().execute(&intermediate),
+            Self::Pipe(left, right) => match left.as_ref().execute(source, runtime)? {
+                Some(intermediate) => right.as_ref().execute(&intermediate, runtime),
                 None => Ok(None),
             },
+            Self::Function { name, arguments } => {
+                let function = runtime
+                    .function_registry
+                    .get(name, arguments.as_ref().map_or(&[], |v| v.as_slice()))?;
+                function.transform(source)
+            }
         }
     }
 }
