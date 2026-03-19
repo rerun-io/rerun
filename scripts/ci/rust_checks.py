@@ -245,7 +245,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
-    results.append(run_cargo("install", "--locked cargo-deny@^0.18"))
+    results.append(run_cargo("install", "--locked cargo-deny@^0.19"))
 
     for target in deny_targets:
         results.append(

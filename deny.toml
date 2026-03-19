@@ -30,13 +30,11 @@ all-features = true
 
 [advisories]
 version = 2
+unused-ignored-advisory = "deny"
 ignore = [
   { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained — https://github.com/dtolnay/paste" },
   { id = "RUSTSEC-2024-0014", reason = "generational-arena is unmaintained" },
   { id = "RUSTSEC-2025-0141", reason = "bincode is unmaintained — https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md" },
-  # TODO(quickwit-oss/tantivy#2796): Remove when changes trickle down to `lance`.
-  { id = "RUSTSEC-2026-0002", reason = "lance uses an old version of `lru`" },
-  { id = "RUSTSEC-2026-0041", reason = "waiting for dependencies (puffin, arrow-ipc) to upgrade" },
 ]
 
 
@@ -63,8 +61,6 @@ skip = [
   { name = "base64" }, # Too popular
   { name = "bitflags" }, # core-graphics & png uses an older version.
   { name = "block2" }, # Old version via rfd
-  { name = "cargo_metadata" }, # used by rustdoc-json
-  { name = "cargo-platform" }, # used by rustdoc-json
   { name = "console" }, # smallish
   { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
   { name = "core-graphics-types" }, # wgpu requires 0.2 while winit is still on 0.1
@@ -88,7 +84,6 @@ skip = [
   { name = "redox_syscall" }, # Plenty of versions in the wild
   { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu
   { name = "rustix" }, # tantivy uses an old version.
-  { name = "socket2" }, # tonic, axum, …
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
   { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
@@ -96,7 +91,6 @@ skip-tree = [
   { name = "petgraph" }, # b/c lance
   { name = "phf" }, # b/c mime_guess2
   { name = "rand_distr" }, # from ndarray-rand
-  { name = "skeptic" }, # dev-dependency
   { name = "thiserror" }, # Waiting for eco-system to switch to 2.0
   { name = "toml" }, # b/c cargo_metadata
   { name = "webpki-roots" }, # need to update ureq
@@ -128,7 +122,6 @@ allow = [
   "Ubuntu-font-1.0", # https://ubuntu.com/legal/font-licence
   "Unicode-3.0", # https://www.unicode.org/license.txt
   "Zlib", # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
-  "bzip2-1.0.6", # https://github.com/trifectatechfoundation/libbzip2-rs/blob/v0.2.2/COPYING
 ]
 exceptions = []
 
