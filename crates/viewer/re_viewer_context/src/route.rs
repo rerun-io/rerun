@@ -69,8 +69,8 @@ impl Route {
         match self {
             Self::LocalRecording { recording_id }
             | Self::ChunkStoreBrowser { recording_id, .. } => Some(recording_id),
-            Self::Settings { .. }
-            | Self::Loading { .. }
+            Self::Settings { previous } => previous.recording_id(),
+            Self::Loading { .. }
             | Self::LocalTable { .. }
             | Self::RedapEntry { .. }
             | Self::RedapServer { .. } => None,
