@@ -76,6 +76,7 @@
 #include "components/vector2d.hpp"
 #include "components/vector3d.hpp"
 #include "components/video_codec.hpp"
+#include "components/video_presentation_timestamp_offset.hpp"
 #include "components/video_sample.hpp"
 #include "components/video_timestamp.hpp"
 #include "components/view_coordinates.hpp"

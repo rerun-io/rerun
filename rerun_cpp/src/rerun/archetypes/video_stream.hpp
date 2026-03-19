@@ -9,6 +9,7 @@
 #include "../components/draw_order.hpp"
 #include "../components/opacity.hpp"
 #include "../components/video_codec.hpp"
+#include "../components/video_presentation_timestamp_offset.hpp"
 #include "../components/video_sample.hpp"
 #include "../result.hpp"
 
@@ -38,10 +39,17 @@ namespace rerun::archetypes {
 
         /// Video sample data (also known as "video chunk").
         ///
-        /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-        /// There is currently no way to log differing decoding timestamps, meaning
-        /// that there is no support for B-frames.
-        /// See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+        /// Each element in this array must contain the encoded data for exactly one video frame.
+        /// When logging a single frame per row, this is simply a single-element array (or a scalar).
+        ///
+        /// For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+        /// Samples within a row must be in **decode order**.
+        /// The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+        /// subsequent samples in the same row are assigned sequentially increasing DTS values.
+        /// See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+        ///
+        /// When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+        /// equals the decode timestamp for each sample (i.e. no B-frames).
         ///
         /// Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
         /// but may cause the video playback in the Viewer to reset.
@@ -51,8 +59,6 @@ namespace rerun::archetypes {
         /// codec parameters & resolution.
         ///
         /// The samples are expected to be encoded using the `codec` field.
-        /// Each video sample must contain enough data for exactly one video frame
-        /// (this restriction may be relaxed in the future for some codecs).
         ///
         /// Unless your stream consists entirely of key-frames (in which case you should consider `archetypes::EncodedImage`)
         /// never log this component as static data as this means that you loose all information of
@@ -60,6 +66,20 @@ namespace rerun::archetypes {
         ///
         /// See `components::VideoCodec` for codec specific requirements.
         std::optional<ComponentBatch> sample;
+
+        /// Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
+        ///
+        /// When present, the presentation timestamp for sample `i` is computed as
+        /// `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+        ///
+        /// This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+        /// as B-frames cause decode order and presentation order to differ.
+        ///
+        /// When absent, the presentation timestamp equals the decode timestamp for all samples
+        /// in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+        ///
+        /// The number of offsets should match the number of samples in this row.
+        std::optional<ComponentBatch> presentation_time_offset;
 
         /// Opacity of the video stream, useful for layering several media.
         ///
@@ -85,6 +105,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_sample = ComponentDescriptor(
             ArchetypeName, "VideoStream:sample",
             Loggable<rerun::components::VideoSample>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `presentation_time_offset` field.
+        static constexpr auto Descriptor_presentation_time_offset = ComponentDescriptor(
+            ArchetypeName, "VideoStream:presentation_time_offset",
+            Loggable<rerun::components::VideoPresentationTimestampOffset>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
@@ -135,10 +160,17 @@ namespace rerun::archetypes {
 
         /// Video sample data (also known as "video chunk").
         ///
-        /// The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
-        /// There is currently no way to log differing decoding timestamps, meaning
-        /// that there is no support for B-frames.
-        /// See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+        /// Each element in this array must contain the encoded data for exactly one video frame.
+        /// When logging a single frame per row, this is simply a single-element array (or a scalar).
+        ///
+        /// For B-frame support (H.264/H.265), multiple samples can be batched into a single row.
+        /// Samples within a row must be in **decode order**.
+        /// The current timestamp on the timeline is used as the decode timestamp (DTS) for the first sample;
+        /// subsequent samples in the same row are assigned sequentially increasing DTS values.
+        /// See `presentation_time_offset` for specifying presentation timestamps that differ from decode timestamps.
+        ///
+        /// When no `presentation_time_offset` is provided, the presentation timestamp (PTS)
+        /// equals the decode timestamp for each sample (i.e. no B-frames).
         ///
         /// Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
         /// but may cause the video playback in the Viewer to reset.
@@ -148,25 +180,38 @@ namespace rerun::archetypes {
         /// codec parameters & resolution.
         ///
         /// The samples are expected to be encoded using the `codec` field.
-        /// Each video sample must contain enough data for exactly one video frame
-        /// (this restriction may be relaxed in the future for some codecs).
         ///
         /// Unless your stream consists entirely of key-frames (in which case you should consider `archetypes::EncodedImage`)
         /// never log this component as static data as this means that you loose all information of
         /// previous samples which may be required to decode an image.
         ///
         /// See `components::VideoCodec` for codec specific requirements.
-        VideoStream with_sample(const rerun::components::VideoSample& _sample) && {
+        VideoStream with_sample(const Collection<rerun::components::VideoSample>& _sample) && {
             sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `sample` in a single component batch.
+        /// Per-sample offset from decode timestamp (DTS) to presentation timestamp (PTS).
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_sample` should
-        /// be used when logging a single row's worth of data.
-        VideoStream with_many_sample(const Collection<rerun::components::VideoSample>& _sample) && {
-            sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
+        /// When present, the presentation timestamp for sample `i` is computed as
+        /// `DTS_i + presentation_time_offset[i]`, where `DTS_i` is the decode timestamp of that sample.
+        ///
+        /// This is needed for H.264/H.265 streams that use B-frames (bidirectionally predicted frames),
+        /// as B-frames cause decode order and presentation order to differ.
+        ///
+        /// When absent, the presentation timestamp equals the decode timestamp for all samples
+        /// in this row (i.e. no B-frames, which is the common case for low-latency streaming).
+        ///
+        /// The number of offsets should match the number of samples in this row.
+        VideoStream with_presentation_time_offset(
+            const Collection<rerun::components::VideoPresentationTimestampOffset>&
+                _presentation_time_offset
+        ) && {
+            presentation_time_offset = ComponentBatch::from_loggable(
+                                           _presentation_time_offset,
+                                           Descriptor_presentation_time_offset
+            )
+                                           .value_or_throw();
             return std::move(*this);
         }
 
