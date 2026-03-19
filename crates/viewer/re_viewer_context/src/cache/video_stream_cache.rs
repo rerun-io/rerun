@@ -1153,6 +1153,7 @@ fn read_pts_offsets_from_chunk(
 
     let mut row_offsets = Vec::with_capacity(list_array.len() + 1);
     for i in 0..=list_array.len() {
+        #[expect(clippy::cast_sign_loss)] // Arrow offsets are guaranteed non-negative
         row_offsets.push(list_array.offsets()[i] as usize);
     }
 
@@ -1252,8 +1253,11 @@ fn update_sample_durations(
         }
     }
 
-    // Last sample in PTS order gets no duration (unknown).
-    if let Some(&(last_idx, _)) = pts_sorted.last()
+    // Last sample in PTS order gets no duration when the range extends
+    // to the actual end of the deque. Otherwise a sub-range update would
+    // incorrectly clear a duration already computed by a wider pass.
+    if end >= samples.next_index()
+        && let Some(&(last_idx, _)) = pts_sorted.last()
         && let Some(sample) = samples[last_idx].sample_mut()
     {
         sample.duration = None;
@@ -2756,6 +2760,139 @@ mod tests {
                 assert_eq!(
                     s.decode_timestamp, s.presentation_timestamp,
                     "Without offsets, DTS should equal PTS"
+                );
+            }
+        }
+    }
+
+    /// Incremental test: add B-frame chunks one at a time through `on_store_events`
+    /// and verify that frame_nr, durations, and statistics stay consistent.
+    #[test]
+    fn video_stream_cache_bframe_incremental_buildup() {
+        let timeline = Timeline::new_sequence("frame");
+
+        for compaction_enabled in [true, false] {
+            let mut cache = VideoStreamCache::default();
+            let enable_viewer_indexes = true;
+            let mut store = re_entity_db::EntityDb::with_store_config(
+                StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+                enable_viewer_indexes,
+                if compaction_enabled {
+                    re_chunk_store::ChunkStoreConfig::DEFAULT
+                } else {
+                    re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED
+                },
+            );
+
+            let frames: Vec<&[u8]> = iter_h264_frames(RAW_H264_DATA).collect();
+
+            /// Synthetic B-frame offset for a given frame index.
+            fn bframe_offset(i: usize) -> i64 {
+                match i % 4 {
+                    0 => 0,
+                    1 => 2,
+                    2 => -1,
+                    3 => -1,
+                    _ => unreachable!(),
+                }
+            }
+
+            // Log the first frame to seed the cache.
+            let chunk = ChunkBuilder::new(ChunkId::new(), "vid".into())
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 0i64)]),
+                    &VideoStream::new(VideoCodec::H264)
+                        .with_sample([frames[0]])
+                        .with_presentation_time_offset([bframe_offset(0)]),
+                )
+                .build()
+                .unwrap();
+            store.add_chunk(&Arc::new(chunk)).unwrap();
+
+            let video_stream = cache
+                .entry(
+                    &store,
+                    &"vid".into(),
+                    *timeline.name(),
+                    DecodeSettings::default(),
+                )
+                .unwrap();
+            assert_eq!(
+                video_stream
+                    .read()
+                    .video_renderer
+                    .data_descr()
+                    .samples
+                    .num_elements(),
+                1
+            );
+
+            // Incrementally add frames one at a time.
+            for (i, frame_bytes) in frames.iter().enumerate().skip(1) {
+                let offset = bframe_offset(i);
+                let chunk = ChunkBuilder::new(ChunkId::new(), "vid".into())
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::from_iter([(timeline, i as i64)]),
+                        &VideoStream::new(VideoCodec::H264)
+                            .with_sample([*frame_bytes])
+                            .with_presentation_time_offset([offset]),
+                    )
+                    .build()
+                    .unwrap();
+                let store_events = store.add_chunk(&Arc::new(chunk)).unwrap();
+                let store_events_refs = store_events.iter().collect::<Vec<_>>();
+                cache.on_store_events(&store_events_refs, &store);
+
+                let video_stream = cache
+                    .entry(
+                        &store,
+                        &"vid".into(),
+                        *timeline.name(),
+                        DecodeSettings::default(),
+                    )
+                    .unwrap();
+                let data_descr = video_stream.read().video_renderer.data_descr().clone();
+                data_descr.sanity_check().unwrap();
+
+                let n = i + 1;
+                assert_eq!(
+                    data_descr.samples.num_elements(),
+                    n,
+                    "compaction={compaction_enabled}, frame {i}: expected {n} samples"
+                );
+
+                // Verify PTS offset for every sample loaded so far.
+                for (idx, sample) in data_descr.samples.iter_indexed() {
+                    let s = sample.sample().unwrap();
+                    let expected_offset = bframe_offset(idx);
+                    assert_eq!(
+                        s.presentation_timestamp.0 - s.decode_timestamp.0,
+                        expected_offset,
+                        "compaction={compaction_enabled}, after frame {i}: sample {idx} PTS-DTS mismatch"
+                    );
+                }
+
+                // Verify frame_nr is consistent with PTS ordering.
+                let mut pts_frame_pairs: Vec<(re_video::Time, u32)> = data_descr
+                    .samples
+                    .iter()
+                    .filter_map(|s| s.sample().map(|m| (m.presentation_timestamp, m.frame_nr)))
+                    .collect();
+                pts_frame_pairs.sort_by_key(|(_, nr)| *nr);
+                for pair in pts_frame_pairs.windows(2) {
+                    assert!(
+                        pair[0].0 <= pair[1].0,
+                        "compaction={compaction_enabled}, after frame {i}: frame_nr order violates PTS order"
+                    );
+                }
+
+                // B-frame detection flag should be correct.
+                let has_nonzero_offset = (0..n).any(|j| bframe_offset(j) != 0);
+                assert_eq!(
+                    !data_descr.samples_statistics.dts_always_equal_pts, has_nonzero_offset,
+                    "compaction={compaction_enabled}, after frame {i}: B-frame detection mismatch"
                 );
             }
         }
