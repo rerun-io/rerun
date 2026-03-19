@@ -82,7 +82,7 @@ impl MessageParser for CompressedImageMessageParser {
                     .collect()
             }
             ParsedPayloadKind::H264 => VideoStream::update_fields()
-                .with_many_sample(blobs)
+                .with_sample(blobs)
                 .columns_of_unit_batches()?
                 .collect(),
 
