@@ -1,0 +1,20 @@
+namespace rerun.datatypes;
+
+/// An offset from decode timestamp (DTS) to presentation timestamp (PTS) for a video sample.
+///
+/// The offset is specified in timeline units (the same units as the timeline on which
+/// the video stream samples are logged).
+///
+/// The presentation timestamp of a sample is `DTS + offset`.
+/// When no offset is specified, the presentation timestamp equals the decode timestamp
+/// (i.e. zero offset, no B-frames).
+struct VideoPresentationTimestampOffset (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "npt.NDArray[np.int64]",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.tuple_struct"
+) {
+    /// Offset value in timeline units.
+    offset: long (order: 100);
+}
