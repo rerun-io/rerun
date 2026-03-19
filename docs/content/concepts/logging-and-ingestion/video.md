@@ -45,6 +45,23 @@ Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/lat
 
 For more details on how to query and decode video streams from Rerun, see our [query video streams how-to](../../howto/query-and-transform/query_videos.md).
 
+### B-frame support (H.264/H.265)
+
+H.264 and H.265 encoders may produce B-frames (bidirectionally predicted frames), which cause
+decode order and presentation order to differ. `VideoStream` supports this via the optional
+`presentation_time_offset` component.
+
+When B-frames are present, the timeline timestamp serves as the **decode timestamp (DTS)** and the
+`presentation_time_offset` specifies the offset from DTS to presentation timestamp (PTS) for each
+sample: `PTS = DTS + offset`. When no offset is provided, PTS equals DTS (no B-frames).
+
+Multiple samples can be batched into a single row (the `sample` field is array-typed). Samples
+within a row must be in **decode order**; the first sample inherits the row's timeline timestamp as
+its DTS, and subsequent samples get sequentially increasing DTS values.
+
+> **Tip:** For low-latency streaming, B-frames are generally not recommended. Most real-time
+> encoders disable them by default (e.g. `max_b_frames = 0` in libx264/libx265).
+
 
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
