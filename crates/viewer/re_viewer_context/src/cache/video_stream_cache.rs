@@ -294,6 +294,13 @@ impl VideoStreamCache {
             );
         }
 
+        // After any addition or deletion, recompute frame_nr (presentation order)
+        // and SamplesStatistics (B-frame detection bitvec) to stay consistent.
+        if result.is_ok() {
+            assign_frame_numbers_by_presentation_order(&mut video_data.samples);
+            video_data.samples_statistics = re_video::SamplesStatistics::new(&video_data.samples);
+        }
+
         let _ = video_data;
 
         if encoding_details_changed {
@@ -1037,6 +1044,7 @@ fn read_samples_from_known_chunk(
             // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
             // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
             // Within a row, subsequent samples get sequentially increasing DTS values.
+            #[expect(clippy::cast_possible_wrap)] // instance_idx won't exceed i64::MAX
             let decode_timestamp = re_video::Time(base_time + instance_idx as i64);
 
             // Compute PTS: if offset component is present, PTS = DTS + offset.
@@ -1356,6 +1364,7 @@ fn read_samples_from_new_chunk(
             // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
             // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
             // Within a row, subsequent samples get sequentially increasing DTS values.
+            #[expect(clippy::cast_possible_wrap)] // instance_idx won't exceed i64::MAX
             let decode_timestamp = re_video::Time(base_time + instance_idx as i64);
 
             // Compute PTS: if offset component is present, PTS = DTS + offset.
@@ -2003,18 +2012,8 @@ fn handle_out_of_order_chunk(
         video_descr.keyframe_indices.extend(shifted);
     }
 
-    // Correct frame_nr for all samples after `start_sample`:
-    let min_index = video_descr.samples.min_index();
-
-    for (idx, sample) in video_descr
-        .samples
-        .iter_indexed_mut()
-        .skip(sample_range.start().saturating_sub(min_index))
-    {
-        if let SampleMetadataState::Present(meta) = sample {
-            meta.frame_nr = idx as u32;
-        }
-    }
+    // frame_nr and SamplesStatistics are updated centrally in handle_store_event
+    // after all processing is complete — no need to assign here.
 
     update_sample_durations(
         *sample_range.start()..sample_range.start() + new_count,
