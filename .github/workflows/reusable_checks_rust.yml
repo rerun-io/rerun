@@ -133,7 +133,9 @@ jobs:
         if: always()
         with:
           name: test-results-ubuntu
-          path: "**/tests/snapshots"
+          path: |
+            **/tests/snapshots
+            **/tests/failures
 
   # Run tests on Mac and Windows (main channel)
   mac-windows-tests-main:
@@ -188,7 +190,9 @@ jobs:
         if: always()
         with:
           name: test-results-${{ matrix.name }}
-          path: "**/tests/snapshots"
+          path: |
+            **/tests/snapshots
+            **/tests/failures
 
   # Run all checks on Mac and Windows (nightly channel, split across multiple jobs)
   mac-windows-checks-nightly:
@@ -264,4 +268,6 @@ jobs:
         if: always()
         with:
           name: test-results-${{ matrix.platform.name }}-${{ matrix.checks_group.name }}
-          path: "**/tests/snapshots"
+          path: |
+            **/tests/snapshots
+            **/tests/failures
