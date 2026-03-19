@@ -66,7 +66,7 @@ def mux_h264_to_mp4(times: ChunkedArray, samples: ChunkedArray, output_path: str
     for packet, time in zip(input_container.demux(input_stream), times, strict=False):
         packet.time_base = Fraction(1, 1_000_000_000)  # Assuming duration timestamps in nanoseconds.
         packet.pts = int(time.value - start_time.value)
-        packet.dts = packet.pts  # dts == pts since there's no B-frames.
+        packet.dts = packet.pts  # dts == pts since there are no B-frames in the synthetic example.
         packet.stream = output_stream
         output_container.mux(packet)
 
