@@ -4,6 +4,7 @@ use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Boxes3D;
 use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -169,9 +170,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()
                     .next()
-                    .and_then(|(_, fill_modes)| {
-                        fill_modes.first().copied().and_then(FillMode::from_u8)
-                    })
+                    .and_then(|(_, s)| FillMode::from_integer_slice(s).next()?)
                     .unwrap_or_default();
 
                 if fill_mode.has_wireframe() {

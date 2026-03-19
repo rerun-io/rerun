@@ -1,6 +1,7 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::archetypes::{self, GraphEdges};
+use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{self, Archetype as _, components, datatypes};
 use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
@@ -85,9 +86,9 @@ impl VisualizerSystem for EdgesVisualizer {
             let all_edges = results.iter_required(GraphEdges::descriptor_edges().component);
             let graph_type = results
                 .iter_optional(GraphEdges::descriptor_graph_type().component)
-                .component_slow::<components::GraphType>()
+                .slice::<u8>()
                 .next()
-                .and_then(|(_index, graph_types)| graph_types.iter().next().copied())
+                .and_then(|(_, s)| components::GraphType::from_integer_slice(s).next()?)
                 .unwrap_or_default();
 
             let sources = all_edges

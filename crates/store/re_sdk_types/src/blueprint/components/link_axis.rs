@@ -103,14 +103,16 @@ impl ::re_types_core::Loggable for LinkAxis {
             .with_context("rerun.blueprint.components.LinkAxis#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Independent)),
-                Some(2) => Ok(Some(Self::LinkToGlobal)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.LinkAxis")?)
@@ -127,6 +129,8 @@ impl std::fmt::Display for LinkAxis {
 }
 
 impl ::re_types_core::reflection::Enum for LinkAxis {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::Independent, Self::LinkToGlobal]
@@ -138,6 +142,13 @@ impl ::re_types_core::reflection::Enum for LinkAxis {
             Self::Independent => "The axis is independent from all other plots.",
             Self::LinkToGlobal => "Link to all other plots that also have this options set.",
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

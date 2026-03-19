@@ -4,6 +4,7 @@ use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Ellipsoids3D;
 use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -210,10 +211,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                                 .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
                             // fill mode is currently a non-repeated component
                             fill_mode: fill_modes
-                                .unwrap_or_default()
-                                .first()
-                                .copied()
-                                .and_then(FillMode::from_u8)
+                                .and_then(|s| FillMode::from_integer_slice(s).next()?)
                                 .unwrap_or_default(),
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids

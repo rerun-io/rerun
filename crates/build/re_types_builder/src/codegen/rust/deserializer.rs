@@ -87,29 +87,17 @@ pub fn quote_arrow_deserializer(
             InnerRepr::NativeIterable,
         );
 
-        let quoted_branches = obj.fields.iter().map(|obj_field| {
-            let quoted_obj_field_type = format_ident!("{}", obj_field.name);
-
-            // We should never hit this unwrap or it means the enum-processing at
-            // the fbs layer is totally broken.
-            let enum_value = obj_field.enum_or_union_variant_value.unwrap();
-            let quoted_enum_value = proc_macro2::Literal::u64_unsuffixed(enum_value);
-
-            quote! {
-                Some(#quoted_enum_value) => Ok(Some(Self::#quoted_obj_field_type))
-            }
-        });
-
-        // TODO(jleibs): We should be able to do this with try_from instead.
         let quoted_remapping = quote! {
             .map(|typ| {
                 match typ {
-                    // The actual enum variants
-                    #(#quoted_branches,)*
+                    Some(val) => {
+                        <Self as ::re_types_core::reflection::Enum>::try_from_integer(val).map(Some).ok_or_else(|| {
+                            DeserializationError::missing_union_arm(
+                                #quoted_self_datatype, "<invalid>", val as _,
+                            )
+                        })
+                    },
                     None => Ok(None),
-                    Some(invalid) => Err(DeserializationError::missing_union_arm(
-                        #quoted_self_datatype, "<invalid>", invalid as _,
-                    )),
                 }
             })
         };

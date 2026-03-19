@@ -1,5 +1,6 @@
 use rerun::Archetype as _;
 use rerun::components::{Colormap, ImageBuffer, ImageFormat};
+use rerun::external::re_sdk_types::reflection::Enum as _;
 use rerun::external::re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use rerun::external::re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -107,8 +108,7 @@ impl VisualizerSystem for HeightFieldVisualizer {
 
                 // Get colormap ID, defaulting to Turbo.
                 let colormap_id = colormap
-                    .and_then(|c| c.first().copied())
-                    .and_then(Colormap::from_u8)
+                    .and_then(|s| Colormap::from_integer_slice(s).next()?)
                     .unwrap_or(DEFAULT_COLOR_MAP) as u32;
 
                 let spacing = 10.0 / (cols.max(rows) - 1) as f32;

@@ -111,14 +111,16 @@ impl ::re_types_core::Loggable for TransformRelation {
             .with_context("rerun.components.TransformRelation#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::ParentFromChild)),
-                Some(2) => Ok(Some(Self::ChildFromParent)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.TransformRelation")?)
@@ -135,6 +137,8 @@ impl std::fmt::Display for TransformRelation {
 }
 
 impl ::re_types_core::reflection::Enum for TransformRelation {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::ParentFromChild, Self::ChildFromParent]
@@ -150,6 +154,13 @@ impl ::re_types_core::reflection::Enum for TransformRelation {
                 "The transform describes how to transform into the child entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components.TransformRelation`](https://rerun.io/docs/reference/types/components/transform_relation) logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis."
             }
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

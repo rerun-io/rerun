@@ -889,6 +889,16 @@ impl EnumIntegerType {
             Self::U64 => format!("0x{value:0X}"),
         }
     }
+
+    /// Returns the suffix used for the repr type, e.g. `"u8"`, `"u16"`, etc.
+    pub fn type_str(self) -> &'static str {
+        match self {
+            Self::U8 => "u8",
+            Self::U16 => "u16",
+            Self::U32 => "u32",
+            Self::U64 => "u64",
+        }
+    }
 }
 
 /// Is this a struct, enum, or union?

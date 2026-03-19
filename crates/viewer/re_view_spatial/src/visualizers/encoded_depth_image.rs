@@ -25,6 +25,7 @@ use crate::{
         first_copied,
     },
 };
+use re_sdk_types::reflection::Enum as _;
 
 pub struct EncodedDepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -146,7 +147,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         image,
                         depth_meter: first_copied(depth_meter).map(Into::into),
                         fill_ratio: first_copied(fill_ratio).map(Into::into),
-                        colormap: first_copied(colormap).and_then(Colormap::from_u8),
+                        colormap: colormap.and_then(|s| Colormap::from_integer_slice(s).next()?),
                         value_range: first_copied(value_range),
                         magnification_filter: first_copied(magnification_filter)
                             .and_then(MagnificationFilter::from_u8)

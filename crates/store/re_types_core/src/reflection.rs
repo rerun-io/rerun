@@ -11,11 +11,26 @@ use crate::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentTy
 pub trait Enum:
     Sized + Copy + Clone + std::hash::Hash + PartialEq + Eq + std::fmt::Display + 'static
 {
+    /// The underlying integer type used to represent this enum (e.g. `u8`, `u32`).
+    type Repr: Copy;
+
     /// All variants, in the order they appear in the enum.
     fn variants() -> &'static [Self];
 
     /// Markdown docstring for the given enum variant.
     fn docstring_md(self) -> &'static str;
+
+    /// Create from the underlying integer repr, returning `None` if
+    /// the value does not match any known variant.
+    fn try_from_integer(value: Self::Repr) -> Option<Self>;
+
+    /// Convert a slice of repr integers to an iterator of optional enum values.
+    ///
+    /// Values that don't correspond to a known variant yield `None`.
+    #[inline]
+    fn from_integer_slice(slice: &[Self::Repr]) -> impl Iterator<Item = Option<Self>> + '_ {
+        slice.iter().map(|&v| Self::try_from_integer(v))
+    }
 }
 
 /// Runtime reflection about components and archetypes.

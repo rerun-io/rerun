@@ -3,6 +3,7 @@ use rayon::prelude::*;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_sdk_types::components::{self, AggregationPolicy, InterpolationMode, StrokeWidth};
+use re_sdk_types::reflection::Enum as _;
 use re_sdk_types::{Archetype as _, archetypes};
 use re_view::{ChunksWithComponent, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
@@ -187,9 +188,9 @@ impl SeriesLinesSystem {
 
         let interpolation_mode = results
             .iter_optional(archetypes::SeriesLines::descriptor_interpolation_mode().component)
-            .component_slow::<InterpolationMode>()
+            .slice::<u8>()
             .next()
-            .and_then(|(_index, modes)| modes.first().copied())
+            .and_then(|(_, s)| InterpolationMode::from_integer_slice(s).next()?)
             .unwrap_or_default();
 
         let plot_kind = match interpolation_mode {
@@ -235,9 +236,9 @@ impl SeriesLinesSystem {
         // Now convert the `PlotPoints` into `Vec<PlotSeries>`
         let aggregator = results
             .iter_optional(archetypes::SeriesLines::descriptor_aggregation_policy().component)
-            .component_slow::<AggregationPolicy>()
+            .slice::<u8>()
             .next()
-            .and_then(|(_index, policies)| policies.first().copied())
+            .and_then(|(_, s)| AggregationPolicy::from_integer_slice(s).next()?)
             // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
             //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
             .unwrap_or_default();

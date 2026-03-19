@@ -127,22 +127,16 @@ impl ::re_types_core::Loggable for MarkerShape {
             .with_context("rerun.components.MarkerShape#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Circle)),
-                Some(2) => Ok(Some(Self::Diamond)),
-                Some(3) => Ok(Some(Self::Square)),
-                Some(4) => Ok(Some(Self::Cross)),
-                Some(5) => Ok(Some(Self::Plus)),
-                Some(6) => Ok(Some(Self::Up)),
-                Some(7) => Ok(Some(Self::Down)),
-                Some(8) => Ok(Some(Self::Left)),
-                Some(9) => Ok(Some(Self::Right)),
-                Some(10) => Ok(Some(Self::Asterisk)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.MarkerShape")?)
@@ -167,6 +161,8 @@ impl std::fmt::Display for MarkerShape {
 }
 
 impl ::re_types_core::reflection::Enum for MarkerShape {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[
@@ -197,6 +193,13 @@ impl ::re_types_core::reflection::Enum for MarkerShape {
             Self::Right => "`▶`",
             Self::Asterisk => "`*`",
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

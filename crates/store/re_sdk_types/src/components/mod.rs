@@ -67,7 +67,6 @@ mod marker_size_ext;
 mod media_type;
 mod media_type_ext;
 mod mesh_face_rendering;
-mod mesh_face_rendering_ext;
 mod name;
 mod name_ext;
 mod opacity;

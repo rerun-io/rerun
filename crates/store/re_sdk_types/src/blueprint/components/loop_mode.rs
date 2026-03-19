@@ -108,15 +108,16 @@ impl ::re_types_core::Loggable for LoopMode {
             .with_context("rerun.blueprint.components.LoopMode#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Off)),
-                Some(2) => Ok(Some(Self::Selection)),
-                Some(3) => Ok(Some(Self::All)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.LoopMode")?)
@@ -134,6 +135,8 @@ impl std::fmt::Display for LoopMode {
 }
 
 impl ::re_types_core::reflection::Enum for LoopMode {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::Off, Self::Selection, Self::All]
@@ -146,6 +149,13 @@ impl ::re_types_core::reflection::Enum for LoopMode {
             Self::Selection => "We are looping within the current loop selection.",
             Self::All => "We are looping the entire recording.\n\nThe loop selection is ignored.",
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

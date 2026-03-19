@@ -115,16 +115,16 @@ impl ::re_types_core::Loggable for InterpolationMode {
             .with_context("rerun.components.InterpolationMode#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Linear)),
-                Some(2) => Ok(Some(Self::StepAfter)),
-                Some(3) => Ok(Some(Self::StepBefore)),
-                Some(4) => Ok(Some(Self::StepMid)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.InterpolationMode")?)
@@ -143,6 +143,8 @@ impl std::fmt::Display for InterpolationMode {
 }
 
 impl ::re_types_core::reflection::Enum for InterpolationMode {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[
@@ -167,6 +169,13 @@ impl ::re_types_core::reflection::Enum for InterpolationMode {
                 "Hold the previous value until the midpoint between data points, then jump to the new value.\n\nThe step occurs at the midpoint of the interval."
             }
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

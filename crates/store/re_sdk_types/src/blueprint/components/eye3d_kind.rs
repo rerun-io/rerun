@@ -113,14 +113,16 @@ impl ::re_types_core::Loggable for Eye3DKind {
             .with_context("rerun.blueprint.components.Eye3DKind#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::FirstPerson)),
-                Some(2) => Ok(Some(Self::Orbital)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.Eye3DKind")?)
@@ -137,6 +139,8 @@ impl std::fmt::Display for Eye3DKind {
 }
 
 impl ::re_types_core::reflection::Enum for Eye3DKind {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::FirstPerson, Self::Orbital]
@@ -152,6 +156,13 @@ impl ::re_types_core::reflection::Enum for Eye3DKind {
                 "Orbital eye.\n\nThe center of rotation is located to a center location in front of the eye (it is different from the eye\nlocation itself), as if the eye was orbiting around the scene."
             }
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 

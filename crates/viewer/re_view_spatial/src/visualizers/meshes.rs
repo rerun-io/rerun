@@ -248,8 +248,9 @@ impl VisualizerSystem for Mesh3DVisualizer {
 /// Converts a raw `MeshFaceRendering` u8 discriminant to `Option<wgpu::Face>` for culling.
 fn face_rendering_to_wgpu_cull(value: u8) -> Option<re_renderer::external::wgpu::Face> {
     use re_sdk_types::components::MeshFaceRendering;
+    use re_sdk_types::reflection::Enum as _;
 
-    match MeshFaceRendering::from_u8(value)? {
+    match MeshFaceRendering::try_from_integer(value)? {
         MeshFaceRendering::DoubleSided => None,
         // To show only front faces, cull back faces.
         MeshFaceRendering::Front => Some(re_renderer::external::wgpu::Face::Back),

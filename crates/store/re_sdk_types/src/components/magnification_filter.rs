@@ -117,15 +117,16 @@ impl ::re_types_core::Loggable for MagnificationFilter {
             .with_context("rerun.components.MagnificationFilter#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Nearest)),
-                Some(2) => Ok(Some(Self::Linear)),
-                Some(3) => Ok(Some(Self::Bicubic)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.MagnificationFilter")?)
@@ -143,6 +144,8 @@ impl std::fmt::Display for MagnificationFilter {
 }
 
 impl ::re_types_core::reflection::Enum for MagnificationFilter {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::Nearest, Self::Linear, Self::Bicubic]
@@ -161,6 +164,13 @@ impl ::re_types_core::reflection::Enum for MagnificationFilter {
                 "Bicubic interpolation using a Catmull-Rom spline, creating the smoothest look when the image is scaled up.\n\nThis is computationally more expensive than linear filtering but produces sharper results with less blurring.\nUnlike bilinear filtering, this avoids cross-shaped artifacts at texel boundaries."
             }
         }
+    }
+
+    #[inline]
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }
 
