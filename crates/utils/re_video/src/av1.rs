@@ -46,10 +46,22 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
                 let seq = SequenceHeaderObu::parse(header, &mut cursor)
                     .map_err(DetectGopStartError::Av1ParserError)?;
 
+                let profile = seq.seq_profile;
+                let bit_depth = seq.color_config.bit_depth as u8;
+
+                // Use the first operating point's level and tier for the codec string.
+                // Format: av01.P.LLT.DD
+                // See https://aomediacodec.github.io/av1-isobmff/#codecsparam
+                let (level, tier) = seq
+                    .operating_points
+                    .first()
+                    .map(|op| (op.seq_level_idx, if op.seq_tier { "H" } else { "M" }))
+                    .unwrap_or((1, "M"));
+
                 video_encoding_details = Some(VideoEncodingDetails {
-                    codec_string: "av01".to_owned(),
+                    codec_string: format!("av01.{profile}.{level:02}{tier}.{bit_depth:02}"),
                     coded_dimensions: [seq.max_frame_width as u16, seq.max_frame_height as u16],
-                    bit_depth: Some(seq.color_config.bit_depth as u8),
+                    bit_depth: Some(bit_depth),
                     chroma_subsampling: Some(chroma_mode_from_color_config(&seq.color_config)),
                     stsd: None,
                 });
@@ -157,7 +169,7 @@ mod test {
         match result {
             Ok(GopStartDetection::StartOfGop(details)) => {
                 // Verify we got expected details from the AV1 stream
-                assert_eq!(details.codec_string, "av01");
+                assert_eq!(details.codec_string, "av01.0.00M.08");
                 assert_eq!(details.coded_dimensions, [64, 64]);
 
                 assert_eq!(details.bit_depth, Some(8));
