@@ -401,7 +401,7 @@ fn cast_array(array: &ArrayRef, target_datatype: &DataType) -> DataFusionResult<
 static SEGMENT_URL_UDF: LazyLock<Arc<ScalarUDF>> =
     LazyLock::new(|| Arc::new(ScalarUDF::new_from_impl(SegmentUrlUdf::new())));
 
-#[pyclass( // NOLINT: ignore[py-cls-eq] internal class
+#[pyclass(
     frozen,
     name = "SegmentUrlUdfInternal",
     module = "rerun_bindings.rerun_bindings"
@@ -410,7 +410,7 @@ pub struct PySegmentUrlUdfInternal {
     udf: Arc<ScalarUDF>,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str] internal class
+#[pymethods]
 impl PySegmentUrlUdfInternal {
     #[new]
     fn py_new() -> Self {

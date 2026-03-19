@@ -737,10 +737,32 @@ def lint_pyclass_requirements(lines_in: list[str]) -> tuple[list[str], list[int]
                 paren_count += next_line.count("(") - next_line.count(")")
                 j += 1
 
-            # Check if 'eq' is present in the pyclass declaration
-            # Look for 'eq' as a standalone parameter (not part of another word)
             # First remove comments to avoid false matches in comments
             pyclass_content_no_comments = re.sub(r"//.*", "", pyclass_content)
+
+            # Extract class name: prefer 'name = "..."' from pyclass, fallback to struct name
+            name_match = re.search(r'name\s*=\s*"([^"]+)"', pyclass_content_no_comments)
+            if name_match:
+                cls_name = name_match.group(1)
+            else:
+                # Look at the struct definition that follows
+                cls_name = None
+                struct_line_idx = j
+                while struct_line_idx < len(lines_in):
+                    sl = lines_in[struct_line_idx].strip()
+                    if sl.startswith("pub struct ") or sl.startswith("struct "):
+                        struct_match = re.search(r"struct\s+(\w+)", sl)
+                        if struct_match:
+                            cls_name = struct_match.group(1)
+                        break
+                    struct_line_idx += 1
+
+            if cls_name and cls_name.endswith("Internal"):
+                i = j
+                continue
+
+            # Check if 'eq' is present in the pyclass declaration
+            # Look for 'eq' as a standalone parameter (not part of another word)
             if not re.search(r"\beq\b", pyclass_content_no_comments):
                 errors.append(
                     f"{original_line_nr}: #[pyclass(...)] should include 'eq' parameter for Python equality support"
@@ -800,6 +822,10 @@ def lint_pymethods_requirements(lines_in: list[str]) -> tuple[list[str], list[in
                 j += 1
 
             if impl_start_line is None or class_name is None:
+                i += 1
+                continue
+
+            if class_name.endswith("Internal"):
                 i += 1
                 continue
 
@@ -879,6 +905,14 @@ impl MyClass {
         "test".to_string()
     }
 }""",
+        # Internal class without __str__ should be auto-skipped
+        """#[pymethods]
+impl PyFooInternal {
+    #[new]
+    pub fn new() -> Self {
+        Self {}
+    }
+}""",
     ]
 
     should_error = [
@@ -941,6 +975,10 @@ def test_lint_pyclass_requirements() -> None:
         )]""",
         # With name parameter
         '#[pyclass(eq, name = "MyClass", module = "rerun_bindings.rerun_bindings")]',
+        # Internal class (via name param) without eq should be auto-skipped
+        '#[pyclass(name = "FooInternal", module = "rerun_bindings.rerun_bindings")]\npub struct PyFooInternal {}',
+        # Internal class (via struct name fallback) without eq should be auto-skipped
+        '#[pyclass(module = "rerun_bindings.rerun_bindings")]\npub struct PyFooInternal {}',
     ]
 
     should_error = [

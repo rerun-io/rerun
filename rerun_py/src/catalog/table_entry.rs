@@ -20,7 +20,7 @@ use crate::utils::{get_tokio_runtime, wait_for_future};
 ///
 /// Note: this object acts as a table provider for DataFusion.
 //TODO(ab): expose metadata about the table (e.g. stuff found in `provider_details`).
-#[pyclass(name = "TableEntryInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(name = "TableEntryInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyTableEntryInternal {
     client: Py<PyCatalogClientInternal>,
     entry_details: EntryDetails,

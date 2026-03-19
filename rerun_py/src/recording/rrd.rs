@@ -13,7 +13,7 @@ use crate::catalog::PySchemaInternal;
 /// An archive loaded from an RRD.
 ///
 /// RRD archives may include 1 or more recordings or blueprints.
-#[pyclass(  // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(
     frozen,
     name = "RRDArchiveInternal",
     module = "rerun_bindings.rerun_bindings"
@@ -23,7 +23,7 @@ pub struct PyRRDArchiveInternal {
     pub datasets: BTreeMap<StoreId, (ChunkStoreHandle, Option<StoreInfo>)>,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyRRDArchiveInternal {
     /// The number of recordings in the archive.
     fn num_recordings(&self) -> usize {
@@ -56,13 +56,13 @@ impl PyRRDArchiveInternal {
 ///
 /// You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
 /// what data is available.
-#[pyclass(name = "RecordingInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(name = "RecordingInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyRecordingInternal {
     pub(crate) store: ChunkStoreHandle,
     pub(crate) store_info: Option<StoreInfo>,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyRecordingInternal {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchemaInternal {

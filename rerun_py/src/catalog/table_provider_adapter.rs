@@ -9,7 +9,7 @@ use pyo3::types::PyCapsule;
 use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
 
 /// Adapter to expose a [`TableProvider`] to the Python side via the DataFusion FFI capsule protocol.
-#[pyclass( // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(
     frozen,
     name = "TableProviderAdapterInternal",
     module = "rerun_bindings.rerun_bindings"
@@ -28,7 +28,7 @@ impl PyTableProviderAdapterInternal {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyTableProviderAdapterInternal {
     fn __datafusion_table_provider__<'py>(
         &self,

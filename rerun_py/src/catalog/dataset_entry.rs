@@ -35,7 +35,7 @@ use crate::recording::PyRecordingInternal;
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
-#[pyclass( // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(
     name = "DatasetEntryInternal",
     module = "rerun_bindings.rerun_bindings"
 )]

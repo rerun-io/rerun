@@ -31,7 +31,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 60 * 60;
 type RegistrationResult = (String, Option<String>, Option<String>);
 
 /// Internal handle exposed to Python for tracking registration tasks.
-#[pyclass( // NOLINT: ignore[py-cls-eq]
+#[pyclass(
     name = "RegistrationHandleInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -75,7 +75,7 @@ impl PyRegistrationHandleInternal {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyRegistrationHandleInternal {
     /// Returns a streaming iterator that yields (uri, segment_id, error) tuples
     /// as tasks complete.

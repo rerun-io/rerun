@@ -8,14 +8,14 @@ use pyo3::types::{
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
 use re_server::{self, Args as ServerArgs, NamedPathCollection};
 
-#[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
+#[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyServerInternal {
     handle: Option<re_server::ServerHandle>,
     host: std::net::IpAddr,
     url: String,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyServerInternal {
     #[new]
     #[pyo3(signature = (*, host, port, datasets, dataset_prefixes, tables))]
