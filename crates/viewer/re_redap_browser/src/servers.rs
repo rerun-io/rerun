@@ -306,6 +306,15 @@ fn error_ui(
                 ui.vertical(|ui| {
                     ui.strong(message);
 
+                    if let Some(auth) = viewer_ctx.app_ctx.auth_context {
+                        let identity = if let Some(org) = &auth.org_name {
+                            format!("Logged in as {} ({})", auth.email, org)
+                        } else {
+                            format!("Logged in as {}", auth.email)
+                        };
+                        ui.weak(identity);
+                    }
+
                     ui.add_space(8.0);
                     if has_active_login_flow {
                         ui.horizontal_centered(|ui| {
@@ -377,13 +386,13 @@ fn error_ui(
                 });
             });
         } else {
-            warning_with_edit_button(ctx, ui, origin, message);
+            warning_with_edit_button(ctx, ui, origin, message, viewer_ctx.app_ctx.auth_context);
         }
     } else if matches!(
         &err.kind,
         re_redap_client::ApiErrorKind::InvalidServer | re_redap_client::ApiErrorKind::Connection
     ) {
-        warning_with_edit_button(ctx, ui, origin, &err.to_string());
+        warning_with_edit_button(ctx, ui, origin, &err.to_string(), None);
     } else {
         ui.error_label(err.to_string());
     }
@@ -394,10 +403,20 @@ fn warning_with_edit_button(
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
     message: &str,
+    auth_context: Option<&re_viewer_context::AuthContext>,
 ) {
     Alert::warning().show(ui, |ui| {
         ui.vertical(|ui| {
             ui.strong(message);
+
+            if let Some(auth) = auth_context {
+                let identity = if let Some(org) = &auth.org_name {
+                    format!("Logged in as {} ({})", auth.email, org)
+                } else {
+                    format!("Logged in as {}", auth.email)
+                };
+                ui.weak(identity);
+            }
             ui.add_space(8.0);
             if ui
                 .add(re_ui::ReButton::new("Edit connection").small())
