@@ -167,7 +167,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         texture_color = vec4f(rgb, 1.0);
     } else if rect_info.color_mapper == COLOR_MAPPER_TEXTURE {
         let colormap_size = textureDimensions(colormap_texture).xy;
-        let color_index = normalized_value.r * f32(colormap_size.x * colormap_size.y);
+        let num_colors = colormap_size.x * colormap_size.y;
+        let max_index = num_colors - 1u;
+        let color_index = normalized_value.r * f32(max_index);
         // TODO(emilk): interpolate between neighboring colors for non-integral color indices
         // It's important to round here since otherwise numerical instability can push us to the adjacent class-id
         // See: https://github.com/rerun-io/rerun/issues/1968
