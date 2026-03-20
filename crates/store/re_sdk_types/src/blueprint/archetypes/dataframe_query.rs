@@ -42,7 +42,7 @@ pub struct DataframeQuery {
     /// Should empty cells be filled with latest-at queries?
     pub apply_latest_at: Option<SerializedComponentBatch>,
 
-    /// Selected columns. If unset, all columns are selected.
+    /// Selected columns. If unset, only the active timeline and all component columns are selected.
     pub select: Option<SerializedComponentBatch>,
 
     /// The order of entity path column groups. If unset, the default order is used.
@@ -389,7 +389,7 @@ impl DataframeQuery {
         self
     }
 
-    /// Selected columns. If unset, all columns are selected.
+    /// Selected columns. If unset, only the active timeline and all component columns are selected.
     #[inline]
     pub fn with_select(
         mut self,

@@ -3740,7 +3740,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "select",
                         display_name: "Select",
                         component_type: "rerun.blueprint.components.SelectedColumns".into(),
-                        docstring_md: "Selected columns. If unset, all columns are selected.",
+                        docstring_md: "Selected columns. If unset, only the active timeline and all component columns are selected.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4324,7 +4324,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "timeline_columns",
                         display_name: "Timeline columns",
                         component_type: "rerun.blueprint.components.TimelineColumn".into(),
-                        docstring_md: "What timeline columns to show.\n\nDefaults to displaying all timelines.",
+                        docstring_md: "What timeline columns to show.\n\nDefaults to displaying only the active timeline.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

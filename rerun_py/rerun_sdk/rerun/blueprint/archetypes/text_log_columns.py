@@ -40,7 +40,7 @@ class TextLogColumns(Archetype):
         timeline_columns:
             What timeline columns to show.
 
-            Defaults to displaying all timelines.
+            Defaults to displaying only the active timeline.
         text_log_columns:
             All columns to be displayed.
 
@@ -86,7 +86,7 @@ class TextLogColumns(Archetype):
         timeline_columns:
             What timeline columns to show.
 
-            Defaults to displaying all timelines.
+            Defaults to displaying only the active timeline.
         text_log_columns:
             All columns to be displayed.
 
@@ -122,7 +122,7 @@ class TextLogColumns(Archetype):
     )
     # What timeline columns to show.
     #
-    # Defaults to displaying all timelines.
+    # Defaults to displaying only the active timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

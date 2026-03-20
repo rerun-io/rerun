@@ -77,17 +77,11 @@ Filter message types and toggle column visibility in a selection panel.",
         system_registry.register_array_fallback_provider(
             TextLogColumns::descriptor_timeline_columns().component,
             |ctx| {
-                ctx.viewer_ctx()
-                    .recording()
-                    .timelines()
-                    .keys()
-                    .map(|t| {
-                        TimelineColumn(bp_datatypes::TimelineColumn {
-                            visible: true.into(),
-                            timeline: t.as_str().into(),
-                        })
-                    })
-                    .collect::<Vec<_>>()
+                let active_timeline = ctx.viewer_ctx().time_ctrl.timeline_name();
+                vec![TimelineColumn(bp_datatypes::TimelineColumn {
+                    visible: true.into(),
+                    timeline: active_timeline.as_str().into(),
+                })]
             },
         );
 

@@ -23,7 +23,7 @@ table DataframeQuery (
     /// Should empty cells be filled with latest-at queries?
     apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
 
-    /// Selected columns. If unset, all columns are selected.
+    /// Selected columns. If unset, only the active timeline and all component columns are selected.
     select: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
 
     /// The order of entity path column groups. If unset, the default order is used.

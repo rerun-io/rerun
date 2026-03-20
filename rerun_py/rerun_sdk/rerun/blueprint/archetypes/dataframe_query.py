@@ -84,7 +84,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         apply_latest_at:
             Should empty cells be filled with latest-at queries?
         select:
-            Selected columns. If unset, all columns are selected.
+            Selected columns. If unset, only the active timeline and all component columns are selected.
         entity_order:
             The order of entity path column groups. If unset, the default order is used.
 
@@ -171,7 +171,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         default=None,
         converter=blueprint_components.SelectedColumnsBatch._converter,  # type: ignore[misc]
     )
-    # Selected columns. If unset, all columns are selected.
+    # Selected columns. If unset, only the active timeline and all component columns are selected.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

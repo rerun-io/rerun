@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct TextLogColumns {
     /// What timeline columns to show.
     ///
-    /// Defaults to displaying all timelines.
+    /// Defaults to displaying only the active timeline.
     pub timeline_columns: Option<SerializedComponentBatch>,
 
     /// All columns to be displayed.
@@ -192,7 +192,7 @@ impl TextLogColumns {
 
     /// What timeline columns to show.
     ///
-    /// Defaults to displaying all timelines.
+    /// Defaults to displaying only the active timeline.
     #[inline]
     pub fn with_timeline_columns(
         mut self,
