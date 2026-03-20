@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui::remap_clamp;
+use egui::{Key, KeyboardShortcut, Modifiers, remap_clamp};
 use egui_tiles::{Behavior as _, EditAction};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
@@ -13,7 +13,6 @@ use re_ui::{
     ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
     design_tokens_of_visuals, icons,
 };
-use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
     Contents, DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, Item,
     MissingChunkReporter, PublishedViewInfo, SystemCommand, SystemCommandSender as _,
@@ -25,7 +24,9 @@ use re_viewport_blueprint::{
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
-// ----------------------------------------------------------------------------
+/// Toggle the currently selected view to be maximized or not.
+// NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
+const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
 
 /// Defines the UI and layout of the Viewport.
 pub struct ViewportUi {
